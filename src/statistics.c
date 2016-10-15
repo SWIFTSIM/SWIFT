@@ -27,6 +27,7 @@
 #include "statistics.h"
 
 /* Local headers. */
+#include "atomic.h"
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
@@ -38,8 +39,6 @@
  */
 struct index_data {
   const struct space *s;
-  int chunk_size;
-  int num_threads;
   struct statistics *stats;
 };
 
@@ -50,10 +49,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct space *s = data->s;
   struct part *restrict parts = (struct part *)map_data;
   struct xpart *restrict xparts = s->xparts + (ptrdiff_t)(parts - s->parts);
-  const int chunk_size = data->chunk_size;
-  const int num_threads = data->num_threads;
   const int ti_current = s->e->ti_current;
   const double timeBase = s->e->timeBase;
+  struct statistics *const global_stats = data->stats;
 
   /* Local accumulator */
   struct statistics stats;
@@ -97,61 +95,35 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.entropy += m * hydro_get_entropy(p, dt);
   }
 
-  /* Where do we write back ? */
-  const int thread_id =
-      ((ptrdiff_t)(parts - s->parts) / chunk_size) % num_threads;
-
   /* Now write back to memory */
-  data->stats[thread_id].E_kin += stats.E_kin;
-  data->stats[thread_id].E_int += stats.E_int;
-  data->stats[thread_id].E_pot += stats.E_pot;
-  data->stats[thread_id].E_rad += stats.E_rad;
-  data->stats[thread_id].entropy += stats.entropy;
-  data->stats[thread_id].mass += stats.mass;
-  data->stats[thread_id].mom[0] += stats.mom[0];
-  data->stats[thread_id].mom[1] += stats.mom[1];
-  data->stats[thread_id].mom[2] += stats.mom[2];
-  data->stats[thread_id].ang_mom[0] += stats.ang_mom[0];
-  data->stats[thread_id].ang_mom[1] += stats.ang_mom[1];
-  data->stats[thread_id].ang_mom[2] += stats.ang_mom[2];
+  if (lock_lock(&global_stats->lock) == 0) {
+
+    global_stats->E_int += stats.E_int;
+    global_stats->E_pot += stats.E_pot;
+    global_stats->E_rad += stats.E_rad;
+    global_stats->entropy += stats.entropy;
+    global_stats->mass += stats.mass;
+    global_stats->mom[0] += stats.mom[0];
+    global_stats->mom[1] += stats.mom[1];
+    global_stats->mom[2] += stats.mom[2];
+    global_stats->ang_mom[0] += stats.ang_mom[0];
+    global_stats->ang_mom[1] += stats.ang_mom[1];
+    global_stats->ang_mom[2] += stats.ang_mom[2];
+  }
+  if (lock_unlock(&global_stats->lock) != 0)
+    error("Failed to unlock stats holder.");
 }
 
 void stats_collect(const struct space *s, struct statistics *stats) {
 
-  const int num_threads = s->e->threadpool.num_threads;
-  const int chunk_size = s->nr_parts / num_threads;
+  const int chunk_size = 1000;
 
   /* Prepare the data */
   struct index_data extra_data;
   extra_data.s = s;
-  extra_data.chunk_size = chunk_size;
-  extra_data.num_threads = num_threads;
-  extra_data.stats = malloc(sizeof(struct statistics) * num_threads);
-  if (extra_data.stats == NULL)
-    error("Impossible to allocate memory for statistics");
-  bzero(&extra_data.stats, sizeof(struct statistics) * num_threads);
+  extra_data.stats = stats;
 
   /* Run parallel collection of statistics */
   threadpool_map(&s->e->threadpool, stats_collect_part_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), chunk_size, &extra_data);
-
-  /* Collect data from all the threads in the pool */
-  for (int i = 0; i < num_threads; ++i) {
-
-    stats->E_kin += extra_data.stats[i].E_kin;
-    stats->E_int += extra_data.stats[i].E_int;
-    stats->E_pot += extra_data.stats[i].E_pot;
-    stats->E_rad += extra_data.stats[i].E_rad;
-    stats->entropy += extra_data.stats[i].entropy;
-    stats->mass += extra_data.stats[i].mass;
-    stats->mom[0] += extra_data.stats[i].mom[0];
-    stats->mom[1] += extra_data.stats[i].mom[1];
-    stats->mom[2] += extra_data.stats[i].mom[2];
-    stats->ang_mom[0] += extra_data.stats[i].ang_mom[0];
-    stats->ang_mom[1] += extra_data.stats[i].ang_mom[1];
-    stats->ang_mom[2] += extra_data.stats[i].ang_mom[2];
-  }
-
-  /* Free stuff */
-  free(extra_data.stats);
 }

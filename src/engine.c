@@ -2503,19 +2503,18 @@ void engine_print_stats(struct engine *e) {
 /* } */
 #endif
 
-  // const double e_tot = e_kin + e_int + e_pot;
+  const double E_tot = stats.E_kin + stats.E_int + stats.E_pot;
 
   /* Print info */
-  /* if (e->nodeID == 0) { */
-  /*   fprintf(e->file_stats, */
-  /*           " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e
-   * %14e " */
-  /*           "%14e\n", */
-  /*           e->time, mass, e_tot, e_kin, e_int, e_pot, e_rad, entropy,
-   * mom[0], */
-  /*           mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]); */
-  /*   fflush(e->file_stats); */
-  /* } */
+  if (e->nodeID == 0) {
+    fprintf(e->file_stats,
+            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
+            "%14e\n",
+            e->time, stats.mass, E_tot, stats.E_kin, stats.E_int, stats.E_pot,
+            stats.E_rad, stats.entropy, stats.mom[0], stats.mom[1],
+            stats.mom[2], stats.ang_mom[0], stats.ang_mom[1], stats.ang_mom[2]);
+    fflush(e->file_stats);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2726,12 +2725,6 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  /* Save some statistics */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
-    engine_print_stats(e);
-    e->timeLastStatistics += e->deltaTimeStatistics;
-  }
-
   /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   int repart = (e->forcerepart != REPART_NONE);
@@ -2827,6 +2820,12 @@ void engine_step(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
+
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
+  }
 
   TIMER_TOC2(timer_step);
 

@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "lock.h"
 #include "space.h"
 
 /**
@@ -53,6 +54,9 @@ struct statistics {
 
   /*! Angular momentum */
   double ang_mom[3];
+
+  /*! Lock for threaded access */
+  swift_lock_type lock;
 };
 
 void stats_collect(const struct space* s, struct statistics* stats);
