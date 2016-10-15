@@ -98,6 +98,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   /* Now write back to memory */
   if (lock_lock(&global_stats->lock) == 0) {
 
+    global_stats->E_kin += stats.E_kin;
     global_stats->E_int += stats.E_int;
     global_stats->E_pot += stats.E_pot;
     global_stats->E_rad += stats.E_rad;
