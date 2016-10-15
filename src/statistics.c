@@ -32,7 +32,6 @@
 #include "statistics.h"
 
 /* Local headers. */
-#include "atomic.h"
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
@@ -43,7 +42,10 @@
  * @brief Information required to compute the statistics in the mapper
  */
 struct index_data {
+  /*! The space we play with */
   const struct space *s;
+
+  /*! The #statistics aggregator to fill */
   struct statistics *stats;
 };
 
@@ -57,6 +59,7 @@ struct index_data {
  */
 void stats_add(struct statistics *a, const struct statistics *b) {
 
+  /* Add everything */
   a->E_kin += b->E_kin;
   a->E_int += b->E_int;
   a->E_pot += b->E_pot;
@@ -86,7 +89,7 @@ void stats_init(struct statistics *s) {
 }
 
 /**
- * @brief The #threadpool mapper function used to collect statistics
+ * @brief The #threadpool mapper function used to collect statistics for #part.
  *
  * @param map_data Pointer to the particles.
  * @param nr_parts The number of particles in this chunk
@@ -95,30 +98,38 @@ void stats_init(struct statistics *s) {
 void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
   /* Unpack the data */
-  struct index_data *data = (struct index_data *)extra_data;
+  const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
-  struct part *restrict parts = (struct part *)map_data;
-  struct xpart *restrict xparts = s->xparts + (ptrdiff_t)(parts - s->parts);
+  const struct part *restrict parts = (struct part *)map_data;
+  const struct xpart *restrict xparts =
+      s->xparts + (ptrdiff_t)(parts - s->parts);
   const int ti_current = s->e->ti_current;
   const double timeBase = s->e->timeBase;
   struct statistics *const global_stats = data->stats;
 
   /* Local accumulator */
   struct statistics stats;
-  bzero(&stats, sizeof(struct statistics));
+  stats_init(&stats);
 
   /* Loop over particles */
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
-    struct part *restrict p = &parts[k];
-    struct xpart *restrict xp = &xparts[k];
+    const struct part *p = &parts[k];
+    const struct xpart *xp = &xparts[k];
 
+    /* Get useful variables */
     const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
-    const float v[3] = {xp->v_full[0] + p->a_hydro[0] * dt,
-                        xp->v_full[1] + p->a_hydro[1] * dt,
-                        xp->v_full[2] + p->a_hydro[2] * dt};
+    float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
+    if (p->gpart != NULL) {
+      a_tot[0] += p->gpart->a_grav[0];
+      a_tot[1] += p->gpart->a_grav[1];
+      a_tot[2] += p->gpart->a_grav[2];
+    }
+    const float v[3] = {xp->v_full[0] + a_tot[0] * dt,
+                        xp->v_full[1] + a_tot[1] * dt,
+                        xp->v_full[2] + a_tot[2] * dt};
 
     const float m = hydro_get_mass(p);
 
@@ -151,6 +162,69 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 }
 
 /**
+ * @brief The #threadpool mapper function used to collect statistics for #gpart.
+ *
+ * @param map_data Pointer to the g-particles.
+ * @param nr_gparts The number of g-particles in this chunk
+ * @param extra_data The #statistics aggregator.
+ */
+void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
+                                void *extra_data) {
+
+  /* Unpack the data */
+  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space *s = data->s;
+  const struct gpart *restrict gparts = (struct gpart *)map_data;
+  const int ti_current = s->e->ti_current;
+  const double timeBase = s->e->timeBase;
+  struct statistics *const global_stats = data->stats;
+
+  /* Local accumulator */
+  struct statistics stats;
+  stats_init(&stats);
+
+  /* Loop over particles */
+  for (int k = 0; k < nr_gparts; k++) {
+
+    /* Get the particle */
+    const struct gpart *gp = &gparts[k];
+
+    /* If the g-particle has a counterpart, ignore it */
+    if (gp->id_or_neg_offset < 0) continue;
+
+    /* Get useful variables */
+    const float dt = (ti_current - (gp->ti_begin + gp->ti_end) / 2) * timeBase;
+    const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
+    const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,
+                        gp->v_full[1] + gp->a_grav[1] * dt,
+                        gp->v_full[2] + gp->a_grav[2] * dt};
+
+    const float m = gp->mass;
+
+    /* Collect mass */
+    stats.mass += m;
+
+    /* Collect momentum */
+    stats.mom[0] += m * v[0];
+    stats.mom[1] += m * v[1];
+    stats.mom[2] += m * v[2];
+
+    /* Collect angular momentum */
+    stats.ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+    stats.ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+    stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+    /* Collect energies. */
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    stats.E_pot += 0.;
+  }
+
+  /* Now write back to memory */
+  if (lock_lock(&global_stats->lock) == 0) stats_add(global_stats, &stats);
+  if (lock_unlock(&global_stats->lock) != 0) error("Failed to unlock stats.");
+}
+
+/**
  * @brief Collect physical statistics over all particles in a #space.
  *
  * @param s The #space to collect from.
@@ -158,16 +232,20 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
  */
 void stats_collect(const struct space *s, struct statistics *stats) {
 
-  const int chunk_size = 1000;
-
   /* Prepare the data */
   struct index_data extra_data;
   extra_data.s = s;
   extra_data.stats = stats;
 
-  /* Run parallel collection of statistics */
-  threadpool_map(&s->e->threadpool, stats_collect_part_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), chunk_size, &extra_data);
+  /* Run parallel collection of statistics for parts */
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, stats_collect_part_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 10000, &extra_data);
+
+  /* Run parallel collection of statistics for gparts */
+  if (s->nr_gparts > 0)
+    threadpool_map(&s->e->threadpool, stats_collect_gpart_mapper, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), 10000, &extra_data);
 }
 
 /**
@@ -192,9 +270,17 @@ void stats_print_to_file(FILE *file, const struct statistics *stats,
   fflush(file);
 }
 
+/* Extra stuff in MPI-land */
 #ifdef WITH_MPI
 
+/**
+ * @brief MPI datatype corresponding to the #statistics structure.
+ */
 MPI_Datatype statistics_mpi_type;
+
+/**
+ * @brief MPI operator used for the reduction of #statistics structure.
+ */
 MPI_Op statistics_mpi_reduce_op;
 
 /**
@@ -203,7 +289,8 @@ MPI_Op statistics_mpi_reduce_op;
 void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 
   for (int i = 0; i < *len; ++i)
-    stats_add(&((struct statistics *)inout)[0], &((struct statistics *)in)[i]);
+    stats_add(&((struct statistics *)inout)[0],
+              &((const struct statistics *)in)[i]);
 }
 
 /**
