@@ -121,17 +121,15 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  *
  * @param e The #engine.
  * @param c The #cell.
- * @param super The super #cell.
  */
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int is_fixdt = (e->policy & engine_policy_fixdt);
+  const int is_hydro = (e->policy & engine_policy_hydro);
+  const int is_with_cooling = (e->policy & engine_policy_cooling);
+  const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
-  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
-  const int is_with_cooling =
-      (e->policy & engine_policy_cooling) == engine_policy_cooling;
-  const int is_with_sourceterms =
-      (e->policy & engine_policy_sourceterms) == engine_policy_sourceterms;
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
@@ -153,9 +151,9 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Generate the ghost task. */
-
-      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      if (is_hydro)
+        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
@@ -164,9 +162,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                                            task_subtype_none, 0, 0, c, NULL, 0);
 #endif
 
-
       /* Cooling task */
-
       if (is_with_cooling)
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
@@ -1793,14 +1789,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       }
 #endif
     }
-
-    /* External gravity tasks should depend on init and unlock the kick */
-    else if (t->type == task_type_grav_external) {
-      scheduler_addunlock(sched, t->ci->init, t);
-      scheduler_addunlock(sched, t, t->ci->kick);
-    }
     /* Cooling tasks should depend on kick and unlock sourceterms */
-
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
     }
@@ -1879,7 +1868,8 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
 
-  if (e->sched.nr_tasks == 0) error("No hydro or gravity tasks created.");
+  if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
+    error("We have particles but no hydro or gravity tasks were created.");
 
   /* Split the tasks. */
   scheduler_splittasks(sched);

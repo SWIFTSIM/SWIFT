@@ -445,7 +445,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
-  for (size_t i = 0; i < ind_size; ++i) cells_top[ind[i]].count++;
+  for (size_t i = 0; i < s->nr_parts; ++i) cells_top[ind[i]].count++;
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts;
@@ -453,7 +453,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
   if (gind_size > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
-  for (size_t i = 0; i < gind_size; ++i) cells_top[gind[i]].gcount++;
+  for (size_t i = 0; i < s->nr_gparts; ++i) cells_top[gind[i]].gcount++;
 
 #ifdef WITH_MPI
 

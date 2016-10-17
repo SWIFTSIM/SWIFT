@@ -355,7 +355,7 @@ fi
 AC_SUBST([TCMALLOC_LIBS])
 AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
 
-#  Check for -lprofiler usually part of the gpreftools along with tcmalloc.
+#  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
 AC_ARG_WITH([profiler],
    [AS_HELP_STRING([--with-profiler],
