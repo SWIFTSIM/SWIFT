@@ -158,9 +158,6 @@ struct cell {
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
-  /* Task for external gravity */
-  struct task *grav_external;
-
   /* Task for cooling */
   struct task *cooling;
 

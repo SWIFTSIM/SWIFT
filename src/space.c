@@ -395,9 +395,11 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].nr_density = 0;
       s->cells_top[k].nr_gradient = 0;
       s->cells_top[k].nr_force = 0;
+      s->cells_top[k].nr_grav = 0;
       s->cells_top[k].density = NULL;
       s->cells_top[k].gradient = NULL;
       s->cells_top[k].force = NULL;
+      s->cells_top[k].grav = NULL;
       s->cells_top[k].dx_max = 0.0f;
       s->cells_top[k].sorted = 0;
       s->cells_top[k].count = 0;
@@ -406,7 +408,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].extra_ghost = NULL;
       s->cells_top[k].ghost = NULL;
       s->cells_top[k].kick = NULL;
-      s->cells_top[k].grav_external = NULL;
       s->cells_top[k].cooling = NULL;
       s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
