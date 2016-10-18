@@ -127,9 +127,6 @@ struct task {
   /*! Weight of the task */
   int weight;
 
-  /*! ID of the queue or runner owning this task */
-  short int rid;
-
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
 

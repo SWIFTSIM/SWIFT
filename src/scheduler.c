@@ -75,8 +75,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     struct task **unlocks_new;
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
-    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
-                                              size_unlocks_new)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(
+             sizeof(struct task *) *size_unlocks_new)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
             NULL)
       error("Failed to re-allocate unlocks.");
@@ -117,11 +117,13 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
-  static const int pts[7][8] = {
-      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
-      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
-      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
-      {-1, -1, -1, -1, -1, -1, -1, 12}};
+  static const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
+                                {-1, -1, 11, 10, 5, 4, 2, 1},
+                                {-1, -1, -1, 12, 7, 6, 4, 3},
+                                {-1, -1, -1, -1, 8, 7, 5, 4},
+                                {-1, -1, -1, -1, -1, 12, 10, 9},
+                                {-1, -1, -1, -1, -1, -1, 11, 10},
+                                {-1, -1, -1, -1, -1, -1, -1, 12}};
   static const float sid_scale[13] = {
       0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
       0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
@@ -711,7 +713,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->tic = 0;
   t->toc = 0;
   t->nr_unlock_tasks = 0;
-  t->rid = -1;
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -1047,17 +1048,17 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
   /* Store the masks */
   s->mask = mask;
-  s->submask = submask | (1 << task_subtype_none);
+  s->submask = submask |= (1 << task_subtype_none);
 
-  /* Clear all the waits, rids, and times. */
-  for (int k = 0; k < s->nr_tasks; k++) {
-    s->tasks[k].wait = 1;
-    s->tasks[k].rid = -1;
-    s->tasks[k].tic = 0;
-    s->tasks[k].toc = 0;
-    if (((1 << s->tasks[k].type) & mask) == 0 ||
-        ((1 << s->tasks[k].subtype) & s->submask) == 0)
-      s->tasks[k].skip = 1;
+  /* Clear all the waits and times. */
+  message("nr_tasks=%i, active_count=%i.", s->nr_tasks, s->active_count);
+  for (int k = 0; k < s->active_count; k++) {
+    struct task *t = &s->tasks[s->tid_active[k]];
+    t->wait = 1;
+    t->tic = 0;
+    t->toc = 0;
+    if (((1 << t->type) & mask) == 0 || ((1 << t->subtype) & submask) == 0)
+      t->skip = 1;
   }
 
   /* Re-wait the tasks. */
@@ -1074,7 +1075,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
-    if (cj == NULL) { /* self */
+    if (cj == NULL) {/* self */
 
       if (ci->ti_end_min == ti_current && t->skip && t->type != task_type_sort)
         error(
@@ -1092,7 +1093,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
             taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
             ci->ti_end_min, t->flags);
 
-    } else { /* pair */
+    } else {/* pair */
 
       if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
           t->skip)
@@ -1136,9 +1137,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
-
-  /* Fail if this task has already been enqueued before. */
-  if (t->rid >= 0) error("Task has already been enqueued.");
 
   /* Ignore skipped tasks and tasks not in the masks. */
   if (t->skip || (1 << t->type) & ~(s->mask) ||
@@ -1397,7 +1395,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
   /* Start the timer on this task, if we got one. */
   if (res != NULL) {
     res->tic = getticks();
-    res->rid = qid;
   }
 
   /* No milk today. */
@@ -1438,7 +1435,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");

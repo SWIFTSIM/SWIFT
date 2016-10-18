@@ -580,8 +580,8 @@ int main(int argc, char *argv[]) {
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
-                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
-                  myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                  file_thread, " %03i %i %i %i %lli %lli %i %i %i %i %i\n",
+                  myrank, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
                   (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
@@ -615,8 +615,8 @@ int main(int argc, char *argv[]) {
       for (int l = 0; l < e.sched.nr_tasks; l++) {
         if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
           fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
-              e.sched.tasks[l].rid, e.sched.tasks[l].type,
+              file_thread, " %i %i %i %lli %lli %i %i %i %i\n",
+              e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
