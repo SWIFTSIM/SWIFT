@@ -713,6 +713,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->tic = 0;
   t->toc = 0;
   t->nr_unlock_tasks = 0;
+#ifdef SWIFT_TASK_DUMP
+  t->rid = -1;
+#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );

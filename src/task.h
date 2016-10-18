@@ -147,6 +147,11 @@ struct task {
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
+  
+#ifdef SWIFT_TASK_DUMP
+  /* ID of the last thread to execute this task. */
+  short int rid;
+#endif  // SWIFT_TASK_DUMP
 
 } SWIFT_STRUCT_ALIGN;
 
