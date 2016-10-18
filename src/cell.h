@@ -38,6 +38,7 @@
 
 /* Avoid cyclic inclusions */
 struct space;
+struct scheduler;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -232,6 +233,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 int cell_is_drift_needed(struct cell *c, int ti_current);
+int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 
 #endif /* SWIFT_CELL_H */
