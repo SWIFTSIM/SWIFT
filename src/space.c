@@ -395,6 +395,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].nr_density = 0;
       s->cells_top[k].nr_gradient = 0;
       s->cells_top[k].nr_force = 0;
+      s->cells_top[k].nr_grav = 0;
       s->cells_top[k].density = NULL;
       s->cells_top[k].gradient = NULL;
       s->cells_top[k].force = NULL;
@@ -406,7 +407,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].extra_ghost = NULL;
       s->cells_top[k].ghost = NULL;
       s->cells_top[k].kick = NULL;
-      s->cells_top[k].grav_external = NULL;
       s->cells_top[k].cooling = NULL;
       s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
@@ -601,8 +601,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   for (size_t k = 1; k < nr_parts; k++) {
     if (ind[k - 1] > ind[k]) {
       error("Sort failed!");
-    } else if (ind[k] != cell_getid(s->cdim, 
-                                    s->parts[k].x[0] * s->iwidth[0],
+    } else if (ind[k] != cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
                                     s->parts[k].x[1] * s->iwidth[1],
                                     s->parts[k].x[2] * s->iwidth[2])) {
       error("Incorrect indices!");

@@ -764,6 +764,9 @@ void cell_clean_links(struct cell *c, void *data) {
 
   c->force = NULL;
   c->nr_force = 0;
+
+  c->grav = NULL;
+  c->nr_grav = 0;
 }
 
 /**
@@ -1004,7 +1007,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->kick != NULL) scheduler_activate(s, c->kick);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
-  if (c->grav_external != NULL) scheduler_activate(s, c->grav_external);
 
   return 0;
 }
