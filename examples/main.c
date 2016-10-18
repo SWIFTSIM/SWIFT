@@ -120,6 +120,10 @@ int main(int argc, char *argv[]) {
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
+
+  /* Make sure messages are stamped with the correct rank. */
+  engine_rank = myrank;
+
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
@@ -131,6 +135,7 @@ int main(int argc, char *argv[]) {
     message("WARNING: you should use the non-MPI version of this program.");
   }
   fflush(stdout);
+
 #endif
 
 /* Let's pin the main thread */
