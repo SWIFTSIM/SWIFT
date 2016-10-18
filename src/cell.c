@@ -763,6 +763,9 @@ void cell_clean_links(struct cell *c, void *data) {
 
   c->force = NULL;
   c->nr_force = 0;
+
+  c->grav = NULL;
+  c->nr_grav = 0;
 }
 
 /**
