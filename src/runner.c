@@ -790,12 +790,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, e_rad = 0.0;
-  double entropy = 0.0, mass = 0.0;
-  double mom[3] = {0.0, 0.0, 0.0};
-  double ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* No children? */
   if (!c->split) {
@@ -820,7 +815,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
         dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
       }
 
-      /* Loop over all the particles in the cell (more work for these !) */
+      /* Loop over all the particles in the cell */
       const size_t nr_parts = c->count;
       for (size_t k = 0; k < nr_parts; k++) {
 
@@ -839,39 +834,6 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
         /* Maximal smoothing length */
         h_max = (h_max > p->h) ? h_max : p->h;
-
-        /* Now collect quantities for statistics */
-
-        const float half_dt =
-            (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-        const double x[3] = {p->x[0], p->x[1], p->x[2]};
-        const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
-                            xp->v_full[1] + p->a_hydro[1] * half_dt,
-                            xp->v_full[2] + p->a_hydro[2] * half_dt};
-
-        const float m = hydro_get_mass(p);
-
-        /* Collect mass */
-        mass += m;
-
-        /* Collect momentum */
-        mom[0] += m * v[0];
-        mom[1] += m * v[1];
-        mom[2] += m * v[2];
-
-        /* Collect angular momentum */
-        ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
-        ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
-        ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
-
-        /* Collect energies. */
-        e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-        e_pot += 0.;
-        e_int += m * hydro_get_internal_energy(p, half_dt);
-        e_rad += cooling_get_radiated_energy(xp);
-
-        /* Collect entropy */
-        entropy += m * hydro_get_entropy(p, half_dt);
       }
 
       /* Now, get the maximal particle motion from its square */
@@ -892,36 +854,12 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
         runner_do_drift(cp, e, drift);
         dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
-        mass += cp->mass;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        e_rad += cp->e_rad;
-        entropy += cp->entropy;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang_mom[0] += cp->ang_mom[0];
-        ang_mom[1] += cp->ang_mom[1];
-        ang_mom[2] += cp->ang_mom[2];
       }
   }
 
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
-  c->mass = mass;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->e_rad = e_rad;
-  c->entropy = entropy;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang_mom[0] = ang_mom[0];
-  c->ang_mom[1] = ang_mom[1];
-  c->ang_mom[2] = ang_mom[2];
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
