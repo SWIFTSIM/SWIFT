@@ -246,6 +246,12 @@ struct cell {
   /*! ID of the node this cell lives on. */
   int nodeID;
 
+  /*! Is the #part data of this cell being used in a sub-cell? */
+  int hold;
+
+  /*! Is the #gpart data of this cell being used in a sub-cell? */
+  int ghold;
+
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
 
@@ -257,12 +263,6 @@ struct cell {
 
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
-
-  /*! Is the #part data of this cell being used in a sub-cell? */
-  char hold;
-
-  /*! Is the #gpart data of this cell being used in a sub-cell? */
-  char ghold;
 
 } SWIFT_STRUCT_ALIGN;
 
