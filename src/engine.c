@@ -63,6 +63,7 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "statistics.h"
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
@@ -1248,7 +1249,7 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     /* Is that neighbour local ? */
     if (ci->nodeID != nodeID) continue;
 
-    /* If the cell is local build a self-interaction */
+    /* If the cell is local, build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
                       ci, NULL, 0);
   }
@@ -2472,76 +2473,28 @@ void engine_collect_timestep(struct engine *e) {
 void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
-  const struct space *s = e->s;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, e_rad = 0.0;
-  double entropy = 0.0, mass = 0.0;
-  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
+  struct statistics stats;
+  stats_init(&stats);
 
-  /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells_top[k];
-      mass += c->mass;
-      e_kin += c->e_kin;
-      e_int += c->e_int;
-      e_pot += c->e_pot;
-      e_rad += c->e_rad;
-      entropy += c->entropy;
-      mom[0] += c->mom[0];
-      mom[1] += c->mom[1];
-      mom[2] += c->mom[2];
-      ang_mom[0] += c->ang_mom[0];
-      ang_mom[1] += c->ang_mom[1];
-      ang_mom[2] += c->ang_mom[2];
-    }
+  /* Collect the stats on this node */
+  stats_collect(e->s, &stats);
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  {
-    double in[12] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
-    double out[12];
-    out[0] = e_kin;
-    out[1] = e_int;
-    out[2] = e_pot;
-    out[3] = e_rad;
-    out[4] = mom[0];
-    out[5] = mom[1];
-    out[6] = mom[2];
-    out[7] = ang_mom[0];
-    out[8] = ang_mom[1];
-    out[9] = ang_mom[2];
-    out[10] = mass;
-    out[11] = entropy;
-    if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate stats.");
-    e_kin = out[0];
-    e_int = out[1];
-    e_pot = out[2];
-    e_rad = out[3];
-    mom[0] = out[4];
-    mom[1] = out[5];
-    mom[2] = out[6];
-    ang_mom[0] = out[7];
-    ang_mom[1] = out[8];
-    ang_mom[2] = out[9];
-    mass = out[10];
-    entropy = out[11];
-  }
+  struct statistics global_stats;
+  stats_init(&global_stats);
+
+  if (MPI_Reduce(&stats, &global_stats, 1, statistics_mpi_type,
+                 statistics_mpi_reduce_op, 0, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to aggregate stats.");
+#else
+  struct statistics global_stats = stats;
 #endif
 
-  const double e_tot = e_kin + e_int + e_pot;
-
   /* Print info */
-  if (e->nodeID == 0) {
-    fprintf(e->file_stats,
-            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-            "%14e\n",
-            e->time, mass, e_tot, e_kin, e_int, e_pot, e_rad, entropy, mom[0],
-            mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
-    fflush(e->file_stats);
-  }
+  if (e->nodeID == 0)
+    stats_print_to_file(e->file_stats, &global_stats, e->time);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2752,12 +2705,6 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  /* Save some statistics */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
-    engine_print_stats(e);
-    e->timeLastStatistics += e->deltaTimeStatistics;
-  }
-
   /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   int repart = (e->forcerepart != REPART_NONE);
@@ -2854,6 +2801,12 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
+  }
+
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
@@ -2881,8 +2834,8 @@ void engine_drift(struct engine *e) {
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->verbose)
-    message("took %.3f %s (including task unskipping).", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including task unskipping).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -3510,6 +3463,7 @@ void engine_init(struct engine *e, struct space *s,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
+  stats_create_MPI_type();
 #endif
 
   /* Initialize the threadpool. */
