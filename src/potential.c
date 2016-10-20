@@ -35,8 +35,7 @@
  */
 void potential_init(const struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us,
-		    const struct space* s,
+                    const struct UnitSystem* us, const struct space* s,
                     struct external_potential* potential) {
 
   potential_init_backend(parameter_file, phys_const, us, s, potential);

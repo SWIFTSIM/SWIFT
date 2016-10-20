@@ -48,8 +48,7 @@
 /* Now, some generic functions, defined in the source file */
 void potential_init(const struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us,
-		    const struct space* s,
+                    const struct UnitSystem* us, const struct space* s,
                     struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);

@@ -31,8 +31,8 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
-#include "units.h"
 #include "space.h"
+#include "units.h"
 
 /**
  * @brief External Potential Properties - Isothermal sphere case
@@ -100,32 +100,33 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time ,const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
-  
-  const float rinv2 = 1./(dx*dx + dy*dy + dz*dz);
+
+  const float rinv2 = 1. / (dx * dx + dy * dy + dz * dz);
 
   const double term = -potential->vrot2_over_G * rinv2;
 
   g->a_grav[0] = term * dx;
   g->a_grav[1] = term * dy;
-  g->a_grav[2] = term * dz; 
+  g->a_grav[2] = term * dz;
 }
 
-
 /**
- * @brief Computes the gravitational potential energy of a particle in an isothermal potential.
+ * @brief Computes the gravitational potential energy of a particle in an
+ * isothermal potential.
  *
  * @param potential The #external_potential used in the run.
- * @param phys_const Physical constants in internal units. 
+ * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
 
- __attribute__((always_inline)) INLINE static float external_gravity_get_potential_energy(
+__attribute__((always_inline)) INLINE static float
+external_gravity_get_potential_energy(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
@@ -133,8 +134,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
 
-  return potential->vrot * potential->vrot * 0.5 * log(dx*dx + dy*dy * dz*dz);
- }
+  return potential->vrot * potential->vrot * 0.5 *
+         log(dx * dx + dy * dy * dz * dz);
+}
 
 /**
  * @brief Initialises the external potential properties in the internal system
@@ -148,14 +150,16 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 static INLINE void potential_init_backend(
     const struct swift_params* parameter_file,
     const struct phys_const* phys_const, const struct UnitSystem* us,
-    const struct space* s,
-    struct external_potential* potential) {
+    const struct space* s, struct external_potential* potential) {
 
-  potential->x = s->dim[0]/2. + 
+  potential->x =
+      s->dim[0] / 2. +
       parser_get_param_double(parameter_file, "IsothermalPotential:position_x");
-  potential->y = s->dim[1]/2. +
+  potential->y =
+      s->dim[1] / 2. +
       parser_get_param_double(parameter_file, "IsothermalPotential:position_y");
-  potential->z = s->dim[2]/2. +
+  potential->z =
+      s->dim[2] / 2. +
       parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
   potential->vrot =
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");

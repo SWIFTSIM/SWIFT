@@ -35,7 +35,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-
 /**
  * @brief Calculates du/dt in code units for a particle.
  *
@@ -50,13 +49,14 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
 
   /* Get particle density */
   const float rho = p->rho;
-  
+
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
 
   /* Calculate du_dt */
-  const float du_dt = -cooling->lambda * ( X_H * rho / phys_const->const_proton_mass) * 
-                                         ( X_H * rho / phys_const->const_proton_mass) / rho;
+  const float du_dt = -cooling->lambda *
+                      (X_H * rho / phys_const->const_proton_mass) *
+                      (X_H * rho / phys_const->const_proton_mass) / rho;
   return du_dt;
 }
 
@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
-  
+
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 
@@ -178,9 +178,9 @@ static INLINE void cooling_init_backend(
 
   /* convert lambda to code units */
   cooling->lambda = lambda_cgs *
-                    units_cgs_conversion_factor(us,UNIT_CONV_TIME) / 
-                    (units_cgs_conversion_factor(us,UNIT_CONV_ENERGY) * 
-		    units_cgs_conversion_factor(us,UNIT_CONV_VOLUME));
+                    units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+                    (units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) *
+                     units_cgs_conversion_factor(us, UNIT_CONV_VOLUME));
 }
 
 /**
@@ -195,8 +195,8 @@ static INLINE void cooling_print_backend(
       "Cooling function is 'Constant lambda' with "
       "(lambda,min_energy,hydrogen_mass_abundance,mean_molecular_weight) "
       "=  (%g,%g,%g,%g)",
-      cooling->lambda, cooling->min_energy,
-      cooling->hydrogen_mass_abundance, cooling->mean_molecular_weight);
+      cooling->lambda, cooling->min_energy, cooling->hydrogen_mass_abundance,
+      cooling->mean_molecular_weight);
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */
