@@ -59,7 +59,6 @@ enum BaseUnits {
   UNIT_LENGTH = 1,
   UNIT_TIME = 2,
   UNIT_CURRENT = 3,
-
   UNIT_TEMPERATURE = 4
 };
 

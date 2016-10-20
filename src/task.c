@@ -39,6 +39,7 @@
 
 /* This object's header. */
 #include "task.h"
+
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
