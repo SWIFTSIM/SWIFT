@@ -163,7 +163,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
  __attribute__((always_inline)) INLINE static float external_gravity_get_potential_energy(
     const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct part* p) {
+    const struct phys_const* const phys_const, const struct part* p) {
 
   return 0.;
  }

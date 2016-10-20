@@ -51,6 +51,12 @@
 #include "timers.h"
 
 /**
+ * @brief Re-set the list of active tasks.
+ */
+
+void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
+
+/**
  * @brief Add an unlock_task to the given task.
  *
  * @param s The #scheduler.
@@ -697,7 +703,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->wait = wait;
   t->ci = ci;
   t->cj = cj;
-  t->skip = 0;
+  t->skip = 1; /* Mark tasks as skip by default. */
   t->tight = tight;
   t->implicit = 0;
   t->weight = 0;
@@ -863,6 +869,7 @@ void scheduler_reset(struct scheduler *s, int size) {
     /* Free existing task lists if necessary. */
     if (s->tasks != NULL) free(s->tasks);
     if (s->tasks_ind != NULL) free(s->tasks_ind);
+    if (s->tid_active != NULL) free(s->tid_active);
 
     /* Allocate the new lists. */
     if (posix_memalign((void *)&s->tasks, task_align,
@@ -871,6 +878,9 @@ void scheduler_reset(struct scheduler *s, int size) {
 
     if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
+
+    if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
+      error("Failed to allocate aactive task lists.");
   }
 
   /* Reset the counters. */
@@ -882,6 +892,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->submask = 0;
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
+  s->active_count = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -891,11 +902,11 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @brief Compute the task weights
  *
  * @param s The #scheduler.
- * @param verbose Are we talkative ?
+ * @param verbose Are we talkative?
  */
+
 void scheduler_reweight(struct scheduler *s, int verbose) {
 
-  const ticks tic = getticks();
   const int nr_tasks = s->nr_tasks;
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
@@ -904,6 +915,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                                0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
+  const ticks tic = getticks();
 
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
@@ -1033,33 +1045,84 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  // ticks tic = getticks();
-
   /* Store the masks */
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
 
-  /* Clear all the waits and rids. */
+  /* Clear all the waits, rids, and times. */
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 1;
     s->tasks[k].rid = -1;
+    s->tasks[k].tic = 0;
+    s->tasks[k].toc = 0;
+    if (((1 << s->tasks[k].type) & mask) == 0 ||
+        ((1 << s->tasks[k].subtype) & s->submask) == 0)
+      s->tasks[k].skip = 1;
   }
 
   /* Re-wait the tasks. */
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 1000, s);
 
+/* Check we have not missed an active task */
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const int ti_current = s->space->e->ti_current;
+  for (int k = 0; k < s->nr_tasks; k++) {
+
+    struct task *t = &s->tasks[k];
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+
+    if (cj == NULL) { /* self */
+
+      if (ci->ti_end_min == ti_current && t->skip && t->type != task_type_sort)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "c->ti_end_min=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min);
+
+      /* Special treatment for sort tasks */
+      if (ci->ti_end_min == ti_current && t->skip &&
+          t->type == task_type_sort && t->flags == 0)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "c->ti_end_min=%d t->flags=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min, t->flags);
+
+    } else { /* pair */
+
+      if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
+          t->skip)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "ci->ti_end_min=%d cj->ti_end_min=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min, cj->ti_end_min);
+    }
+  }
+
+#endif
+
   /* Loop over the tasks and enqueue whoever is ready. */
-  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
-                 s->nr_tasks, sizeof(int), 1000, s);
+  for (int k = 0; k < s->active_count; k++) {
+    struct task *t = &s->tasks[s->tid_active[k]];
+    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
+        ((1 << t->subtype) & s->submask)) {
+      scheduler_enqueue(s, t);
+      pthread_cond_signal(&s->sleep_cond);
+    }
+  }
+
+  /* Clear the list of active tasks. */
+  s->active_count = 0;
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
-
-  /* message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
 }
 
 /**
@@ -1211,6 +1274,9 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
+
+  /* Mark the task as skip. */
+  t->skip = 1;
 
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
@@ -1427,6 +1493,7 @@ void scheduler_clean(struct scheduler *s) {
   free(s->tasks_ind);
   free(s->unlocks);
   free(s->unlock_ind);
+  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
 }

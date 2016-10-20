@@ -44,7 +44,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h
+    sourceterms_struct.h statistics.h
 
 
 # Common source files
@@ -53,7 +53,8 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
-    runner_doiact_fft.c threadpool.c cooling.c sourceterms.c
+    runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
+    statistics.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \

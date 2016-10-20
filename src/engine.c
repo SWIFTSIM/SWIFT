@@ -63,6 +63,7 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "statistics.h"
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
@@ -1249,7 +1250,7 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     /* Is that neighbour local ? */
     if (ci->nodeID != nodeID) continue;
 
-    /* If the cells is local build a self-interaction */
+    /* If the cell is local, build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
                       ci, NULL, 0);
   }
@@ -1330,59 +1331,101 @@ void engine_make_hydroloop_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic task, construct the links with the corresponding cell.
- * Similarly, construct the dependencies for all the sorting tasks.
+ * For each hydrodynamic and gravity task, construct the links with
+ * the corresponding cell.  Similarly, construct the dependencies for
+ * all the sorting tasks.
  *
  * @param e The #engine.
  */
 void engine_count_and_link_tasks(struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
+  struct scheduler *const sched = &e->sched;
+  const int nr_tasks = sched->nr_tasks;
 
-  for (int ind = 0; ind < sched->nr_tasks; ind++) {
+  for (int ind = 0; ind < nr_tasks; ind++) {
 
-    struct task *t = &sched->tasks[ind];
-
-    if (t->skip) continue;
+    struct task *const t = &sched->tasks[ind];
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
 
     /* Link sort tasks together. */
-    if (t->type == task_type_sort && t->ci->split)
+    if (t->type == task_type_sort && ci->split)
       for (int j = 0; j < 8; j++)
-        if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
-          scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
+        if (ci->progeny[j] != NULL && ci->progeny[j]->sorts != NULL) {
+          scheduler_addunlock(sched, ci->progeny[j]->sorts, t);
         }
 
-    /* Link density tasks to cells. */
+    /* Link self tasks to cells. */
     if (t->type == task_type_self) {
-      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+      }
+
+      /* Link pair tasks to cells. */
     } else if (t->type == task_type_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
+      atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
+        engine_addlink(e, &cj->density, t);
+        atomic_inc(&cj->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
+      }
+
+      /* Link sub-self tasks to cells. */
     } else if (t->type == task_type_sub_self) {
-      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+      }
+
+      /* Link sub-pair tasks to cells. */
     } else if (t->type == task_type_sub_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
+      atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
+        engine_addlink(e, &cj->density, t);
+        atomic_inc(&cj->nr_density);
+      }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        error("Found a sub-pair/external-gravity task...");
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
       }
     }
   }
@@ -1448,9 +1491,6 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
-
-    /* Skip? */
-    if (t->skip) continue;
 
     /* Multipole construction */
     if (t->type == task_type_grav_up) {
@@ -1598,9 +1638,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
-
-    /* Skip? */
-    if (t->skip) continue;
 
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
@@ -1874,14 +1911,16 @@ void engine_maketasks(struct engine *e) {
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
-  /* Allocate the list of cell-task links. The maximum number of links
-     is the number of cells (s->tot_cells) times the number of neighbours (27)
-     times the number of interaction types (2, density and force). */
+  /* Allocate the list of cell-task links. The maximum number of links is the
+   * number of cells (s->tot_cells) times the number of neighbours (26) times
+   * the number of interaction types, so 26 * 3 (density, force, grav) pairs
+   * and 4 (density, force, grav, ext_grav) self.
+   */
   if (e->links != NULL) free(e->links);
 #ifdef EXTRA_HYDRO_LOOP
-  e->size_links = s->tot_cells * 27 * 3;
+  e->size_links = s->tot_cells * (26 * 4 + 4);
 #else
-  e->size_links = s->tot_cells * 27 * 2;
+  e->size_links = s->tot_cells * (26 * 3 + 4);
 #endif
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
@@ -1956,7 +1995,7 @@ void engine_maketasks(struct engine *e) {
 }
 
 /**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *        Threadpool mapper function for fixdt version.
  *
  * @param map_data pointer to the tasks
@@ -1967,10 +2006,14 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
                                    void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  int *rebuild_space = (int *)extra_data;
+  size_t *rebuild_space = &((size_t *)extra_data)[0];
+  struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[1]);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
+
+    /* All tasks are unskipped (we skip by default). */
+    scheduler_activate(s, t);
 
     /* Pair? */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -1998,28 +2041,7 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mark any sort tasks as initially skipped.
- *        Threadpool mapper function.
- *
- * @param map_data pointer to the tasks
- * @param num_elements number of tasks
- * @param extra_data unused
- */
-void engine_marktasks_sorts_mapper(void *map_data, int num_elements,
-                                   void *extra_data) {
-  /* Unpack the arguments. */
-  struct task *tasks = (struct task *)map_data;
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-    if (t->type == task_type_sort) {
-      t->flags = 0;
-      t->skip = 1;
-    }
-  }
-}
-
-/**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *        Threadpool mapper function.
  *
  * @param map_data pointer to the tasks
@@ -2030,18 +2052,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  const int ti_end = ((int *)extra_data)[0];
-  int *rebuild_space = &((int *)extra_data)[1];
+  const int ti_end = ((size_t *)extra_data)[0];
+  size_t *rebuild_space = &((size_t *)extra_data)[1];
+  struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
     /* Single-cell task? */
     if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_sub_self) {
+        t->type == task_type_extra_ghost || t->type == task_type_cooling ||
+        t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
-      t->skip = (t->ci->ti_end_min > ti_end);
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
     /* Pair? */
@@ -2058,19 +2082,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
 
-      /* Set this task's skip. */
-      if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
+      /* Set this task's skip, otherwise nothing to do. */
+      if (ci->ti_end_min <= ti_end || cj->ti_end_min <= ti_end)
+        scheduler_activate(s, t);
+      else
         continue;
 
+      /* If this is not a density task, we don't have to do any of the below. */
+      if (t->subtype != task_subtype_density) continue;
+
       /* Set the sort flags. */
-      if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
+      if (t->type == task_type_pair) {
         if (!(ci->sorted & (1 << t->flags))) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
-          ci->sorts->skip = 0;
+          scheduler_activate(s, ci->sorts);
         }
         if (!(cj->sorted & (1 << t->flags))) {
           atomic_or(&cj->sorts->flags, (1 << t->flags));
-          cj->sorts->skip = 0;
+          scheduler_activate(s, cj->sorts);
         }
       }
 
@@ -2080,9 +2109,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (ci->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
-        ci->recv_xv->skip = 0;
-        ci->recv_rho->skip = 0;
-        ci->recv_ti->skip = 0;
+        scheduler_activate(s, ci->recv_xv);
+        scheduler_activate(s, ci->recv_rho);
+        scheduler_activate(s, ci->recv_ti);
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -2090,45 +2119,46 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
 
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
-        cj->recv_xv->skip = 0;
-        cj->recv_rho->skip = 0;
-        cj->recv_ti->skip = 0;
+        scheduler_activate(s, cj->recv_xv);
+        scheduler_activate(s, cj->recv_rho);
+        scheduler_activate(s, cj->recv_ti);
+
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
+        scheduler_activate(s, l->t);
       }
 
 #endif
@@ -2136,25 +2166,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Kick? */
     else if (t->type == task_type_kick) {
-      t->skip = (t->ci->ti_end_min > ti_end);
       t->ci->updated = 0;
       t->ci->g_updated = 0;
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
     /* Init? */
     else if (t->type == task_type_init) {
-      /* Set this task's skip. */
-      t->skip = (t->ci->ti_end_min > ti_end);
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
-    /* None? */
-    else if (t->type == task_type_none)
-      t->skip = 1;
+    /* Tasks with no cells should not be skipped? */
+    else if (t->type == task_type_grav_gather_m ||
+             t->type == task_type_grav_fft) {
+      scheduler_activate(s, t);
+    }
   }
 }
 
 /**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *
  * @return 1 if the space has to be rebuilt, 0 otherwise.
  */
@@ -2168,31 +2199,16 @@ int engine_marktasks(struct engine *e) {
   if (e->policy & engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
+    size_t extra_data[2] = {rebuild_space, (size_t)&e->sched};
     threadpool_map(&e->threadpool, engine_marktasks_fixdt_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 1000, &rebuild_space);
+                   s->nr_tasks, sizeof(struct task), 1000, extra_data);
     return rebuild_space;
 
     /* Multiple-timestep case */
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    int extra_data[2] = {e->ti_current, rebuild_space};
-    threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 10000, NULL);
-
-#ifdef WITH_MPI
-    if (e->policy & engine_policy_mpi) {
-
-      /* Skip all sends and recvs, we will unmark if needed. */
-      for (int k = 0; k < s->nr_tasks; k++) {
-        struct task *t = &s->tasks[k];
-        if (t->type == task_type_send || t->type == task_type_recv) {
-          t->skip = 1;
-        }
-      }
-    }
-#endif
-
+    size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
@@ -2213,16 +2229,21 @@ int engine_marktasks(struct engine *e) {
  */
 void engine_print_task_counts(struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
+  const ticks tic = getticks();
+  struct scheduler *const sched = &e->sched;
+  const int nr_tasks = sched->nr_tasks;
+  const struct task *const tasks = sched->tasks;
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (int k = 0; k < sched->nr_tasks; k++)
-    if (!sched->tasks[k].skip)
-      counts[(int)sched->tasks[k].type] += 1;
-    else
+  for (int k = 0; k < nr_tasks; k++) {
+    if (tasks[k].skip)
       counts[task_type_count] += 1;
+    else
+      counts[(int)tasks[k].type] += 1;
+  }
+  message("Total = %d", nr_tasks);
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -2236,6 +2257,10 @@ void engine_print_task_counts(struct engine *e) {
   fflush(stdout);
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2288,7 +2313,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   TIMER_TIC;
 
   /* Run through the tasks and mark as skip or not. */
-  int rebuild = (e->forcerebuild || engine_marktasks(e));
+  int rebuild = e->forcerebuild;
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -2398,6 +2423,10 @@ void engine_collect_kick(struct cell *c) {
         ti_end_min = min(ti_end_min, cp->ti_end_min);
         updated += cp->updated;
         g_updated += cp->g_updated;
+
+        /* Collected, so clear for next time. */
+        cp->updated = 0;
+        cp->g_updated = 0;
       }
     }
   }
@@ -2433,6 +2462,10 @@ void engine_collect_timestep(struct engine *e) {
       ti_end_min = min(ti_end_min, c->ti_end_min);
       updates += c->updated;
       g_updates += c->g_updated;
+
+      /* Collected, so clear for next time. */
+      c->updated = 0;
+      c->g_updated = 0;
     }
 
 /* Aggregate the data from the different nodes. */
@@ -2475,80 +2508,28 @@ void engine_collect_timestep(struct engine *e) {
 void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
-  const struct space *s = e->s;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot_self = 0.0, e_pot_ext = 0.0 ,e_rad = 0.0;
-  double entropy = 0.0, mass = 0.0;
-  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
+  struct statistics stats;
+  stats_init(&stats);
 
-  /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells_top[k];
-      mass += c->mass;
-      e_kin += c->e_kin;
-      e_int += c->e_int;
-      e_pot_self += c->e_pot_self;
-      e_pot_ext += c->e_pot_ext;
-      e_rad += c->e_rad;
-      entropy += c->entropy;
-      mom[0] += c->mom[0];
-      mom[1] += c->mom[1];
-      mom[2] += c->mom[2];
-      ang_mom[0] += c->ang_mom[0];
-      ang_mom[1] += c->ang_mom[1];
-      ang_mom[2] += c->ang_mom[2];
-    }
+  /* Collect the stats on this node */
+  stats_collect(e->s, &stats);
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  {
-    double in[13] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
-    double out[13];
-    out[0] = e_kin;
-    out[1] = e_int;
-    out[2] = e_pot_self;
-    out[3] = e_pot_ext;
-    out[4] = e_rad;
-    out[5] = mom[0];
-    out[6] = mom[1];
-    out[7] = mom[2];
-    out[8] = ang_mom[0];
-    out[9] = ang_mom[1];
-    out[10] = ang_mom[2];
-    out[11] = mass;
-    out[12] = entropy;
-    if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate stats.");
-    e_kin = out[0];
-    e_int = out[1];
-    e_pot_self = out[2];
-    e_pot_ext = out[3];
-    e_rad = out[4];
-    mom[0] = out[5];
-    mom[1] = out[6];
-    mom[2] = out[7];
-    ang_mom[0] = out[8];
-    ang_mom[1] = out[9];
-    ang_mom[2] = out[10];
-    mass = out[11];
-    entropy = out[12];
-  }
+  struct statistics global_stats;
+  stats_init(&global_stats);
+
+  if (MPI_Reduce(&stats, &global_stats, 1, statistics_mpi_type,
+                 statistics_mpi_reduce_op, 0, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to aggregate stats.");
+#else
+  struct statistics global_stats = stats;
 #endif
 
-  const double e_pot = e_pot_self + e_pot_ext;
-  const double e_tot = e_kin + e_int + e_pot;
-
   /* Print info */
-  if (e->nodeID == 0) {
-    fprintf(e->file_stats,
-            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-            "%14e %14e %14e\n",
-            e->time, mass, e_tot, e_kin, e_int, e_pot, e_pot_self, e_pot_ext, e_rad, entropy, mom[0],
-            mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
-    fflush(e->file_stats);
-  }
+  if (e->nodeID == 0)
+    stats_print_to_file(e->file_stats, &global_stats, e->time);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2759,13 +2740,7 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  /* Save some statistics */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
-    engine_print_stats(e);
-    e->timeLastStatistics += e->deltaTimeStatistics;
-  }
-
-  /* Drift only the necessary particles, that all means all particles
+  /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   int repart = (e->forcerepart != REPART_NONE);
   e->drift_all = repart || e->drift_all;
@@ -2861,6 +2836,12 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
+  }
+
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
@@ -2886,9 +2867,10 @@ void engine_drift(struct engine *e) {
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including task unskipping).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -3516,6 +3498,7 @@ void engine_init(struct engine *e, struct space *s,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
+  stats_create_MPI_type();
 #endif
 
   /* Initialize the threadpool. */
