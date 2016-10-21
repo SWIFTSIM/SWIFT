@@ -28,7 +28,7 @@
  */
 struct cooling_function_data {
 
-  /*! Cooling rate in cgs units. Defined by 'rho * du/dt = -lambda * n_H^2'*/
+  /*! Cooling rate in internal units */
   double lambda;
 
   /*! Fraction of gas mass that is Hydrogen. Used to calculate n_H */

@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
     const struct cooling_function_data* cooling, const struct part* p) {
 
   /* Get particle density */
-  const float rho = p->rho;
+  const float rho = hydro_get_density(p);
 
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
@@ -91,6 +91,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   } else {
     u_new = u_floor;
   }
+
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
 

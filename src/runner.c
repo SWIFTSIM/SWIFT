@@ -52,7 +52,6 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
-#include "potential.h"
 #include "scheduler.h"
 #include "sourceterms.h"
 #include "space.h"
