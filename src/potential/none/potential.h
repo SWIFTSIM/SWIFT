@@ -75,13 +75,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
-
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct part* g) {
 
-  return 0.;
+  return 0.f;
 }
 
 /**

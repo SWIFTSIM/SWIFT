@@ -166,7 +166,7 @@ external_gravity_get_potential_energy(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct part* p) {
 
-  return 0.;
+  return 0.f;
 }
 
 /**

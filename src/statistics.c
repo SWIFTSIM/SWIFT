@@ -122,17 +122,16 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Get the particle */
     const struct part *p = &parts[k];
     const struct xpart *xp = &xparts[k];
-    struct gpart *gp = NULL;
-    if (p->gpart != NULL) gp = p->gpart;
+    const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
     /* Get useful variables */
     const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-    if (p->gpart != NULL) {
-      a_tot[0] += p->gpart->a_grav[0];
-      a_tot[1] += p->gpart->a_grav[1];
-      a_tot[2] += p->gpart->a_grav[2];
+    if (gp != NULL) {
+      a_tot[0] += gp->a_grav[0];
+      a_tot[1] += gp->a_grav[1];
+      a_tot[2] += gp->a_grav[2];
     }
     const float v[3] = {xp->v_full[0] + a_tot[0] * dt,
                         xp->v_full[1] + a_tot[1] * dt,
@@ -155,7 +154,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot_self += 0.;
+    stats.E_pot_self += 0.f;
     stats.E_pot_ext +=
         m * external_gravity_get_potential_energy(potential, phys_const, gp);
     stats.E_int += m * hydro_get_internal_energy(p, dt);
@@ -229,7 +228,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot_self += 0.;
+    stats.E_pot_self += 0.f;
     stats.E_pot_ext +=
         m * external_gravity_get_potential_energy(potential, phys_const, gp);
   }
