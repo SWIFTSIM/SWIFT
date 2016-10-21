@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 
   const float cooling_rate = cooling->cooling_rate;
   const float internal_energy = hydro_get_internal_energy(p, 0);
-  return cooling->cooling_tstep_mult * internal_energy / abs(cooling_rate);
+  return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 }
 
 /**
