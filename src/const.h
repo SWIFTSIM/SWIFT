@@ -85,7 +85,7 @@
 #define SLOPE_LIMITER_CELL_WIDE
 
 /* Self gravity stuff. */
-#define const_gravity_multipole_order 2
+#define const_gravity_multipole_order 1
 #define const_gravity_a_smooth 1.25f
 #define const_gravity_r_cut 4.5f
 #define const_gravity_eta 0.025f
