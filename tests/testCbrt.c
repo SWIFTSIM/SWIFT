@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   for (int k = 0; k < num_vals; k++) {
     acc_exact += 1.0f / cbrtf(data[k]);
   }
-  message("1.0f / cbrtf took %.3f %s (acc = %.11e).",
+  message("1.0f / cbrtf took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_exact), clocks_getunit(),
           acc_exact);
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   for (int k = 0; k < num_vals; k++) {
     acc_ours += icbrtf(data[k]);
   }
-  message("icbrtf       took  %.3f %s (acc = %.11e).",
+  message("icbrtf       took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   /* Third run to check the speed of the cube root. */
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   for (int k = 0; k < num_vals; k++) {
     acc_exact += cbrtf(data[k]);
   }
-  message("cbrtf        took %.3f %s (acc =  %.11e).",
+  message("cbrtf        took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_exact), clocks_getunit(),
           acc_exact);
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     const float temp = icbrtf(data[k]);
     acc_ours += data[k] * temp * temp;
   }
-  message("x * icbrtf^2 took  %.3f %s (acc =  %.11e).",
+  message("x * icbrtf^2 took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   /* Fourth run to check the speed of (.)^(2/3). */
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
     const float temp = cbrtf(data[k]);
     acc_exact += temp * temp;
   }
-  message("cbrtf^2      took %.3f %s (acc =  %.11e).",
+  message("cbrtf^2      took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_exact), clocks_getunit(),
           acc_exact);
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
   for (int k = 0; k < num_vals; k++) {
     acc_ours += data[k] * icbrtf(data[k]);
   }
-  message("x * icbrtf   took  %.3f %s (acc =  %.11e).",
+  message("x * icbrtf   took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   return 0;
