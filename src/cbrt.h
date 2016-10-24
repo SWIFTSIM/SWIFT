@@ -68,11 +68,9 @@ __attribute__((always_inline)) inline float icbrtf(float x_in) {
   exponent_new = -exponent_new / 3;
   const int exponent_rem = exponent + 3 * exponent_new;
   cast.as_uint = (exponent_new + 127) << 23;
-  float exponent_scale = cast.as_float;
-  exponent_scale *=
-      exponent_rem > 0
-          ? (exponent_rem > 1 ? 5.61231024154687e-01f : 7.07106781186548e-01f)
-          : 8.90898718140339e-01f;
+  static const float scale[3] = {8.90898718140339e-01f, 7.07106781186548e-01f,
+                                 5.61231024154687e-01f};
+  const float exponent_scale = cast.as_float * scale[exponent_rem];
 
   // Scale the result and set the correct sign.
   res = copysignf(res * exponent_scale, x_in);

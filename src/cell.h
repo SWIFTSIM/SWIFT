@@ -38,6 +38,7 @@
 
 /* Avoid cyclic inclusions */
 struct space;
+struct scheduler;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -130,13 +131,8 @@ struct cell {
   /* Parent cell. */
   struct cell *parent;
 
-  /* Super cell, i.e. the highest-level supercell that has hydro interactions.
-   */
+  /* Super cell, i.e. the highest-level supercell that has pair/self tasks */
   struct cell *super;
-
-  /* Super cell, i.e. the highest-level supercell that has gravity interactions.
-   */
-  struct cell *gsuper;
 
   /* The task computing this cell's sorts. */
   struct task *sorts;
@@ -162,9 +158,6 @@ struct cell {
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
-  /* Task for external gravity */
-  struct task *grav_external;
-
   /* Task for cooling */
   struct task *cooling;
 
@@ -182,12 +175,6 @@ struct cell {
 
   /* ID of the previous owner, e.g. runner. */
   int owner;
-
-  /* Momentum of particles in cell. */
-  double mom[3], ang_mom[3];
-
-  /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin, e_rad, entropy;
 
   /* Number of particles updated in this cell. */
   int updated, g_updated;
@@ -240,5 +227,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 int cell_is_drift_needed(struct cell *c, int ti_current);
+int cell_unskip_tasks(struct cell *c, struct scheduler *s);
+void cell_set_super(struct cell *c, struct cell *super);
 
 #endif /* SWIFT_CELL_H */

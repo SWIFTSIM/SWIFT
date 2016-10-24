@@ -120,6 +120,10 @@ int main(int argc, char *argv[]) {
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
+
+  /* Make sure messages are stamped with the correct rank. */
+  engine_rank = myrank;
+
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
@@ -131,6 +135,7 @@ int main(int argc, char *argv[]) {
     message("WARNING: you should use the non-MPI version of this program.");
   }
   fflush(stdout);
+
 #endif
 
 /* Let's pin the main thread */
@@ -262,11 +267,20 @@ int main(int argc, char *argv[]) {
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
 
-  /* Report CPU frequency. */
+  /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
+
+/* Report host name(s). */
+#ifdef WITH_MPI
+  if (myrank == 0 || verbose > 1) {
+    message("Rank %d running on: %s", myrank, hostname());
+  }
+#else
+  message("Running on: %s", hostname());
+#endif
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
@@ -563,8 +577,8 @@ int main(int argc, char *argv[]) {
           fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
                   e.tic_step, e.toc_step, cpufreq);
           int count = 0;
-          for (int l = 0; l < e.sched.nr_tasks; l++)
-            if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
+          for (int l = 0; l < e.sched.nr_tasks; l++) {
+            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
                   myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -579,11 +593,10 @@ int main(int argc, char *argv[]) {
                   (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
                                                 : 0,
                   e.sched.tasks[l].flags);
-              fflush(stdout);
-              count++;
             }
-          message("rank %d counted %d tasks", myrank, count);
-
+            fflush(stdout);
+            count++;
+          }
           fclose(file_thread);
         }
 
@@ -599,8 +612,8 @@ int main(int argc, char *argv[]) {
       /* Add some information to help with the plots */
       fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
               1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
-      for (int l = 0; l < e.sched.nr_tasks; l++)
-        if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
+      for (int l = 0; l < e.sched.nr_tasks; l++) {
+        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
           fprintf(
               file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
               e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -610,6 +623,8 @@ int main(int argc, char *argv[]) {
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
+        }
+      }
       fclose(file_thread);
 #endif
     }

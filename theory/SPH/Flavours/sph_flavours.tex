@@ -1,0 +1,382 @@
+For vector quantities, we define $\vec{a}_{ij} \equiv (\vec{a}_i -
+\vec{a}_j)$. Barred quantities ($\bar a_{ij}$) correspond to the
+average over two particles of a quantity: $\bar a_{ij} \equiv
+\frac{1}{2}(a_i + a_j)$. To simplify notations, we also define the
+vector quantity $\Wij \equiv \frac{1}{2}\left(W(\vec{x}_{ij}, h_i) +
+\nabla_x W(\vec{x}_{ij},h_j)\right)$.
+
+
+%#######################################################################################################
+\subsection{\MinimalSPH}
+\label{sec:sph:minimal}
+
+This is the simplest fully-conservative version of SPH using the
+internal energy $u$ as a thermal variable that can be written
+down. Its implementation in \swift should be understood as a text-book
+example and template for more advanced implementations. A full
+derivation and motivation for the equations can be found in the review
+of \cite{Price2012}. Our implementation follows their equations (27),
+(43), (44), (45), (101), (103) and (104) with $\beta=3$ and
+$\alpha_u=0$. We summarize the equations here.
+
+\subsubsection{Density and other fluid properties (\nth{1} neighbour loop)}
+
+For a set of particles $i$ with positions $\vec{x}_i$ with velocities
+$\vec{v}_i$, masses $m_i$, sthermal energy per unit mass $u_i$ and
+smoothing length $h_i$, we compute the density for each particle:
+
+\begin{equation}
+  \rho_i \equiv \rho(\vec{x}_i) = \sum_j m_j W(\vec{x}_{ij}, h_i),
+  \label{eq:sph:minimal:rho}
+\end{equation}
+and the derivative of its density with respect to $h$:
+
+\begin{equation}
+    \label{eq:sph:minimal:rho_dh}
+  \rho_{\partial h_i} \equiv \dd{\rho}{h}(\vec{x}_i) = \sum_j m_j \dd{W}{h}(\vec{x}_{ij}
+  , h_i).
+\end{equation}
+The gradient terms (``h-terms'') can then be computed from the density
+and its derivative:
+
+\begin{equation}
+  f_i \equiv \left(1 + \frac{h_i}{3\rho_i}\rho_{\partial h_i}
+  \right)^{-1}.
+  \label{eq:sph:minimal:f_i}
+\end{equation}
+Using the pre-defined equation of state, the pressure $P_i$ and the sound
+speed $c_i$ at the location of particle $i$ can now be computed from
+$\rho_i$ and $u_i$:
+
+\begin{align}
+  P_i &= P_{\rm eos}(\rho_i, u_i),   \label{eq:sph:minimal:P}\\
+  c_i &= c_{\rm eos}(\rho_i, u_i).   \label{eq:sph:minimal:c}
+\end{align}
+
+\subsubsection{Hydrodynamical accelerations (\nth{2} neighbour loop)}
+
+We can then proceed with the second loop over
+neighbours. The signal velocity $v_{{\rm sig},ij}$ between two particles is given by
+
+\begin{align}
+  \mu_{ij} &=
+  \begin{cases}
+  \frac{\vec{v}_{ij} \cdot \vec{x}_{ij}}{|\vec{x}_{ij}|}  & \rm{if}~
+  \vec{v}_{ij} \cdot \vec{x}_{ij} < 0,\\
+    0 &\rm{otherwise}, \\
+  \end{cases}\nonumber\\
+  v_{{\rm sig},ij} &= c_i + c_j - 3\mu_{ij}.   \label{eq:sph:minimal:v_sig}
+\end{align}
+We also use these two quantities for the calculation of the viscosity term:
+
+\begin{equation}
+\nu_{ij} = -\frac{1}{2}\frac{\alpha \mu_{ij} v_{{\rm
+      sig},ij}}{\bar\rho_{ij}}
+  \label{eq:sph:minimal:nu_ij}
+\end{equation}
+The fluid accelerations are then given by
+
+\begin{align}
+  \frac{d\vec{v}_i}{dt} = -\sum_j m_j &\left[\frac{f_iP_i}{\rho_i^2}
+  \nabla_x W(\vec{x}_{ij}, h_i)   \nonumber
+  +\frac{f_jP_j}{\rho_j^2}\nabla_x W(\vec{x}_{ij},h_j)\right. \\
+  &+ \left. \bigg.\nu_{ij} \Wij \right], \label{eq:sph:minimal:dv_dt}
+\end{align}
+and the change in internal energy,
+
+\begin{align}
+  \frac{du_i}{dt} = \sum_j m_j &\left[\frac{f_iP_i}{\rho_i^2}  \vec{v}_{ij}
+    \cdot \nabla_x W(\vec{x}_{ij}, h_i) \right. \label{eq:sph:minimal:du_dt}\\
+    &+\left. \frac{1}{2}\nu_{ij}\vec{v}_{ij}\cdot\Big. \Wij\right], \nonumber
+\end{align}
+where in both cases the first line corresponds to the standard SPH
+term and the second line to the viscuous accelerations.
+
+We also compute an estimator of the change in smoothing length to be
+used in the prediction step. This is an estimate of the local
+divergence of the velocity field compatible with the accelerations
+computed above:
+
+\begin{equation}
+  \frac{dh_i}{dt} = -\frac{1}{3}h_i \sum_j \frac{m_j}{\rho_j}
+  \vec{v}_{ij}\cdot \nabla_x W(\vec{x}_{ij}, h_i).
+  \label{eq:sph:minimal:dh_dt}
+\end{equation}
+and update the signal velocity of the particles:
+
+\begin{equation}
+  v_{{\rm sig},i} = \max_j \left( v_{{\rm sig},ij} \right).
+  \label{eq:sph:minimal:v_sig_update}
+\end{equation}
+All the quantities required for time integration have now been obtained.
+
+\subsubsection{Time integration}
+
+For each particle, we compute a time-step given by the CFL condition:
+
+\begin{equation}
+  \Delta t = 2 C_{\rm CFL} \frac{H_i}{v_{{\rm sig},i}},
+    \label{eq:sph:minimal:dt}
+\end{equation}
+where $C_{\rm CFL}$ is a free dimensionless parameter and $H_i = \gamma h_i$ is the
+kernel support size. Particles can then be ``kicked'' forward in time:
+\begin{align}
+  \vec{v}_i &\rightarrow \vec{v}_i + \frac{d\vec{v}_i}{dt} \Delta t  \label{eq:sph:minimal:kick_v}\\
+  u_i &\rightarrow u_i + \frac{du_i}{dt} \Delta t \label{eq:sph:minimal:kick_u}\\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, u_i\right) \label{eq:sph:minimal:kick_P}, \\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, u_i\right) \label{eq:sph:minimal:kick_c},
+\end{align}
+where we used the pre-defined equation of state to compute the new
+value of the pressure and sound-speed.
+
+\subsubsection{Particle properties prediction}
+
+Inactive particles need to have their quantities predicted forward in
+time in the ``drift'' operation. We update them as follows:
+
+\begin{align}
+  \vec{x}_i &\rightarrow \vec{x}_i + \vec{v}_i \Delta t  \label{eq:sph:minimal:drift_x} \\
+  h_i &\rightarrow h_i \exp\left(\frac{1}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:minimal:drift_h}\\
+  \rho_i &\rightarrow \rho_i \exp\left(-\frac{3}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:minimal:drift_rho} \\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, u_i + \frac{du_i}{dt} \Delta t\right), \label{eq:sph:minimal:drift_P}\\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, u_i + \frac{du_i}{dt}
+  \Delta t\right) \label{eq:sph:minimal:drift_c},
+\end{align}
+where, as above, the last two updated quantities are obtained using
+the pre-defined equation of state. Note that the thermal energy $u_i$
+itself is \emph{not} updated.
+
+%#######################################################################################################
+
+\subsection{Gadget-2 SPH}
+\label{sec:sph:gadget2}
+
+This flavour of SPH is the one implemented in the \gadget-2 code
+\citep{Springel2005}. The basic equations were derived by
+\cite{Springel2002} and also includes a \cite{Balsara1995} switch for
+the suppression of viscosity. The implementation here follows closely the
+presentation of \cite{Springel2005}. Specifically, we use their equations (5), (7),
+(8), (9), (10), (13), (14) and (17). We summarize them here for completeness.
+
+\subsubsection{Density and other fluid properties (\nth{1} neighbour loop)}
+
+For a set of particles $i$ with positions $\vec{x}_i$ with velocities
+$\vec{v}_i$, masses $m_i$, entropic function per unit mass $A_i$ and
+smoothing length $h_i$, we compute the density, derivative of the density with respect
+to $h$ and the ``h-terms'' in a similar way to the minimal-SPH case
+(Eq. \ref{eq:sph:minimal:rho}, \ref{eq:sph:minimal:rho_dh} and
+\ref{eq:sph:minimal:f_i}). From these the pressure and sound-speed can
+be computed using the pre-defined equation of state:
+
+\begin{align}
+  P_i &= P_{\rm eos}(\rho_i, A_i),   \label{eq:sph:gadget2:P}\\
+  c_i &= c_{\rm eos}(\rho_i, A_i).   \label{eq:sph:gadget2:c}
+\end{align}
+We additionally compute the divergence and
+curl of the velocity field using standard SPH expressions:
+
+\begin{align}
+  \nabla\cdot\vec{v}_i &\equiv\nabla\cdot \vec{v}(\vec{x}_i) = \frac{1}{\rho_i} \sum_j m_j
+  \vec{v}_{ij}\cdot\nabla_x W(\vec{x}_{ij}, h_i) \label{eq:sph:gadget2:div_v},\\ 
+    \nabla\times\vec{v}_i &\equiv \nabla\times \vec{v}(\vec{x}_i) = \frac{1}{\rho_i} \sum_j m_j
+  \vec{v}_{ij}\times\nabla_x W(\vec{x}_{ij}, h_i) \label{eq:sph:gadget2:rot_v}.
+\end{align}
+These are used to construct the \cite{Balsara1995} switch $B_i$:
+
+\begin{equation}
+  B_i = \frac{|\nabla\cdot\vec{v}_i|}{|\nabla\cdot\vec{v}_i| +
+    |\nabla\times\vec{v}_i| + 10^{-4}c_i / h_i}, \label{eq:sph:gadget2:balsara}
+\end{equation}
+where the last term in the denominator is added to prevent numerical instabilities.
+
+\subsubsection{Hydrodynamical accelerations (\nth{2} neighbour loop)}
+
+The accelerations are computed in a similar fashion to the minimal-SPH
+case with the exception of the viscosity term which is now modified to
+include the switch. Instead of Eq. \ref{eq:sph:minimal:nu_ij}, we get:
+
+\begin{equation}
+\nu_{ij} = -\frac{1}{2}\frac{\alpha \bar B_{ij} \mu_{ij} v_{{\rm sig},ij}}{\bar\rho_{ij}},
+  \label{eq:sph:gadget2:nu_ij}  
+\end{equation}
+whilst equations \ref{eq:sph:minimal:v_sig},
+\ref{eq:sph:minimal:dv_dt}, \ref{eq:sph:minimal:dh_dt} and
+\ref{eq:sph:minimal:v_sig_update} remain unchanged. The only other
+change is the equation of motion for the thermodynamic variable which
+now has to be describing the evolution of the entropic function and
+not the evolution of the thermal energy. Instead of
+eq. \ref{eq:sph:minimal:du_dt}, we have
+
+\begin{equation}
+\frac{dA_i}{dt} = \frac{1}{2} A_{\rm eos}\left(\rho_i, \sum_j
+m_j \nu_{ij}\vec{v}_{ij}\cdot \Wij\right),
+\end{equation}
+where we made use of the pre-defined equation of state relating
+density and internal energy to entropy.
+
+\subsubsection{Time integration}
+
+The time-step condition is identical to the \MinimalSPH case
+(Eq. \ref{eq:sph:minimal:dt}). The same applies to the integration
+forward in time (Eq. \ref{eq:sph:minimal:kick_v} to
+\ref{eq:sph:minimal:kick_c}) with the exception of the change in
+internal energy (Eq. \ref{eq:sph:minimal:kick_u}) which gets replaced
+by an integration for the the entropy:
+
+
+\begin{align}
+  \vec{v}_i &\rightarrow \vec{v}_i + \frac{d\vec{v}_i}{dt} \Delta t  \label{eq:sph:gadget2:kick_v}\\
+  A_i &\rightarrow A_i + \frac{dA_i}{dt} \Delta t \label{eq:sph:gadget2:kick_A}\\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i\right) \label{eq:sph:gadget2:kick_P}, \\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, A_i\right) \label{eq:sph:gadget2:kick_c},
+\end{align}
+where, once again, we made use of the equation of state relating
+thermodynamical quantities.
+
+\subsubsection{Particle properties prediction}
+
+The prediction step is also identical to the \MinimalSPH case with the
+entropic function replacing the thermal energy.
+
+\begin{align}
+  \vec{x}_i &\rightarrow \vec{x}_i + \vec{v}_i \Delta t  \label{eq:sph:gadget2:drift_x} \\
+  h_i &\rightarrow h_i \exp\left(\frac{1}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:gadget2:drift_h}\\
+  \rho_i &\rightarrow \rho_i \exp\left(-\frac{3}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:gadget2:drift_rho} \\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt} \Delta t\right), \label{eq:sph:gadget2:drift_P}\\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt}
+  \Delta t\right) \label{eq:sph:gadget2:drift_c},
+\end{align}
+where, as above, the last two updated quantities are obtained using
+the pre-defined equation of state. Note that the entropic function $A_i$
+itself is \emph{not} updated.
+
+
+%#######################################################################################################
+
+\subsection{Pressure-Entropy SPH}
+\label{sec:sph:pe}
+
+This flavour of SPH follows the implementation described in section
+2.2.3 of \cite{Hopkins2013}. We start with their equations (17), (19),
+(21) and (22) but modify them for efficiency and generality
+reasons. We also use the same \cite{Balsara1995} viscosity switch as
+in the \GadgetSPH scheme (Sec. \ref{sec:sph:gadget2}).
+
+\subsubsection{Density and other fluid properties (\nth{1} neighbour loop)}
+
+For a set of particles $i$ with positions $\vec{x}_i$ with velocities
+$\vec{v}_i$, masses $m_i$, entropic function per unit mass $A_i$ and
+smoothing length $h_i$, we compute the density, derivative of the
+density with respect to $h$, divergence and curl of velocity field in
+a similar fashion to the \GadgetSPH scheme. From the basic particle
+properties we construct an additional temporary quantity
+
+\begin{equation}
+  \tilde{A_i} \equiv A_i^{1/\gamma},
+    \label{eq:sph:pe:A_tilde}
+\end{equation}
+which enters many equations. This allows us to construct the
+entropy-weighted density $\bar\rho_i$:
+
+\begin{equation}
+  \bar\rho_i = \frac{1}{\tilde{A_i}} \sum_j m_j \tilde{A_j} W(\vec{x}_{ij}, h_i),
+  \label{eq:sph:pe:rho_bar}
+\end{equation}
+which can then be used to construct an entropy-weighted sound-speed
+and pressure based on our assumed equation of state:
+
+\begin{align}
+  \bar c_i &= c_{\rm eos}(\bar\rho_i, A_i), \label{eq:sph:pe:c_bar}\\
+  \bar P_i &= P_{\rm eos}(\bar\rho_i, A_i), \label{eq:sph:pe:P_bar}
+\end{align}
+and estimate the derivative of this later quantity with respect to the
+smoothing length using:
+
+\begin{equation}
+\bar P_{\partial h_i} \equiv \dd{\bar{P}}{h}(\vec{x}_i) = \sum_j m_j
+\tilde{A_j} \dd{W}{h}(\vec{x}_{ij}), \label{eq:sph:pe:P_dh}
+\end{equation}
+The gradient terms (``h-terms'') are then obtained by combining $\bar
+P_{\partial h_i}$ and $\rho_{\partial h_i}$
+(eq. \ref{eq:sph:minimal:rho_dh}):
+
+\begin{equation}
+  f_i \equiv \left(\frac{h_i}{3\rho_i}\bar P_{\partial
+    h_i}\right)\left(1 + \frac{h_i}{3\rho_i}\rho_{\partial
+    h_i}\right)^{-1}. 
+\end{equation}
+
+\subsubsection{Hydrodynamical accelerations (\nth{2} neighbour loop)}
+
+The accelerations are given by the following term:
+
+\begin{align}
+  \frac{d\vec{v}_i}{dt} = -\sum_j m_j &\left[\frac{\bar P_i}{\bar\rho_i^2} \left(\frac{\tilde A_j}{\tilde A_i} - \frac{f_i}{\tilde A_i}\right)\nabla_x W(\vec{x}_{ij}, h_i) \right.  \nonumber \\
+  &+\frac{P_j}{\rho_j^2} \left(\frac{\tilde A_i}{\tilde A_j} - \frac{f_j}{\tilde A_j}\right)\nabla_x W(\vec{x}_{ij},h_j) \\
+  &+ \left. \bigg.\nu_{ij} \Wij \right], \label{eq:sph:pe:dv_dt}
+\end{align}
+where the viscosity term $\nu_{ij}$ has been computed as in
+the \GadgetSPH case (Eq. \ref{eq:sph:gadget2:balsara}
+and \ref{eq:sph:gadget2:nu_ij}). For completeness, the equation of
+motion for the entropy is
+
+\begin{equation}
+\frac{dA_i}{dt} = \frac{1}{2} A_{\rm eos}\left(\rho_i, \sum_j
+m_j \nu_{ij}\vec{v}_{ij}\cdot \Wij\right).
+\end{equation}
+
+\subsubsection{Time integration}
+
+The time-step condition is identical to the \MinimalSPH case
+(Eq. \ref{eq:sph:minimal:dt}). The same applies to the integration
+forward in time (Eq. \ref{eq:sph:minimal:kick_v} to
+\ref{eq:sph:minimal:kick_c}) with the exception of the change in
+internal energy (Eq. \ref{eq:sph:minimal:kick_u}) which gets replaced
+by an integration for the the entropy:
+
+\begin{align}
+  \vec{v}_i &\rightarrow \vec{v}_i + \frac{d\vec{v}_i}{dt} \Delta t  \label{eq:sph:pe:kick_v}\\
+  A_i &\rightarrow A_i + \frac{dA_i}{dt} \Delta t \label{eq:sph:pe:kick_A}\\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i\right) \label{eq:sph:pe:kick_P}, \\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i,
+  A_i\right) \label{eq:sph:pe:kick_c}, \\
+  \tilde A_i &= A_i^{1/\gamma}
+\end{align}
+where, once again, we made use of the equation of state relating
+thermodynamical quantities.
+
+
+\subsubsection{Particle properties prediction}
+
+The prediction step is also identical to the \MinimalSPH case with the
+entropic function replacing the thermal energy.
+
+\begin{align}
+  \vec{x}_i &\rightarrow \vec{x}_i + \vec{v}_i \Delta t  \label{eq:sph:pe:drift_x} \\
+  h_i &\rightarrow h_i \exp\left(\frac{1}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:pe:drift_h}\\
+  \rho_i &\rightarrow \rho_i \exp\left(-\frac{3}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:pe:drift_rho} \\
+  \tilde A_i &\rightarrow \left(A_i + \frac{dA_i}{dt}
+  \Delta t\right)^{1/\gamma} \label{eq:sph:pe:drift_A_tilde}, \\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt} \Delta t\right), \label{eq:sph:pe:drift_P}\\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt}
+  \Delta t\right) \label{eq:sph:pe:drift_c}, 
+\end{align}
+where, as above, the last two updated quantities are obtained using
+the pre-defined equation of state. Note that the entropic function $A_i$
+itself is \emph{not} updated.
+
+\subsection{Pressure-Energy SPH}
+\label{sec:sph:pu}
+
+Section 2.2.2 of \cite{Hopkins2013}.\\ \tbd
+\subsection{Anarchy SPH}
+Dalla Vecchia (\textit{in prep.}), also described in section 2.2.2 of
+\cite{Schaller2015}.\\
+\label{sec:sph:anarchy}
+\tbd 

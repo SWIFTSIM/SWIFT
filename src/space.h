@@ -170,6 +170,10 @@ void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
+void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
+                                int verbose);
+void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
+                                 int verbose);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_init_parts(struct space *s);
