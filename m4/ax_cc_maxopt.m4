@@ -128,6 +128,8 @@ if test "$ac_test_CFLAGS" != "set"; then
 		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
+		    *5?6E?:*:*:*) icc_flags="-xCORE-AVX512" ;;
+		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512" ;;
                   esac ;;
               esac ;;
           esac
