@@ -148,7 +148,7 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
   
-#ifdef WITH_TASK_DEBUG
+#ifdef SWIFT_DEBUG_TASKS
   /*! ID of the queue or runner owning this task */
   short int rid;
 
