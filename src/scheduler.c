@@ -930,32 +930,30 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     switch (t->type) {
       case task_type_sort:
         cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
-                     (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
         break;
       case task_type_self:
         cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
       case task_type_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-          cost =
-              3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         else
-          cost =
-              2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         break;
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
             cost = 3 * wscale * t->ci->count * t->cj->count;
           else
-            cost = 3 * wscale * t->ci->count * t->cj->count *
-                         sid_scale[t->flags];
+            cost =
+                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         } else {
           if (t->flags < 0)
             cost = 2 * wscale * t->ci->count * t->cj->count;
           else
-            cost = 2 * wscale * t->ci->count * t->cj->count *
-                         sid_scale[t->flags];
+            cost =
+                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         }
         break;
       case task_type_sub_self:

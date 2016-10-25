@@ -123,7 +123,7 @@ struct task {
 
   /*! Weight of the task */
   int weight;
-  
+
 #if defined(WITH_MPI) && defined(HAVE_METIS)
   /*! Individual cost estimate for this task. */
   int cost;
@@ -149,7 +149,7 @@ struct task {
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
-  
+
 #ifdef SWIFT_DEBUG_TASKS
   /*! ID of the queue or runner owning this task */
   short int rid;
