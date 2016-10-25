@@ -127,9 +127,6 @@ struct task {
   /*! Weight of the task */
   int weight;
 
-  /*! ID of the queue or runner owning this task */
-  short int rid;
-
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
 
@@ -150,6 +147,14 @@ struct task {
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
+  
+#ifdef WITH_TASK_DEBUG
+  /*! ID of the queue or runner owning this task */
+  short int rid;
+
+  /*! Start and end time of this task */
+  ticks tic, toc;
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 
