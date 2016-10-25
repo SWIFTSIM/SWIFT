@@ -1034,8 +1034,15 @@ void scheduler_rewait_active_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &s->tasks[tid[ind]];
 
-    if (t->skip || !((1 << t->type) & mask) || !((1 << t->subtype) & submask))
+    /* Ignore masked-out tasks. */
+    if (t->skip || !((1 << t->type) & mask) || !((1 << t->subtype) & submask)) {
+      t->skip = 1;
       continue;
+    }
+      
+    /* Increment the task's own wait counter for the enqueueing. */
+    atomic_inc(&t->wait);
+    t->tic = t->toc = 0;
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
@@ -1082,18 +1089,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Store the masks */
   s->mask = mask;
   s->submask = submask |= (1 << task_subtype_none);
-
-  /* Clear all the waits and times. */
-  for (int k = 0; k < s->active_count; k++) {
-    struct task *t = &s->tasks[s->tid_active[k]];
-    t->wait = 1;
-    t->tic = 0;
-    t->toc = 0;
-    if (((1 << t->type) & mask) == 0 || ((1 << t->subtype) & submask) == 0)
-      t->skip = 1;
-  }
-  /* message("clear took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit()); */
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -1296,6 +1291,8 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+    if (t2->skip || !((1 << t2->type) & s->mask) || !((1 << t2->subtype) & s->submask))
+      continue;
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
