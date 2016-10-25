@@ -605,7 +605,7 @@ int main(int argc, char *argv[]) {
         MPI_Barrier(MPI_COMM_WORLD);
       }
 
-#elif
+#else
       char dumpfile[30];
       snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
       FILE *file_thread;
