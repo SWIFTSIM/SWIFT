@@ -105,9 +105,6 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
-  /*! Start and end time of this task */
-  ticks tic, toc;
-
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -126,6 +123,11 @@ struct task {
 
   /*! Weight of the task */
   int weight;
+  
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  /*! Individual cost estimate for this task. */
+  int cost;
+#endif
 
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
