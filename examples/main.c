@@ -549,6 +549,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
@@ -604,7 +605,7 @@ int main(int argc, char *argv[]) {
         MPI_Barrier(MPI_COMM_WORLD);
       }
 
-#else
+#elif
       char dumpfile[30];
       snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
       FILE *file_thread;
@@ -626,8 +627,9 @@ int main(int argc, char *argv[]) {
         }
       }
       fclose(file_thread);
-#endif
+#endif  // WITH_MPI
     }
+#endif  // SWIFT_DEBUG_TASKS
   }
 
 /* Print the values of the runner histogram. */
