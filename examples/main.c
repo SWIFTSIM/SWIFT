@@ -242,423 +242,429 @@ int main(int argc, char *argv[]) {
               "--enable-task-debugging option.");
         }
 #endif
+        break;
+      case '?':
+        if (myrank == 0) print_help_message();
+        return 1;
+        break;
     }
-  break;
-  case '?':
+  if (optind == argc - 1) {
+    if (!strcpy(paramFileName, argv[optind++]))
+      error("Error reading parameter file name.");
+  } else if (optind > argc - 1) {
+    if (myrank == 0) printf("Error: A parameter file name must be provided\n");
     if (myrank == 0) print_help_message();
     return 1;
-    break;
-}
-if (optind == argc - 1) {
-  if (!strcpy(paramFileName, argv[optind++]))
-    error("Error reading parameter file name.");
-} else if (optind > argc - 1) {
-  if (myrank == 0) printf("Error: A parameter file name must be provided\n");
-  if (myrank == 0) print_help_message();
-  return 1;
-} else {
-  if (myrank == 0) printf("Error: Too many parameters given\n");
-  if (myrank == 0) print_help_message();
-  return 1;
-}
-if (!with_self_gravity && !with_hydro && !with_external_gravity) {
-  if (myrank == 0)
-    printf("Error: At least one of -s, -g or -G must be chosen.\n");
-  if (myrank == 0) print_help_message();
-  return 1;
-}
+  } else {
+    if (myrank == 0) printf("Error: Too many parameters given\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
+  if (!with_self_gravity && !with_hydro && !with_external_gravity) {
+    if (myrank == 0)
+      printf("Error: At least one of -s, -g or -G must be chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
 
-/* Genesis 1.1: And then, there was time ! */
-clocks_set_cpufreq(cpufreq);
+  /* Genesis 1.1: And then, there was time ! */
+  clocks_set_cpufreq(cpufreq);
 
-if (myrank == 0 && dry_run)
-  message("Executing a dry run. No i/o or time integration will be performed.");
+  if (myrank == 0 && dry_run)
+    message(
+        "Executing a dry run. No i/o or time integration will be performed.");
 
-/* Report CPU frequency.*/
-cpufreq = clocks_get_cpufreq();
-if (myrank == 0) {
-  message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
-}
+  /* Report CPU frequency.*/
+  cpufreq = clocks_get_cpufreq();
+  if (myrank == 0) {
+    message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  }
 
 /* Report host name(s). */
 #ifdef WITH_MPI
-if (myrank == 0 || verbose > 1) {
-  message("Rank %d running on: %s", myrank, hostname());
-}
+  if (myrank == 0 || verbose > 1) {
+    message("Rank %d running on: %s", myrank, hostname());
+  }
 #else
-message("Running on: %s", hostname());
+  message("Running on: %s", hostname());
 #endif
 
-/* Do we choke on FP-exceptions ? */
-if (with_fp_exceptions) {
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-  if (myrank == 0) message("Floating point exceptions will be reported.");
-}
+  /* Do we choke on FP-exceptions ? */
+  if (with_fp_exceptions) {
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    if (myrank == 0) message("Floating point exceptions will be reported.");
+  }
 
-/* How large are the parts? */
-if (myrank == 0) {
-  message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
-  message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
-  message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
-  message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
-  message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
-}
+  /* How large are the parts? */
+  if (myrank == 0) {
+    message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
+    message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
+    message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
+  }
 
-/* How vocal are we ? */
-const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+  /* How vocal are we ? */
+  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
-/* Read the parameter file */
-struct swift_params *params = malloc(sizeof(struct swift_params));
-if (params == NULL) error("Error allocating memory for the parameter file.");
-if (myrank == 0) {
-  message("Reading runtime parameters from file '%s'", paramFileName);
-  parser_read_file(paramFileName, params);
-  // parser_print_params(&params);
-  parser_write_params_to_file(params, "used_parameters.yml");
-}
+  /* Read the parameter file */
+  struct swift_params *params = malloc(sizeof(struct swift_params));
+  if (params == NULL) error("Error allocating memory for the parameter file.");
+  if (myrank == 0) {
+    message("Reading runtime parameters from file '%s'", paramFileName);
+    parser_read_file(paramFileName, params);
+    // parser_print_params(&params);
+    parser_write_params_to_file(params, "used_parameters.yml");
+  }
 #ifdef WITH_MPI
-/* Broadcast the parameter file */
-MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
+  /* Broadcast the parameter file */
+  MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
 /* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
-struct partition initial_partition;
-enum repartition_type reparttype;
-partition_init(&initial_partition, &reparttype, params, nr_nodes);
+  struct partition initial_partition;
+  enum repartition_type reparttype;
+  partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
-/* Let's report what we did */
-if (myrank == 0) {
-  message("Using initial partition %s",
-          initial_partition_name[initial_partition.type]);
-  if (initial_partition.type == INITPART_GRID)
-    message("grid set to [ %i %i %i ].", initial_partition.grid[0],
-            initial_partition.grid[1], initial_partition.grid[2]);
-  message("Using %s repartitioning", repartition_name[reparttype]);
-}
+  /* Let's report what we did */
+  if (myrank == 0) {
+    message("Using initial partition %s",
+            initial_partition_name[initial_partition.type]);
+    if (initial_partition.type == INITPART_GRID)
+      message("grid set to [ %i %i %i ].", initial_partition.grid[0],
+              initial_partition.grid[1], initial_partition.grid[2]);
+    message("Using %s repartitioning", repartition_name[reparttype]);
+  }
 #endif
 
-/* Initialize unit system and constants */
-struct UnitSystem us;
-struct phys_const prog_const;
-units_init(&us, params, "InternalUnitSystem");
-phys_const_init(&us, &prog_const);
-if (myrank == 0 && verbose > 0) {
-  message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
-  message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-  message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
-  message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-  message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-  phys_const_print(&prog_const);
-}
+  /* Initialize unit system and constants */
+  struct UnitSystem us;
+  struct phys_const prog_const;
+  units_init(&us, params, "InternalUnitSystem");
+  phys_const_init(&us, &prog_const);
+  if (myrank == 0 && verbose > 0) {
+    message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    phys_const_print(&prog_const);
+  }
 
-/* Initialise the hydro properties */
-struct hydro_props hydro_properties;
-hydro_props_init(&hydro_properties, params);
+  /* Initialise the hydro properties */
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, params);
 
-/* Read particles and space information from (GADGET) ICs */
-char ICfileName[200] = "";
-parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
-if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
-fflush(stdout);
+  /* Read particles and space information from (GADGET) ICs */
+  char ICfileName[200] = "";
+  parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+  if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
+  fflush(stdout);
 
-struct part *parts = NULL;
-struct gpart *gparts = NULL;
-size_t Ngas = 0, Ngpart = 0;
-double dim[3] = {0., 0., 0.};
-int periodic = 0;
-int flag_entropy_ICs = 0;
-if (myrank == 0) clocks_gettime(&tic);
+  struct part *parts = NULL;
+  struct gpart *gparts = NULL;
+  size_t Ngas = 0, Ngpart = 0;
+  double dim[3] = {0., 0., 0.};
+  int periodic = 0;
+  int flag_entropy_ICs = 0;
+  if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                   &periodic, &flag_entropy_ICs, myrank, nr_nodes,
+                   MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+#else
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
                  &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
                  MPI_INFO_NULL, dry_run);
-#else
-read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-               &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
-               MPI_INFO_NULL, dry_run);
 #endif
 #else
-read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-               &flag_entropy_ICs, dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, dry_run);
 #endif
-if (myrank == 0) {
-  clocks_gettime(&toc);
-  message("Reading initial conditions took %.3f %s.", clocks_diff(&tic, &toc),
-          clocks_getunit());
-  fflush(stdout);
-}
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("Reading initial conditions took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
+    fflush(stdout);
+  }
 
-/* Discard gparts if we don't have gravity
- * (Better implementation of i/o will come)*/
-if (!with_external_gravity && !with_self_gravity) {
-  free(gparts);
-  gparts = NULL;
-  for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
-  Ngpart = 0;
-}
-if (!with_hydro) {
-  free(parts);
-  parts = NULL;
-  for (size_t k = 0; k < Ngpart; ++k)
-    if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
-  Ngas = 0;
-}
+  /* Discard gparts if we don't have gravity
+   * (Better implementation of i/o will come)*/
+  if (!with_external_gravity && !with_self_gravity) {
+    free(gparts);
+    gparts = NULL;
+    for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
+    Ngpart = 0;
+  }
+  if (!with_hydro) {
+    free(parts);
+    parts = NULL;
+    for (size_t k = 0; k < Ngpart; ++k)
+      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
+    Ngas = 0;
+  }
 
-/* Get the total number of particles across all nodes. */
-long long N_total[2] = {0, 0};
+  /* Get the total number of particles across all nodes. */
+  long long N_total[2] = {0, 0};
 #if defined(WITH_MPI)
-long long N_long[2] = {Ngas, Ngpart};
-MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  long long N_long[2] = {Ngas, Ngpart};
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 #else
-N_total[0] = Ngas;
-N_total[1] = Ngpart;
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart;
 #endif
-if (myrank == 0)
-  message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
-          N_total[1]);
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
+            N_total[1]);
 
-/* Initialize the space with these data. */
-if (myrank == 0) clocks_gettime(&tic);
-struct space s;
-space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
-           with_self_gravity, talking, dry_run);
-if (myrank == 0) {
-  clocks_gettime(&toc);
-  message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
-          clocks_getunit());
-  fflush(stdout);
-}
+  /* Initialize the space with these data. */
+  if (myrank == 0) clocks_gettime(&tic);
+  struct space s;
+  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
+             with_self_gravity, talking, dry_run);
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
+    fflush(stdout);
+  }
 
-/* Say a few nice things about the space we just created. */
-if (myrank == 0) {
-  message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
-          s.dim[2]);
-  message("space %s periodic.", s.periodic ? "is" : "isn't");
-  message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
-          s.cdim[1], s.cdim[2]);
-  message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
-  message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
-  message("maximum depth is %d.", s.maxdepth);
-  fflush(stdout);
-}
+  /* Say a few nice things about the space we just created. */
+  if (myrank == 0) {
+    message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
+            s.dim[2]);
+    message("space %s periodic.", s.periodic ? "is" : "isn't");
+    message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
+            s.cdim[1], s.cdim[2]);
+    message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
+    message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("maximum depth is %d.", s.maxdepth);
+    fflush(stdout);
+  }
 
-/* Verify that each particle is in it's proper cell. */
-if (talking && !dry_run) {
-  int icount = 0;
-  space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-  message("map_cellcheck picked up %i parts.", icount);
-}
+  /* Verify that each particle is in it's proper cell. */
+  if (talking && !dry_run) {
+    int icount = 0;
+    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
+    message("map_cellcheck picked up %i parts.", icount);
+  }
 
-/* Verify the maximal depth of cells. */
-if (talking && !dry_run) {
-  int data[2] = {s.maxdepth, 0};
-  space_map_cells_pre(&s, 0, &map_maxdepth, data);
-  message("nr of cells at depth %i is %i.", data[0], data[1]);
-}
+  /* Verify the maximal depth of cells. */
+  if (talking && !dry_run) {
+    int data[2] = {s.maxdepth, 0};
+    space_map_cells_pre(&s, 0, &map_maxdepth, data);
+    message("nr of cells at depth %i is %i.", data[0], data[1]);
+  }
 
-/* Initialise the external potential properties */
-struct external_potential potential;
-if (with_external_gravity) potential_init(params, &prog_const, &us, &potential);
-if (with_external_gravity && myrank == 0) potential_print(&potential);
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity)
+    potential_init(params, &prog_const, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
 
-/* Initialise the cooling function properties */
-struct cooling_function_data cooling_func;
-if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
-if (with_cooling && myrank == 0) cooling_print(&cooling_func);
+  /* Initialise the cooling function properties */
+  struct cooling_function_data cooling_func;
+  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+  if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
-/* Initialise the feedback properties */
-struct sourceterms sourceterms;
-if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
+  /* Initialise the feedback properties */
+  struct sourceterms sourceterms;
+  if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
+  if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
-/* Construct the engine policy */
-int engine_policies = ENGINE_POLICY | engine_policy_steal;
-if (with_drift_all) engine_policies |= engine_policy_drift_all;
-if (with_hydro) engine_policies |= engine_policy_hydro;
-if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
-if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
-if (with_cosmology) engine_policies |= engine_policy_cosmology;
-if (with_cooling) engine_policies |= engine_policy_cooling;
-if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
+  /* Construct the engine policy */
+  int engine_policies = ENGINE_POLICY | engine_policy_steal;
+  if (with_drift_all) engine_policies |= engine_policy_drift_all;
+  if (with_hydro) engine_policies |= engine_policy_hydro;
+  if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
+  if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
+  if (with_cosmology) engine_policies |= engine_policy_cosmology;
+  if (with_cooling) engine_policies |= engine_policy_cooling;
+  if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
 
-/* Initialize the engine with the space and policies. */
-if (myrank == 0) clocks_gettime(&tic);
-struct engine e;
-engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-            engine_policies, talking, &us, &prog_const, &hydro_properties,
-            &potential, &cooling_func, &sourceterms);
-if (myrank == 0) {
-  clocks_gettime(&toc);
-  message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
-          clocks_getunit());
-  fflush(stdout);
-}
+  /* Initialize the engine with the space and policies. */
+  if (myrank == 0) clocks_gettime(&tic);
+  struct engine e;
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
+              engine_policies, talking, &us, &prog_const, &hydro_properties,
+              &potential, &cooling_func, &sourceterms);
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
+    fflush(stdout);
+  }
 
 /* Init the runner history. */
 #ifdef HIST
-for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
+  for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
 #endif
 
-/* Get some info to the user. */
-if (myrank == 0) {
-  message(
-      "Running on %lld gas particles and %lld DM particles from t=%.3e until "
-      "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
-      N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
-      e.sched.nr_queues, e.dt_min, e.dt_max);
-  fflush(stdout);
-}
+  /* Get some info to the user. */
+  if (myrank == 0) {
+    message(
+        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
+        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
+        e.sched.nr_queues, e.dt_min, e.dt_max);
+    fflush(stdout);
+  }
 
-/* Time to say good-bye if this was not a serious run. */
-if (dry_run) {
+  /* Time to say good-bye if this was not a serious run. */
+  if (dry_run) {
+#ifdef WITH_MPI
+    if ((res = MPI_Finalize()) != MPI_SUCCESS)
+      error("call to MPI_Finalize failed with error %i.", res);
+#endif
+    if (myrank == 0)
+      message("Time integration ready to start. End of dry-run.");
+    engine_clean(&e);
+    free(params);
+    return 0;
+  }
+
+#ifdef WITH_MPI
+  /* Split the space. */
+  engine_split(&e, &initial_partition);
+  engine_redistribute(&e);
+#endif
+
+  /* Initialise the particles */
+  engine_init_particles(&e, flag_entropy_ICs);
+
+  /* Write the state of the system before starting time integration. */
+  engine_dump_snapshot(&e);
+
+  /* Legend */
+  if (myrank == 0)
+    printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
+           "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+
+  /* Main simulation loop */
+  for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
+
+/* Repartition the space amongst the nodes? */
+#ifdef WITH_MPI
+    if (j % 100 == 2) e.forcerepart = reparttype;
+#endif
+
+    /* Reset timers */
+    timers_reset(timers_mask_all);
+
+    /* Take a step. */
+    engine_step(&e);
+
+#ifdef SWIFT_DEBUG_TASKS
+    /* Dump the task data using the given frequency. */
+    if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
+#ifdef WITH_MPI
+
+      /* Make sure output file is empty, only on one rank. */
+      char dumpfile[30];
+      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j + 1);
+      FILE *file_thread;
+      if (myrank == 0) {
+        file_thread = fopen(dumpfile, "w");
+        fclose(file_thread);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+
+      for (int i = 0; i < nr_nodes; i++) {
+
+        /* Rank 0 decides the index of writing node, this happens one-by-one. */
+        int kk = i;
+        MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        if (i == myrank) {
+
+          /* Open file and position at end. */
+          file_thread = fopen(dumpfile, "a");
+
+          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
+                  e.tic_step, e.toc_step, cpufreq);
+          int count = 0;
+          for (int l = 0; l < e.sched.nr_tasks; l++) {
+            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
+              fprintf(
+                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
+                  myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
+                                                : 0,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->gcount
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
+                                                : 0,
+                  e.sched.tasks[l].flags);
+            }
+            fflush(stdout);
+            count++;
+          }
+          fclose(file_thread);
+        }
+
+        /* And we wait for all to synchronize. */
+        MPI_Barrier(MPI_COMM_WORLD);
+      }
+
+#else
+      char dumpfile[30];
+      snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
+      FILE *file_thread;
+      file_thread = fopen(dumpfile, "w");
+      /* Add some information to help with the plots */
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
+              1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
+      for (int l = 0; l < e.sched.nr_tasks; l++) {
+        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
+          fprintf(
+              file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
+              e.sched.tasks[l].rid, e.sched.tasks[l].type,
+              e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+              e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
+              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
+        }
+      }
+      fclose(file_thread);
+#endif  // WITH_MPI
+    }
+#endif  // SWIFT_DEBUG_TASKS
+  }
+
+/* Print the values of the runner histogram. */
+#ifdef HIST
+  printf("main: runner histogram data:\n");
+  for (k = 0; k < runner_hist_N; k++)
+    printf(" %e %e %e\n",
+           runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N,
+           runner_hist_a +
+               (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N,
+           (double)runner_hist_bins[k]);
+#endif
+
+  /* Write final output. */
+  engine_dump_snapshot(&e);
+
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
-  if (myrank == 0) message("Time integration ready to start. End of dry-run.");
+
+  /* Clean everything */
   engine_clean(&e);
   free(params);
+
+  /* Say goodbye. */
+  if (myrank == 0) message("done. Bye.");
+
+  /* All is calm, all is bright. */
   return 0;
-}
-
-#ifdef WITH_MPI
-/* Split the space. */
-engine_split(&e, &initial_partition);
-engine_redistribute(&e);
-#endif
-
-/* Initialise the particles */
-engine_init_particles(&e, flag_entropy_ICs);
-
-/* Write the state of the system before starting time integration. */
-engine_dump_snapshot(&e);
-
-/* Legend */
-if (myrank == 0)
-  printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
-         "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
-
-/* Main simulation loop */
-for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
-
-/* Repartition the space amongst the nodes? */
-#ifdef WITH_MPI
-  if (j % 100 == 2) e.forcerepart = reparttype;
-#endif
-
-  /* Reset timers */
-  timers_reset(timers_mask_all);
-
-  /* Take a step. */
-  engine_step(&e);
-
-#ifdef SWIFT_DEBUG_TASKS
-  /* Dump the task data using the given frequency. */
-  if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
-#ifdef WITH_MPI
-
-    /* Make sure output file is empty, only on one rank. */
-    char dumpfile[30];
-    snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j + 1);
-    FILE *file_thread;
-    if (myrank == 0) {
-      file_thread = fopen(dumpfile, "w");
-      fclose(file_thread);
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    for (int i = 0; i < nr_nodes; i++) {
-
-      /* Rank 0 decides the index of writing node, this happens one-by-one. */
-      int kk = i;
-      MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-      if (i == myrank) {
-
-        /* Open file and position at end. */
-        file_thread = fopen(dumpfile, "a");
-
-        fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
-                e.tic_step, e.toc_step, cpufreq);
-        int count = 0;
-        for (int l = 0; l < e.sched.nr_tasks; l++) {
-          if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-            fprintf(
-                file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
-                myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count : 0,
-                (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count : 0,
-                (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->gcount : 0,
-                (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount : 0,
-                e.sched.tasks[l].flags);
-          }
-          fflush(stdout);
-          count++;
-        }
-        fclose(file_thread);
-      }
-
-      /* And we wait for all to synchronize. */
-      MPI_Barrier(MPI_COMM_WORLD);
-    }
-
-#else
-    char dumpfile[30];
-    snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
-    FILE *file_thread;
-    file_thread = fopen(dumpfile, "w");
-    /* Add some information to help with the plots */
-    fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
-            1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
-    for (int l = 0; l < e.sched.nr_tasks; l++) {
-      if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-        fprintf(
-            file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
-            e.sched.tasks[l].rid, e.sched.tasks[l].type,
-            e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-            e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-            (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
-            (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
-            (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
-            (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
-      }
-    }
-    fclose(file_thread);
-#endif  // WITH_MPI
-  }
-#endif  // SWIFT_DEBUG_TASKS
-}
-
-/* Print the values of the runner histogram. */
-#ifdef HIST
-printf("main: runner histogram data:\n");
-for (k = 0; k < runner_hist_N; k++)
-  printf(" %e %e %e\n",
-         runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N,
-         runner_hist_a +
-             (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N,
-         (double)runner_hist_bins[k]);
-#endif
-
-/* Write final output. */
-engine_dump_snapshot(&e);
-
-#ifdef WITH_MPI
-if ((res = MPI_Finalize()) != MPI_SUCCESS)
-  error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
-/* Clean everything */
-engine_clean(&e);
-free(params);
-
-/* Say goodbye. */
-if (myrank == 0) message("done. Bye.");
-
-/* All is calm, all is bright. */
-return 0;
 }
