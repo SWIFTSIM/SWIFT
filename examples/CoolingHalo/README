@@ -8,8 +8,12 @@
 ;of the halo, and by extension, the viral radius, viral mass, and the 
 ;internal energy of the gas such that hydrostatic equilibrium is achieved.
 ;
+;While the system is initially in hydrostatic equilibrium, the cooling of the
+;gas means that the halo will collapse.
+;
 ;To run this example, make such that the code is compiled with either the
-;isothermal potential or softened isothermal potential set in src/const.h. In
+;isothermal potential or softened isothermal potential, and 'const_lambda' 
+;cooling, set in src/const.h. In
 ;the latter case, a (small) value of epsilon needs to be set in cooling.yml.
 ;0.1 kpc should work well.
 ;
@@ -17,5 +21,5 @@
 ;velocity profile for each snapshot. test_energy_conservation.py shows the 
 ;evolution of energy with time. These can be used to check if the example
 ;has run properly.
-
+;
 ;

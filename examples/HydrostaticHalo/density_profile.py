@@ -28,7 +28,7 @@ unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
-v_c = float(params.attrs["IsothermalPotential:vrot"])
+v_c = float(params.attrs["SoftenedIsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
 #lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
 #X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
@@ -114,7 +114,7 @@ for i in range(n_snaps):
     #plt.xscale('log')
     #plt.yscale('log')
     plt.legend(loc = "upper right")
-    plot_filename = "density_profile_%03d.png" %i
+    plot_filename = "./plots/density_profile/density_profile_%03d.png" %i
     plt.savefig(plot_filename,format = "png")
     plt.close()
 

@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   10.0    # The end time of the simulation (in internal units).
+  time_end:   1.0    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -38,10 +38,11 @@ InitialConditions:
   shift_z:    0.
  
 # External potential parameters
-IsothermalPotential:
+SoftenedIsothermalPotential:
   position_x:      0.     # location of centre of isothermal potential in internal units
   position_y:      0.
   position_z:      0.	
   vrot:            200.     # rotation speed of isothermal potential in internal units
+  epsilon:         0.1
   timestep_mult:   0.03     # controls time step
 

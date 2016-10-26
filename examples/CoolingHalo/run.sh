@@ -6,8 +6,8 @@ python makeIC.py 10000
 
 ../swift -g -s -C -t 16 cooling_halo.yml 2>&1 | tee output.log
 
-# python radial_profile.py 10
+python radial_profile.py 2. 200 100
 
-# python internal_energy_profile.py 10
+python internal_energy_profile.py 2. 200 100
 
-# python test_energy_conservation.py
+python test_energy_conservation.py 2. 200 100
