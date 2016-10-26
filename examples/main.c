@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &potential);
+    potential_init(params, &prog_const, &us, &s, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */

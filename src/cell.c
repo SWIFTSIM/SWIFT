@@ -757,16 +757,9 @@ void cell_convert_hydro(struct cell *c, void *data) {
  */
 void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
-  c->nr_density = 0;
-
   c->gradient = NULL;
-  c->nr_gradient = 0;
-
   c->force = NULL;
-  c->nr_force = 0;
-
   c->grav = NULL;
-  c->nr_grav = 0;
 }
 
 /**
@@ -793,7 +786,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) {
     const double center_i = ci->loc[k];
     const double center_j = cj->loc[k];
-    if (fabsf(center_i - center_j) > min_dist) return 0;
+    if (fabs(center_i - center_j) > min_dist) return 0;
   }
 
   return 1;
@@ -823,7 +816,7 @@ void cell_check_multipole(struct cell *c, void *data) {
             mb.mass);
 
     for (int k = 0; k < 3; ++k)
-      if (fabsf(ma.CoM[k] - mb.CoM[k]) / fabsf(ma.CoM[k] + mb.CoM[k]) > 1e-5)
+      if (fabs(ma.CoM[k] - mb.CoM[k]) / fabs(ma.CoM[k] + mb.CoM[k]) > 1e-5)
         error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
               mb.CoM[k]);
 
