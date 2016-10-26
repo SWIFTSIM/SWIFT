@@ -171,7 +171,7 @@ int checkSpacehmax(struct space *s) {
   }
 
   /*  If within some epsilon we are OK. */
-  if (abs(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+  if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
 
   /* There is a problem. Hunt it down. */
   for (int k = 0; k < s->nr_cells; k++) {
