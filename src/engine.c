@@ -2241,7 +2241,7 @@ void engine_rebuild(struct engine *e) {
   e->forcerebuild = 0;
 
   /* Re-build the space. */
-  space_rebuild(e->s, 0.0, e->verbose);
+  space_rebuild(e->s, e->verbose);
 
   if (e->ti_current == 0) space_sanitize(e->s);
 

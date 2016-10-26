@@ -188,10 +188,9 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
- * @param cell_max Maximum cell edge length.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, double cell_max, int verbose) {
+void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
@@ -226,13 +225,16 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     h_max = buff;
   }
 #endif
-  if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[1] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[2] / fmax(h_max * kernel_gamma * space_stretch, cell_max))};
+      floor(s->dim[0] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[1] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[2] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -431,11 +433,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
- * @param cell_max Maximal cell size.
  * @param verbose Print messages to stdout or not
  *
  */
-void space_rebuild(struct space *s, double cell_max, int verbose) {
+void space_rebuild(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -443,7 +444,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
-  space_regrid(s, cell_max, verbose);
+  space_regrid(s, verbose);
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
@@ -1847,7 +1848,7 @@ void space_init(struct space *s, const struct swift_params *params,
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
   /* Build the cells and the tasks. */
-  if (!dry_run) space_regrid(s, s->cell_min, verbose);
+  if (!dry_run) space_regrid(s, verbose);
 }
 
 /**

@@ -31,6 +31,7 @@
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
+ * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
