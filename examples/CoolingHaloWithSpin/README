@@ -1,0 +1,29 @@
+
+To make the initial conditions we distribute gas particles randomly in
+a cube with a side length twice that of the virial radius. The density
+profile of the gas is proportional to r^(-2) where r is the distance
+from the centre of the cube.
+
+The parameter v_rot (in makeIC.py and cooling.yml) sets the circular
+velocity of the halo, and by extension, the viral radius, viral mass,
+and the internal energy of the gas such that hydrostatic equilibrium
+is achieved.
+
+The gas is given some angular momentum about the z-axis. This is
+defined by the 'spin_lambda' variable in makeIC.py
+
+While the system is initially in hydrostatic equilibrium, the cooling
+of the gas and the non-zero angular momentum means that the halo will
+collapse into a spinning disc.
+
+To run this example, make such that the code is compiled with either
+the isothermal potential or softened isothermal potential, and
+'const_lambda' cooling, set in src/const.h. In the latter case, a
+(small) value of epsilon needs to be set in cooling.yml.  0.1 kpc
+should work well.
+
+The plotting scripts produce a plot of the density, internal energy
+and radial velocity profile for each
+snapshot. test_energy_conservation.py shows the evolution of energy
+with time. These can be used to check if the example has run properly.
+

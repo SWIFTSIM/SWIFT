@@ -3386,9 +3386,10 @@ void engine_init(struct engine *e, struct space *s,
     e->file_stats = fopen(energyfileName, "w");
     fprintf(e->file_stats,
             "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-            "%14s\n",
-            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_radcool",
-            "Entropy", "p_x", "p_y", "p_z", "ang_x", "ang_y", "ang_z");
+            "%14s %14s %14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
+            "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
+            "ang_y", "ang_z");
     fflush(e->file_stats);
 
     char timestepsfileName[200] = "";
