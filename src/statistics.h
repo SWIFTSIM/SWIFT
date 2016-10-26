@@ -37,8 +37,11 @@ struct statistics {
   /*! Internal energy */
   double E_int;
 
-  /*! Potential energy */
-  double E_pot;
+  /*! Self potential energy */
+  double E_pot_self;
+
+  /*! External potential energy */
+  double E_pot_ext;
 
   /*! Radiative energy */
   double E_rad;

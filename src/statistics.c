@@ -62,7 +62,8 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   /* Add everything */
   a->E_kin += b->E_kin;
   a->E_int += b->E_int;
-  a->E_pot += b->E_pot;
+  a->E_pot_self += b->E_pot_self;
+  a->E_pot_ext += b->E_pot_ext;
   a->E_rad += b->E_rad;
   a->entropy += b->entropy;
   a->mass += b->mass;
@@ -107,6 +108,10 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const double timeBase = s->e->timeBase;
   struct statistics *const global_stats = data->stats;
 
+  /* Required for external potential energy */
+  const struct external_potential *potential = s->e->external_potential;
+  const struct phys_const *phys_const = s->e->physical_constants;
+
   /* Local accumulator */
   struct statistics stats;
   stats_init(&stats);
@@ -117,15 +122,16 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Get the particle */
     const struct part *p = &parts[k];
     const struct xpart *xp = &xparts[k];
+    const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
     /* Get useful variables */
     const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-    if (p->gpart != NULL) {
-      a_tot[0] += p->gpart->a_grav[0];
-      a_tot[1] += p->gpart->a_grav[1];
-      a_tot[2] += p->gpart->a_grav[2];
+    if (gp != NULL) {
+      a_tot[0] += gp->a_grav[0];
+      a_tot[1] += gp->a_grav[1];
+      a_tot[2] += gp->a_grav[2];
     }
     const float v[3] = {xp->v_full[0] + a_tot[0] * dt,
                         xp->v_full[1] + a_tot[1] * dt,
@@ -148,7 +154,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot += 0.;
+    stats.E_pot_self += 0.f;
+    stats.E_pot_ext +=
+        m * external_gravity_get_potential_energy(potential, phys_const, gp);
     stats.E_int += m * hydro_get_internal_energy(p, dt);
     stats.E_rad += cooling_get_radiated_energy(xp);
 
@@ -178,6 +186,10 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   const int ti_current = s->e->ti_current;
   const double timeBase = s->e->timeBase;
   struct statistics *const global_stats = data->stats;
+
+  /* Required for external potential energy */
+  const struct external_potential *potential = s->e->external_potential;
+  const struct phys_const *phys_const = s->e->physical_constants;
 
   /* Local accumulator */
   struct statistics stats;
@@ -216,7 +228,9 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot += 0.;
+    stats.E_pot_self += 0.f;
+    stats.E_pot_ext +=
+        m * external_gravity_get_potential_energy(potential, phys_const, gp);
   }
 
   /* Now write back to memory */
@@ -258,15 +272,16 @@ void stats_collect(const struct space *s, struct statistics *stats) {
 void stats_print_to_file(FILE *file, const struct statistics *stats,
                          double time) {
 
-  const double E_tot = stats->E_kin + stats->E_int + stats->E_pot;
+  const double E_pot = stats->E_pot_self + stats->E_pot_ext;
+  const double E_tot = stats->E_kin + stats->E_int + E_pot;
 
   fprintf(file,
           " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-          "%14e\n",
-          time, stats->mass, E_tot, stats->E_kin, stats->E_int, stats->E_pot,
-          stats->E_rad, stats->entropy, stats->mom[0], stats->mom[1],
-          stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
-          stats->ang_mom[2]);
+          "%14e %14e %14e\n",
+          time, stats->mass, E_tot, stats->E_kin, stats->E_int, E_pot,
+          stats->E_pot_self, stats->E_pot_ext, stats->E_rad, stats->entropy,
+          stats->mom[0], stats->mom[1], stats->mom[2], stats->ang_mom[0],
+          stats->ang_mom[1], stats->ang_mom[2]);
   fflush(file);
 }
 

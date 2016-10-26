@@ -47,29 +47,16 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
     const struct phys_const* const phys_const, const struct UnitSystem* us,
     const struct cooling_function_data* cooling, const struct part* p) {
 
-  /* Get particle properties */
-  /* Density */
+  /* Get particle density */
   const float rho = hydro_get_density(p);
+
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
-  /* lambda should always be set in cgs units */
-  const float lambda_cgs = cooling->lambda;
-
-  /*convert from internal code units to cgs*/
-  const float rho_cgs =
-      rho * units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  const float m_p_cgs = phys_const->const_proton_mass *
-                        units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const float n_H_cgs = X_H * rho_cgs / m_p_cgs;
 
   /* Calculate du_dt */
-  const float du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
-
-  /* Convert du/dt back to internal code units */
-  const float du_dt =
-      du_dt_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
-
+  const float du_dt = -cooling->lambda *
+                      (X_H * rho / phys_const->const_proton_mass) *
+                      (X_H * rho / phys_const->const_proton_mass) / rho;
   return du_dt;
 }
 
@@ -108,13 +95,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
 
-  /* if (-(u_new_test - u_old) / u_old > 1.0e-6) */
-  /*   error( */
-  /*       "Particle has not successfully cooled: u_old = %g , du_dt = %g , dt =
-   * " */
-  /*       "%g, du_dt*dt = %g, u_old + du_dt*dt = %g, u_new = %g\n", */
-  /*       u_old, du_dt, dt, du_dt * dt, u_new, u_new_test); */
-
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
 }
@@ -138,7 +118,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   /* Get current internal energy (dt=0) */
   const float u = hydro_get_internal_energy(p, 0.f);
 
-  return u / du_dt;
+  return u / fabsf(du_dt);
 }
 
 /**
@@ -178,9 +158,9 @@ static INLINE void cooling_init_backend(
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
 
-  cooling->lambda =
-      parser_get_param_double(parameter_file, "LambdaCooling:lambda");
-  cooling->min_temperature = parser_get_param_double(
+  const double lambda_cgs =
+      parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
+  const float min_temperature = parser_get_param_double(
       parameter_file, "LambdaCooling:minimum_temperature");
   cooling->hydrogen_mass_abundance = parser_get_param_double(
       parameter_file, "LambdaCooling:hydrogen_mass_abundance");
@@ -189,16 +169,19 @@ static INLINE void cooling_init_backend(
   cooling->cooling_tstep_mult = parser_get_param_double(
       parameter_file, "LambdaCooling:cooling_tstep_mult");
 
-  /*convert minimum temperature into minimum internal energy*/
+  /* convert minimum temperature into minimum internal energy */
   const float u_floor =
-      phys_const->const_boltzmann_k * cooling->min_temperature /
+      phys_const->const_boltzmann_k * min_temperature /
       (hydro_gamma_minus_one * cooling->mean_molecular_weight *
        phys_const->const_proton_mass);
-  const float u_floor_cgs =
-      u_floor * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   cooling->min_energy = u_floor;
-  cooling->min_energy_cgs = u_floor_cgs;
+
+  /* convert lambda to code units */
+  cooling->lambda = lambda_cgs *
+                    units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+                    (units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) *
+                     units_cgs_conversion_factor(us, UNIT_CONV_VOLUME));
 }
 
 /**
@@ -211,10 +194,10 @@ static INLINE void cooling_print_backend(
 
   message(
       "Cooling function is 'Constant lambda' with "
-      "(lambda,min_temperature,hydrogen_mass_abundance,mean_molecular_weight) "
+      "(lambda,min_energy,hydrogen_mass_abundance,mean_molecular_weight) "
       "=  (%g,%g,%g,%g)",
-      cooling->lambda, cooling->min_temperature,
-      cooling->hydrogen_mass_abundance, cooling->mean_molecular_weight);
+      cooling->lambda, cooling->min_energy, cooling->hydrogen_mass_abundance,
+      cooling->mean_molecular_weight);
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */

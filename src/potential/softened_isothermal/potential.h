@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016  Stefan Arridge (stefan.arridge@durham.ac.uk)
+ *                     Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_POTENTIAL_POINT_MASS_H
-#define SWIFT_POTENTIAL_POINT_MASS_H
+#ifndef SWIFT_POTENTIAL_SOFTENED_ISOTHERMAL_H
+#define SWIFT_POTENTIAL_SOFTENED_ISOTHERMAL_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -35,27 +35,34 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties - Point mass case
+ * @brief External Potential Properties - Softened Isothermal sphere case
  */
 struct external_potential {
 
-  /*! Position of the point mass */
+  /*! Position of the centre of potential */
   double x, y, z;
 
-  /*! Mass */
-  double mass;
+  /*! Rotation velocity */
+  double vrot;
+
+  /*! Square of vrot, the circular velocity which defines the isothermal
+   * potential */
+  double vrot2_over_G;
+
+  /*! Square of the softening length. Acceleration tends to zero within this
+   * distance from the origin */
+  double epsilon2;
 
   /*! Time-step condition pre-factor */
-  float timestep_mult;
+  double timestep_mult;
 };
 
 /**
- * @brief Computes the time-step due to the acceleration from a point mass
- *
- * We pass in the time for simulations where the potential evolves with time.
+ * @brief Computes the time-step due to the acceleration from an isothermal
+ * potential.
  *
  * @param time The current time.
- * @param potential The properties of the externa potential.
+ * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
@@ -64,22 +71,22 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
-  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  const float rinv2 = rinv * rinv;
-  const float rinv3 = rinv2 * rinv;
-  const float drdv = (g->x[0] - potential->x) * (g->v_full[0]) +
-                     (g->x[1] - potential->y) * (g->v_full[1]) +
-                     (g->x[2] - potential->z) * (g->v_full[2]);
-  const float dota_x = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[0] + 3.f * rinv2 * drdv * dx);
-  const float dota_y = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[1] + 3.f * rinv2 * drdv * dy);
-  const float dota_z = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[2] + 3.f * rinv2 * drdv * dz);
+
+  const float r2_plus_epsilon2_inv =
+      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float drdv =
+      dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
+  const double vrot = potential->vrot;
+
+  const float dota_x = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[0] - 2.f * drdv * dx * r2_plus_epsilon2_inv);
+  const float dota_y = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[1] - 2.f * drdv * dy * r2_plus_epsilon2_inv);
+  const float dota_z = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[2] - 2.f * drdv * dz * r2_plus_epsilon2_inv);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
@@ -88,37 +95,37 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
 }
 
 /**
- * @brief Computes the gravitational acceleration of a particle due to a
- * point mass
+ * @brief Computes the gravitational acceleration from an isothermal potential.
  *
- * Note that the accelerations are multiplied by Newton's G constant later
- * on.
+ * Note that the accelerations are multiplied by Newton's G constant
+ * later on.
  *
- * We pass in the time for simulations where the potential evolves with time.
- *
+ * a = v_rot^2 * (x,y,z) / (r^2 + epsilon^2)
  * @param time The current time.
- * @param potential The proerties of the external potential.
+ * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
+    double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {
 
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
-  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  const float rinv3 = rinv * rinv * rinv;
+  const float r2_plus_epsilon2_inv =
+      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
 
-  g->a_grav[0] += -potential->mass * dx * rinv3;
-  g->a_grav[1] += -potential->mass * dy * rinv3;
-  g->a_grav[2] += -potential->mass * dz * rinv3;
+  const double term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
+
+  g->a_grav[0] += term * dx;
+  g->a_grav[1] += term * dy;
+  g->a_grav[2] += term * dz;
 }
 
 /**
- * @brief Computes the gravitational potential energy of a particle in a point
- * mass potential.
+ * @brief Computes the gravitational potential energy of a particle in an
+ * isothermal potential.
  *
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
@@ -132,10 +139,10 @@ external_gravity_get_potential_energy(
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
-  const float rinv = 1. / sqrtf(dx * dx + dy * dy + dz * dz);
-  return -phys_const->const_newton_G * potential->mass * r_inv;
-}
 
+  return 0.5f * potential->vrot * potential->vrot *
+         logf(dx * dx + dy * dy * dz * dz + potential->epsilon2);
+}
 /**
  * @brief Initialises the external potential properties in the internal system
  * of units.
@@ -150,16 +157,24 @@ static INLINE void potential_init_backend(
     const struct phys_const* phys_const, const struct UnitSystem* us,
     const struct space* s, struct external_potential* potential) {
 
-  potential->x =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_x");
-  potential->y =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_y");
-  potential->z =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_z");
-  potential->mass =
-      parser_get_param_double(parameter_file, "PointMassPotential:mass");
+  potential->x = s->dim[0] / 2. +
+                 parser_get_param_double(
+                     parameter_file, "SoftenedIsothermalPotential:position_x");
+  potential->y = s->dim[1] / 2. +
+                 parser_get_param_double(
+                     parameter_file, "SoftenedIsothermalPotential:position_y");
+  potential->z = s->dim[2] / 2. +
+                 parser_get_param_double(
+                     parameter_file, "SoftenedIsothermalPotential:position_z");
+  potential->vrot = parser_get_param_double(parameter_file,
+                                            "SoftenedIsothermalPotential:vrot");
   potential->timestep_mult = parser_get_param_float(
-      parameter_file, "PointMassPotential:timestep_mult");
+      parameter_file, "SoftenedIsothermalPotential:timestep_mult");
+  const double epsilon = parser_get_param_float(
+      parameter_file, "SoftenedIsothermalPotential:epsilon");
+  potential->vrot2_over_G =
+      potential->vrot * potential->vrot / phys_const->const_newton_G;
+  potential->epsilon2 = epsilon * epsilon;
 }
 
 /**
@@ -171,10 +186,11 @@ static INLINE void potential_print_backend(
     const struct external_potential* potential) {
 
   message(
-      "External potential is 'Point mass' with properties (x,y,z) = (%e, %e, "
-      "%e), M = %e timestep multiplier = %e.",
-      potential->x, potential->y, potential->z, potential->mass,
-      potential->timestep_mult);
+      "External potential is 'Isothermal' with properties are (x,y,z) = (%e, "
+      "%e, %e), vrot = %e "
+      "timestep multiplier = %e, epsilon = %e",
+      potential->x, potential->y, potential->z, potential->vrot,
+      potential->timestep_mult, sqrtf(potential->epsilon2));
 }
 
-#endif /* SWIFT_POTENTIAL_POINT_MASS_H */
+#endif /* SWIFT_POTENTIAL_ISOTHERMAL_H */

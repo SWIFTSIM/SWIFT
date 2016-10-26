@@ -786,7 +786,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) {
     const double center_i = ci->loc[k];
     const double center_j = cj->loc[k];
-    if (fabsf(center_i - center_j) > min_dist) return 0;
+    if (fabs(center_i - center_j) > min_dist) return 0;
   }
 
   return 1;
@@ -816,10 +816,11 @@ void cell_check_multipole(struct cell *c, void *data) {
             mb.mass);
 
     for (int k = 0; k < 3; ++k)
-      if (fabsf(ma.CoM[k] - mb.CoM[k]) / fabsf(ma.CoM[k] + mb.CoM[k]) > 1e-5)
+      if (fabs(ma.CoM[k] - mb.CoM[k]) / fabs(ma.CoM[k] + mb.CoM[k]) > 1e-5)
         error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
               mb.CoM[k]);
 
+#if const_gravity_multipole_order >= 2
     if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
         ma.I_xx > 1e-9)
       error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
@@ -844,6 +845,7 @@ void cell_check_multipole(struct cell *c, void *data) {
         ma.I_yz > 1e-9)
       error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
             mb.I_yz);
+#endif
   }
 }
 
