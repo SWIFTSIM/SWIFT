@@ -53,7 +53,6 @@
 /**
  * @brief Re-set the list of active tasks.
  */
-
 void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
 
 /**
@@ -63,7 +62,6 @@ void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
  */
-
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
   /* Get an index at which to store this unlock. */
@@ -113,7 +111,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
@@ -649,7 +646,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working in.
  */
-
 void scheduler_splittasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
@@ -663,6 +659,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Splits all the tasks in the scheduler that are too large.
+ *
+ * @param s The #scheduler.
+ */
 void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
@@ -677,12 +678,11 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param type The type of the task.
  * @param subtype The sub-type of the task.
  * @param flags The flags of the task.
- * @param wait
+ * @param wait The number of unsatisfied dependencies of this task.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
- * @param tight
+ * @param tight 
  */
-
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags, int wait,
                                struct cell *ci, struct cell *cj, int tight) {
@@ -727,7 +727,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  *
  * @param s The #scheduler.
  */
-
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
@@ -794,7 +793,6 @@ void scheduler_set_unlocks(struct scheduler *s) {
  *
  * @param s The #scheduler.
  */
-
 void scheduler_ranktasks(struct scheduler *s) {
 
   struct task *tasks = s->tasks;
@@ -860,7 +858,6 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param s The #scheduler.
  * @param size The maximum number of tasks in the #scheduler.
  */
-
 void scheduler_reset(struct scheduler *s, int size) {
 
   /* Do we need to re-allocate? */
@@ -902,7 +899,6 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @param s The #scheduler.
  * @param verbose Are we talkative?
  */
-
 void scheduler_reweight(struct scheduler *s, int verbose) {
 
   const int nr_tasks = s->nr_tasks;
@@ -990,7 +986,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
  */
-
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
@@ -1113,7 +1108,6 @@ void scheduler_start(struct scheduler *s) {
  * @param s The #scheduler.
  * @param t The #task.
  */
-
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
@@ -1226,7 +1220,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Release whatever locks this task held. */
@@ -1272,7 +1265,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Loop through the dependencies and add them to a queue if
@@ -1311,7 +1303,6 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
 
@@ -1394,7 +1385,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  * @param nodeID The MPI rank
  * @param tp Parallel processing threadpool.
  */
-
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp) {
