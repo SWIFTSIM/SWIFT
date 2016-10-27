@@ -2562,57 +2562,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   engine_marktasks(e);
 
-  /* /\* Build the masks corresponding to the policy *\/ */
-  /* unsigned int mask = 0; */
-  /* unsigned int submask = 0; */
-
-  /* /\* We always have sort tasks *\/ */
-  /* mask |= 1 << task_type_sort; */
-  /* mask |= 1 << task_type_init; */
-
-  /* /\* Add the tasks corresponding to hydro operations to the masks *\/ */
-  /* if (e->policy & engine_policy_hydro) { */
-  /*   mask |= 1 << task_type_self; */
-  /*   mask |= 1 << task_type_pair; */
-  /*   mask |= 1 << task_type_sub_self; */
-  /*   mask |= 1 << task_type_sub_pair; */
-  /*   mask |= 1 << task_type_ghost; */
-
-  /*   submask |= 1 << task_subtype_density; */
-  /* } */
-
-  /* /\* Add the tasks corresponding to self-gravity to the masks *\/ */
-  /* if (e->policy & engine_policy_self_gravity) { */
-
-  /*   mask |= 1 << task_type_grav_up; */
-  /*   mask |= 1 << task_type_grav_mm; */
-  /*   mask |= 1 << task_type_grav_gather_m; */
-  /*   mask |= 1 << task_type_grav_fft; */
-  /*   mask |= 1 << task_type_self; */
-  /*   mask |= 1 << task_type_pair; */
-  /*   mask |= 1 << task_type_sub_self; */
-  /*   mask |= 1 << task_type_sub_pair; */
-
-  /*   submask |= 1 << task_subtype_grav; */
-  /* } */
-
-  /* /\* Add the tasks corresponding to external gravity to the masks *\/ */
-  /* if (e->policy & engine_policy_external_gravity) { */
-
-  /*   mask |= 1 << task_type_self; */
-  /*   mask |= 1 << task_type_sub_self; */
-
-  /*   submask |= 1 << task_subtype_external_grav; */
-  /* } */
-
-  /* /\* Add MPI tasks if need be *\/ */
-  /* if (e->policy & engine_policy_mpi) { */
-
-  /*   mask |= 1 << task_type_send; */
-  /*   mask |= 1 << task_type_recv; */
-  /*   submask |= 1 << task_subtype_tend; */
-  /* } */
-
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
@@ -2714,80 +2663,6 @@ void engine_step(struct engine *e) {
 
   /* Restore the default drifting policy */
   e->drift_all = (e->policy & engine_policy_drift_all);
-
-  /*   /\* Build the masks corresponding to the policy *\/ */
-  /*   unsigned int mask = 0, submask = 0; */
-
-  /*   /\* We always have sort tasks and init tasks *\/ */
-  /*   mask |= 1 << task_type_sort; */
-  /*   mask |= 1 << task_type_init; */
-
-  /*   /\* Add the correct kick task *\/ */
-  /*   if (e->policy & engine_policy_fixdt) { */
-  /*     mask |= 1 << task_type_kick_fixdt; */
-  /*   } else { */
-  /*     mask |= 1 << task_type_kick; */
-  /*   } */
-
-  /*   /\* Add the tasks corresponding to hydro operations to the masks *\/ */
-  /*   if (e->policy & engine_policy_hydro) { */
-
-  /*     mask |= 1 << task_type_self; */
-  /*     mask |= 1 << task_type_pair; */
-  /*     mask |= 1 << task_type_sub_self; */
-  /*     mask |= 1 << task_type_sub_pair; */
-  /*     mask |= 1 << task_type_ghost; */
-
-  /*     submask |= 1 << task_subtype_density; */
-  /*     submask |= 1 << task_subtype_force; */
-
-  /* #ifdef EXTRA_HYDRO_LOOP */
-  /*     mask |= 1 << task_type_extra_ghost; */
-  /*     submask |= 1 << task_subtype_gradient; */
-  /* #endif */
-  /*   } */
-
-  /*   /\* Add the tasks corresponding to self-gravity to the masks *\/ */
-  /*   if (e->policy & engine_policy_self_gravity) { */
-
-  /*     mask |= 1 << task_type_grav_up; */
-  /*     mask |= 1 << task_type_grav_mm; */
-  /*     mask |= 1 << task_type_grav_gather_m; */
-  /*     mask |= 1 << task_type_grav_fft; */
-  /*     mask |= 1 << task_type_self; */
-  /*     mask |= 1 << task_type_pair; */
-  /*     mask |= 1 << task_type_sub_self; */
-  /*     mask |= 1 << task_type_sub_pair; */
-
-  /*     submask |= 1 << task_subtype_grav; */
-  /*   } */
-
-  /*   /\* Add the tasks corresponding to external gravity to the masks *\/ */
-  /*   if (e->policy & engine_policy_external_gravity) { */
-
-  /*     mask |= 1 << task_type_self; */
-  /*     mask |= 1 << task_type_sub_self; */
-
-  /*     submask |= 1 << task_subtype_external_grav; */
-  /*   } */
-
-  /*   /\* Add the tasks corresponding to cooling to the masks *\/ */
-  /*   if (e->policy & engine_policy_cooling) { */
-  /*     mask |= 1 << task_type_cooling; */
-  /*   } */
-
-  /*   /\* Add the tasks corresponding to sourceterms to the masks *\/ */
-  /*   if (e->policy & engine_policy_sourceterms) { */
-  /*     mask |= 1 << task_type_sourceterms; */
-  /*   } */
-
-  /*   /\* Add MPI tasks if need be *\/ */
-  /*   if (e->policy & engine_policy_mpi) { */
-
-  /*     mask |= 1 << task_type_send; */
-  /*     mask |= 1 << task_type_recv; */
-  /*     submask |= 1 << task_subtype_tend; */
-  /*   } */
 
   if (e->verbose) engine_print_task_counts(e);
 
