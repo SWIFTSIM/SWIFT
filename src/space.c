@@ -1738,6 +1738,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
+  const double dmax = max(max(dim[0], dim[1]), dim[2]);
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;
@@ -1746,7 +1747,9 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
-  s->cell_min = parser_get_param_double(params, "SPH:max_smoothing_length");
+  s->cell_min =
+      dmax / parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                      space_max_top_level_cells_default);
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Get the constants for the scheduler */

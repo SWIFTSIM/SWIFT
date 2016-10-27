@@ -42,6 +42,7 @@
 #define space_maxsize_default 8000000
 #define space_subsize_default 64000000
 #define space_maxcount_default 10000
+#define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
 
