@@ -2243,7 +2243,8 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
-  if (e->ti_current == 0) space_sanitize(e->s);
+  /* Initial cleaning up session ? */
+  if (e->s->sanitized == 0) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI

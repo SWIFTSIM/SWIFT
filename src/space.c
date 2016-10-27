@@ -731,6 +731,8 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
  */
 void space_sanitize(struct space *s) {
 
+  s->sanitized = 1;
+
   for (int k = 0; k < s->nr_cells; k++) {
 
     struct cell *c = &s->cells_top[k];
@@ -1738,7 +1740,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
-  const double dmax = max(max(dim[0], dim[1]), dim[2]);
+  s->sanitized = 0;
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;
@@ -1747,10 +1749,13 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
-  s->cell_min =
-      dmax / parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
-                                      space_max_top_level_cells_default);
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Decide on the minimal top-level cell size */
+  const double dmax = max(max(dim[0], dim[1]), dim[2]);
+  s->cell_min = 0.99 * dmax / parser_get_opt_param_int(
+                                  params, "Scheduler:max_top_level_cells",
+                                  space_max_top_level_cells_default);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",

@@ -123,6 +123,9 @@ struct space {
   /*! Number of queues in the system. */
   int nr_queues;
 
+  /*! Has this space already been sanitized ? */
+  int sanitized;
+
   /*! The associated engine. */
   struct engine *e;
 
