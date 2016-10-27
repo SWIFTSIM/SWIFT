@@ -2598,7 +2598,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
-    if (hydro_need_extra_init_loop) engine_launch(e, e->nr_threads);
+    if (hydro_need_extra_init_loop) {
+      engine_marktasks(e);
+      engine_skip_force_and_kick(e);
+      engine_launch(e, e->nr_threads);
+    }
   }
 
   clocks_gettime(&time2);
