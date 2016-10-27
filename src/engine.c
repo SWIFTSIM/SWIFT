@@ -2637,6 +2637,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Ready to go */
   e->step = -1;
+  e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
