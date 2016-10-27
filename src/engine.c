@@ -2502,6 +2502,25 @@ void engine_print_stats(struct engine *e) {
 }
 
 /**
+ * @brief Sets all the force and kick tasks to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_skip_force_and_kick(struct engine *e) {
+
+  struct task *tasks = e->sched.tasks;
+  const int nr_tasks = e->sched.nr_tasks;
+
+  for (int i = 0; i < nr_tasks; ++i) {
+
+    struct task *t = &tasks[i];
+
+    if (t->subtype == task_subtype_force || t->type == task_type_kick)
+      t->skip = 1;
+  }
+}
+
+/**
  * @brief Launch the runners.
  *
  * @param e The #engine.
@@ -2561,6 +2580,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   engine_prepare(e, 1);
 
   engine_marktasks(e);
+
+  /* No time integration. We just want the density and ghosts */
+  engine_skip_force_and_kick(e);
 
   /* Now, launch the calculation */
   TIMER_TIC;
