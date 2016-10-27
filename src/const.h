@@ -108,6 +108,6 @@
 //#define COOLING_GRACKLE
 
 /* Are we debugging ? */
-#define SWIFT_DEBUG_CHECKS
+//#define SWIFT_DEBUG_CHECKS
 
 #endif /* SWIFT_CONST_H */
