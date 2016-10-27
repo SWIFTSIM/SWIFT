@@ -888,8 +888,6 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_tasks = 0;
   s->tasks_next = 0;
   s->waiting = 0;
-  s->mask = 0;
-  s->submask = 0;
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
   s->active_count = 0;
@@ -996,15 +994,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
-  struct scheduler *s = (struct scheduler *)extra_data;
   struct task *tasks = (struct task *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
-    if (t->skip || !((1 << t->type) & s->mask) ||
-        !((1 << t->subtype) & s->submask))
-      continue;
+    if (t->skip) continue;
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
@@ -1026,8 +1021,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask)) {
+    if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
     }
   }
@@ -1038,16 +1032,8 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  * @brief Start the scheduler, i.e. fill the queues with ready tasks.
  *
  * @param s The #scheduler.
- * @param mask The task types to enqueue.
- * @param submask The sub-task types to enqueue.
  */
-
-void scheduler_start(struct scheduler *s, unsigned int mask,
-                     unsigned int submask) {
-
-  /* Store the masks */
-  s->mask = mask;
-  s->submask = submask | (1 << task_subtype_none);
+void scheduler_start(struct scheduler *s) {
 
   /* Clear all the waits, rids, and times. */
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1055,14 +1041,11 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
     s->tasks[k].rid = -1;
     s->tasks[k].tic = 0;
     s->tasks[k].toc = 0;
-    if (((1 << s->tasks[k].type) & mask) == 0 ||
-        ((1 << s->tasks[k].subtype) & s->submask) == 0)
-      s->tasks[k].skip = 1;
   }
 
   /* Re-wait the tasks. */
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, s);
+                 sizeof(struct task), 1000, NULL);
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1109,8 +1092,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Loop over the tasks and enqueue whoever is ready. */
   for (int k = 0; k < s->active_count; k++) {
     struct task *t = &s->tasks[s->tid_active[k]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask)) {
+    if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_signal(&s->sleep_cond);
     }
@@ -1140,11 +1122,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
 
-  /* Ignore skipped tasks and tasks not in the masks. */
-  if (t->skip || (1 << t->type) & ~(s->mask) ||
-      (1 << t->subtype) & ~(s->submask)) {
-    return;
-  }
+  /* Ignore skipped tasks */
+  if (t->skip) return;
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {

@@ -60,12 +60,6 @@ struct scheduler {
   /* Scheduler flags. */
   unsigned int flags;
 
-  /* Scheduler task mask */
-  unsigned int mask;
-
-  /* Scheduler sub-task mask */
-  unsigned int submask;
-
   /* Number of queues in this scheduler. */
   int nr_queues;
 
@@ -117,7 +111,6 @@ struct scheduler {
  * @param s The #scheduler.
  * @param t The task to be added.
  */
-
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
   if (atomic_cas(&t->skip, 1, 0)) {
@@ -134,8 +127,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
-void scheduler_start(struct scheduler *s, unsigned int mask,
-                     unsigned int submask);
+void scheduler_start(struct scheduler *s);
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);
