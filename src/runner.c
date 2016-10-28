@@ -1279,7 +1279,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_pair:
@@ -1293,10 +1293,8 @@ void *runner_main(void *data) {
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_grav(r, ci, cj, 1);
-	  else if (t->subtype == task_subtype_external_grav)
-	    error("Found a pair/external-gravity task...");
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_self:
@@ -1313,7 +1311,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_pair:
@@ -1327,10 +1325,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
             runner_dosub_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_external_grav)
-            error("Found a sub-pair/external-gravity task...");
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sort:
@@ -1386,7 +1382,7 @@ void *runner_main(void *data) {
           runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
-          error("Unknown task type.");
+          error("Unknown/invalid task type (%d).", t->type);
       }
 
       /* We're done with this task, see if we get a next one. */

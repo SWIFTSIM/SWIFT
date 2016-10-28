@@ -183,16 +183,19 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                                     ci->progeny[k], NULL, 0),
                   s);
 
-          /* Make a task for each pair of progeny. */
-          for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-              for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL)
-                  scheduler_splittask(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        pts[j][k], 0, ci->progeny[j],
-                                        ci->progeny[k], 0),
-                      s);
+          /* Make a task for each pair of progeny unless it's ext. gravity. */
+          if (t->subtype != task_subtype_external_grav) {
+
+            for (int j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                for (int k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL)
+                    scheduler_splittask(
+                        scheduler_addtask(s, task_type_pair, t->subtype,
+                                          pts[j][k], 0, ci->progeny[j],
+                                          ci->progeny[k], 0),
+                        s);
+          }
         }
       }
 
