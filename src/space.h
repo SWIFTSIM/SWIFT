@@ -42,6 +42,7 @@
 #define space_maxsize_default 8000000
 #define space_subsize_default 64000000
 #define space_maxcount_default 10000
+#define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
 
@@ -122,6 +123,9 @@ struct space {
   /*! Number of queues in the system. */
   int nr_queues;
 
+  /*! Has this space already been sanitized ? */
+  int sanitized;
+
   /*! The associated engine. */
   struct engine *e;
 
@@ -165,7 +169,7 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
                              void *extra_data);
 void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
-void space_rebuild(struct space *s, double h_max, int verbose);
+void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
