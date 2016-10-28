@@ -1231,7 +1231,9 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+#ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
+#endif
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
