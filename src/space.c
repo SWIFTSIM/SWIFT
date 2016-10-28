@@ -1753,9 +1753,17 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Decide on the minimal top-level cell size */
   const double dmax = max(max(dim[0], dim[1]), dim[2]);
-  s->cell_min = 0.99 * dmax / parser_get_opt_param_int(
-                                  params, "Scheduler:max_top_level_cells",
-                                  space_max_top_level_cells_default);
+  int maxtcells = parser_get_opt_param_int(params,
+                                           "Scheduler:max_top_level_cells",
+                                           space_max_top_level_cells_default);
+  s->cell_min = 0.99 * dmax / maxtcells;
+
+  /* Check that it is big enough. */
+  const double dmin = min(min(dim[0], dim[1]), dim[2]);
+  int needtcells = 3 * dmax / dmin;
+  if (maxtcells < needtcells)
+    error("Scheduler:max_top_level_cells is too small %d, needs to be at "
+          "least %d", maxtcells, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
@@ -1769,14 +1777,6 @@ void space_init(struct space *s, const struct swift_params *params,
   if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
-
-  /* Check that we have enough cells */
-  if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
-      s->cell_min * 3 > dim[2])
-    error(
-        "Maximal smoothing length (%e) too large. Needs to be "
-        "smaller than 1/3 the simulation box size [%e %e %e]",
-        s->cell_min, dim[0], dim[1], dim[2]);
 
   /* Apply h scaling */
   const double scaling =
