@@ -8,11 +8,12 @@ InternalUnitSystem:
 
 # Parameters for the task scheduling
 Scheduler:
-  nr_queues:        0        # (Optional) The number of task queues to use. Use 0  to let the system decide.
-  cell_max_size:    8000000  # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
-  cell_sub_size:    64000000 # (Optional) Maximal number of interactions per sub-task  (this is the default value).
-  cell_split_size:  400      # (Optional) Maximal number of particles per cell (this is the default value).
-  cell_max_count:   10000    # (Optional) Maximal number of particles per cell allowed before triggering a sanitizing (this is the default value).
+  nr_queues:             0        # (Optional) The number of task queues to use. Use 0  to let the system decide.
+  cell_max_size:         8000000  # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
+  cell_sub_size:         64000000 # (Optional) Maximal number of interactions per sub-task  (this is the default value).
+  cell_split_size:       400      # (Optional) Maximal number of particles per cell (this is the default value).
+  cell_max_count:        10000    # (Optional) Maximal number of particles per cell allowed before triggering a sanitizing (this is the default value).
+  max_top_level_cells:   12       # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
 
 # Parameters governing the time integration
 TimeIntegration:
@@ -43,9 +44,8 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
-  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  max_smoothing_length:  0.1      # Maximal smoothing length allowed (in internal units).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   max_volume_change:     2.       # (Optional) Maximal allowed change of kernel volume over one time-step
 
 # Parameters related to the initial conditions

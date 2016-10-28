@@ -1231,7 +1231,9 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+#ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
+#endif
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1277,7 +1279,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_pair:
@@ -1292,7 +1294,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dopair_grav(r, ci, cj, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_self:
@@ -1309,7 +1311,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_pair:
@@ -1324,7 +1326,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dosub_grav(r, ci, cj, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sort:
@@ -1380,7 +1382,7 @@ void *runner_main(void *data) {
           runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
-          error("Unknown task type.");
+          error("Unknown/invalid task type (%d).", t->type);
       }
 
       /* We're done with this task, see if we get a next one. */

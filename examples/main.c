@@ -235,6 +235,13 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+#ifndef SWIFT_DEBUG_TASKS
+        if (dump_tasks) {
+          error(
+              "Task dumping is only possible if SWIFT was configured with the "
+              "--enable-task-debugging option.");
+        }
+#endif
         break;
       case '?':
         if (myrank == 0) print_help_message();
@@ -549,6 +556,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
@@ -626,8 +634,9 @@ int main(int argc, char *argv[]) {
         }
       }
       fclose(file_thread);
-#endif
+#endif  // WITH_MPI
     }
+#endif  // SWIFT_DEBUG_TASKS
   }
 
 /* Print the values of the runner histogram. */

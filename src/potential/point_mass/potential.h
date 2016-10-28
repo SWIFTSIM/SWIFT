@@ -143,6 +143,7 @@ external_gravity_get_potential_energy(
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
+ * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(

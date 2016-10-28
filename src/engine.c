@@ -1379,6 +1379,9 @@ void engine_count_and_link_tasks(struct engine *e) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
+      if (t->subtype == task_subtype_external_grav) {
+        error("Found a pair/external-gravity task...");
+      }
 
       /* Link sub-self tasks to cells. */
     } else if (t->type == task_type_sub_self) {
@@ -1407,8 +1410,6 @@ void engine_count_and_link_tasks(struct engine *e) {
       }
       if (t->subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
-        engine_addlink(e, &ci->grav, t);
-        engine_addlink(e, &cj->grav, t);
       }
     }
   }
@@ -2241,9 +2242,10 @@ void engine_rebuild(struct engine *e) {
   e->forcerebuild = 0;
 
   /* Re-build the space. */
-  space_rebuild(e->s, 0.0, e->verbose);
+  space_rebuild(e->s, e->verbose);
 
-  if (e->ti_current == 0) space_sanitize(e->s);
+  /* Initial cleaning up session ? */
+  if (e->s->sanitized == 0) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
@@ -2609,6 +2611,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Ready to go */
   e->step = -1;
+  e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
