@@ -105,9 +105,6 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
-  /*! Start and end time of this task */
-  ticks tic, toc;
-
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -127,8 +124,10 @@ struct task {
   /*! Weight of the task */
   int weight;
 
-  /*! ID of the queue or runner owning this task */
-  short int rid;
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  /*! Individual cost estimate for this task. */
+  int cost;
+#endif
 
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
@@ -150,6 +149,14 @@ struct task {
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
+
+#ifdef SWIFT_DEBUG_TASKS
+  /*! ID of the queue or runner owning this task */
+  short int rid;
+
+  /*! Start and end time of this task */
+  ticks tic, toc;
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 

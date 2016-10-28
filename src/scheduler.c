@@ -708,10 +708,12 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->implicit = 0;
   t->weight = 0;
   t->rank = 0;
+  t->nr_unlock_tasks = 0;
+#ifdef SWIFT_DEBUG_TASKS
+  t->rid = -1;
   t->tic = 0;
   t->toc = 0;
-  t->nr_unlock_tasks = 0;
-  t->rid = -1;
+#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -924,55 +926,56 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    if (!t->implicit && t->tic > 0)
-      t->weight += wscale * (t->toc - t->tic);
-    else
-      switch (t->type) {
-        case task_type_sort:
-          t->weight += wscale * intrinsics_popcount(t->flags) * t->ci->count *
-                       (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
-          break;
-        case task_type_self:
-          t->weight += 1 * wscale * t->ci->count * t->ci->count;
-          break;
-        case task_type_pair:
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            t->weight +=
-                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+    int cost = 0;
+    switch (t->type) {
+      case task_type_sort:
+        cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
+        break;
+      case task_type_self:
+        cost = 1 * wscale * t->ci->count * t->ci->count;
+        break;
+      case task_type_pair:
+        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        else
+          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        break;
+      case task_type_sub_pair:
+        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+          if (t->flags < 0)
+            cost = 3 * wscale * t->ci->count * t->cj->count;
           else
-            t->weight +=
+            cost =
+                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        } else {
+          if (t->flags < 0)
+            cost = 2 * wscale * t->ci->count * t->cj->count;
+          else
+            cost =
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
-          break;
-        case task_type_sub_pair:
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-            if (t->flags < 0)
-              t->weight += 3 * wscale * t->ci->count * t->cj->count;
-            else
-              t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                           sid_scale[t->flags];
-          } else {
-            if (t->flags < 0)
-              t->weight += 2 * wscale * t->ci->count * t->cj->count;
-            else
-              t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                           sid_scale[t->flags];
-          }
-          break;
-        case task_type_sub_self:
-          t->weight += 1 * wscale * t->ci->count * t->ci->count;
-          break;
-        case task_type_ghost:
-          if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
-          break;
-        case task_type_kick:
-          t->weight += wscale * t->ci->count;
-          break;
-        case task_type_init:
-          t->weight += wscale * t->ci->count;
-          break;
-        default:
-          break;
-      }
+        }
+        break;
+      case task_type_sub_self:
+        cost = 1 * wscale * t->ci->count * t->ci->count;
+        break;
+      case task_type_ghost:
+        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        break;
+      case task_type_kick:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_init:
+        cost = wscale * t->ci->count;
+        break;
+      default:
+        cost = 0;
+        break;
+    }
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+    t->cost = cost;
+#endif
+    t->weight += cost;
   }
 
   if (verbose)
@@ -1052,9 +1055,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Clear all the waits, rids, and times. */
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 1;
-    s->tasks[k].rid = -1;
-    s->tasks[k].tic = 0;
-    s->tasks[k].toc = 0;
     if (((1 << s->tasks[k].type) & mask) == 0 ||
         ((1 << s->tasks[k].subtype) & s->submask) == 0)
       s->tasks[k].skip = 1;
@@ -1136,9 +1136,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
-
-  /* Fail if this task has already been enqueued before. */
-  if (t->rid >= 0) error("Task has already been enqueued.");
 
   /* Ignore skipped tasks and tasks not in the masks. */
   if (t->skip || (1 << t->type) & ~(s->mask) ||
@@ -1268,7 +1265,9 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
+#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
+#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -1310,7 +1309,9 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Task definitely done. */
   if (!t->implicit) {
+#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
+#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -1394,11 +1395,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     }
   }
 
+#ifdef SWIFT_DEBUG_TASKS
   /* Start the timer on this task, if we got one. */
   if (res != NULL) {
     res->tic = getticks();
     res->rid = qid;
   }
+#endif
 
   /* No milk today. */
   return res;
