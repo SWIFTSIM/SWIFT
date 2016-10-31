@@ -133,7 +133,7 @@ external_gravity_get_potential_energy(
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
   const float rinv = 1. / sqrtf(dx * dx + dy * dy + dz * dz);
-  return -phys_const->const_newton_G * potential->mass * r_inv;
+  return -phys_const->const_newton_G * potential->mass * rinv;
 }
 
 /**
