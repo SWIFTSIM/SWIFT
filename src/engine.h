@@ -56,17 +56,16 @@ enum engine_policy {
   engine_policy_steal = (1 << 1),
   engine_policy_keep = (1 << 2),
   engine_policy_block = (1 << 3),
-  engine_policy_fixdt = (1 << 4),
-  engine_policy_cputight = (1 << 5),
-  engine_policy_mpi = (1 << 6),
-  engine_policy_setaffinity = (1 << 7),
-  engine_policy_hydro = (1 << 8),
-  engine_policy_self_gravity = (1 << 9),
-  engine_policy_external_gravity = (1 << 10),
-  engine_policy_cosmology = (1 << 11),
-  engine_policy_drift_all = (1 << 12),
-  engine_policy_cooling = (1 << 13),
-  engine_policy_sourceterms = (1 << 14)
+  engine_policy_cputight = (1 << 4),
+  engine_policy_mpi = (1 << 5),
+  engine_policy_setaffinity = (1 << 6),
+  engine_policy_hydro = (1 << 7),
+  engine_policy_self_gravity = (1 << 8),
+  engine_policy_external_gravity = (1 << 9),
+  engine_policy_cosmology = (1 << 10),
+  engine_policy_drift_all = (1 << 11),
+  engine_policy_cooling = (1 << 12),
+  engine_policy_sourceterms = (1 << 13)
 };
 
 extern const char *engine_policy_names[];

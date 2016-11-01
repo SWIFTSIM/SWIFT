@@ -74,7 +74,6 @@ const char *engine_policy_names[16] = {"none",
                                        "steal",
                                        "keep",
                                        "block",
-                                       "fix_dt",
                                        "cpu_tight",
                                        "mpi",
                                        "numa_affinity",
@@ -126,7 +125,6 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_fixdt = (e->policy & engine_policy_fixdt);
   const int is_hydro = (e->policy & engine_policy_hydro);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
@@ -141,14 +139,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
-      /* Add the kick task that matches the policy. */
-      if (is_fixdt) {
-        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
-                                    0, 0, c, NULL, 0);
-      } else {
-        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                    c, NULL, 0);
-      }
+      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
+                                  NULL, 0);
 
       /* Generate the ghost task. */
       if (is_hydro)
@@ -657,9 +649,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
                                4 * ci->tag, 0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
                                 4 * ci->tag + 1, 0, ci, cj, 0);
-      if (!(e->policy & engine_policy_fixdt))
-        t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                                 4 * ci->tag + 2, 0, ci, cj, 0);
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                               4 * ci->tag + 2, 0, ci, cj, 0);
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_none,
                                      4 * ci->tag + 3, 0, ci, cj, 0);
@@ -743,9 +734,8 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                              0, c, NULL, 0);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
                               4 * c->tag + 1, 0, c, NULL, 0);
-    if (!(e->policy & engine_policy_fixdt))
-      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                               4 * c->tag + 2, 0, c, NULL, 0);
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
+                             4 * c->tag + 2, 0, c, NULL, 0);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_none,
                                    4 * c->tag + 3, 0, c, NULL, 0);
@@ -1962,52 +1952,6 @@ void engine_maketasks(struct engine *e) {
 
 /**
  * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
- *        Threadpool mapper function for fixdt version.
- *
- * @param map_data pointer to the tasks
- * @param num_elements number of tasks
- * @param extra_data pointer to int that will define if a rebuild is needed.
- */
-void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
-                                   void *extra_data) {
-  /* Unpack the arguments. */
-  struct task *tasks = (struct task *)map_data;
-  size_t *rebuild_space = &((size_t *)extra_data)[0];
-  struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[1]);
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    /* All tasks are unskipped (we skip by default). */
-    scheduler_activate(s, t);
-
-    /* Pair? */
-    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-
-      /* Local pointers. */
-      const struct cell *ci = t->ci;
-      const struct cell *cj = t->cj;
-
-      /* Too much particle movement? */
-      if (t->tight &&
-          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
-        *rebuild_space = 1;
-
-    }
-
-    /* Sort? */
-    else if (t->type == task_type_sort) {
-
-      /* If all the sorts have been done, make this task implicit. */
-      if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
-    }
-  }
-}
-
-/**
- * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *        Threadpool mapper function.
  *
  * @param map_data pointer to the tasks
@@ -2161,24 +2105,11 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
   int rebuild_space = 0;
 
-  /* Much less to do here if we're on a fixed time-step. */
-  if (e->policy & engine_policy_fixdt) {
-
-    /* Run through the tasks and mark as skip or not. */
-    size_t extra_data[2] = {rebuild_space, (size_t)&e->sched};
-    threadpool_map(&e->threadpool, engine_marktasks_fixdt_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 1000, extra_data);
-    return rebuild_space;
-
-    /* Multiple-timestep case */
-  } else {
-
-    /* Run through the tasks and mark as skip or not. */
-    size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
-    threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 10000, extra_data);
-    rebuild_space = extra_data[1];
-  }
+  /* Run through the tasks and mark as skip or not. */
+  size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
+  threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
+                 sizeof(struct task), 10000, extra_data);
+  rebuild_space = extra_data[1];
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3311,32 +3242,19 @@ void engine_init(struct engine *e, struct space *s,
   e->timeBase_inv = 1.0 / e->timeBase;
   e->ti_current = 0;
 
-  /* Fixed time-step case */
-  if (e->policy & engine_policy_fixdt) {
-    e->dt_min = e->dt_max;
+  /* Info about time-steps */
+  if (e->nodeID == 0) {
+    message("Absolute minimal timestep size: %e", e->timeBase);
 
-    /* Find timestep on the timeline */
-    int dti_timeline = max_nr_timesteps;
-    while (e->dt_min < dti_timeline * e->timeBase) dti_timeline /= 2;
+    float dt_min = e->timeEnd - e->timeBegin;
+    while (dt_min > e->dt_min) dt_min /= 2.f;
 
-    e->dt_min = e->dt_max = dti_timeline * e->timeBase;
+    message("Minimal timestep size (on time-line): %e", dt_min);
 
-    if (e->nodeID == 0) message("Timestep set to %e", e->dt_max);
-  } else {
+    float dt_max = e->timeEnd - e->timeBegin;
+    while (dt_max > e->dt_max) dt_max /= 2.f;
 
-    if (e->nodeID == 0) {
-      message("Absolute minimal timestep size: %e", e->timeBase);
-
-      float dt_min = e->timeEnd - e->timeBegin;
-      while (dt_min > e->dt_min) dt_min /= 2.f;
-
-      message("Minimal timestep size (on time-line): %e", dt_min);
-
-      float dt_max = e->timeEnd - e->timeBegin;
-      while (dt_max > e->dt_max) dt_max /= 2.f;
-
-      message("Maximal timestep size (on time-line): %e", dt_max);
-    }
+    message("Maximal timestep size (on time-line): %e", dt_max);
   }
 
   if (e->dt_min < e->timeBase && e->nodeID == 0)
