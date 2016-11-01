@@ -42,6 +42,7 @@
 #include "atomic.h"
 #include "const.h"
 #include "cycle.h"
+#include "engine.h"
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
@@ -53,7 +54,6 @@
 /**
  * @brief Re-set the list of active tasks.
  */
-
 void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
 
 /**
@@ -63,7 +63,6 @@ void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
  */
-
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
   /* Get an index at which to store this unlock. */
@@ -113,7 +112,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
@@ -652,7 +650,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working in.
  */
-
 void scheduler_splittasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
@@ -666,6 +663,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Splits all the tasks in the scheduler that are too large.
+ *
+ * @param s The #scheduler.
+ */
 void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
@@ -680,12 +682,11 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param type The type of the task.
  * @param subtype The sub-type of the task.
  * @param flags The flags of the task.
- * @param wait
+ * @param wait The number of unsatisfied dependencies of this task.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
  * @param tight
  */
-
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags, int wait,
                                struct cell *ci, struct cell *cj, int tight) {
@@ -732,7 +733,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  *
  * @param s The #scheduler.
  */
-
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
@@ -799,7 +799,6 @@ void scheduler_set_unlocks(struct scheduler *s) {
  *
  * @param s The #scheduler.
  */
-
 void scheduler_ranktasks(struct scheduler *s) {
 
   struct task *tasks = s->tasks;
@@ -865,7 +864,6 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param s The #scheduler.
  * @param size The maximum number of tasks in the #scheduler.
  */
-
 void scheduler_reset(struct scheduler *s, int size) {
 
   /* Do we need to re-allocate? */
@@ -893,8 +891,6 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_tasks = 0;
   s->tasks_next = 0;
   s->waiting = 0;
-  s->mask = 0;
-  s->submask = 0;
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
   s->active_count = 0;
@@ -909,7 +905,6 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @param s The #scheduler.
  * @param verbose Are we talkative?
  */
-
 void scheduler_reweight(struct scheduler *s, int verbose) {
 
   const int nr_tasks = s->nr_tasks;
@@ -998,19 +993,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
  */
-
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
-  struct scheduler *s = (struct scheduler *)extra_data;
   struct task *tasks = (struct task *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
-    if (t->skip || !((1 << t->type) & s->mask) ||
-        !((1 << t->subtype) & s->submask))
-      continue;
+    if (t->skip) continue;
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
@@ -1032,8 +1023,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask)) {
+    if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
     }
   }
@@ -1044,76 +1034,66 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  * @brief Start the scheduler, i.e. fill the queues with ready tasks.
  *
  * @param s The #scheduler.
- * @param mask The task types to enqueue.
- * @param submask The sub-task types to enqueue.
  */
+void scheduler_start(struct scheduler *s) {
 
-void scheduler_start(struct scheduler *s, unsigned int mask,
-                     unsigned int submask) {
-
-  /* Store the masks */
-  s->mask = mask;
-  s->submask = submask | (1 << task_subtype_none);
-
-  /* Clear all the waits, rids, and times. */
-  for (int k = 0; k < s->nr_tasks; k++) {
-    s->tasks[k].wait = 1;
-    if (((1 << s->tasks[k].type) & mask) == 0 ||
-        ((1 << s->tasks[k].subtype) & s->submask) == 0)
-      s->tasks[k].skip = 1;
-  }
+  /* Clear all the waits. */
+  for (int k = 0; k < s->nr_tasks; k++) s->tasks[k].wait = 1;
 
   /* Re-wait the tasks. */
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, s);
+                 sizeof(struct task), 1000, NULL);
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
 
   const int ti_current = s->space->e->ti_current;
-  for (int k = 0; k < s->nr_tasks; k++) {
 
-    struct task *t = &s->tasks[k];
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+  if (ti_current > 0) {
 
-    if (cj == NULL) { /* self */
+    for (int k = 0; k < s->nr_tasks; k++) {
 
-      if (ci->ti_end_min == ti_current && t->skip && t->type != task_type_sort)
-        error(
-            "Task (type='%s/%s') should not have been skipped ti_current=%d "
-            "c->ti_end_min=%d",
-            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-            ci->ti_end_min);
+      struct task *t = &s->tasks[k];
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
-      /* Special treatment for sort tasks */
-      if (ci->ti_end_min == ti_current && t->skip &&
-          t->type == task_type_sort && t->flags == 0)
-        error(
-            "Task (type='%s/%s') should not have been skipped ti_current=%d "
-            "c->ti_end_min=%d t->flags=%d",
-            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-            ci->ti_end_min, t->flags);
+      if (cj == NULL) { /* self */
 
-    } else { /* pair */
+        if (ci->ti_end_min == ti_current && t->skip &&
+            t->type != task_type_sort)
+          error(
+              "Task (type='%s/%s') should not have been skipped ti_current=%d "
+              "c->ti_end_min=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+              ci->ti_end_min);
 
-      if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-          t->skip)
-        error(
-            "Task (type='%s/%s') should not have been skipped ti_current=%d "
-            "ci->ti_end_min=%d cj->ti_end_min=%d",
-            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-            ci->ti_end_min, cj->ti_end_min);
+        /* Special treatment for sort tasks */
+        if (ci->ti_end_min == ti_current && t->skip &&
+            t->type == task_type_sort && t->flags == 0)
+          error(
+              "Task (type='%s/%s') should not have been skipped ti_current=%d "
+              "c->ti_end_min=%d t->flags=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+              ci->ti_end_min, t->flags);
+
+      } else { /* pair */
+
+        if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
+            t->skip)
+          error(
+              "Task (type='%s/%s') should not have been skipped ti_current=%d "
+              "ci->ti_end_min=%d cj->ti_end_min=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+              ci->ti_end_min, cj->ti_end_min);
+      }
     }
   }
-
 #endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
   for (int k = 0; k < s->active_count; k++) {
     struct task *t = &s->tasks[s->tid_active[k]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask)) {
+    if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_signal(&s->sleep_cond);
     }
@@ -1134,17 +1114,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
  * @param s The #scheduler.
  * @param t The #task.
  */
-
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
 
-  /* Ignore skipped tasks and tasks not in the masks. */
-  if (t->skip || (1 << t->type) & ~(s->mask) ||
-      (1 << t->subtype) & ~(s->submask)) {
-    return;
-  }
+  /* Ignore skipped tasks */
+  if (t->skip) return;
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -1247,7 +1223,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Release whatever locks this task held. */
@@ -1295,7 +1270,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Loop through the dependencies and add them to a queue if
@@ -1336,7 +1310,6 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
 
@@ -1421,7 +1394,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  * @param nodeID The MPI rank
  * @param tp Parallel processing threadpool.
  */
-
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp) {

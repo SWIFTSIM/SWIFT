@@ -164,8 +164,6 @@ struct task {
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
-void task_print_mask(unsigned int mask);
-void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 
