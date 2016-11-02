@@ -2012,7 +2012,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, e) && cell_is_active(cj, e)) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Get the cell dimensions. */
   const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
