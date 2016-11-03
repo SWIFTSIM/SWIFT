@@ -864,35 +864,6 @@ void cell_clean(struct cell *c) {
 }
 
 /**
- * @brief Checks whether a given cell needs drifting or not.
- *
- * @param c the #cell.
- * @param ti_current The current time on the integer time-line.
- *
- * @return 1 If the cell needs drifting, 0 otherwise.
- */
-int cell_is_drift_needed(struct cell *c, int ti_current) {
-
-  /* Do we have at least one active particle in the cell ?*/
-  if (c->ti_end_min == ti_current) return 1;
-
-  /* Loop over the pair tasks that involve this cell */
-  for (struct link *l = c->density; l != NULL; l = l->next) {
-
-    if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
-      continue;
-
-    /* Does the other cell in the pair have an active particle ? */
-    if ((l->t->ci == c && l->t->cj->ti_end_min == ti_current) ||
-        (l->t->cj == c && l->t->ci->ti_end_min == ti_current))
-      return 1;
-  }
-
-  /* No neighbouring cell has active particles. Drift not necessary */
-  return 0;
-}
-
-/**
  * @brief Un-skips all the tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *

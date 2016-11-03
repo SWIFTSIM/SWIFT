@@ -157,7 +157,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.E_pot_self += 0.f;
     if (gp != NULL)
       stats.E_pot_ext +=
-        m * external_gravity_get_potential_energy(potential, phys_const, gp);
+          m * external_gravity_get_potential_energy(potential, phys_const, gp);
     stats.E_int += m * hydro_get_internal_energy(p, dt);
     stats.E_rad += cooling_get_radiated_energy(xp);
 

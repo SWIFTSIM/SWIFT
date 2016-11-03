@@ -758,20 +758,18 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
  */
 static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
-  const int ti_current = e->ti_current;
-
   /* Unskip any active tasks. */
-  if (c->ti_end_min == e->ti_current) {
+  if (cell_is_active(c, e)) {
     const int forcerebuild = cell_unskip_tasks(c, &e->sched);
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
   /* Do we really need to drift? */
   if (drift) {
-    if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
+    if (!e->drift_all && !cell_is_drift_needed(c, e)) return;
   } else {
 
-    /* Not drifting, but may still need to recurse for task skipping. */
+    /* Not drifting, but may still need to recurse for task un-skipping. */
     if (c->split) {
       for (int k = 0; k < 8; k++) {
         if (c->progeny[k] != NULL) {
@@ -783,8 +781,12 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
     return;
   }
 
+  /* Now, we can drift */
+
+  /* Get some information first */
   const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
+  const int ti_current = e->ti_current;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
@@ -797,7 +799,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
   if (!c->split) {
 
     /* Check that we are actually going to move forward. */
-    if (ti_current >= ti_old) {
+    if (ti_current > ti_old) {
 
       /* Loop over all the g-particles in the cell */
       const size_t nr_gparts = c->gcount;

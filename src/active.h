@@ -24,6 +24,7 @@
 
 /* Local includes. */
 #include "cell.h"
+#include "const.h"
 #include "engine.h"
 #include "part.h"
 
@@ -36,7 +37,13 @@
 __attribute__((always_inline)) INLINE static int cell_is_active(
     const struct cell *c, const struct engine *e) {
 
-  return (c->ti_end_min <= e->ti_current);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_end_min < e->ti_current)
+    error("cell in an impossible time-zone! c->ti_end_min=%d e->ti_current=%d",
+          c->ti_end_min, e->ti_current);
+#endif
+
+  return (c->ti_end_min == e->ti_current);
 }
 
 /**
@@ -48,8 +55,45 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
 __attribute__((always_inline)) INLINE static int cell_is_all_active(
     const struct cell *c, const struct engine *e) {
 
-  return (c->ti_end_max <= e->ti_current);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_end_max < e->ti_current)
+    error("cell in an impossible time-zone! c->ti_end_max=%d e->ti_current=%d",
+          c->ti_end_max, e->ti_current);
+#endif
+
+  return (c->ti_end_max == e->ti_current);
 }
+
+/**
+ * @brief Checks whether a given cell needs drifting or not.
+ *
+ * @param c the #cell.
+ * @param e The #engine (holding current time information).
+ *
+ * @return 1 If the cell needs drifting, 0 otherwise.
+ */
+INLINE static int cell_is_drift_needed(struct cell *c, const struct engine *e) {
+
+  /* Do we have at least one active particle in the cell ?*/
+  if (cell_is_active(c, e)) return 1;
+
+  /* Loop over the pair tasks that involve this cell */
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+
+    if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
+      continue;
+
+    /* Is the other cell in the pair active ? */
+    if ((l->t->ci == c && cell_is_active(l->t->cj, e)) ||
+        (l->t->cj == c && cell_is_active(l->t->ci, e)))
+      return 1;
+  }
+
+  /* No neighbouring cell has active particles. Drift not necessary */
+  return 0;
+}
+
+
 
 /**
  * @brief Is this particle active ?
@@ -60,7 +104,13 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active(
 __attribute__((always_inline)) INLINE static int part_is_active(
     const struct part *p, const struct engine *e) {
 
-  return (p->ti_end <= e->ti_current);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->ti_end < e->ti_current)
+    error("particle in an impossible time-zone! p->ti_end=%d e->ti_current=%d",
+          p->ti_end, e->ti_current);
+#endif
+
+  return (p->ti_end == e->ti_current);
 }
 
 /**
@@ -72,7 +122,14 @@ __attribute__((always_inline)) INLINE static int part_is_active(
 __attribute__((always_inline)) INLINE static int gpart_is_active(
     const struct gpart *gp, const struct engine *e) {
 
-  return (gp->ti_end <= e->ti_current);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->ti_end < e->ti_current)
+    error(
+        "g-particle in an impossible time-zone! gp->ti_end=%d e->ti_current=%d",
+        gp->ti_end, e->ti_current);
+#endif
+
+  return (gp->ti_end == e->ti_current);
 }
 
 #endif /* SWIFT_ACTIVE_H */
