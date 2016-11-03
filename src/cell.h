@@ -37,6 +37,7 @@
 #include "task.h"
 
 /* Avoid cyclic inclusions */
+struct engine;
 struct space;
 struct scheduler;
 
@@ -290,6 +291,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
+int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 

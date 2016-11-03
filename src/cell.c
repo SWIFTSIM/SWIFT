@@ -47,6 +47,7 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "error.h"
 #include "gravity.h"
@@ -861,6 +862,35 @@ void cell_clean(struct cell *c) {
   /* Recurse */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k]) cell_clean(c->progeny[k]);
+}
+
+/**
+ * @brief Checks whether a given cell needs drifting or not.
+ *
+ * @param c the #cell.
+ * @param e The #engine (holding current time information).
+ *
+ * @return 1 If the cell needs drifting, 0 otherwise.
+ */
+int cell_is_drift_needed(struct cell *c, const struct engine *e) {
+
+  /* Do we have at least one active particle in the cell ?*/
+  if (cell_is_active(c, e)) return 1;
+
+  /* Loop over the pair tasks that involve this cell */
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+
+    if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
+      continue;
+
+    /* Is the other cell in the pair active ? */
+    if ((l->t->ci == c && cell_is_active(l->t->cj, e)) ||
+        (l->t->cj == c && cell_is_active(l->t->ci, e)))
+      return 1;
+  }
+
+  /* No neighbouring cell has active particles. Drift not necessary */
+  return 0;
 }
 
 /**

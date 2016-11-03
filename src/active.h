@@ -65,37 +65,6 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active(
 }
 
 /**
- * @brief Checks whether a given cell needs drifting or not.
- *
- * @param c the #cell.
- * @param e The #engine (holding current time information).
- *
- * @return 1 If the cell needs drifting, 0 otherwise.
- */
-INLINE static int cell_is_drift_needed(struct cell *c, const struct engine *e) {
-
-  /* Do we have at least one active particle in the cell ?*/
-  if (cell_is_active(c, e)) return 1;
-
-  /* Loop over the pair tasks that involve this cell */
-  for (struct link *l = c->density; l != NULL; l = l->next) {
-
-    if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
-      continue;
-
-    /* Is the other cell in the pair active ? */
-    if ((l->t->ci == c && cell_is_active(l->t->cj, e)) ||
-        (l->t->cj == c && cell_is_active(l->t->ci, e)))
-      return 1;
-  }
-
-  /* No neighbouring cell has active particles. Drift not necessary */
-  return 0;
-}
-
-
-
-/**
  * @brief Is this particle active ?
  *
  * @param p The #part.
