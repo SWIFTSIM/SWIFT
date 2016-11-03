@@ -175,10 +175,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
   } else {
 
-#ifdef TASK_VERBOSE
-    OUT;
-#endif
-
     /* Loop over the gparts in this cell. */
     for (int i = 0; i < gcount; i++) {
 
@@ -222,10 +218,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
   } else {
-
-#ifdef TASK_VERBOSE
-    OUT;
-#endif
 
     /* Loop over the parts in this cell. */
     for (int i = 0; i < count; i++) {
@@ -922,10 +914,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     c->g_updated = 0;
     return;
   }
-
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
