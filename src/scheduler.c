@@ -1072,8 +1072,6 @@ void scheduler_start(struct scheduler *s) {
   } else {
     scheduler_rewait_active_mapper(s->tid_active, s->active_count, s);
   }
-/* message("rewait took %.3f %s.", clocks_from_ticks(getticks() - tic),
-        clocks_getunit()); */
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
