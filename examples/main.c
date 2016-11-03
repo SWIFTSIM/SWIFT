@@ -52,8 +52,6 @@ void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
   printf("       swift_mpi [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
@@ -114,8 +112,8 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Init failed with error %i.", res);
   if (prov != MPI_THREAD_MULTIPLE)
     error(
-        "MPI does not provide the level of threading required "
-        "(MPI_THREAD_MULTIPLE).");
+        "MPI does not provide the level of threading"
+        " required (MPI_THREAD_MULTIPLE).");
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
@@ -127,9 +125,7 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
-  if (myrank == 0)
-    printf("[0000][00000.0] MPI is up and running with %i node(s).\n",
-           nr_nodes);
+  if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
   if (nr_nodes == 1) {
     message("WARNING: you are running with one MPI rank.");
     message("WARNING: you should use the non-MPI version of this program.");
@@ -235,6 +231,13 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+#ifndef SWIFT_DEBUG_TASKS
+        if (dump_tasks) {
+          error(
+              "Task dumping is only possible if SWIFT was configured with the "
+              "--enable-task-debugging option.");
+        }
+#endif
         break;
       case '?':
         if (myrank == 0) print_help_message();
@@ -454,7 +457,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &potential);
+    potential_init(params, &prog_const, &us, &s, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */
@@ -549,9 +552,9 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
-#ifdef SWIFT_TASK_DUMP
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
@@ -627,11 +630,9 @@ int main(int argc, char *argv[]) {
         }
       }
       fclose(file_thread);
-#endif
-#else
-      error("Task dumping not enabled at compile-time.");
-#endif
+#endif  // WITH_MPI
     }
+#endif  // SWIFT_DEBUG_TASKS
   }
 
 /* Print the values of the runner histogram. */

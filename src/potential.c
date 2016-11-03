@@ -31,14 +31,15 @@
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
+ * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us,
+                    const struct UnitSystem* us, const struct space* s,
                     struct external_potential* potential) {
 
-  potential_init_backend(parameter_file, phys_const, us, potential);
+  potential_init_backend(parameter_file, phys_const, us, s, potential);
 }
 
 /**

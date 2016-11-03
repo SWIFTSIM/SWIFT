@@ -22,8 +22,6 @@ doc/Doxyfile
 
 examples/swift
 examples/swift_mpi
-examples/swift_fixdt
-examples/swift_fixdt_mpi
 examples/*.xmf
 examples/used_parameters.yml
 examples/energy.txt

@@ -171,7 +171,7 @@ int checkSpacehmax(struct space *s) {
   }
 
   /*  If within some epsilon we are OK. */
-  if (abs(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+  if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
 
   /* There is a problem. Hunt it down. */
   for (int k = 0; k < s->nr_cells; k++) {
@@ -331,4 +331,47 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 }
 
-#endif
+#endif /* HAVE_METIS */
+
+#ifdef HAVE_MPI
+/**
+ * @brief Dump the positions and MPI ranks of the given top-level cells
+ *        to a simple text file.
+ *
+ * Can be used to visualise the partitioning of an MPI run. Note should
+ * be used immediately after repartitioning when the top-level cells
+ * have been assigned their nodes. Each time this is called a new file
+ * with the given prefix, a unique integer and type of .dat is created.
+ *
+ * @param prefix base output filename
+ * @param cells_top the top-level cells.
+ * @param nr_cells the number of cells.
+ */
+void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
+
+  FILE *file = NULL;
+
+  /* Name of output file. */
+  static int nseq = 0;
+  char fname[200];
+  sprintf(fname, "%s_%03d.dat", prefix, nseq);
+  nseq++;
+
+  file = fopen(fname, "w");
+
+  /* Header. */
+  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",
+          "zw", "rank");
+
+  /* Output */
+  for (int i = 0; i < nr_cells; i++) {
+    struct cell *c = &cells_top[i];
+    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", c->loc[0],
+            c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
+            c->nodeID);
+  }
+
+  fclose(file);
+}
+
+#endif /* HAVE_MPI */

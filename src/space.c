@@ -188,10 +188,9 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
- * @param cell_max Maximum cell edge length.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, double cell_max, int verbose) {
+void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
@@ -226,13 +225,16 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     h_max = buff;
   }
 #endif
-  if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[1] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[2] / fmax(h_max * kernel_gamma * space_stretch, cell_max))};
+      floor(s->dim[0] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[1] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[2] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -241,7 +243,8 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "is switched on.\nThis error is often caused by any of the "
         "followings:\n"
         " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'SPH:max_smoothing_length' is too large,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particle with velocities so large that they move by more than two "
@@ -392,10 +395,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       space_rebuild_recycle(s, &s->cells_top[k]);
       s->cells_top[k].sorts = NULL;
       s->cells_top[k].nr_tasks = 0;
-      s->cells_top[k].nr_density = 0;
-      s->cells_top[k].nr_gradient = 0;
-      s->cells_top[k].nr_force = 0;
-      s->cells_top[k].nr_grav = 0;
       s->cells_top[k].density = NULL;
       s->cells_top[k].gradient = NULL;
       s->cells_top[k].force = NULL;
@@ -435,11 +434,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
- * @param cell_max Maximal cell size.
  * @param verbose Print messages to stdout or not
  *
  */
-void space_rebuild(struct space *s, double cell_max, int verbose) {
+void space_rebuild(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -447,7 +445,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
-  space_regrid(s, cell_max, verbose);
+  space_regrid(s, verbose);
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
@@ -733,6 +731,8 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
  * @param s The #space to act upon.
  */
 void space_sanitize(struct space *s) {
+
+  s->sanitized = 1;
 
   for (int k = 0; k < s->nr_cells; k++) {
 
@@ -1444,6 +1444,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
     const int count = c->count;
     const int gcount = c->gcount;
+    const int depth = c->depth;
     int maxdepth = 0;
     float h_max = 0.0f;
     int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -1453,8 +1454,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct xpart *xparts = c->xparts;
 
     /* Check the depth. */
-    while (c->depth > (maxdepth = s->maxdepth)) {
-      atomic_cas(&s->maxdepth, maxdepth, c->depth);
+    while (depth > (maxdepth = s->maxdepth)) {
+      atomic_cas(&s->maxdepth, maxdepth, depth);
     }
 
     /* If the depth is too large, we have a problem and should stop. */
@@ -1740,6 +1741,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
+  s->sanitized = 0;
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;
@@ -1748,8 +1750,23 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
-  s->cell_min = parser_get_param_double(params, "SPH:max_smoothing_length");
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Decide on the minimal top-level cell size */
+  const double dmax = max(max(dim[0], dim[1]), dim[2]);
+  int maxtcells =
+      parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                               space_max_top_level_cells_default);
+  s->cell_min = 0.99 * dmax / maxtcells;
+
+  /* Check that it is big enough. */
+  const double dmin = min(min(dim[0], dim[1]), dim[2]);
+  int needtcells = 3 * dmax / dmin;
+  if (maxtcells < needtcells)
+    error(
+        "Scheduler:max_top_level_cells is too small %d, needs to be at "
+        "least %d",
+        maxtcells, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
@@ -1763,14 +1780,6 @@ void space_init(struct space *s, const struct swift_params *params,
   if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
-
-  /* Check that we have enough cells */
-  if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
-      s->cell_min * 3 > dim[2])
-    error(
-        "Maximal smoothing length (%e) too large. Needs to be "
-        "smaller than 1/3 the simulation box size [%e %e %e]",
-        s->cell_min, dim[0], dim[1], dim[2]);
 
   /* Apply h scaling */
   const double scaling =
@@ -1850,7 +1859,7 @@ void space_init(struct space *s, const struct swift_params *params,
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
   /* Build the cells and the tasks. */
-  if (!dry_run) space_regrid(s, s->cell_min, verbose);
+  if (!dry_run) space_regrid(s, verbose);
 }
 
 /**

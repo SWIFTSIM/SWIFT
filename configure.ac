@@ -170,6 +170,18 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
+# Check if task debugging is on.
+AC_ARG_ENABLE([task-debugging],
+   [AS_HELP_STRING([--enable-task-debugging],
+     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+   )],
+   [enable_task_debugging="$enableval"],
+   [enable_task_debugging="no"]
+)
+if test "$enable_task_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -533,6 +545,7 @@ AC_MSG_RESULT([
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
    CPU profiler    : $have_profiler
+   Task debugging  : $enable_task_debugging
 ])
 
 # Generate output.

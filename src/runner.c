@@ -890,118 +890,6 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Kick particles in momentum space and collect statistics (fixed
- * time-step case)
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer Are we timing this ?
- */
-void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
-
-  const double global_dt = r->e->dt_max;
-  const double timeBase = r->e->timeBase;
-  const int count = c->count;
-  const int gcount = c->gcount;
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  struct gpart *restrict gparts = c->gparts;
-  const double const_G = r->e->physical_constants->const_newton_G;
-
-  int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-
-  TIMER_TIC
-
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
-
-  /* The new time-step */
-  const int new_dti = global_dt / timeBase;
-
-  /* No children? */
-  if (!c->split) {
-
-    /* Loop over the g-particles and kick everyone. */
-    for (int k = 0; k < gcount; k++) {
-
-      /* Get a handle on the part. */
-      struct gpart *restrict gp = &gparts[k];
-
-      /* If the g-particle has no counterpart */
-      if (gp->id_or_neg_offset > 0) {
-
-        /* First, finish the force calculation */
-        gravity_end_force(gp, const_G);
-
-        /* Kick the g-particle forward */
-        kick_gpart(gp, new_dti, timeBase);
-
-        /* Number of updated g-particles */
-        g_updated++;
-
-        /* Minimal time for next end of time-step */
-        ti_end_min = min(gp->ti_end, ti_end_min);
-        ti_end_max = max(gp->ti_end, ti_end_max);
-      }
-    }
-
-    /* Now do the hydro ones... */
-
-    /* Loop over the particles and kick everyone. */
-    for (int k = 0; k < count; k++) {
-
-      /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
-
-      /* First, finish the force loop */
-      hydro_end_force(p);
-      if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
-
-      /* Kick the particle forward */
-      kick_part(p, xp, new_dti, timeBase);
-
-      /* Number of updated particles */
-      updated++;
-      if (p->gpart != NULL) g_updated++;
-
-      /* Minimal time for next end of time-step */
-      ti_end_min = min(p->ti_end, ti_end_min);
-      ti_end_max = max(p->ti_end, ti_end_max);
-    }
-  }
-
-  /* Otherwise, aggregate data from children. */
-  else {
-
-    /* Loop over the progeny. */
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
-
-        /* Recurse */
-        runner_do_kick_fixdt(r, cp, 0);
-
-        /* And aggregate */
-        updated += cp->updated;
-        g_updated += cp->g_updated;
-        ti_end_min = min(cp->ti_end_min, ti_end_min);
-        ti_end_max = max(cp->ti_end_max, ti_end_max);
-      }
-  }
-
-  /* Store the values. */
-  c->updated = updated;
-  c->g_updated = g_updated;
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-
-  if (timer) TIMER_TOC(timer_kick);
-}
-
-/**
  * @brief Kick particles in momentum space and collect statistics (floating
  * time-step case)
  *
@@ -1231,9 +1119,8 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
-      
-#ifdef SWIFT_TASK_DUMP
-      t->rid = r->id;
+#ifdef SWIFT_DEBUG_TASKS
+      t->rid = r->cpuid;
 #endif
 
 /* Check that we haven't scheduled an inactive task */
@@ -1280,7 +1167,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_pair:
@@ -1295,7 +1182,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dopair_grav(r, ci, cj, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_self:
@@ -1312,7 +1199,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_pair:
@@ -1327,7 +1214,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dosub_grav(r, ci, cj, 1);
           else
-            error("Unknown task subtype.");
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sort:
@@ -1346,9 +1233,6 @@ void *runner_main(void *data) {
 #endif
         case task_type_kick:
           runner_do_kick(r, ci, 1);
-          break;
-        case task_type_kick_fixdt:
-          runner_do_kick_fixdt(r, ci, 1);
           break;
 #ifdef WITH_MPI
         case task_type_send:
@@ -1383,7 +1267,7 @@ void *runner_main(void *data) {
           runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
-          error("Unknown task type.");
+          error("Unknown/invalid task type (%d).", t->type);
       }
 
       /* We're done with this task, see if we get a next one. */
