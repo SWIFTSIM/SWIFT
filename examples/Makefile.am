@@ -66,7 +66,7 @@ EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/test.pro \
 	     GreshoVortex_2D/getGlass.sh GreshoVortex_2D/gresho.yml GreshoVortex_2D/makeIC.py GreshoVortex_2D/plotSolution.py GreshoVortex_2D/run.sh \
 	     HydrostaticHalo/README HydrostaticHalo/hydrostatic.yml HydrostaticHalo/makeIC.py HydrostaticHalo/run.sh \
-	     HydrostaticHalo/density_profile.py HydrostaticHalo/velocity_profile.py HydrostaticHalo/internal_energy_profile.py HydrostaticHalo/test_energy_conservation.py
+	     HydrostaticHalo/density_profile.py HydrostaticHalo/velocity_profile.py HydrostaticHalo/internal_energy_profile.py HydrostaticHalo/test_energy_conservation.py \
 	     KelvinHelmholtz_2D/kelvinHelmholtz.yml KelvinHelmholtz_2D/makeIC.py KelvinHelmholtz_2D/plotSolution.py KelvinHelmholtz_2D/run.sh \
 	     MultiTypes/makeIC.py  MultiTypes/multiTypes.yml MultiTypes/run.sh \
 	     PerturbedBox_2D/makeIC.py PerturbedBox_2D/perturbedPlane.yml \
