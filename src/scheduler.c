@@ -1358,10 +1358,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 1) {
+    if (res == NULL && qid > 1)
 #else
-    if (res == NULL) {
+    if (res == NULL)
 #endif
+    {
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
