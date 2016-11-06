@@ -453,20 +453,18 @@ void space_rebuild(struct space *s, int verbose) {
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. */
-  const size_t ind_size = s->size_parts;
+  const size_t ind_size = s->size_parts + 1;
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
-  for (size_t i = 0; i < s->nr_parts; ++i) cells_top[ind[i]].count++;
 
   /* Run through the gravity particles and get their cell index. */
-  const size_t gind_size = s->size_gparts;
+  const size_t gind_size = s->size_gparts + 1;
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
   if (gind_size > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
-  for (size_t i = 0; i < s->nr_gparts; ++i) cells_top[gind[i]].gcount++;
 
 #ifdef WITH_MPI
 
@@ -474,7 +472,6 @@ void space_rebuild(struct space *s, int verbose) {
   const int local_nodeID = s->e->nodeID;
   for (size_t k = 0; k < nr_parts;) {
     if (cells_top[ind[k]].nodeID != local_nodeID) {
-      cells_top[ind[k]].count -= 1;
       nr_parts -= 1;
       const struct part tp = s->parts[k];
       s->parts[k] = s->parts[nr_parts];
@@ -514,7 +511,6 @@ void space_rebuild(struct space *s, int verbose) {
   /* Move non-local gparts to the end of the list. */
   for (size_t k = 0; k < nr_gparts;) {
     if (cells_top[gind[k]].nodeID != local_nodeID) {
-      cells_top[gind[k]].gcount -= 1;
       nr_gparts -= 1;
       const struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
@@ -561,9 +557,9 @@ void space_rebuild(struct space *s, int verbose) {
   s->nr_gparts = nr_gparts + nr_gparts_exchanged;
 
   /* Re-allocate the index array if needed.. */
-  if (s->nr_parts > ind_size) {
+  if (s->nr_parts + 1 > ind_size) {
     int *ind_new;
-    if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+    if ((ind_new = (int *)malloc(sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
     memcpy(ind_new, ind, sizeof(int) * nr_parts);
     free(ind);
@@ -578,7 +574,6 @@ void space_rebuild(struct space *s, int verbose) {
     const struct part *const p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells_top[ind[k]].count += 1;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[ind[k]].nodeID != local_nodeID)
       error("Received part that does not belong to me (nodeID=%i).",
@@ -608,15 +603,25 @@ void space_rebuild(struct space *s, int verbose) {
   }
 #endif
 
+  /* Extract the cell counts from the sorted indices. */
+  size_t last_index = 0;
+  ind[nr_parts] = s->nr_cells;  // sentinel.
+  for (size_t k = 0; k < nr_parts; k++) {
+    if (ind[k] < ind[k + 1]) {
+      cells_top[ind[k]].count = k - last_index + 1;
+      last_index = k + 1;
+    }
+  }
+
   /* We no longer need the indices as of here. */
   free(ind);
 
 #ifdef WITH_MPI
 
   /* Re-allocate the index array if needed.. */
-  if (s->nr_gparts > gind_size) {
+  if (s->nr_gparts + 1 > gind_size) {
     int *gind_new;
-    if ((gind_new = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
+    if ((gind_new = (int *)malloc(sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
     memcpy(gind_new, gind, sizeof(int) * nr_gparts);
     free(gind);
@@ -628,7 +633,6 @@ void space_rebuild(struct space *s, int verbose) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells_top[gind[k]].gcount += 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[ind[k]].nodeID != s->e->nodeID)
@@ -646,6 +650,16 @@ void space_rebuild(struct space *s, int verbose) {
   /* Re-link the parts. */
   if (nr_parts > 0 && nr_gparts > 0)
     part_relink_parts(s->gparts, nr_gparts, s->parts);
+
+  /* Extract the cell counts from the sorted indices. */
+  size_t last_gindex = 0;
+  gind[nr_parts] = s->nr_cells;
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (gind[k] < gind[k + 1]) {
+      cells_top[ind[k]].gcount = k - last_gindex + 1;
+      last_gindex = k + 1;
+    }
+  }
 
   /* We no longer need the indices as of here. */
   free(gind);
