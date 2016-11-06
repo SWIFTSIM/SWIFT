@@ -453,14 +453,14 @@ void space_rebuild(struct space *s, int verbose) {
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. */
-  const size_t ind_size = s->size_parts + 1;
+  const size_t ind_size = s->size_parts + 100;
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
 
   /* Run through the gravity particles and get their cell index. */
-  const size_t gind_size = s->size_gparts + 1;
+  const size_t gind_size = s->size_gparts + 100;
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
