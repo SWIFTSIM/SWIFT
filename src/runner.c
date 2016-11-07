@@ -799,7 +799,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
   if (!c->split) {
 
     /* Check that we are actually going to move forward. */
-    if (ti_current > ti_old) {
+    if (ti_current >= ti_old) {
 
       /* Loop over all the g-particles in the cell */
       const size_t nr_gparts = c->gcount;
