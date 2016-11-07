@@ -1602,25 +1602,15 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_recycle(struct space *s, struct cell *c) {
 
-  /* Lock the space. */
-  lock_lock(&s->lock);
-
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
-  /* Clear the cell data. */
-  bzero(c, sizeof(struct cell));
-
   /* Hook this cell into the buffer. */
-  c->next = s->cells_sub;
-  s->cells_sub = c;
-  s->tot_cells -= 1;
-
-  /* Unlock the space. */
-  lock_unlock_blind(&s->lock);
+  c->next = atomic_swap(&s->cells_sub, c);
+  atomic_dec(&s->tot_cells);
 }
 
 /**
