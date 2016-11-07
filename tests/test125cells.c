@@ -617,7 +617,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Ghost to finish everything on the central cells */
-    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
+    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
@@ -704,7 +704,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Ghost to finish everything on the central cells */
-  for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
+  for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
