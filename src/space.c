@@ -602,7 +602,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
-  space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
+  if(nr_parts > 0) space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
   if (nr_parts > 0 && nr_gparts > 0) part_relink_gparts(s->parts, nr_parts, 0);
@@ -662,7 +662,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
   /* Sort the gparts according to their cells. */
-  space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
+  if(nr_gparts > 0) space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
   if (nr_parts > 0 && nr_gparts > 0)
