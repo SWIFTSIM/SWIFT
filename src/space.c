@@ -602,7 +602,8 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
-  if(nr_parts > 0) space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
+  if (nr_parts > 0)
+    space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
   if (nr_parts > 0 && nr_gparts > 0) part_relink_gparts(s->parts, nr_parts, 0);
@@ -662,7 +663,8 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
   /* Sort the gparts according to their cells. */
-  if(nr_gparts > 0) space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
+  if (nr_gparts > 0)
+    space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
   if (nr_parts > 0 && nr_gparts > 0)
@@ -1455,6 +1457,148 @@ void space_map_cells_pre(struct space *s, int full,
 }
 
 /**
+ * @brief Recursively split a cell.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param buff A buffer for particle sorting, should be of size at least
+ *        max(c->count, c->gount) or @c NULL.
+ */
+void space_split_recursive(struct space *s, struct cell *c, int *buff) {
+
+  const int count = c->count;
+  const int gcount = c->gcount;
+  const int depth = c->depth;
+  int maxdepth = 0;
+  float h_max = 0.0f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  struct cell *temp;
+  struct part *parts = c->parts;
+  struct gpart *gparts = c->gparts;
+  struct xpart *xparts = c->xparts;
+  struct engine *e = s->e;
+
+  /* If the buff is NULL, allocate it, and remember to free it. */
+  const int allocate_buffer = (buff == NULL);
+  if (allocate_buffer &&
+      (buff = (int *)malloc(sizeof(int) * max(count, gcount))) == NULL)
+    error("Failed to allocate temporary indices.");
+
+  /* Check the depth. */
+  while (depth > (maxdepth = s->maxdepth)) {
+    atomic_cas(&s->maxdepth, maxdepth, depth);
+  }
+
+  /* If the depth is too large, we have a problem and should stop. */
+  if (maxdepth > space_cell_maxdepth) {
+    error("Exceeded maximum depth (%d) when splitting cells, aborting",
+          space_cell_maxdepth);
+  }
+
+  /* Split or let it be? */
+  if (count > space_splitsize || gcount > space_splitsize) {
+
+    /* No longer just a leaf. */
+    c->split = 1;
+
+    /* Create the cell's progeny. */
+    for (int k = 0; k < 8; k++) {
+      temp = space_getcell(s);
+      temp->count = 0;
+      temp->gcount = 0;
+      temp->ti_old = e->ti_current;
+      temp->loc[0] = c->loc[0];
+      temp->loc[1] = c->loc[1];
+      temp->loc[2] = c->loc[2];
+      temp->width[0] = c->width[0] / 2;
+      temp->width[1] = c->width[1] / 2;
+      temp->width[2] = c->width[2] / 2;
+      temp->dmin = c->dmin / 2;
+      if (k & 4) temp->loc[0] += temp->width[0];
+      if (k & 2) temp->loc[1] += temp->width[1];
+      if (k & 1) temp->loc[2] += temp->width[2];
+      temp->depth = c->depth + 1;
+      temp->split = 0;
+      temp->h_max = 0.0;
+      temp->dx_max = 0.f;
+      temp->nodeID = c->nodeID;
+      temp->parent = c;
+      temp->super = NULL;
+      c->progeny[k] = temp;
+    }
+
+    /* Split the cell data. */
+    cell_split(c, c->parts - s->parts, buff);
+
+    /* Remove any progeny with zero parts. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
+        space_recycle(s, c->progeny[k]);
+        c->progeny[k] = NULL;
+      } else {
+        space_split_recursive(s, c->progeny[k], buff);
+        h_max = max(h_max, c->progeny[k]->h_max);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        if (c->progeny[k]->maxdepth > maxdepth)
+          maxdepth = c->progeny[k]->maxdepth;
+      }
+
+  }
+
+  /* Otherwise, collect the data for this cell. */
+  else {
+
+    /* Clear the progeny. */
+    bzero(c->progeny, sizeof(struct cell *) * 8);
+    c->split = 0;
+    maxdepth = c->depth;
+
+    /* Get dt_min/dt_max. */
+    for (int k = 0; k < count; k++) {
+      struct part *p = &parts[k];
+      struct xpart *xp = &xparts[k];
+      const float h = p->h;
+      const int ti_end = p->ti_end;
+      xp->x_diff[0] = 0.f;
+      xp->x_diff[1] = 0.f;
+      xp->x_diff[2] = 0.f;
+      if (h > h_max) h_max = h;
+      if (ti_end < ti_end_min) ti_end_min = ti_end;
+      if (ti_end > ti_end_max) ti_end_max = ti_end;
+    }
+    for (int k = 0; k < gcount; k++) {
+      struct gpart *gp = &gparts[k];
+      const int ti_end = gp->ti_end;
+      gp->x_diff[0] = 0.f;
+      gp->x_diff[1] = 0.f;
+      gp->x_diff[2] = 0.f;
+      if (ti_end < ti_end_min) ti_end_min = ti_end;
+      if (ti_end > ti_end_max) ti_end_max = ti_end;
+    }
+  }
+
+  /* Set the values for this cell. */
+  c->h_max = h_max;
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->maxdepth = maxdepth;
+
+  /* Set ownership according to the start of the parts array. */
+  if (s->nr_parts > 0)
+    c->owner =
+        ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  else if (s->nr_gparts > 0)
+    c->owner =
+        ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+  else
+    c->owner = 0; /* Ok, there is really nothing on this rank... */
+
+  /* Clean up. */
+  if (allocate_buffer) free(buff);
+}
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -1467,132 +1611,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *restrict cells_top = (struct cell *)map_data;
-  struct engine *e = s->e;
 
   for (int ind = 0; ind < num_cells; ind++) {
-
     struct cell *c = &cells_top[ind];
-
-    const int count = c->count;
-    const int gcount = c->gcount;
-    const int depth = c->depth;
-    int maxdepth = 0;
-    float h_max = 0.0f;
-    int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-    struct cell *temp;
-    struct part *parts = c->parts;
-    struct gpart *gparts = c->gparts;
-    struct xpart *xparts = c->xparts;
-
-    /* Check the depth. */
-    while (depth > (maxdepth = s->maxdepth)) {
-      atomic_cas(&s->maxdepth, maxdepth, depth);
-    }
-
-    /* If the depth is too large, we have a problem and should stop. */
-    if (maxdepth > space_cell_maxdepth) {
-      error("Exceeded maximum depth (%d) when splitting cells, aborting",
-            space_cell_maxdepth);
-    }
-
-    /* Split or let it be? */
-    if (count > space_splitsize || gcount > space_splitsize) {
-
-      /* No longer just a leaf. */
-      c->split = 1;
-
-      /* Create the cell's progeny. */
-      for (int k = 0; k < 8; k++) {
-        temp = space_getcell(s);
-        temp->count = 0;
-        temp->gcount = 0;
-        temp->ti_old = e->ti_current;
-        temp->loc[0] = c->loc[0];
-        temp->loc[1] = c->loc[1];
-        temp->loc[2] = c->loc[2];
-        temp->width[0] = c->width[0] / 2;
-        temp->width[1] = c->width[1] / 2;
-        temp->width[2] = c->width[2] / 2;
-        temp->dmin = c->dmin / 2;
-        if (k & 4) temp->loc[0] += temp->width[0];
-        if (k & 2) temp->loc[1] += temp->width[1];
-        if (k & 1) temp->loc[2] += temp->width[2];
-        temp->depth = c->depth + 1;
-        temp->split = 0;
-        temp->h_max = 0.0;
-        temp->dx_max = 0.f;
-        temp->nodeID = c->nodeID;
-        temp->parent = c;
-        temp->super = NULL;
-        c->progeny[k] = temp;
-      }
-
-      /* Split the cell data. */
-      cell_split(c, c->parts - s->parts, NULL);
-
-      /* Remove any progeny with zero parts. */
-      for (int k = 0; k < 8; k++)
-        if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
-          space_recycle(s, c->progeny[k]);
-          c->progeny[k] = NULL;
-        } else {
-          space_split_mapper(c->progeny[k], 1, s);
-          h_max = max(h_max, c->progeny[k]->h_max);
-          ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-          ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-          if (c->progeny[k]->maxdepth > maxdepth)
-            maxdepth = c->progeny[k]->maxdepth;
-        }
-
-    }
-
-    /* Otherwise, collect the data for this cell. */
-    else {
-
-      /* Clear the progeny. */
-      bzero(c->progeny, sizeof(struct cell *) * 8);
-      c->split = 0;
-      maxdepth = c->depth;
-
-      /* Get dt_min/dt_max. */
-      for (int k = 0; k < count; k++) {
-        struct part *p = &parts[k];
-        struct xpart *xp = &xparts[k];
-        const float h = p->h;
-        const int ti_end = p->ti_end;
-        xp->x_diff[0] = 0.f;
-        xp->x_diff[1] = 0.f;
-        xp->x_diff[2] = 0.f;
-        if (h > h_max) h_max = h;
-        if (ti_end < ti_end_min) ti_end_min = ti_end;
-        if (ti_end > ti_end_max) ti_end_max = ti_end;
-      }
-      for (int k = 0; k < gcount; k++) {
-        struct gpart *gp = &gparts[k];
-        const int ti_end = gp->ti_end;
-        gp->x_diff[0] = 0.f;
-        gp->x_diff[1] = 0.f;
-        gp->x_diff[2] = 0.f;
-        if (ti_end < ti_end_min) ti_end_min = ti_end;
-        if (ti_end > ti_end_max) ti_end_max = ti_end;
-      }
-    }
-
-    /* Set the values for this cell. */
-    c->h_max = h_max;
-    c->ti_end_min = ti_end_min;
-    c->ti_end_max = ti_end_max;
-    c->maxdepth = maxdepth;
-
-    /* Set ownership according to the start of the parts array. */
-    if (s->nr_parts > 0)
-      c->owner =
-          ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-    else if (s->nr_gparts > 0)
-      c->owner = ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues /
-                 s->nr_gparts;
-    else
-      c->owner = 0; /* Ok, there is really nothing on this rank... */
+    space_split_recursive(s, c, NULL);
   }
 }
 
