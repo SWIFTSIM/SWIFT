@@ -187,42 +187,43 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 /**
  * @brief Mapper function to clean out the cell hierarchies for a regrid.
  */
- 
-void space_clear_cells_mapper(void *map_data, int num_elements, void *extra_data) {
-  
+
+void space_clear_cells_mapper(void *map_data, int num_elements,
+                              void *extra_data) {
+
   struct cell *cells = (struct cell *)map_data;
   struct space *s = (struct space *)extra_data;
-  
+
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
-      space_rebuild_recycle(s, c);
-      c->sorts = NULL;
-      c->nr_tasks = 0;
-      c->density = NULL;
-      c->gradient = NULL;
-      c->force = NULL;
-      c->grav = NULL;
-      c->dx_max = 0.0f;
-      c->sorted = 0;
-      c->count = 0;
-      c->gcount = 0;
-      c->init = NULL;
-      c->extra_ghost = NULL;
-      c->ghost = NULL;
-      c->kick = NULL;
-      c->cooling = NULL;
-      c->sourceterms = NULL;
-      c->super = c;
+    space_rebuild_recycle(s, c);
+    c->sorts = NULL;
+    c->nr_tasks = 0;
+    c->density = NULL;
+    c->gradient = NULL;
+    c->force = NULL;
+    c->grav = NULL;
+    c->dx_max = 0.0f;
+    c->sorted = 0;
+    c->count = 0;
+    c->gcount = 0;
+    c->init = NULL;
+    c->extra_ghost = NULL;
+    c->ghost = NULL;
+    c->kick = NULL;
+    c->cooling = NULL;
+    c->sourceterms = NULL;
+    c->super = c;
 #if WITH_MPI
-      c->recv_xv = NULL;
-      c->recv_rho = NULL;
-      c->recv_gradient = NULL;
-      c->recv_ti = NULL;
+    c->recv_xv = NULL;
+    c->recv_rho = NULL;
+    c->recv_gradient = NULL;
+    c->recv_ti = NULL;
 
-      c->send_xv = NULL;
-      c->send_rho = NULL;
-      c->send_gradient = NULL;
-      c->send_ti = NULL;
+    c->send_xv = NULL;
+    c->send_rho = NULL;
+    c->send_gradient = NULL;
+    c->send_ti = NULL;
 #endif
   }
 }
@@ -424,7 +425,7 @@ void space_regrid(struct space *s, int verbose) {
       /* Finished with these. */
       free(oldnodeIDs);
     }
-#endif  /* WITH_MPI */
+#endif /* WITH_MPI */
 
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
@@ -434,8 +435,8 @@ void space_regrid(struct space *s, int verbose) {
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
-    threadpool_map(&s->e->threadpool, space_clear_cells_mapper,
-                    s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
+    threadpool_map(&s->e->threadpool, space_clear_cells_mapper, s->cells_top,
+                   s->nr_cells, sizeof(struct cell), 100, s);
     // space_clear_cells_mapper(s->cells_top, s->nr_cells, s);
     s->maxdepth = 0;
   }
@@ -479,7 +480,8 @@ void space_rebuild(struct space *s, int verbose) {
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  if (s->size_gparts > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
+  if (s->size_gparts > 0)
+    space_gparts_get_cell_index(s, gind, cells_top, verbose);
 
 #ifdef WITH_MPI
 
@@ -1526,7 +1528,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
       }
 
       /* Split the cell data. */
-      cell_split(c, c->parts - s->parts);
+      cell_split(c, c->parts - s->parts, NULL);
 
       /* Remove any progeny with zero parts. */
       for (int k = 0; k < 8; k++)
