@@ -52,6 +52,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "memswap.h"
 #include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
@@ -513,15 +514,9 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
             j++;
             bucket_count[bid]++;
           }
-          struct part temp_part = parts[j];
-          struct xpart temp_xpart = xparts[j];
-          int temp_buff = buff[j];
-          parts[j] = part;
-          xparts[j] = xpart;
-          buff[j] = bid;
-          part = temp_part;
-          xpart = temp_xpart;
-          bid = temp_buff;
+          memswap(&parts[j], &part, sizeof(struct part));
+          memswap(&xparts[j], &xpart, sizeof(struct xpart));
+          memswap(&buff[j], &bid, sizeof(int));
         }
         parts[k] = part;
         xparts[k] = xpart;
@@ -602,12 +597,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
             j++;
             bucket_count[bid]++;
           }
-          struct gpart temp_gpart = gparts[j];
-          int temp_buff = buff[j];
-          gparts[j] = gpart;
-          buff[j] = bid;
-          gpart = temp_gpart;
-          bid = temp_buff;
+          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap(&buff[j], &bid, sizeof(int));
         }
         gparts[k] = gpart;
         buff[k] = bid;
