@@ -1044,7 +1044,7 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
         while (ii <= j && ind[ii] <= pivot) ii++;
         while (jj >= i && ind[jj] > pivot) jj--;
         if (ii < jj) {
-          memswap(&ind[ii], &ind[jj], sizeof(size_t));
+          memswap(&ind[ii], &ind[jj], sizeof(int));
           memswap(&parts[ii], &parts[jj], sizeof(struct part));
           memswap(&xparts[ii], &xparts[jj], sizeof(struct xpart));
         }
@@ -1221,7 +1221,7 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
         while (ii <= j && ind[ii] <= pivot) ii++;
         while (jj >= i && ind[jj] > pivot) jj--;
         if (ii < jj) {
-          memswap(&ind[ii], &ind[jj], sizeof(size_t));
+          memswap(&ind[ii], &ind[jj], sizeof(int));
           memswap(&gparts[ii], &gparts[jj], sizeof(struct gpart));
         }
       }
