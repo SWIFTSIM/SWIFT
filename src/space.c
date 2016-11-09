@@ -1222,7 +1222,7 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
         while (jj >= i && ind[jj] > pivot) jj--;
         if (ii < jj) {
           memswap(&ind[ii], &ind[jj], sizeof(size_t));
-          memswap(&gparts[ii], &gparts[jj], sizeof(size_t));
+          memswap(&gparts[ii], &gparts[jj], sizeof(struct gpart));
         }
       }
 
