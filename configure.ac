@@ -284,7 +284,7 @@ AC_ARG_ENABLE([loop-unrolling],
      [Tell the compiler explicitly to unroll loops @<:@no/yes@:>@]
    )],
    [enable_loop_unrolling="$enableval"],
-   [enable_loop_unrolling="yes"]
+   [enable_loop_unrolling="$enable_opt"]
 )
 if test "$enable_loop_unrolling" = "yes"; then
     CFLAGS="$CFLAGS -funroll-loops"
