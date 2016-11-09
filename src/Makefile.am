@@ -44,7 +44,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h statistics.h
+    sourceterms_struct.h statistics.h memswap.h
 
 
 # Common source files
@@ -83,7 +83,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
 		 potential/softened_isothermal/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
-                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h 
+                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+     memswap.h
 
 
 # Sources and flags for regular library
