@@ -799,7 +799,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
   if (!c->split) {
 
     /* Check that we are actually going to move forward. */
-    if (ti_current >= ti_old) {
+    if (ti_current > ti_old) {
 
       /* Loop over all the g-particles in the cell */
       const size_t nr_gparts = c->gcount;
@@ -843,6 +843,12 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
       dx_max = sqrtf(dx2_max);
 
     } /* Check that we are actually going to move forward. */
+
+    else {
+      /* ti_old == ti_current, just keep the current cell values. */
+      h_max = c->h_max;
+      dx_max = c->dx_max;
+    }
   }
 
   /* Otherwise, aggregate data from children. */
