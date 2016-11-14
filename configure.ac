@@ -170,6 +170,18 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
+# Check if task debugging is on.
+AC_ARG_ENABLE([task-debugging],
+   [AS_HELP_STRING([--enable-task-debugging],
+     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+   )],
+   [enable_task_debugging="$enableval"],
+   [enable_task_debugging="no"]
+)
+if test "$enable_task_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -355,7 +367,7 @@ fi
 AC_SUBST([TCMALLOC_LIBS])
 AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
 
-#  Check for -lprofiler usually part of the gpreftools along with tcmalloc.
+#  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
 AC_ARG_WITH([profiler],
    [AS_HELP_STRING([--with-profiler],
@@ -595,6 +607,7 @@ AC_MSG_RESULT([
    CPU profiler    : $have_profiler
    Hydro scheme    : $with_hydro
    Dimensionality  : $with_dimension
+   Task debugging  : $enable_task_debugging
 ])
 
 # Generate output.

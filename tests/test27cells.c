@@ -167,7 +167,7 @@ void zero_particle_fields(struct cell *c) {
  */
 void end_calculation(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid], 1);
+    hydro_end_density(&c->parts[pid]);
   }
 }
 

@@ -113,6 +113,15 @@ struct parallel_sort {
 };
 
 /**
+ * @brief Information required to compute the particle cell indices.
+ */
+struct index_data {
+  struct space *s;
+  struct cell *cells;
+  int *ind;
+};
+
+/**
  * @brief Get the shift-id of the given pair of cells, swapping them
  *      if need be.
  *
@@ -179,10 +188,9 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
- * @param cell_max Maximum cell edge length.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, double cell_max, int verbose) {
+void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
@@ -217,13 +225,16 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     h_max = buff;
   }
 #endif
-  if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[1] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
-      floor(s->dim[2] / fmax(h_max * kernel_gamma * space_stretch, cell_max))};
+      floor(s->dim[0] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[1] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      floor(s->dim[2] /
+            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -232,7 +243,8 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "is switched on.\nThis error is often caused by any of the "
         "followings:\n"
         " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'SPH:max_smoothing_length' is too large,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particle with velocities so large that they move by more than two "
@@ -326,7 +338,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->super = c;
-          c->gsuper = c;
           c->ti_old = ti_current;
           lock_init(&c->lock);
         }
@@ -335,7 +346,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
-    fflush(stdout);
 
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
@@ -384,12 +394,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       space_rebuild_recycle(s, &s->cells_top[k]);
       s->cells_top[k].sorts = NULL;
       s->cells_top[k].nr_tasks = 0;
-      s->cells_top[k].nr_density = 0;
-      s->cells_top[k].nr_gradient = 0;
-      s->cells_top[k].nr_force = 0;
       s->cells_top[k].density = NULL;
       s->cells_top[k].gradient = NULL;
       s->cells_top[k].force = NULL;
+      s->cells_top[k].grav = NULL;
       s->cells_top[k].dx_max = 0.0f;
       s->cells_top[k].sorted = 0;
       s->cells_top[k].count = 0;
@@ -398,8 +406,20 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].extra_ghost = NULL;
       s->cells_top[k].ghost = NULL;
       s->cells_top[k].kick = NULL;
+      s->cells_top[k].cooling = NULL;
+      s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
-      s->cells_top[k].gsuper = &s->cells_top[k];
+#if WITH_MPI
+      s->cells_top[k].recv_xv = NULL;
+      s->cells_top[k].recv_rho = NULL;
+      s->cells_top[k].recv_gradient = NULL;
+      s->cells_top[k].recv_ti = NULL;
+
+      s->cells_top[k].send_xv = NULL;
+      s->cells_top[k].send_rho = NULL;
+      s->cells_top[k].send_gradient = NULL;
+      s->cells_top[k].send_ti = NULL;
+#endif
     }
     s->maxdepth = 0;
   }
@@ -413,11 +433,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
- * @param cell_max Maximal cell size.
  * @param verbose Print messages to stdout or not
  *
  */
-void space_rebuild(struct space *s, double cell_max, int verbose) {
+void space_rebuild(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
@@ -425,56 +444,28 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
-  space_regrid(s, cell_max, verbose);
+  space_regrid(s, verbose);
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells_top = s->cells_top;
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-
   /* Run through the particles and get their cell index. */
-  // tic = getticks();
   const size_t ind_size = s->size_parts;
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
-  for (size_t k = 0; k < nr_parts; k++) {
-    struct part *restrict p = &s->parts[k];
-    for (int j = 0; j < 3; j++)
-      if (p->x[j] < 0.0)
-        p->x[j] += dim[j];
-      else if (p->x[j] >= dim[j])
-        p->x[j] -= dim[j];
-    ind[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells_top[ind[k]].count++;
-  }
-  // message( "getting particle indices took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit()):
+  if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
+  for (size_t i = 0; i < s->nr_parts; ++i) cells_top[ind[i]].count++;
 
   /* Run through the gravity particles and get their cell index. */
-  // tic = getticks();
   const size_t gind_size = s->size_gparts;
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  for (size_t k = 0; k < nr_gparts; k++) {
-    struct gpart *restrict gp = &s->gparts[k];
-    for (int j = 0; j < 3; j++)
-      if (gp->x[j] < 0.0)
-        gp->x[j] += dim[j];
-      else if (gp->x[j] >= dim[j])
-        gp->x[j] -= dim[j];
-    gind[k] =
-        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    cells_top[gind[k]].gcount++;
-  }
-// message( "getting g-particle indices took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (gind_size > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
+  for (size_t i = 0; i < s->nr_gparts; ++i) cells_top[gind[i]].gcount++;
 
 #ifdef WITH_MPI
 
@@ -578,6 +569,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     ind = ind_new;
   }
 
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+
   /* Assign each particle to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
@@ -605,9 +599,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   for (size_t k = 1; k < nr_parts; k++) {
     if (ind[k - 1] > ind[k]) {
       error("Sort failed!");
-    } else if (ind[k] != cell_getid(cdim, s->parts[k].x[0] * ih[0],
-                                    s->parts[k].x[1] * ih[1],
-                                    s->parts[k].x[2] * ih[2])) {
+    } else if (ind[k] != cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
+                                    s->parts[k].x[1] * s->iwidth[1],
+                                    s->parts[k].x[2] * s->iwidth[2])) {
       error("Incorrect indices!");
     }
   }
@@ -737,6 +731,8 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
  */
 void space_sanitize(struct space *s) {
 
+  s->sanitized = 1;
+
   for (int k = 0; k < s->nr_cells; k++) {
 
     struct cell *c = &s->cells_top[k];
@@ -750,6 +746,164 @@ void space_sanitize(struct space *s) {
       cell_sanitize(c);
     }
   }
+}
+
+/**
+ * @brief #threadpool mapper function to compute the particle cell indices.
+ *
+ * @param map_data Pointer towards the particles.
+ * @param nr_parts The number of particles to treat.
+ * @param extra_data Pointers to the space and index list
+ */
+void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
+                                       void *extra_data) {
+
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+  struct index_data *data = (struct index_data *)extra_data;
+  struct space *s = data->s;
+  int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
+
+  /* Get some constants */
+  const double dim_x = s->dim[0];
+  const double dim_y = s->dim[1];
+  const double dim_z = s->dim[2];
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih_x = s->iwidth[0];
+  const double ih_y = s->iwidth[1];
+  const double ih_z = s->iwidth[2];
+
+  for (int k = 0; k < nr_parts; k++) {
+
+    /* Get the particle */
+    struct part *restrict p = &parts[k];
+
+    const double old_pos_x = p->x[0];
+    const double old_pos_y = p->x[1];
+    const double old_pos_z = p->x[2];
+
+    /* Put it back into the simulation volume */
+    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Get its cell index */
+    const int index =
+        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    ind[k] = index;
+
+    /* Update the position */
+    p->x[0] = pos_x;
+    p->x[1] = pos_y;
+    p->x[2] = pos_z;
+  }
+}
+
+/**
+ * @brief #threadpool mapper function to compute the g-particle cell indices.
+ *
+ * @param map_data Pointer towards the g-particles.
+ * @param nr_gparts The number of g-particles to treat.
+ * @param extra_data Pointers to the space and index list
+ */
+void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
+                                        void *extra_data) {
+
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct index_data *data = (struct index_data *)extra_data;
+  struct space *s = data->s;
+  int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
+
+  /* Get some constants */
+  const double dim_x = s->dim[0];
+  const double dim_y = s->dim[1];
+  const double dim_z = s->dim[2];
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih_x = s->iwidth[0];
+  const double ih_y = s->iwidth[1];
+  const double ih_z = s->iwidth[2];
+
+  for (int k = 0; k < nr_gparts; k++) {
+
+    /* Get the particle */
+    struct gpart *restrict gp = &gparts[k];
+
+    const double old_pos_x = gp->x[0];
+    const double old_pos_y = gp->x[1];
+    const double old_pos_z = gp->x[2];
+
+    /* Put it back into the simulation volume */
+    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Get its cell index */
+    const int index =
+        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    ind[k] = index;
+
+    /* Update the position */
+    gp->x[0] = pos_x;
+    gp->x[1] = pos_y;
+    gp->x[2] = pos_z;
+  }
+}
+
+/**
+ * @brief Computes the cell index of all the particles and update the cell
+ * count.
+ *
+ * @param s The #space.
+ * @param ind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ * @param verbose Are we talkative ?
+ */
+void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
+                                int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Pack the extra information */
+  struct index_data data;
+  data.s = s;
+  data.cells = cells;
+  data.ind = ind;
+
+  threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 1000, &data);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Computes the cell index of all the g-particles and update the cell
+ * gcount.
+ *
+ * @param s The #space.
+ * @param gind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ * @param verbose Are we talkative ?
+ */
+void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
+                                 int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Pack the extra information */
+  struct index_data data;
+  data.s = s;
+  data.cells = cells;
+  data.ind = gind;
+
+  threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1289,6 +1443,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
     const int count = c->count;
     const int gcount = c->gcount;
+    const int depth = c->depth;
     int maxdepth = 0;
     float h_max = 0.0f;
     int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -1298,8 +1453,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct xpart *xparts = c->xparts;
 
     /* Check the depth. */
-    while (c->depth > (maxdepth = s->maxdepth)) {
-      atomic_cas(&s->maxdepth, maxdepth, c->depth);
+    while (depth > (maxdepth = s->maxdepth)) {
+      atomic_cas(&s->maxdepth, maxdepth, depth);
     }
 
     /* If the depth is too large, we have a problem and should stop. */
@@ -1337,7 +1492,6 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
         temp->nodeID = c->nodeID;
         temp->parent = c;
         temp->super = NULL;
-        temp->gsuper = NULL;
         c->progeny[k] = temp;
       }
 
@@ -1408,6 +1562,15 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     else
       c->owner = 0; /* Ok, there is really nothing on this rank... */
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
+  for (int ind = 0; ind < num_cells; ind++) {
+    int depth = 0;
+    if (!checkCellhdxmax(&cells_top[ind], &depth))
+      message("    at cell depth %d", depth);
+  }
+#endif
 }
 
 /**
@@ -1586,6 +1749,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
+  s->sanitized = 0;
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;
@@ -1594,8 +1758,23 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
-  s->cell_min = parser_get_param_double(params, "SPH:max_smoothing_length");
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Decide on the minimal top-level cell size */
+  const double dmax = max(max(dim[0], dim[1]), dim[2]);
+  int maxtcells =
+      parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                               space_max_top_level_cells_default);
+  s->cell_min = 0.99 * dmax / maxtcells;
+
+  /* Check that it is big enough. */
+  const double dmin = min(min(dim[0], dim[1]), dim[2]);
+  int needtcells = 3 * dmax / dmin;
+  if (maxtcells < needtcells)
+    error(
+        "Scheduler:max_top_level_cells is too small %d, needs to be at "
+        "least %d",
+        maxtcells, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
@@ -1609,14 +1788,6 @@ void space_init(struct space *s, const struct swift_params *params,
   if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
-
-  /* Check that we have enough cells */
-  if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
-      s->cell_min * 3 > dim[2])
-    error(
-        "Maximal smoothing length (%e) too large. Needs to be "
-        "smaller than 1/3 the simulation box size [%e %e %e]",
-        s->cell_min, dim[0], dim[1], dim[2]);
 
   /* Apply h scaling */
   const double scaling =
@@ -1696,7 +1867,7 @@ void space_init(struct space *s, const struct swift_params *params,
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
   /* Build the cells and the tasks. */
-  if (!dry_run) space_regrid(s, s->cell_min, verbose);
+  if (!dry_run) space_regrid(s, verbose);
 }
 
 /**

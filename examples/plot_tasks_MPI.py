@@ -64,7 +64,7 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init",
-             "ghost", "extra_ghost", "kick", "kick_fixdt", "send", "recv",
+             "ghost", "extra_ghost", "kick", "send", "recv",
              "grav_gather_m", "grav_fft", "grav_mm", "grav_up",
              "grav_external", "cooling", "count"]
 
@@ -78,7 +78,6 @@ TASKCOLOURS = {"none": "black",
                "ghost": "cyan",
                "extra_ghost": "cyan",
                "kick": "green",
-               "kick_fixdt": "green",
                "send": "yellow",
                "recv": "magenta",
                "grav_gather_m": "mediumorchid",

@@ -46,14 +46,12 @@ enum task_types {
   task_type_ghost,
   task_type_extra_ghost,
   task_type_kick,
-  task_type_kick_fixdt,
   task_type_send,
   task_type_recv,
   task_type_grav_gather_m,
   task_type_grav_fft,
   task_type_grav_mm,
   task_type_grav_up,
-  task_type_grav_external,
   task_type_cooling,
   task_type_sourceterms,
   task_type_count
@@ -68,6 +66,7 @@ enum task_subtypes {
   task_subtype_gradient,
   task_subtype_force,
   task_subtype_grav,
+  task_subtype_external_grav,
   task_subtype_tend,
   task_subtype_count
 } __attribute__((packed));
@@ -105,9 +104,6 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
-  /*! Start and end time of this task */
-  ticks tic, toc;
-
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -127,8 +123,10 @@ struct task {
   /*! Weight of the task */
   int weight;
 
-  /*! ID of the queue or runner owning this task */
-  short int rid;
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  /*! Individual cost estimate for this task. */
+  int cost;
+#endif
 
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
@@ -151,14 +149,21 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
+#ifdef SWIFT_DEBUG_TASKS
+  /*! ID of the queue or runner owning this task */
+  short int rid;
+
+  /*! Start and end time of this task */
+  ticks tic, toc;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
-void task_print_mask(unsigned int mask);
-void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
+void task_print(const struct task *t);
 
 #endif /* SWIFT_TASK_H */

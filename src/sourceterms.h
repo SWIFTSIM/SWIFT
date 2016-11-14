@@ -44,8 +44,8 @@ struct sourceterms {
 void sourceterms_init(const struct swift_params* parameter_file,
                       struct UnitSystem* us, struct sourceterms* source);
 void sourceterms_print(struct sourceterms* source);
+
 /**
- * @file src/sourceterm.h
  * @brief Routines related to source terms
  * @param cell_min: corner of cell to test
  * @param cell_width: width of cell to test

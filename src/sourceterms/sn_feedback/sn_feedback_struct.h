@@ -42,4 +42,4 @@ struct supernova_struct {
   double x, y, z;
   enum supernova_status status;
 };
-#endif SWIFT_SN_FEEDBACK_STRUCT_H
+#endif /* SWIFT_SN_FEEDBACK_STRUCT_H */

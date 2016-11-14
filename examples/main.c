@@ -52,8 +52,6 @@ void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
   printf("       swift_mpi [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
@@ -114,23 +112,26 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Init failed with error %i.", res);
   if (prov != MPI_THREAD_MULTIPLE)
     error(
-        "MPI does not provide the level of threading required "
-        "(MPI_THREAD_MULTIPLE).");
+        "MPI does not provide the level of threading"
+        " required (MPI_THREAD_MULTIPLE).");
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
+
+  /* Make sure messages are stamped with the correct rank. */
+  engine_rank = myrank;
+
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
-  if (myrank == 0)
-    printf("[0000][00000.0] MPI is up and running with %i node(s).\n",
-           nr_nodes);
+  if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
   if (nr_nodes == 1) {
     message("WARNING: you are running with one MPI rank.");
     message("WARNING: you should use the non-MPI version of this program.");
   }
   fflush(stdout);
+
 #endif
 
 /* Let's pin the main thread */
@@ -230,6 +231,13 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+#ifndef SWIFT_DEBUG_TASKS
+        if (dump_tasks) {
+          error(
+              "Task dumping is only possible if SWIFT was configured with the "
+              "--enable-task-debugging option.");
+        }
+#endif
         break;
       case '?':
         if (myrank == 0) print_help_message();
@@ -262,15 +270,24 @@ int main(int argc, char *argv[]) {
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
 
-  /* Report CPU frequency. */
+  /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
+/* Report host name(s). */
+#ifdef WITH_MPI
+  if (myrank == 0 || verbose > 1) {
+    message("Rank %d running on: %s", myrank, hostname());
+  }
+#else
+  message("Running on: %s", hostname());
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
     if (myrank == 0) message("Floating point exceptions will be reported.");
   }
 
@@ -440,7 +457,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &potential);
+    potential_init(params, &prog_const, &us, &s, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */
@@ -535,6 +552,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
@@ -563,8 +581,8 @@ int main(int argc, char *argv[]) {
           fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
                   e.tic_step, e.toc_step, cpufreq);
           int count = 0;
-          for (int l = 0; l < e.sched.nr_tasks; l++)
-            if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
+          for (int l = 0; l < e.sched.nr_tasks; l++) {
+            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
                   myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -579,11 +597,10 @@ int main(int argc, char *argv[]) {
                   (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
                                                 : 0,
                   e.sched.tasks[l].flags);
-              fflush(stdout);
-              count++;
             }
-          message("rank %d counted %d tasks", myrank, count);
-
+            fflush(stdout);
+            count++;
+          }
           fclose(file_thread);
         }
 
@@ -599,8 +616,8 @@ int main(int argc, char *argv[]) {
       /* Add some information to help with the plots */
       fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
               1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
-      for (int l = 0; l < e.sched.nr_tasks; l++)
-        if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
+      for (int l = 0; l < e.sched.nr_tasks; l++) {
+        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
           fprintf(
               file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
               e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -610,9 +627,12 @@ int main(int argc, char *argv[]) {
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
+        }
+      }
       fclose(file_thread);
-#endif
+#endif  // WITH_MPI
     }
+#endif  // SWIFT_DEBUG_TASKS
   }
 
 /* Print the values of the runner histogram. */

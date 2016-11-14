@@ -22,8 +22,6 @@ doc/Doxyfile
 
 examples/swift
 examples/swift_mpi
-examples/swift_fixdt
-examples/swift_fixdt_mpi
 examples/*.xmf
 examples/used_parameters.yml
 examples/energy.txt
@@ -80,9 +78,12 @@ tests/testRiemannHLLC
 tests/testMatrixInversion
 
 theory/latex/swift.pdf
-theory/kernel/kernels.pdf
-theory/kernel/kernel_derivatives.pdf
-theory/kernel/kernel_definitions.pdf
+theory/SPH/Kernels/kernels.pdf
+theory/SPH/Kernels/kernel_derivatives.pdf
+theory/SPH/Kernels/kernel_definitions.pdf
+theory/SPH/Flavours/sph_flavours.pdf
+theory/SPH/EoS/eos.pdf
+theory/SPH/*.pdf
 theory/paper_pasc/pasc_paper.pdf
 
 m4/libtool.m4

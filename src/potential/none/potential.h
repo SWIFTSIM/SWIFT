@@ -30,6 +30,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "space.h"
 #include "units.h"
 
 /**
@@ -68,6 +69,21 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {}
 
 /**
+ * @brief Computes the gravitational potential energy due to nothing.
+ *
+ * @param potential The #external_potential used in the run.
+ * @param phys_const Physical constants in internal units.
+ * @param g Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+external_gravity_get_potential_energy(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, const struct gpart* g) {
+
+  return 0.f;
+}
+
+/**
  * @brief Initialises the external potential properties in the internal system
  * of units.
  *
@@ -81,7 +97,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 static INLINE void potential_init_backend(
     const struct swift_params* parameter_file,
     const struct phys_const* phys_const, const struct UnitSystem* us,
-    struct external_potential* potential) {}
+    const struct space* s, struct external_potential* potential) {}
 
 /**
  * @brief Prints the properties of the external potential to stdout.
