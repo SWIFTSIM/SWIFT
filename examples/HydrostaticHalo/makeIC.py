@@ -116,9 +116,9 @@ print "x range = (%f,%f)" %(np.min(coords[:,0]),np.max(coords[:,0]))
 print "y range = (%f,%f)" %(np.min(coords[:,1]),np.max(coords[:,1]))
 print "z range = (%f,%f)" %(np.min(coords[:,2]),np.max(coords[:,2]))
 
-print np.mean(coords[:,0])
-print np.mean(coords[:,1])
-print np.mean(coords[:,2])
+#print np.mean(coords[:,0])
+#print np.mean(coords[:,1])
+#print np.mean(coords[:,2])
 
 #now find the particles which are within the box
 

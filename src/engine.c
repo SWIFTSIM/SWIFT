@@ -2246,7 +2246,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   TIMER_TOC(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s (including marktask, rebuild and reweight).",
+    message("took %.3f %s (including drift all, rebuild and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 

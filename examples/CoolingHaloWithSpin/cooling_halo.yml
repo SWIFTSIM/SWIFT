@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.    # The end time of the simulation (in internal units).
-  dt_min:     1e-4  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
@@ -32,9 +32,6 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  CoolingHalo.hdf5       # The file to read
-  shift_x:    0.                  # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
  
 # External potential parameters
 SoftenedIsothermalPotential:
@@ -43,12 +40,12 @@ SoftenedIsothermalPotential:
   position_z:      0.	
   vrot:            200.     # rotation speed of isothermal potential in internal units
   timestep_mult:   0.03     # controls time step
-  epsilon:         0.1    #softening for the isothermal potential
+  epsilon:         1.0      #softening for the isothermal potential
 
 # Cooling parameters
 LambdaCooling:
-  lambda_cgs:                  1.0e-22    # Cooling rate (in cgs units)
+  lambda_cgs:                  1.0e-22   # Cooling rate (in cgs units)
   minimum_temperature:         1.0e4  # Minimal temperature (Kelvin)
   mean_molecular_weight:       0.59   # Mean molecular weight
   hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
-  cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition
+  cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition

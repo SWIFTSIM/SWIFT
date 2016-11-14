@@ -133,16 +133,16 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_sourceterms(r, c->progeny[k], 0);
-    return;
-  }
+  } else {
 
-  if (count > 0) {
+    if (count > 0) {
 
-    /* do sourceterms in this cell? */
-    const int incell =
-        sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
-    if (incell == 1) {
-      sourceterms_apply(r, sourceterms, c);
+      /* do sourceterms in this cell? */
+      const int incell =
+          sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
+      if (incell == 1) {
+        sourceterms_apply(r, sourceterms, c);
+      }
     }
   }
 
@@ -174,23 +174,18 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
-    return;
-  }
+  } else {
 
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
+    /* Loop over the gparts in this cell. */
+    for (int i = 0; i < gcount; i++) {
 
-  /* Loop over the gparts in this cell. */
-  for (int i = 0; i < gcount; i++) {
+      /* Get a direct pointer on the part. */
+      struct gpart *restrict gp = &gparts[i];
 
-    /* Get a direct pointer on the part. */
-    struct gpart *restrict gp = &gparts[i];
-
-    /* Is this part within the time step? */
-    if (gpart_is_active(gp, e)) {
-
-      external_gravity_acceleration(time, potential, constants, gp);
+      /* Is this part within the time step? */
+      if (gpart_is_active(gp, e)) {
+        external_gravity_acceleration(time, potential, constants, gp);
+      }
     }
   }
 
@@ -222,26 +217,22 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
-    return;
-  }
+  } else {
 
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < count; i++) {
 
-  /* Loop over the parts in this cell. */
-  for (int i = 0; i < count; i++) {
+      /* Get a direct pointer on the part. */
+      struct part *restrict p = &parts[i];
+      struct xpart *restrict xp = &xparts[i];
 
-    /* Get a direct pointer on the part. */
-    struct part *restrict p = &parts[i];
-    struct xpart *restrict xp = &xparts[i];
+      /* Kick has already updated ti_end, so need to check ti_begin */
+      if (p->ti_begin == ti_current) {
 
-    /* Kick has already updated ti_end, so need to check ti_begin */
-    if (p->ti_begin == ti_current) {
+        const double dt = (p->ti_end - p->ti_begin) * timeBase;
 
-      const double dt = (p->ti_end - p->ti_begin) * timeBase;
-
-      cooling_cool_part(constants, us, cooling_func, p, xp, dt);
+        cooling_cool_part(constants, us, cooling_func, p, xp, dt);
+      }
     }
   }
 
@@ -504,7 +495,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_init(r, c->progeny[k], 0);
-    return;
   } else {
 
     /* Loop over the parts in this cell. */
@@ -543,8 +533,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param timer Are we timing this ?
  */
-void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -552,14 +543,15 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
   const int count = c->count;
   const struct engine *e = r->e;
 
+  TIMER_TIC;
+
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k]);
-    return;
+      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -576,6 +568,8 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
     }
   }
 
+  if (timer) TIMER_TOC(timer_do_extra_ghost);
+
 #else
   error("SWIFT was not compiled with the extra hydro loop activated.");
 #endif
@@ -587,8 +581,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param timer Are we timing this ?
  */
-void runner_do_ghost(struct runner *r, struct cell *c) {
+void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
@@ -611,140 +606,141 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k]);
-    return;
-  }
+      if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k], 0);
+  } else {
 
-  /* Init the IDs that have to be updated. */
-  int *pid = NULL;
-  if ((pid = malloc(sizeof(int) * count)) == NULL)
-    error("Can't allocate memory for pid.");
-  for (int k = 0; k < count; k++) pid[k] = k;
+    /* Init the IDs that have to be updated. */
+    int *pid = NULL;
+    if ((pid = malloc(sizeof(int) * count)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < count; k++) pid[k] = k;
 
-  /* While there are particles that need to be updated... */
-  for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
-       num_reruns++) {
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
 
-    /* Reset the redo-count. */
-    redo = 0;
+      /* Reset the redo-count. */
+      redo = 0;
 
-    /* Loop over the parts in this cell. */
-    for (int i = 0; i < count; i++) {
+      /* Loop over the parts in this cell. */
+      for (int i = 0; i < count; i++) {
 
-      /* Get a direct pointer on the part. */
-      struct part *restrict p = &parts[pid[i]];
-      struct xpart *restrict xp = &xparts[pid[i]];
+        /* Get a direct pointer on the part. */
+        struct part *restrict p = &parts[pid[i]];
+        struct xpart *restrict xp = &xparts[pid[i]];
 
-      /* Is this part within the timestep? */
-      if (part_is_active(p, e)) {
+        /* Is this part within the timestep? */
+        if (part_is_active(p, e)) {
 
-        /* Finish the density calculation */
-        hydro_end_density(p);
+          /* Finish the density calculation */
+          hydro_end_density(p);
 
-        float h_corr = 0.f;
+          float h_corr = 0.f;
 
-        /* If no derivative, double the smoothing length. */
-        if (p->density.wcount_dh == 0.0f) h_corr = p->h;
+          /* If no derivative, double the smoothing length. */
+          if (p->density.wcount_dh == 0.0f) h_corr = p->h;
 
-        /* Otherwise, compute the smoothing length update (Newton step). */
-        else {
-          h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
+          /* Otherwise, compute the smoothing length update (Newton step). */
+          else {
+            h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
-          /* Truncate to the range [ -p->h/2 , p->h ]. */
-          h_corr = (h_corr < p->h) ? h_corr : p->h;
-          h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
+            /* Truncate to the range [ -p->h/2 , p->h ]. */
+            h_corr = (h_corr < p->h) ? h_corr : p->h;
+            h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
+          }
+
+          /* Did we get the right number density? */
+          if (p->density.wcount > max_wcount ||
+              p->density.wcount < min_wcount) {
+
+            /* Ok, correct then */
+            p->h += h_corr;
+
+            /* Flag for another round of fun */
+            pid[redo] = pid[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            hydro_init_part(p);
+
+            /* Off we go ! */
+            continue;
+          }
+
+          /* We now have a particle whose smoothing length has converged */
+
+          /* As of here, particle force variables will be set. */
+
+          /* Compute variables required for the force loop */
+          hydro_prepare_force(p, xp, ti_current, timeBase);
+
+          /* The particle force values are now set.  Do _NOT_
+             try to read any particle density variables! */
+
+          /* Prepare the particle for the force loop over neighbours */
+          hydro_reset_acceleration(p);
         }
+      }
 
-        /* Did we get the right number density? */
-        if (p->density.wcount > max_wcount || p->density.wcount < min_wcount) {
+      /* We now need to treat the particles whose smoothing length had not
+       * converged again */
 
-          /* Ok, correct then */
-          p->h += h_corr;
+      /* Re-set the counter for the next loop (potentially). */
+      count = redo;
+      if (count > 0) {
 
-          /* Flag for another round of fun */
-          pid[redo] = pid[i];
-          redo += 1;
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
-          /* Re-initialise everything */
-          hydro_init_part(p);
+          /* Run through this cell's density interactions. */
+          for (struct link *l = finger->density; l != NULL; l = l->next) {
 
-          /* Off we go ! */
-          continue;
+            /* Self-interaction? */
+            if (l->t->type == task_type_self)
+              runner_doself_subset_density(r, finger, parts, pid, count);
+
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dopair_subset_density(r, finger, parts, pid, count,
+                                             l->t->cj);
+              else
+                runner_dopair_subset_density(r, finger, parts, pid, count,
+                                             l->t->ci);
+
+            }
+
+            /* Otherwise, sub-self interaction? */
+            else if (l->t->type == task_type_sub_self)
+              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
+                                          -1, 1);
+
+            /* Otherwise, sub-pair interaction? */
+            else if (l->t->type == task_type_sub_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+                                            l->t->cj, -1, 1);
+              else
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+                                            l->t->ci, -1, 1);
+            }
+          }
         }
-
-        /* We now have a particle whose smoothing length has converged */
-
-        /* As of here, particle force variables will be set. */
-
-        /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, ti_current, timeBase);
-
-        /* The particle force values are now set.  Do _NOT_
-           try to read any particle density variables! */
-
-        /* Prepare the particle for the force loop over neighbours */
-        hydro_reset_acceleration(p);
       }
     }
 
-    /* We now need to treat the particles whose smoothing length had not
-     * converged again */
+    if (count)
+      message("Smoothing length failed to converge on %i particles.", count);
 
-    /* Re-set the counter for the next loop (potentially). */
-    count = redo;
-    if (count > 0) {
-
-      /* Climb up the cell hierarchy. */
-      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-
-        /* Run through this cell's density interactions. */
-        for (struct link *l = finger->density; l != NULL; l = l->next) {
-
-          /* Self-interaction? */
-          if (l->t->type == task_type_self)
-            runner_doself_subset_density(r, finger, parts, pid, count);
-
-          /* Otherwise, pair interaction? */
-          else if (l->t->type == task_type_pair) {
-
-            /* Left or right? */
-            if (l->t->ci == finger)
-              runner_dopair_subset_density(r, finger, parts, pid, count,
-                                           l->t->cj);
-            else
-              runner_dopair_subset_density(r, finger, parts, pid, count,
-                                           l->t->ci);
-
-          }
-
-          /* Otherwise, sub-self interaction? */
-          else if (l->t->type == task_type_sub_self)
-            runner_dosub_subset_density(r, finger, parts, pid, count, NULL, -1,
-                                        1);
-
-          /* Otherwise, sub-pair interaction? */
-          else if (l->t->type == task_type_sub_pair) {
-
-            /* Left or right? */
-            if (l->t->ci == finger)
-              runner_dosub_subset_density(r, finger, parts, pid, count,
-                                          l->t->cj, -1, 1);
-            else
-              runner_dosub_subset_density(r, finger, parts, pid, count,
-                                          l->t->ci, -1, 1);
-          }
-        }
-      }
-    }
+    /* Be clean */
+    free(pid);
   }
 
-  if (count)
-    message("Smoothing length failed to converge on %i particles.", count);
-
-  /* Be clean */
-  free(pid);
-
-  TIMER_TOC(timer_do_ghost);
+  if (timer) TIMER_TOC(timer_do_ghost);
 }
 
 /**
@@ -925,10 +921,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     c->g_updated = 0;
     return;
   }
-
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -1232,11 +1224,11 @@ void *runner_main(void *data) {
           runner_do_init(r, ci, 1);
           break;
         case task_type_ghost:
-          runner_do_ghost(r, ci);
+          runner_do_ghost(r, ci, 1);
           break;
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
-          runner_do_extra_ghost(r, ci);
+          runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
         case task_type_kick:
