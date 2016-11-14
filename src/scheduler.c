@@ -996,29 +996,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
-  struct task *tasks = (struct task *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    if (t->skip) continue;
-
-    /* Skip sort tasks that have already been performed */
-    if (t->type == task_type_sort && t->flags == 0) {
-      error("Empty sort task encountered.");
-    }
-
-    /* Sets the waits of the dependances */
-    for (int k = 0; k < t->nr_unlock_tasks; k++) {
-      struct task *u = t->unlock_tasks[k];
-      atomic_inc(&u->wait);
-    }
-  }
-}
-
-void scheduler_rewait_active_mapper(void *map_data, int num_elements,
-                                    void *extra_data) {
-
   struct scheduler *s = (struct scheduler *)extra_data;
   const int *tid = (int *)map_data;
 
@@ -1067,10 +1044,10 @@ void scheduler_start(struct scheduler *s) {
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
-    threadpool_map(s->threadpool, scheduler_rewait_active_mapper, s->tid_active,
+    threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
                    s->active_count, sizeof(int), 1000, s);
   } else {
-    scheduler_rewait_active_mapper(s->tid_active, s->active_count, s);
+    scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
 
 /* Check we have not missed an active task */
