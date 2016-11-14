@@ -141,17 +141,17 @@ ds = grp1.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
 v = numpy.zeros(1)
 
-m = numpy.full((numPart, ), mass)
+m = numpy.full((numPart, ), mass, dtype='f')
 ds = grp1.create_dataset('Masses', (numPart,), 'f')
 ds[()] = m
 m = numpy.zeros(1)
 
-h = numpy.full((numPart, ), 1.1255 * boxSize / L)
+h = numpy.full((numPart, ), 1.1255 * boxSize / L,  dtype='f')
 ds = grp1.create_dataset('SmoothingLength', (numPart,), 'f')
 ds[()] = h
 h = numpy.zeros(1)
 
-u = numpy.full((numPart, ), internalEnergy)
+u = numpy.full((numPart, ), internalEnergy,  dtype='f')
 ds = grp1.create_dataset('InternalEnergy', (numPart,), 'f')
 ds[()] = u
 u = numpy.zeros(1)

@@ -370,7 +370,7 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
 
   /* Dump graph in METIS format */
   /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-   *                weights_v, weights_e, NULL);
+   *                weights_v, NULL, weights_e);
    */
 
   if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, weights_e,
@@ -420,7 +420,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells_top;
-  float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
+  float wscale = 1.f, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
   int wmin;
@@ -459,15 +459,8 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
         t->type != task_type_init)
       continue;
 
-    /* Get the task weight. This can be slightly negative on multiple board
-     * computers when the runners are not pinned to cores, don't stress just
-     * make a report and ignore these tasks. */
-    int w = (t->toc - t->tic) * wscale;
-    if (w < 0) {
-      message("Task toc before tic: -%.3f %s, (try using processor affinity).",
-              clocks_from_ticks(t->tic - t->toc), clocks_getunit());
-      w = 0;
-    }
+    /* Get the task weight. */
+    int w = t->cost * wscale;
 
     /* Do we need to re-scale? */
     wtot += w;
@@ -616,7 +609,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
       if (weights_e[k] == 0) weights_e[k] = 1;
     if (bothweights)
       for (int k = 0; k < nr_cells; k++)
-        if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
+        if (weights_v[k] == 0) weights_v[k] = 1;
 
     /* And partition, use both weights or not as requested. */
     if (bothweights)

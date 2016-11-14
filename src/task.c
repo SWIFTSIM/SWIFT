@@ -48,10 +48,10 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",    "self",    "pair",          "sub_self",
-    "sub_pair",   "init",    "ghost",   "extra_ghost",   "kick",
-    "kick_fixdt", "send",    "recv",    "grav_gather_m", "grav_fft",
-    "grav_mm",    "grav_up", "cooling", "sourceterms"};
+    "none",     "sort",    "self",          "pair",        "sub_self",
+    "sub_pair", "init",    "ghost",         "extra_ghost", "kick",
+    "send",     "recv",    "grav_gather_m", "grav_fft",    "grav_mm",
+    "grav_up",  "cooling", "sourceterms"};
 
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav", "external_grav", "tend"};
@@ -148,7 +148,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_init:
     case task_type_kick:
-    case task_type_kick_fixdt:
     case task_type_send:
     case task_type_recv:
       if (t->ci->count > 0 && t->ci->gcount > 0)
@@ -370,32 +369,6 @@ int task_lock(struct task *t) {
 
   /* If we made it this far, we've got a lock. */
   return 1;
-}
-
-/**
- * @brief Prints the list of tasks contained in a given mask
- *
- * @param mask The mask to analyse
- */
-void task_print_mask(unsigned int mask) {
-
-  printf("task_print_mask: The tasks to run are [");
-  for (int k = 1; k < task_type_count; k++)
-    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
-  printf(" ]\n");
-}
-
-/**
- * @brief Prints the list of subtasks contained in a given submask
- *
- * @param submask The submask to analyse
- */
-void task_print_submask(unsigned int submask) {
-
-  printf("task_print_submask: The subtasks to run are [");
-  for (int k = 1; k < task_subtype_count; k++)
-    printf(" %s=%s", subtaskID_names[k], (submask & (1 << k)) ? "yes" : "no");
-  printf(" ]\n");
 }
 
 /**
