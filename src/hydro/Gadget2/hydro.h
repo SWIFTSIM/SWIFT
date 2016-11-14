@@ -246,10 +246,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * and add the self-contribution term.
  *
  * @param p The particle to act upon
- * @param ti_current The current time (on the integer timeline)
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p, int ti_current) {
+    struct part *restrict p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;

@@ -38,6 +38,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "approx_math.h"
 #include "atomic.h"
 #include "cell.h"
@@ -159,15 +160,15 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
   struct gpart *restrict gparts = c->gparts;
   const int gcount = c->gcount;
-  const int ti_current = r->e->ti_current;
-  const struct external_potential *potential = r->e->external_potential;
-  const struct phys_const *constants = r->e->physical_constants;
+  const struct engine *e = r->e;
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *constants = e->physical_constants;
   const double time = r->e->time;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -182,8 +183,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[i];
 
       /* Is this part within the time step? */
-      if (gp->ti_end <= ti_current) {
-
+      if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
       }
     }
@@ -484,12 +484,12 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   const int count = c->count;
   const int gcount = c->gcount;
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -503,7 +503,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
 
-      if (p->ti_end <= ti_current) {
+      if (part_is_active(p, e)) {
 
         /* Get ready for a density calculation */
         hydro_init_part(p);
@@ -516,7 +516,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct gpart *restrict gp = &gparts[i];
 
-      if (gp->ti_end <= ti_current) {
+      if (gpart_is_active(gp, e)) {
 
         /* Get ready for a density calculation */
         gravity_init_gpart(gp);
@@ -541,12 +541,12 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -560,7 +560,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
 
-      if (p->ti_end <= ti_current) {
+      if (part_is_active(p, e)) {
 
         /* Get ready for a force calculation */
         hydro_end_gradient(p);
@@ -588,20 +588,20 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   int redo, count = c->count;
-  const int ti_current = r->e->ti_current;
-  const double timeBase = r->e->timeBase;
-  const float target_wcount = r->e->hydro_properties->target_neighbours;
+  const struct engine *e = r->e;
+  const int ti_current = e->ti_current;
+  const double timeBase = e->timeBase;
+  const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
-      target_wcount + r->e->hydro_properties->delta_neighbours;
+      target_wcount + e->hydro_properties->delta_neighbours;
   const float min_wcount =
-      target_wcount - r->e->hydro_properties->delta_neighbours;
-  const int max_smoothing_iter =
-      r->e->hydro_properties->max_smoothing_iterations;
+      target_wcount - e->hydro_properties->delta_neighbours;
+  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -630,10 +630,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         struct xpart *restrict xp = &xparts[pid[i]];
 
         /* Is this part within the timestep? */
-        if (p->ti_end <= ti_current) {
+        if (part_is_active(p, e)) {
 
           /* Finish the density calculation */
-          hydro_end_density(p, ti_current);
+          hydro_end_density(p);
 
           float h_corr = 0.f;
 
@@ -754,20 +754,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
-  const int ti_current = e->ti_current;
-
   /* Unskip any active tasks. */
-  if (c->ti_end_min == e->ti_current) {
+  if (cell_is_active(c, e)) {
     const int forcerebuild = cell_unskip_tasks(c, &e->sched);
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
   /* Do we really need to drift? */
   if (drift) {
-    if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
+    if (!e->drift_all && !cell_is_drift_needed(c, e)) return;
   } else {
 
-    /* Not drifting, but may still need to recurse for task skipping. */
+    /* Not drifting, but may still need to recurse for task un-skipping. */
     if (c->split) {
       for (int k = 0; k < 8; k++) {
         if (c->progeny[k] != NULL) {
@@ -779,8 +777,12 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
     return;
   }
 
+  /* Now, we can drift */
+
+  /* Get some information first */
   const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
+  const int ti_current = e->ti_current;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
@@ -793,7 +795,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
   if (!c->split) {
 
     /* Check that we are actually going to move forward. */
-    if (ti_current >= ti_old) {
+    if (ti_current > ti_old) {
 
       /* Loop over all the g-particles in the cell */
       const size_t nr_gparts = c->gcount;
@@ -837,6 +839,12 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
       dx_max = sqrtf(dx2_max);
 
     } /* Check that we are actually going to move forward. */
+
+    else {
+      /* ti_old == ti_current, just keep the current cell values. */
+      h_max = c->h_max;
+      dx_max = c->dx_max;
+    }
   }
 
   /* Otherwise, aggregate data from children. */
@@ -898,18 +906,17 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const double timeBase = e->timeBase;
-  const int ti_current = r->e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
-  const double const_G = r->e->physical_constants->const_newton_G;
+  const double const_G = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) {
+  if (!cell_is_active(c, e)) {
     c->updated = 0;
     c->g_updated = 0;
     return;
@@ -930,7 +937,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0) {
 
-        if (gp->ti_end <= ti_current) {
+        if (gpart_is_active(gp, e)) {
 
           /* First, finish the force calculation */
           gravity_end_force(gp, const_G);
@@ -961,7 +968,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
-      if (p->ti_end <= ti_current) {
+      if (part_is_active(p, e)) {
 
         /* First, finish the force loop */
         hydro_end_force(p);
@@ -1119,7 +1126,7 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj == NULL) { /* self */
-        if (ci->ti_end_min > e->ti_current && t->type != task_type_sort)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1127,7 +1134,7 @@ void *runner_main(void *data) {
               ci->ti_end_min);
 
         /* Special case for sorts */
-        if (ci->ti_end_min > e->ti_current && t->type == task_type_sort &&
+        if (!cell_is_active(ci, e) && t->type == task_type_sort &&
             t->flags == 0)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
@@ -1136,7 +1143,7 @@ void *runner_main(void *data) {
               ci->ti_end_min, t->flags);
 
       } else { /* pair */
-        if (ci->ti_end_min > e->ti_current && cj->ti_end_min > e->ti_current)
+        if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "ci->ti_end_min=%d cj->ti_end_min=%d",

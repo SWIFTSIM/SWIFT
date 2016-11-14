@@ -346,7 +346,6 @@ void space_regrid(struct space *s, int verbose) {
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
-    fflush(stdout);
 
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
@@ -1563,6 +1562,15 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     else
       c->owner = 0; /* Ok, there is really nothing on this rank... */
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
+  for (int ind = 0; ind < num_cells; ind++) {
+    int depth = 0;
+    if (!checkCellhdxmax(&cells_top[ind], &depth))
+      message("    at cell depth %d", depth);
+  }
+#endif
 }
 
 /**
