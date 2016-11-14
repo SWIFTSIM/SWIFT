@@ -24,6 +24,7 @@
 #define SWIFT_COOLING_CONST_LAMBDA_H
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
@@ -84,13 +85,16 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Calculate du_dt */
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
 
-  /* Intergrate cooling equation, but enforce energy floor */
+  /* Integrate cooling equation, but enforce energy floor */
   float u_new;
   if (u_old + du_dt * dt > u_floor) {
     u_new = u_old + du_dt * dt;
   } else {
     u_new = u_floor;
   }
+
+  /* Don't allow particle to cool too much in one timestep */
+  if (u_new < 0.5f * u_old) u_new = 0.5f * u_old;
 
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
@@ -112,13 +116,16 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
-  /* Get du_dt */
-  const float du_dt = cooling_rate(phys_const, us, cooling, p);
-
   /* Get current internal energy (dt=0) */
   const float u = hydro_get_internal_energy(p, 0.f);
+  const float du_dt = cooling_rate(phys_const, us, cooling, p);
 
-  return u / fabsf(du_dt);
+  /* If we are close to (or below) the energy floor, we ignore cooling timestep
+   */
+  if (u < 1.01f * cooling->min_energy)
+    return FLT_MAX;
+  else
+    return cooling->cooling_tstep_mult * u / fabsf(du_dt);
 }
 
 /**

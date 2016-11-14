@@ -3,7 +3,7 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
-n_snaps = 5
+n_snaps = int(sys.argv[1])
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
@@ -24,7 +24,7 @@ unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
-v_c = float(params.attrs["IsothermalPotential:vrot"])
+v_c = float(params.attrs["SoftenedIsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]

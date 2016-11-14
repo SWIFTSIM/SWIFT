@@ -71,7 +71,6 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole multi = cj->multipole;
-  const int ti_current = e->ti_current;
   const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
@@ -84,7 +83,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 #endif
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e)) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
@@ -105,7 +104,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts[pid];
 
-    if (gp->ti_end > ti_current) continue;
+    if (!gpart_is_active(gp, e)) continue;
 
     /* Compute the pairwise distance. */
     const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
@@ -138,7 +137,6 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   const int gcount_j = cj->gcount;
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
-  const int ti_current = e->ti_current;
   const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
@@ -150,7 +148,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 #endif
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -195,17 +193,17 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Interact ! */
-      if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
+      if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
 
         runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
       } else {
 
-        if (gpi->ti_end <= ti_current) {
+        if (gpart_is_active(gpi, e)) {
 
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
-        } else if (gpj->ti_end <= ti_current) {
+        } else if (gpart_is_active(gpj, e)) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
@@ -233,7 +231,6 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
   const struct engine *e = r->e;
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  const int ti_current = e->ti_current;
   const float rlr_inv = 1. / (const_gravity_a_smooth * c->super->width[0]);
 
   TIMER_TIC;
@@ -244,7 +241,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
 #endif
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
@@ -278,17 +275,17 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Interact ! */
-      if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
+      if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
 
         runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
       } else {
 
-        if (gpi->ti_end <= ti_current) {
+        if (gpart_is_active(gpi, e)) {
 
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
-        } else if (gpj->ti_end <= ti_current) {
+        } else if (gpart_is_active(gpj, e)) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
@@ -490,14 +487,13 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
   const struct engine *e = r->e;
   struct cell *cells = e->s->cells_top;
   const int nr_cells = e->s->nr_cells;
-  const int ti_current = e->ti_current;
   const double max_d =
       const_gravity_a_smooth * const_gravity_r_cut * ci->width[0];
   const double max_d2 = max_d * max_d;
   const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e)) return;
 
   /* Loop over all the cells and go for a p-m interaction if far enough but not
    * too far */

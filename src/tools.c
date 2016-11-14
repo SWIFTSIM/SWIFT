@@ -481,7 +481,7 @@ void engine_single_density(double *dim, long long int pid,
   }
 
   /* Dump the result. */
-  hydro_end_density(&p, 0);
+  hydro_end_density(&p);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
           p.density.wcount, hydro_get_density(&p));
   fflush(stdout);

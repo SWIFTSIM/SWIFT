@@ -32,6 +32,7 @@ void printParticle_single(const struct part *p, const struct xpart *xp);
 void printgParticle_single(struct gpart *gp);
 
 int checkSpacehmax(struct space *s);
+int checkCellhdxmax(const struct cell *c, int *depth);
 
 #ifdef HAVE_METIS
 #include "metis.h"
