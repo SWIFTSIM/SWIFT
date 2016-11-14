@@ -269,11 +269,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         set_velocity(part, vel, size);
         set_energy_state(part, press, size, density);
 
+        hydro_first_init_part(part, xpart);
+
         part->id = ++(*partId);
         part->ti_begin = 0;
         part->ti_end = 1;
-
-        hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH)
         part->geometry.volume = part->conserved.mass / density;
@@ -311,6 +311,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->ti_old = 1;
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 

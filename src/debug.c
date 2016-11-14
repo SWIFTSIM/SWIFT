@@ -226,7 +226,8 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   /* Check. */
   int result = 1;
   if (c->h_max != h_max) {
-    message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max, h_max);
+    message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
+            h_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
