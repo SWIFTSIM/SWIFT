@@ -1314,7 +1314,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   if (!cell_is_active(c, e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_is_drifted(ci, e);
+  cell_is_drifted(c, e);
 #endif
 
   struct part *restrict parts = c->parts;
@@ -1549,7 +1549,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   if (!cell_is_active(c, e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_is_drifted(ci, e);
+  cell_is_drifted(c, e);
 #endif
 
   struct part *restrict parts = c->parts;
