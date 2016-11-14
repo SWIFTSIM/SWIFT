@@ -764,6 +764,23 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Checks that a cell is at the current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_drift_point(struct cell *c, void *data) {
+
+  const int ti_current = *(int *)data;
+
+  if (c->ti_old != ti_current)
+    error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
+          c->ti_old, ti_current);
+}
+
+/**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
