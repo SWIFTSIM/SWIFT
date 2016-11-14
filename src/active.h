@@ -29,6 +29,34 @@
 #include "part.h"
 
 /**
+ * @brief Check that a cell been drifted to the current time.
+ *
+ * Only used for debugging. Calls error() if the cell has not
+ * been drifted. Does nothing if SWIFT_DEBUG_CHECKS is not defined.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ */
+__attribute__((always_inline)) INLINE static void cell_is_drifted(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_old > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%d "
+        "e->ti_current=%d",
+        c->ti_old, e->ti_current);
+
+  if (c->ti_old != e->ti_current) {
+    error(
+        "Cell has not been drifted to the current time c->ti_old=%d, "
+        "e->ti_current=%d",
+        c->ti_old, e->ti_current);
+  }
+#endif
+}
+
+/**
  * @brief Does a cell contain any active particle ?
  *
  * @param c The #cell.

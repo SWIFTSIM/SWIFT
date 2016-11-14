@@ -721,6 +721,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+  cell_is_drifted(cj, e);
+#endif
+
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
@@ -912,6 +917,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+  cell_is_drifted(cj, e);
+#endif
 
   /* Get the shift ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1303,6 +1313,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+#endif
+
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
@@ -1533,6 +1547,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   if (!cell_is_active(c, e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+#endif
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
