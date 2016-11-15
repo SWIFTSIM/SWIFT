@@ -21,9 +21,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Needed for gethostname() */
-#include <unistd.h>
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -43,6 +40,7 @@
 /* Some standard headers. */
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 /* This object's header. */
 #include "version.h"
