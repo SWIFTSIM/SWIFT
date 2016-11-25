@@ -996,12 +996,17 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
-  struct task *tasks = (struct task *)map_data;
+  struct scheduler *s = (struct scheduler *)extra_data;
+  const int *tid = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task *t = &s->tasks[tid[ind]];
 
+    /* Ignore skipped tasks. */
     if (t->skip) continue;
+
+    /* Increment the task's own wait counter for the enqueueing. */
+    atomic_inc(&t->wait);
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
@@ -1037,12 +1042,13 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-  /* Clear all the waits. */
-  for (int k = 0; k < s->nr_tasks; k++) s->tasks[k].wait = 1;
-
   /* Re-wait the tasks. */
-  threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, NULL);
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 1000, s);
+  } else {
+    scheduler_rewait_mapper(s->tid_active, s->active_count, s);
+  }
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1091,12 +1097,11 @@ void scheduler_start(struct scheduler *s) {
 #endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  for (int k = 0; k < s->active_count; k++) {
-    struct task *t = &s->tasks[s->tid_active[k]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip) {
-      scheduler_enqueue(s, t);
-      pthread_cond_signal(&s->sleep_cond);
-    }
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 1000, s);
+  } else {
+    scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
   /* Clear the list of active tasks. */
@@ -1232,6 +1237,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+    if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {

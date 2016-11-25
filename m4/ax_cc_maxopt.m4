@@ -160,6 +160,9 @@ if test "$ac_test_CFLAGS" != "set"; then
      # note that we enable "unsafe" fp optimization with other compilers, too
      AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")
 
+     # not all codes will benefit from this.
+     AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
+
      AX_GCC_ARCHFLAG($acx_maxopt_portable)
      ;;
 

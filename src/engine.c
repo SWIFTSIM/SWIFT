@@ -557,6 +557,11 @@ void engine_repartition(struct engine *e) {
 
   ticks tic = getticks();
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time */
+  space_check_drift_point(e->s, e->ti_current);
+#endif
+
   /* Clear the repartition flag. */
   enum repartition_type reparttype = e->forcerepart;
   e->forcerepart = REPART_NONE;
@@ -2233,6 +2238,11 @@ void engine_prepare(struct engine *e, int nodrift) {
       /* Restore the default drifting policy */
       e->drift_all = (e->policy & engine_policy_drift_all);
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that all cells have been drifted to the current time */
+    space_check_drift_point(e->s, e->ti_current);
+#endif
 
     engine_rebuild(e);
   }

@@ -193,6 +193,60 @@ int checkSpacehmax(struct space *s) {
   return 0;
 }
 
+/**
+ * @brief Check if the h_max and dx_max values of a cell's hierarchy are
+ * consistent with the particles. Report verbosely if not.
+ *
+ * @param c the top cell of the hierarchy.
+ * @param depth the recursion depth for use in messages. Set to 0 initially.
+ * @result 1 or 0
+ */
+int checkCellhdxmax(const struct cell *c, int *depth) {
+
+  *depth = *depth + 1;
+
+  float h_max = 0.0f;
+  float dx_max = 0.0f;
+  if (!c->split) {
+    const size_t nr_parts = c->count;
+    struct part *parts = c->parts;
+    for (size_t k = 0; k < nr_parts; k++) {
+      h_max = (h_max > parts[k].h) ? h_max : parts[k].h;
+    }
+  } else {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        checkCellhdxmax(cp, depth);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
+      }
+  }
+
+  /* Check. */
+  int result = 1;
+  if (c->h_max != h_max) {
+    message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
+            h_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+  if (c->dx_max != dx_max) {
+    message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max, dx_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  /* Check rebuild criterion. */
+  if (h_max > c->dmin) {
+    message("%d Inconsistent c->dmin: %f > %f", *depth, h_max, c->dmin);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  return result;
+}
+
 #ifdef HAVE_METIS
 
 /**

@@ -47,6 +47,7 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "error.h"
 #include "gravity.h"
@@ -701,6 +702,23 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Checks that a cell is at the current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_drift_point(struct cell *c, void *data) {
+
+  const int ti_current = *(int *)data;
+
+  if (c->ti_old != ti_current)
+    error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
+          c->ti_old, ti_current);
+}
+
+/**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
@@ -805,14 +823,14 @@ void cell_clean(struct cell *c) {
  * @brief Checks whether a given cell needs drifting or not.
  *
  * @param c the #cell.
- * @param ti_current The current time on the integer time-line.
+ * @param e The #engine (holding current time information).
  *
  * @return 1 If the cell needs drifting, 0 otherwise.
  */
-int cell_is_drift_needed(struct cell *c, int ti_current) {
+int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 
   /* Do we have at least one active particle in the cell ?*/
-  if (c->ti_end_min == ti_current) return 1;
+  if (cell_is_active(c, e)) return 1;
 
   /* Loop over the pair tasks that involve this cell */
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -820,9 +838,9 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
     if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
       continue;
 
-    /* Does the other cell in the pair have an active particle ? */
-    if ((l->t->ci == c && l->t->cj->ti_end_min == ti_current) ||
-        (l->t->cj == c && l->t->ci->ti_end_min == ti_current))
+    /* Is the other cell in the pair active ? */
+    if ((l->t->ci == c && cell_is_active(l->t->cj, e)) ||
+        (l->t->cj == c && cell_is_active(l->t->ci, e)))
       return 1;
   }
 

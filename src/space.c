@@ -363,6 +363,8 @@ void space_regrid(struct space *s, int verbose) {
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
+
+    /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++)
       if (lock_init(&s->cells_top[k].lock) != 0)
         error("Failed to init spinlock.");
@@ -391,7 +393,6 @@ void space_regrid(struct space *s, int verbose) {
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
-    fflush(stdout);
 
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
@@ -1635,6 +1636,15 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[ind];
     space_split_recursive(s, c, NULL);
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
+  for (int ind = 0; ind < num_cells; ind++) {
+    int depth = 0;
+    if (!checkCellhdxmax(&cells_top[ind], &depth))
+      message("    at cell depth %d", depth);
+  }
+#endif
 }
 
 /**
@@ -1937,11 +1947,27 @@ void space_init(struct space *s, const struct swift_params *params,
  * @brief Cleans-up all the cell links in the space
  *
  * Expensive funtion. Should only be used for debugging purposes.
+ *
+ * @param s The #space to clean.
  */
 void space_link_cleanup(struct space *s) {
 
   /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
+}
+
+/**
+ * @brief Checks that all cells have been drifted to the current point in time
+ *
+ * Expensive function. Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ * @param ti_current The (integer) time.
+ */
+void space_check_drift_point(struct space *s, int ti_current) {
+
+  /* Recursively check all cells */
+  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_current);
 }
 
 /**

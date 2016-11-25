@@ -285,6 +285,11 @@ int main(int argc, char *argv[]) {
   message("Running on: %s", hostname());
 #endif
 
+/* Do we have debugging checks ? */
+#ifdef SWIFT_DEBUG_CHECKS
+  message("WARNING: Debugging checks activated. Code will be slower !");
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
