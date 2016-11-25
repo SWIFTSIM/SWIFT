@@ -278,19 +278,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-# Add loop unrolling to the compiler flags, if requested.
-AC_ARG_ENABLE([loop-unrolling],
-   [AS_HELP_STRING([--enable-loop-unrolling],
-     [Tell the compiler explicitly to unroll loops @<:@no/yes@:>@]
-   )],
-   [enable_loop_unrolling="$enableval"],
-   [enable_loop_unrolling="$enable_opt"]
-)
-if test "$enable_loop_unrolling" = "yes"; then
-    CFLAGS="$CFLAGS -funroll-loops"
-fi
-
-
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
