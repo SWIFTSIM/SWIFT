@@ -1,10 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -55,8 +51,8 @@
  * __attribute__((aligned(32)))
  * syntax, and the code is compiled with @c -funroll-loops.
  *
- * @param a Pointer to the first element.
- * @param b Pointer to the second element.
+ * @param void_a Pointer to the first element.
+ * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
 __attribute__((always_inline)) inline void memswap(void *void_a, void *void_b,
