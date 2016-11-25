@@ -436,9 +436,37 @@ void space_regrid(struct space *s, int verbose) {
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
-    threadpool_map(&s->e->threadpool, space_clear_cells_mapper, s->cells_top,
-                   s->nr_cells, sizeof(struct cell), 100, s);
-    // space_clear_cells_mapper(s->cells_top, s->nr_cells, s);
+    for (int k = 0; k < s->nr_cells; k++) {
+      space_rebuild_recycle(s, &s->cells_top[k]);
+      s->cells_top[k].sorts = NULL;
+      s->cells_top[k].nr_tasks = 0;
+      s->cells_top[k].density = NULL;
+      s->cells_top[k].gradient = NULL;
+      s->cells_top[k].force = NULL;
+      s->cells_top[k].grav = NULL;
+      s->cells_top[k].dx_max = 0.0f;
+      s->cells_top[k].sorted = 0;
+      s->cells_top[k].count = 0;
+      s->cells_top[k].gcount = 0;
+      s->cells_top[k].init = NULL;
+      s->cells_top[k].extra_ghost = NULL;
+      s->cells_top[k].ghost = NULL;
+      s->cells_top[k].kick = NULL;
+      s->cells_top[k].cooling = NULL;
+      s->cells_top[k].sourceterms = NULL;
+      s->cells_top[k].super = &s->cells_top[k];
+#if WITH_MPI
+      s->cells_top[k].recv_xv = NULL;
+      s->cells_top[k].recv_rho = NULL;
+      s->cells_top[k].recv_gradient = NULL;
+      s->cells_top[k].recv_ti = NULL;
+
+      s->cells_top[k].send_xv = NULL;
+      s->cells_top[k].send_rho = NULL;
+      s->cells_top[k].send_gradient = NULL;
+      s->cells_top[k].send_ti = NULL;
+#endif
+    }
     s->maxdepth = 0;
   }
 
@@ -673,7 +701,7 @@ void space_rebuild(struct space *s, int verbose) {
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_gindex = 0;
-  gind[nr_parts] = s->nr_cells;
+  gind[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (gind[k] < gind[k + 1]) {
       cells_top[ind[k]].gcount = k - last_gindex + 1;
@@ -1617,17 +1645,26 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_recycle(struct space *s, struct cell *c) {
 
+  /* Lock the space. */
+  lock_lock(&s->lock);
+
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
-  /* Hook this cell into the buffer. */
-  c->next = atomic_swap(&s->cells_sub, c);
-  atomic_dec(&s->tot_cells);
-}
+  /* Clear the cell data. */
+  bzero(c, sizeof(struct cell));
 
+  /* Hook this cell into the buffer. */
+  c->next = s->cells_sub;
+  s->cells_sub = c;
+  s->tot_cells -= 1;
+
+  /* Unlock the space. */
+  lock_unlock_blind(&s->lock);
+}
 /**
  * @brief Get a new empty (sub-)#cell.
  *
