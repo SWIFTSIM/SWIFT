@@ -559,7 +559,6 @@ case "$with_hydro" in
    ;;
 esac
 
-
 # SPH Kernel function
 AC_ARG_WITH([kernel],
    [AS_HELP_STRING([--with-kernel=<kernel>],
@@ -591,7 +590,6 @@ case "$with_kernel" in
       AC_MSG_ERROR([Unknown kernel function: $with_kernel])
    ;;
 esac
-
 
 #  Dimensionality of the hydro scheme.
 AC_ARG_WITH([hydro-dimension],
@@ -659,6 +657,32 @@ case "$with_gamma" in
    ;; 
    *)
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
+   ;;
+esac
+
+#  Riemann solver
+AC_ARG_WITH([riemann-solver],
+   [AS_HELP_STRING([--with-riemann-solver=<solver>],
+      [riemann solver (gizmo-sph only) @<:@none, exact, trrs, hllc, default: none@:>@]
+   )],
+   [with_riemann="$withval"],
+   [with_riemann="none"]
+)
+case "$with_riemann" in
+   none)
+      AC_DEFINE([RIEMANN_SOLVER_NONE], [1], [No Riemann solver])
+   ;; 
+   exact)
+      AC_DEFINE([RIEMANN_SOLVER_EXACT], [1], [Exact Riemann solver])
+   ;; 
+   trrs)
+      AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
+   ;; 
+   hllc)
+      AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
 
@@ -760,6 +784,7 @@ AC_MSG_RESULT([
    Kernel function    : $with_kernel
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
+   Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
    External potential : $with_potential
    Task debugging     : $enable_task_debugging

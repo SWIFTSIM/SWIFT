@@ -45,11 +45,6 @@
 #define const_gravity_r_cut 4.5f
 #define const_gravity_eta 0.025f
 
-/* Riemann solver to use (GIZMO_SPH only) */
-#define RIEMANN_SOLVER_EXACT
-//#define RIEMANN_SOLVER_TRRS
-//#define RIEMANN_SOLVER_HLLC
-
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH
