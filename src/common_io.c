@@ -40,7 +40,6 @@
 #include "common_io.h"
 
 /* Local includes. */
-#include "const.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"

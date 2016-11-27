@@ -32,7 +32,6 @@
 
 /* Local includes. */
 #include "cell.h"
-#include "const.h"
 #include "engine.h"
 #include "hydro.h"
 #include "inline.h"
