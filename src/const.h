@@ -40,7 +40,7 @@
 #define const_isothermal_internal_energy 20.2615290634f
 
 /* Dimensionality of the problem */
-#define HYDRO_DIMENSION_3D
+//#define HYDRO_DIMENSION_3D
 //#define HYDRO_DIMENSION_2D
 //#define HYDRO_DIMENSION_1D
 
@@ -64,7 +64,7 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-#define GADGET2_SPH
+//#define GADGET2_SPH
 //#define HOPKINS_PE_SPH
 //#define DEFAULT_SPH
 //#define GIZMO_SPH
