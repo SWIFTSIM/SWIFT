@@ -20,7 +20,6 @@
 #define SWIFT_HYDRO_H
 
 /* Includes. */
-#include "const.h"
 #include "hydro_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
