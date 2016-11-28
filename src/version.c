@@ -150,25 +150,6 @@ const char *compilation_cflags(void) {
 }
 
 /**
- * @brief Return the CPPFLAGS the code was compiled with
- *
- * @result List of CPPFLAGS within simple quotes (')
- */
-const char *compilation_cppflags(void) {
-  static char buf[1024];
-  static int initialised = 0;
-  static const char *cppflags = SWIFT_CPPFLAGS;
-  if (!initialised) {
-    if (strlen(cppflags) < 1024 - 2)
-      sprintf(buf, "'%s'", cppflags);
-    else
-      error("SWIFT_CPPFLAGS string longer than buffer");
-    initialised = 1;
-  }
-  return buf;
-}
-
-/**
  * @brief The version of SWIFT
  *
  * @result the package version
@@ -356,7 +337,6 @@ void greetings(void) {
   printf(" Config. options: %s\n\n", configuration_options());
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
   printf(" CFLAGS  : %s\n", compilation_cflags());
-  printf(" CPPFLAGS: %s\n", compilation_cppflags());
   printf("\n");
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());

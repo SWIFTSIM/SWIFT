@@ -375,7 +375,6 @@ void writeCodeDescription(hid_t h_file) {
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
   writeAttribute_s(h_grpcode, "Configuration options", configuration_options());
   writeAttribute_s(h_grpcode, "CFLAGS", compilation_cflags());
-  writeAttribute_s(h_grpcode, "CPPFLAGS", compilation_cppflags());
   writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());
 #ifdef HAVE_FFTW
   writeAttribute_s(h_grpcode, "FFTW library version", fftw3_version());

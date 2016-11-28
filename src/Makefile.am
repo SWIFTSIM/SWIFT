@@ -109,15 +109,13 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
 	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
-	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" \
-	        -e "s|@SWIFT_CPPFLAGS\@|$(CPPFLAGS)|" $< > version_string.h; \
+	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
 		    -e "s,@GIT_BRANCH\@,unknown," \
-	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" \
-	            -e "s|@SWIFT_CPPFLAGS\@|$(CPPLAGS)|" $< > version_string.h; \
+	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi
 
