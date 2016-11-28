@@ -16,8 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.4.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim],,[www.swiftsim.com])
+AC_INIT([SWIFT],[0.4.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
+AC_DEFINE([PACKAGE_URL],["www.swift.comi"], [Package web pages])
+
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
