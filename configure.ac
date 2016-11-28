@@ -20,7 +20,7 @@ AC_INIT([SWIFT],[0.4.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
-AC_DEFINE([PACKAGE_URL],["www.swift.comi"], [Package web pages])
+AC_DEFINE([PACKAGE_URL],["www.swift.com"], [Package web pages])
 
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
