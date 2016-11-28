@@ -2,8 +2,11 @@ import numpy as np
 import h5py as h5
 import matplotlib.pyplot as plt
 import sys
+import glob
 
-n_snaps = 101
+# Get the total number of snapshots
+file_list = glob.glob("CoolingHalo_*")
+n_snaps = len(file_list)
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
