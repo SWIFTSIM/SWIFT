@@ -27,6 +27,7 @@
 #include "const.h"
 #include "engine.h"
 #include "part.h"
+#include "timeline.h"
 
 /**
  * @brief Check that a cell been drifted to the current time.
@@ -107,7 +108,8 @@ __attribute__((always_inline)) INLINE static int part_is_active(
           p->ti_end, e->ti_current);
 #endif
 
-  return (p->ti_end == e->ti_current);
+  // return (p->ti_end == e->ti_current);
+  return (p->time_bin < get_max_active_bin(e->ti_current));
 }
 
 /**
@@ -126,7 +128,8 @@ __attribute__((always_inline)) INLINE static int gpart_is_active(
         gp->ti_end, e->ti_current);
 #endif
 
-  return (gp->ti_end == e->ti_current);
+  // return (gp->ti_end == e->ti_current);
+  return (gp->time_bin < get_max_active_bin(e->ti_current));
 }
 
 #endif /* SWIFT_ACTIVE_H */

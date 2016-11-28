@@ -1529,7 +1529,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
         struct part *p = &parts[k];
         struct xpart *xp = &xparts[k];
         const float h = p->h;
-        const int ti_end = p->ti_end;
+        const int ti_end = get_integer_time_end(e->ti_current, p->time_bin);
         xp->x_diff[0] = 0.f;
         xp->x_diff[1] = 0.f;
         xp->x_diff[2] = 0.f;
@@ -1539,7 +1539,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
       }
       for (int k = 0; k < gcount; k++) {
         struct gpart *gp = &gparts[k];
-        const int ti_end = gp->ti_end;
+        const int ti_end = get_integer_time_end(e->ti_current, gp->time_bin);
         gp->x_diff[0] = 0.f;
         gp->x_diff[1] = 0.f;
         gp->x_diff[2] = 0.f;

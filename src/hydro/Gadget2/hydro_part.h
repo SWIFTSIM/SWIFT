@@ -50,6 +50,12 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
+  /* Particle ID. */
+  long long id;
+
+  /* Pointer to corresponding gravity part. */
+  struct gpart* gpart;
+
   /* Particle position. */
   double x[3];
 
@@ -66,10 +72,10 @@ struct part {
   float mass;
 
   /* Particle time of beginning of time-step. */
-  int ti_begin;
+  // int ti_begin;
 
   /* Particle time of end of time-step. */
-  int ti_end;
+  // int ti_end;
 
   /* Particle density. */
   float rho;
@@ -124,11 +130,8 @@ struct part {
     } force;
   };
 
-  /* Particle ID. */
-  long long id;
-
-  /* Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  /* Time-step length */
+  timebin_t time_bin;
 
 } SWIFT_STRUCT_ALIGN;
 

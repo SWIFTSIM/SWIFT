@@ -19,11 +19,12 @@
 #ifndef SWIFT_DEFAULT_GRAVITY_PART_H
 #define SWIFT_DEFAULT_GRAVITY_PART_H
 
-/* Some standard headers. */
-#include <stdlib.h>
-
 /* Gravity particle. */
 struct gpart {
+
+  /* Particle ID. If negative, it is the negative offset of the #part with
+     which this gpart is linked. */
+  long long id_or_neg_offset;
 
   /* Particle position. */
   double x[3];
@@ -44,14 +45,13 @@ struct gpart {
   float epsilon;
 
   /* Particle time of beginning of time-step. */
-  int ti_begin;
+  // int ti_begin;
 
   /* Particle time of end of time-step. */
-  int ti_end;
+  // int ti_end;
 
-  /* Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
-  long long id_or_neg_offset;
+  /* Time-step length */
+  timebin_t time_bin;
 
 } SWIFT_STRUCT_ALIGN;
 

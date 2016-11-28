@@ -82,9 +82,6 @@ extern const char *engine_policy_names[];
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
 
-/* The maximal number of timesteps in a simulation */
-#define max_nr_timesteps (1 << 28)
-
 /* Data structure for the engine. */
 struct engine {
 

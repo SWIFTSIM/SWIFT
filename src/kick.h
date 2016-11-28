@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "const.h"
 #include "debug.h"
+#include "timeline.h"
 
 /**
  * @brief Perform the 'kick' operation on a #gpart
@@ -68,8 +69,10 @@ __attribute__((always_inline)) INLINE static void kick_part(
     double timeBase) {
 
   /* Compute the time step for this kick */
-  const int ti_start = (p->ti_begin + p->ti_end) / 2;
-  const int ti_end = p->ti_end + new_dti / 2;
+  const integertime_t ti_begin = get_integer_time_begin(t1, p->time_bin);
+  const integertime_t ti_end = get_integer_time_end(t1, p->time_bin);
+  const int ti_start = (ti_begin + ti_end) / 2;
+  const int ti_end = ti_end + new_dti / 2;
   const float dt = (ti_end - ti_start) * timeBase;
   const float half_dt = (ti_end - p->ti_end) * timeBase;
 
