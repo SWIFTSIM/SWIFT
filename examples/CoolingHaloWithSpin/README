@@ -1,4 +1,5 @@
-
+Initial Conditions Generation
+-----------------------------
 To make the initial conditions we distribute gas particles randomly in
 a cube with a side length twice that of the virial radius. The density
 profile of the gas is proportional to r^(-2) where r is the distance
@@ -16,14 +17,31 @@ While the system is initially in hydrostatic equilibrium, the cooling
 of the gas and the non-zero angular momentum means that the halo will
 collapse into a spinning disc.
 
+Compilation
+-----------
 To run this example, make such that the code is compiled with either
 the isothermal potential or softened isothermal potential, and
 'const_lambda' cooling, set in src/const.h. In the latter case, a
 (small) value of epsilon needs to be set in cooling.yml.  0.1 kpc
 should work well.
 
+Checking Results
+----------------
 The plotting scripts produce a plot of the density, internal energy
 and radial velocity profile for each
 snapshot. test_energy_conservation.py shows the evolution of energy
 with time. These can be used to check if the example has run properly.
 
+Generating Video
+----------------
+If you want to generate a video of the simulation, the frequency of 
+the snaphots needs to be increased. This can be modified in cooling.yml 
+by changing 'delta_time' to 0.01. 
+
+Once you have the snapshots, 'gadgetviewer' can be used to create a 
+series of snapshot frames. The frames can then be combined together with 
+'ffmpeg' to produce a video. The following command can be used:
+
+ffmpeg -r 20 -i frame_%05d.image.png -c:v ffv1 -qscale:v 0 movie.avi
+
+to produce the video.
