@@ -38,7 +38,6 @@
 
 /* Includes. */
 #include "adiabatic_index.h"
-#include "const.h"
 #include "error.h"
 
 /**

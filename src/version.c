@@ -39,10 +39,12 @@
 
 /* Some standard headers. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 /* This object's header. */
+#include "error.h"
 #include "version.h"
 
 /* Local headers. */
@@ -104,6 +106,44 @@ const char *git_branch(void) {
       sprintf(buf, "%s", "unknown");
     else
       sprintf(buf, "%s", branch);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the options passed to the 'configure' script
+ *
+ * @result List of configuration options within simple quotes (').
+ */
+const char *configuration_options(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *config = SWIFT_CONFIG_FLAGS;
+  if (!initialised) {
+    if (strlen(config) < 1024 - 2)
+      sprintf(buf, "'%s'", config);
+    else
+      error("SWIFT_CONFIG_FLAGS string longer than buffer");
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the CFLAGS the code was compiled with
+ *
+ * @result List of CFLAGS within simple quotes (').
+ */
+const char *compilation_cflags(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *cflags = SWIFT_CFLAGS;
+  if (!initialised) {
+    if (strlen(cflags) < 1024 - 2)
+      sprintf(buf, "'%s'", cflags);
+    else
+      error("SWIFT_CFLAGS string longer than buffer");
     initialised = 1;
   }
   return buf;
@@ -293,8 +333,11 @@ void greetings(void) {
 
   printf(" Version : %s\n", package_version());
   printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
-  printf(" Webpage : www.swiftsim.com\n\n");
+  printf(" Webpage : %s\n\n", PACKAGE_URL);
+  printf(" Config. options: %s\n\n", configuration_options());
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
+  printf(" CFLAGS  : %s\n", compilation_cflags());
+  printf("\n");
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());
 #endif

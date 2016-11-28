@@ -32,7 +32,6 @@
 
 /* Local headers. */
 #include "align.h"
-#include "const.h"
 
 /* Some constants. */
 #define part_align 128
