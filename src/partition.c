@@ -47,7 +47,6 @@
 #endif
 
 /* Local headers. */
-#include "const.h"
 #include "debug.h"
 #include "error.h"
 #include "partition.h"

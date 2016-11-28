@@ -16,7 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.4.0])
+AC_INIT([SWIFT],[0.4.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+swift_config_flags="$*"
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
+AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
+
+AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
@@ -180,6 +186,18 @@ AC_ARG_ENABLE([task-debugging],
 )
 if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
+# Check if expensive debugging is on.
+AC_ARG_ENABLE([debugging-checks],
+   [AS_HELP_STRING([--enable-debugging-checks],
+     [Activate expensive consistency checks @<:@yes/no@:>@]
+   )],
+   [enable_debugging_checks="$enableval"],
+   [enable_debugging_checks="no"]
+)
+if test "$enable_debugging_checks" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
 # Define HAVE_POSIX_MEMALIGN if it works.
@@ -513,6 +531,222 @@ if test "$enable_warn" != "no"; then
     fi
 fi
 
+# Various package configuration options.
+
+# Hydro scheme.
+AC_ARG_WITH([hydro],
+   [AS_HELP_STRING([--with-hydro=<scheme>],
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo default: gadget2@:>@]
+   )],
+   [with_hydro="$withval"],
+   [with_hydro="gadget2"]
+)
+case "$with_hydro" in
+   gadget2)
+      AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
+   ;; 
+   minimal)
+      AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
+   ;; 
+   hopkins)
+      AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
+   ;; 
+   default)
+      AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
+   ;; 
+   gizmo)
+      AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   ;; 
+
+   *)
+      AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
+   ;;
+esac
+
+# SPH Kernel function
+AC_ARG_WITH([kernel],
+   [AS_HELP_STRING([--with-kernel=<kernel>],
+      [Kernel function to use @<:@cubic-spline, quartic-spline, quintic-spline, wendland-C2, wendland-C4, wendland-C6 default: cubic-spline@:>@]
+   )],
+   [with_kernel="$withval"],
+   [with_kernel="cubic-spline"]
+)
+case "$with_kernel" in
+   cubic-spline)
+      AC_DEFINE([CUBIC_SPLINE_KERNEL], [1], [Cubic spline kernel])
+   ;;    
+   quartic-spline)
+      AC_DEFINE([QUARTIC_SPLINE_KERNEL], [1], [Quartic spline kernel])
+   ;;    
+   quintic-spline)
+      AC_DEFINE([QUINTIC_SPLINE_KERNEL], [1], [Quintic spline kernel])
+   ;;    
+   wendland-C2)
+      AC_DEFINE([WENDLAND_C2_KERNEL], [1], [Wendland-C2 kernel])
+   ;;    
+   wendland-C4)
+      AC_DEFINE([WENDLAND_C4_KERNEL], [1], [Wendland-C4 kernel])
+   ;;    
+   wendland-C6)
+      AC_DEFINE([WENDLAND_C6_KERNEL], [1], [Wendland-C6 kernel])
+   ;;    
+   *)
+      AC_MSG_ERROR([Unknown kernel function: $with_kernel])
+   ;;
+esac
+
+#  Dimensionality of the hydro scheme.
+AC_ARG_WITH([hydro-dimension],
+   [AS_HELP_STRING([--with-hydro-dimension=<dim>],
+      [dimensionality of problem @<:@3/2/1 default: 3@:>@]
+   )],
+   [with_dimension="$withval"],
+   [with_dimension="3"]
+)
+case "$with_dimension" in
+   1)
+      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D analysis])
+   ;; 
+   2)
+      AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D analysis])
+   ;; 
+   3)
+      AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D analysis])
+   ;; 
+   *)
+      AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
+   ;;
+esac
+
+#  Equation of state
+AC_ARG_WITH([equation-of-state],
+   [AS_HELP_STRING([--with-equation-of-state=<EoS>],
+      [equation of state @<:@ideal-gas, isothermal-gas default: ideal-gas@:>@]
+   )],
+   [with_eos="$withval"],
+   [with_eos="ideal-gas"]
+)
+case "$with_eos" in
+   ideal-gas)
+      AC_DEFINE([EOS_IDEAL_GAS], [1], [Ideal gas equation of state])
+   ;; 
+   isothermal-gas)
+      AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown equation of state: $with_eos])
+   ;;
+esac
+
+#  Adiabatic index
+AC_ARG_WITH([adiabatic-index],
+   [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+   )],
+   [with_gamma="$withval"],
+   [with_gamma="5/3"]
+)
+case "$with_gamma" in
+   5/3)
+      AC_DEFINE([HYDRO_GAMMA_5_3], [5./3.], [Adiabatic index is 5/3])
+   ;; 
+   7/5)
+      AC_DEFINE([HYDRO_GAMMA_7_5], [7./5.], [Adiabatic index is 7/5])
+   ;; 
+   4/3)
+      AC_DEFINE([HYDRO_GAMMA_4_3], [4./3.], [Adiabatic index is 4/3])
+   ;; 
+   2)
+      AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
+   ;;
+esac
+
+#  Riemann solver
+AC_ARG_WITH([riemann-solver],
+   [AS_HELP_STRING([--with-riemann-solver=<solver>],
+      [riemann solver (gizmo-sph only) @<:@none, exact, trrs, hllc, default: none@:>@]
+   )],
+   [with_riemann="$withval"],
+   [with_riemann="none"]
+)
+case "$with_riemann" in
+   none)
+      AC_DEFINE([RIEMANN_SOLVER_NONE], [1], [No Riemann solver])
+   ;; 
+   exact)
+      AC_DEFINE([RIEMANN_SOLVER_EXACT], [1], [Exact Riemann solver])
+   ;; 
+   trrs)
+      AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
+   ;; 
+   hllc)
+      AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
+   ;;
+esac
+
+#  Cooling function
+AC_ARG_WITH([cooling],
+   [AS_HELP_STRING([--with-cooling=<function>],
+      [cooling function @<:@none, const-du, const-lambda, grackle default: none@:>@]
+   )],
+   [with_cooling="$withval"],
+   [with_cooling="none"]
+)
+case "$with_cooling" in
+   none)
+      AC_DEFINE([COOLING_NONE], [1], [No cooling function])
+   ;; 
+   const-du)
+      AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
+   ;; 
+   const-lambda)
+      AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+   ;; 
+   grackle)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+#  External potential
+AC_ARG_WITH([ext-potential],
+   [AS_HELP_STRING([--with-ext-potential=<pot>],
+      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch default: none@:>@]
+   )],
+   [with_potential="$withval"],
+   [with_potential="none"]
+)
+case "$with_potential" in
+   none)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NONE], [1], [No external potential])
+   ;; 
+   point-mass)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS], [1], [Point-mass external potential])
+   ;; 
+   isothermal)
+      AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
+   ;; 
+   softened-isothermal)
+      AC_DEFINE([EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL], [1], [Softened isothermal external potential])
+   ;; 
+   disc-patch)
+      AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown external potential: $with_potential])
+   ;;
+esac
+
+
+
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
@@ -531,6 +765,9 @@ AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPert
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
+# Save the compilation options
+AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
+
 # Report general configuration.
 AC_MSG_RESULT([
    Compiler        : $CC
@@ -545,7 +782,17 @@ AC_MSG_RESULT([
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
    CPU profiler    : $have_profiler
-   Task debugging  : $enable_task_debugging
+
+   Hydro scheme       : $with_hydro
+   Dimensionality     : $with_dimension
+   Kernel function    : $with_kernel
+   Equation of state  : $with_eos
+   Adiabatic index    : $with_gamma
+   Riemann solver     : $with_riemann
+   Cooling function   : $with_cooling
+   External potential : $with_potential
+   Task debugging     : $enable_task_debugging
+   Debugging checks   : $enable_debugging_checks
 ])
 
 # Generate output.

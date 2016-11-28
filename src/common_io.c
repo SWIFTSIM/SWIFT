@@ -40,7 +40,6 @@
 #include "common_io.h"
 
 /* Local includes. */
-#include "const.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -374,6 +373,8 @@ void writeCodeDescription(hid_t h_file) {
   writeAttribute_s(h_grpcode, "Compiler Version", compiler_version());
   writeAttribute_s(h_grpcode, "Git Branch", git_branch());
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
+  writeAttribute_s(h_grpcode, "Configuration options", configuration_options());
+  writeAttribute_s(h_grpcode, "CFLAGS", compilation_cflags());
   writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());
 #ifdef HAVE_FFTW
   writeAttribute_s(h_grpcode, "FFTW library version", fftw3_version());

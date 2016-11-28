@@ -20,7 +20,15 @@
 #ifndef SWIFT_RIEMANN_HLLC_H
 #define SWIFT_RIEMANN_HLLC_H
 
+/* Some standard headers. */
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Local headers. */
 #include "adiabatic_index.h"
+#include "error.h"
 #include "minmax.h"
 #include "riemann_vacuum.h"
 

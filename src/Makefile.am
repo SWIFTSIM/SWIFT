@@ -108,12 +108,14 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" $< > version_string.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
+	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," $< > version_string.h; \
+		    -e "s,@GIT_BRANCH\@,unknown," \
+	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi
 

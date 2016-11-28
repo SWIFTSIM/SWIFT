@@ -27,9 +27,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "const.h"
-
 /* Import the right cooling definition */
 #if defined(COOLING_NONE)
 #include "./cooling/none/cooling_struct.h"
