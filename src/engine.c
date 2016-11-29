@@ -84,6 +84,8 @@ const char *engine_policy_names[16] = {"none",
                                        "drift_all",
                                        "cooling",
                                        "sourceterms"};
+/* Particle cache size. */
+const int cache_size = 512;
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -3357,6 +3359,10 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
+
+    /* Allocate particle cache. */
+    cache_init(&e->runners[k].par_cache,cache_size);
+
     if (verbose) {
       if (with_aff)
         message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
