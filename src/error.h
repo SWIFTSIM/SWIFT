@@ -21,15 +21,20 @@
 #ifndef SWIFT_ERROR_H
 #define SWIFT_ERROR_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <stdio.h>
-
-#include "clocks.h"
+#include <stdlib.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
+
+/* Local headers. */
+#include "clocks.h"
 
 /**
  * @brief Error macro. Prints the message given in argument and aborts.

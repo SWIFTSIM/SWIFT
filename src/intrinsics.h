@@ -19,11 +19,17 @@
 #ifndef SWIFT_INTRINSICS_H
 #define SWIFT_INTRINSICS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local headers. */
+#include "inline.h"
+
 /**
  * @brief Returns the number of leading 0-bits in x, starting at the most
  * significant bit position. If x is 0, the result is undefined.
  *
- * This is a wrapper for the GCC intrinsics with an implementation (from
+ * This is a wrapper for the GNU intrinsic with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
 __attribute__((always_inline)) INLINE static int intrinsics_clz(
@@ -63,7 +69,7 @@ __attribute__((always_inline)) INLINE static int intrinsics_clz(
 /**
  * @brief Returns the number of 1-bits in x.
  *
- * This is a wrapper for the GCC intrinsics with an implementation (from
+ * This is a wrapper for the GNU intrinsic with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
 __attribute__((always_inline)) INLINE static int intrinsics_popcount(
