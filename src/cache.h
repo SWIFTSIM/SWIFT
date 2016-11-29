@@ -26,6 +26,7 @@
 #include "vector.h"
 #include "part.h"
 #include "cell.h"
+#include "error.h"
 
 /* Cache struct to hold a local copy of a cells' particle 
  * properties required for density/force calculations.*/
@@ -59,8 +60,6 @@ struct cache {
   int count;
 
 };
-
-struct cache cell_cache;
 
 /**
  * @brief Allocate memory and initialise cache.
