@@ -257,6 +257,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -386,8 +387,10 @@ int main(int argc, char *argv[]) {
         runner_dopair1_density(&runner, main_cell, cells[j]);
 
     /* And now the self-interaction */
+#ifdef WITH_VECTORIZATION
+    runner_doself1_density_vec(&runner, main_cell);
+#else
     runner_doself1_density(&runner, main_cell);
-
 #endif
 
     const ticks toc = getticks();
