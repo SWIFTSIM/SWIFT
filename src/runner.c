@@ -59,6 +59,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "runner_doiact_vec.h"
 
 /**
  * @brief  Entry in a list of sorted indices.
@@ -1155,7 +1156,13 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) {
+#ifdef WITH_VECTORIZATION
+            runner_doself1_density_vec(r, ci);
+#else
+            runner_doself1_density(r, ci);
+#endif
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_doself1_gradient(r, ci);
