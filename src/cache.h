@@ -74,6 +74,18 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c, size_t co
   unsigned int sizeBytes = (count + (2 * VEC_SIZE)) * sizeof(float);
   int error = 0;
 
+  /* Free memory if cache has already been allocated. */
+  if (c->count > 0) {
+    free(c->x);
+    free(c->y);
+    free(c->z);
+    free(c->m);
+    free(c->vx);
+    free(c->vy);
+    free(c->vz);
+    free(c->h);
+  }
+
   error += posix_memalign((void **)&c->x, alignment,sizeBytes);
   error += posix_memalign((void **)&c->y, alignment,sizeBytes);
   error += posix_memalign((void **)&c->z, alignment,sizeBytes);
