@@ -3361,6 +3361,7 @@ void engine_init(struct engine *e, struct space *s,
     }
 
     /* Allocate particle cache. */
+    e->runners[k].par_cache.count = 0;
     cache_init(&e->runners[k].par_cache,cache_size);
 
     if (verbose) {
