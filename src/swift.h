@@ -56,5 +56,6 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
+#include "cache.h"
 
 #endif /* SWIFT_SWIFT_H */
