@@ -388,9 +388,13 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction */
 #ifdef WITH_VECTORIZATION
+    runner.par_cache.count = 0;
+    cache_init(&runner.par_cache,512);
     runner_doself1_density_vec(&runner, main_cell);
 #else
     runner_doself1_density(&runner, main_cell);
+#endif
+
 #endif
 
     const ticks toc = getticks();
