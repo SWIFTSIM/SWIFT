@@ -278,6 +278,18 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+
+/* qsort support. */
+struct indexval {
+  int index;
+  int count;
+};
+static int indexvalcmp(const void *p1, const void *p2) {
+  const struct indexval *iv1 = (const struct indexval *)p1;
+  const struct indexval *iv2 = (const struct indexval *)p2;
+  return iv2->count - iv1->count;
+}
+
 /**
  * @brief Partition the given space into a number of connected regions.
  *
@@ -382,14 +394,86 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
     if (regionid[k] < 0 || regionid[k] >= nregions)
       error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
 
+  /* We want a solution in which the current regions of the space are
+   * preserved when possible, to avoid unneccesary particle movement.
+   * So try mapping the current regions to the new regions and reassigning
+   * those with the greatest number of common cells... */
+  int keymax = nregions + nregions * nregions;
+  struct indexval *ivs = malloc(sizeof(struct indexval) * keymax);
+  bzero(ivs, sizeof(struct indexval) * keymax);
+  for (int k = 0; k < ncells; k++) {
+      int index = regionid[k] + nregions * s->cells_top[k].nodeID;
+      ivs[index].count++;
+      ivs[index].index = index;
+      //message( "incr: %d %d %d %d %d", index, ivs[index].count,
+      //         regionid[k], nregions, s->cells_top[k].nodeID);
+  }
+
+  /* Need to keep indices..., not counts, just sort by counts. XXX */
+  //message("unsorted");
+  //for (int k = 0; k < keymax; k++) {
+  //  message(" %d %d", ivs[k].index, ivs[k].count);
+  //}
+  qsort(ivs, keymax, sizeof(struct indexval), indexvalcmp);
+  //message("sorted");
+  //for (int k = 0; k < keymax; k++) {
+  //  message(" %d %d", ivs[k].index, ivs[k].count);
+  //}
+
+  /* Go through the ivs using the largest counts first, these are the
+   * regions with the most cells in common, old partition to new. */
+  int *oldmap = malloc(sizeof(int) * nregions);
+  int *newmap = malloc(sizeof(int) * nregions);
+  for (int k = 0; k < nregions; k++) {
+      oldmap[k] = -1;
+      newmap[k] = -1;
+  }
+  for (int k = 0; k < keymax; k++) {
+
+    /* Stop when all regions with common cells have been considered. */
+    if (ivs[k].count == 0) break;
+
+    /* Store old and new IDs, if not already used. */
+    int oldregion = ivs[k].index / nregions;
+    int newregion = ivs[k].index - oldregion * nregions;
+    if (newmap[newregion] == -1 && oldmap[oldregion] == -1) {
+      newmap[newregion] = oldregion;
+      oldmap[oldregion] = newregion;
+      //message("mapping: %d to %d", newregion, oldregion);
+      //message("       : %d %d %d", ivs[k].index, ivs[k].count, nregions);
+    }
+  }
+
+  /* Need to handle any regions that did not get selected. */
+  int spare = 0;
+  for (int k = 0; k < nregions; k++) {
+    if (newmap[k] == -1) {
+      //message("unmapped newmap[%d] = %d", k, newmap[k]);
+      for (int j = spare; j < nregions; j++) {
+        if (oldmap[j] == -1) {
+          //message("used oldmap[%d] = %d", j, j);
+          newmap[k] = j;
+          oldmap[j] = j;
+          spare = j;
+          break;
+        }
+      }
+    }
+  }
+
   /* Set the cell list to the region index. */
   for (int k = 0; k < ncells; k++) {
-    celllist[k] = regionid[k];
+    //message("mapping: %d to %d", regionid[k], newmap[regionid[k]]);
+    celllist[k] = newmap[regionid[k]];
+    //celllist[k] = regionid[k];
   }
 
   /* Clean up. */
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
+  free(ivs);
+  free(oldmap);
+  free(newmap);
   free(xadj);
   free(adjncy);
   free(regionid);

@@ -548,7 +548,7 @@ int main(int argc, char *argv[]) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
-    if (j % 100 == 2) e.forcerepart = reparttype;
+    if (j % 3 == 2) e.forcerepart = reparttype;
 #endif
 
     /* Reset timers */

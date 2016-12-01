@@ -317,6 +317,22 @@ void engine_redistribute(struct engine *e) {
                     MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce particle transfer counts.");
 
+  if (e->nodeID == 0) {
+      size_t total = 0;
+      size_t unmoved = 0;
+      for (int p = 0, r = 0; p < nr_nodes; p++) {
+        for (int s = 0; s < nr_nodes; s++) {
+          total += counts[r];
+          if (p == s)
+            unmoved += counts[r];
+          r++;
+        }
+      }
+      message("total = %ld, unmoved = %ld, fraction = %f", total, unmoved,
+              (double)unmoved/(double)total);
+  }
+
+
   /* Get all the g_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, g_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
