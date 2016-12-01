@@ -32,20 +32,27 @@
  *
  * @param gp The #gpart to kick.
  * @param new_dti The (integer) time-step for this kick.
+ * @param ti_current The current (integer) time.
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_gpart(
-    struct gpart *restrict gp, int new_dti, double timeBase) {
+    struct gpart *restrict gp, integertime_t new_dti, integertime_t ti_current,
+    double timeBase) {
 
   /* Compute the time step for this kick */
-  const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-  const int ti_end = gp->ti_end + new_dti / 2;
+  const integertime_t old_ti_begin =
+      get_integer_time_begin(ti_current, gp->time_bin);
+  const integertime_t old_ti_end =
+      get_integer_time_end(ti_current, gp->time_bin);
+  const int ti_start = (old_ti_begin + old_ti_end) / 2;
+  const int ti_end = old_ti_end + new_dti / 2;
   const float dt = (ti_end - ti_start) * timeBase;
-  const float half_dt = (ti_end - gp->ti_end) * timeBase;
+  const float half_dt = (ti_end - old_ti_end) * timeBase;
 
   /* Move particle forward in time */
-  gp->ti_begin = gp->ti_end;
-  gp->ti_end = gp->ti_begin + new_dti;
+  // gp->ti_begin = gp->ti_end;
+  // gp->ti_end = gp->ti_begin + new_dti;
+  gp->time_bin = get_time_bin(new_dti);
 
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
@@ -62,26 +69,33 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param p The #part to kick.
  * @param xp The #xpart of the particle.
  * @param new_dti The (integer) time-step for this kick.
+ * @param ti_current The current (integer) time.
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, int new_dti,
-    double timeBase) {
+    integertime_t ti_current, double timeBase) {
 
   /* Compute the time step for this kick */
-  const integertime_t ti_begin = get_integer_time_begin(t1, p->time_bin);
-  const integertime_t ti_end = get_integer_time_end(t1, p->time_bin);
-  const int ti_start = (ti_begin + ti_end) / 2;
-  const int ti_end = ti_end + new_dti / 2;
+  const integertime_t old_ti_begin =
+      get_integer_time_begin(ti_current, p->time_bin);
+  const integertime_t old_ti_end =
+      get_integer_time_end(ti_current, p->time_bin);
+  const int ti_start = (old_ti_begin + old_ti_end) / 2;
+  const int ti_end = old_ti_end + new_dti / 2;
   const float dt = (ti_end - ti_start) * timeBase;
-  const float half_dt = (ti_end - p->ti_end) * timeBase;
+  const float half_dt = (ti_end - old_ti_end) * timeBase;
 
   /* Move particle forward in time */
-  p->ti_begin = p->ti_end;
-  p->ti_end = p->ti_begin + new_dti;
+  // p->ti_begin = p->ti_end;
+  // p->ti_end = p->ti_begin + new_dti;
+  p->time_bin = get_time_bin(new_dti);
+  // if (p->id == 116650) message("Time bin=%d new_dti=%d", p->time_bin,
+  // new_dti);
   if (p->gpart != NULL) {
-    p->gpart->ti_begin = p->ti_begin;
-    p->gpart->ti_end = p->ti_end;
+    // p->gpart->ti_begin = p->ti_begin;
+    // p->gpart->ti_end = p->ti_end;
+    p->gpart->time_bin = get_time_bin(new_dti);
   }
 
   /* Get the acceleration */

@@ -24,8 +24,11 @@
 
 /* Local headers. */
 #include "inline.h"
+#include "intrinsics.h"
 
-typedef long long integertime_t;
+#include <math.h>
+
+typedef unsigned long long integertime_t;
 typedef char timebin_t;
 
 /*! The number of time bins */
@@ -33,6 +36,8 @@ typedef char timebin_t;
 
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
+
+//#define ceil_div(x ,y) (x + y - 1) / y
 
 /**
  * @brief Returns the integer time interval corresponding to a time bin
@@ -43,6 +48,17 @@ static INLINE integertime_t get_integer_timestep(timebin_t bin) {
 
   if (bin == 0) return 0;
   return 1LL << (bin + 1);
+}
+
+/**
+ * @brief Returns the time bin corresponding to a given time_step size.
+ *
+ * Assumes that integertime_t maps to an unsigned long long.
+ */
+static INLINE timebin_t get_time_bin(integertime_t time_step) {
+
+  /* ((int) log_2(time_step)) - 1 */
+  return 62 - intrinsics_clzll(time_step);
 }
 
 /**
@@ -67,7 +83,10 @@ static INLINE integertime_t get_integer_time_begin(integertime_t ti_current,
                                                    timebin_t bin) {
 
   const integertime_t dti = get_integer_timestep(bin);
-  return ti_current % dti;
+  if (dti == 0)
+    return 0;
+  else
+    return dti * ((ti_current - 1) / dti);
 }
 
 /**
@@ -81,7 +100,10 @@ static INLINE integertime_t get_integer_time_end(integertime_t ti_current,
                                                  timebin_t bin) {
 
   const integertime_t dti = get_integer_timestep(bin);
-  return ti_current % dti + dti;
+  if (dti == 0)
+    return 0;
+  else
+    return dti * ceil((double)ti_current / (double)dti);
 }
 
 /**

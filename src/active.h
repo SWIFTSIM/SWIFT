@@ -101,14 +101,18 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active(
 __attribute__((always_inline)) INLINE static int part_is_active(
     const struct part *p, const struct engine *e) {
 
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
+
 #ifdef SWIFT_DEBUG_CHECKS
-  if (p->ti_end < e->ti_current)
-    error("particle in an impossible time-zone! p->ti_end=%d e->ti_current=%d",
-          p->ti_end, e->ti_current);
+  if (ti_end < ti_current)
+    error(
+        "particle in an impossible time-zone! p->ti_end=%lld "
+        "e->ti_current=%lld",
+        ti_end, ti_current);
 #endif
 
-  // return (p->ti_end == e->ti_current);
-  return (p->time_bin < get_max_active_bin(e->ti_current));
+  return (ti_end == ti_current);
 }
 
 /**
@@ -120,15 +124,18 @@ __attribute__((always_inline)) INLINE static int part_is_active(
 __attribute__((always_inline)) INLINE static int gpart_is_active(
     const struct gpart *gp, const struct engine *e) {
 
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
+
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gp->ti_end < e->ti_current)
+  if (ti_end < ti_current)
     error(
-        "g-particle in an impossible time-zone! gp->ti_end=%d e->ti_current=%d",
-        gp->ti_end, e->ti_current);
+        "g-particle in an impossible time-zone! gp->ti_end=%lld "
+        "e->ti_current=%lld",
+        ti_end, ti_current);
 #endif
 
-  // return (gp->ti_end == e->ti_current);
-  return (gp->time_bin < get_max_active_bin(e->ti_current));
+  return (ti_end == ti_current);
 }
 
 #endif /* SWIFT_ACTIVE_H */

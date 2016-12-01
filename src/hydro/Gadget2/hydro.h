@@ -212,7 +212,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  p->time_bin = -1;
+  p->time_bin = 0;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
@@ -385,8 +385,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Drift the pressure */
-  const integertime_t ti_begin = get_integer_time_begin(t1, p->time_bin);
-  const integertime_t ti_end = get_integer_time_end(t1, p->time_bin);
+  const integertime_t ti_begin = get_integer_time_begin(t0, p->time_bin);
+  const integertime_t ti_end = get_integer_time_end(t0, p->time_bin);
   const float dt_entr = (t1 - (ti_begin + ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, dt_entr);
 

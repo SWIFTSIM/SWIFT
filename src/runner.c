@@ -113,6 +113,9 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #include "runner_doiact_fft.h"
 #include "runner_doiact_grav.h"
 
+#undef ICHECK
+#define ICHECK -116650
+
 /**
  * @brief Perform source terms
  *
@@ -205,7 +208,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
-  const int ti_current = r->e->ti_current;
+  // const int ti_current = r->e->ti_current;
   const struct cooling_function_data *cooling_func = r->e->cooling_func;
   const struct phys_const *constants = r->e->physical_constants;
   const struct UnitSystem *us = r->e->internalUnits;
@@ -227,9 +230,11 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[i];
 
       /* Kick has already updated ti_end, so need to check ti_begin */
-      if (p->ti_begin == ti_current) {
+      // if (p->ti_begin == ti_current) {
+      {
 
-        const double dt = (p->ti_end - p->ti_begin) * timeBase;
+        // const double dt = (p->ti_end - p->ti_begin) * timeBase;
+        const double dt = 1. * timeBase;  // MATTHIEU
 
         cooling_cool_part(constants, us, cooling_func, p, xp, dt);
       }
@@ -906,6 +911,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const double timeBase = e->timeBase;
+  const int ti_current = e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
   struct part *restrict parts = c->parts;
@@ -946,15 +952,17 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
           const int new_dti = get_gpart_timestep(gp, e);
 
           /* Now we have a time step, proceed with the kick */
-          kick_gpart(gp, new_dti, timeBase);
+          kick_gpart(gp, new_dti, e->ti_current, timeBase);
 
           /* Number of updated g-particles */
           g_updated++;
         }
 
         /* Minimal time for next end of time-step */
-        ti_end_min = min(gp->ti_end, ti_end_min);
-        ti_end_max = max(gp->ti_end, ti_end_max);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, gp->time_bin);
+        ti_end_min = min((int)ti_end, ti_end_min);
+        ti_end_max = max((int)ti_end, ti_end_max);
       }
     }
 
@@ -967,8 +975,17 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      /* Minimal time for next end of time-step */
+      integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
+
+      if (p->id == ICHECK)
+        message("Particle in kick ti_end=%lld ti_current=%d", ti_end,
+                e->ti_current);
+
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
+
+        if (p->id == ICHECK) message("Particle active in kick");
 
         /* First, finish the force loop */
         hydro_end_force(p);
@@ -977,17 +994,27 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         /* Compute the next timestep (hydro condition) */
         const int new_dti = get_part_timestep(p, xp, e);
 
+        if (p->id == ICHECK)
+          message("time_step=%d (%e)", new_dti, new_dti * e->timeBase);
+
         /* Now we have a time step, proceed with the kick */
-        kick_part(p, xp, new_dti, timeBase);
+        kick_part(p, xp, new_dti, e->ti_current, timeBase);
+
+        // if (p->id == ICHECK) printParticle_single(p, xp);
 
         /* Number of updated particles */
         updated++;
         if (p->gpart != NULL) g_updated++;
+
+        ti_end += get_integer_timestep(p->time_bin);
       }
 
-      /* Minimal time for next end of time-step */
-      ti_end_min = min(p->ti_end, ti_end_min);
-      ti_end_max = max(p->ti_end, ti_end_max);
+      if (p->id == ICHECK)
+        message("ti_current = %d dti=%lld ti_end=%lld (%f)", ti_current,
+                get_integer_timestep(p->time_bin), ti_end,
+                ti_end * e->timeBase);
+      ti_end_min = min((int)ti_end, ti_end_min);
+      ti_end_max = max((int)ti_end, ti_end_max);
     }
   }
 

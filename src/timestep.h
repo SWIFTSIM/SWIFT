@@ -23,31 +23,34 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "const.h"
 #include "cooling.h"
 #include "debug.h"
+#include "timeline.h"
+
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
  * @param new_dt The time-step to convert.
- * @param ti_begin The (integer) start of the previous time-step.
- * @param ti_end The (integer) end of the previous time-step.
+ * @param old_bin The old time bin.
+ * @param ti_current The current time on the integer time-line.
  * @param timeBase_inv The inverse of the system's minimal time-step.
  */
-__attribute__((always_inline)) INLINE static int get_integer_timestep(
-    float new_dt, int ti_begin, int ti_end, double timeBase_inv) {
+__attribute__((always_inline)) INLINE static int make_integer_timestep(
+    float new_dt, timebin_t old_bin, integertime_t ti_current,
+    double timeBase_inv) {
 
   /* Convert to integer time */
-  int new_dti = (int)(new_dt * timeBase_inv);
+  integertime_t new_dti = (integertime_t)(new_dt * timeBase_inv);
 
-  /* Recover the current timestep */
-  const int current_dti = ti_end - ti_begin;
+  /* Current time-step */
+  integertime_t current_dti = get_integer_timestep(old_bin);
+  integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
 
   /* Limit timestep increase */
-  if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+  if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
 
   /* Put this timestep on the time line */
-  int dti_timeline = max_nr_timesteps;
+  integertime_t dti_timeline = max_nr_timesteps;
   while (new_dti < dti_timeline) dti_timeline /= 2;
   new_dti = dti_timeline;
 
@@ -82,8 +85,8 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti =
-      get_integer_timestep(new_dt, gp->ti_begin, gp->ti_end, e->timeBase_inv);
+  const int new_dti = make_integer_timestep(new_dt, gp->time_bin, e->ti_current,
+                                            e->timeBase_inv);
 
   return new_dti;
 }
@@ -138,8 +141,8 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti =
-      get_integer_timestep(new_dt, p->ti_begin, p->ti_end, e->timeBase_inv);
+  const int new_dti = make_integer_timestep(new_dt, p->time_bin, e->ti_current,
+                                            e->timeBase_inv);
 
   return new_dti;
 }

@@ -125,7 +125,10 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
     /* Get useful variables */
-    const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, p->time_bin);
+    const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
+    const float dt = (ti_current - (ti_begin + ti_end) / 2) * timeBase;
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
     if (gp != NULL) {
@@ -206,7 +209,10 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     if (gp->id_or_neg_offset < 0) continue;
 
     /* Get useful variables */
-    const float dt = (ti_current - (gp->ti_begin + gp->ti_end) / 2) * timeBase;
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, gp->time_bin);
+    const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
+    const float dt = (ti_current - (ti_begin + ti_end) / 2) * timeBase;
     const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
     const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,
                         gp->v_full[1] + gp->a_grav[1] * dt,
