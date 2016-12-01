@@ -578,7 +578,9 @@ int compare_values(double a, double b, double threshold, double *absDiff,
 
   *absDiff = fabs(a - b);
   *absSum = fabs(a + b);
-  *relDiff = *absDiff / *absSum;
+  if( *absSum > 0.f) {
+    *relDiff = *absDiff / *absSum;
+  }
 
   if (*relDiff > threshold) {
     result = 1;
