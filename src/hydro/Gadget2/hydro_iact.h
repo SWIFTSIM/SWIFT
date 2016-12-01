@@ -430,9 +430,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
   xi.v = vec_mul(r.v, hi_inv.v);
   xi2.v = vec_mul(r_2.v, hi_inv.v);
 
-  //kernel_deval_2_vec(&xi, &wi, &wi_dx,&xi2, &wi2, &wi_dx2);
-  kernel_deval_vec(&xi, &wi, &wi_dx);
-  kernel_deval_vec(&xi2, &wi2, &wi_dx2);
+  kernel_deval_2_vec(&xi, &wi, &wi_dx,&xi2, &wi2, &wi_dx2);
 
   /* Compute dv. */
   dvx.v = vec_sub(vix.v, vjx.v);
