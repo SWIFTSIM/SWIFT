@@ -51,7 +51,7 @@ typedef void (*vec_interaction)(float *, float *, float *, float *,
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(int count, double *offset, double spacing, double h,
+struct part *make_particles(size_t count, double *offset, double spacing, double h,
                             long long *partId) {
 
   struct part *particles;
@@ -101,7 +101,7 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
 /**
  * @brief Populates particle properties needed for the force calculation.
  */
-void prepare_force(struct part *parts, int count) {
+void prepare_force(struct part *parts, size_t count) {
 
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
@@ -198,10 +198,10 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
  * @param runs No. of times to call interactions
  *
  */
-void test_interactions(struct part test_part, struct part *parts, int count,
+void test_interactions(struct part test_part, struct part *parts, size_t count,
                        serial_interaction serial_inter_func,
                        vec_interaction vec_inter_func, char *filePrefix,
-                       int runs) {
+                       size_t runs) {
 
   ticks serial_time = 0, vec_time = 0;
 
@@ -232,10 +232,10 @@ void test_interactions(struct part test_part, struct part *parts, int count,
   struct part *piq[count], *pjq[count];
 
   /* Call serial interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (size_t k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_serial = test_part;
-    for (int i = 0; i < count; i++) pj_serial[i] = parts[i];
+    for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
 
     /* Only dump data on first run. */
     if (k == 0) {
@@ -246,11 +246,11 @@ void test_interactions(struct part test_part, struct part *parts, int count,
     }
 
     /* Perform serial interaction */
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
-      for (int k = 0; k < 3; k++) {
+      for (size_t k = 0; k < 3; k++) {
         dx[k] = pi_serial.x[k] - pj_serial[i].x[k];
         r2 += dx[k] * dx[k];
       }
@@ -274,17 +274,17 @@ void test_interactions(struct part test_part, struct part *parts, int count,
     dump_indv_particle_fields(serial_filename, &pj_serial[i]);
 
   /* Call vector interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (size_t k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_vec = test_part;
-    for (int i = 0; i < count; i++) pj_vec[i] = parts[i];
+    for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
 
     /* Setup arrays for vector interaction. */
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
-      for (int k = 0; k < 3; k++) {
+      for (size_t k = 0; k < 3; k++) {
         dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
         r2 += dx[k] * dx[k];
       }
@@ -310,7 +310,7 @@ void test_interactions(struct part test_part, struct part *parts, int count,
     const ticks vec_tic = getticks();
 
     /* Perform vector interaction. */
-    for (int i = 0; i < count; i += VEC_SIZE) {
+    for (size_t i = 0; i < count; i += VEC_SIZE) {
       vec_inter_func(&(r2q[i]), &(dxq[3 * i]), &(hiq[i]), &(hjq[i]), &(piq[i]),
                      &(pjq[i]));
     }
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 10000;
   double h = 1.0, spacing = 0.5;
   double offset[3] = {0.0, 0.0, 0.0};
-  int count = 256;
+  size_t count = 256;
 
   /* Get some randomness going */
   srand(0);
@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
       case 's':
         sscanf(optarg, "%lf", &spacing);
       case 'n':
-        sscanf(optarg, "%d", &count);
+        sscanf(optarg, "%zu", &count);
         break;
       case 'r':
         sscanf(optarg, "%zu", &runs);
