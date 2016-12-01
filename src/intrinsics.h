@@ -67,6 +67,23 @@ __attribute__((always_inline)) INLINE static int intrinsics_clz(
 }
 
 /**
+ * @brief Returns the number of leading 0-bits in x, starting at the most
+ * significant bit position. If x is 0, the result is undefined.
+ *
+ * This is a wrapper for the GNU intrinsic with an implementation.
+ */
+__attribute__((always_inline)) INLINE static int intrinsics_clzll(
+    unsigned long long x) {
+
+#ifdef __GNUC__
+  /* Use GCC intrinsics if possible */
+  return __builtin_clzll(x);
+#else
+#error "Missing definition of clz for long long on this platform."
+#endif
+}
+
+/**
  * @brief Returns the number of 1-bits in x.
  *
  * This is a wrapper for the GNU intrinsic with an implementation (from
@@ -85,6 +102,23 @@ __attribute__((always_inline)) INLINE static int intrinsics_popcount(
   x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
   x = (x & 0x0000FFFF) + ((x >> 16) & 0x0000FFFF);
   return x;
+#endif
+}
+
+/**
+ * @brief Returns the number of 1-bits in x.
+ *
+ * This is a wrapper for the GNU intrinsic with an implementation (from
+ * Hacker's Delight) if the compiler intrinsics are not available.
+ */
+__attribute__((always_inline)) INLINE static int intrinsics_popcountll(
+    unsigned long long x) {
+
+#ifdef __GNUC__
+  /* Use GCC intrinsics if possible */
+  return __builtin_popcountll(x);
+#else
+#error "Missing definition of popcount for long long on this platform."
 #endif
 }
 
