@@ -162,7 +162,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
+__attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
   const int ti_current = r->e->ti_current;
@@ -383,7 +383,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec_2(struct runner *r, struct cell *restrict c) {
+__attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
   const int ti_current = r->e->ti_current;
