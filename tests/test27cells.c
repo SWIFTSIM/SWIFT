@@ -30,6 +30,8 @@
 /* Local headers. */
 #include "swift.h"
 
+#define ACC_THRESHOLD 1e-5
+
 enum velocity_types {
   velocity_zero,
   velocity_random,
@@ -254,6 +256,26 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fclose(file);
 }
 
+/**
+ * @brief Compares the vectorised result against
+ * the serial result of the interaction.
+ *
+ * @param serial_parts Particle array that has been interacted serially
+ * @param vec_parts Particle array to be interacted using vectors
+ * @param count No. of particles that have been interacted
+ * @param threshold Level of accuracy needed
+ *
+ * @return Non-zero value if difference found, 0 otherwise
+ */
+int check_results(struct part *serial_parts, struct part *vec_parts, int count, double threshold) {
+  int result = 0;
+
+  for (int i = 0; i < count; i++)
+    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
+
+  return result;
+}
+
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
@@ -264,6 +286,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
+  double threshold = ACC_THRESHOLD;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
@@ -279,7 +302,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -304,6 +327,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'v':
         sscanf(optarg, "%d", (int *)&vel);
+        break;
+      case 'a':
+        sscanf(optarg, "%lf", &threshold);
         break;
       case '?':
         error("Unknown option.");
@@ -411,6 +437,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Store the vectorised particle results. */ 
+  struct part vec_parts[main_cell->count];
+  for(int i=0; i<main_cell->count; i++)
+    vec_parts[i] = main_cell->parts[i];
+
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
@@ -441,6 +472,10 @@ int main(int argc, char *argv[]) {
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
 
+  /* Check serial results against the vectorised results. */
+  if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
+    message("Differences found...");
+  
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
 
