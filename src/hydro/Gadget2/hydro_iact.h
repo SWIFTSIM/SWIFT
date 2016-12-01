@@ -382,6 +382,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 #endif
 }
 
+#ifdef WITH_VECTORIZATION
 /**
  * @brief Density interaction computed using 2 interleaved vectors (non-symmetric vectorized version).
  */
@@ -505,6 +506,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
   curlvzSum->v += vec_and(vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)),mask2.v);
 #endif
 }
+#endif
 
 /**
  * @brief Force loop

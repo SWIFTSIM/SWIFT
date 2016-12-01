@@ -27,6 +27,7 @@
 #define NUM_VEC_PROC 2
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 
+#ifdef WITH_VECTORIZATION
 __attribute__((always_inline)) INLINE static void calcRemInteractions(const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, int *icount_align) {
 
 #ifdef HAVE_AVX512_F
@@ -153,6 +154,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
 
 #endif
 }
+#endif
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) vec.
