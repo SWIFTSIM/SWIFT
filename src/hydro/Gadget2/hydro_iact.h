@@ -403,7 +403,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
   vector dvdr2;
   vector curlvrx2, curlvry2, curlvrz2;
 
-  /* Get the masses. */
+  /* Fill the vectors. */
   mj.v = vec_load(Mj);
   mj2.v = vec_load(&Mj[VEC_SIZE]);
   vjx.v = vec_load(Vjx);
@@ -430,6 +430,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
   xi.v = vec_mul(r.v, hi_inv.v);
   xi2.v = vec_mul(r_2.v, hi_inv.v);
 
+  /* Calculate the kernel for two particles. */
   kernel_deval_2_vec(&xi, &wi, &wi_dx,&xi2, &wi2, &wi_dx2);
 
   /* Compute dv. */

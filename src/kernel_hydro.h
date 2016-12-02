@@ -363,6 +363,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
       dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
 }
 
+/* Define constant vectors for the Wendland C2 kernel coefficients. */
 #ifdef WENDLAND_C2_KERNEL
 static const vector c0 = FILL_VEC(4.f);
 static const vector c1 = FILL_VEC(-15.f);
@@ -373,7 +374,7 @@ static const vector c5 = FILL_VEC(1.f);
 #endif
 
 /**
- * @brief Computes the kernel function and its derivative using two interleaved vectors.
+ * @brief Computes the kernel function and its derivative for two particles using interleaved vectors.
  *
  * Return 0 if $u > \\gamma = H/h$
  *
