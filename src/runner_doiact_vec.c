@@ -28,13 +28,40 @@
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 
 #ifdef WITH_VECTORIZATION
-__attribute__((always_inline)) INLINE static void calcRemInteractions(const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, int *icount_align) {
+/**
+ * @brief Compute the vector remainder interactions from the secondary cache.
+ *
+ * @param (return) r2q C2 cache of the separation between two particles squared.
+ * @param (return) dxq C2 cache of the x separation between two particles.
+ * @param (return) dyq C2 cache of the y separation between two particles.
+ * @param (return) dzq C2 cache of the z separation between two particles.
+ * @param (return) mq C2 cache of the mass of particle pj.
+ * @param (return) vxq C2 cache of the x velocity of particle pj.
+ * @param (return) vyq C2 cache of the y velocity of particle pj.
+ * @param (return) vzq C2 cache of the z velocity of particle pj.
+ * @param icount Interaction count.
+ * @param (return) rhoSum #vector holding the cumulative sum of the density update on pi.
+ * @param (return) rho_dhSum #vector holding the cumulative sum of the density gradient update on pi.
+ * @param (return) wcountSum #vector holding the cumulative sum of the wcount update on pi.
+ * @param (return) wcount_dhSum #vector holding the cumulative sum of the wcount gradient update on pi.
+ * @param (return) div_vSum #vector holding the cumulative sum of the divergence update on pi.
+ * @param (return) curlvxSum #vector holding the cumulative sum of the curl of vx update on pi.
+ * @param (return) curlvySum #vector holding the cumulative sum of the curl of vy update on pi.
+ * @param (return) curlvzSum #vector holding the cumulative sum of the curl of vz update on pi.
+ * @param v_hi_inv #vector of 1/h for pi.
+ * @param v_vix #vector of x velocity of pi.
+ * @param v_viy #vector of y velocity of pi.
+ * @param v_viz #vector of z velocity of pi.
+ * @param (return) icount_align Interaction count after the remainder interactions have been performed, should be a multiple of the vector length.
+ */
+/__attribute__((always_inline)) INLINE static void calcRemInteractions(const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, int *icount_align) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
 #endif
   vector int_mask, int_mask2;
-  
+ 
+  /* Work out the number of remainder interactions and pad secondary cache. */ 
   *icount_align = icount;
   int rem = icount % (NUM_VEC_PROC * VEC_SIZE);
   if (rem != 0) {
@@ -51,7 +78,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(const stru
     int_mask.m = vec_setint1(0xFFFFFFFF);
     int_mask2.m = vec_setint1(0xFFFFFFFF);
 #endif
-    /* Pad secondary cache  */
+    /* Pad secondary cache so that there are no contributions in the interaction function. */
     for(int i=icount; i<*icount_align; i++) {
       mq[i] = 0.f;
       r2q[i] = 1.f;
@@ -92,8 +119,44 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(const stru
   }
 }
 
+/**
+ * @brief Left-packs the values needed by an interaction into the secondary cache (Supports AVX, AVX2 and AVX512 instruction sets).
+ *
+ * @param mask Contains which particles need to interact.
+ * @param v_r2 #vector of the separation between two particles squared.
+ * @param v_dx #vector of the x separation between two particles.
+ * @param v_dy #vector of the y separation between two particles.
+ * @param v_dz #vector of the z separation between two particles.
+ * @param v_mj #vector of the mass of particle pj.
+ * @param v_vjx #vector of x velocity of pj.
+ * @param v_vjy #vector of y velocity of pj.
+ * @param v_vjz #vector of z velocity of pj.
+ * @param cell_cache #cache of all particles in the cell.
+ * @param r2q C2 cache of the separation between two particles squared.
+ * @param dxq C2 cache of the x separation between two particles.
+ * @param dyq C2 cache of the y separation between two particles.
+ * @param dzq C2 cache of the z separation between two particles.
+ * @param mq C2 cache of the mass of particle pj.
+ * @param vxq C2 cache of the x velocity of particle pj.
+ * @param vyq C2 cache of the y velocity of particle pj.
+ * @param vzq C2 cache of the z velocity of particle pj.
+ * @param icount Interaction count.
+ * @param rhoSum #vector holding the cumulative sum of the density update on pi.
+ * @param rho_dhSum #vector holding the cumulative sum of the density gradient update on pi.
+ * @param wcountSum #vector holding the cumulative sum of the wcount update on pi.
+ * @param wcount_dhSum #vector holding the cumulative sum of the wcount gradient update on pi.
+ * @param div_vSum #vector holding the cumulative sum of the divergence update on pi.
+ * @param curlvxSum #vector holding the cumulative sum of the curl of vx update on pi.
+ * @param curlvySum #vector holding the cumulative sum of the curl of vy update on pi.
+ * @param curlvzSum #vector holding the cumulative sum of the curl of vz update on pi.
+ * @param v_hi_inv #vector of 1/h for pi.
+ * @param v_vix #vector of x velocity of pi.
+ * @param v_viy #vector of y velocity of pi.
+ * @param v_viz #vector of z velocity of pi.
+ */
 __attribute__((always_inline)) INLINE static void storeInteractions(const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy, vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz, const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, int *icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz) {
 
+/* Left-pack values needed into the secondary cache using the interaction mask. */
 #if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
   int pack = 0;
 
@@ -123,6 +186,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
 
   (*icount) += pack;
 #else
+  /* Quicker to do it serially in AVX rather than use intrinsics. */
   for(int bit_index = 0; bit_index<VEC_SIZE; bit_index++) {
     if (mask & (1 << bit_index)) {
       /* Add this interaction to the queue. */
@@ -138,17 +202,24 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
       (*icount)++;
     }
   }
+  /* Flush the c2 cache if it has reached capacity. */
   if(*icount >= (C2_CACHE_SIZE - (NUM_VEC_PROC * VEC_SIZE))) {
 
     int icount_align = *icount;
+    
+    /* Peform remainder interactions. */
     calcRemInteractions(cell_cache, r2q, dxq, dyq, dzq, mq, vxq, vyq, vzq, *icount, rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     vector int_mask, int_mask2;
     int_mask.m = vec_setint1(0xFFFFFFFF);
     int_mask2.m = vec_setint1(0xFFFFFFFF);
+
+    /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd+=(NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(&r2q[pjd], &dxq[pjd], &dyq[pjd], &dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &vxq[pjd], &vyq[pjd], &vzq[pjd], &mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
     }
+
+    /* Reset interaction count. */
     *icount = 0;
   }
 
@@ -157,7 +228,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
 #endif
 
 /**
- * @brief Compute the cell self-interaction (non-symmetric) vec.
+ * @brief Compute the cell self-interaction (non-symmetric) using vector intrinsics with one particle pi at a time.
  *
  * @param r The #runner.
  * @param c The #cell.
@@ -173,6 +244,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
+
+  /* Get the particle cache from the runner and re-allocate 
+   * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->par_cache;
   
   int icount = 0, icount_align = 0;
@@ -196,6 +270,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     cache_init(cell_cache,count);
   }
 
+  /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c,cell_cache);
 
   /* Loop over the particles in the cell. */
@@ -211,7 +286,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 
     const float hi = cell_cache->h[pid];
 
-    /* Fill pi position vector. */
+    /* Fill particle pi vectors. */
     pix.v = vec_set1(cell_cache->x[pid]);
     piy.v = vec_set1(cell_cache->y[pid]);
     piz.v = vec_set1(cell_cache->z[pid]);
@@ -223,8 +298,10 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     const float hig2 = hi * hi * kernel_gamma2;
     v_hig2.v = vec_set1(hig2);
 
+    /* Reset cumulative sums of update vectors. */
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum;
     
+    /* Get the inverse of hi. */
     vector v_hi_inv;
     
     VEC_RECIPROCAL(v_hi.v, v_hi_inv.v);
@@ -258,7 +335,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     vector pjx2, pjy2, pjz2;
     vector pjvx2, pjvy2, pjvz2, mj2;
 
-    /* Find all of particle pi's interacions and store needed values in secondary cache.*/
+    /* Find all of particle pi's interacions and store needed values in the secondary cache.*/
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
@@ -314,21 +391,23 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
       vector v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
       int doi_mask2;
 
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
       v_doi_mask_check.v = vec_cmp_gt(v_r2.v,vec_setzero());
       v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
 
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
       v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v,vec_setzero());
       v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
 
+      /* Combine two masks and form integer mask. */
       doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
       doi_mask2 = vec_cmp_result(vec_and(v_doi_mask2.v, v_doi_mask2_check.v));
 #endif
 
-      /* Hit or miss? */
+      /* If there are any interactions left pack interaction values into c2 cache. */
       if (doi_mask) {
         storeInteractions(doi_mask,pjd, &v_r2, &v_dx_tmp,&v_dy_tmp, &v_dz_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
-      /* Hit or miss? */
       if (doi_mask2) {
         storeInteractions(doi_mask2,pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,&v_dy_tmp2, &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
@@ -337,7 +416,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     /* Perform padded vector remainder interactions if any are present. */    
     calcRemInteractions(cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
     
-    /* Initialise masks to true incase remainder interactions have been performed. */
+    /* Initialise masks to true in case remainder interactions have been performed. */
     vector int_mask, int_mask2;
 #ifdef HAVE_AVX512_F
     KNL_MASK_16 knl_mask = 0xFFFF;
@@ -378,7 +457,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 }
 
 /**
- * @brief Compute the cell self-interaction (non-symmetric) vec.
+ * @brief Compute the cell self-interaction (non-symmetric) using vector intrinsics with two particle pis at a time.
+ * CURRENTLY BROKEN DO NOT USE.
  *
  * @param r The #runner.
  * @param c The #cell.
@@ -393,6 +473,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
   struct part *restrict pi2;
   int count_align;
 
+  /* Create two secondary caches. */  
   int icount = 0, icount_align = 0;
   float r2q[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
   float dxq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
@@ -418,23 +499,28 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
 
   //TIMER_TIC
 
+  /* TODO: Need to find two active particles, not just one. */
   if (c->ti_end_min > ti_current) return;
   if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
+  
+  /* Get the particle cache from the runner and re-allocate 
+   * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->par_cache;
 
   if(cell_cache->count < count) {
     cache_init(cell_cache,count);
   }
 
+  /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c,&r->par_cache);
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid+=2) {
 
-    /* Get a pointer to the ith particle. */
+    /* Get a pointer to the ith particle and next i particle. */
     pi = &parts[pid];
     pi2 = &parts[pid + 1];
 
