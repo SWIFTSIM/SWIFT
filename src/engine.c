@@ -69,6 +69,9 @@
 #include "units.h"
 #include "version.h"
 
+/* Particle cache size. */
+#define CACHE_SIZE 512
+
 const char *engine_policy_names[16] = {"none",
                                        "rand",
                                        "steal",
@@ -84,8 +87,6 @@ const char *engine_policy_names[16] = {"none",
                                        "drift_all",
                                        "cooling",
                                        "sourceterms"};
-/* Particle cache size. */
-const int cache_size = 512;
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -3362,7 +3363,7 @@ void engine_init(struct engine *e, struct space *s,
 
     /* Allocate particle cache. */
     e->runners[k].par_cache.count = 0;
-    cache_init(&e->runners[k].par_cache,cache_size);
+    cache_init(&e->runners[k].par_cache, CACHE_SIZE);
 
     if (verbose) {
       if (with_aff)
