@@ -372,6 +372,18 @@ static const vector c4 = FILL_VEC(0.f);
 static const vector c5 = FILL_VEC(1.f);
 #endif
 
+/**
+ * @brief Computes the kernel function and its derivative using two interleaved vectors.
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ * @param u2 The ratio of the distance to the smoothing length $u = x/h$ for second particle.
+ * @param w2 (return) The value of the kernel function $W(x,h)$ for second particle.
+ * @param dw_dx2 (return) The norm of the gradient of $|\\nabla W(x,h)|$ for second particle.
+ */
 __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
     vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2, vector *dw_dx2) {
 
@@ -387,6 +399,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
   dw_dx->v = c0.v;
   dw_dx2->v = c0.v;
 
+  /* Calculate the polynomial interleaving vector operations */
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
   w->v = vec_fma(x.v, w->v, c2.v);
