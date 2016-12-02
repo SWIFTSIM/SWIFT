@@ -639,9 +639,9 @@ void space_rebuild(struct space *s, int verbose) {
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cells_top[ind[k]].nodeID != s->e->nodeID)
+    if (cells_top[gind[k]].nodeID != s->e->nodeID)
       error("Received part that does not belong to me (nodeID=%i).",
-            cells_top[ind[k]].nodeID);
+            cells_top[gind[k]].nodeID);
 #endif
   }
   nr_gparts = s->nr_gparts;
@@ -661,7 +661,7 @@ void space_rebuild(struct space *s, int verbose) {
   gind[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (gind[k] < gind[k + 1]) {
-      cells_top[ind[k]].gcount = k - last_gindex + 1;
+      cells_top[gind[k]].gcount = k - last_gindex + 1;
       last_gindex = k + 1;
     }
   }
