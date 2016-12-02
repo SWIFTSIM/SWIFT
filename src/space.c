@@ -186,50 +186,6 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Mapper function to clean out the cell hierarchies for a regrid.
- */
-
-void space_clear_cells_mapper(void *map_data, int num_elements,
-                              void *extra_data) {
-
-  struct cell *cells = (struct cell *)map_data;
-  struct space *s = (struct space *)extra_data;
-
-  for (int k = 0; k < num_elements; k++) {
-    struct cell *c = &cells[k];
-    space_rebuild_recycle(s, c);
-    c->sorts = NULL;
-    c->nr_tasks = 0;
-    c->density = NULL;
-    c->gradient = NULL;
-    c->force = NULL;
-    c->grav = NULL;
-    c->dx_max = 0.0f;
-    c->sorted = 0;
-    c->count = 0;
-    c->gcount = 0;
-    c->init = NULL;
-    c->extra_ghost = NULL;
-    c->ghost = NULL;
-    c->kick = NULL;
-    c->cooling = NULL;
-    c->sourceterms = NULL;
-    c->super = c;
-#if WITH_MPI
-    c->recv_xv = NULL;
-    c->recv_rho = NULL;
-    c->recv_gradient = NULL;
-    c->recv_ti = NULL;
-
-    c->send_xv = NULL;
-    c->send_rho = NULL;
-    c->send_gradient = NULL;
-    c->send_ti = NULL;
-#endif
-  }
-}
-
-/**
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
