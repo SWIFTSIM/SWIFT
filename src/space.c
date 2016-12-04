@@ -454,7 +454,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct cell *restrict cells_top = s->cells_top;
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  /* Run through the particles and get their cell index. */
+  /* Run through the particles and get their cell index. Allocates
+     an index that is larger than the number of particles to avoid
+     re-allocating after shuffling. */
   const size_t ind_size = s->size_parts + 100;
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
