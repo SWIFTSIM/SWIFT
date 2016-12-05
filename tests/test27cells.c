@@ -522,8 +522,8 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Check serial results against the vectorised results. */
-  //if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
-  //  message("Differences found...");
+  if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
+    message("Differences found...");
   
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
