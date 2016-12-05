@@ -1986,6 +1986,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
+    /* Self? */
+    else if (t->type == task_type_self || t->type == task_type_sub_self) {
+
+      /* Local pointers. */
+      const struct cell *ci = t->ci;
+
+      /* Activate the drift */
+      if(ci->drift) scheduler_activate(s, ci->drift);
+    }
+    
     /* Pair? */
     else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
@@ -1995,7 +2005,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate the drift on both sides */
       if(ci->drift) scheduler_activate(s, ci->drift);
-      if(ci->drift) scheduler_activate(s, cj->drift);
+      if(cj->drift) scheduler_activate(s, cj->drift);
 
       /* Too much particle movement? */
       if (t->tight &&
