@@ -23,22 +23,11 @@
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
-#define array_align sizeof(float) * VEC_SIZE
-#define NUM_VEC_PROC 2
-#define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
-
 #ifdef WITH_VECTORIZATION
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
  *
- * @param (return) r2q C2 cache of the separation between two particles squared.
- * @param (return) dxq C2 cache of the x separation between two particles.
- * @param (return) dyq C2 cache of the y separation between two particles.
- * @param (return) dzq C2 cache of the z separation between two particles.
- * @param (return) mq C2 cache of the mass of particle pj.
- * @param (return) vxq C2 cache of the x velocity of particle pj.
- * @param (return) vyq C2 cache of the y velocity of particle pj.
- * @param (return) vzq C2 cache of the z velocity of particle pj.
+ * @param (return) int_cache secondary cache of interactions between two particles.
  * @param icount Interaction count.
  * @param (return) rhoSum #vector holding the cumulative sum of the density update on pi.
  * @param (return) rho_dhSum #vector holding the cumulative sum of the density gradient update on pi.
@@ -54,7 +43,7 @@
  * @param v_viz #vector of z velocity of pi.
  * @param (return) icount_align Interaction count after the remainder interactions have been performed, should be a multiple of the vector length.
  */
-/__attribute__((always_inline)) INLINE static void calcRemInteractions(const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, int *icount_align) {
+__attribute__((always_inline)) INLINE static void calcRemInteractions(const struct cache *const cell_cache, struct c2_cache *const int_cache, const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, int *icount_align) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
@@ -80,14 +69,14 @@
 #endif
     /* Pad secondary cache so that there are no contributions in the interaction function. */
     for(int i=icount; i<*icount_align; i++) {
-      mq[i] = 0.f;
-      r2q[i] = 1.f;
-      dxq[i] = 0.f;
-      dyq[i] = 0.f;
-      dzq[i] = 0.f;
-      vxq[i] = 0.f;
-      vyq[i] = 0.f;
-      vzq[i] = 0.f;
+      int_cache->mq[i] = 0.f;
+      int_cache->r2q[i] = 1.f;
+      int_cache->dxq[i] = 0.f;
+      int_cache->dyq[i] = 0.f;
+      int_cache->dzq[i] = 0.f;
+      int_cache->vxq[i] = 0.f;
+      int_cache->vyq[i] = 0.f;
+      int_cache->vzq[i] = 0.f;
     }
 
     /* Zero parts of mask that represent the padded values.*/
@@ -110,7 +99,7 @@
 
     /* Perform remainder interaction and remove remainder from aligned interaction count. */
     *icount_align = icount - rem;
-    runner_iact_nonsym_2_vec_density(&r2q[*icount_align], &dxq[*icount_align], &dyq[*icount_align], &dzq[*icount_align], v_hi_inv, v_vix, v_viy, v_viz, &vxq[*icount_align], &vyq[*icount_align], &vzq[*icount_align], &mq[*icount_align], rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2,
+    runner_iact_nonsym_2_vec_density(&int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[*icount_align], &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align], &int_cache->mq[*icount_align], rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2,
 #ifdef HAVE_AVX512_F
     knl_mask, knl_mask2);
 #else
@@ -132,14 +121,7 @@
  * @param v_vjy #vector of y velocity of pj.
  * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
- * @param r2q C2 cache of the separation between two particles squared.
- * @param dxq C2 cache of the x separation between two particles.
- * @param dyq C2 cache of the y separation between two particles.
- * @param dzq C2 cache of the z separation between two particles.
- * @param mq C2 cache of the mass of particle pj.
- * @param vxq C2 cache of the x velocity of particle pj.
- * @param vyq C2 cache of the y velocity of particle pj.
- * @param vzq C2 cache of the z velocity of particle pj.
+ * @param (return) int_cache secondary cache of interactions between two particles.
  * @param icount Interaction count.
  * @param rhoSum #vector holding the cumulative sum of the density update on pi.
  * @param rho_dhSum #vector holding the cumulative sum of the density gradient update on pi.
@@ -154,7 +136,7 @@
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
  */
-__attribute__((always_inline)) INLINE static void storeInteractions(const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy, vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz, const struct cache *const cell_cache, float *r2q, float *dxq, float *dyq, float *dzq, float *mq, float *vxq, float *vyq, float *vzq, int *icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz) {
+__attribute__((always_inline)) INLINE static void storeInteractions(const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy, vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz, const struct cache *const cell_cache, struct c2_cache *const int_cache, int *icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask. */
 #if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
@@ -162,26 +144,27 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
 
 #ifdef HAVE_AVX512_F
   pack += __builtin_popcount(mask);
-  VEC_LEFT_PACK(v_r2->v,mask,&r2q[*icount]);
-  VEC_LEFT_PACK(v_dx->v,mask,&dxq[*icount]);
-  VEC_LEFT_PACK(v_dy->v,mask,&dyq[*icount]);
-  VEC_LEFT_PACK(v_dz->v,mask,&dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v,mask,&mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v,mask,&vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v,mask,&vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v,mask,&vzq[*icount]);
+  VEC_LEFT_PACK(v_r2->v,mask,&int_cache->r2q[*icount]);
+  VEC_LEFT_PACK(v_dx->v,mask,&int_cache->dxq[*icount]);
+  VEC_LEFT_PACK(v_dy->v,mask,&int_cache->dyq[*icount]);
+  VEC_LEFT_PACK(v_dz->v,mask,&int_cache->dzq[*icount]);
+  VEC_LEFT_PACK(v_mj->v,mask,&int_cache->mq[*icount]);
+  VEC_LEFT_PACK(v_vjx->v,mask,&int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(v_vjy->v,mask,&int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(v_vjz->v,mask,&int_cache->vzq[*icount]);
 #else
   vector v_mask;
   VEC_FORM_PACKED_MASK(mask,v_mask.m,pack);
   
-  VEC_LEFT_PACK(v_r2->v,v_mask.m,&r2q[*icount]);
-  VEC_LEFT_PACK(v_dx->v,v_mask.m,&dxq[*icount]);
-  VEC_LEFT_PACK(v_dy->v,v_mask.m,&dyq[*icount]);
-  VEC_LEFT_PACK(v_dz->v,v_mask.m,&dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v,v_mask.m,&mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v,v_mask.m,&vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v,v_mask.m,&vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v,v_mask.m,&vzq[*icount]);
+  VEC_LEFT_PACK(v_r2->v,v_mask.m,&int_cache->r2q[*icount]);
+  VEC_LEFT_PACK(v_dx->v,v_mask.m,&int_cache->dxq[*icount]);
+  VEC_LEFT_PACK(v_dy->v,v_mask.m,&int_cache->dyq[*icount]);
+  VEC_LEFT_PACK(v_dz->v,v_mask.m,&int_cache->dzq[*icount]);
+  VEC_LEFT_PACK(v_mj->v,v_mask.m,&int_cache->mq[*icount]);
+  VEC_LEFT_PACK(v_vjx->v,v_mask.m,&int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(v_vjy->v,v_mask.m,&int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(v_vjz->v,v_mask.m,&int_cache->vzq[*icount]);
+
 #endif
 
   (*icount) += pack;
@@ -190,14 +173,14 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
   for(int bit_index = 0; bit_index<VEC_SIZE; bit_index++) {
     if (mask & (1 << bit_index)) {
       /* Add this interaction to the queue. */
-      r2q[*icount] = v_r2->f[bit_index];
-      dxq[*icount] = v_dx->f[bit_index];
-      dyq[*icount] = v_dy->f[bit_index];
-      dzq[*icount] = v_dz->f[bit_index];
-      mq[*icount] = cell_cache->m[pjd + bit_index];
-      vxq[*icount] = cell_cache->vx[pjd + bit_index];
-      vyq[*icount] = cell_cache->vy[pjd + bit_index];
-      vzq[*icount] = cell_cache->vz[pjd + bit_index];
+      int_cache->r2q[*icount] = v_r2->f[bit_index];
+      int_cache->dxq[*icount] = v_dx->f[bit_index];
+      int_cache->dyq[*icount] = v_dy->f[bit_index];
+      int_cache->dzq[*icount] = v_dz->f[bit_index];
+      int_cache->mq[*icount] = cell_cache->m[pjd + bit_index];
+      int_cache->vxq[*icount] = cell_cache->vx[pjd + bit_index];
+      int_cache->vyq[*icount] = cell_cache->vy[pjd + bit_index];
+      int_cache->vzq[*icount] = cell_cache->vz[pjd + bit_index];
 
       (*icount)++;
     }
@@ -208,7 +191,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
     int icount_align = *icount;
     
     /* Peform remainder interactions. */
-    calcRemInteractions(cell_cache, r2q, dxq, dyq, dzq, mq, vxq, vyq, vzq, *icount, rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
+    calcRemInteractions(cell_cache, int_cache, *icount, rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     vector int_mask, int_mask2;
     int_mask.m = vec_setint1(0xFFFFFFFF);
@@ -216,7 +199,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
 
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd+=(NUM_VEC_PROC * VEC_SIZE)) {
-      runner_iact_nonsym_2_vec_density(&r2q[pjd], &dxq[pjd], &dyq[pjd], &dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &vxq[pjd], &vyq[pjd], &vzq[pjd], &mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
+      runner_iact_nonsym_2_vec_density(&int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd], &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd], &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
     }
 
     /* Reset interaction count. */
@@ -244,21 +227,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
-
-  /* Get the particle cache from the runner and re-allocate 
-   * the cache if it is not big enough for the cell. */
-  struct cache *restrict cell_cache = &r->par_cache;
-  
-  int icount = 0, icount_align = 0;
-  float r2q[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dxq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dyq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dzq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float mq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vxq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vyq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vzq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  
+    
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
 
   //TIMER_TIC
@@ -266,12 +235,20 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
   if (c->ti_end_min > ti_current) return;
   if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
 
+  /* Get the particle cache from the runner and re-allocate 
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->par_cache;
+ 
   if(cell_cache->count < count) {
     cache_init(cell_cache,count);
   }
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(c,cell_cache);
+  cache_read_particles(c,cell_cache); 
+
+  /* Create secondary cache to store particle interactions. */
+  struct c2_cache int_cache;
+  int icount = 0, icount_align = 0;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -353,7 +330,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
       pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
       pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
       pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
-      mj2.v = vec_load(&cell_cache->m[pjd +VEC_SIZE]);
+      mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
@@ -406,15 +383,15 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 
       /* If there are any interactions left pack interaction values into c2 cache. */
       if (doi_mask) {
-        storeInteractions(doi_mask,pjd, &v_r2, &v_dx_tmp,&v_dy_tmp, &v_dz_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+        storeInteractions(doi_mask,pjd, &v_r2, &v_dx_tmp,&v_dy_tmp, &v_dz_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
       if (doi_mask2) {
-        storeInteractions(doi_mask2,pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,&v_dy_tmp2, &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+        storeInteractions(doi_mask2,pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,&v_dy_tmp2, &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
     }
 
     /* Perform padded vector remainder interactions if any are present. */    
-    calcRemInteractions(cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
+    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
     
     /* Initialise masks to true in case remainder interactions have been performed. */
     vector int_mask, int_mask2;
@@ -430,7 +407,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd+=(num_vec_proc * VEC_SIZE)) {
-      runner_iact_nonsym_2_vec_density(&r2q[pjd], &dxq[pjd], &dyq[pjd], &dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &vxq[pjd], &vyq[pjd], &vzq[pjd], &mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
+      runner_iact_nonsym_2_vec_density(&int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
 #ifdef HAVE_AVX512_F
       knl_mask, knl_mask2);
 #else
@@ -473,27 +450,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
   struct part *restrict pi2;
   int count_align;
 
-  /* Create two secondary caches. */  
-  int icount = 0, icount_align = 0;
-  float r2q[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dxq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dyq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dzq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float mq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vxq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vyq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vzq[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  
-  int icount2 = 0, icount_align2 = 0;
-  float r2q2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dxq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dyq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float dzq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float mq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vxq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vyq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-  float vzq2[C2_CACHE_SIZE] __attribute__((aligned(array_align)));
-
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
   vector v_hi2, v_vix2, v_viy2, v_viz2, v_hig2_2, v2_r2;
 
@@ -516,6 +472,13 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c,&r->par_cache);
+
+  /* Create two secondary caches. */  
+  int icount = 0, icount_align = 0;
+  struct c2_cache int_cache;
+  
+  int icount2 = 0, icount_align2 = 0;
+  struct c2_cache int_cache2;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid+=2) {
@@ -705,24 +668,24 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
 
       /* Hit or miss? */
       //if (doi_mask) {
-        storeInteractions(doi_mask,pjd, &v_r2, &v_dx_tmp,&v_dy_tmp, &v_dz_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+        storeInteractions(doi_mask,pjd, &v_r2, &v_dx_tmp,&v_dy_tmp, &v_dz_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       //}
       //if (doi2_mask) {
-        storeInteractions(doi2_mask,pjd, &v2_r2, &v_dx2_tmp,&v_dy2_tmp, &v_dz2_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &r2q2[0], &dxq2[0], &dyq2[0], &dzq2[0], &mq2[0], &vxq2[0], &vyq2[0], &vzq2[0], &icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2);
+        storeInteractions(doi2_mask,pjd, &v2_r2, &v_dx2_tmp,&v_dy2_tmp, &v_dz2_tmp, &mj, &pjvx, &pjvy, &pjvz, cell_cache, &int_cache2, &icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2);
       //}       
       /* Hit or miss? */
       //if (doi_mask2) {
-        storeInteractions(doi_mask2,pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,&v_dy_tmp2, &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+        storeInteractions(doi_mask2,pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,&v_dy_tmp2, &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       //}
       //if (doi2_mask2) {
-        storeInteractions(doi2_mask2,pjd + VEC_SIZE, &v2_r2_2, &v_dx2_tmp2,&v_dy2_tmp2, &v_dz2_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &r2q2[0], &dxq2[0], &dyq2[0], &dzq2[0], &mq2[0], &vxq2[0], &vyq2[0], &vzq2[0], &icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2);
+        storeInteractions(doi2_mask2,pjd + VEC_SIZE, &v2_r2_2, &v_dx2_tmp2,&v_dy2_tmp2, &v_dz2_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &int_cache2, &icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2);
       //}
     }
 
     /* Perform padded vector remainder interactions if any are present. */    
-    calcRemInteractions(cell_cache, &r2q[0], &dxq[0], &dyq[0], &dzq[0], &mq[0], &vxq[0], &vyq[0], &vzq[0], icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
+    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
     
-    calcRemInteractions(cell_cache, &r2q2[0], &dxq2[0], &dyq2[0], &dzq2[0], &mq2[0], &vxq2[0], &vyq2[0], &vzq2[0], icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2, &icount_align2);
+    calcRemInteractions(cell_cache, &int_cache2, icount2, &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2, v_viz2, &icount_align2);
 
     /* Initialise masks to true incase remainder interactions have been performed. */
     vector int_mask, int_mask2;
@@ -744,7 +707,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd+=(NUM_VEC_PROC * VEC_SIZE)) {
-      runner_iact_nonsym_2_vec_density(&r2q[pjd], &dxq[pjd], &dyq[pjd], &dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &vxq[pjd], &vyq[pjd], &vzq[pjd], &mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
+      runner_iact_nonsym_2_vec_density(&int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz, &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
 #ifdef HAVE_AVX512_F
       knl_mask, knl_mask2);
 #else
@@ -753,7 +716,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
     }
 
     for (int pjd = 0; pjd < icount_align2; pjd+=(NUM_VEC_PROC * VEC_SIZE)) {
-      runner_iact_nonsym_2_vec_density(&r2q2[pjd], &dxq2[pjd], &dyq2[pjd], &dzq2[pjd], v_hi_inv2, v_vix2, v_viy2, v_viz2, &vxq2[pjd], &vyq2[pjd], &vzq2[pjd], &mq2[pjd], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, int2_mask, int2_mask2,
+      runner_iact_nonsym_2_vec_density(&int_cache2.r2q[pjd], &int_cache2.dxq[pjd], &int_cache2.dyq[pjd], &int_cache2.dzq[pjd], v_hi_inv2, v_vix2, v_viy2, v_viz2, &int_cache2.vxq[pjd], &int_cache2.vyq[pjd], &int_cache2.vzq[pjd], &int_cache2.mq[pjd], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, int2_mask, int2_mask2,
 #ifdef HAVE_AVX512_F
       knl_mask, knl_mask2);
 #else
