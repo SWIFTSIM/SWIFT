@@ -56,6 +56,6 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
-#include "timer.h"
+#include "profiler.h"
 
 #endif /* SWIFT_SWIFT_H */
