@@ -139,6 +139,9 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
+      /* c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0, */
+      /*                              c, NULL, 0); */
+
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
@@ -1989,6 +1992,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointers. */
       const struct cell *ci = t->ci;
       const struct cell *cj = t->cj;
+
+      /* Activate the drift on both sides */
+      if(ci->drift) scheduler_activate(s, ci->drift);
+      if(ci->drift) scheduler_activate(s, cj->drift);
 
       /* Too much particle movement? */
       if (t->tight &&

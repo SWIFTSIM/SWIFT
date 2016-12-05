@@ -147,6 +147,9 @@ struct cell {
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;
 
+  /*! The drift task */
+  struct task *drift;
+
   /*! The kick task */
   struct task *kick;
 

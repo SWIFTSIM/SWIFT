@@ -752,7 +752,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  * @param drift whether to actually drift the particles, will not be
  *              necessary for non-local cells.
  */
-static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
+static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
 
   /* Unskip any active tasks. */
   if (cell_is_active(c, e)) {
@@ -770,7 +770,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
       for (int k = 0; k < 8; k++) {
         if (c->progeny[k] != NULL) {
           struct cell *cp = c->progeny[k];
-          runner_do_drift(cp, e, 0);
+          runner_do_unskip(cp, e, 0);
         }
       }
     }
@@ -778,7 +778,6 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
   }
 
   /* Now, we can drift */
-
   /* Get some information first */
   const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
@@ -856,7 +855,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse. */
-        runner_do_drift(cp, e, drift);
+        runner_do_unskip(cp, e, drift);
         dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
       }
@@ -887,12 +886,14 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
 #ifdef WITH_MPI
-    if (c != NULL) runner_do_drift(c, e, (c->nodeID == e->nodeID));
+    if (c != NULL) runner_do_unskip(c, e, (c->nodeID == e->nodeID));
 #else
-    if (c != NULL) runner_do_drift(c, e, 1);
+    if (c != NULL) runner_do_unskip(c, e, 1);
 #endif
   }
 }
+
+void runner_do_drift(struct runner *r, struct cell *c, int timer) {}
 
 /**
  * @brief Kick particles in momentum space and collect statistics (floating
@@ -1126,7 +1127,7 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort && t->type != task_type_drift)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1142,6 +1143,10 @@ void *runner_main(void *data) {
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
 
+	/* Special treatement for drifts */
+	if (!cell_is_active(ci, e) && t->type == task_type_drift)
+	  {;}
+	
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
           error(
@@ -1231,6 +1236,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
+        case task_type_drift:
+          // runner_do_drift(r, ci, 1);
+          break;
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;

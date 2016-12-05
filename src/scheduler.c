@@ -133,6 +133,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
     /* Non-splittable task? */
     if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
         ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
+ 	((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
       t->skip = 1;
@@ -603,7 +604,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
 
-        /* Otherwise, if not spilt, stitch-up the sorting. */
+        /* Otherwise, if not spilt, stitch-up the sorting and drift. */
       } else {
 
         /* Create the sort for ci. */
@@ -613,9 +614,19 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                                         1 << sid, 0, ci, NULL, 0);
         else
           ci->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&ci->lock);
-        scheduler_addunlock(s, ci->sorts, t);
+	
+	scheduler_addunlock(s, ci->sorts, t);
 
+	/* Create the drift for ci. */
+	if (ci->drift == NULL) {
+	  ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
+                                        0, 0, ci, NULL, 0);
+	  scheduler_addunlock(s, ci->drift, ci->sorts);
+	}
+        lock_unlock_blind(&ci->lock);
+
+
+	
         /* Create the sort for cj. */
         lock_lock(&cj->lock);
         if (cj->sorts == NULL)
@@ -623,8 +634,16 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                                         1 << sid, 0, cj, NULL, 0);
         else
           cj->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&cj->lock);
+
         scheduler_addunlock(s, cj->sorts, t);
+
+	/* Create the drift for cj. */
+	if (cj->drift == NULL) {
+	  cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
+                                        0, 0, cj, NULL, 0);
+	  scheduler_addunlock(s, cj->drift, cj->sorts);
+	}
+	lock_unlock_blind(&cj->lock);
       }
 
     } /* pair interaction? */
@@ -782,7 +801,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock!");
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
+		taskID_names[t->type], subtaskID_names[t->subtype],
+		taskID_names[t->unlock_tasks[i]->type], subtaskID_names[t->unlock_tasks[i]->subtype]);
       }
     }
   }
@@ -1065,7 +1086,7 @@ void scheduler_start(struct scheduler *s) {
       if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort)
+            t->type != task_type_sort && t->type != task_type_drift)
           error(
               "Task (type='%s/%s') should not have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1080,6 +1101,11 @@ void scheduler_start(struct scheduler *s) {
               "c->ti_end_min=%d t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, t->flags);
+
+	/* Special treatement for drifts */
+        if (ci->ti_end_min == ti_current && t->skip &&
+            t->type == task_type_drift)
+	  {;}
 
       } else { /* pair */
 
@@ -1148,6 +1174,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
+    case task_type_drift:
       case task_type_init:
         qid = t->ci->super->owner;
         break;
