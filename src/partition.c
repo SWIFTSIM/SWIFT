@@ -398,27 +398,15 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
    * preserved when possible, to avoid unneccesary particle movement.
    * So try mapping the current regions to the new regions and reassigning
    * those with the greatest number of common cells... */
-  int keymax = nregions + nregions * nregions;
+  int keymax = nregions * nregions;
   struct indexval *ivs = malloc(sizeof(struct indexval) * keymax);
   bzero(ivs, sizeof(struct indexval) * keymax);
   for (int k = 0; k < ncells; k++) {
       int index = regionid[k] + nregions * s->cells_top[k].nodeID;
       ivs[index].count++;
       ivs[index].index = index;
-      //message( "incr: %d %d %d %d %d", index, ivs[index].count,
-      //         regionid[k], nregions, s->cells_top[k].nodeID);
   }
-
-  /* Need to keep indices..., not counts, just sort by counts. XXX */
-  //message("unsorted");
-  //for (int k = 0; k < keymax; k++) {
-  //  message(" %d %d", ivs[k].index, ivs[k].count);
-  //}
   qsort(ivs, keymax, sizeof(struct indexval), indexvalcmp);
-  //message("sorted");
-  //for (int k = 0; k < keymax; k++) {
-  //  message(" %d %d", ivs[k].index, ivs[k].count);
-  //}
 
   /* Go through the ivs using the largest counts first, these are the
    * regions with the most cells in common, old partition to new. */
@@ -439,19 +427,16 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
     if (newmap[newregion] == -1 && oldmap[oldregion] == -1) {
       newmap[newregion] = oldregion;
       oldmap[oldregion] = newregion;
-      //message("mapping: %d to %d", newregion, oldregion);
-      //message("       : %d %d %d", ivs[k].index, ivs[k].count, nregions);
     }
   }
 
-  /* Need to handle any regions that did not get selected. */
+  /* Handle any regions that did not get selected by picking an unused rank
+   * from oldmap and assigning to newmap. */
   int spare = 0;
   for (int k = 0; k < nregions; k++) {
     if (newmap[k] == -1) {
-      //message("unmapped newmap[%d] = %d", k, newmap[k]);
       for (int j = spare; j < nregions; j++) {
         if (oldmap[j] == -1) {
-          //message("used oldmap[%d] = %d", j, j);
           newmap[k] = j;
           oldmap[j] = j;
           spare = j;
@@ -463,9 +448,7 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
 
   /* Set the cell list to the region index. */
   for (int k = 0; k < ncells; k++) {
-    //message("mapping: %d to %d", regionid[k], newmap[regionid[k]]);
     celllist[k] = newmap[regionid[k]];
-    //celllist[k] = regionid[k];
   }
 
   /* Clean up. */

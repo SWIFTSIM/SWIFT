@@ -317,7 +317,9 @@ void engine_redistribute(struct engine *e) {
                     MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce particle transfer counts.");
 
-  if (e->nodeID == 0) {
+  /* Report how many particles have been moved. */
+  if (e->verbose) {
+    if (e->nodeID == 0) {
       size_t total = 0;
       size_t unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
@@ -328,8 +330,9 @@ void engine_redistribute(struct engine *e) {
           r++;
         }
       }
-      message("total = %ld, unmoved = %ld, fraction = %f", total, unmoved,
-              (double)unmoved/(double)total);
+      message("of %ld particles %ld are not transferred (%.2f%%)", total, unmoved,
+              100.0 * (double)unmoved / (double)total);
+    }
   }
 
 
