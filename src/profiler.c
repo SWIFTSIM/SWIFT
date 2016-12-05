@@ -45,7 +45,7 @@
 #endif
 
 /* This object's header. */
-#include "timer.h"
+#include "profiler.h"
 
 /* Local headers. */
 #include "atomic.h"
@@ -69,7 +69,7 @@
 #include "units.h"
 #include "version.h"
 
-void timer_reset_timers(struct timer *profiler) {
+void profiler_reset_timers(struct profiler *profiler) {
 
   profiler->collect_timesteps_time = 0;
   profiler->drift_time = 0;
@@ -90,7 +90,7 @@ void timer_reset_timers(struct timer *profiler) {
   profiler->space_count_parts_time = 0;
 }
 
-void timer_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file) {
+void profiler_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file) {
 
   char fullFileName[200] = "";
   sprintf(fullFileName + strlen(fullFileName), "%s_%d.txt", fileName, e->nr_nodes * e->nr_threads);
@@ -114,52 +114,52 @@ void timer_write_timing_info_header(struct engine *e, char *fileName, char *func
   fflush(*file);
 }
 
-void timer_write_all_timing_info_headers(struct engine *e, struct timer *profiler) {
+void profiler_write_all_timing_info_headers(struct engine *e, struct profiler *profiler) {
 
-  timer_write_timing_info_header(e,"enginecollecttimesteps","engine_collect_timesteps",&profiler->file_engine_collect_timesteps);
-  timer_write_timing_info_header(e,"enginedrift","engine_drift",&profiler->file_engine_drift);
-  timer_write_timing_info_header(e,"enginerebuild","engine_rebuild",&profiler->file_engine_rebuild);
-  timer_write_timing_info_header(e,"schedulerreweight","scheduler_reweight",&profiler->file_scheduler_reweight);
-  timer_write_timing_info_header(e,"schedulerclearwaits","scheduler_clear_waits",&profiler->file_scheduler_clear_waits);
-  timer_write_timing_info_header(e,"schedulerrewait","scheduler_rewait",&profiler->file_scheduler_re_wait);
-  timer_write_timing_info_header(e,"schedulerenqueue","scheduler_enqueue",&profiler->file_scheduler_enqueue);
-  timer_write_timing_info_header(e,"engineprintstats","engine_print_stats",&profiler->file_engine_stats);
-  timer_write_timing_info_header(e,"enginelaunch","engine_launch",&profiler->file_engine_launch);
-  timer_write_timing_info_header(e,"spacerebuild","space_rebuild",&profiler->file_space_rebuild);
-  timer_write_timing_info_header(e,"enginemaketasks","engine_maketasks",&profiler->file_engine_maketasks);
-  timer_write_timing_info_header(e,"enginemarktasks","engine_marktasks",&profiler->file_engine_marktasks);
-  timer_write_timing_info_header(e,"spaceregrid","space_regrid",&profiler->file_space_regrid);
-  timer_write_timing_info_header(e,"spacepartssort","space_parts_sort",&profiler->file_space_parts_sort);
-  timer_write_timing_info_header(e,"spacesplit","space_split",&profiler->file_space_split);
-  timer_write_timing_info_header(e,"spacegetcellid","space_get_cell_id",&profiler->file_space_parts_get_cell_id);
-  timer_write_timing_info_header(e,"spacecountparts","space_count_parts",&profiler->file_space_count_parts);
+  profiler_write_timing_info_header(e,"enginecollecttimesteps","engine_collect_timesteps",&profiler->file_engine_collect_timesteps);
+  profiler_write_timing_info_header(e,"enginedrift","engine_drift",&profiler->file_engine_drift);
+  profiler_write_timing_info_header(e,"enginerebuild","engine_rebuild",&profiler->file_engine_rebuild);
+  profiler_write_timing_info_header(e,"schedulerreweight","scheduler_reweight",&profiler->file_scheduler_reweight);
+  profiler_write_timing_info_header(e,"schedulerclearwaits","scheduler_clear_waits",&profiler->file_scheduler_clear_waits);
+  profiler_write_timing_info_header(e,"schedulerrewait","scheduler_rewait",&profiler->file_scheduler_re_wait);
+  profiler_write_timing_info_header(e,"schedulerenqueue","scheduler_enqueue",&profiler->file_scheduler_enqueue);
+  profiler_write_timing_info_header(e,"engineprintstats","engine_print_stats",&profiler->file_engine_stats);
+  profiler_write_timing_info_header(e,"enginelaunch","engine_launch",&profiler->file_engine_launch);
+  profiler_write_timing_info_header(e,"spacerebuild","space_rebuild",&profiler->file_space_rebuild);
+  profiler_write_timing_info_header(e,"enginemaketasks","engine_maketasks",&profiler->file_engine_maketasks);
+  profiler_write_timing_info_header(e,"enginemarktasks","engine_marktasks",&profiler->file_engine_marktasks);
+  profiler_write_timing_info_header(e,"spaceregrid","space_regrid",&profiler->file_space_regrid);
+  profiler_write_timing_info_header(e,"spacepartssort","space_parts_sort",&profiler->file_space_parts_sort);
+  profiler_write_timing_info_header(e,"spacesplit","space_split",&profiler->file_space_split);
+  profiler_write_timing_info_header(e,"spacegetcellid","space_get_cell_id",&profiler->file_space_parts_get_cell_id);
+  profiler_write_timing_info_header(e,"spacecountparts","space_count_parts",&profiler->file_space_count_parts);
 }
 
-void timer_write_timing_info(struct engine *e, ticks time, FILE **file) {
+void profiler_write_timing_info(struct engine *e, ticks time, FILE **file) {
 
   fprintf(*file, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
       e->time, e->timeStep, e->updates, e->g_updates, clocks_from_ticks(time));
   fflush(*file);
 }
 
-void timer_write_all_timing_info(struct engine *e, struct timer *profiler) {
+void profiler_write_all_timing_info(struct engine *e, struct profiler *profiler) {
 
-  timer_write_timing_info(e,profiler->drift_time,&profiler->file_engine_drift);
-  timer_write_timing_info(e,profiler->rebuild_time,&profiler->file_engine_rebuild);
-  timer_write_timing_info(e,profiler->reweight_time,&profiler->file_scheduler_reweight);
-  timer_write_timing_info(e,profiler->clear_waits_time,&profiler->file_scheduler_clear_waits);
-  timer_write_timing_info(e,profiler->re_wait_time,&profiler->file_scheduler_re_wait);
-  timer_write_timing_info(e,profiler->enqueue_time,&profiler->file_scheduler_enqueue);
-  timer_write_timing_info(e,profiler->stats_time,&profiler->file_engine_stats);
-  timer_write_timing_info(e,profiler->launch_time,&profiler->file_engine_launch);
-  timer_write_timing_info(e,profiler->space_rebuild_time,&profiler->file_space_rebuild);
-  timer_write_timing_info(e,profiler->engine_maketasks_time,&profiler->file_engine_maketasks);
-  timer_write_timing_info(e,profiler->engine_marktasks_time,&profiler->file_engine_marktasks);
-  timer_write_timing_info(e,profiler->space_regrid_time,&profiler->file_space_regrid);
-  timer_write_timing_info(e,profiler->space_parts_sort_time,&profiler->file_space_parts_sort);
-  timer_write_timing_info(e,profiler->space_split_time,&profiler->file_space_split);
-  timer_write_timing_info(e,profiler->space_parts_get_cell_id_time,&profiler->file_space_parts_get_cell_id);
-  timer_write_timing_info(e,profiler->space_count_parts_time,&profiler->file_space_count_parts);
+  profiler_write_timing_info(e,profiler->drift_time,&profiler->file_engine_drift);
+  profiler_write_timing_info(e,profiler->rebuild_time,&profiler->file_engine_rebuild);
+  profiler_write_timing_info(e,profiler->reweight_time,&profiler->file_scheduler_reweight);
+  profiler_write_timing_info(e,profiler->clear_waits_time,&profiler->file_scheduler_clear_waits);
+  profiler_write_timing_info(e,profiler->re_wait_time,&profiler->file_scheduler_re_wait);
+  profiler_write_timing_info(e,profiler->enqueue_time,&profiler->file_scheduler_enqueue);
+  profiler_write_timing_info(e,profiler->stats_time,&profiler->file_engine_stats);
+  profiler_write_timing_info(e,profiler->launch_time,&profiler->file_engine_launch);
+  profiler_write_timing_info(e,profiler->space_rebuild_time,&profiler->file_space_rebuild);
+  profiler_write_timing_info(e,profiler->engine_maketasks_time,&profiler->file_engine_maketasks);
+  profiler_write_timing_info(e,profiler->engine_marktasks_time,&profiler->file_engine_marktasks);
+  profiler_write_timing_info(e,profiler->space_regrid_time,&profiler->file_space_regrid);
+  profiler_write_timing_info(e,profiler->space_parts_sort_time,&profiler->file_space_parts_sort);
+  profiler_write_timing_info(e,profiler->space_split_time,&profiler->file_space_split);
+  profiler_write_timing_info(e,profiler->space_parts_get_cell_id_time,&profiler->file_space_parts_get_cell_id);
+  profiler_write_timing_info(e,profiler->space_count_parts_time,&profiler->file_space_count_parts);
 
-  timer_reset_timers(profiler); 
+  profiler_reset_timers(profiler); 
 }

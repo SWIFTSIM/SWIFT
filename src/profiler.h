@@ -49,7 +49,7 @@
 #include "task.h"
 #include "units.h"
 
-struct timer {
+struct profiler {
 
   /* File pointers for timing info. */
   FILE *file_engine_collect_timesteps;
@@ -89,10 +89,10 @@ struct timer {
   ticks space_count_parts_time;
 };
 
-void timer_reset_timers(struct timer *profiler);
+void timer_reset_timers(struct profiler *profiler);
 void timer_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file);
-void timer_write_all_timing_info_headers(struct engine *e, struct timer *profiler);
+void timer_write_all_timing_info_headers(struct engine *e, struct profiler *profiler);
 void timer_write_timing_info(struct engine *e, ticks time, FILE **file);
-void timer_write_all_timing_info(struct engine *e, struct timer *profiler);
+void timer_write_all_timing_info(struct engine *e, struct profiler *profiler);
 
 #endif /* SWIFT_TIMER_H */
