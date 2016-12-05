@@ -28,6 +28,10 @@
 #include "cell.h"
 #include "error.h"
 
+#define NUM_VEC_PROC 2
+#define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
+#define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
+
 /* Cache struct to hold a local copy of a cells' particle 
  * properties required for density/force calculations.*/
 struct cache {  
@@ -59,6 +63,34 @@ struct cache {
   /* Cache size. */
   int count;
 
+};
+
+/* Secondary cache struct to hold a list of interactions between two particles.*/
+struct c2_cache {
+
+  /* Separation between two particles squared. */
+  float r2q[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* x separation between two particles. */
+  float dxq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* y separation between two particles. */
+  float dyq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* z separation between two particles. */
+  float dzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* Mass of particle pj. */
+  float mq[C2_CACHE_SIZE]  __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* x velocity of particle pj. */
+  float vxq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  /* y velocity of particle pj. */
+  float vyq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* z velocity of particle pj. */
+  float vzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 };
 
 /**
