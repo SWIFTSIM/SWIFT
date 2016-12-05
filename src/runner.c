@@ -1127,7 +1127,8 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort && t->type != task_type_drift)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
+            t->type != task_type_drift)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1143,10 +1144,11 @@ void *runner_main(void *data) {
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
 
-	/* Special treatement for drifts */
-	if (!cell_is_active(ci, e) && t->type == task_type_drift)
-	  {;}
-	
+        /* Special treatement for drifts */
+        if (!cell_is_active(ci, e) && t->type == task_type_drift) {
+          ;
+        }
+
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
           error(
@@ -1237,7 +1239,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_drift:
-          // runner_do_drift(r, ci, 1);
+          runner_do_drift(r, ci, 1);
           break;
         case task_type_kick:
           runner_do_kick(r, ci, 1);

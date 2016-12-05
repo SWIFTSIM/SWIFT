@@ -409,6 +409,7 @@ void space_regrid(struct space *s, int verbose) {
       s->cells_top[k].extra_ghost = NULL;
       s->cells_top[k].ghost = NULL;
       s->cells_top[k].kick = NULL;
+      s->cells_top[k].drift = NULL;
       s->cells_top[k].cooling = NULL;
       s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
