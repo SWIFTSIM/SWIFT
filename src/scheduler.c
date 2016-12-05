@@ -1027,6 +1027,25 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
+    
+#ifdef WITH_MPI
+    /* If this is a recv task, enqueue the MPI call. */
+    if (t->type == task_type_recv) {
+      int err;
+      if (t->subtype == task_subtype_tend) {
+        t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+        err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
+                        t->flags, MPI_COMM_WORLD, &t->req);
+      } else {
+        err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
+                        t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+      }
+      if (err != MPI_SUCCESS) {
+        mpi_error(err, "Failed to emit irecv for particle data.");
+      }
+    }
+#endif
+    
     if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
     }
@@ -1160,17 +1179,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
-        } else {
-          err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
-                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
-        }
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
-        }
+        // if (t->subtype == task_subtype_tend) {
+        //   t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+        //   err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
+        //                   t->flags, MPI_COMM_WORLD, &t->req);
+        // } else {
+        //   err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
+        //                   t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        // }
+        // if (err != MPI_SUCCESS) {
+        //   mpi_error(err, "Failed to emit irecv for particle data.");
+        // }
         // message( "receiving %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
         // fflush(stdout);
