@@ -44,8 +44,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h statistics.h cache.h runner_doiact_vec.h
-
+    sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -83,7 +82,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
 		 potential/softened_isothermal/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
-                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h 
+                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 memswap.h
 
 
 # Sources and flags for regular library
@@ -108,12 +108,14 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" $< > version_string.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
+	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," $< > version_string.h; \
+		    -e "s,@GIT_BRANCH\@,unknown," \
+	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi
 

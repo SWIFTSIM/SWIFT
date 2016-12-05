@@ -24,7 +24,6 @@
 
 /* Local includes. */
 #include "cell.h"
-#include "const.h"
 #include "engine.h"
 #include "part.h"
 

@@ -19,11 +19,12 @@
 #ifndef SWIFT_HYDRO_H
 #define SWIFT_HYDRO_H
 
-/* Includes. */
-#include "const.h"
+/* Config parameters. */
+#include "../config.h"
+
+/* Local headers. */
 #include "hydro_properties.h"
 #include "kernel_hydro.h"
-#include "part.h"
 
 /* Import the right functions */
 #if defined(MINIMAL_SPH)

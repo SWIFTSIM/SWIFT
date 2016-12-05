@@ -53,6 +53,8 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "memswap.h"
+#include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
 #include "timers.h"
@@ -463,122 +465,73 @@ void cell_gunlocktree(struct cell *c) {
  * @param c The #cell array to be sorted.
  * @param parts_offset Offset of the cell parts array relative to the
  *        space's parts array, i.e. c->parts - s->parts.
+ * @param buff A buffer with at least max(c->count, c->gcount) entries,
+ *        used for sorting indices.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset) {
+void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
 
-  int i, j;
   const int count = c->count, gcount = c->gcount;
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct gpart *gparts = c->gparts;
-  int left[8], right[8];
-  double pivot[3];
+  const double pivot[3] = {c->loc[0] + c->width[0] / 2,
+                           c->loc[1] + c->width[1] / 2,
+                           c->loc[2] + c->width[2] / 2};
+  int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int bucket_offset[9];
 
-  /* Init the pivots. */
-  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->width[k] / 2;
+  /* If the buff is NULL, allocate it, and remember to free it. */
+  const int allocate_buffer = (buff == NULL);
+  if (allocate_buffer &&
+      (buff = (int *)malloc(sizeof(int) * max(count, gcount))) == NULL)
+    error("Failed to allocate temporary indices.");
 
-  /* Split along the x-axis. */
-  i = 0;
-  j = count - 1;
-  while (i <= j) {
-    while (i <= count - 1 && parts[i].x[0] <= pivot[0]) i += 1;
-    while (j >= 0 && parts[j].x[0] > pivot[0]) j -= 1;
-    if (i < j) {
-      struct part temp = parts[i];
-      parts[i] = parts[j];
-      parts[j] = temp;
-      struct xpart xtemp = xparts[i];
-      xparts[i] = xparts[j];
-      xparts[j] = xtemp;
-    }
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < count; k++) {
+    const int bid = (parts[k].x[0] > pivot[0]) * 4 +
+                    (parts[k].x[1] > pivot[1]) * 2 + (parts[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    buff[k] = bid;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int k = 0; k <= j; k++)
-    if (parts[k].x[0] > pivot[0]) error("cell_split: sorting failed.");
-  for (int k = i; k < count; k++)
-    if (parts[k].x[0] < pivot[0]) error("cell_split: sorting failed.");
-#endif
-
-  left[1] = i;
-  right[1] = count - 1;
-  left[0] = 0;
-  right[0] = j;
-
-  /* Split along the y axis, twice. */
-  for (int k = 1; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && parts[i].x[1] <= pivot[1]) i += 1;
-      while (j >= left[k] && parts[j].x[1] > pivot[1]) j -= 1;
-      if (i < j) {
-        struct part temp = parts[i];
-        parts[i] = parts[j];
-        parts[j] = temp;
-        struct xpart xtemp = xparts[i];
-        xparts[i] = xparts[j];
-        xparts[j] = xtemp;
-      }
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int kk = left[k]; kk <= j; kk++)
-      if (parts[kk].x[1] > pivot[1]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (left).");
-      }
-    for (int kk = i; kk <= right[k]; kk++)
-      if (parts[kk].x[1] < pivot[1]) error("sorting failed (right).");
-#endif
-
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
   }
 
-  /* Split along the z axis, four times. */
-  for (int k = 3; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && parts[i].x[2] <= pivot[2]) i += 1;
-      while (j >= left[k] && parts[j].x[2] > pivot[2]) j -= 1;
-      if (i < j) {
-        struct part temp = parts[i];
-        parts[i] = parts[j];
-        parts[j] = temp;
-        struct xpart xtemp = xparts[i];
-        xparts[i] = xparts[j];
-        xparts[j] = xtemp;
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = buff[k];
+      if (bid != bucket) {
+        struct part part = parts[k];
+        struct xpart xpart = xparts[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (buff[j] == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&parts[j], &part, sizeof(struct part));
+          memswap(&xparts[j], &xpart, sizeof(struct xpart));
+          memswap(&buff[j], &bid, sizeof(int));
+        }
+        parts[k] = part;
+        xparts[k] = xpart;
+        buff[k] = bid;
       }
+      bucket_count[bid]++;
     }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int kk = left[k]; kk <= j; kk++)
-      if (parts[kk].x[2] > pivot[2]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (left).");
-      }
-    for (int kk = i; kk <= right[k]; kk++)
-      if (parts[kk].x[2] < pivot[2]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (right).");
-      }
-#endif
-
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
   }
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->count = right[k] - left[k] + 1;
-    c->progeny[k]->parts = &c->parts[left[k]];
-    c->progeny[k]->xparts = &c->xparts[left[k]];
+    c->progeny[k]->count = bucket_count[k];
+    c->progeny[k]->parts = &c->parts[bucket_offset[k]];
+    c->progeny[k]->xparts = &c->xparts[bucket_offset[k]];
   }
 
   /* Re-link the gparts. */
@@ -614,66 +567,51 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
 #endif
 
   /* Now do the same song and dance for the gparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Split along the x-axis. */
-  i = 0;
-  j = gcount - 1;
-  while (i <= j) {
-    while (i <= gcount - 1 && gparts[i].x[0] <= pivot[0]) i += 1;
-    while (j >= 0 && gparts[j].x[0] > pivot[0]) j -= 1;
-    if (i < j) {
-      struct gpart gtemp = gparts[i];
-      gparts[i] = gparts[j];
-      gparts[j] = gtemp;
-    }
-  }
-  left[1] = i;
-  right[1] = gcount - 1;
-  left[0] = 0;
-  right[0] = j;
-
-  /* Split along the y axis, twice. */
-  for (int k = 1; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && gparts[i].x[1] <= pivot[1]) i += 1;
-      while (j >= left[k] && gparts[j].x[1] > pivot[1]) j -= 1;
-      if (i < j) {
-        struct gpart gtemp = gparts[i];
-        gparts[i] = gparts[j];
-        gparts[j] = gtemp;
-      }
-    }
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < gcount; k++) {
+    const int bid = (gparts[k].x[0] > pivot[0]) * 4 +
+                    (gparts[k].x[1] > pivot[1]) * 2 +
+                    (gparts[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    buff[k] = bid;
   }
 
-  /* Split along the z axis, four times. */
-  for (int k = 3; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && gparts[i].x[2] <= pivot[2]) i += 1;
-      while (j >= left[k] && gparts[j].x[2] > pivot[2]) j -= 1;
-      if (i < j) {
-        struct gpart gtemp = gparts[i];
-        gparts[i] = gparts[j];
-        gparts[j] = gtemp;
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = buff[k];
+      if (bid != bucket) {
+        struct gpart gpart = gparts[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (buff[j] == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap(&buff[j], &bid, sizeof(int));
+        }
+        gparts[k] = gpart;
+        buff[k] = bid;
       }
+      bucket_count[bid]++;
     }
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
   }
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->gcount = right[k] - left[k] + 1;
-    c->progeny[k]->gparts = &c->gparts[left[k]];
+    c->progeny[k]->gcount = bucket_count[k];
+    c->progeny[k]->gparts = &c->gparts[bucket_offset[k]];
   }
 
   /* Re-link the parts. */

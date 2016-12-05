@@ -40,7 +40,6 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "const.h"
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
