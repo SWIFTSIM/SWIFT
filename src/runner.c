@@ -838,17 +838,6 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
       /* Now, get the maximal particle motion from its square */
       dx_max = sqrtf(dx2_max);
 
-      /* Set ti_old on the sub-cells */
-      cell_set_ti_old(c, e->ti_current);
-
-      /* Need to recurse to unskip if need be */
-      for (int k = 0; k < 8; k++) {
-        if (c->progeny[k] != NULL) {
-          struct cell *cp = c->progeny[k];
-          runner_do_drift(cp, e, 0);
-        }
-      }
-
     } /* Check that we are actually going to move forward. */
 
     else {

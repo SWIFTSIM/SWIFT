@@ -981,25 +981,3 @@ void cell_set_super(struct cell *c, struct cell *super) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
-
-/**
- * Set ti_old of a #cell and all its progenies to a new value.
- *
- * @param c The #cell.
- * @param ti_current The new value of ti_old.
- */
-void cell_set_ti_old(struct cell *c, int ti_current) {
-
-  /* Set this cell */
-  c->ti_old = ti_current;
-
-  /* Recurse */
-  if (c->split) {
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        cell_set_ti_old(cp, ti_current);
-      }
-    }
-  }
-}
