@@ -186,7 +186,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(const int ma
     }
   }
   /* Flush the c2 cache if it has reached capacity. */
-  if(*icount >= (C2_CACHE_SIZE - (NUM_VEC_PROC * VEC_SIZE))) {
+  //if(*icount >= (C2_CACHE_SIZE - (NUM_VEC_PROC * VEC_SIZE))) {
 
     int icount_align = *icount;
     
@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
 
-  //TIMER_TIC
+  TIMER_TIC
 
   if (c->ti_end_min > ti_current) return;
   if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
@@ -429,7 +429,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(struct run
     icount = 0;
   } /* loop over all particles. */
 
-  //TIMER_TOC(TIMER_DOSELF);
+  TIMER_TOC(timer_doself_density);
 #endif
 }
 
@@ -453,7 +453,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
   vector v_hi2, v_vix2, v_viy2, v_viz2, v_hig2_2, v2_r2;
 
-  //TIMER_TIC
+  TIMER_TIC
 
   /* TODO: Need to find two active particles, not just one. */
   if (c->ti_end_min > ti_current) return;
@@ -747,7 +747,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(struct r
     icount2 = 0;
   } /* loop over all particles. */
 
-  //TIMER_TOC(TIMER_DOSELF);
+  TIMER_TOC(timer_doself_density);
 #endif
 
 }
