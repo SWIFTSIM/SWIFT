@@ -24,13 +24,13 @@
 #include "../config.h"
 
 /* Local headers */
-#include "vector.h"
-#include "part.h"
 #include "cell.h"
-#include "runner.h"
-#include "hydro.h"
-#include "timers.h"
 #include "engine.h"
+#include "hydro.h"
+#include "part.h"
+#include "runner.h"
+#include "timers.h"
+#include "vector.h"
 
 /* Function prototypes. */
 void runner_doself1_density_vec(struct runner *r, struct cell *restrict c);

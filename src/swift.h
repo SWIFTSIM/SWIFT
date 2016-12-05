@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "cache.h"
 #include "cell.h"
 #include "clocks.h"
 #include "const.h"
@@ -56,6 +57,5 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
-#include "cache.h"
 
 #endif /* SWIFT_SWIFT_H */

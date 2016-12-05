@@ -578,7 +578,7 @@ int compare_values(double a, double b, double threshold, double *absDiff,
 
   *absDiff = fabs(a - b);
   *absSum = fabs(a + b);
-  if( *absSum > 0.f) {
+  if (*absSum > 0.f) {
     *relDiff = *absDiff / *absSum;
   }
 
@@ -644,8 +644,8 @@ int compare_particles(struct part a, struct part b, double threshold) {
     message("a = %e, b = %e", a.rho, b.rho);
     result = 1;
   }
-  if (compare_values(a.density.rho_dh, b.density.rho_dh, threshold, &absDiff, &absSum,
-                     &relDiff)) {
+  if (compare_values(a.density.rho_dh, b.density.rho_dh, threshold, &absDiff,
+                     &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for rho_dh of "
         "particle %lld.",
@@ -720,7 +720,7 @@ int compare_particles(struct part a, struct part b, double threshold) {
   }
 
   return result;
-} 
+}
 
 /** @brief Computes the forces between all g-particles using the N^2 algorithm
  *

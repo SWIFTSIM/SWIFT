@@ -23,22 +23,22 @@
 #include "../config.h"
 
 /* Local headers */
-#include "vector.h"
-#include "part.h"
 #include "cell.h"
 #include "error.h"
+#include "part.h"
+#include "vector.h"
 
 #define NUM_VEC_PROC 2
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 #define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
-/* Cache struct to hold a local copy of a cells' particle 
+/* Cache struct to hold a local copy of a cells' particle
  * properties required for density/force calculations.*/
-struct cache {  
+struct cache {
 
   /* Particle x position. */
-  float *restrict x __attribute__((aligned(sizeof(float) * VEC_SIZE)));   
-  
+  float *restrict x __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
   /* Particle y position. */
   float *restrict y __attribute__((aligned(sizeof(float) * VEC_SIZE)));
 
@@ -62,10 +62,10 @@ struct cache {
 
   /* Cache size. */
   int count;
-
 };
 
-/* Secondary cache struct to hold a list of interactions between two particles.*/
+/* Secondary cache struct to hold a list of interactions between two
+ * particles.*/
 struct c2_cache {
 
   /* Separation between two particles squared. */
@@ -81,11 +81,11 @@ struct c2_cache {
   float dzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 
   /* Mass of particle pj. */
-  float mq[C2_CACHE_SIZE]  __attribute__((aligned(C2_CACHE_ALIGN)));
+  float mq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 
   /* x velocity of particle pj. */
   float vxq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* y velocity of particle pj. */
   float vyq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 
@@ -99,9 +99,11 @@ struct c2_cache {
  * @param c The cache.
  * @param count Number of particles to allocate space for.
  */
-__attribute__((always_inline)) INLINE void cache_init(struct cache *c, size_t count) {
+__attribute__((always_inline)) INLINE void cache_init(struct cache *c,
+                                                      size_t count) {
 
-  /* Align cache on correct byte boundary and pad cache size to include 2 vector lengths for remainder operations. */
+  /* Align cache on correct byte boundary and pad cache size to include 2 vector
+   * lengths for remainder operations. */
   unsigned long alignment = sizeof(float) * VEC_SIZE;
   unsigned int sizeBytes = (count + (2 * VEC_SIZE)) * sizeof(float);
   int error = 0;
@@ -118,16 +120,17 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c, size_t co
     free(c->h);
   }
 
-  error += posix_memalign((void **)&c->x, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->y, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->z, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->m, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->vx, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->vy, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->vz, alignment,sizeBytes);
-  error += posix_memalign((void **)&c->h, alignment,sizeBytes);
-  
-  if (error !=0) error("Couldn't allocate cache, no. of particles: %d", (int)count);
+  error += posix_memalign((void **)&c->x, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->y, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->z, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->m, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->vx, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->vy, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->vz, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->h, alignment, sizeBytes);
+
+  if (error != 0)
+    error("Couldn't allocate cache, no. of particles: %d", (int)count);
   c->count = count;
 }
 
@@ -137,22 +140,22 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c, size_t co
  * @param ci The #cell.
  * @param ci_cache The cache.
  */
-__attribute__((always_inline)) INLINE void cache_read_particles(const struct cell *const ci, struct cache *const ci_cache) {
+__attribute__((always_inline)) INLINE void cache_read_particles(
+    const struct cell *const ci, struct cache *const ci_cache) {
 
-   /* Shift the particles positions to a local frame so single precision can be used instead of double precision. */
-   for (int i=0; i<ci->count; i++) {
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
+  for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
     ci_cache->y[i] = ci->parts[i].x[1] - ci->loc[1];
     ci_cache->z[i] = ci->parts[i].x[2] - ci->loc[2];
     ci_cache->h[i] = ci->parts[i].h;
-    
+
     ci_cache->m[i] = ci->parts[i].mass;
     ci_cache->vx[i] = ci->parts[i].v[0];
     ci_cache->vy[i] = ci->parts[i].v[1];
     ci_cache->vz[i] = ci->parts[i].v[2];
-
-   }
-
+  }
 }
 
 #endif /* SWIFT_CACHE_H */

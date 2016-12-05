@@ -51,8 +51,8 @@ typedef void (*vec_interaction)(float *, float *, float *, float *,
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(size_t count, double *offset, double spacing, double h,
-                            long long *partId) {
+struct part *make_particles(size_t count, double *offset, double spacing,
+                            double h, long long *partId) {
 
   struct part *particles;
   if (posix_memalign((void **)&particles, part_align,
@@ -187,7 +187,7 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
 }
 
 /*
- * @brief Calls the serial and vectorised version of an interaction 
+ * @brief Calls the serial and vectorised version of an interaction
  * function given by the function pointers.
  *
  * @param test_part Particle that will be updated
@@ -223,7 +223,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   /* Remaining particles in the sphere that will interact with test particle. */
   struct part pj_serial[count], pj_vec[count];
 
-  /* Stores the separation, smoothing length and pointers to particles 
+  /* Stores the separation, smoothing length and pointers to particles
    * needed for the vectorised interaction. */
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));

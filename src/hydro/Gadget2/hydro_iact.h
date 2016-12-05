@@ -384,11 +384,16 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
 #ifdef WITH_VECTORIZATION
 /**
- * @brief Density interaction computed using 2 interleaved vectors (non-symmetric vectorized version).
+ * @brief Density interaction computed using 2 interleaved vectors
+ * (non-symmetric vectorized version).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vector hi_inv, 
-                                vector vix, vector viy, vector viz, float *Vjx, float *Vjy, float *Vjz, float *Mj, vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,vector *curlvySum, vector *curlvzSum, vector mask, vector mask2, int knlMask, int knlMask2) {
+runner_iact_nonsym_2_vec_density(
+    float *R2, float *Dx, float *Dy, float *Dz, vector hi_inv, vector vix,
+    vector viy, vector viz, float *Vjx, float *Vjy, float *Vjz, float *Mj,
+    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector mask, vector mask2, int knlMask, int knlMask2) {
 
   vector r, ri, r2, xi, wi, wi_dx;
   vector mj;
@@ -431,7 +436,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
   xi2.v = vec_mul(r_2.v, hi_inv.v);
 
   /* Calculate the kernel for two particles. */
-  kernel_deval_2_vec(&xi, &wi, &wi_dx,&xi2, &wi2, &wi_dx2);
+  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi2, &wi2, &wi_dx2);
 
   /* Compute dv. */
   dvx.v = vec_sub(vix.v, vjx.v);
@@ -443,66 +448,106 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz, vec
 
   /* Compute dv dot r */
   dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
-  dvdr2.v = vec_fma(dvx2.v, dx2.v, vec_fma(dvy2.v, dy2.v, vec_mul(dvz2.v, dz2.v)));
+  dvdr2.v =
+      vec_fma(dvx2.v, dx2.v, vec_fma(dvy2.v, dy2.v, vec_mul(dvz2.v, dz2.v)));
   dvdr.v = vec_mul(dvdr.v, ri.v);
   dvdr2.v = vec_mul(dvdr2.v, ri2.v);
 
   /* Compute dv cross r */
-  curlvrx.v = vec_fma(dvy.v, dz.v, vec_mul(vec_set1(-1.0f),vec_mul(dvz.v, dy.v)));
-  curlvrx2.v = vec_fma(dvy2.v, dz2.v, vec_mul(vec_set1(-1.0f),vec_mul(dvz2.v, dy2.v)));
-  curlvry.v = vec_fma(dvz.v, dx.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx.v, dz.v)));
-  curlvry2.v = vec_fma(dvz2.v, dx2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx2.v, dz2.v)));
-  curlvrz.v = vec_fma(dvx.v, dy.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy.v, dx.v)));
-  curlvrz2.v = vec_fma(dvx2.v, dy2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy2.v, dx2.v)));
-  curlvrx.v = vec_mul(curlvrx.v,ri.v);
-  curlvrx2.v = vec_mul(curlvrx2.v,ri2.v);
-  curlvry.v = vec_mul(curlvry.v,ri.v);
-  curlvry2.v = vec_mul(curlvry2.v,ri2.v);
-  curlvrz.v = vec_mul(curlvrz.v,ri.v);
-  curlvrz2.v = vec_mul(curlvrz2.v,ri2.v);
+  curlvrx.v =
+      vec_fma(dvy.v, dz.v, vec_mul(vec_set1(-1.0f), vec_mul(dvz.v, dy.v)));
+  curlvrx2.v =
+      vec_fma(dvy2.v, dz2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvz2.v, dy2.v)));
+  curlvry.v =
+      vec_fma(dvz.v, dx.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx.v, dz.v)));
+  curlvry2.v =
+      vec_fma(dvz2.v, dx2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx2.v, dz2.v)));
+  curlvrz.v =
+      vec_fma(dvx.v, dy.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy.v, dx.v)));
+  curlvrz2.v =
+      vec_fma(dvx2.v, dy2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy2.v, dx2.v)));
+  curlvrx.v = vec_mul(curlvrx.v, ri.v);
+  curlvrx2.v = vec_mul(curlvrx2.v, ri2.v);
+  curlvry.v = vec_mul(curlvry.v, ri.v);
+  curlvry2.v = vec_mul(curlvry2.v, ri2.v);
+  curlvrz.v = vec_mul(curlvrz.v, ri.v);
+  curlvrz2.v = vec_mul(curlvrz2.v, ri2.v);
 
-  /* Mask updates to intermediate vector sums for particle pi. */
+/* Mask updates to intermediate vector sums for particle pi. */
 #ifdef HAVE_AVX512_F
-  rhoSum->v = _mm512_mask_add_ps(rhoSum->v, knlMask, vec_mul(mj.v, wi.v), rhoSum->v);
-  rhoSum->v = _mm512_mask_add_ps(rhoSum->v, knlMask2, vec_mul(mj2.v, wi2.v), rhoSum->v);
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask, vec_mul(mj.v, wi.v), rhoSum->v);
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask2, vec_mul(mj2.v, wi2.v), rhoSum->v);
 
-  rho_dhSum->v = _mm512_mask_sub_ps(rho_dhSum->v, knlMask, rho_dhSum->v, vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(xi.v, wi_dx.v))));
-  rho_dhSum->v = _mm512_mask_sub_ps(rho_dhSum->v, knlMask2, rho_dhSum->v, vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v, vec_mul(xi2.v, wi_dx2.v))));
+  rho_dhSum->v =
+      _mm512_mask_sub_ps(rho_dhSum->v, knlMask, rho_dhSum->v,
+                         vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                               vec_mul(xi.v, wi_dx.v))));
+  rho_dhSum->v = _mm512_mask_sub_ps(
+      rho_dhSum->v, knlMask2, rho_dhSum->v,
+      vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
+                             vec_mul(xi2.v, wi_dx2.v))));
 
   wcountSum->v = _mm512_mask_add_ps(wcountSum->v, knlMask, wi.v, wcountSum->v);
-  wcountSum->v = _mm512_mask_add_ps(wcountSum->v, knlMask2, wi2.v, wcountSum->v);
+  wcountSum->v =
+      _mm512_mask_add_ps(wcountSum->v, knlMask2, wi2.v, wcountSum->v);
 
-  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask, wcount_dhSum->v, vec_mul(xi.v, wi_dx.v));
-  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask2, wcount_dhSum->v, vec_mul(xi2.v, wi_dx2.v));
+  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask,
+                                       wcount_dhSum->v, vec_mul(xi.v, wi_dx.v));
+  wcount_dhSum->v = _mm512_mask_sub_ps(
+      wcount_dhSum->v, knlMask2, wcount_dhSum->v, vec_mul(xi2.v, wi_dx2.v));
 
-  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask, div_vSum->v, vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
-  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask2, div_vSum->v, vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)));
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask, div_vSum->v,
+                                   vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask2, div_vSum->v,
+                                   vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)));
 
-  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask, vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)), curlvxSum->v);
-  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)), curlvxSum->v);
+  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
+                                    curlvxSum->v);
+  curlvxSum->v = _mm512_mask_add_ps(
+      curlvxSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)),
+      curlvxSum->v);
 
-  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask, vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)), curlvySum->v);
-  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)), curlvySum->v);
+  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
+                                    curlvySum->v);
+  curlvySum->v = _mm512_mask_add_ps(
+      curlvySum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)),
+      curlvySum->v);
 
-  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask, vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)), curlvzSum->v);
-  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)), curlvzSum->v);
+  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
+                                    curlvzSum->v);
+  curlvzSum->v = _mm512_mask_add_ps(
+      curlvzSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)),
+      curlvzSum->v);
 #else
-  rhoSum->v += vec_and(vec_mul(mj.v, wi.v),mask.v);
-  rhoSum->v += vec_and(vec_mul(mj2.v, wi2.v),mask2.v);
-  rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(xi.v, wi_dx.v))),mask.v);
-  rho_dhSum->v -= vec_and(vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v, vec_mul(xi2.v, wi_dx2.v))),mask2.v);
-  wcountSum->v += vec_and(wi.v,mask.v);
-  wcountSum->v += vec_and(wi2.v,mask2.v);
-  wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v),mask.v);
-  wcount_dhSum->v -= vec_and(vec_mul(xi2.v, wi_dx2.v),mask2.v);
-  div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)),mask.v);
-  div_vSum->v -= vec_and(vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)),mask2.v);
-  curlvxSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),mask.v);
-  curlvxSum->v += vec_and(vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)),mask2.v);
-  curlvySum->v += vec_and(vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),mask.v);
-  curlvySum->v += vec_and(vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)),mask2.v);
-  curlvzSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),mask.v);
-  curlvzSum->v += vec_and(vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)),mask2.v);
+  rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
+  rhoSum->v += vec_and(vec_mul(mj2.v, wi2.v), mask2.v);
+  rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                                vec_mul(xi.v, wi_dx.v))),
+                          mask.v);
+  rho_dhSum->v -=
+      vec_and(vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
+                                     vec_mul(xi2.v, wi_dx2.v))),
+              mask2.v);
+  wcountSum->v += vec_and(wi.v, mask.v);
+  wcountSum->v += vec_and(wi2.v, mask2.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi2.v, wi_dx2.v), mask2.v);
+  div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
+  div_vSum->v -= vec_and(vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)), mask2.v);
+  curlvxSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)), mask.v);
+  curlvxSum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)), mask2.v);
+  curlvySum->v += vec_and(vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)), mask.v);
+  curlvySum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)), mask2.v);
+  curlvzSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)), mask.v);
+  curlvzSum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)), mask2.v);
 #endif
 }
 #endif
@@ -639,17 +684,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
   piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
-                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
   pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
-                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
-  grad_hi.v = vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f, 
-                      pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
-  grad_hj.v = vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f, 
-                      pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f,
+              pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f,
+              pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -682,11 +729,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
   piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
   pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
-  grad_hi.v = vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f); 
-  grad_hj.v = vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f); 
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
@@ -748,7 +797,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  sph_term.v = (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;
@@ -913,17 +964,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
   piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
-                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
   pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
-                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
-  grad_hi.v = vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f, 
-                      pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
-  grad_hj.v = vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f, 
-                      pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f,
+              pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f,
+              pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -955,11 +1008,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #elif VEC_SIZE == 4
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
   piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
   pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
-  grad_hi.v = vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f); 
-  grad_hj.v = vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f); 
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
@@ -1021,7 +1076,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  sph_term.v = (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;

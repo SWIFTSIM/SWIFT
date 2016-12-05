@@ -282,7 +282,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
  *
  * @return Non-zero value if difference found, 0 otherwise
  */
-int check_results(struct part *serial_parts, struct part *vec_parts, int count, double threshold) {
+int check_results(struct part *serial_parts, struct part *vec_parts, int count,
+                  double threshold) {
   int result = 0;
 
   for (int i = 0; i < count; i++)
@@ -442,10 +443,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    /* And now the self-interaction */
+/* And now the self-interaction */
 #ifdef WITH_VECTORIZATION
     runner.par_cache.count = 0;
-    cache_init(&runner.par_cache,512);
+    cache_init(&runner.par_cache, 512);
 #endif
 
     const ticks self_tic = getticks();
@@ -472,10 +473,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Store the vectorised particle results. */ 
+  /* Store the vectorised particle results. */
   struct part vec_parts[main_cell->count];
-  for(int i=0; i<main_cell->count; i++)
-    vec_parts[i] = main_cell->parts[i];
+  for (int i = 0; i < main_cell->count; i++) vec_parts[i] = main_cell->parts[i];
 
   /* Output timing */
   ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
@@ -524,7 +524,7 @@ int main(int argc, char *argv[]) {
   /* Check serial results against the vectorised results. */
   if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
     message("Differences found...");
-  
+
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
 

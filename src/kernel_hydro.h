@@ -373,19 +373,24 @@ static const vector c5 = FILL_VEC(1.f);
 #endif
 
 /**
- * @brief Computes the kernel function and its derivative for two particles using interleaved vectors.
+ * @brief Computes the kernel function and its derivative for two particles
+ * using interleaved vectors.
  *
  * Return 0 if $u > \\gamma = H/h$
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
- * @param u2 The ratio of the distance to the smoothing length $u = x/h$ for second particle.
- * @param w2 (return) The value of the kernel function $W(x,h)$ for second particle.
- * @param dw_dx2 (return) The norm of the gradient of $|\\nabla W(x,h)|$ for second particle.
+ * @param u2 The ratio of the distance to the smoothing length $u = x/h$ for
+ * second particle.
+ * @param w2 (return) The value of the kernel function $W(x,h)$ for second
+ * particle.
+ * @param dw_dx2 (return) The norm of the gradient of $|\\nabla W(x,h)|$ for
+ * second particle.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
-    vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2, vector *dw_dx2) {
+    vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2,
+    vector *dw_dx2) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x, x2;
@@ -414,17 +419,21 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
   w->v = vec_fma(x.v, w->v, c4.v);
   w2->v = vec_fma(x2.v, w2->v, c4.v);
-  
+
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
   w->v = vec_fma(x.v, w->v, c5.v);
   w2->v = vec_fma(x2.v, w2->v, c5.v);
 
   /* Return everything */
-  w->v = vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  w2->v = vec_mul(w2->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  w2->v = vec_mul(w2->v,
+                  vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
+                                         kernel_gamma_inv_dim_plus_one_vec.v));
 #else
 
   /* Load x and get the interval id. */
@@ -462,7 +471,6 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
       dw_dx2->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
 
 #endif
-
 }
 
 #endif

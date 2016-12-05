@@ -53,13 +53,13 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
+#include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sourceterms.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
-#include "runner_doiact_vec.h"
 
 /**
  * @brief  Entry in a list of sorted indices.

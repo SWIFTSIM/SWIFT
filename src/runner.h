@@ -47,7 +47,7 @@ struct runner {
 
   /*! The engine owing this runner. */
   struct engine *e;
-  
+
   /*! The particle cache of this runner. */
   struct cache par_cache;
 };
