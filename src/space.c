@@ -295,6 +295,12 @@ void space_regrid(struct space *s, int verbose) {
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2]) {
 
+/* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+    message("re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
+    fflush(stdout);
+#endif
+
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
@@ -444,8 +450,11 @@ void space_rebuild(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Be verbose about this. */
-  // message("re)building space..."); fflush(stdout);
+/* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+  message("re)building space");
+  fflush(stdout);
+#endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
