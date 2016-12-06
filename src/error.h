@@ -21,15 +21,20 @@
 #ifndef SWIFT_ERROR_H
 #define SWIFT_ERROR_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <stdio.h>
-
-#include "clocks.h"
+#include <stdlib.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
+
+/* Local headers. */
+#include "clocks.h"
 
 /**
  * @brief Error macro. Prints the message given in argument and aborts.
@@ -38,19 +43,19 @@
 #ifdef WITH_MPI
 extern int engine_rank;
 #define error(s, ...)                                                      \
-  {                                                                        \
+  ({                                                                       \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
-  }
+  })
 #else
 #define error(s, ...)                                                      \
-  {                                                                        \
+  ({                                                                       \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
     abort();                                                               \
-  }
+  })
 #endif
 
 #ifdef WITH_MPI
@@ -60,7 +65,7 @@ extern int engine_rank;
  *
  */
 #define mpi_error(res, s, ...)                                             \
-  {                                                                        \
+  ({                                                                       \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -69,10 +74,10 @@ extern int engine_rank;
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
-  }
+  })
 
 #define mpi_error_string(res, s, ...)                                      \
-  {                                                                        \
+  ({                                                                       \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -80,7 +85,7 @@ extern int engine_rank;
     char buf[len];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
-  }
+  })
 #endif
 
 /**
@@ -89,13 +94,17 @@ extern int engine_rank;
  */
 #ifdef WITH_MPI
 extern int engine_rank;
-#define message(s, ...)                                                     \
-  printf("[%04i] %s %s: " s "\n", engine_rank, clocks_get_timesincestart(), \
-         __FUNCTION__, ##__VA_ARGS__)
+#define message(s, ...)                                                       \
+  ({                                                                          \
+    printf("[%04i] %s %s: " s "\n", engine_rank, clocks_get_timesincestart(), \
+           __FUNCTION__, ##__VA_ARGS__);                                      \
+  })
 #else
-#define message(s, ...)                                               \
-  printf("%s %s: " s "\n", clocks_get_timesincestart(), __FUNCTION__, \
-         ##__VA_ARGS__)
+#define message(s, ...)                                                 \
+  ({                                                                    \
+    printf("%s %s: " s "\n", clocks_get_timesincestart(), __FUNCTION__, \
+           ##__VA_ARGS__);                                              \
+  })
 #endif
 
 /**
@@ -105,7 +114,7 @@ extern int engine_rank;
 #ifdef WITH_MPI
 extern int engine_rank;
 #define assert(expr)                                                          \
-  {                                                                           \
+  ({                                                                          \
     if (!(expr)) {                                                            \
       fprintf(stderr, "[%04i] %s %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
               engine_rank, clocks_get_timesincestart(), __FILE__,             \
@@ -113,17 +122,17 @@ extern int engine_rank;
       fflush(stderr);                                                         \
       MPI_Abort(MPI_COMM_WORLD, -1);                                          \
     }                                                                         \
-  }
+  })
 #else
 #define assert(expr)                                                          \
-  {                                                                           \
+  ({                                                                          \
     if (!(expr)) {                                                            \
       fprintf(stderr, "%s %s:%s():%i: FAILED ASSERTION: " #expr " \n",        \
               clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__); \
       fflush(stderr);                                                         \
       abort();                                                                \
     }                                                                         \
-  }
+  })
 #endif
 
 #endif /* SWIFT_ERROR_H */

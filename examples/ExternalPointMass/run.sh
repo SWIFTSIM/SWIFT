@@ -7,4 +7,4 @@ then
     python makeIC.py 10000
 fi
 
-../swift -g -t 2 externalPointMass.yml 2>&1 | tee output.log
+../swift -g -t 1 externalPointMass.yml 2>&1 | tee output.log

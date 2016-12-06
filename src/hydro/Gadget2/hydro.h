@@ -246,10 +246,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * and add the self-contribution term.
  *
  * @param p The particle to act upon
- * @param ti_current The current time (on the integer timeline)
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p, int ti_current) {
+    struct part *restrict p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -411,8 +410,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  p->entropy_dt *=
-      0.5f * hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
+  p->entropy_dt =
+      0.5f * gas_entropy_from_internal_energy(p->rho, p->entropy_dt);
 }
 
 /**

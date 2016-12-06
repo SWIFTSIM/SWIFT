@@ -32,7 +32,6 @@
 
 /* Local includes. */
 #include "cell.h"
-#include "const.h"
 #include "engine.h"
 #include "hydro.h"
 #include "inline.h"
@@ -171,7 +170,7 @@ int checkSpacehmax(struct space *s) {
   }
 
   /*  If within some epsilon we are OK. */
-  if (abs(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+  if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
 
   /* There is a problem. Hunt it down. */
   for (int k = 0; k < s->nr_cells; k++) {
@@ -191,6 +190,60 @@ int checkSpacehmax(struct space *s) {
   }
 
   return 0;
+}
+
+/**
+ * @brief Check if the h_max and dx_max values of a cell's hierarchy are
+ * consistent with the particles. Report verbosely if not.
+ *
+ * @param c the top cell of the hierarchy.
+ * @param depth the recursion depth for use in messages. Set to 0 initially.
+ * @result 1 or 0
+ */
+int checkCellhdxmax(const struct cell *c, int *depth) {
+
+  *depth = *depth + 1;
+
+  float h_max = 0.0f;
+  float dx_max = 0.0f;
+  if (!c->split) {
+    const size_t nr_parts = c->count;
+    struct part *parts = c->parts;
+    for (size_t k = 0; k < nr_parts; k++) {
+      h_max = (h_max > parts[k].h) ? h_max : parts[k].h;
+    }
+  } else {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        checkCellhdxmax(cp, depth);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
+      }
+  }
+
+  /* Check. */
+  int result = 1;
+  if (c->h_max != h_max) {
+    message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
+            h_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+  if (c->dx_max != dx_max) {
+    message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max, dx_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  /* Check rebuild criterion. */
+  if (h_max > c->dmin) {
+    message("%d Inconsistent c->dmin: %f > %f", *depth, h_max, c->dmin);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  return result;
 }
 
 #ifdef HAVE_METIS
@@ -331,4 +384,47 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 }
 
-#endif
+#endif /* HAVE_METIS */
+
+#ifdef HAVE_MPI
+/**
+ * @brief Dump the positions and MPI ranks of the given top-level cells
+ *        to a simple text file.
+ *
+ * Can be used to visualise the partitioning of an MPI run. Note should
+ * be used immediately after repartitioning when the top-level cells
+ * have been assigned their nodes. Each time this is called a new file
+ * with the given prefix, a unique integer and type of .dat is created.
+ *
+ * @param prefix base output filename
+ * @param cells_top the top-level cells.
+ * @param nr_cells the number of cells.
+ */
+void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
+
+  FILE *file = NULL;
+
+  /* Name of output file. */
+  static int nseq = 0;
+  char fname[200];
+  sprintf(fname, "%s_%03d.dat", prefix, nseq);
+  nseq++;
+
+  file = fopen(fname, "w");
+
+  /* Header. */
+  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",
+          "zw", "rank");
+
+  /* Output */
+  for (int i = 0; i < nr_cells; i++) {
+    struct cell *c = &cells_top[i];
+    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", c->loc[0],
+            c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
+            c->nodeID);
+  }
+
+  fclose(file);
+}
+
+#endif /* HAVE_MPI */

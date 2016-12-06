@@ -680,8 +680,8 @@ void parser_print_params(const struct swift_params *params) {
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name) {
   FILE *file = fopen(file_name, "w");
-  char section[PARSER_MAX_LINE_SIZE];
-  char param_name[PARSER_MAX_LINE_SIZE];
+  char section[PARSER_MAX_LINE_SIZE] = {0};
+  char param_name[PARSER_MAX_LINE_SIZE] = {0};
   char *token;
 
   /* Start of file identifier in YAML. */

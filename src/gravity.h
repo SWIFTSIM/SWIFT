@@ -19,7 +19,8 @@
 #ifndef SWIFT_GRAVITY_H
 #define SWIFT_GRAVITY_H
 
-#include "./const.h"
+/* Config parameters. */
+#include "../config.h"
 
 /* So far only one model here */
 /* Straight-forward import */

@@ -49,7 +49,7 @@ hexcols = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77',
            '#CC6677', '#882255', '#AA4499', '#661100', '#6699CC', '#AA4466',
            '#4477AA']
 linestyle = (hexcols[0],hexcols[1],hexcols[3],hexcols[5],hexcols[6],hexcols[8])
-#cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
+#cmdLine = './swift -s -t 16 cosmoVolume.yml'
 #platform = 'KNL'
 
 # Work out how many data series there are

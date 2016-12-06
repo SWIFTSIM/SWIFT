@@ -27,16 +27,15 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local includes. */
-#include "const.h"
-
 /* Import the right external potential definition */
 #if defined(EXTERNAL_POTENTIAL_NONE)
 #include "./potential/none/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS)
 #include "./potential/point_mass/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL)
+#elif defined(EXTERNAL_POTENTIAL_ISOTHERMAL)
 #include "./potential/isothermal/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL)
+#include "./potential/softened_isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_DISC_PATCH)
 #include "./potential/disc_patch/potential.h"
 #else
@@ -46,7 +45,7 @@
 /* Now, some generic functions, defined in the source file */
 void potential_init(const struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us,
+                    const struct UnitSystem* us, const struct space* s,
                     struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);

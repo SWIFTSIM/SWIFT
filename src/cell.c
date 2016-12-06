@@ -47,11 +47,15 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "memswap.h"
+#include "minmax.h"
+#include "scheduler.h"
 #include "space.h"
 #include "timers.h"
 
@@ -461,122 +465,73 @@ void cell_gunlocktree(struct cell *c) {
  * @param c The #cell array to be sorted.
  * @param parts_offset Offset of the cell parts array relative to the
  *        space's parts array, i.e. c->parts - s->parts.
+ * @param buff A buffer with at least max(c->count, c->gcount) entries,
+ *        used for sorting indices.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset) {
+void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
 
-  int i, j;
   const int count = c->count, gcount = c->gcount;
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct gpart *gparts = c->gparts;
-  int left[8], right[8];
-  double pivot[3];
+  const double pivot[3] = {c->loc[0] + c->width[0] / 2,
+                           c->loc[1] + c->width[1] / 2,
+                           c->loc[2] + c->width[2] / 2};
+  int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int bucket_offset[9];
 
-  /* Init the pivots. */
-  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->width[k] / 2;
+  /* If the buff is NULL, allocate it, and remember to free it. */
+  const int allocate_buffer = (buff == NULL);
+  if (allocate_buffer &&
+      (buff = (int *)malloc(sizeof(int) * max(count, gcount))) == NULL)
+    error("Failed to allocate temporary indices.");
 
-  /* Split along the x-axis. */
-  i = 0;
-  j = count - 1;
-  while (i <= j) {
-    while (i <= count - 1 && parts[i].x[0] <= pivot[0]) i += 1;
-    while (j >= 0 && parts[j].x[0] > pivot[0]) j -= 1;
-    if (i < j) {
-      struct part temp = parts[i];
-      parts[i] = parts[j];
-      parts[j] = temp;
-      struct xpart xtemp = xparts[i];
-      xparts[i] = xparts[j];
-      xparts[j] = xtemp;
-    }
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < count; k++) {
+    const int bid = (parts[k].x[0] > pivot[0]) * 4 +
+                    (parts[k].x[1] > pivot[1]) * 2 + (parts[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    buff[k] = bid;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int k = 0; k <= j; k++)
-    if (parts[k].x[0] > pivot[0]) error("cell_split: sorting failed.");
-  for (int k = i; k < count; k++)
-    if (parts[k].x[0] < pivot[0]) error("cell_split: sorting failed.");
-#endif
-
-  left[1] = i;
-  right[1] = count - 1;
-  left[0] = 0;
-  right[0] = j;
-
-  /* Split along the y axis, twice. */
-  for (int k = 1; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && parts[i].x[1] <= pivot[1]) i += 1;
-      while (j >= left[k] && parts[j].x[1] > pivot[1]) j -= 1;
-      if (i < j) {
-        struct part temp = parts[i];
-        parts[i] = parts[j];
-        parts[j] = temp;
-        struct xpart xtemp = xparts[i];
-        xparts[i] = xparts[j];
-        xparts[j] = xtemp;
-      }
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int kk = left[k]; kk <= j; kk++)
-      if (parts[kk].x[1] > pivot[1]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (left).");
-      }
-    for (int kk = i; kk <= right[k]; kk++)
-      if (parts[kk].x[1] < pivot[1]) error("sorting failed (right).");
-#endif
-
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
   }
 
-  /* Split along the z axis, four times. */
-  for (int k = 3; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && parts[i].x[2] <= pivot[2]) i += 1;
-      while (j >= left[k] && parts[j].x[2] > pivot[2]) j -= 1;
-      if (i < j) {
-        struct part temp = parts[i];
-        parts[i] = parts[j];
-        parts[j] = temp;
-        struct xpart xtemp = xparts[i];
-        xparts[i] = xparts[j];
-        xparts[j] = xtemp;
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = buff[k];
+      if (bid != bucket) {
+        struct part part = parts[k];
+        struct xpart xpart = xparts[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (buff[j] == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&parts[j], &part, sizeof(struct part));
+          memswap(&xparts[j], &xpart, sizeof(struct xpart));
+          memswap(&buff[j], &bid, sizeof(int));
+        }
+        parts[k] = part;
+        xparts[k] = xpart;
+        buff[k] = bid;
       }
+      bucket_count[bid]++;
     }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int kk = left[k]; kk <= j; kk++)
-      if (parts[kk].x[2] > pivot[2]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (left).");
-      }
-    for (int kk = i; kk <= right[k]; kk++)
-      if (parts[kk].x[2] < pivot[2]) {
-        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
-        error("sorting failed (right).");
-      }
-#endif
-
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
   }
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->count = right[k] - left[k] + 1;
-    c->progeny[k]->parts = &c->parts[left[k]];
-    c->progeny[k]->xparts = &c->xparts[left[k]];
+    c->progeny[k]->count = bucket_count[k];
+    c->progeny[k]->parts = &c->parts[bucket_offset[k]];
+    c->progeny[k]->xparts = &c->xparts[bucket_offset[k]];
   }
 
   /* Re-link the gparts. */
@@ -612,66 +567,51 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
 #endif
 
   /* Now do the same song and dance for the gparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Split along the x-axis. */
-  i = 0;
-  j = gcount - 1;
-  while (i <= j) {
-    while (i <= gcount - 1 && gparts[i].x[0] <= pivot[0]) i += 1;
-    while (j >= 0 && gparts[j].x[0] > pivot[0]) j -= 1;
-    if (i < j) {
-      struct gpart gtemp = gparts[i];
-      gparts[i] = gparts[j];
-      gparts[j] = gtemp;
-    }
-  }
-  left[1] = i;
-  right[1] = gcount - 1;
-  left[0] = 0;
-  right[0] = j;
-
-  /* Split along the y axis, twice. */
-  for (int k = 1; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && gparts[i].x[1] <= pivot[1]) i += 1;
-      while (j >= left[k] && gparts[j].x[1] > pivot[1]) j -= 1;
-      if (i < j) {
-        struct gpart gtemp = gparts[i];
-        gparts[i] = gparts[j];
-        gparts[j] = gtemp;
-      }
-    }
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < gcount; k++) {
+    const int bid = (gparts[k].x[0] > pivot[0]) * 4 +
+                    (gparts[k].x[1] > pivot[1]) * 2 +
+                    (gparts[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    buff[k] = bid;
   }
 
-  /* Split along the z axis, four times. */
-  for (int k = 3; k >= 0; k--) {
-    i = left[k];
-    j = right[k];
-    while (i <= j) {
-      while (i <= right[k] && gparts[i].x[2] <= pivot[2]) i += 1;
-      while (j >= left[k] && gparts[j].x[2] > pivot[2]) j -= 1;
-      if (i < j) {
-        struct gpart gtemp = gparts[i];
-        gparts[i] = gparts[j];
-        gparts[j] = gtemp;
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = buff[k];
+      if (bid != bucket) {
+        struct gpart gpart = gparts[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (buff[j] == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap(&buff[j], &bid, sizeof(int));
+        }
+        gparts[k] = gpart;
+        buff[k] = bid;
       }
+      bucket_count[bid]++;
     }
-    left[2 * k + 1] = i;
-    right[2 * k + 1] = right[k];
-    left[2 * k] = left[k];
-    right[2 * k] = j;
   }
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->gcount = right[k] - left[k] + 1;
-    c->progeny[k]->gparts = &c->gparts[left[k]];
+    c->progeny[k]->gcount = bucket_count[k];
+    c->progeny[k]->gparts = &c->gparts[bucket_offset[k]];
   }
 
   /* Re-link the parts. */
@@ -756,13 +696,26 @@ void cell_convert_hydro(struct cell *c, void *data) {
  */
 void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
-  c->nr_density = 0;
-
   c->gradient = NULL;
-  c->nr_gradient = 0;
-
   c->force = NULL;
-  c->nr_force = 0;
+  c->grav = NULL;
+}
+
+/**
+ * @brief Checks that a cell is at the current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_drift_point(struct cell *c, void *data) {
+
+  const int ti_current = *(int *)data;
+
+  if (c->ti_old != ti_current)
+    error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
+          c->ti_old, ti_current);
 }
 
 /**
@@ -789,7 +742,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) {
     const double center_i = ci->loc[k];
     const double center_j = cj->loc[k];
-    if (fabsf(center_i - center_j) > min_dist) return 0;
+    if (fabs(center_i - center_j) > min_dist) return 0;
   }
 
   return 1;
@@ -819,10 +772,11 @@ void cell_check_multipole(struct cell *c, void *data) {
             mb.mass);
 
     for (int k = 0; k < 3; ++k)
-      if (fabsf(ma.CoM[k] - mb.CoM[k]) / fabsf(ma.CoM[k] + mb.CoM[k]) > 1e-5)
+      if (fabs(ma.CoM[k] - mb.CoM[k]) / fabs(ma.CoM[k] + mb.CoM[k]) > 1e-5)
         error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
               mb.CoM[k]);
 
+#if const_gravity_multipole_order >= 2
     if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
         ma.I_xx > 1e-9)
       error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
@@ -847,6 +801,7 @@ void cell_check_multipole(struct cell *c, void *data) {
         ma.I_yz > 1e-9)
       error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
             mb.I_yz);
+#endif
   }
 }
 
@@ -868,14 +823,14 @@ void cell_clean(struct cell *c) {
  * @brief Checks whether a given cell needs drifting or not.
  *
  * @param c the #cell.
- * @param ti_current The current time on the integer time-line.
+ * @param e The #engine (holding current time information).
  *
  * @return 1 If the cell needs drifting, 0 otherwise.
  */
-int cell_is_drift_needed(struct cell *c, int ti_current) {
+int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 
   /* Do we have at least one active particle in the cell ?*/
-  if (c->ti_end_min == ti_current) return 1;
+  if (cell_is_active(c, e)) return 1;
 
   /* Loop over the pair tasks that involve this cell */
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -883,12 +838,146 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
     if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
       continue;
 
-    /* Does the other cell in the pair have an active particle ? */
-    if ((l->t->ci == c && l->t->cj->ti_end_min == ti_current) ||
-        (l->t->cj == c && l->t->ci->ti_end_min == ti_current))
+    /* Is the other cell in the pair active ? */
+    if ((l->t->ci == c && cell_is_active(l->t->cj, e)) ||
+        (l->t->cj == c && cell_is_active(l->t->ci, e)))
       return 1;
   }
 
   /* No neighbouring cell has active particles. Drift not necessary */
   return 0;
+}
+
+/**
+ * @brief Un-skips all the tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
+
+  /* Un-skip the density tasks involved with this cell. */
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    const struct cell *ci = t->ci;
+    const struct cell *cj = t->cj;
+    scheduler_activate(s, t);
+
+    /* Set the correct sorting flags */
+    if (t->type == task_type_pair) {
+      if (!(ci->sorted & (1 << t->flags))) {
+        atomic_or(&ci->sorts->flags, (1 << t->flags));
+        scheduler_activate(s, ci->sorts);
+      }
+      if (!(cj->sorted & (1 << t->flags))) {
+        atomic_or(&cj->sorts->flags, (1 << t->flags));
+        scheduler_activate(s, cj->sorts);
+      }
+    }
+
+    /* Check whether there was too much particle motion */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      if (t->tight &&
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
+
+#ifdef WITH_MPI
+      /* Activate the send/recv flags. */
+      if (ci->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell ci's data. */
+        scheduler_activate(s, ci->recv_xv);
+        scheduler_activate(s, ci->recv_rho);
+        scheduler_activate(s, ci->recv_ti);
+
+        /* Look for the local cell cj's send tasks. */
+        struct link *l = NULL;
+        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        scheduler_activate(s, l->t);
+
+        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        scheduler_activate(s, l->t);
+
+        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        scheduler_activate(s, l->t);
+
+      } else if (cj->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell cj's data. */
+        scheduler_activate(s, cj->recv_xv);
+        scheduler_activate(s, cj->recv_rho);
+        scheduler_activate(s, cj->recv_ti);
+        /* Look for the local cell ci's send tasks. */
+        struct link *l = NULL;
+        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        scheduler_activate(s, l->t);
+
+        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        scheduler_activate(s, l->t);
+
+        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        scheduler_activate(s, l->t);
+      }
+#endif
+    }
+  }
+
+  /* Unskip all the other task types. */
+  for (struct link *l = c->gradient; l != NULL; l = l->next)
+    scheduler_activate(s, l->t);
+  for (struct link *l = c->force; l != NULL; l = l->next)
+    scheduler_activate(s, l->t);
+  for (struct link *l = c->grav; l != NULL; l = l->next)
+    scheduler_activate(s, l->t);
+  if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
+  if (c->ghost != NULL) scheduler_activate(s, c->ghost);
+  if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->kick != NULL) scheduler_activate(s, c->kick);
+  if (c->cooling != NULL) scheduler_activate(s, c->cooling);
+  if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
+
+  return 0;
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ */
+void cell_set_super(struct cell *c, struct cell *super) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super == NULL && c->nr_tasks > 0) super = c;
+
+  /* Set the super-cell */
+  c->super = super;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }

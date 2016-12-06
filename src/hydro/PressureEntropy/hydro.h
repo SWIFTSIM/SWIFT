@@ -254,10 +254,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * and add the self-contribution term.
  *
  * @param p The particle to act upon
- * @param ti_current The current time (on the integer timeline)
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p, int ti_current) {
+    struct part *restrict p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -338,11 +337,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute "grad h" term (note we use rho here and not rho_bar !)*/
   const float rho_inv = 1.f / p->rho;
-  const float entropy_minus_one_over_gamma = 1.f / p->entropy_one_over_gamma;
   const float rho_dh =
       1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
-  const float pressure_dh = p->density.pressure_dh * rho_inv * p->h *
-                            hydro_dimension_inv * entropy_minus_one_over_gamma;
+  const float pressure_dh =
+      p->density.pressure_dh * rho_inv * p->h * hydro_dimension_inv;
 
   const float grad_h_term = rho_dh * pressure_dh;
 
@@ -442,8 +440,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  p->entropy_dt *=
-      0.5f * hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho_bar);
+  p->entropy_dt =
+      0.5f * gas_entropy_from_internal_energy(p->rho_bar, p->entropy_dt);
 }
 
 /**

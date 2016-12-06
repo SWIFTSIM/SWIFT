@@ -59,14 +59,22 @@ void *threadpool_runner(void *data) {
     pthread_mutex_unlock(&tp->thread_mutex);
 
     /* The index of the mapping task we will work on next. */
-    size_t task_ind;
-    while ((task_ind = atomic_add(&tp->map_data_count, tp->map_data_chunk)) <
-           tp->map_data_size) {
-      const int num_elements = task_ind + tp->map_data_chunk > tp->map_data_size
-                                   ? tp->map_data_size - task_ind
-                                   : tp->map_data_chunk;
+    while (1) {
+      /* Desired chunk size. */
+      size_t chunk_size =
+          (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
+      if (chunk_size < 1) chunk_size = 1;
+
+      /* Get a chunk and check its size. */
+      size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
+      if (task_ind >= tp->map_data_size) break;
+      if (task_ind + chunk_size > tp->map_data_size)
+        chunk_size = tp->map_data_size - task_ind;
+
+      /* Call the mapper function. */
       tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
-                       num_elements, tp->map_extra_data);
+                       chunk_size, tp->map_extra_data);
     }
   }
 }

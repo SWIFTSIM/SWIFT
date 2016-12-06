@@ -31,6 +31,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "space.h"
 #include "units.h"
 
 /**
@@ -116,18 +117,39 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 }
 
 /**
+ * @brief Computes the gravitational potential energy of a particle in a point
+ * mass potential.
+ *
+ * @param potential The #external_potential used in the run.
+ * @param phys_const Physical constants in internal units.
+ * @param g Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+external_gravity_get_potential_energy(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, const struct gpart* g) {
+
+  const float dx = g->x[0] - potential->x;
+  const float dy = g->x[1] - potential->y;
+  const float dz = g->x[2] - potential->z;
+  const float rinv = 1. / sqrtf(dx * dx + dy * dy + dz * dz);
+  return -phys_const->const_newton_G * potential->mass * rinv;
+}
+
+/**
  * @brief Initialises the external potential properties in the internal system
  * of units.
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
+ * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
     const struct swift_params* parameter_file,
     const struct phys_const* phys_const, const struct UnitSystem* us,
-    struct external_potential* potential) {
+    const struct space* s, struct external_potential* potential) {
 
   potential->x =
       parser_get_param_double(parameter_file, "PointMassPotential:position_x");

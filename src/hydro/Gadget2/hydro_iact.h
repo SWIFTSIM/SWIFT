@@ -226,7 +226,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   error(
       "The Gadget2 serial version of runner_iact_density was called when the "
-      "vectorised version should have been used.")
+      "vectorised version should have been used.");
 
 #endif
 }
@@ -377,7 +377,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_density was called "
-      "when the vectorised version should have been used.")
+      "when the vectorised version should have been used.");
 
 #endif
 }
@@ -656,7 +656,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_force was called when "
-      "the vectorised version should have been used.")
+      "the vectorised version should have been used.");
 
 #endif
 }
@@ -917,7 +917,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_force was called when "
-      "the vectorised version should have been used.")
+      "the vectorised version should have been used.");
 
 #endif
 }

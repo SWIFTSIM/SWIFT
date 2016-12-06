@@ -34,7 +34,6 @@
 
 /* Local headers. */
 #include "adiabatic_index.h"
-#include "const.h"
 #include "debug.h"
 #include "inline.h"
 

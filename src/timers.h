@@ -56,6 +56,7 @@ enum {
   timer_dosub_pair_grav,
   timer_dopair_subset,
   timer_do_ghost,
+  timer_do_extra_ghost,
   timer_dorecv_cell,
   timer_gettask,
   timer_qget,

@@ -255,8 +255,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
-  const float sph_term = (S_gamma_j / S_gamma_i - f_i) * P_over_rho2_i * wi_dr +
-                         (S_gamma_i / S_gamma_j - f_j) * P_over_rho2_j * wj_dr;
+  const float sph_term =
+      (S_gamma_j / S_gamma_i - f_i / S_gamma_i) * P_over_rho2_i * wi_dr +
+      (S_gamma_i / S_gamma_j - f_j / S_gamma_j) * P_over_rho2_j * wj_dr;
 
   /* Eventually got the acceleration */
   const float acc = (visc_term + sph_term) * r_inv;
@@ -365,8 +366,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
-  const float sph_term = (S_gamma_j / S_gamma_i - f_i) * P_over_rho2_i * wi_dr +
-                         (S_gamma_i / S_gamma_j - f_j) * P_over_rho2_j * wj_dr;
+  const float sph_term =
+      (S_gamma_j / S_gamma_i - f_i / S_gamma_i) * P_over_rho2_i * wi_dr +
+      (S_gamma_i / S_gamma_j - f_j / S_gamma_j) * P_over_rho2_j * wj_dr;
 
   /* Eventually got the acceleration */
   const float acc = (visc_term + sph_term) * r_inv;
