@@ -402,9 +402,9 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
   struct indexval *ivs = malloc(sizeof(struct indexval) * keymax);
   bzero(ivs, sizeof(struct indexval) * keymax);
   for (int k = 0; k < ncells; k++) {
-      int index = regionid[k] + nregions * s->cells_top[k].nodeID;
-      ivs[index].count++;
-      ivs[index].index = index;
+    int index = regionid[k] + nregions * s->cells_top[k].nodeID;
+    ivs[index].count++;
+    ivs[index].index = index;
   }
   qsort(ivs, keymax, sizeof(struct indexval), indexvalcmp);
 
@@ -413,8 +413,8 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
   int *oldmap = malloc(sizeof(int) * nregions);
   int *newmap = malloc(sizeof(int) * nregions);
   for (int k = 0; k < nregions; k++) {
-      oldmap[k] = -1;
-      newmap[k] = -1;
+    oldmap[k] = -1;
+    newmap[k] = -1;
   }
   for (int k = 0; k < keymax; k++) {
 

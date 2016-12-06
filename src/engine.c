@@ -325,16 +325,14 @@ void engine_redistribute(struct engine *e) {
       for (int p = 0, r = 0; p < nr_nodes; p++) {
         for (int s = 0; s < nr_nodes; s++) {
           total += counts[r];
-          if (p == s)
-            unmoved += counts[r];
+          if (p == s) unmoved += counts[r];
           r++;
         }
       }
-      message("of %ld particles %ld are not transferred (%.2f%%)", total, unmoved,
-              100.0 * (double)unmoved / (double)total);
+      message("of %ld particles %ld are not transferred (%.2f%%)", total,
+              unmoved, 100.0 * (double)unmoved / (double)total);
     }
   }
-
 
   /* Get all the g_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, g_counts, nr_nodes * nr_nodes, MPI_INT,
