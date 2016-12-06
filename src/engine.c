@@ -2229,6 +2229,9 @@ void engine_prepare(struct engine *e, int nodrift) {
 
   TIMER_TIC;
 
+  /* Unskip active tasks and check for rebuild */
+  engine_unskip(e);
+
   /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
 
@@ -2246,11 +2249,11 @@ void engine_prepare(struct engine *e, int nodrift) {
 
     /* Drift all particles to the current time if needed. */
     if (!nodrift) {
-      e->drift_all = 1;
-      engine_drift(e);
+      // e->drift_all = 1;
+      engine_drift_all(e);
 
       /* Restore the default drifting policy */
-      e->drift_all = (e->policy & engine_policy_drift_all);
+      // e->drift_all = (e->policy & engine_policy_drift_all);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2603,10 +2606,10 @@ void engine_step(struct engine *e) {
 
     /* Drift everybody to the snapshot position */
     e->drift_all = 1;
-    engine_drift(e);
+    engine_drift_all(e);
 
     /* Restore the default drifting policy */
-    e->drift_all = (e->policy & engine_policy_drift_all);
+    // e->drift_all = (e->policy & engine_policy_drift_all);
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2638,17 +2641,17 @@ void engine_step(struct engine *e) {
   /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   const int repart = (e->forcerepart != REPART_NONE);
-  e->drift_all = repart || e->drift_all;
-  engine_drift(e);
+  // e->drift_all = repart || e->drift_all;
+  if (repart) engine_drift_all(e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e, e->drift_all);
+  engine_prepare(e, (e->drift_all || repart));
 
   /* Restore the default drifting policy */
-  e->drift_all = (e->policy & engine_policy_drift_all);
+  // e->drift_all = (e->policy & engine_policy_drift_all);
 
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2683,15 +2686,30 @@ int engine_is_done(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_drift(struct engine *e) {
+void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+  threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->verbose)
-    message("took %.3f %s (including task unskipping).",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void engine_drift_all(struct engine *e) {
+
+  e->drift_all = 1;
+
+  const ticks tic = getticks();
+  threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
+
+  e->drift_all = e->policy & engine_policy_drift_all;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**

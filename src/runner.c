@@ -877,8 +877,8 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
  * @param extra_data Pointer to an #engine.
  */
 
-void runner_do_drift_mapper(void *map_data, int num_elements,
-                            void *extra_data) {
+void runner_do_unskip_mapper(void *map_data, int num_elements,
+                             void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct cell *cells = (struct cell *)map_data;
