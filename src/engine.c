@@ -2573,6 +2573,9 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+#ifdef WITH_MPI
+  double elapsed_time = elapsed(e->toc_step, e->tic_step);
+#endif
   e->tic_step = getticks();
 
   /* Recover the (integer) end of the next time-step */
@@ -2586,12 +2589,34 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
    * XXX Look at node balance, try to use that to decide if necessary.
    */
 #ifdef WITH_MPI
+  /* Gather the elapsed times from all ranks for the last step.
+   * These are used to determine if repartitioning might be necessary. */
+  double elapsed_times[e->nr_nodes];
+  MPI_Gather(&elapsed_time, 1, MPI_DOUBLE, elapsed_times, 1, MPI_DOUBLE,
+             0, MPI_COMM_WORLD);
+
   if (e->nodeID == 0) {
     if ((e->updates != 0 && e->updates == e->total_nr_parts) ||
         (e->g_updates != 0 && e->g_updates == e->total_nr_gparts)) {
-      message("will repartition %ld %ld %ld %ld", e->updates,
-              e->total_nr_parts, e->g_updates, e->total_nr_gparts);
-      e->forcerepart = reparttype;
+
+      /* OK we are tempted as enough particles have been updated, so check
+       * the distribution of elapsed times for the ranks.*/
+      double mintime = elapsed_times[0];
+      double maxtime = elapsed_times[0];
+      for (int k = 1; k < e->nr_nodes; k++) {
+        if (elapsed_times[k] > maxtime) maxtime = elapsed_times[k];
+        if (elapsed_times[k] < mintime) mintime = elapsed_times[k];
+      }
+      if (((maxtime - mintime) / mintime) > 0.1) {
+        /* 10% variation. */
+        message("will repartition %ld %ld %ld %ld", e->updates,
+                e->total_nr_parts, e->g_updates, e->total_nr_gparts);
+        e->forcerepart = reparttype;
+      }
+      else {
+          message("will not repartition, variance too small: %f", 
+                  (maxtime - mintime) / mintime);
+      }
     }
   }
 
@@ -2634,12 +2659,14 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10zu %10zu %21.3f %s\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->wallclock_time,
+           clocks_get_timesincestart());
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
-            e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f %s\n", e->step,
+            e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time,
+            clocks_get_timesincestart());
     fflush(e->file_timesteps);
   }
 
@@ -3246,9 +3273,9 @@ void engine_init(struct engine *e, struct space *s,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %16s [%s]\n", "Step",
+    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %16s [%s] %s\n", "Step",
             "Time", "Time-step", "Updates", "g-Updates", "Wall-clock time",
-            clocks_getunit());
+	    clocks_getunit(), "Elapsed time (sec)");
     fflush(e->file_timesteps);
   }
 
