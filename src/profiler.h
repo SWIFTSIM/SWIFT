@@ -21,34 +21,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TIMER_H
-#define SWIFT_TIMER_H
+#ifndef SWIFT_PROFILER_H
+#define SWIFT_PROFILER_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
-/* Some standard headers. */
-#include <pthread.h>
-#include <stdio.h>
-
 /* Includes. */
 #include "clocks.h"
-#include "cooling_struct.h"
-#include "parser.h"
-#include "partition.h"
-#include "potential.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "sourceterms_struct.h"
-#include "space.h"
-#include "task.h"
-#include "units.h"
+#include "engine.h"
+#include "version.h"
+#include "hydro.h"
 
+/* Profiler that holds file pointers and time taken in functions. */
 struct profiler {
 
   /* File pointers for timing info. */
@@ -70,6 +55,7 @@ struct profiler {
   FILE *file_space_parts_get_cell_id;
   FILE *file_space_count_parts;
 
+  /* Time taken in functions. */
   ticks collect_timesteps_time;
   ticks drift_time;
   ticks rebuild_time;
@@ -89,10 +75,12 @@ struct profiler {
   ticks space_count_parts_time;
 };
 
-void timer_reset_timers(struct profiler *profiler);
-void timer_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file);
-void timer_write_all_timing_info_headers(struct engine *e, struct profiler *profiler);
-void timer_write_timing_info(struct engine *e, ticks time, FILE **file);
-void timer_write_all_timing_info(struct engine *e, struct profiler *profiler);
+/* Function prototypes. */
+void profiler_reset_timers(struct profiler *profiler);
+void profiler_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file);
+void profiler_write_all_timing_info_headers(struct engine *e, struct profiler *profiler);
+void profiler_write_timing_info(struct engine *e, ticks time, FILE **file);
+void profiler_write_all_timing_info(struct engine *e, struct profiler *profiler);
+void profiler_close_files(struct profiler *profiler);
 
-#endif /* SWIFT_TIMER_H */
+#endif /* SWIFT_PROFILER_H */

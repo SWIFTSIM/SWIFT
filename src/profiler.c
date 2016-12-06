@@ -26,49 +26,16 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <float.h>
-#include <limits.h>
-#include <sched.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
-#ifdef HAVE_LIBNUMA
-#include <numa.h>
-#endif
 
 /* This object's header. */
 #include "profiler.h"
 
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "clocks.h"
-#include "cycle.h"
-#include "debug.h"
-#include "error.h"
-#include "hydro.h"
-#include "minmax.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "partition.h"
-#include "proxy.h"
-#include "runner.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "statistics.h"
-#include "timers.h"
-#include "tools.h"
-#include "units.h"
-#include "version.h"
-
+/**
+ * @brief Resets all timers.
+ *
+ * @param (return) profiler #profiler object that holds file pointers and function timers.
+ */ 
 void profiler_reset_timers(struct profiler *profiler) {
 
   profiler->collect_timesteps_time = 0;
@@ -90,11 +57,21 @@ void profiler_reset_timers(struct profiler *profiler) {
   profiler->space_count_parts_time = 0;
 }
 
+/**
+ * @brief Opens an output file and populates the header.
+ *
+ * @param e #engine object to get various properties.
+ * @param fileName name of file to be written to.
+ * @param functionName name of function that is being timed.
+ * @param (return) file pointer used to open output file.
+ */ 
 void profiler_write_timing_info_header(struct engine *e, char *fileName, char *functionName, FILE **file) {
 
+  /* Create the file name in the format: "fileName_(no. of threads)" */
   char fullFileName[200] = "";
   sprintf(fullFileName + strlen(fullFileName), "%s_%d.txt", fileName, e->nr_nodes * e->nr_threads);
 
+  /* Open the file and write the header. */
   *file = fopen(fullFileName, "w");
   fprintf(*file,
       "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
@@ -114,6 +91,12 @@ void profiler_write_timing_info_header(struct engine *e, char *fileName, char *f
   fflush(*file);
 }
 
+/**
+ * @brief Writes the headers for all output files. Should be called once at the start of the simulation, it could be called in engine_init() for example.
+ *
+ * @param e #engine object to get various properties.
+ * @param (return) profiler #profiler object that holds file pointers and function timers.
+ */ 
 void profiler_write_all_timing_info_headers(struct engine *e, struct profiler *profiler) {
 
   profiler_write_timing_info_header(e,"enginecollecttimesteps","engine_collect_timesteps",&profiler->file_engine_collect_timesteps);
@@ -135,6 +118,13 @@ void profiler_write_all_timing_info_headers(struct engine *e, struct profiler *p
   profiler_write_timing_info_header(e,"spacecountparts","space_count_parts",&profiler->file_space_count_parts);
 }
 
+/**
+ * @brief Writes timing info to the output file.
+ *
+ * @param e #engine object to get various properties.
+ * @param time #ticks time in ticks to be written to the output file.
+ * @param (return) file pointer used to open output file.
+ */ 
 void profiler_write_timing_info(struct engine *e, ticks time, FILE **file) {
 
   fprintf(*file, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
@@ -142,6 +132,12 @@ void profiler_write_timing_info(struct engine *e, ticks time, FILE **file) {
   fflush(*file);
 }
 
+/**
+ * @brief Writes timing info to all output files. Should be called at the end of every time step, in engine_step() for example.
+ *
+ * @param e #engine object to get various properties.
+ * @param (return) profiler #profiler object that holds file pointers and function timers.
+ */ 
 void profiler_write_all_timing_info(struct engine *e, struct profiler *profiler) {
 
   profiler_write_timing_info(e,profiler->drift_time,&profiler->file_engine_drift);
@@ -160,6 +156,32 @@ void profiler_write_all_timing_info(struct engine *e, struct profiler *profiler)
   profiler_write_timing_info(e,profiler->space_split_time,&profiler->file_space_split);
   profiler_write_timing_info(e,profiler->space_parts_get_cell_id_time,&profiler->file_space_parts_get_cell_id);
   profiler_write_timing_info(e,profiler->space_count_parts_time,&profiler->file_space_count_parts);
-
+  
+  /* Reset timers. */
   profiler_reset_timers(profiler); 
+}
+
+/**
+ * @brief Closes all output files, should be called at the end of the simulation.
+ *
+ * @param (return) profiler #profiler object that holds file pointers and function timers.
+ */ 
+void profiler_close_files(struct profiler *profiler) {
+
+  fclose(profiler->file_engine_drift);
+  fclose(profiler->file_engine_rebuild);
+  fclose(profiler->file_scheduler_reweight);
+  fclose(profiler->file_scheduler_clear_waits);
+  fclose(profiler->file_scheduler_re_wait);
+  fclose(profiler->file_scheduler_enqueue);
+  fclose(profiler->file_engine_stats);
+  fclose(profiler->file_engine_launch);
+  fclose(profiler->file_space_rebuild);
+  fclose(profiler->file_engine_maketasks);
+  fclose(profiler->file_engine_marktasks);
+  fclose(profiler->file_space_regrid);
+  fclose(profiler->file_space_parts_sort);
+  fclose(profiler->file_space_split);
+  fclose(profiler->file_space_parts_get_cell_id);
+  fclose(profiler->file_space_count_parts);
 }
