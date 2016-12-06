@@ -68,6 +68,7 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
+#include "profiler.h"
 
 const char *engine_policy_names[16] = {"none",
                                        "rand",
