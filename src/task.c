@@ -261,6 +261,11 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
+    case task_type_drift:
+      cell_unlocktree(ci);
+      cell_gunlocktree(ci);
+      break;
+    
     case task_type_sort:
       cell_unlocktree(ci);
       break;
@@ -326,6 +331,15 @@ int task_lock(struct task *t) {
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif
+      break;
+
+    case task_type_drift:
+      if (ci->hold || ci->ghold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_glocktree(ci) != 0) {
+	cell_unlocktree(ci);
+	return 0;
+      }
       break;
 
     case task_type_sort:
