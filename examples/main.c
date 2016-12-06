@@ -323,10 +323,10 @@ int main(int argc, char *argv[]) {
 #endif
 
 /* Prepare the domain decomposition scheme */
-  enum repartition_type reparttype = REPART_NONE;
+  struct repartition repartition;
 #ifdef WITH_MPI
   struct partition initial_partition;
-  partition_init(&initial_partition, &reparttype, params, nr_nodes);
+  partition_init(&initial_partition, &repartition, params, nr_nodes);
 
   /* Let's report what we did */
   if (myrank == 0) {
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
     if (initial_partition.type == INITPART_GRID)
       message("grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[reparttype]);
+    message("Using %s repartitioning", repartition_name[repartition.type]);
   }
 #endif
 
@@ -551,7 +551,7 @@ int main(int argc, char *argv[]) {
     timers_reset(timers_mask_all);
 
     /* Take a step. */
-    engine_step(&e, reparttype);
+    engine_step(&e, &repartition);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */

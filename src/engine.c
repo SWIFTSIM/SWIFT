@@ -2562,9 +2562,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
  * @brief Let the #engine loose to compute the forces.
  *
  * @param e The #engine.
- * @param reparttype type of repartitioning to use (MPI only)
-*/
-void engine_step(struct engine *e, enum repartition_type reparttype) {
+ * @param repartition repartitioning struct.
+ */
+void engine_step(struct engine *e, struct repartition *repartition) {
 
   double snapshot_drift_time = 0.;
 
@@ -2574,6 +2574,7 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
   clocks_gettime(&time1);
 
 #ifdef WITH_MPI
+  /* Time since the last step started. */
   double elapsed_time = elapsed(e->toc_step, e->tic_step);
 #endif
   e->tic_step = getticks();
@@ -2581,41 +2582,33 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
 
-  /* If the last step updated all particles then repartition the space around
-   * the nodes.
-   *
-   * XXX handle fixdt, that will repartition all the time.
-   *
-   * XXX Look at node balance, try to use that to decide if necessary.
-   */
 #ifdef WITH_MPI
-  /* Gather the elapsed times from all ranks for the last step.
-   * These are used to determine if repartitioning might be necessary. */
+
+  /* Gather the elapsed times from all ranks for the last step. */
   double elapsed_times[e->nr_nodes];
   MPI_Gather(&elapsed_time, 1, MPI_DOUBLE, elapsed_times, 1, MPI_DOUBLE,
              0, MPI_COMM_WORLD);
 
+  /* If all available particles of any type have been updated then consider
+   * if a repartition might be needed. */
   if (e->nodeID == 0) {
     if ((e->updates != 0 && e->updates == e->total_nr_parts) ||
         (e->g_updates != 0 && e->g_updates == e->total_nr_gparts)) {
 
       /* OK we are tempted as enough particles have been updated, so check
-       * the distribution of elapsed times for the ranks.*/
+       * the distribution of elapsed times for the ranks. */
       double mintime = elapsed_times[0];
       double maxtime = elapsed_times[0];
       for (int k = 1; k < e->nr_nodes; k++) {
         if (elapsed_times[k] > maxtime) maxtime = elapsed_times[k];
         if (elapsed_times[k] < mintime) mintime = elapsed_times[k];
       }
-      if (((maxtime - mintime) / mintime) > 0.1) {
-        /* 10% variation. */
-        message("will repartition %ld %ld %ld %ld", e->updates,
-                e->total_nr_parts, e->g_updates, e->total_nr_gparts);
-        e->forcerepart = reparttype;
+      if (((maxtime - mintime) / mintime) > repartition->fractionaltime) {
+        message("repartition variance: %f", (maxtime - mintime) / mintime);
+        e->forcerepart = repartition->type;
       }
       else {
-          message("will not repartition, variance too small: %f", 
-                  (maxtime - mintime) / mintime);
+        message("no repartition variance: %f", (maxtime - mintime) / mintime);
       }
     }
   }
@@ -2659,14 +2652,12 @@ void engine_step(struct engine *e, enum repartition_type reparttype) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %21.3f %s\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->wallclock_time,
-           clocks_get_timesincestart());
+    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f %s\n", e->step,
-            e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time,
-            clocks_get_timesincestart());
+    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
+            e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
 

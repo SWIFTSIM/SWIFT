@@ -39,6 +39,7 @@ struct partition {
   enum partition_type type;
   int grid[3];
 };
+
 /* Repartition type to use. */
 enum repartition_type {
   REPART_NONE = 0,
@@ -46,6 +47,12 @@ enum repartition_type {
   REPART_METIS_VERTEX,
   REPART_METIS_EDGE,
   REPART_METIS_VERTEX_EDGE
+};
+
+/* Repartition preferences. */
+struct repartition {
+  enum repartition_type type;
+  float fractionaltime;
 };
 
 /* Simple descriptions of types for reports. */
@@ -60,7 +67,7 @@ void partition_initial_partition(struct partition *initial_partition,
 int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
                              struct space *s);
 void partition_init(struct partition *partition,
-                    enum repartition_type *reparttypestruct,
+                    struct repartition *repartition,
                     const struct swift_params *params, int nr_nodes);
 
 #endif /* SWIFT_PARTITION_H */

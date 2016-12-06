@@ -58,11 +58,12 @@ InitialConditions:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:       m     # (Optional) The initial strategy ("g", "m", "w", or "v").
+  initial_type:      m      # (Optional) The initial strategy ("g", "m", "w", or "v").
   initial_grid_x:    10     # (Optional) Grid size if the "g" strategy is chosen.
-  initial_grid_y:    10
-  initial_grid_z:    10
-  repartition_type:   b     # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
+  initial_grid_y:    10     # ""
+  initial_grid_z:    10     # ""
+  repartition_type:  b      # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
+  fractionaltime     0.1    # (Optional) The fractional time difference between MPI ranks required to trigger a new decomposition
  
 # Parameters related to external potentials --------------------------------------------
   

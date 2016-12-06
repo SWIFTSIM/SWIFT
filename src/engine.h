@@ -236,7 +236,7 @@ void engine_launch(struct engine *e, int nr_runners);
 void engine_prepare(struct engine *e, int nodrift);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
-void engine_step(struct engine *e, enum repartition_type reparttype);
+void engine_step(struct engine *e, struct repartition *repartition);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, size_t offset_parts,

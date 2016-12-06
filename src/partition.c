@@ -709,8 +709,7 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
  * Note that at the end of this process all the cells will be re-distributed
  * across the nodes, but the particles themselves will not be.
  *
- * @param reparttype the type of repartition to attempt, see the repart_type
- *enum.
+ * @param repartition repartition struct.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
@@ -723,7 +722,8 @@ void partition_repartition(enum repartition_type reparttype, int nodeID,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
+  if (reparttype == REPART_METIS_BOTH ||
+      reparttype == REPART_METIS_EDGE ||
       reparttype == REPART_METIS_VERTEX_EDGE) {
 
     int partweights;
@@ -905,15 +905,15 @@ void partition_initial_partition(struct partition *initial_partition,
 
 /**
  * @brief Initialises the partition and re-partition scheme from the parameter
- *file
+ *        file
  *
  * @param partition The #partition scheme to initialise.
- * @param reparttype The repartition scheme to initialise.
+ * @param repartition The #repartition scheme to initialise.
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI nodes we are running on.
  */
 void partition_init(struct partition *partition,
-                    enum repartition_type *reparttype,
+                    struct repartition *repartition,
                     const struct swift_params *params, int nr_nodes) {
 
 #ifdef WITH_MPI
@@ -921,7 +921,6 @@ void partition_init(struct partition *partition,
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
   char default_repart = 'b';
-  ;
   char default_part = 'm';
 #else
   char default_repart = 'n';
@@ -979,20 +978,20 @@ void partition_init(struct partition *partition,
 
   switch (repart_type) {
     case 'n':
-      *reparttype = REPART_NONE;
+      repartition->type = REPART_NONE;
       break;
 #ifdef HAVE_METIS
     case 'b':
-      *reparttype = REPART_METIS_BOTH;
+      repartition->type = REPART_METIS_BOTH;
       break;
     case 'e':
-      *reparttype = REPART_METIS_EDGE;
+      repartition->type = REPART_METIS_EDGE;
       break;
     case 'v':
-      *reparttype = REPART_METIS_VERTEX;
+      repartition->type = REPART_METIS_VERTEX;
       break;
     case 'x':
-      *reparttype = REPART_METIS_VERTEX_EDGE;
+      repartition->type = REPART_METIS_VERTEX_EDGE;
       break;
     default:
       message("Invalid choice of re-partition type '%c'.", repart_type);
@@ -1003,6 +1002,13 @@ void partition_init(struct partition *partition,
       error("Permitted values are: 'n' when compiled without metis.");
 #endif
   }
+
+  /* Get the fraction time difference between nodes. If larger than
+   * this when a repartition is being considered it will be allowed. */
+  repartition->fractionaltime = parser_get_opt_param_float(
+       params, "DomainDecomposition:fractionaltime", 0.1);
+  if (repartition->fractionaltime < 0 || repartition->fractionaltime > 1)
+    error("Invalid DomainDecomposition:fractionaltime, must be in range 0 to 1");
 
 #else
   error("SWIFT was not compiled with MPI support");
