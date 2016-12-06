@@ -59,6 +59,7 @@
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
+#include "profiler.h"
 #include "proxy.h"
 #include "runner.h"
 #include "serial_io.h"
@@ -68,7 +69,6 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
-#include "profiler.h"
 
 const char *engine_policy_names[16] = {"none",
                                        "rand",

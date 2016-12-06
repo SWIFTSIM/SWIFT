@@ -44,6 +44,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "profiler.h"
 #include "queue.h"
 #include "runner.h"
 #include "scheduler.h"
@@ -56,6 +57,5 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
-#include "profiler.h"
 
 #endif /* SWIFT_SWIFT_H */
