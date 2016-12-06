@@ -880,8 +880,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
 
     /* Activate the drift on both sides */
-    if (ci == c && cj != NULL) scheduler_activate(s, cj->drift);
-    if (cj == c && ci != NULL) scheduler_activate(s, ci->drift);
+    if (ci == c && cj != NULL && cj->drift != NULL) scheduler_activate(s, cj->drift);
+    if (cj == c && ci != NULL && ci->drift != NULL) scheduler_activate(s, ci->drift);
 
     /* Check whether there was too much particle motion */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -987,7 +987,7 @@ void cell_set_super(struct cell *c, struct cell *super) {
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
 
-void cell_drift(struct cell *c, struct engine *e) {
+void cell_drift(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
@@ -999,41 +999,41 @@ void cell_drift(struct cell *c, struct engine *e) {
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-  
+
   /* Check that we are actually going to move forward. */
   if (ti_current <= ti_old) return;
 
-  /* Are we in a leaf ? */
+  /* Are we not in a leaf ? */
   if (c->split) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-	cell_drift(cp, e);
-	dx_max = max(dx_max, cp->dx_max);
+        cell_drift(cp, e);
+        dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
       }
-    
+
   } else {
-      
+
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->gcount;
     for (size_t k = 0; k < nr_gparts; k++) {
-      
+
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];
-      
+
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
-      
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-	gp->x_diff[1] * gp->x_diff[1] +
-	gp->x_diff[2] * gp->x_diff[2];
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
       dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
     }
-    
+
     /* Loop over all the particles in the cell */
     const size_t nr_parts = c->count;
     for (size_t k = 0; k < nr_parts; k++) {
@@ -1044,6 +1044,8 @@ void cell_drift(struct cell *c, struct engine *e) {
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+
+      p->ti_old = ti_current;
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
@@ -1059,7 +1061,7 @@ void cell_drift(struct cell *c, struct engine *e) {
     dx_max = sqrtf(dx2_max);
 
     /* Set ti_old on the sub-cells */
-    cell_set_ti_old(c, e->ti_current);
+    //cell_set_ti_old(c, e->ti_current);
 
   } /* Check that we are actually going to move forward. */
 
