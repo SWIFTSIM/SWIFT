@@ -779,23 +779,23 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
 
   /* Now, we can drift */
   /* Get some information first */
-  const double timeBase = e->timeBase;
+  // const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
   const int ti_current = e->ti_current;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  // struct part *const parts = c->parts;
+  // struct xpart *const xparts = c->xparts;
+  // struct gpart *const gparts = c->gparts;
 
   /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  // const double dt = (ti_current - ti_old) * timeBase;
+  //  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   /* No children? */
   if (!c->split) {
 
     /* Check that we are actually going to move forward. */
     if (ti_current > ti_old) {
-
+#if 0
       /* Loop over all the g-particles in the cell */
       const size_t nr_gparts = c->gcount;
       for (size_t k = 0; k < nr_gparts; k++) {
@@ -836,13 +836,15 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
 
       /* Now, get the maximal particle motion from its square */
       dx_max = sqrtf(dx2_max);
-
+#endif
     } /* Check that we are actually going to move forward. */
 
     else {
+#if 0
       /* ti_old == ti_current, just keep the current cell values. */
       h_max = c->h_max;
       dx_max = c->dx_max;
+#endif
     }
   }
 
@@ -853,20 +855,23 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-
+	message("aaa");
         /* Recurse. */
         runner_do_unskip(cp, e, drift);
+#if 0
         dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
+#endif
       }
   }
-
+#if 0
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
+#endif
 }
 
 /**
@@ -876,7 +881,6 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-
 void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
@@ -893,7 +897,22 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   }
 }
 
-void runner_do_drift(struct runner *r, struct cell *c, int timer) {}
+void runner_do_drift(struct runner *r, struct cell *c, int timer) {
+
+  cell_drift(c, r->e);
+}
+
+void runner_do_drift_mapper(void *map_data, int num_elements,
+                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+    if (c != NULL && c->nodeID == e->nodeID) cell_drift(c, e);
+  }
+}
 
 /**
  * @brief Kick particles in momentum space and collect statistics (floating

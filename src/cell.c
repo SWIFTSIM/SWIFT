@@ -49,6 +49,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "drift.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -984,4 +985,110 @@ void cell_set_super(struct cell *c, struct cell *super) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+}
+
+void cell_drift(struct cell *c, struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const int ti_old = c->ti_old;
+  const int ti_current = e->ti_current;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old) * timeBase;
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  
+  /* Check that we are actually going to move forward. */
+  if (ti_current <= ti_old) return;
+
+  /* Are we in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+	cell_drift(cp, e);
+	dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
+      }
+    
+  } else {
+      
+    /* Loop over all the g-particles in the cell */
+    const size_t nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
+      
+      /* Get a handle on the gpart. */
+      struct gpart *const gp = &gparts[k];
+      
+      /* Drift... */
+      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
+      
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+	gp->x_diff[1] * gp->x_diff[1] +
+	gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+    }
+    
+    /* Loop over all the particles in the cell */
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
+
+      /* Drift... */
+      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                        xp->x_diff[1] * xp->x_diff[1] +
+                        xp->x_diff[2] * xp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+
+      /* Maximal smoothing length */
+      h_max = (h_max > p->h) ? h_max : p->h;
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+    /* Set ti_old on the sub-cells */
+    cell_set_ti_old(c, e->ti_current);
+
+  } /* Check that we are actually going to move forward. */
+
+  /* Store the values */
+  c->h_max = h_max;
+  c->dx_max = dx_max;
+
+  /* Update the time of the last drift */
+  c->ti_old = ti_current;
+}
+
+/**
+ * Set ti_old of a #cell and all its progenies to a new value.
+ *
+ * @param c The #cell.
+ * @param ti_current The new value of ti_old.
+ */
+void cell_set_ti_old(struct cell *c, int ti_current) {
+
+  /* Set this cell */
+  c->ti_old = ti_current;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        cell_set_ti_old(cp, ti_current);
+      }
+    }
+  }
 }

@@ -2702,7 +2702,7 @@ void engine_drift_all(struct engine *e) {
   e->drift_all = 1;
 
   const ticks tic = getticks();
-  threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   e->drift_all = e->policy & engine_policy_drift_all;
