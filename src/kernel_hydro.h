@@ -364,12 +364,12 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
 
 /* Define constant vectors for the Wendland C2 kernel coefficients. */
 #ifdef WENDLAND_C2_KERNEL
-static const vector c0 = FILL_VEC(4.f);
-static const vector c1 = FILL_VEC(-15.f);
-static const vector c2 = FILL_VEC(20.f);
-static const vector c3 = FILL_VEC(-10.f);
-static const vector c4 = FILL_VEC(0.f);
-static const vector c5 = FILL_VEC(1.f);
+static const vector wendland_const_c0 = FILL_VEC(4.f);
+static const vector wendland_const_c1 = FILL_VEC(-15.f);
+static const vector wendland_const_c2 = FILL_VEC(20.f);
+static const vector wendland_const_c3 = FILL_VEC(-10.f);
+static const vector wendland_const_c4 = FILL_VEC(0.f);
+static const vector wendland_const_c5 = FILL_VEC(1.f);
 #endif
 
 /**
@@ -399,31 +399,31 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 
 #ifdef WENDLAND_C2_KERNEL
   /* Init the iteration for Horner's scheme. */
-  w->v = vec_fma(c0.v, x.v, c1.v);
-  w2->v = vec_fma(c0.v, x2.v, c1.v);
-  dw_dx->v = c0.v;
-  dw_dx2->v = c0.v;
+  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
+  w2->v = vec_fma(wendland_const_c0.v, x2.v, wendland_const_c1.v);
+  dw_dx->v = wendland_const_c0.v;
+  dw_dx2->v = wendland_const_c0.v;
 
   /* Calculate the polynomial interleaving vector operations */
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, c2.v);
-  w2->v = vec_fma(x2.v, w2->v, c2.v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c2.v);
 
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, c3.v);
-  w2->v = vec_fma(x2.v, w2->v, c3.v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c3.v);
 
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, c4.v);
-  w2->v = vec_fma(x2.v, w2->v, c4.v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c4.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c4.v);
 
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, c5.v);
-  w2->v = vec_fma(x2.v, w2->v, c5.v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c5.v);
 
   /* Return everything */
   w->v =
