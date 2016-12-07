@@ -396,17 +396,18 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
 
   /* We want a solution in which the current regions of the space are
    * preserved when possible, to avoid unneccesary particle movement.
-   * So try mapping the current regions to the new regions and reassigning
-   * those with the greatest number of common cells... */
-  int keymax = nregions * nregions;
-  struct indexval *ivs = malloc(sizeof(struct indexval) * keymax);
-  bzero(ivs, sizeof(struct indexval) * keymax);
+   * So create a 2d-array of cells counts that are common to all pairs
+   * of old and new ranks. Each element of the array has a cell count and
+   * an unique index so we can sort into decreasing counts. */
+  int indmax = nregions * nregions;
+  struct indexval *ivs = malloc(sizeof(struct indexval) * indmax);
+  bzero(ivs, sizeof(struct indexval) * indmax);
   for (int k = 0; k < ncells; k++) {
     int index = regionid[k] + nregions * s->cells_top[k].nodeID;
     ivs[index].count++;
     ivs[index].index = index;
   }
-  qsort(ivs, keymax, sizeof(struct indexval), indexvalcmp);
+  qsort(ivs, indmax, sizeof(struct indexval), indexvalcmp);
 
   /* Go through the ivs using the largest counts first, these are the
    * regions with the most cells in common, old partition to new. */
@@ -416,7 +417,7 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
     oldmap[k] = -1;
     newmap[k] = -1;
   }
-  for (int k = 0; k < keymax; k++) {
+  for (int k = 0; k < indmax; k++) {
 
     /* Stop when all regions with common cells have been considered. */
     if (ivs[k].count == 0) break;
