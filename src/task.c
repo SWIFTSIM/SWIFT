@@ -265,7 +265,7 @@ void task_unlock(struct task *t) {
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
       break;
-    
+
     case task_type_sort:
       cell_unlocktree(ci);
       break;
@@ -337,8 +337,8 @@ int task_lock(struct task *t) {
       if (ci->hold || ci->ghold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_glocktree(ci) != 0) {
-	cell_unlocktree(ci);
-	return 0;
+        cell_unlocktree(ci);
+        return 0;
       }
       break;
 

@@ -717,6 +717,13 @@ void cell_check_drift_point(struct cell *c, void *data) {
   if (c->ti_old != ti_current)
     error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
           c->ti_old, ti_current);
+
+  /* for (int i = 0; i < c->count; ++i) */
+  /*   if (c->parts[i].ti_old != ti_current) */
+  /*     error( */
+  /*         "Particle in an incorrect time-zone! part->ti_old=%d c->ti_old=%d " */
+  /*         "ti_current=%d", */
+  /*         c->parts[i].ti_old, c->ti_old, ti_current); */
 }
 
 /**
@@ -880,8 +887,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
 
     /* Activate the drift on both sides */
-    if (ci == c && cj != NULL && cj->drift != NULL) scheduler_activate(s, cj->drift);
-    if (cj == c && ci != NULL && ci->drift != NULL) scheduler_activate(s, ci->drift);
+    if (ci == c && cj != NULL && cj->drift != NULL)
+      scheduler_activate(s, cj->drift);
+    if (cj == c && ci != NULL && ci->drift != NULL)
+      scheduler_activate(s, ci->drift);
 
     /* Check whether there was too much particle motion */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -1000,8 +1009,11 @@ void cell_drift(struct cell *c, const struct engine *e) {
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
+  //message("DRFIT ! ti_old=%d ti_current=%d", ti_old, ti_current);
+
   /* Check that we are actually going to move forward. */
-  if (ti_current <= ti_old) return;
+  if (ti_current < ti_old) error("Attempt to drift to the past");
+  //if (ti_current == ti_old) return;
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1015,7 +1027,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
         h_max = max(h_max, cp->h_max);
       }
 
-  } else {
+  } else if (ti_current >= ti_old) {
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->gcount;
@@ -1045,7 +1057,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
-      p->ti_old = ti_current;
+      //p->ti_old = ti_current;
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
@@ -1061,9 +1073,14 @@ void cell_drift(struct cell *c, const struct engine *e) {
     dx_max = sqrtf(dx2_max);
 
     /* Set ti_old on the sub-cells */
-    //cell_set_ti_old(c, e->ti_current);
+    cell_set_ti_old(c, e->ti_current);
 
   } /* Check that we are actually going to move forward. */
+  else {
+
+    h_max = c->h_max;
+    dx_max = c->dx_max;
+  }
 
   /* Store the values */
   c->h_max = h_max;

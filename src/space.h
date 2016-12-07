@@ -150,6 +150,7 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
+int space_getdid(struct space *s, struct cell *ci, struct cell *cj);
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 size_t Npart, size_t Ngpart, int periodic, int gravity,

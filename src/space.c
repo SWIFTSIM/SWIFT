@@ -168,6 +168,32 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
   return sid;
 }
 
+int space_getdid(struct space *s, struct cell *ci, struct cell *cj) {
+
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double dx[3];
+  double shift[3];
+  for (int k = 0; k < 3; k++) {
+    dx[k] = cj->loc[k] - ci->loc[k];
+    if (periodic && dx[k] < -s->dim[k] / 2)
+      shift[k] = s->dim[k];
+    else if (periodic && dx[k] > s->dim[k] / 2)
+      shift[k] = -s->dim[k];
+    else
+      shift[k] = 0.0;
+    dx[k] += shift[k];
+  }
+
+  /* Get the drift index. */
+  int did = 0;
+  for (int k = 0; k < 3; k++)
+    did = 3 * did + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
+
+  /* Return the drift ID. */
+  return did;
+}
+
 /**
  * @brief Recursively dismantle a cell tree.
  *
@@ -346,7 +372,7 @@ void space_regrid(struct space *s, int verbose) {
           c->depth = 0;
           c->count = 0;
           c->gcount = 0;
-          c->super = c;
+          // c->super = c;
           c->ti_old = ti_current;
           lock_init(&c->lock);
         }
@@ -419,6 +445,7 @@ void space_regrid(struct space *s, int verbose) {
       s->cells_top[k].cooling = NULL;
       s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
+      s->cells_top[k].ti_old = 0;
 #if WITH_MPI
       s->cells_top[k].recv_xv = NULL;
       s->cells_top[k].recv_rho = NULL;
@@ -1464,7 +1491,6 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct xpart *xparts = c->xparts;
-  struct engine *e = s->e;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL);
@@ -1494,7 +1520,7 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
       temp = space_getcell(s);
       temp->count = 0;
       temp->gcount = 0;
-      temp->ti_old = e->ti_current;
+      temp->ti_old = c->ti_old;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];

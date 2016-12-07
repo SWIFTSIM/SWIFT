@@ -733,8 +733,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    if (count)
+    if (count) {
       message("Smoothing length failed to converge on %i particles.", count);
+
+      for(int i=0; i<count; ++i) {
+	struct part *restrict p = &parts[pid[i]];
+        struct xpart *restrict xp = &xparts[pid[i]];
+
+	printParticle_single(p, xp);
+      }
+    }
 
     /* Be clean */
     free(pid);
@@ -855,9 +863,9 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-	message("aaa");
+        // message("aaa");
         /* Recurse. */
-        runner_do_unskip(cp, e, drift);
+        runner_do_unskip(cp, e, 0);
 #if 0
         dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
@@ -892,7 +900,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 #ifdef WITH_MPI
     if (c != NULL) runner_do_unskip(c, e, (c->nodeID == e->nodeID));
 #else
-    if (c != NULL) runner_do_unskip(c, e, 1);
+    if (c != NULL) runner_do_unskip(c, e, 0);
 #endif
   }
 }

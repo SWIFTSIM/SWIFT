@@ -36,7 +36,7 @@
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
  */
-__attribute__((always_inline)) INLINE static void cell_is_drifted(
+__attribute__((always_inline)) INLINE static int cell_is_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -45,14 +45,35 @@ __attribute__((always_inline)) INLINE static void cell_is_drifted(
         "Cell has been drifted too far forward in time! c->ti_old=%d "
         "e->ti_current=%d",
         c->ti_old, e->ti_current);
-
-  if (c->ti_old != e->ti_current) {
-    error(
-        "Cell has not been drifted to the current time c->ti_old=%d, "
-        "e->ti_current=%d",
-        c->ti_old, e->ti_current);
-  }
 #endif
+
+  /* if (c->ti_old != e->ti_current) { */
+
+  /*   int wrong = 0; */
+  /*   for (int i = 0; i < c->count; ++i) { */
+  /*     if (c->parts[i].ti_old < e->ti_current) ++wrong; */
+  /*   } */
+
+  /*   message( */
+  /*       "Cell has not been drifted to the current time c->ti_old=%d, " */
+  /*       "e->ti_current=%d wrong=%d c->count=%d c->drift=%p, c->depth=%d,
+   * c=%p, c->super=%p, c->parent=%p ", */
+  /*       c->ti_old, e->ti_current, wrong, c->count, c->drift, c->depth, c,
+   * c->super, c->parent); */
+
+  /*   cell_drift((struct cell*)c, e); */
+
+  /*       message( */
+  /*       "Cell has not been drifted to the current time c->ti_old=%d, " */
+  /*       "e->ti_current=%d wrong=%d c->count=%d c->drift=%p, c->depth=%d,
+   * c=%p, c->super=%p, c->parent=%p ", */
+  /*       c->ti_old, e->ti_current, wrong, c->count, c->drift, c->depth, c,
+   * c->super, c->parent); */
+
+  /* 	error("AAAAA"); */
+  /* } */
+
+  return (c->ti_old == e->ti_current);
 }
 
 /**

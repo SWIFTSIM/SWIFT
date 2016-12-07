@@ -215,7 +215,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int did = space_getdid(s->space, ci, cj);
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
@@ -584,6 +585,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         }
 
         /* Otherwise, break it up if it is too large? */
+
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
                  (ci->count > space_maxsize / cj->count)) {
 
@@ -605,6 +607,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               }
 
         /* Otherwise, if not spilt, stitch-up the sorting and drift. */
+
       } else {
 
         /* Create the sort for ci. */
@@ -619,10 +622,21 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the drift for ci. */
         if (ci->drift == NULL) {
-          ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                        0, 0, ci, NULL, 0);
-          scheduler_addunlock(s, ci->drift, ci->sorts);
+          // ci->drift = scheduler_addtask(s, task_type_drift,
+          // task_subtype_none,
+          // 1 << sid, 0, ci, NULL, 0);
+          // scheduler_addunlock(s, ci->drift, ci->sorts);
+
+          // scheduler_addunlock(s, ci->drift, t);
         }
+
+        /* if(!(ci->drift->flags & (1 << sid))) { */
+        /*   scheduler_addunlock(s, ci->drift, ci->sorts); */
+        /*   ci->drift->flags |= (1 << sid); */
+        /* } */
+
+        if (did == 0 || did > 31) message("did=%d 1<<did=%d", did, 1 << did);
+
         lock_unlock_blind(&ci->lock);
 
         /* Create the sort for cj. */
@@ -637,10 +651,20 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the drift for cj. */
         if (cj->drift == NULL) {
-          cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                        0, 0, cj, NULL, 0);
-          scheduler_addunlock(s, cj->drift, cj->sorts);
+          // cj->drift = scheduler_addtask(s, task_type_drift,
+          // task_subtype_none,
+          //                              1 << sid, 0, cj, NULL, 0);
+          // scheduler_addunlock(s, cj->drift, cj->sorts);
+
+          // scheduler_addunlock(s, cj->drift, t);
+          // scheduler_addunlock(s, cj->drift, cj->init);
         }
+
+        /* if(!(cj->drift->flags & (1 << sid))) { */
+        /*   scheduler_addunlock(s, cj->drift, cj->sorts); */
+        /*   cj->drift->flags |= (1 << sid); */
+        /* } */
+
         lock_unlock_blind(&cj->lock);
       }
 

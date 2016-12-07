@@ -2262,6 +2262,11 @@ void engine_prepare(struct engine *e, int nodrift) {
 #endif
 
     engine_rebuild(e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that all cells have been drifted to the current time */
+    space_check_drift_point(e->s, e->ti_current);
+#endif
   }
 
   /* Re-rank the tasks every now and then. */
@@ -2605,7 +2610,7 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
-    e->drift_all = 1;
+    // e->drift_all = 1;
     engine_drift_all(e);
 
     /* Restore the default drifting policy */
@@ -2629,8 +2634,9 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    printf("  %6d %14e %d %14e %10zu %10zu %21.3f\n", e->step, e->time,
+           e->ti_current, e->timeStep, e->updates, e->g_updates,
+           e->wallclock_time);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
