@@ -59,6 +59,7 @@
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
+#include "profiler.h"
 #include "proxy.h"
 #include "runner.h"
 #include "serial_io.h"

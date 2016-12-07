@@ -45,6 +45,9 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+/* Global profiler. */
+struct profiler prof;
+
 /**
  * @brief Help messages for the command line parameters.
  */
