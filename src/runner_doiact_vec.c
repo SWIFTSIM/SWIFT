@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
   VEC_LEFT_PACK(v_vjy->v, v_mask.m, &int_cache->vyq[*icount]);
   VEC_LEFT_PACK(v_vjz->v, v_mask.m, &int_cache->vzq[*icount]);
 
-#endif
+#endif /* HAVE_AVX512_F */
 
   (*icount) += pack;
 #else
@@ -254,9 +254,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     *icount = 0;
   }
 
-#endif
+#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 }
-#endif
+#endif /* WITH_VECTORIZATION */ 
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
@@ -432,7 +432,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       /* Combine two masks and form integer mask. */
       doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
       doi_mask2 = vec_cmp_result(vec_and(v_doi_mask2.v, v_doi_mask2_check.v));
-#endif
+#endif /* HAVE_AVX512_F */
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
@@ -502,7 +502,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_density);
-#endif
+#endif /* WITH_VECTORIZATION */
 }
 
 /**
@@ -743,7 +743,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
       doi2_mask = vec_cmp_result(vec_and(v_doi2_mask.v, v_doi2_mask_check.v));
       doi2_mask2 =
           vec_cmp_result(vec_and(v_doi2_mask2.v, v_doi2_mask2_check.v));
-#endif
+#endif /* HAVE_AVX512_F */
 
       /* Hit or miss? */
       // if (doi_mask) {
@@ -863,5 +863,5 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_density);
-#endif
+#endif /* WITH_VECTORIZATION */
 }
