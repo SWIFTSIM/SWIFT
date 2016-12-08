@@ -22,11 +22,8 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
-#include "clocks.h"
+/* Local includes */
 #include "engine.h"
-#include "hydro.h"
-#include "version.h"
 
 /* Profiler that holds file pointers and time taken in functions. */
 struct profiler {
@@ -72,12 +69,9 @@ struct profiler {
 
 /* Function prototypes. */
 void profiler_reset_timers(struct profiler *profiler);
-void profiler_write_timing_info_header(struct engine *e, char *fileName,
-                                       char *functionName, FILE **file);
-void profiler_write_all_timing_info_headers(struct engine *e,
+void profiler_write_all_timing_info_headers(const struct engine *e,
                                             struct profiler *profiler);
-void profiler_write_timing_info(struct engine *e, ticks time, FILE **file);
-void profiler_write_all_timing_info(struct engine *e,
+void profiler_write_all_timing_info(const struct engine *e,
                                     struct profiler *profiler);
 void profiler_close_files(struct profiler *profiler);
 
