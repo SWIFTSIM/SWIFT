@@ -2573,7 +2573,9 @@ void engine_step(struct engine *e, struct repartition *repartition) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+#ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
+#endif
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
@@ -2695,8 +2697,10 @@ void engine_step(struct engine *e, struct repartition *repartition) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
+#ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
+#endif
 
 #ifdef WITH_MPI
   /* CPU time used at the end of this step. */
