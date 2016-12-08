@@ -182,6 +182,11 @@ struct engine {
   /* Tic/toc at the start/end of a step. */
   ticks tic_step, toc_step;
 
+#ifdef WITH_MPI
+  /* CPU times at the start/end of a step. */
+  double cputic_step, cputoc_step;
+#endif
+
   /* Wallclock time of the last time-step */
   float wallclock_time;
 

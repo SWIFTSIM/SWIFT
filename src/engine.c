@@ -2573,10 +2573,6 @@ void engine_step(struct engine *e, struct repartition *repartition) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-#ifdef WITH_MPI
-  /* Time since the last step started. */
-  double elapsed_time = elapsed(e->toc_step, e->tic_step);
-#endif
   e->tic_step = getticks();
 
   /* Recover the (integer) end of the next time-step */
@@ -2584,31 +2580,36 @@ void engine_step(struct engine *e, struct repartition *repartition) {
 
 #ifdef WITH_MPI
 
-  /* Gather the elapsed times from all ranks for the last step. */
-  double elapsed_times[e->nr_nodes];
-  MPI_Gather(&elapsed_time, 1, MPI_DOUBLE, elapsed_times, 1, MPI_DOUBLE,
+  /* CPU time used since the last step started (note not elapsed time). */
+  double elapsed_cputime = e->cputoc_step - e->cputic_step;
+  e->cputic_step = clocks_get_cputime_used();
+
+  /* Gather the elapsed CPU times from all ranks for the last step. */
+  double elapsed_cputimes[e->nr_nodes];
+  MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1, MPI_DOUBLE,
              0, MPI_COMM_WORLD);
 
-  /* If all available particles of any type have been updated then consider
-   * if a repartition might be needed. */
+  /* If all available particles of any type have been updated then consider if
+   * a repartition might be needed. Only worth checking when there is load on
+   * all ranks. */
   if (e->nodeID == 0) {
     if ((e->updates != 0 && e->updates == e->total_nr_parts) ||
         (e->g_updates != 0 && e->g_updates == e->total_nr_gparts)) {
 
       /* OK we are tempted as enough particles have been updated, so check
        * the distribution of elapsed times for the ranks. */
-      double mintime = elapsed_times[0];
-      double maxtime = elapsed_times[0];
+      double mintime = elapsed_cputimes[0];
+      double maxtime = elapsed_cputimes[0];
       for (int k = 1; k < e->nr_nodes; k++) {
-        if (elapsed_times[k] > maxtime) maxtime = elapsed_times[k];
-        if (elapsed_times[k] < mintime) mintime = elapsed_times[k];
+        if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
+        if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
       }
+
       if (((maxtime - mintime) / mintime) > repartition->fractionaltime) {
-        message("repartition variance: %f", (maxtime - mintime) / mintime);
+        if (e->verbose)
+          message("fractionaltime %.2f > %.2f will repartition",
+                  (maxtime - mintime) / mintime, repartition->fractionaltime);
         e->forcerepart = repartition->type;
-      }
-      else {
-        message("no repartition variance: %f", (maxtime - mintime) / mintime);
       }
     }
   }
@@ -2692,9 +2693,15 @@ void engine_step(struct engine *e, struct repartition *repartition) {
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
-
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+  /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
+
+#ifdef WITH_MPI
+  /* CPU time used at the end of this step. */
+  e->cputoc_step = clocks_get_cputime_used();
+#endif
 }
 
 /**
