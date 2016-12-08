@@ -20,6 +20,7 @@
 #define SWIFT_CLOCKS_H
 
 #include <time.h>
+#include <sys/times.h>
 #include "cycle.h"
 
 /* Struct to record a time for the clocks functions. */
@@ -40,5 +41,8 @@ unsigned long long clocks_get_cpufreq();
 double clocks_from_ticks(ticks tics);
 double clocks_diff_ticks(ticks tic, ticks toc);
 const char *clocks_get_timesincestart();
+
+double clocks_get_cputime_used();
+
 
 #endif /* SWIFT_CLOCKS_H */
