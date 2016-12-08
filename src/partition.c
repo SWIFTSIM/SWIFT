@@ -722,8 +722,7 @@ void partition_repartition(enum repartition_type reparttype, int nodeID,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype == REPART_METIS_BOTH ||
-      reparttype == REPART_METIS_EDGE ||
+  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
       reparttype == REPART_METIS_VERTEX_EDGE) {
 
     int partweights;
@@ -1006,9 +1005,10 @@ void partition_init(struct partition *partition,
   /* Get the fraction time difference between nodes. If larger than
    * this when a repartition is being considered it will be allowed. */
   repartition->fractionaltime = parser_get_opt_param_float(
-       params, "DomainDecomposition:fractionaltime", 0.1);
+      params, "DomainDecomposition:fractionaltime", 0.1);
   if (repartition->fractionaltime < 0 || repartition->fractionaltime > 1)
-    error("Invalid DomainDecomposition:fractionaltime, must be in range 0 to 1");
+    error(
+        "Invalid DomainDecomposition:fractionaltime, must be in range 0 to 1");
 
 #else
   error("SWIFT was not compiled with MPI support");

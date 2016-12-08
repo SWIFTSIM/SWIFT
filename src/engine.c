@@ -3277,7 +3277,7 @@ void engine_init(struct engine *e, struct space *s,
 
     fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %16s [%s]\n", "Step",
             "Time", "Time-step", "Updates", "g-Updates", "Wall-clock time",
-	    clocks_getunit());
+            clocks_getunit());
     fflush(e->file_timesteps);
   }
 

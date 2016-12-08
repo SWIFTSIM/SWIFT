@@ -259,7 +259,7 @@ const char *clocks_get_timesincestart() {
  */
 double clocks_get_cputime_used() {
 
-    struct tms tmstic;
-    times(&tmstic);
-    return (double)(tmstic.tms_utime + tmstic.tms_cutime);
+  struct tms tmstic;
+  times(&tmstic);
+  return (double)(tmstic.tms_utime + tmstic.tms_cutime);
 }
