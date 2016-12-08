@@ -709,7 +709,7 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
  * Note that at the end of this process all the cells will be re-distributed
  * across the nodes, but the particles themselves will not be.
  *
- * @param repartition repartition struct.
+ * @param reparttype type of repartition required.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
