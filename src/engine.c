@@ -3275,9 +3275,9 @@ void engine_init(struct engine *e, struct space *s,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %16s [%s] %s\n", "Step",
+    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %16s [%s]\n", "Step",
             "Time", "Time-step", "Updates", "g-Updates", "Wall-clock time",
-	    clocks_getunit(), "Elapsed time (sec)");
+	    clocks_getunit());
     fflush(e->file_timesteps);
   }
 
