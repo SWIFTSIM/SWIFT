@@ -346,7 +346,7 @@ void space_regrid(struct space *s, int verbose) {
           c->depth = 0;
           c->count = 0;
           c->gcount = 0;
-          // c->super = c;
+          c->super = c;
           c->ti_old = ti_current;
           lock_init(&c->lock);
         }

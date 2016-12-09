@@ -1003,11 +1003,8 @@ void cell_drift(struct cell *c, const struct engine *e) {
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
-  // message("DRFIT ! ti_old=%d ti_current=%d", ti_old, ti_current);
-
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
-  // if (ti_current == ti_old) return;
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1051,8 +1048,6 @@ void cell_drift(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
-      // p->ti_old = ti_current;
-
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
@@ -1066,11 +1061,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
 
-    /* Set ti_old on the sub-cells */
-    cell_set_ti_old(c, e->ti_current);
-
-  } /* Check that we are actually going to move forward. */
-  else {
+  } else {
 
     h_max = c->h_max;
     dx_max = c->dx_max;
@@ -1082,26 +1073,4 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
-}
-
-/**
- * Set ti_old of a #cell and all its progenies to a new value.
- *
- * @param c The #cell.
- * @param ti_current The new value of ti_old.
- */
-void cell_set_ti_old(struct cell *c, int ti_current) {
-
-  /* Set this cell */
-  c->ti_old = ti_current;
-
-  /* Recurse */
-  if (c->split) {
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        cell_set_ti_old(cp, ti_current);
-      }
-    }
-  }
 }
