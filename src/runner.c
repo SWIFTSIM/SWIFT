@@ -736,11 +736,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     if (count) {
       message("Smoothing length failed to converge on %i particles.", count);
 
-      for(int i=0; i<count; ++i) {
-	struct part *restrict p = &parts[pid[i]];
+      for (int i = 0; i < count; ++i) {
+        struct part *restrict p = &parts[pid[i]];
         struct xpart *restrict xp = &xparts[pid[i]];
 
-	printParticle_single(p, xp);
+        printParticle_single(p, xp);
       }
     }
 

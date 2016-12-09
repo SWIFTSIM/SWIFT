@@ -55,7 +55,7 @@ struct part {
 
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
-  
+
   /* Particle position. */
   double x[3];
 
@@ -77,8 +77,8 @@ struct part {
   /* Particle time of end of time-step. */
   int ti_end;
 
-  //int ti_old;
-  
+  // int ti_old;
+
   /* Particle density. */
   float rho;
 
@@ -88,7 +88,7 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
-  //union {
+  union {
 
     struct {
 
@@ -130,7 +130,7 @@ struct part {
       float h_dt;
 
     } force;
-  //};
+  };
 
 } SWIFT_STRUCT_ALIGN;
 

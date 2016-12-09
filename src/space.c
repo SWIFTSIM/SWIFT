@@ -168,32 +168,6 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
   return sid;
 }
 
-int space_getdid(struct space *s, struct cell *ci, struct cell *cj) {
-
-  /* Get the relative distance between the pairs, wrapping. */
-  const int periodic = s->periodic;
-  double dx[3];
-  double shift[3];
-  for (int k = 0; k < 3; k++) {
-    dx[k] = cj->loc[k] - ci->loc[k];
-    if (periodic && dx[k] < -s->dim[k] / 2)
-      shift[k] = s->dim[k];
-    else if (periodic && dx[k] > s->dim[k] / 2)
-      shift[k] = -s->dim[k];
-    else
-      shift[k] = 0.0;
-    dx[k] += shift[k];
-  }
-
-  /* Get the drift index. */
-  int did = 0;
-  for (int k = 0; k < 3; k++)
-    did = 3 * did + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
-
-  /* Return the drift ID. */
-  return did;
-}
-
 /**
  * @brief Recursively dismantle a cell tree.
  *

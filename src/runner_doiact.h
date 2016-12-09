@@ -721,8 +721,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if(!cell_is_drifted(ci, e)) cell_drift(ci, e);
-  if(!cell_is_drifted(cj, e)) cell_drift(cj, e);
+  if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -762,8 +762,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
-
-    
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
     const float hig2 = hi * hi * kernel_gamma2;
@@ -774,7 +772,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
-      
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -827,8 +824,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
 
-    
-    
     double pjx[3];
     for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
     const float hjg2 = hj * hj * kernel_gamma2;
@@ -839,8 +834,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Get a pointer to the jth particle. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
 
-      
-      
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -923,9 +916,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if(!cell_is_drifted(ci, e)) error("Cell ci not drifted");
-  if(!cell_is_drifted(cj, e)) error("Cell cj not drifted");
-  
+  if (!cell_is_drifted(ci, e)) error("Cell ci not drifted");
+  if (!cell_is_drifted(cj, e)) error("Cell cj not drifted");
+
   /* Get the shift ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
@@ -993,8 +986,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
-    
-    
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
     const float hig2 = hi * hi * kernel_gamma2;
@@ -1009,8 +1000,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         struct part *restrict pj = &parts_j[sortdt_j[pjd].i];
         const float hj = pj->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1062,8 +1051,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
 
-
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1143,8 +1130,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
 
-
-    
     double pjx[3];
     for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
     const float hjg2 = hj * hj * kernel_gamma2;
@@ -1159,8 +1144,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         struct part *restrict pi = &parts_i[sortdt_i[pid].i];
         const float hi = pi->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1211,8 +1194,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         struct part *restrict pi = &parts_i[sort_i[pid].i];
         const float hi = pi->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1328,7 +1309,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if(!cell_is_drifted(c, e)) cell_drift(c, e);
+  if (!cell_is_drifted(c, e)) cell_drift(c, e);
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1357,8 +1338,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
-    
-    
     /* Is the ith particle inactive? */
     if (!part_is_active(pi, e)) {
 
@@ -1369,8 +1348,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
-
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1425,8 +1402,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[pjd];
         const float hj = pj->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1567,7 +1542,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if(!cell_is_drifted(c, e)) error("Cell is not drifted");
+  if (!cell_is_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1596,8 +1571,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
-
-    
     /* Is the ith particle not active? */
     if (!part_is_active(pi, e)) {
 
@@ -1608,8 +1581,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1664,8 +1635,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[pjd];
         const float hj = pj->h;
 
-	
-	
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];

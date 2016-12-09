@@ -721,7 +721,8 @@ void cell_check_drift_point(struct cell *c, void *data) {
   /* for (int i = 0; i < c->count; ++i) */
   /*   if (c->parts[i].ti_old != ti_current) */
   /*     error( */
-  /*         "Particle in an incorrect time-zone! part->ti_old=%d c->ti_old=%d " */
+  /*         "Particle in an incorrect time-zone! part->ti_old=%d c->ti_old=%d "
+   */
   /*         "ti_current=%d", */
   /*         c->parts[i].ti_old, c->ti_old, ti_current); */
 }
@@ -1009,11 +1010,11 @@ void cell_drift(struct cell *c, const struct engine *e) {
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
-  //message("DRFIT ! ti_old=%d ti_current=%d", ti_old, ti_current);
+  // message("DRFIT ! ti_old=%d ti_current=%d", ti_old, ti_current);
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
-  //if (ti_current == ti_old) return;
+  // if (ti_current == ti_old) return;
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1057,7 +1058,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
-      //p->ti_old = ti_current;
+      // p->ti_old = ti_current;
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +

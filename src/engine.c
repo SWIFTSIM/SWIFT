@@ -142,6 +142,11 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
+      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+
+      scheduler_addunlock(s, c->drift, c->init);
+
       /* Generate the ghost task. */
       if (is_hydro)
         c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
@@ -1987,10 +1992,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_self || t->type == task_type_sub_self) {
 
       /* Local pointers. */
-      const struct cell *ci = t->ci;
+      // const struct cell *ci = t->ci;
 
       /* Activate the drift */
-      if (ci->drift) scheduler_activate(s, ci->drift);
+      // if (ci->drift) scheduler_activate(s, ci->drift);
     }
 
     /* Pair? */
@@ -2001,8 +2006,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const struct cell *cj = t->cj;
 
       /* Activate the drift on both sides */
-      if (ci->drift) scheduler_activate(s, ci->drift);
-      if (cj->drift) scheduler_activate(s, cj->drift);
+      // if (ci->drift) scheduler_activate(s, ci->drift);
+      // if (cj->drift) scheduler_activate(s, cj->drift);
 
       /* Too much particle movement? */
       if (t->tight &&
@@ -2097,6 +2102,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_kick) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    }
+
+    /* Drift? */
+    else if (t->type == task_type_drift) {
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
@@ -2482,7 +2492,8 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->subtype == task_subtype_force || t->type == task_type_kick ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms)
+        t->type == task_type_cooling || t->type == task_type_sourceterms ||
+        t->type == task_type_drift)
       t->skip = 1;
   }
 }
