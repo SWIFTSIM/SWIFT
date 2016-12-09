@@ -296,7 +296,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -473,8 +472,9 @@ if test "$ac_cv_header_fftw3_h" = "yes"; then
 fi
 AC_SUBST([FFTW_LIBS])
 
-# Check for Intel intrinsics header optionally used by vector.h.
+# Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
+AC_CHECK_HEADERS([altivec.h])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
