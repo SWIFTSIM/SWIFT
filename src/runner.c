@@ -768,118 +768,15 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
-  /* Do we really need to drift? */
-  if (drift) {
-    if (!e->drift_all && !cell_is_drift_needed(c, e)) return;
-  } else {
-
-    /* Not drifting, but may still need to recurse for task un-skipping. */
-    if (c->split) {
-      for (int k = 0; k < 8; k++) {
-        if (c->progeny[k] != NULL) {
-          struct cell *cp = c->progeny[k];
-          runner_do_unskip(cp, e, 0);
-        }
-      }
-    }
-    return;
-  }
-
-  /* Now, we can drift */
-  /* Get some information first */
-  // const double timeBase = e->timeBase;
-  const int ti_old = c->ti_old;
-  const int ti_current = e->ti_current;
-  // struct part *const parts = c->parts;
-  // struct xpart *const xparts = c->xparts;
-  // struct gpart *const gparts = c->gparts;
-
-  /* Drift from the last time the cell was drifted to the current time */
-  // const double dt = (ti_current - ti_old) * timeBase;
-  //  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-
-  /* No children? */
-  if (!c->split) {
-
-    /* Check that we are actually going to move forward. */
-    if (ti_current > ti_old) {
-#if 0
-      /* Loop over all the g-particles in the cell */
-      const size_t nr_gparts = c->gcount;
-      for (size_t k = 0; k < nr_gparts; k++) {
-
-        /* Get a handle on the gpart. */
-        struct gpart *const gp = &gparts[k];
-
-        /* Drift... */
-        drift_gpart(gp, dt, timeBase, ti_old, ti_current);
-
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                          gp->x_diff[1] * gp->x_diff[1] +
-                          gp->x_diff[2] * gp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
-      }
-
-      /* Loop over all the particles in the cell */
-      const size_t nr_parts = c->count;
-      for (size_t k = 0; k < nr_parts; k++) {
-
-        /* Get a handle on the part. */
-        struct part *const p = &parts[k];
-        struct xpart *const xp = &xparts[k];
-
-        /* Drift... */
-        drift_part(p, xp, dt, timeBase, ti_old, ti_current);
-
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
-                          xp->x_diff[1] * xp->x_diff[1] +
-                          xp->x_diff[2] * xp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
-
-        /* Maximal smoothing length */
-        h_max = (h_max > p->h) ? h_max : p->h;
-      }
-
-      /* Now, get the maximal particle motion from its square */
-      dx_max = sqrtf(dx2_max);
-#endif
-    } /* Check that we are actually going to move forward. */
-
-    else {
-#if 0
-      /* ti_old == ti_current, just keep the current cell values. */
-      h_max = c->h_max;
-      dx_max = c->dx_max;
-#endif
-    }
-  }
-
-  /* Otherwise, aggregate data from children. */
-  else {
-
-    /* Loop over the progeny and collect their data. */
-    for (int k = 0; k < 8; k++)
+  /* Not drifting, but may still need to recurse for task un-skipping. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        // message("aaa");
-        /* Recurse. */
-        runner_do_unskip(cp, e, 0);
-#if 0
-        dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
-#endif
+	struct cell *cp = c->progeny[k];
+	runner_do_unskip(cp, e, 0);
       }
+    }
   }
-#if 0
-  /* Store the values */
-  c->h_max = h_max;
-  c->dx_max = dx_max;
-
-  /* Update the time of the last drift */
-  c->ti_old = ti_current;
-#endif
 }
 
 /**
