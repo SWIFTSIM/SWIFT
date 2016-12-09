@@ -1988,26 +1988,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
-    /* Self? */
-    else if (t->type == task_type_self || t->type == task_type_sub_self) {
-
-      /* Local pointers. */
-      // const struct cell *ci = t->ci;
-
-      /* Activate the drift */
-      // if (ci->drift) scheduler_activate(s, ci->drift);
-    }
-
     /* Pair? */
     else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
       /* Local pointers. */
       const struct cell *ci = t->ci;
       const struct cell *cj = t->cj;
-
-      /* Activate the drift on both sides */
-      // if (ci->drift) scheduler_activate(s, ci->drift);
-      // if (cj->drift) scheduler_activate(s, cj->drift);
 
       /* Too much particle movement? */
       if (t->tight &&
@@ -2258,13 +2244,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   if (rebuild) {
 
     /* Drift all particles to the current time if needed. */
-    if (!nodrift) {
-      // e->drift_all = 1;
-      engine_drift_all(e);
-
-      /* Restore the default drifting policy */
-      // e->drift_all = (e->policy & engine_policy_drift_all);
-    }
+    if (!nodrift) engine_drift_all(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that all cells have been drifted to the current time */
@@ -2272,11 +2252,6 @@ void engine_prepare(struct engine *e, int nodrift) {
 #endif
 
     engine_rebuild(e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that all cells have been drifted to the current time */
-    space_check_drift_point(e->s, e->ti_current);
-#endif
   }
 
   /* Re-rank the tasks every now and then. */
@@ -2621,11 +2596,7 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
-    // e->drift_all = 1;
     engine_drift_all(e);
-
-    /* Restore the default drifting policy */
-    // e->drift_all = (e->policy & engine_policy_drift_all);
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2658,17 +2629,14 @@ void engine_step(struct engine *e) {
   /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   const int repart = (e->forcerepart != REPART_NONE);
-  // e->drift_all = repart || e->drift_all;
-  if (repart) engine_drift_all(e);
+  const int drift_all = (e->policy & engine_policy_drift_all);
+  if (repart || drift_all) engine_drift_all(e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e, (e->drift_all || repart));
-
-  /* Restore the default drifting policy */
-  // e->drift_all = (e->policy & engine_policy_drift_all);
+  engine_prepare(e, (drift_all || repart));
 
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2716,13 +2684,9 @@ void engine_unskip(struct engine *e) {
 
 void engine_drift_all(struct engine *e) {
 
-  e->drift_all = 1;
-
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
-
-  e->drift_all = e->policy & engine_policy_drift_all;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3064,7 +3028,6 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
-  e->drift_all = (policy & engine_policy_drift_all);
   e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");

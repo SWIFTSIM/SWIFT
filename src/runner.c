@@ -733,16 +733,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    if (count) {
+    if (count)
       message("Smoothing length failed to converge on %i particles.", count);
-
-      for (int i = 0; i < count; ++i) {
-        struct part *restrict p = &parts[pid[i]];
-        struct xpart *restrict xp = &xparts[pid[i]];
-
-        printParticle_single(p, xp);
-      }
-    }
 
     /* Be clean */
     free(pid);
@@ -772,8 +764,8 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-	struct cell *cp = c->progeny[k];
-	runner_do_unskip(cp, e, 0);
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip(cp, e, 0);
       }
     }
   }

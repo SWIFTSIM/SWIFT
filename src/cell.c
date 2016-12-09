@@ -717,14 +717,6 @@ void cell_check_drift_point(struct cell *c, void *data) {
   if (c->ti_old != ti_current)
     error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
           c->ti_old, ti_current);
-
-  /* for (int i = 0; i < c->count; ++i) */
-  /*   if (c->parts[i].ti_old != ti_current) */
-  /*     error( */
-  /*         "Particle in an incorrect time-zone! part->ti_old=%d c->ti_old=%d "
-   */
-  /*         "ti_current=%d", */
-  /*         c->parts[i].ti_old, c->ti_old, ti_current); */
 }
 
 /**
@@ -887,12 +879,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
-    /* Activate the drift on both sides */
-    if (ci == c && cj != NULL && cj->drift != NULL)
-      scheduler_activate(s, cj->drift);
-    if (cj == c && ci != NULL && ci->drift != NULL)
-      scheduler_activate(s, ci->drift);
-
     /* Check whether there was too much particle motion */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (t->tight &&
@@ -970,6 +956,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick != NULL) scheduler_activate(s, c->kick);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);

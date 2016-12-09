@@ -133,9 +133,6 @@ struct engine {
   /* Minimal ti_end for the next time-step */
   int ti_end_min;
 
-  /* Are we drifting all particles now ? */
-  int drift_all;
-
   /* Number of particles updated */
   size_t updates, g_updates;
 
