@@ -584,7 +584,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         }
 
         /* Otherwise, break it up if it is too large? */
-
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
                  (ci->count > space_maxsize / cj->count)) {
 
@@ -605,8 +604,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
 
-        /* Otherwise, if not spilt, stitch-up the sorting and drift. */
-
+        /* Otherwise, if not spilt, stitch-up the sorting. */
       } else {
 
         /* Create the sort for ci. */
@@ -617,7 +615,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         else
           ci->sorts->flags |= (1 << sid);
         lock_unlock_blind(&ci->lock);
-
         scheduler_addunlock(s, ci->sorts, t);
 
         /* Create the sort for cj. */
@@ -628,7 +625,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         else
           cj->sorts->flags |= (1 << sid);
         lock_unlock_blind(&cj->lock);
-
         scheduler_addunlock(s, cj->sorts, t);
       }
 
@@ -1073,7 +1069,7 @@ void scheduler_start(struct scheduler *s) {
       if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort && t->type != task_type_drift)
+            t->type != task_type_sort && t->type)
           error(
               "Task (type='%s/%s') should not have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1088,12 +1084,6 @@ void scheduler_start(struct scheduler *s) {
               "c->ti_end_min=%d t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, t->flags);
-
-        /* Special treatement for drifts */
-        if (ci->ti_end_min == ti_current && t->skip &&
-            t->type == task_type_drift) {
-          ;
-        }
 
       } else { /* pair */
 

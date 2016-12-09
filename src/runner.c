@@ -744,15 +744,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Drift particles and g-particles in a cell forward in time,
- *              unskipping any tasks associated with active cells.
+ * @brief Unskip any tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
- * @param drift whether to actually drift the particles, will not be
- *              necessary for non-local cells.
  */
-static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
+static void runner_do_unskip(struct cell *c, struct engine *e) {
 
   /* Unskip any active tasks. */
   if (cell_is_active(c, e)) {
@@ -765,14 +762,14 @@ static void runner_do_unskip(struct cell *c, struct engine *e, int drift) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        runner_do_unskip(cp, e, 0);
+        runner_do_unskip(cp, e);
       }
     }
   }
 }
 
 /**
- * @brief Mapper function to drift particles and g-particles forward in time.
+ * @brief Mapper function to unskip active tasks.
  *
  * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
@@ -787,18 +784,35 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
 #ifdef WITH_MPI
-    if (c != NULL) runner_do_unskip(c, e, (c->nodeID == e->nodeID));
+    if (c != NULL) runner_do_unskip(c, e);
 #else
-    if (c != NULL) runner_do_unskip(c, e, 0);
+    if (c != NULL) runner_do_unskip(c, e);
 #endif
   }
 }
-
+/**
+ * @brief Drift particles in real space.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
 void runner_do_drift(struct runner *r, struct cell *c, int timer) {
 
+  TIMER_TIC;
+
   cell_drift(c, r->e);
+
+  if (timer) TIMER_TOC(timer_drift);
 }
 
+/**
+ * @brief Mapper function to drift ALL particle and g-particles forward in time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
 void runner_do_drift_mapper(void *map_data, int num_elements,
                             void *extra_data) {
 
@@ -812,8 +826,7 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Kick particles in momentum space and collect statistics (floating
- * time-step case)
+ * @brief Kick particles in momentum space and collect statistics.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1043,8 +1056,7 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_drift)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1059,11 +1071,6 @@ void *runner_main(void *data) {
               "c->ti_end_min=%d t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
-
-        /* Special treatement for drifts */
-        if (!cell_is_active(ci, e) && t->type == task_type_drift) {
-          ;
-        }
 
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))

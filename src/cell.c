@@ -984,6 +984,12 @@ void cell_set_super(struct cell *c, struct cell *super) {
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
 
+/**
+ * @brief Recursively drifts all particles and g-particles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
 void cell_drift(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
