@@ -434,9 +434,8 @@ void space_regrid(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  } /* re-build upper-level cells? */
-
-  else { /* Otherwise, just clean up the cells. */
+  }     /* re-build upper-level cells? */
+  else {/* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
     threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
@@ -1623,15 +1622,12 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
- * @brief Return a used cell to the buffer od unused sub-cells.
+ * @brief Return a used cell to the buffer of unused sub-cells.
  *
  * @param s The #space.
  * @param c The #cell.
  */
 void space_recycle(struct space *s, struct cell *c) {
-
-  /* Lock the space. */
-  lock_lock(&s->lock);
 
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
@@ -1642,6 +1638,9 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Clear the cell data. */
   bzero(c, sizeof(struct cell));
 
+  /* Lock the space. */
+  lock_lock(&s->lock);
+
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub;
   s->cells_sub = c;
@@ -1651,6 +1650,16 @@ void space_recycle(struct space *s, struct cell *c) {
   lock_unlock_blind(&s->lock);
 }
 
+/**
+ * @brief Return a list of used cells to the buffer of unused sub-cells.
+ *
+ * @param s The #space.
+ * @param list_begin Pointer to the first #cell in the linked list of
+ *        cells joined by their @c next pointers.
+ * @param list_begin Pointer to the last #cell in the linked list of
+ *        cells joined by their @c next pointers. It is assumed that this
+ *        cell's @c next pointer is @c NULL.
+ */
 void space_recycle_list(struct space *s, struct cell *list_begin,
                         struct cell *list_end) {
 
@@ -1662,10 +1671,10 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
     if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
 
     /* Clear this cell's sort arrays. */
-    if (c->sort != NULL) free(c->sort);
-
-    /* Clear the cell data. */
-    bzero(c, sizeof(struct cell));
+    if (c->sort != NULL) {
+      free(c->sort);
+      c->sort = NULL;
+    }
 
     /* Count this cell. */
     count += 1;
