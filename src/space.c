@@ -1635,9 +1635,6 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
-  /* Clear the cell data. */
-  bzero(c, sizeof(struct cell));
-
   /* Lock the space. */
   lock_lock(&s->lock);
 
@@ -1671,10 +1668,7 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
     if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
 
     /* Clear this cell's sort arrays. */
-    if (c->sort != NULL) {
-      free(c->sort);
-      c->sort = NULL;
-    }
+    if (c->sort != NULL) free(c->sort);
 
     /* Count this cell. */
     count += 1;
@@ -1710,9 +1704,6 @@ struct cell *space_getcell(struct space *s) {
     if (posix_memalign((void *)&s->cells_sub, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
-
-    /* Zero everything for good measure */
-    bzero(s->cells_sub, space_cellallocchunk * sizeof(struct cell));
 
     /* Constructed a linked list */
     for (int k = 0; k < space_cellallocchunk - 1; k++)
