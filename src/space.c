@@ -434,8 +434,8 @@ void space_regrid(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  }     /* re-build upper-level cells? */
-  else {/* Otherwise, just clean up the cells. */
+  }      /* re-build upper-level cells? */
+  else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
     threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
@@ -1630,7 +1630,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
+    error("Failed to destroy spinlock.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
@@ -1665,7 +1666,8 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
+      error("Failed to destroy spinlock.");
 
     /* Clear this cell's sort arrays. */
     if (c->sort != NULL) free(c->sort);

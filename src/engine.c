@@ -330,8 +330,8 @@ void engine_redistribute(struct engine *e) {
           r++;
         }
       }
-      message("%ld of %ld (%.2f%%) of particles moved", total - unmoved,
-              total, 100.0 * (double)(total - unmoved) / (double)total);
+      message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
+              100.0 * (double)(total - unmoved) / (double)total);
     }
   }
 
