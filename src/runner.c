@@ -61,18 +61,6 @@
 #include "timers.h"
 #include "timestep.h"
 
-/**
- * @brief  Entry in a list of sorted indices.
- */
-struct entry {
-
-  /*! Distance on the axis */
-  float d;
-
-  /*! Particle index */
-  int i;
-};
-
 /* Orientation of the cell pairs */
 const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
@@ -1178,8 +1166,13 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pair:
-          if (t->subtype == task_subtype_density)
+          if (t->subtype == task_subtype_density) {
+#ifdef WITH_VECTORIZATION
+            runner_dopair1_density_vec(r, ci, cj);
+#else
             runner_dopair1_density(r, ci, cj);
+#endif
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dopair1_gradient(r, ci, cj);

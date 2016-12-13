@@ -52,6 +52,18 @@ struct runner {
   struct cache par_cache;
 };
 
+/**
+ * @brief  Entry in a list of sorted indices.
+ */
+struct entry {
+
+  /*! Distance on the axis */
+  float d;
+
+  /*! Particle index */
+  int i;
+};
+
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
