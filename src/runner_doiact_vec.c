@@ -332,7 +332,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     /* Get the inverse of hi. */
     vector v_hi_inv;
 
-    VEC_RECIPROCAL(v_hi.v, v_hi_inv.v);
+    v_hi_inv = vec_reciprocal(v_hi);
 
     rhoSum.v = vec_setzero();
     rho_dhSum.v = vec_setzero();
@@ -599,8 +599,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 
     vector v_hi_inv, v_hi_inv2;
 
-    VEC_RECIPROCAL(v_hi.v, v_hi_inv.v);
-    VEC_RECIPROCAL(v_hi2.v, v_hi_inv2.v);
+    v_hi_inv = vec_reciprocal(v_hi);
+    v_hi_inv2 = vec_reciprocal(v_hi2);
 
     rhoSum.v = vec_setzero();
     rho_dhSum.v = vec_setzero();

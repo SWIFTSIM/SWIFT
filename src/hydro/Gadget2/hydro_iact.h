@@ -155,20 +155,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
-   * added below.*/
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi_inv.v * hi.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   xi.v = r.v * hi_inv.v;
 
   hj.v = vec_load(Hj);
-  hj_inv.v = vec_rcp(hj.v);
-  hj_inv.v = hj_inv.v - hj_inv.v * (hj_inv.v * hj.v - vec_set1(1.0f));
+  hj_inv = vec_reciprocal(hj);
   xj.v = r.v * hj_inv.v;
 
   /* Compute the kernel function. */
@@ -327,15 +322,11 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
-   * added below.*/
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi_inv.v * hi.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   xi.v = r.v * hi_inv.v;
 
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -427,8 +418,8 @@ runner_iact_nonsym_2_vec_density(
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
   r2_2.v = vec_load(&R2[VEC_SIZE]);
-  VEC_RECIPROCAL_SQRT(r2.v, ri.v);
-  VEC_RECIPROCAL_SQRT(r2_2.v, ri2.v);
+  ri = vec_reciprocal_sqrt(r2);
+  ri2 = vec_reciprocal_sqrt(r2_2);
   r.v = vec_mul(r2.v, ri.v);
   r_2.v = vec_mul(r2_2.v, ri2.v);
 
@@ -758,12 +749,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  VEC_RECIPROCAL_SQRT(r2.v, ri.v);
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   /* Get the kernel for hi. */
   hi.v = vec_load(Hi);
-  VEC_RECIPROCAL(hi.v, hi_inv.v);
+  hi_inv = vec_reciprocal(hi);
   hid_inv = pow_dimension_plus_one_vec(hi_inv); /* 1/h^(d+1) */
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -771,7 +762,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
-  VEC_RECIPROCAL(hj.v, hj_inv.v);
+  hj_inv = vec_reciprocal(hj);
   hjd_inv = pow_dimension_plus_one_vec(hj_inv); /* 1/h^(d+1) */
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
@@ -1037,12 +1028,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  VEC_RECIPROCAL_SQRT(r2.v, ri.v);
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   /* Get the kernel for hi. */
   hi.v = vec_load(Hi);
-  VEC_RECIPROCAL(hi.v, hi_inv.v);
+  hi_inv = vec_reciprocal(hi);
   hid_inv = pow_dimension_plus_one_vec(hi_inv);
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -1050,7 +1041,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
-  VEC_RECIPROCAL(hj.v, hj_inv.v);
+  hj_inv = vec_reciprocal(hj);
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
