@@ -865,3 +865,197 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
   TIMER_TOC(timer_doself_density);
 #endif /* WITH_VECTORIZATION */
 }
+
+/**
+ * @brief Compute the interactions between a cell pair (non-symmetric).
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *cj) {
+
+#ifdef WITH_VECTORIZATION
+  const struct engine *restrict e = r->e;
+
+#ifdef WITH_VECTORIZATION
+  int icount = 0;
+  float r2q[VEC_SIZE] __attribute__((aligned(16)));
+  float hiq[VEC_SIZE] __attribute__((aligned(16)));
+  float hjq[VEC_SIZE] __attribute__((aligned(16)));
+  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
+  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+#endif
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+  cell_is_drifted(cj, e);
+#endif
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+    error("Trying to interact unsorted cells.");
+
+  /* Get the cutoff shift. */
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
+  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+  /* Get some other useful values. */
+  const double hi_max = ci->h_max * kernel_gamma - rshift;
+  const double hj_max = cj->h_max * kernel_gamma;
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+  const double di_max = sort_i[count_i - 1].d - rshift;
+  const double dj_min = sort_j[0].d;
+  const float dx_max = (ci->dx_max + cj->dx_max);
+
+  /* Loop over the parts in ci. */
+  for (int pid = count_i - 1;
+       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+
+    /* Get a hold of the ith part in ci. */
+    struct part *restrict pi = &parts_i[sort_i[pid].i];
+    if (!part_is_active(pi, e)) continue;
+    const float hi = pi->h;
+    const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+    if (di < dj_min) continue;
+
+    double pix[3];
+    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      for (int k = 0; k < 3; k++) {
+        dx[k] = pix[k] - pj->x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+#ifndef WITH_VECTORIZATION
+
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = dx[0];
+        dxq[3 * icount + 1] = dx[1];
+        dxq[3 * icount + 2] = dx[2];
+        hiq[icount] = hi;
+        hjq[icount] = pj->h;
+        piq[icount] = pi;
+        pjq[icount] = pj;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          runner_iact_nonsym_vec_density(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+
+    } /* loop over the parts in cj. */
+
+  } /* loop over the parts in ci. */
+
+  /* Loop over the parts in cj. */
+  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+       pjd++) {
+
+    /* Get a hold of the jth part in cj. */
+    struct part *restrict pj = &parts_j[sort_j[pjd].i];
+    if (!part_is_active(pj, e)) continue;
+    const float hj = pj->h;
+    const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+    if (dj > di_max) continue;
+
+    double pjx[3];
+    for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
+    const float hjg2 = hj * hj * kernel_gamma2;
+
+    /* Loop over the parts in ci. */
+    for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pi = &parts_i[sort_i[pid].i];
+
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      for (int k = 0; k < 3; k++) {
+        dx[k] = pjx[k] - pi->x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2) {
+
+#ifndef WITH_VECTORIZATION
+
+        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = dx[0];
+        dxq[3 * icount + 1] = dx[1];
+        dxq[3 * icount + 2] = dx[2];
+        hiq[icount] = hj;
+        hjq[icount] = pi->h;
+        piq[icount] = pj;
+        pjq[icount] = pi;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          runner_iact_nonsym_vec_density(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+
+    } /* loop over the parts in cj. */
+
+  } /* loop over the parts in ci. */
+
+#ifdef WITH_VECTORIZATION
+  /* Pick up any leftovers. */
+  if (icount > 0)
+    for (int k = 0; k < icount; k++)
+      runner_iact_nonsym_density(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
+#endif
+
+  TIMER_TOC(timer_dopair_density);
+
+#endif /* WITH_VECTORIZATION */
+}
