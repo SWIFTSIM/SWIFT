@@ -39,18 +39,6 @@
 #define VEC_MACRO(elcount, type) \
   __attribute__((vector_size((elcount) * sizeof(type)))) type
 
-/* Define vector reciprocals. vec_rcp and vec_rsqrt do not have the level of
- * accuracy we need, so an extra two terms are added. */
-#define VEC_RECIPROCAL(x, x_inv) \
-  x_inv = vec_rcp(x);            \
-  x_inv = vec_sub(x_inv, vec_mul(x_inv, (vec_fma(x, x_inv, vec_set1(-1.0f)))))
-
-#define VEC_RECIPROCAL_SQRT(x, x_inv)                \
-  x_inv = vec_rsqrt(x);                              \
-  x_inv = vec_sub(                                   \
-      x_inv, vec_mul(vec_mul(vec_set1(0.5f), x_inv), \
-                     (vec_fma(x, vec_mul(x_inv, x_inv), vec_set1(-1.0f)))))
-
 /* So what will the vector size be? */
 #ifdef HAVE_AVX512_F
 #define VEC_HAVE_GATHER
@@ -267,6 +255,38 @@ typedef union {
   double d[VEC_SIZE / 2];
   int i[VEC_SIZE];
 } vector;
+
+/**
+ * @brief Calculates the inverse ($1/x$) of a vector using intrinsics and a Newton iteration to obtain the correct level of accuracy.
+ *
+ * @param x #vector to be inverted.
+ * @return x_inv #vector inverted x.
+ */
+__attribute__((always_inline)) INLINE vector vec_reciprocal(vector x) {
+
+  vector x_inv;
+
+  x_inv.v = vec_rcp(x.v);
+  x_inv.v = vec_sub(x_inv.v, vec_mul(x_inv.v, (vec_fma(x.v, x_inv.v, vec_set1(-1.0f)))));
+
+  return x_inv;
+}
+
+/**
+ * @brief Calculates the inverse and square root ($1/\sqrt{x}$) of a vector using intrinsics and a Newton iteration to obtain the correct level of accuracy.
+ *
+ * @param x #vector to be inverted.
+ * @return x_inv #vector inverted x.
+ */
+__attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
+
+  vector x_inv;
+
+  x_inv.v = vec_rsqrt(x.v);
+  x_inv.v = vec_sub(x_inv.v, vec_mul(vec_mul(vec_set1(0.5f), x_inv.v), (vec_fma(x.v, vec_mul(x_inv.v, x_inv.v), vec_set1(-1.0f)))));
+  
+  return x_inv;
+}
 
 #else
 /* Needed for cache alignment. */
