@@ -468,7 +468,8 @@ void cell_gunlocktree(struct cell *c) {
  * @param buff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
+void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+                struct cell_buff *gbuff) {
 
   const int count = c->count, gcount = c->gcount;
   struct part *parts = c->parts;
@@ -480,18 +481,22 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
 
-  /* If the buff is NULL, allocate it, and remember to free it. */
-  const int allocate_buffer = (buff == NULL);
-  if (allocate_buffer &&
-      (buff = (int *)malloc(sizeof(int) * max(count, gcount))) == NULL)
-    error("Failed to allocate temporary indices.");
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the buffs are OK. */
+  for (int k = 0; k < count; k++) {
+    if (buff[k].x[0] != (float)parts[k].x[0] ||
+        buff[k].x[1] != (float)parts[k].x[1] ||
+        buff[k].x[2] != (float)parts[k].x[2])
+      error("Inconsistent buff contents.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < count; k++) {
-    const int bid = (parts[k].x[0] > pivot[0]) * 4 +
-                    (parts[k].x[1] > pivot[1]) * 2 + (parts[k].x[2] > pivot[2]);
+    const int bid = (buff[k].x[0] > pivot[0]) * 4 +
+                    (buff[k].x[1] > pivot[1]) * 2 + (buff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    buff[k] = bid;
+    buff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -505,23 +510,25 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k];
+      int bid = buff[k].ind;
       if (bid != bucket) {
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
+        struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j] == bid) {
+          while (buff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
-          memswap(&buff[j], &bid, sizeof(int));
+          memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
+          bid = temp_buff.ind;
         }
         parts[k] = part;
         xparts[k] = xpart;
-        buff[k] = bid;
+        buff[k] = temp_buff;
       }
       bucket_count[bid]++;
     }
@@ -538,6 +545,14 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
   if (count > 0 && gcount > 0) part_relink_gparts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the buffs are OK. */
+  for (int k = 0; k < count; k++) {
+    if (buff[k].x[0] != (float)parts[k].x[0] ||
+        buff[k].x[1] != (float)parts[k].x[1] ||
+        buff[k].x[2] != (float)parts[k].x[2])
+      error("Inconsistent buff contents (k=%i).", k);
+  }
+
   /* Verify that _all_ the parts have been assigned to a cell. */
   for (int k = 1; k < 8; k++)
     if (&c->progeny[k - 1]->parts[c->progeny[k - 1]->count] !=
@@ -564,6 +579,31 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
         c->progeny[2]->parts[k].x[1] <= pivot[1] ||
         c->progeny[2]->parts[k].x[2] > pivot[2])
       error("Sorting failed (progeny=2).");
+  for (int k = 0; k < c->progeny[3]->count; k++)
+    if (c->progeny[3]->parts[k].x[0] > pivot[0] ||
+        c->progeny[3]->parts[k].x[1] <= pivot[1] ||
+        c->progeny[3]->parts[k].x[2] <= pivot[2])
+      error("Sorting failed (progeny=3).");
+  for (int k = 0; k < c->progeny[4]->count; k++)
+    if (c->progeny[4]->parts[k].x[0] <= pivot[0] ||
+        c->progeny[4]->parts[k].x[1] > pivot[1] ||
+        c->progeny[4]->parts[k].x[2] > pivot[2])
+      error("Sorting failed (progeny=4).");
+  for (int k = 0; k < c->progeny[5]->count; k++)
+    if (c->progeny[5]->parts[k].x[0] <= pivot[0] ||
+        c->progeny[5]->parts[k].x[1] > pivot[1] ||
+        c->progeny[5]->parts[k].x[2] <= pivot[2])
+      error("Sorting failed (progeny=5).");
+  for (int k = 0; k < c->progeny[6]->count; k++)
+    if (c->progeny[6]->parts[k].x[0] <= pivot[0] ||
+        c->progeny[6]->parts[k].x[1] <= pivot[1] ||
+        c->progeny[6]->parts[k].x[2] > pivot[2])
+      error("Sorting failed (progeny=6).");
+  for (int k = 0; k < c->progeny[7]->count; k++)
+    if (c->progeny[7]->parts[k].x[0] <= pivot[0] ||
+        c->progeny[7]->parts[k].x[1] <= pivot[1] ||
+        c->progeny[7]->parts[k].x[2] <= pivot[2])
+      error("Sorting failed (progeny=7).");
 #endif
 
   /* Now do the same song and dance for the gparts. */
@@ -571,11 +611,10 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < gcount; k++) {
-    const int bid = (gparts[k].x[0] > pivot[0]) * 4 +
-                    (gparts[k].x[1] > pivot[1]) * 2 +
-                    (gparts[k].x[2] > pivot[2]);
+    const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
+                    (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    buff[k] = bid;
+    gbuff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -589,20 +628,22 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff) {
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k];
+      int bid = gbuff[k].ind;
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
+        struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j] == bid) {
+          while (gbuff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&gparts[j], &gpart, sizeof(struct gpart));
-          memswap(&buff[j], &bid, sizeof(int));
+          memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
+          bid = temp_buff.ind;
         }
         gparts[k] = gpart;
-        buff[k] = bid;
+        gbuff[k] = temp_buff;
       }
       bucket_count[bid]++;
     }
