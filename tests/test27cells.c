@@ -48,7 +48,7 @@
 #endif
 
 #if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC)
-#define DOPAIR1 runner_dopair1_density
+#define DOPAIR1 runner_dopair1_density_vec
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
