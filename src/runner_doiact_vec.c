@@ -54,7 +54,7 @@
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    const struct cache *const cell_cache, struct c2_cache *const int_cache,
+    struct c2_cache *const int_cache,
     const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
     vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
     vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
-    calcRemInteractions(cell_cache, int_cache, *icount, rhoSum, rho_dhSum,
+    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum,
                         wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
                         curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
@@ -453,7 +453,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
                         &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
                         &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
@@ -779,12 +779,12 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
                         &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
                         &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
-    calcRemInteractions(cell_cache, &int_cache2, icount2, &rhoSum2, &rho_dhSum2,
+    calcRemInteractions(&int_cache2, icount2, &rhoSum2, &rho_dhSum2,
                         &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2,
                         &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2,
                         v_viz2, &icount_align2);
@@ -878,7 +878,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
 
-  int icount = 0;//, icount_align = 0;
+  int icount = 0, icount_align = 0;
   struct c2_cache int_cache;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;//, v_r2;
@@ -992,12 +992,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       /* Hit or miss? */
       if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
-
-        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
         /* Add this interaction to the queue. */
         int_cache.r2q[icount] = r2;
         int_cache.dxq[icount] = dx[0];
@@ -1012,42 +1006,43 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
         pjq[icount] = pj;
 
         icount += 1;
+      }
 
-        /* Flush? */
-        if (icount == VEC_SIZE) {
+    } /* loop over the parts in cj. */
 
+    /* Perform padded vector remainder interactions if any are present. */
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
+                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
+                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+                        &icount_align);
+    
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    vector int_mask, int_mask2;
 #ifdef HAVE_AVX512_F
-          KNL_MASK_16 knl_mask, knl_mask2;
-#endif
-          vector int_mask, int_mask2;
-
-#ifdef HAVE_AVX512_F
-          knl_mask = 0xFFFF;
-          knl_mask2 = 0xFFFF;
-          int_mask.m = vec_setint1(0xFFFFFFFF);
-          int_mask2.m = vec_setint1(0xFFFFFFFF);
+    KNL_MASK_16 knl_mask = 0xFFFF;
+    KNL_MASK_16 knl_mask2 = 0xFFFF;
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
 #else
-          int_mask.m = vec_setint1(0xFFFFFFFF);
-          int_mask2.m = vec_setint1(0xFFFFFFFF);
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
 #endif
-          runner_iact_nonsym_1_vec_density(
-          &int_cache.r2q[0], &int_cache.dxq[0], &int_cache.dyq[0],
-          &int_cache.dzq[0], v_hi_inv, v_vix, v_viy, v_viz,
-          &int_cache.vxq[0], &int_cache.vyq[0], &int_cache.vzq[0],
-          &int_cache.mq[0], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+
+    /* Perform interaction with 2 vectors. */
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
+      runner_iact_nonsym_2_vec_density(
+          &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
+          &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
+          &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
+          &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask, knl_mask2);
 #else
-          0, 0);
+      0, 0);
 #endif
-          icount = 0;
-        }
-
-#endif
-      }
-
-    } /* loop over the parts in cj. */
+    }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
      */
@@ -1060,16 +1055,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     VEC_HADD(curlvySum, pi->density.rot_v[1]);
     VEC_HADD(curlvzSum, pi->density.rot_v[2]);
 
-    if (icount > 0) {
-      for (int k = 0; k < icount; k++) {
-        float dxq2[3];
-        dxq2[0] = int_cache.dxq[k];
-        dxq2[1] = int_cache.dyq[k];
-        dxq2[2] = int_cache.dzq[k];
-
-        runner_iact_nonsym_density(int_cache.r2q[k], &dxq2[3 * k], hi, hjq[k], pi, pjq[k]);
-      }
-    }
     icount = 0;
 
   } /* loop over the parts in ci. */
