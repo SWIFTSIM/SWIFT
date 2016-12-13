@@ -158,4 +158,42 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
   }
 }
 
+/**
+ * @brief Populate cache by reading in the particles from two cells in unsorted order.
+ *
+ * @param ci The i #cell.
+ * @param cj The j #cell.
+ * @param ci_cache The cache for cell ci.
+ * @param cj_cache The cache for cell cj.
+ * @param shift The amount to shift the particle positions to account for BCs
+ */
+__attribute__((always_inline)) INLINE void cache_read_two_cells(
+    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const double *const shift) {
+
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+  for (int i = 0; i < ci->count; i++) {
+    ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0] - shift[0];
+    ci_cache->y[i] = ci->parts[i].x[1] - ci->loc[1] - shift[1];
+    ci_cache->z[i] = ci->parts[i].x[2] - ci->loc[2] - shift[2];
+    ci_cache->h[i] = ci->parts[i].h;
+
+    ci_cache->m[i] = ci->parts[i].mass;
+    ci_cache->vx[i] = ci->parts[i].v[0];
+    ci_cache->vy[i] = ci->parts[i].v[1];
+    ci_cache->vz[i] = ci->parts[i].v[2];
+  }
+  
+  for (int i = 0; i < cj->count; i++) {
+    cj_cache->x[i] = cj->parts[i].x[0] - cj->loc[0];
+    cj_cache->y[i] = cj->parts[i].x[1] - cj->loc[1];
+    cj_cache->z[i] = cj->parts[i].x[2] - cj->loc[2];
+    cj_cache->h[i] = cj->parts[i].h;
+
+    cj_cache->m[i] = cj->parts[i].mass;
+    cj_cache->vx[i] = cj->parts[i].v[0];
+    cj_cache->vy[i] = cj->parts[i].v[1];
+    cj_cache->vz[i] = cj->parts[i].v[2];
+  }
+}
 #endif /* SWIFT_CACHE_H */
