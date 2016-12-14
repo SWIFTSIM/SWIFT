@@ -54,7 +54,7 @@
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    const struct cache *const cell_cache, struct c2_cache *const int_cache,
+    struct c2_cache *const int_cache,
     const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
     vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
     vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
-    calcRemInteractions(cell_cache, int_cache, *icount, rhoSum, rho_dhSum,
+    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum,
                         wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
                         curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
@@ -453,7 +453,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
                         &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
                         &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
@@ -779,12 +779,12 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(cell_cache, &int_cache, icount, &rhoSum, &rho_dhSum,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
                         &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
                         &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
-    calcRemInteractions(cell_cache, &int_cache2, icount2, &rhoSum2, &rho_dhSum2,
+    calcRemInteractions(&int_cache2, icount2, &rhoSum2, &rho_dhSum2,
                         &wcountSum2, &wcount_dhSum2, &div_vSum2, &curlvxSum2,
                         &curlvySum2, &curlvzSum2, v_hi_inv2, v_vix2, v_viy2,
                         v_viz2, &icount_align2);
