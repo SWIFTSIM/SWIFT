@@ -757,7 +757,7 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
-  /* Not drifting, but may still need to recurse for task un-skipping. */
+  /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
@@ -783,11 +783,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-#ifdef WITH_MPI
     if (c != NULL) runner_do_unskip(c, e);
-#else
-    if (c != NULL) runner_do_unskip(c, e);
-#endif
   }
 }
 /**

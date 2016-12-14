@@ -30,11 +30,9 @@
 /**
  * @brief Check that a cell been drifted to the current time.
  *
- * Only used for debugging. Calls error() if the cell has not
- * been drifted. Does nothing if SWIFT_DEBUG_CHECKS is not defined.
- *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_drifted(
     const struct cell *c, const struct engine *e) {
@@ -55,6 +53,7 @@ __attribute__((always_inline)) INLINE static int cell_is_drifted(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
+ * @param 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active(
     const struct cell *c, const struct engine *e) {
@@ -73,6 +72,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
+ * @param 1 if all particles in a #cell are active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_all_active(
     const struct cell *c, const struct engine *e) {
@@ -91,6 +91,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active(
  *
  * @param p The #part.
  * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int part_is_active(
     const struct part *p, const struct engine *e) {
@@ -109,6 +110,7 @@ __attribute__((always_inline)) INLINE static int part_is_active(
  *
  * @param gp The #gpart.
  * @param e The #engine containing information about the current time.
+ * @return 1 if the #gpart is active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_active(
     const struct gpart *gp, const struct engine *e) {

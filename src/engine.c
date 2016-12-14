@@ -2684,7 +2684,7 @@ int engine_is_done(struct engine *e) {
 }
 
 /**
- * @brief Drift particles using the current engine drift policy.
+ * @brief Unskip all the tasks that act on active cells at this time.
  *
  * @param e The #engine.
  */
@@ -2699,6 +2699,11 @@ void engine_unskip(struct engine *e) {
             clocks_getunit());
 }
 
+/**
+ * @brief Drift *all* particles forward to the current time.
+ *
+ * @param e The #engine.
+ */
 void engine_drift_all(struct engine *e) {
 
   const ticks tic = getticks();
