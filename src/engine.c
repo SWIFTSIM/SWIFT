@@ -59,6 +59,7 @@
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
+#include "profiler.h"
 #include "proxy.h"
 #include "runner.h"
 #include "serial_io.h"
@@ -321,6 +322,23 @@ void engine_redistribute(struct engine *e) {
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
                     MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce particle transfer counts.");
+
+  /* Report how many particles will be moved. */
+  if (e->verbose) {
+    if (e->nodeID == 0) {
+      size_t total = 0;
+      size_t unmoved = 0;
+      for (int p = 0, r = 0; p < nr_nodes; p++) {
+        for (int s = 0; s < nr_nodes; s++) {
+          total += counts[r];
+          if (p == s) unmoved += counts[r];
+          r++;
+        }
+      }
+      message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
+              100.0 * (double)(total - unmoved) / (double)total);
+    }
+  }
 
   /* Get all the g_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, g_counts, nr_nodes * nr_nodes, MPI_INT,
