@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static int cell_is_drifted(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
- * @param 1 if the #cell contains at least an active particle, 0 otherwise.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_active(
     const struct cell *c, const struct engine *e) {
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
- * @param 1 if all particles in a #cell are active, 0 otherwise.
+ * @return 1 if all particles in a #cell are active, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_all_active(
     const struct cell *c, const struct engine *e) {
