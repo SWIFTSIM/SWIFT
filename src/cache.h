@@ -64,6 +64,8 @@ struct cache {
   int count;
 };
 
+struct cache cj_cache;
+
 /* Secondary cache struct to hold a list of interactions between two
  * particles.*/
 struct c2_cache {
@@ -170,7 +172,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 __attribute__((always_inline)) INLINE void cache_read_two_cells(
     const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const double *const shift) {
 
-  /* Shift the particles positions to a local frame so single precision can be
+  /* Shift the particles positions to a local frame (ci frame) so single precision can be
    * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0] - shift[0];
@@ -185,9 +187,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells(
   }
   
   for (int i = 0; i < cj->count; i++) {
-    cj_cache->x[i] = cj->parts[i].x[0] - cj->loc[0];
-    cj_cache->y[i] = cj->parts[i].x[1] - cj->loc[1];
-    cj_cache->z[i] = cj->parts[i].x[2] - cj->loc[2];
+    cj_cache->x[i] = cj->parts[i].x[0] - ci->loc[0];
+    cj_cache->y[i] = cj->parts[i].x[1] - ci->loc[1];
+    cj_cache->z[i] = cj->parts[i].x[2] - ci->loc[2];
     cj_cache->h[i] = cj->parts[i].h;
 
     cj_cache->m[i] = cj->parts[i].mass;
