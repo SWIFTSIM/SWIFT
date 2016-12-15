@@ -24,6 +24,7 @@
 #define SWIFT_RUNNER_H
 
 #include "cache.h"
+#include "sort.h"
 
 extern const double runner_shift[13][3];
 extern const char runner_flip[27];
@@ -50,18 +51,6 @@ struct runner {
 
   /*! The particle cache of this runner. */
   struct cache par_cache;
-};
-
-/**
- * @brief  Entry in a list of sorted indices.
- */
-struct entry {
-
-  /*! Distance on the axis */
-  float d;
-
-  /*! Particle index */
-  int i;
 };
 
 /* Function prototypes. */
