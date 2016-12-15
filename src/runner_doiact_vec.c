@@ -880,6 +880,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
   int icount = 0, icount_align = 0;
   struct c2_cache int_cache;
+  int num_vec_proc = 1;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;//, v_r2;
 
@@ -937,7 +938,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     cache_init(&cj_cache, count_j);
   }
 
-  cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
+  //cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
+  cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1;
@@ -947,18 +949,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     struct part *restrict pi = &parts_i[sort_i[pid].i];
     if (!part_is_active(pi, e)) continue;
 
-    int ci_cache_idx = sort_i[pid].i;
+    //int ci_cache_idx = sort_i[pid].i;
+    int ci_cache_idx = pid;
 
-    //const float hi = pi->h;
     const float hi = ci_cache->h[ci_cache_idx];
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
-    double pix[3];
-    //for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
-    pix[0] = ci_cache->x[ci_cache_idx];
-    pix[1] = ci_cache->y[ci_cache_idx];
-    pix[2] = ci_cache->z[ci_cache_idx];
+    float pix = ci_cache->x[ci_cache_idx];
+    float piy = ci_cache->y[ci_cache_idx];
+    float piz = ci_cache->z[ci_cache_idx];
     const float hig2 = hi * hi * kernel_gamma2;
 
     //vector pix, piy, piz;
@@ -995,43 +995,53 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     curlvySum.v = vec_setzero();
     curlvzSum.v = vec_setzero();
 
-    //int exit_iteration = count_j;
-    //for (int pjd = 0; pjd < count_j ; pjd++) {
-    //  if(sort_j[pjd].d >= di) exit_iteration = pjd;
-    //}
+    int exit_iteration = count_j;
+    for (int pjd = 0; pjd < count_j ; pjd++) {
+      if(sort_j[pjd].d >= di) exit_iteration = pjd;
+    }
+
+    /* Pad cache if there is a serial remainder. */
+    int exit_iteration_align = exit_iteration;
+    int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      exit_iteration_align += pad;
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = exit_iteration; i < exit_iteration_align; i++) {
+        cj_cache.x[i] = pix;
+        cj_cache.y[i] = piy;
+        cj_cache.z[i] = piz;
+      }
+    }
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-    //for (int pjd = 0; pjd < exit_iteration; pjd++) {
+    //for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+    for (int pjd = 0; pjd < exit_iteration; pjd++) {
 
-      int cj_cache_idx = sort_j[pjd].i;
-      /* Get a pointer to the jth particle. */
-      //struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      /* Get the cache index to the jth particle. */
+      //int cj_cache_idx = sort_j[pjd].i;
+      int cj_cache_idx = pjd;
 
       /* Compute the pairwise distance. */
-      float r2;// = 0.0f;
-      float dx[3];
-      //for (int k = 0; k < 3; k++) {
-      //  dx[k] = pix[k] - pj->x[k] + ci->loc[k];
-      //  r2 += dx[k] * dx[k];
-      //}
-      dx[0] = pix[0] - cj_cache.x[cj_cache_idx];
-      dx[1] = pix[1] - cj_cache.y[cj_cache_idx];
-      dx[2] = pix[2] - cj_cache.z[cj_cache_idx];
-      r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      float dx = pix - cj_cache.x[cj_cache_idx];
+      float dy = piy - cj_cache.y[cj_cache_idx];
+      float dz = piz - cj_cache.z[cj_cache_idx];
+      float r2 = dx * dx + dy * dy + dz * dz;
 
       /* Hit or miss? */
       if (r2 < hig2) {
 
         /* Add this interaction to the queue. */
         int_cache.r2q[icount] = r2;
-        int_cache.dxq[icount] = dx[0];
-        int_cache.dyq[icount] = dx[1];
-        int_cache.dzq[icount] = dx[2];
-        int_cache.mq[icount] = cj_cache.m[cj_cache_idx];//pj->mass;
-        int_cache.vxq[icount] = cj_cache.vx[cj_cache_idx];//pj->v[0];
-        int_cache.vyq[icount] = cj_cache.vy[cj_cache_idx];//pj->v[1];
-        int_cache.vzq[icount] = cj_cache.vz[cj_cache_idx];//pj->v[2];
+        int_cache.dxq[icount] = dx;
+        int_cache.dyq[icount] = dy;
+        int_cache.dzq[icount] = dz;
+        int_cache.mq[icount] = cj_cache.m[cj_cache_idx];
+        int_cache.vxq[icount] = cj_cache.vx[cj_cache_idx];
+        int_cache.vyq[icount] = cj_cache.vy[cj_cache_idx];
+        int_cache.vzq[icount] = cj_cache.vz[cj_cache_idx];
         
         icount++;
       }
