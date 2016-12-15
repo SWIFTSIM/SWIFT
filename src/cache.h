@@ -27,6 +27,7 @@
 #include "error.h"
 #include "part.h"
 #include "vector.h"
+#include "sort.h"
 
 #define NUM_VEC_PROC 2
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
@@ -198,4 +199,47 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells(
     cj_cache->vz[i] = cj->parts[i].v[2];
   }
 }
+
+/**
+ * @brief Populate cache by reading in the particles from two cells in sorted order.
+ *
+ * @param ci The i #cell.
+ * @param cj The j #cell.
+ * @param ci_cache The cache for cell ci.
+ * @param cj_cache The cache for cell cj.
+ * @param shift The amount to shift the particle positions to account for BCs
+ */
+__attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
+    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift) {
+
+  int idx;
+  /* Shift the particles positions to a local frame (ci frame) so single precision can be
+   * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+  for (int i = 0; i < ci->count; i++) {
+    idx = sort_i[i].i;
+    ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
+    ci_cache->y[i] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
+    ci_cache->z[i] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
+    ci_cache->h[i] = ci->parts[idx].h;
+
+    ci_cache->m[i] = ci->parts[idx].mass;
+    ci_cache->vx[i] = ci->parts[idx].v[0];
+    ci_cache->vy[i] = ci->parts[idx].v[1];
+    ci_cache->vz[i] = ci->parts[idx].v[2];
+  }
+  
+  for (int i = 0; i < cj->count; i++) {
+    idx = sort_j[i].i;
+    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
+    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
+    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
+    cj_cache->h[i] = cj->parts[idx].h;
+
+    cj_cache->m[i] = cj->parts[idx].mass;
+    cj_cache->vx[i] = cj->parts[idx].v[0];
+    cj_cache->vy[i] = cj->parts[idx].v[1];
+    cj_cache->vz[i] = cj->parts[idx].v[2];
+  }
+}
+
 #endif /* SWIFT_CACHE_H */
