@@ -956,25 +956,19 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
-    float pix = ci_cache->x[ci_cache_idx];
-    float piy = ci_cache->y[ci_cache_idx];
-    float piz = ci_cache->z[ci_cache_idx];
     const float hig2 = hi * hi * kernel_gamma2;
 
-    //vector pix, piy, piz;
-
-    //const float hi = cell_cache->h[pid];
+    vector pix, piy, piz;
 
     /* Fill particle pi vectors. */
-    //pix.v = vec_set1((float)(pi->x[0] - ci->loc[0] - shift[0]));
-    //piy.v = vec_set1((float)(pi->x[1] - ci->loc[1] - shift[1]));
-    //piz.v = vec_set1((float)(pi->x[2] - ci->loc[2] - shift[2]));
+    pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
+    piy.v = vec_set1(ci_cache->y[ci_cache_idx]);
+    piz.v = vec_set1(ci_cache->z[ci_cache_idx]);
     v_hi.v = vec_set1(hi);
-    v_vix.v = vec_set1(pi->v[0]);
-    v_viy.v = vec_set1(pi->v[1]);
-    v_viz.v = vec_set1(pi->v[2]);
+    v_vix.v = vec_set1(ci_cache->vx[ci_cache_idx]);
+    v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
+    v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
 
-    //const float hig2 = hi * hi * kernel_gamma2;
     v_hig2.v = vec_set1(hig2);
 
     /* Reset cumulative sums of update vectors. */
@@ -1010,42 +1004,61 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
       for (int i = exit_iteration; i < exit_iteration_align; i++) {
-        cj_cache.x[i] = pix;
-        cj_cache.y[i] = piy;
-        cj_cache.z[i] = piz;
+        cj_cache.x[i] = pix.f[0];
+        cj_cache.y[i] = piy.f[0];
+        cj_cache.z[i] = piz.f[0];
       }
     }
 
+    vector pjx, pjy, pjz;
+    vector pjvx, pjvy, pjvz, mj;
+
     /* Loop over the parts in cj. */
-    //for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-    for (int pjd = 0; pjd < exit_iteration; pjd++) {
+    for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
 
       /* Get the cache index to the jth particle. */
       //int cj_cache_idx = sort_j[pjd].i;
       int cj_cache_idx = pjd;
 
+      vector v_dx, v_dy, v_dz, v_r2;
+
+      /* Load 2 sets of vectors from the particle cache. */
+      pjx.v = vec_load(&cj_cache.x[cj_cache_idx]);
+      pjy.v = vec_load(&cj_cache.y[cj_cache_idx]);
+      pjz.v = vec_load(&cj_cache.z[cj_cache_idx]);
+      pjvx.v = vec_load(&cj_cache.vx[cj_cache_idx]);
+      pjvy.v = vec_load(&cj_cache.vy[cj_cache_idx]);
+      pjvz.v = vec_load(&cj_cache.vz[cj_cache_idx]);
+      mj.v = vec_load(&cj_cache.m[cj_cache_idx]);
+
       /* Compute the pairwise distance. */
-      float dx = pix - cj_cache.x[cj_cache_idx];
-      float dy = piy - cj_cache.y[cj_cache_idx];
-      float dz = piz - cj_cache.z[cj_cache_idx];
-      float r2 = dx * dx + dy * dy + dz * dz;
+      v_dx.v = vec_sub(pix.v, pjx.v);
+      v_dy.v = vec_sub(piy.v, pjy.v);
+      v_dz.v = vec_sub(piz.v, pjz.v);
 
-      /* Hit or miss? */
-      if (r2 < hig2) {
+      v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        /* Add this interaction to the queue. */
-        int_cache.r2q[icount] = r2;
-        int_cache.dxq[icount] = dx;
-        int_cache.dyq[icount] = dy;
-        int_cache.dzq[icount] = dz;
-        int_cache.mq[icount] = cj_cache.m[cj_cache_idx];
-        int_cache.vxq[icount] = cj_cache.vx[cj_cache_idx];
-        int_cache.vyq[icount] = cj_cache.vy[cj_cache_idx];
-        int_cache.vzq[icount] = cj_cache.vz[cj_cache_idx];
-        
-        icount++;
-      }
+      vector v_doi_mask, v_doi_mask_check;
+      int doi_mask;
 
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+
+      /* Combine two masks and form integer mask. */
+      doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask)
+        storeInteractions(doi_mask, cj_cache_idx, &v_r2, &v_dx, &v_dy, &v_dz,
+                          &mj, &pjvx, &pjvy, &pjvz, &cj_cache, &int_cache,
+                          &icount, &rhoSum, &rho_dhSum, &wcountSum,
+                          &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                          &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+      
     } /* loop over the parts in cj. */
 
     /* Perform padded vector remainder interactions if any are present. */
