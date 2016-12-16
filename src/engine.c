@@ -143,6 +143,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
+      /* Add the drift task and dependency. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
@@ -673,6 +674,11 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
+      
+      if(ci->super->drift == NULL) 
+	ci->super->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
+					     ci->super, NULL, 0);
+
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
                                4 * ci->tag, 0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
@@ -708,6 +714,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
+
+      scheduler_addunlock(s, ci->super->drift, t_xv);
 #endif
 
       /* The super-cell's kick task should unlock the send_ti task. */

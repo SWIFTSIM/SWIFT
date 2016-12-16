@@ -67,7 +67,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  int ti_end_min, ti_end_max;
+  int ti_end_min, ti_end_max, ti_old;
 
   /* Number of particles in this cell. */
   int count, gcount;

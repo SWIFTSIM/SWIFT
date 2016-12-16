@@ -958,7 +958,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
   const size_t nr_gparts = c->gcount;
-  // const int ti_current = r->e->ti_current;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC;
 
@@ -1001,6 +1001,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_old = ti_current;
   c->h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
@@ -1051,8 +1052,9 @@ void *runner_main(void *data) {
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort && t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1070,12 +1072,15 @@ void *runner_main(void *data) {
 
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
+
+	  if(t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "ci->ti_end_min=%d cj->ti_end_min=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, cj->ti_end_min);
       }
+#endif
 #endif
 
       /* Different types of tasks... */

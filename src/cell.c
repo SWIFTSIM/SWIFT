@@ -99,6 +99,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->h_max = pc->h_max;
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
+  c->ti_old = pc->ti_old;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->tag = pc->tag;
@@ -127,6 +128,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+      temp->ti_old = c->ti_old;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s);
@@ -209,6 +211,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->h_max = c->h_max;
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
+  pc->ti_old = c->ti_old;
   pc->count = c->count;
   pc->gcount = c->gcount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
@@ -714,7 +717,7 @@ void cell_check_drift_point(struct cell *c, void *data) {
 
   const int ti_current = *(int *)data;
 
-  if (c->ti_old != ti_current)
+  if (c->ti_old != ti_current && c->nodeID == engine_rank)
     error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
           c->ti_old, ti_current);
 }
