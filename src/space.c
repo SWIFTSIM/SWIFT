@@ -173,6 +173,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  *
  * @param s The #space.
  * @param c The #cell to recycle.
+ * @param rec_begin Pointer to the start of the list of cells to recycle.
+ * @param rec_end Pointer to the end of the list of cells to recycle.
  */
 void space_rebuild_recycle_rec(struct space *s, struct cell *c,
                                struct cell **rec_begin, struct cell **rec_end) {
@@ -1682,7 +1684,7 @@ void space_recycle(struct space *s, struct cell *c) {
  * @param s The #space.
  * @param list_begin Pointer to the first #cell in the linked list of
  *        cells joined by their @c next pointers.
- * @param list_begin Pointer to the last #cell in the linked list of
+ * @param list_end Pointer to the last #cell in the linked list of
  *        cells joined by their @c next pointers. It is assumed that this
  *        cell's @c next pointer is @c NULL.
  */
