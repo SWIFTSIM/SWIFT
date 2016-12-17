@@ -32,15 +32,16 @@
 #include <altivec.h>
 #endif
 
-/* Macro for in-place swap of two values a and b of type t. */
-#define swap_loop(t, a, b, c)  \
-  while (c >= sizeof(t)) {     \
-    register t temp = *(t *)a; \
-    *(t *)a = *(t *)b;         \
-    *(t *)b = temp;            \
-    a += sizeof(t);            \
-    b += sizeof(t);            \
-    bytes -= sizeof(t);        \
+/* Macro for in-place swap of two values a and b of type t. a and b are
+   assumed to be of type char* so that the pointer arithmetic works. */
+#define swap_loop(type, a, b, count) \
+  while (count >= sizeof(type)) {    \
+    register type temp = *(type *)a; \
+    *(type *)a = *(type *)b;         \
+    *(type *)b = temp;               \
+    a += sizeof(type);               \
+    b += sizeof(type);               \
+    count -= sizeof(type);           \
   }
 
 /**
