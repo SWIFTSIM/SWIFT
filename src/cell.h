@@ -56,7 +56,7 @@ extern int cell_next_tag;
 struct cell_buff {
   double x[3];
   int ind;
-};
+} SWIFT_STRUCT_ALIGN;
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
