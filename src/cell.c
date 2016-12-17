@@ -484,9 +484,9 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
   for (int k = 0; k < count; k++) {
-    if (buff[k].x[0] != (float)parts[k].x[0] ||
-        buff[k].x[1] != (float)parts[k].x[1] ||
-        buff[k].x[2] != (float)parts[k].x[2])
+    if (buff[k].x[0] != parts[k].x[0] ||
+        buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
@@ -546,10 +546,12 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
-  for (int k = 0; k < count; k++) {
-    if (buff[k].x[0] != (float)parts[k].x[0] ||
-        buff[k].x[1] != (float)parts[k].x[1] ||
-        buff[k].x[2] != (float)parts[k].x[2])
+  for (int k = 1; k < count; k++) {
+    if (buff[k].ind < buff[k - 1].ind)
+      error("Buff not sorted.");
+    if (buff[k].x[0] != parts[k].x[0] ||
+        buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents (k=%i).", k);
   }
 
