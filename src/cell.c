@@ -467,6 +467,8 @@ void cell_gunlocktree(struct cell *c) {
  *        space's parts array, i.e. c->parts - s->parts.
  * @param buff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices.
+ * @param gbuff A buffer with at least max(c->count, c->gcount) entries,
+ *        used for sorting indices for the gparts.
  */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
                 struct cell_buff *gbuff) {
