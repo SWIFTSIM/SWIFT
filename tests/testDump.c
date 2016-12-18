@@ -31,10 +31,10 @@
 #include <unistd.h>
 
 /* This object's header. */
-#include "dump.h"
+#include "../src/dump.h"
 
 /* Local headers. */
-#include "threadpool.h"
+#include "../src/threadpool.h"
 
 void dump_mapper(void *map_data, int num_elements, void *extra_data) {
   struct dump *d = (struct dump *)extra_data;
@@ -78,4 +78,7 @@ int main(int argc, char *argv[]) {
 
   /* Finalize the dump. */
   dump_close(&d);
+  
+  /* Return a happy number. */
+  return 0;
 }
