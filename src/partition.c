@@ -47,7 +47,6 @@
 #endif
 
 /* Local headers. */
-#include "const.h"
 #include "debug.h"
 #include "error.h"
 #include "partition.h"
@@ -143,7 +142,7 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
             select = l;
           }
         }
-        s->cells[n++].nodeID = select;
+        s->cells_top[n++].nodeID = select;
       }
     }
   }
@@ -274,11 +273,23 @@ static void accumulate_counts(struct space *s, int *counts) {
  */
 static void split_metis(struct space *s, int nregions, int *celllist) {
 
-  for (int i = 0; i < s->nr_cells; i++) s->cells[i].nodeID = celllist[i];
+  for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 }
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+
+/* qsort support. */
+struct indexval {
+  int index;
+  int count;
+};
+static int indexvalcmp(const void *p1, const void *p2) {
+  const struct indexval *iv1 = (const struct indexval *)p1;
+  const struct indexval *iv2 = (const struct indexval *)p2;
+  return iv2->count - iv1->count;
+}
+
 /**
  * @brief Partition the given space into a number of connected regions.
  *
@@ -370,7 +381,7 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
 
   /* Dump graph in METIS format */
   /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-   *                weights_v, weights_e, NULL);
+   *                weights_v, NULL, weights_e);
    */
 
   if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, weights_e,
@@ -383,14 +394,70 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
     if (regionid[k] < 0 || regionid[k] >= nregions)
       error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
 
+  /* We want a solution in which the current regions of the space are
+   * preserved when possible, to avoid unneccesary particle movement.
+   * So create a 2d-array of cells counts that are common to all pairs
+   * of old and new ranks. Each element of the array has a cell count and
+   * an unique index so we can sort into decreasing counts. */
+  int indmax = nregions * nregions;
+  struct indexval *ivs = malloc(sizeof(struct indexval) * indmax);
+  bzero(ivs, sizeof(struct indexval) * indmax);
+  for (int k = 0; k < ncells; k++) {
+    int index = regionid[k] + nregions * s->cells_top[k].nodeID;
+    ivs[index].count++;
+    ivs[index].index = index;
+  }
+  qsort(ivs, indmax, sizeof(struct indexval), indexvalcmp);
+
+  /* Go through the ivs using the largest counts first, these are the
+   * regions with the most cells in common, old partition to new. */
+  int *oldmap = malloc(sizeof(int) * nregions);
+  int *newmap = malloc(sizeof(int) * nregions);
+  for (int k = 0; k < nregions; k++) {
+    oldmap[k] = -1;
+    newmap[k] = -1;
+  }
+  for (int k = 0; k < indmax; k++) {
+
+    /* Stop when all regions with common cells have been considered. */
+    if (ivs[k].count == 0) break;
+
+    /* Store old and new IDs, if not already used. */
+    int oldregion = ivs[k].index / nregions;
+    int newregion = ivs[k].index - oldregion * nregions;
+    if (newmap[newregion] == -1 && oldmap[oldregion] == -1) {
+      newmap[newregion] = oldregion;
+      oldmap[oldregion] = newregion;
+    }
+  }
+
+  /* Handle any regions that did not get selected by picking an unused rank
+   * from oldmap and assigning to newmap. */
+  int spare = 0;
+  for (int k = 0; k < nregions; k++) {
+    if (newmap[k] == -1) {
+      for (int j = spare; j < nregions; j++) {
+        if (oldmap[j] == -1) {
+          newmap[k] = j;
+          oldmap[j] = j;
+          spare = j;
+          break;
+        }
+      }
+    }
+  }
+
   /* Set the cell list to the region index. */
   for (int k = 0; k < ncells; k++) {
-    celllist[k] = regionid[k];
+    celllist[k] = newmap[regionid[k]];
   }
 
   /* Clean up. */
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
+  free(ivs);
+  free(oldmap);
+  free(newmap);
   free(xadj);
   free(adjncy);
   free(regionid);
@@ -419,8 +486,8 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells;
-  float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
+  struct cell *cells = s->cells_top;
+  float wscale = 1.f, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
   int wmin;
@@ -459,15 +526,8 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
         t->type != task_type_init)
       continue;
 
-    /* Get the task weight. This can be slightly negative on multiple board
-     * computers when the runners are not pinned to cores, don't stress just
-     * make a report and ignore these tasks. */
-    int w = (t->toc - t->tic) * wscale;
-    if (w < 0) {
-      message("Task toc before tic: -%.3f %s, (try using processor affinity).",
-              clocks_from_ticks(t->tic - t->toc), clocks_getunit());
-      w = 0;
-    }
+    /* Get the task weight. */
+    int w = t->cost * wscale;
 
     /* Do we need to re-scale? */
     wtot += w;
@@ -616,7 +676,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
       if (weights_e[k] == 0) weights_e[k] = 1;
     if (bothweights)
       for (int k = 0; k < nr_cells; k++)
-        if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
+        if (weights_v[k] == 0) weights_v[k] = 1;
 
     /* And partition, use both weights or not as requested. */
     if (bothweights)
@@ -795,7 +855,7 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Run through the cells and set their nodeID. */
     // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for (k = 0; k < s->nr_cells; k++) {
-      c = &s->cells[k];
+      c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
       c->nodeID = ind[0] +
@@ -1037,10 +1097,10 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
   for (int i = 0; i < s->nr_cells; i++) {
-    if (s->cells[i].nodeID <= nregions)
-      present[s->cells[i].nodeID]++;
+    if (s->cells_top[i].nodeID <= nregions)
+      present[s->cells_top[i].nodeID]++;
     else
-      message("Bad nodeID: %d", s->cells[i].nodeID);
+      message("Bad nodeID: %d", s->cells_top[i].nodeID);
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -1085,13 +1145,13 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
       for (int k = 0; k < s->cdim[2]; k++) {
 
         /* Scale indices to old cell space. */
-        int ii = rint(i * s->iwidth[0] * oldh[0]);
-        int jj = rint(j * s->iwidth[1] * oldh[1]);
-        int kk = rint(k * s->iwidth[2] * oldh[2]);
+        const int ii = rint(i * s->iwidth[0] * oldh[0]);
+        const int jj = rint(j * s->iwidth[1] * oldh[1]);
+        const int kk = rint(k * s->iwidth[2] * oldh[2]);
 
-        int cid = cell_getid(s->cdim, i, j, k);
-        int oldcid = cell_getid(oldcdim, ii, jj, kk);
-        s->cells[cid].nodeID = oldnodeIDs[oldcid];
+        const int cid = cell_getid(s->cdim, i, j, k);
+        const int oldcid = cell_getid(oldcdim, ii, jj, kk);
+        s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
 
         if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
       }

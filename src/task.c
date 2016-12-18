@@ -46,14 +46,15 @@
 #include "inline.h"
 #include "lock.h"
 
+/* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",    "self",         "pair",          "sub_self",
-    "sub_pair",   "init",    "ghost",        "extra_ghost",   "kick",
-    "kick_fixdt", "send",    "recv",         "grav_gather_m", "grav_fft",
-    "grav_mm",    "grav_up", "grav_external"};
+    "none",     "sort",    "self",          "pair",        "sub_self",
+    "sub_pair", "init",    "ghost",         "extra_ghost", "kick",
+    "send",     "recv",    "grav_gather_m", "grav_fft",    "grav_mm",
+    "grav_up",  "cooling", "sourceterms"};
 
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav", "tend"};
+    "none", "density", "gradient", "force", "grav", "external_grav", "tend"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -62,7 +63,7 @@ const char *subtaskID_names[task_subtype_count] = {
  * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
-    const struct cell *ci, const struct cell *cj) {
+    const struct cell *restrict ci, const struct cell *restrict cj) {
 
   if (ci == NULL || cj == NULL) return 0;
 
@@ -84,7 +85,7 @@ __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
  * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
-    const struct cell *ci, const struct cell *cj) {
+    const struct cell *restrict ci, const struct cell *restrict cj) {
 
   if (ci == NULL || cj == NULL) return 0;
 
@@ -116,6 +117,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
+    case task_type_cooling:
+    case task_type_sourceterms:
       return task_action_part;
       break;
 
@@ -132,6 +135,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         case task_subtype_grav:
+        case task_subtype_external_grav:
           return task_action_gpart;
           break;
 
@@ -144,10 +148,16 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_init:
     case task_type_kick:
-    case task_type_kick_fixdt:
     case task_type_send:
     case task_type_recv:
-      return task_action_all;
+      if (t->ci->count > 0 && t->ci->gcount > 0)
+        return task_action_all;
+      else if (t->ci->count > 0)
+        return task_action_part;
+      else if (t->ci->gcount > 0)
+        return task_action_gpart;
+      else
+        error("Task without particles");
       break;
 
     case task_type_grav_gather_m:
@@ -157,15 +167,15 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_multipole;
       break;
 
-    case task_type_grav_external:
-      return task_action_gpart;
-      break;
-
     default:
       error("Unknown task_action for task");
       return task_action_none;
       break;
   }
+
+  /* Silence compile warnings */
+  error("Unknown task_action for task");
+  return task_action_none;
 }
 
 /**
@@ -175,7 +185,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
  * @param ta The first #task.
  * @param tb The second #task.
  */
-float task_overlap(const struct task *ta, const struct task *tb) {
+float task_overlap(const struct task *restrict ta,
+                   const struct task *restrict tb) {
 
   if (ta == NULL || tb == NULL) return 0.f;
 
@@ -361,27 +372,13 @@ int task_lock(struct task *t) {
 }
 
 /**
- * @brief Prints the list of tasks contained in a given mask
+ * @brief Print basic information about a task.
  *
- * @param mask The mask to analyse
+ * @param t The #task.
  */
-void task_print_mask(unsigned int mask) {
+void task_print(const struct task *t) {
 
-  printf("task_print_mask: The tasks to run are [");
-  for (int k = 1; k < task_type_count; k++)
-    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
-  printf(" ]\n");
-}
-
-/**
- * @brief Prints the list of subtasks contained in a given submask
- *
- * @param submask The submask to analyse
- */
-void task_print_submask(unsigned int submask) {
-
-  printf("task_print_submask: The subtasks to run are [");
-  for (int k = 1; k < task_subtype_count; k++)
-    printf(" %s=%s", subtaskID_names[k], (submask & (1 << k)) ? "yes" : "no");
-  printf(" ]\n");
+  message("Type:'%s' sub_type:'%s' wait=%d nr_unlocks=%d skip=%d",
+          taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+          t->nr_unlock_tasks, t->skip);
 }

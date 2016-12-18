@@ -45,6 +45,7 @@ enum {
   timer_dopair_grav_pm,
   timer_dopair_grav_pp,
   timer_dograv_external,
+  timer_dosource,
   timer_dosub_self_density,
   timer_dosub_self_gradient,
   timer_dosub_self_force,
@@ -55,12 +56,14 @@ enum {
   timer_dosub_pair_grav,
   timer_dopair_subset,
   timer_do_ghost,
+  timer_do_extra_ghost,
   timer_dorecv_cell,
   timer_gettask,
   timer_qget,
   timer_qsteal,
   timer_runners,
   timer_step,
+  timer_do_cooling,
   timer_count,
 };
 

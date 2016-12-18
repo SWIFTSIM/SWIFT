@@ -95,6 +95,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
 
 #if defined(GADGET2_SPH)
   part->entropy = pressure / pow_gamma(density);
+#elif defined(HOPKINS_PE_SPH)
+  part->entropy = pressure / pow_gamma(density);
 #elif defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
@@ -267,11 +269,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         set_velocity(part, vel, size);
         set_energy_state(part, press, size, density);
 
+        hydro_first_init_part(part, xpart);
+
         part->id = ++(*partId);
         part->ti_begin = 0;
         part->ti_end = 1;
-
-        hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH)
         part->geometry.volume = part->conserved.mass / density;
@@ -309,6 +311,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->ti_old = 1;
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 
@@ -519,6 +522,7 @@ int main(int argc, char *argv[]) {
   hp.CFL_condition = 0.1;
 
   struct engine engine;
+  bzero(&engine, sizeof(struct engine));
   engine.hydro_properties = &hp;
   engine.physical_constants = &prog_const;
   engine.s = &space;
@@ -564,7 +568,7 @@ int main(int argc, char *argv[]) {
 
   /* Start the test */
   ticks time = 0;
-  for (size_t i = 0; i < runs; ++i) {
+  for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
 
@@ -614,7 +618,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Ghost to finish everything on the central cells */
-    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
+    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
@@ -642,7 +646,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Dump if necessary */
-    if (i == 0) {
+    if (n == 0) {
       sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
@@ -701,7 +705,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Ghost to finish everything on the central cells */
-  for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
+  for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))

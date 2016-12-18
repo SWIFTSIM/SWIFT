@@ -16,12 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_RIEMANN_TRRS_H
 #define SWIFT_RIEMANN_TRRS_H
 
+/* Some standard headers. */
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Local headers. */
 #include "adiabatic_index.h"
+#include "error.h"
+#include "minmax.h"
 #include "riemann_vacuum.h"
+
+#ifndef EOS_IDEAL_GAS
+#error \
+    "The TRRS Riemann solver currently only supports an ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
+#endif
 
 /**
  * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver

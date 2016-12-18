@@ -486,6 +486,11 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
     }
   }
 
+  /* Convert the dimensions of the box */
+  for (int j = 0; j < 3; j++)
+    dim[j] *=
+        units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
+
   /* Allocate memory to store SPH particles */
   *Ngas = N[0];
   if (posix_memalign((void*)parts, part_align, (*Ngas) * sizeof(struct part)) !=
@@ -677,6 +682,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   double dblTime = e->time;
   writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+  int dimension = (int)hydro_dimension;
+  writeAttribute(h_grp, "Dimension", INT, &dimension, 1);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */

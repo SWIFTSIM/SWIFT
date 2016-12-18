@@ -110,9 +110,9 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%13e %13e %13e %13e "
           "%13e %13e %13e %10f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
-          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho, p->rho_dh,
-          p->density.wcount, p->density.wcount_dh, p->force.h_dt,
-          p->force.v_sig,
+          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho,
+          p->density.rho_dh, p->density.wcount, p->density.wcount_dh,
+          p->force.h_dt, p->force.v_sig,
 #if defined(GADGET2_SPH)
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
           p->density.rot_v[2], p->entropy_dt
@@ -150,6 +150,9 @@ void write_header(char *fileName) {
  *
  * @param parts Particle array to be interacted
  * @param count No. of particles to be interacted
+ * @param serial_inter_func Function pointer to serial interaction function
+ * @param vec_inter_func Function pointer to vectorised interaction function
+ * @param filePrefix Prefix of output files
  *
  */
 void test_interactions(struct part *parts, int count,
@@ -173,7 +176,7 @@ void test_interactions(struct part *parts, int count,
 
   /* Dump state of particles before serial interaction. */
   dump_indv_particle_fields(serial_filename, &pi);
-  for (size_t i = 1; i < count; i++)
+  for (int i = 1; i < count; i++)
     dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Make copy of pi to be used in vectorised version. */
@@ -206,7 +209,7 @@ void test_interactions(struct part *parts, int count,
 
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(serial_filename, &pi);
-  for (size_t i = 1; i < count; i++)
+  for (int i = 1; i < count; i++)
     dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Setup arrays for vector interaction. */

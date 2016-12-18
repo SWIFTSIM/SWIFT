@@ -20,7 +20,9 @@
 #include <float.h>
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "minmax.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -107,10 +109,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * passive particles.
  *
  * @param p The particle to act upon.
- * @param The current physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part* restrict p, float time) {
+    struct part* restrict p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -148,18 +149,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* compute primitive variables */
   /* eqns (3)-(5) */
   const float m = p->conserved.mass;
-  if (m > 0.f) {
-    float momentum[3];
-    momentum[0] = p->conserved.momentum[0];
-    momentum[1] = p->conserved.momentum[1];
-    momentum[2] = p->conserved.momentum[2];
-    p->primitives.rho = m / volume;
-    p->primitives.v[0] = momentum[0] / m;
-    p->primitives.v[1] = momentum[1] / m;
-    p->primitives.v[2] = momentum[2] / m;
-    const float energy = p->conserved.energy;
-    p->primitives.P = hydro_gamma_minus_one * energy / volume;
-  }
+  float momentum[3];
+  momentum[0] = p->conserved.momentum[0];
+  momentum[1] = p->conserved.momentum[1];
+  momentum[2] = p->conserved.momentum[2];
+  p->primitives.rho = m / volume;
+  p->primitives.v[0] = momentum[0] / m;
+  p->primitives.v[1] = momentum[1] / m;
+  p->primitives.v[2] = momentum[2] / m;
+  const float energy = p->conserved.energy;
+  p->primitives.P = hydro_gamma_minus_one * energy / volume;
 }
 
 /**
@@ -256,6 +255,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   const float volume = p->geometry.volume;
   const float m = p->conserved.mass;
   p->primitives.rho = m / volume;
+
+  /* first get the initial velocities, as they were overwritten in end_density
+   */
+  p->primitives.v[0] = p->v[0];
+  p->primitives.v[1] = p->v[1];
+  p->primitives.v[2] = p->v[2];
 
   p->conserved.momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = m * p->primitives.v[1];
@@ -500,4 +505,40 @@ __attribute__((always_inline)) INLINE static float hydro_get_density(
     const struct part* restrict p) {
 
   return p->primitives.rho;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
+    struct part* restrict p, float u) {
+
+  /* conserved.energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->conserved.energy = u * p->conserved.mass;
+  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed entropy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param S The new entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_entropy(
+    struct part* restrict p, float S) {
+
+  p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
+                        p->conserved.mass;
+  p->primitives.P = gas_pressure_from_entropy(p->primitives.rho, S);
 }

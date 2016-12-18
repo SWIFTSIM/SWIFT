@@ -528,6 +528,11 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
     H5Fclose(h_file);
   }
 
+  /* Convert the dimensions of the box */
+  for (int j = 0; j < 3; j++)
+    dim[j] *=
+        units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
+
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(flag_entropy, 1, MPI_INT, 0, comm);
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
@@ -739,6 +744,8 @@ void write_output_serial(struct engine* e, const char* baseName,
     writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
     double dblTime = e->time;
     writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+    int dimension = (int)hydro_dimension;
+    writeAttribute(h_grp, "Dimension", INT, &dimension, 1);
 
     /* GADGET-2 legacy values */
     /* Number of particles of each type */

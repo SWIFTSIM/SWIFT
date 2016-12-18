@@ -90,7 +90,8 @@ enum UnitConversionFactor {
   UNIT_CONV_MAGNETIC_FIELD,
   UNIT_CONV_MAGNETIC_INDUCTANCE,
   UNIT_CONV_TEMPERATURE,
-  UNIT_CONV_VOLUME
+  UNIT_CONV_VOLUME,
+  UNIT_CONV_INV_VOLUME
 };
 
 void units_init_cgs(struct UnitSystem*);

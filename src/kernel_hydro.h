@@ -35,7 +35,6 @@
 #include <math.h>
 
 /* Local headers. */
-#include "const.h"
 #include "dimension.h"
 #include "error.h"
 #include "inline.h"
@@ -238,8 +237,8 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /**
  * @brief Computes the kernel function and its derivative.
  *
- * The kernel function needs to be mutliplied by \f$h^{-d}\f$ and the gradient by 
- * \f$h^{-(d+1)}\f$, where \f$d\f$ is the dimensionality of the problem.
+ * The kernel function needs to be mutliplied by \f$h^{-d}\f$ and the gradient
+ * by \f$h^{-(d+1)}\f$, where \f$d\f$ is the dimensionality of the problem.
  *
  * Returns 0 if \f$u > \gamma = H/h\f$.
  *

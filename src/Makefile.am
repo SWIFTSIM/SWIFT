@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -42,25 +42,28 @@ endif
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
-    physical_constants.h physical_constants_cgs.h potentials.h version.h \
-    hydro_properties.h threadpool.h dump.h
+    physical_constants.h physical_constants_cgs.h potential.h version.h \
+    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
+    sourceterms_struct.h statistics.h memswap.h profiler.h dump.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
-    physical_constants.c potentials.c hydro_properties.c \
-    runner_doiact_fft.c threadpool.c dump.c
+    physical_constants.c potential.c hydro_properties.c \
+    runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
+    statistics.c profiler.c dump.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h runner_doiact.h runner_doiact_grav.h runner_doiact_fft.h \
                  units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h \
+		 dimension.h equation_of_state.h active.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
+		 sourceterms.h \
 	 	 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
@@ -68,10 +71,20 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_h
                  hydro/Default/hydro_debug.h hydro/Default/hydro_part.h \
 		 hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
+		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
+                 hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
 		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
-	         riemann.h \
-		 riemann/riemann_hllc.h riemann/riemann_trrs.h riemann/riemann_exact.h
+	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
+		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+	         potential/none/potential.h potential/point_mass/potential.h \
+                 potential/isothermal/potential.h potential/disc_patch/potential.h \
+		 potential/softened_isothermal/potential.h \
+		 cooling/none/cooling.h cooling/none/cooling_struct.h \
+	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
+                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 memswap.h
+
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
@@ -95,12 +108,14 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" $< > version_string.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
+	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," $< > version_string.h; \
+		    -e "s,@GIT_BRANCH\@,unknown," \
+	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi
 

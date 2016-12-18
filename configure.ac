@@ -16,7 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.4.0])
+AC_INIT([SWIFT],[0.4.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+swift_config_flags="$*"
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
+AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
+
+AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
@@ -155,6 +161,45 @@ LT_INIT
 AC_PROG_CC_C99
 AC_C_INLINE
 
+# If debugging try to show inlined functions.
+if test "x$enable_debug" = "xyes"; then
+   #  Show inlined functions.
+   if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      # Would like to use -gdwarf and let the compiler pick a good version
+      # but that doesn't always work.
+      AX_CHECK_COMPILE_FLAG([-gdwarf -fvar-tracking-assignments],
+        [inline_EXTRA_FLAGS="-gdwarf -fvar-tracking-assignments"],
+        [inline_EXTRA_FLAGS="-gdwarf-2 -fvar-tracking-assignments"])
+      CFLAGS="$CFLAGS $inline_EXTRA_FLAGS"
+   elif test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -debug inline-debug-info"
+   fi
+fi
+
+# Check if task debugging is on.
+AC_ARG_ENABLE([task-debugging],
+   [AS_HELP_STRING([--enable-task-debugging],
+     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+   )],
+   [enable_task_debugging="$enableval"],
+   [enable_task_debugging="no"]
+)
+if test "$enable_task_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
+# Check if expensive debugging is on.
+AC_ARG_ENABLE([debugging-checks],
+   [AS_HELP_STRING([--enable-debugging-checks],
+     [Activate expensive consistency checks @<:@yes/no@:>@]
+   )],
+   [enable_debugging_checks="$enableval"],
+   [enable_debugging_checks="no"]
+)
+if test "$enable_debugging_checks" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
+fi
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -251,7 +296,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -307,7 +351,7 @@ AC_ARG_WITH([tcmalloc],
    [with_tcmalloc="no"]
 )
 if test "x$with_tcmalloc" != "xno"; then
-   if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
       tclibs="-L$with_tcmalloc -ltcmalloc"
    else
       tclibs="-ltcmalloc"
@@ -317,7 +361,7 @@ if test "x$with_tcmalloc" != "xno"; then
 
    #  Could just have the minimal version.
    if test "$have_tcmalloc" = "no"; then
-      if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
          tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
       else
          tclibs="-ltcmalloc_minimal"
@@ -340,7 +384,7 @@ fi
 AC_SUBST([TCMALLOC_LIBS])
 AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
 
-#  Check for -lprofiler usually part of the gpreftools along with tcmalloc.
+#  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
 AC_ARG_WITH([profiler],
    [AS_HELP_STRING([--with-profiler],
@@ -350,7 +394,7 @@ AC_ARG_WITH([profiler],
    [with_profiler="yes"]
 )
 if test "x$with_profiler" != "xno"; then
-   if test "x$with_profiler" != "xyes" && test "x$with_profiler" != "x"; then
+   if test "x$with_profiler" != "xyes" -a "x$with_profiler" != "x"; then
       proflibs="-L$with_profiler -lprofiler"
    else
       proflibs="-lprofiler"
@@ -366,6 +410,38 @@ if test "x$with_profiler" != "xno"; then
 fi
 AC_SUBST([PROFILER_LIBS])
 AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
+
+#  Check for jemalloc another fast malloc that is good with contention.
+have_jemalloc="no"
+AC_ARG_WITH([jemalloc],
+   [AS_HELP_STRING([--with-jemalloc],
+      [use jemalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_jemalloc="$withval"],
+   [with_jemalloc="no"]
+)
+if test "x$with_jemalloc" != "xno"; then
+   if test "x$with_jemalloc" != "xyes" -a "x$with_jemalloc" != "x"; then
+      jelibs="-L$with_jemalloc -ljemalloc"
+   else
+      jelibs="-ljemalloc"
+   fi
+   AC_CHECK_LIB([jemalloc],[malloc_usable_size],[have_jemalloc="yes"],[have_jemalloc="no"],
+                $jelibs)
+
+   if test "$have_jemalloc" = "yes"; then
+      JEMALLOC_LIBS="$jelibs"
+   else
+      JEMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([JEMALLOC_LIBS])
+AM_CONDITIONAL([HAVEJEMALLOC],[test -n "$JEMALLOC_LIBS"])
+
+#  Don't allow both tcmalloc and jemalloc.
+if test "x$have_tcmalloc" != "xno" -a "x$have_jemalloc" != "xno"; then
+   AC_MSG_ERROR([Cannot use tcmalloc at same time as jemalloc])
+fi
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -428,8 +504,9 @@ if test "$ac_cv_header_fftw3_h" = "yes"; then
 fi
 AC_SUBST([FFTW_LIBS])
 
-# Check for Intel intrinsics header optionally used by vector.h.
+# Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
+AC_CHECK_HEADERS([altivec.h])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
@@ -451,7 +528,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Add warning flags by default, if these can be used. Option =error adds
-# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may 
+# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
@@ -461,7 +538,7 @@ AC_ARG_ENABLE([compiler-warnings],
    [enable_warn="error"]
 )
 if test "$enable_warn" != "no"; then
-   
+
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
@@ -475,7 +552,7 @@ if test "$enable_warn" != "no"; then
 	     AX_CFLAGS_WARN_ALL
 	  ;;
     esac
-    
+
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
@@ -485,6 +562,222 @@ if test "$enable_warn" != "no"; then
        esac
     fi
 fi
+
+# Various package configuration options.
+
+# Hydro scheme.
+AC_ARG_WITH([hydro],
+   [AS_HELP_STRING([--with-hydro=<scheme>],
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo default: gadget2@:>@]
+   )],
+   [with_hydro="$withval"],
+   [with_hydro="gadget2"]
+)
+case "$with_hydro" in
+   gadget2)
+      AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
+   ;; 
+   minimal)
+      AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
+   ;; 
+   hopkins)
+      AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
+   ;; 
+   default)
+      AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
+   ;; 
+   gizmo)
+      AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   ;; 
+
+   *)
+      AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
+   ;;
+esac
+
+# SPH Kernel function
+AC_ARG_WITH([kernel],
+   [AS_HELP_STRING([--with-kernel=<kernel>],
+      [Kernel function to use @<:@cubic-spline, quartic-spline, quintic-spline, wendland-C2, wendland-C4, wendland-C6 default: cubic-spline@:>@]
+   )],
+   [with_kernel="$withval"],
+   [with_kernel="cubic-spline"]
+)
+case "$with_kernel" in
+   cubic-spline)
+      AC_DEFINE([CUBIC_SPLINE_KERNEL], [1], [Cubic spline kernel])
+   ;;    
+   quartic-spline)
+      AC_DEFINE([QUARTIC_SPLINE_KERNEL], [1], [Quartic spline kernel])
+   ;;    
+   quintic-spline)
+      AC_DEFINE([QUINTIC_SPLINE_KERNEL], [1], [Quintic spline kernel])
+   ;;    
+   wendland-C2)
+      AC_DEFINE([WENDLAND_C2_KERNEL], [1], [Wendland-C2 kernel])
+   ;;    
+   wendland-C4)
+      AC_DEFINE([WENDLAND_C4_KERNEL], [1], [Wendland-C4 kernel])
+   ;;    
+   wendland-C6)
+      AC_DEFINE([WENDLAND_C6_KERNEL], [1], [Wendland-C6 kernel])
+   ;;    
+   *)
+      AC_MSG_ERROR([Unknown kernel function: $with_kernel])
+   ;;
+esac
+
+#  Dimensionality of the hydro scheme.
+AC_ARG_WITH([hydro-dimension],
+   [AS_HELP_STRING([--with-hydro-dimension=<dim>],
+      [dimensionality of problem @<:@3/2/1 default: 3@:>@]
+   )],
+   [with_dimension="$withval"],
+   [with_dimension="3"]
+)
+case "$with_dimension" in
+   1)
+      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D analysis])
+   ;; 
+   2)
+      AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D analysis])
+   ;; 
+   3)
+      AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D analysis])
+   ;; 
+   *)
+      AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
+   ;;
+esac
+
+#  Equation of state
+AC_ARG_WITH([equation-of-state],
+   [AS_HELP_STRING([--with-equation-of-state=<EoS>],
+      [equation of state @<:@ideal-gas, isothermal-gas default: ideal-gas@:>@]
+   )],
+   [with_eos="$withval"],
+   [with_eos="ideal-gas"]
+)
+case "$with_eos" in
+   ideal-gas)
+      AC_DEFINE([EOS_IDEAL_GAS], [1], [Ideal gas equation of state])
+   ;; 
+   isothermal-gas)
+      AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown equation of state: $with_eos])
+   ;;
+esac
+
+#  Adiabatic index
+AC_ARG_WITH([adiabatic-index],
+   [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+   )],
+   [with_gamma="$withval"],
+   [with_gamma="5/3"]
+)
+case "$with_gamma" in
+   5/3)
+      AC_DEFINE([HYDRO_GAMMA_5_3], [5./3.], [Adiabatic index is 5/3])
+   ;; 
+   7/5)
+      AC_DEFINE([HYDRO_GAMMA_7_5], [7./5.], [Adiabatic index is 7/5])
+   ;; 
+   4/3)
+      AC_DEFINE([HYDRO_GAMMA_4_3], [4./3.], [Adiabatic index is 4/3])
+   ;; 
+   2)
+      AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
+   ;;
+esac
+
+#  Riemann solver
+AC_ARG_WITH([riemann-solver],
+   [AS_HELP_STRING([--with-riemann-solver=<solver>],
+      [riemann solver (gizmo-sph only) @<:@none, exact, trrs, hllc, default: none@:>@]
+   )],
+   [with_riemann="$withval"],
+   [with_riemann="none"]
+)
+case "$with_riemann" in
+   none)
+      AC_DEFINE([RIEMANN_SOLVER_NONE], [1], [No Riemann solver])
+   ;; 
+   exact)
+      AC_DEFINE([RIEMANN_SOLVER_EXACT], [1], [Exact Riemann solver])
+   ;; 
+   trrs)
+      AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
+   ;; 
+   hllc)
+      AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
+   ;;
+esac
+
+#  Cooling function
+AC_ARG_WITH([cooling],
+   [AS_HELP_STRING([--with-cooling=<function>],
+      [cooling function @<:@none, const-du, const-lambda, grackle default: none@:>@]
+   )],
+   [with_cooling="$withval"],
+   [with_cooling="none"]
+)
+case "$with_cooling" in
+   none)
+      AC_DEFINE([COOLING_NONE], [1], [No cooling function])
+   ;; 
+   const-du)
+      AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
+   ;; 
+   const-lambda)
+      AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+   ;; 
+   grackle)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+#  External potential
+AC_ARG_WITH([ext-potential],
+   [AS_HELP_STRING([--with-ext-potential=<pot>],
+      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch default: none@:>@]
+   )],
+   [with_potential="$withval"],
+   [with_potential="none"]
+)
+case "$with_potential" in
+   none)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NONE], [1], [No external potential])
+   ;; 
+   point-mass)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS], [1], [Point-mass external potential])
+   ;; 
+   isothermal)
+      AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
+   ;; 
+   softened-isothermal)
+      AC_DEFINE([EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL], [1], [Softened isothermal external potential])
+   ;; 
+   disc-patch)
+      AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown external potential: $with_potential])
+   ;;
+esac
+
+
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -504,6 +797,9 @@ AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPert
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
+# Save the compilation options
+AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
+
 # Report general configuration.
 AC_MSG_RESULT([
    Compiler        : $CC
@@ -517,7 +813,19 @@ AC_MSG_RESULT([
    FFTW3 enabled   : $have_fftw3
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
+   Using jemalloc  : $have_jemalloc
    CPU profiler    : $have_profiler
+
+   Hydro scheme       : $with_hydro
+   Dimensionality     : $with_dimension
+   Kernel function    : $with_kernel
+   Equation of state  : $with_eos
+   Adiabatic index    : $with_gamma
+   Riemann solver     : $with_riemann
+   Cooling function   : $with_cooling
+   External potential : $with_potential
+   Task debugging     : $enable_task_debugging
+   Debugging checks   : $enable_debugging_checks
 ])
 
 # Generate output.

@@ -33,6 +33,7 @@
 
 /* Includes. */
 #include "cell.h"
+#include "inline.h"
 #include "lock.h"
 #include "queue.h"
 #include "task.h"
@@ -59,12 +60,6 @@ struct scheduler {
   /* Scheduler flags. */
   unsigned int flags;
 
-  /* Scheduler task mask */
-  unsigned int mask;
-
-  /* Scheduler sub-task mask */
-  unsigned int submask;
-
   /* Number of queues in this scheduler. */
   int nr_queues;
 
@@ -82,6 +77,10 @@ struct scheduler {
 
   /* The task indices. */
   int *tasks_ind;
+
+  /* List of initial tasks. */
+  int *tid_active;
+  int active_count;
 
   /* The task unlocks. */
   struct task **volatile unlocks;
@@ -105,18 +104,34 @@ struct scheduler {
   int nodeID;
 };
 
+/* Inlined functions (for speed). */
+/**
+ * @brief Add a task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param t The task to be added.
+ */
+__attribute__((always_inline)) INLINE static void scheduler_activate(
+    struct scheduler *s, struct task *t) {
+  if (atomic_cas(&t->skip, 1, 0)) {
+    t->wait = 0;
+    int ind = atomic_inc(&s->active_count);
+    s->tid_active[ind] = t - s->tasks;
+  }
+}
+
 /* Function prototypes. */
+void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp);
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
-void scheduler_start(struct scheduler *s, unsigned int mask,
-                     unsigned int submask);
+void scheduler_start(struct scheduler *s);
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
-void scheduler_reweight(struct scheduler *s);
+void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags, int wait,
                                struct cell *ci, struct cell *cj, int tight);

@@ -28,12 +28,12 @@
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "adiabatic_index.h"
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (hydro_dimension * wj + xj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + xj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 }
@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 }
@@ -152,8 +152,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -161,12 +161,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = min(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Construct the full viscosity term */
@@ -212,8 +212,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pj->force.v_sig = max(pj->force.v_sig, v_sig);
 }
 
 /**
@@ -263,8 +263,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -272,12 +272,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = min(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Construct the full viscosity term */
@@ -315,7 +315,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
 /**

@@ -395,7 +395,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij = fminf(dvdr, 0.f);
+  omega_ij = min(dvdr, 0.f);
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
@@ -441,8 +441,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pj->force.v_sig = max(pj->force.v_sig, v_sig);
 }
 
 /**
@@ -635,8 +635,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     pj[k]->force.u_dt += pju_dt.f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
     pj[k]->force.h_dt -= pjh_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
-    pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
+    pj[k]->force.v_sig = max(pj[k]->force.v_sig, v_sig.f[k]);
     for (j = 0; j < 3; j++) {
       pi[k]->a_hydro[j] -= pia[j].f[k];
       pj[k]->a_hydro[j] += pja[j].f[k];
@@ -696,7 +696,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij = fminf(dvdr, 0.f);
+  omega_ij = min(dvdr, 0.f);
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
@@ -737,7 +737,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
 /**
@@ -920,7 +920,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->force.u_dt += piu_dt.f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
   }
 

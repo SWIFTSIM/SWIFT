@@ -17,6 +17,26 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
+params = {'axes.labelsize': 14,
+'axes.titlesize': 18,
+'font.size': 12,
+'legend.fontsize': 12,
+'xtick.labelsize': 14,
+'ytick.labelsize': 14,
+'text.usetex': True,
+'figure.subplot.left'    : 0.055,
+'figure.subplot.right'   : 0.98  ,
+'figure.subplot.bottom'  : 0.05  ,
+'figure.subplot.top'     : 0.95  ,
+'figure.subplot.wspace'  : 0.14  ,
+'figure.subplot.hspace'  : 0.12  ,
+'lines.markersize' : 6,
+'lines.linewidth' : 3.,
+'text.latex.unicode': True
+}
+plt.rcParams.update(params)
+plt.rc('font',**{'family':'sans-serif','sans-serif':['Times']})
+
 version = []
 branch = []
 revision = []
@@ -25,8 +45,11 @@ hydro_kernel = []
 hydro_neighbours = []
 hydro_eta = []
 threadList = []
-linestyle = ('ro-','bo-','go-','yo-','mo-')
-#cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
+hexcols = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77',
+           '#CC6677', '#882255', '#AA4499', '#661100', '#6699CC', '#AA4466',
+           '#4477AA']
+linestyle = (hexcols[0],hexcols[1],hexcols[3],hexcols[5],hexcols[6],hexcols[8])
+#cmdLine = './swift -s -t 16 cosmoVolume.yml'
 #platform = 'KNL'
 
 # Work out how many data series there are
@@ -45,6 +68,9 @@ elif len(sys.argv) == 5:
 elif len(sys.argv) == 6:
   inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
   numOfSeries = 5
+elif len(sys.argv) == 7:
+  inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6])
+  numOfSeries = 6
 
 # Get the names of the branch, Git revision, hydro scheme and hydro kernel
 def parse_header(inputFile):
@@ -53,7 +79,8 @@ def parse_header(inputFile):
     for line in f:
       if 'Branch:' in line:
         s = line.split()
-        branch.append(s[2])
+        line = s[2:]
+        branch.append(" ".join(line))
       elif 'Revision:' in line:
         s = line.split() 
         revision.append(s[2])
@@ -104,10 +131,12 @@ def parse_files():
     file_list = [ file_list[j] for j in sorted_indices]
 
     parse_header(file_list[0])
+
+    branch[i] = branch[i].replace("_", "\\_") 
     
-    version.append(branch[i] + " " + revision[i] + "\n" + hydro_scheme[i] + 
-                   "\n" + hydro_kernel[i] + r", $N_{neigh}$=" + hydro_neighbours[i] + 
-                   r", $\eta$=" + hydro_eta[i] + "\n")                  
+    version.append("$\\textrm{%s}$"%str(branch[i]) + " " + revision[i] + "\n" + hydro_scheme[i] + 
+                   "\n" + hydro_kernel[i] + r", $N_{ngb}=%d$"%float(hydro_neighbours[i]) + 
+                   r", $\eta=%.3f$"%float(hydro_eta[i]))
     times.append([])
     totalTime.append([])
     speedUp.append([])
@@ -116,7 +145,7 @@ def parse_files():
     # Loop over all files for a given series and load the times
     for j in range(0,len(file_list)):
       times[i].append([])
-      times[i][j].append(np.loadtxt(file_list[j],usecols=(5,)))
+      times[i][j].append(np.loadtxt(file_list[j],usecols=(5,), skiprows=11))
       totalTime[i].append(np.sum(times[i][j]))
 
     serialTime.append(totalTime[i][0])
@@ -153,47 +182,66 @@ def print_results(times,totalTime,parallelEff,version):
 
 def plot_results(times,totalTime,speedUp,parallelEff):
   
-  fig, axarr = plt.subplots(2, 2,figsize=(15,15))
+  fig, axarr = plt.subplots(2, 2, figsize=(10,10), frameon=True)
   speedUpPlot = axarr[0, 0]
   parallelEffPlot = axarr[0, 1]
   totalTimePlot = axarr[1, 0]
   emptyPlot = axarr[1, 1]
   
   # Plot speed up
+  speedUpPlot.plot(threadList[0],threadList[0], linestyle='--', lw=1.5, color='0.2')
   for i in range(0,numOfSeries):
     speedUpPlot.plot(threadList[i],speedUp[i],linestyle[i],label=version[i])
   
-  speedUpPlot.plot(threadList[i],threadList[i],color='k',linestyle='--')
-  speedUpPlot.set_ylabel("Speed Up")
-  speedUpPlot.set_xlabel("No. of Threads")
+  speedUpPlot.set_ylabel("${\\rm Speed\\textendash up}$", labelpad=0.)
+  speedUpPlot.set_xlabel("${\\rm Threads}$", labelpad=0.)
+  speedUpPlot.set_xlim([0.7,threadList[i][-1]+1])
+  speedUpPlot.set_ylim([0.7,threadList[i][-1]+1])
 
   # Plot parallel efficiency
+  parallelEffPlot.plot([threadList[0][0], 10**np.floor(np.log10(threadList[0][-1])+1)], [1,1], 'k--', lw=1.5, color='0.2')
+  parallelEffPlot.plot([threadList[0][0], 10**np.floor(np.log10(threadList[0][-1])+1)], [0.9,0.9], 'k--', lw=1.5, color='0.2')
+  parallelEffPlot.plot([threadList[0][0], 10**np.floor(np.log10(threadList[0][-1])+1)], [0.75,0.75], 'k--', lw=1.5, color='0.2')
+  parallelEffPlot.plot([threadList[0][0], 10**np.floor(np.log10(threadList[0][-1])+1)], [0.5,0.5], 'k--', lw=1.5, color='0.2')
   for i in range(0,numOfSeries):
     parallelEffPlot.plot(threadList[i],parallelEff[i],linestyle[i])
-  
+
   parallelEffPlot.set_xscale('log')
-  parallelEffPlot.set_ylabel("Parallel Efficiency")
-  parallelEffPlot.set_xlabel("No. of Threads")
+  parallelEffPlot.set_ylabel("${\\rm Parallel~efficiency}$", labelpad=0.)
+  parallelEffPlot.set_xlabel("${\\rm Threads}$", labelpad=0.)
   parallelEffPlot.set_ylim([0,1.1])
+  parallelEffPlot.set_xlim([0.9,10**(np.floor(np.log10(threadList[i][-1]))+0.5)])
 
   # Plot time to solution     
   for i in range(0,numOfSeries):
+    pts = [1, 10**np.floor(np.log10(threadList[i][-1])+1)]
+    totalTimePlot.loglog(pts,totalTime[i][0]/pts, 'k--', lw=1., color='0.2')
     totalTimePlot.loglog(threadList[i],totalTime[i],linestyle[i],label=version[i])
-  
+
+  y_min = 10**np.floor(np.log10(np.min(totalTime[:][-1])*0.6))
+  y_max = 1.2*10**np.floor(np.log10(np.max(totalTime[:][0]) * 1.5)+1)
   totalTimePlot.set_xscale('log')
-  totalTimePlot.set_xlabel("No. of Threads")
-  totalTimePlot.set_ylabel("Time to Solution (ms)")
+  totalTimePlot.set_xlabel("${\\rm Threads}$", labelpad=0.)
+  totalTimePlot.set_ylabel("${\\rm Time~to~solution}~[{\\rm ms}]$", labelpad=0.)
+  totalTimePlot.set_xlim([0.9, 10**(np.floor(np.log10(threadList[i][-1]))+0.5)])
+  totalTimePlot.set_ylim(y_min, y_max)
+
+  ax2 = totalTimePlot.twinx()
+  ax2.set_yscale('log')
+  ax2.set_ylabel("${\\rm Time~to~solution}~[{\\rm hr}]$", labelpad=0.)
+  ax2.set_ylim(y_min / 3.6e6, y_max / 3.6e6)
   
-  totalTimePlot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,prop={'size':14})
+  totalTimePlot.legend(bbox_to_anchor=(1.21, 0.97), loc=2, borderaxespad=0.,prop={'size':12}, frameon=False)
   emptyPlot.axis('off')
   
   for i, txt in enumerate(threadList[0]):
-    speedUpPlot.annotate(txt, (threadList[0][i],speedUp[0][i]))
-    parallelEffPlot.annotate(txt, (threadList[0][i],parallelEff[0][i]))
-    totalTimePlot.annotate(txt, (threadList[0][i],totalTime[0][i]))
+    if 2**np.floor(np.log2(threadList[0][i])) == threadList[0][i]: # only powers of 2
+      speedUpPlot.annotate("$%s$"%txt, (threadList[0][i],speedUp[0][i]), (threadList[0][i],speedUp[0][i] + 0.3), color=hexcols[0])
+      parallelEffPlot.annotate("$%s$"%txt, (threadList[0][i],parallelEff[0][i]), (threadList[0][i], parallelEff[0][i]+0.02), color=hexcols[0])
+      totalTimePlot.annotate("$%s$"%txt, (threadList[0][i],totalTime[0][i]), (threadList[0][i], totalTime[0][i]*1.1), color=hexcols[0])
 
   #fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,platform))
-  fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps".format(len(times[0][0][0])))
+  fig.suptitle("${\\rm Speed\\textendash up,~parallel~efficiency~and~time~to~solution~for}~%d~{\\rm time\\textendash steps}$"%len(times[0][0][0]), fontsize=16)
 
   return
 
@@ -204,4 +252,5 @@ plot_results(times,totalTime,speedUp,parallelEff)
 
 print_results(times,totalTime,parallelEff,version)
 
+# And plot
 plt.show()

@@ -1,0 +1,64 @@
+
+In \swift, all transformations between thermodynamical quantities are
+computed using a pre-defined equation of state (EoS) for the gas. This
+allows user to switch EoS without having to modify the equations of
+SPH. The definition of the EoS takes the form of simple relations
+between thermodynamic quantities. All of them must be specified even
+when they default to constants.
+
+%#######################################################################################################
+\subsection{Ideal Gas}
+\label{sec:eos:ideal}
+
+This is the simplest and most common equation of state. It corresponds
+to a gas obeying a pressure law $P = (\gamma-1) \rho u$, where $u$ is
+the gas' internal energy, $\rho$ its density and $\gamma$ the
+(user defined) adiabatic index, often assumed to be $5/3$ or $7/5$. For such a gas,
+we have the following relations between pressure ($P$), internal energy
+($u$), density ($\rho$), sound speed ($c$) and entropic function ($A$):
+
+\begin{align}
+  P &= P_{\rm eos}(\rho, u) \equiv  (\gamma-1) \rho
+  u \label{eq:eos:ideal:P_from_u} \\
+  c &= c_{\rm eos}(\rho, u) \equiv \sqrt{\gamma (\gamma-1)
+    u} \label{eq:eos:ideal:c_from_u} \\
+  A &= A_{\rm eos}(\rho, u) \equiv(\gamma-1) u
+  \rho^{\gamma-1} \label{eq:eos:ideal:A_from_u} \\
+  ~ \nonumber\\
+  P &= P_{\rm eos}(\rho, A) \equiv A
+  \rho^{\gamma} \label{eq:eos:ideal:P_from_A} \\
+  c &= c_{\rm eos}(\rho, A) \equiv \sqrt{\gamma \rho^{\gamma-1}
+    A} \label{eq:eos:ideal:c_from_A} \\
+  u &= u_{\rm eos}(\rho, A) \equiv A \rho^{\gamma-1} /
+  (\gamma-1) \label{eq:eos:ideal:u_from_A}
+\end{align}
+Note that highly optimised functions to compute $x^\gamma$ and other
+useful powers of $\gamma$ have been implemented in \swift for the most
+commonly used values of $\gamma$.
+
+
+%#######################################################################################################
+\subsection{Isothermal Gas}
+\label{sec:eos:isothermal}
+
+An isothermal equation of state can be useful for certain test cases
+or to speed-up the generation of glass files. This EoS corresponds to
+a gas with contant (user-specified) thermal energy $u_{\rm cst}$. For such a gas,
+we have the following (trivial) relations between pressure ($P$), internal energy
+($u$), density ($\rho$), sound speed ($c$) and entropic function ($A$):
+
+\begin{align}
+  P &= P_{\rm eos}(\rho, u) \equiv  (\gamma-1) \rho
+  u_{\rm cst} \label{eq:eos:isothermal:P_from_u} \\
+  c &= c_{\rm eos}(\rho, u) \equiv \sqrt{\gamma (\gamma-1)
+    u_{\rm cst}} = c_{\rm cst} \label{eq:eos:isothermal:c_from_u} \\
+  A &= A_{\rm eos}(\rho, u) \equiv(\gamma-1) u_{\rm cst}
+  \rho^{\gamma-1} \label{eq:eos:isothermal:A_from_u} \\ 
+  ~ \nonumber\\
+  P &= P_{\rm eos}(\rho, A) \equiv (\gamma-1) \rho
+  u_{\rm cst} \label{eq:eos:isothermal:P_from_A} \\
+  c &= c_{\rm eos}(\rho, A) \equiv \sqrt{\gamma (\gamma-1)
+    u_{\rm cst}} = c_{\rm cst} \label{eq:eos:isothermal:c_from_A} \\
+  u &= u_{\rm eos}(\rho, A) \equiv u_{\rm
+    cst} \label{eq:eos:isothermal:u_from_A} 
+\end{align}
