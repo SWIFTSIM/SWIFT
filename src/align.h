@@ -20,8 +20,12 @@
 #define SWIFT_ALIGN_H
 
 /**
+ * @brief The default struct alignment in SWIFT.
+ */
+#define SWIFT_STRUCT_ALIGNMENT 32
+/**
  * @brief Defines alignment of structures
  */
-#define SWIFT_STRUCT_ALIGN __attribute__((aligned(32)))
+#define SWIFT_STRUCT_ALIGN __attribute__((aligned(SWIFT_STRUCT_ALIGNMENT)))
 
 #endif /* SWIFT_ALIGN_H */
