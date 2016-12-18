@@ -20,9 +20,7 @@
 #define SWIFT_DUMP_H
 
 /* Includes. */
-#include "cell.h"
 #include "lock.h"
-#include "task.h"
 
 /* Some constants. */
 #define dump_grow_ensure_factor 10
