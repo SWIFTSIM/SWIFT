@@ -973,6 +973,8 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
       const int ti_end = parts[k].ti_end;
       // if(ti_end < ti_current) error("Received invalid particle !");
+      if(parts[k].ti_old != ti_current) error("Received undrifted particles p->ti_old=%d ti_current=%d  c->nodeID=%d loc=(%f %f %f) c->drift=%p, c->drift->skip=%d",
+					      parts[k].ti_old, ti_current,  c->nodeID, c->loc[0], c->loc[1], c->loc[2], c->drift, c->drift ? c->drift->skip : -1);
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
@@ -1005,6 +1007,24 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   c->h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
+}
+
+void runner_check_drift(struct runner *r, struct cell *c) {
+
+
+  const struct part *restrict parts = c->parts;
+  const size_t nr_parts = c->count;
+  const int ti_current = r->e->ti_current;
+
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      if(parts[k].ti_old != ti_current) {
+	message("Sending undrifted particles p->ti_old=%d ti_current=%d c->nodeID=%d loc=(%f %f %f)  c->drift=%p, c->drift->skip=%d",
+		parts[k].ti_old, ti_current, c->nodeID, c->loc[0], c->loc[1], c->loc[2],
+		c->drift, c->drift ? c->drift->skip : -1);
+	break;
+      }
+    }
 }
 
 /**
@@ -1170,6 +1190,7 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
+	  runner_check_drift(r, ci);
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
           }

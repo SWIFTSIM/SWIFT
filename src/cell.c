@@ -906,6 +906,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+	if(l->t->cj->drift != NULL) scheduler_activate(s, l->t->cj->drift);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
@@ -932,6 +933,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+	if(l->t->ci->drift != NULL) scheduler_activate(s, l->t->ci->drift);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
@@ -1021,7 +1023,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
         h_max = max(h_max, cp->h_max);
       }
 
-  } else if (ti_current >= ti_old) {
+  } else if (ti_current > ti_old) {
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->gcount;
@@ -1050,6 +1052,8 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+
+      p->ti_old = ti_current;
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +

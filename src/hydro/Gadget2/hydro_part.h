@@ -71,6 +71,8 @@ struct part {
   /* Particle time of end of time-step. */
   int ti_end;
 
+  int ti_old;
+
   /* Particle density. */
   float rho;
 

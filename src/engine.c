@@ -2066,6 +2066,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+	if(l->t->cj->drift) scheduler_activate(s, l->t->cj->drift);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
@@ -2093,6 +2094,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+	if(l->t->ci->drift != NULL) scheduler_activate(s, l->t->ci->drift);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
