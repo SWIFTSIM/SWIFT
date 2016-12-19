@@ -47,10 +47,12 @@
 /**
  * @brief Swap the contents of two elements in-place.
  *
- * Keep in mind that this function works best when the underlying data
+ * Keep in mind that this function only works when the underlying data
  * is aligned to the vector length, e.g. with the @c
  * __attribute__((aligned(32)))
- * syntax, and the code is compiled with @c -funroll-loops.
+ * syntax!
+ * Furthermore, register re-labeling only seems to work when the code is
+ * compiled with @c -funroll-loops.
  *
  * @param void_a Pointer to the first element.
  * @param void_b Pointer to the second element.
