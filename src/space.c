@@ -490,7 +490,6 @@ void space_rebuild(struct space *s, int verbose) {
     space_gparts_get_cell_index(s, gind, cells_top, verbose);
 
 #ifdef WITH_MPI
-
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
   for (size_t k = 0; k < nr_parts;) {
