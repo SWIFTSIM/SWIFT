@@ -906,7 +906,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
-	if(l->t->cj->drift != NULL) scheduler_activate(s, l->t->cj->drift);
+
+	if(cj->super->drift) 
+	  scheduler_activate(s, cj->super->drift);
+	else
+	  error("Drift task missing !");
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
@@ -926,6 +930,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, cj->recv_xv);
         scheduler_activate(s, cj->recv_rho);
         scheduler_activate(s, cj->recv_ti);
+
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -933,7 +938,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
-	if(l->t->ci->drift != NULL) scheduler_activate(s, l->t->ci->drift);
+
+	if(ci->super->drift) 
+	  scheduler_activate(s, ci->super->drift);
+	else
+	  error("Drift task missing !");
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
