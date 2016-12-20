@@ -1054,7 +1054,8 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
 #ifndef WITH_MPI
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort && t->type != task_type_send && t->type != task_type_recv)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
+            t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1073,12 +1074,12 @@ void *runner_main(void *data) {
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
 
-	  if(t->type != task_type_send && t->type != task_type_recv)
-          error(
-              "Task (type='%s/%s') should have been skipped ti_current=%d "
-              "ci->ti_end_min=%d cj->ti_end_min=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min, cj->ti_end_min);
+          if (t->type != task_type_send && t->type != task_type_recv)
+            error(
+                "Task (type='%s/%s') should have been skipped ti_current=%d "
+                "ci->ti_end_min=%d cj->ti_end_min=%d",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                e->ti_current, ci->ti_end_min, cj->ti_end_min);
       }
 #endif
 #endif

@@ -674,10 +674,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
-      
-      if(ci->super->drift == NULL) 
-	ci->super->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-					     ci->super, NULL, 0);
+
+      if (ci->super->drift == NULL)
+        ci->super->drift = scheduler_addtask(
+            s, task_type_drift, task_subtype_none, 0, 0, ci->super, NULL, 0);
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
                                4 * ci->tag, 0, ci, cj, 0);
@@ -2067,11 +2067,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-	if(cj->super->drift) 
-	  scheduler_activate(s, cj->super->drift);
-	else
-	  error("Drift task missing !");
-	
+        if (cj->super->drift)
+          scheduler_activate(s, cj->super->drift);
+        else
+          error("Drift task missing !");
+
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
@@ -2099,10 +2099,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-	if(ci->super->drift) 
-	  scheduler_activate(s, ci->super->drift);
-	else
-	  error("Drift task missing !");
+        if (ci->super->drift)
+          scheduler_activate(s, ci->super->drift);
+        else
+          error("Drift task missing !");
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
