@@ -296,7 +296,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -352,7 +351,7 @@ AC_ARG_WITH([tcmalloc],
    [with_tcmalloc="no"]
 )
 if test "x$with_tcmalloc" != "xno"; then
-   if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
       tclibs="-L$with_tcmalloc -ltcmalloc"
    else
       tclibs="-ltcmalloc"
@@ -362,7 +361,7 @@ if test "x$with_tcmalloc" != "xno"; then
 
    #  Could just have the minimal version.
    if test "$have_tcmalloc" = "no"; then
-      if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
          tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
       else
          tclibs="-ltcmalloc_minimal"
@@ -395,7 +394,7 @@ AC_ARG_WITH([profiler],
    [with_profiler="yes"]
 )
 if test "x$with_profiler" != "xno"; then
-   if test "x$with_profiler" != "xyes" && test "x$with_profiler" != "x"; then
+   if test "x$with_profiler" != "xyes" -a "x$with_profiler" != "x"; then
       proflibs="-L$with_profiler -lprofiler"
    else
       proflibs="-lprofiler"
@@ -411,6 +410,38 @@ if test "x$with_profiler" != "xno"; then
 fi
 AC_SUBST([PROFILER_LIBS])
 AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
+
+#  Check for jemalloc another fast malloc that is good with contention.
+have_jemalloc="no"
+AC_ARG_WITH([jemalloc],
+   [AS_HELP_STRING([--with-jemalloc],
+      [use jemalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_jemalloc="$withval"],
+   [with_jemalloc="no"]
+)
+if test "x$with_jemalloc" != "xno"; then
+   if test "x$with_jemalloc" != "xyes" -a "x$with_jemalloc" != "x"; then
+      jelibs="-L$with_jemalloc -ljemalloc"
+   else
+      jelibs="-ljemalloc"
+   fi
+   AC_CHECK_LIB([jemalloc],[malloc_usable_size],[have_jemalloc="yes"],[have_jemalloc="no"],
+                $jelibs)
+
+   if test "$have_jemalloc" = "yes"; then
+      JEMALLOC_LIBS="$jelibs"
+   else
+      JEMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([JEMALLOC_LIBS])
+AM_CONDITIONAL([HAVEJEMALLOC],[test -n "$JEMALLOC_LIBS"])
+
+#  Don't allow both tcmalloc and jemalloc.
+if test "x$have_tcmalloc" != "xno" -a "x$have_jemalloc" != "xno"; then
+   AC_MSG_ERROR([Cannot use tcmalloc at same time as jemalloc])
+fi
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -473,8 +504,9 @@ if test "$ac_cv_header_fftw3_h" = "yes"; then
 fi
 AC_SUBST([FFTW_LIBS])
 
-# Check for Intel intrinsics header optionally used by vector.h.
+# Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
+AC_CHECK_HEADERS([altivec.h])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
@@ -781,6 +813,7 @@ AC_MSG_RESULT([
    FFTW3 enabled   : $have_fftw3
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
+   Using jemalloc  : $have_jemalloc
    CPU profiler    : $have_profiler
 
    Hydro scheme       : $with_hydro
