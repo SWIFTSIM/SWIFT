@@ -45,6 +45,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "profiler.h"
 #include "queue.h"
 #include "runner.h"
 #include "scheduler.h"

@@ -171,6 +171,8 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
+void space_recycle_list(struct space *s, struct cell *list_begin,
+                        struct cell *list_end);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);

@@ -173,16 +173,66 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  *
  * @param s The #space.
  * @param c The #cell to recycle.
+ * @param rec_begin Pointer to the start of the list of cells to recycle.
+ * @param rec_end Pointer to the end of the list of cells to recycle.
  */
-void space_rebuild_recycle(struct space *s, struct cell *c) {
-
+void space_rebuild_recycle_rec(struct space *s, struct cell *c,
+                               struct cell **rec_begin, struct cell **rec_end) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        space_rebuild_recycle(s, c->progeny[k]);
-        space_recycle(s, c->progeny[k]);
+        space_rebuild_recycle_rec(s, c->progeny[k], rec_begin, rec_end);
+        c->progeny[k]->next = *rec_begin;
+        *rec_begin = c->progeny[k];
+        if (*rec_end == NULL) *rec_end = *rec_begin;
         c->progeny[k] = NULL;
       }
+}
+
+void space_rebuild_recycle_mapper(void *map_data, int num_elements,
+                                  void *extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    struct cell *c = &cells[k];
+    struct cell *rec_begin = NULL, *rec_end = NULL;
+    space_rebuild_recycle_rec(s, c, &rec_begin, &rec_end);
+    if (rec_begin != NULL) space_recycle_list(s, rec_begin, rec_end);
+    c->sorts = NULL;
+    c->nr_tasks = 0;
+    c->density = NULL;
+    c->gradient = NULL;
+    c->force = NULL;
+    c->grav = NULL;
+    c->dx_max = 0.0f;
+    c->sorted = 0;
+    c->count = 0;
+    c->gcount = 0;
+    c->init = NULL;
+    c->extra_ghost = NULL;
+    c->ghost = NULL;
+    c->kick = NULL;
+    c->cooling = NULL;
+    c->sourceterms = NULL;
+    c->super = c;
+    if (c->sort != NULL) {
+      free(c->sort);
+      c->sort = NULL;
+    }
+#if WITH_MPI
+    c->recv_xv = NULL;
+    c->recv_rho = NULL;
+    c->recv_gradient = NULL;
+    c->recv_ti = NULL;
+
+    c->send_xv = NULL;
+    c->send_rho = NULL;
+    c->send_gradient = NULL;
+    c->send_ti = NULL;
+#endif
+  }
 }
 
 /**
@@ -297,10 +347,8 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
-      for (int k = 0; k < s->nr_cells; k++) {
-        space_rebuild_recycle(s, &s->cells_top[k]);
-        if (s->cells_top[k].sort != NULL) free(s->cells_top[k].sort);
-      }
+      threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
+                     s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
       free(s->cells_top);
       s->maxdepth = 0;
     }
@@ -388,42 +436,12 @@ void space_regrid(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  } /* re-build upper-level cells? */
-
+  }      /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
-    for (int k = 0; k < s->nr_cells; k++) {
-      space_rebuild_recycle(s, &s->cells_top[k]);
-      s->cells_top[k].sorts = NULL;
-      s->cells_top[k].nr_tasks = 0;
-      s->cells_top[k].density = NULL;
-      s->cells_top[k].gradient = NULL;
-      s->cells_top[k].force = NULL;
-      s->cells_top[k].grav = NULL;
-      s->cells_top[k].dx_max = 0.0f;
-      s->cells_top[k].sorted = 0;
-      s->cells_top[k].count = 0;
-      s->cells_top[k].gcount = 0;
-      s->cells_top[k].init = NULL;
-      s->cells_top[k].extra_ghost = NULL;
-      s->cells_top[k].ghost = NULL;
-      s->cells_top[k].kick = NULL;
-      s->cells_top[k].cooling = NULL;
-      s->cells_top[k].sourceterms = NULL;
-      s->cells_top[k].super = &s->cells_top[k];
-#if WITH_MPI
-      s->cells_top[k].recv_xv = NULL;
-      s->cells_top[k].recv_rho = NULL;
-      s->cells_top[k].recv_gradient = NULL;
-      s->cells_top[k].recv_ti = NULL;
-
-      s->cells_top[k].send_xv = NULL;
-      s->cells_top[k].send_rho = NULL;
-      s->cells_top[k].send_gradient = NULL;
-      s->cells_top[k].send_ti = NULL;
-#endif
-    }
+    threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
     s->maxdepth = 0;
   }
 
@@ -472,7 +490,6 @@ void space_rebuild(struct space *s, int verbose) {
     space_gparts_get_cell_index(s, gind, cells_top, verbose);
 
 #ifdef WITH_MPI
-
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
   for (size_t k = 0; k < nr_parts;) {
@@ -1606,24 +1623,22 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
- * @brief Return a used cell to the buffer od unused sub-cells.
+ * @brief Return a used cell to the buffer of unused sub-cells.
  *
  * @param s The #space.
  * @param c The #cell.
  */
 void space_recycle(struct space *s, struct cell *c) {
 
-  /* Lock the space. */
-  lock_lock(&s->lock);
-
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0) error("Failed to destroy spinlock.");
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
+    error("Failed to destroy spinlock.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
-  /* Clear the cell data. */
-  bzero(c, sizeof(struct cell));
+  /* Lock the space. */
+  lock_lock(&s->lock);
 
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub;
@@ -1633,6 +1648,47 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
 }
+
+/**
+ * @brief Return a list of used cells to the buffer of unused sub-cells.
+ *
+ * @param s The #space.
+ * @param list_begin Pointer to the first #cell in the linked list of
+ *        cells joined by their @c next pointers.
+ * @param list_end Pointer to the last #cell in the linked list of
+ *        cells joined by their @c next pointers. It is assumed that this
+ *        cell's @c next pointer is @c NULL.
+ */
+void space_recycle_list(struct space *s, struct cell *list_begin,
+                        struct cell *list_end) {
+
+  int count = 0;
+
+  /* Clean up the list of cells. */
+  for (struct cell *c = list_begin; c != NULL; c = c->next) {
+    /* Clear the cell. */
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
+      error("Failed to destroy spinlock.");
+
+    /* Clear this cell's sort arrays. */
+    if (c->sort != NULL) free(c->sort);
+
+    /* Count this cell. */
+    count += 1;
+  }
+
+  /* Lock the space. */
+  lock_lock(&s->lock);
+
+  /* Hook this cell into the buffer. */
+  list_end->next = s->cells_sub;
+  s->cells_sub = list_begin;
+  s->tot_cells -= count;
+
+  /* Unlock the space. */
+  lock_unlock_blind(&s->lock);
+}
+
 /**
  * @brief Get a new empty (sub-)#cell.
  *
@@ -1651,9 +1707,6 @@ struct cell *space_getcell(struct space *s) {
     if (posix_memalign((void *)&s->cells_sub, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
-
-    /* Zero everything for good measure */
-    bzero(s->cells_sub, space_cellallocchunk * sizeof(struct cell));
 
     /* Constructed a linked list */
     for (int k = 0; k < space_cellallocchunk - 1; k++)

@@ -1989,6 +1989,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   /* Should we even bother? */
   if (!cell_is_active(ci, r->e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, r->e);
+#endif
+
   /* Recurse? */
   if (ci->split) {
 

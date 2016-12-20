@@ -66,7 +66,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p, float dt) {
 
-  return p->force.pressure;
+  const float u = p->u + p->u_dt * dt;
+
+  return gas_pressure_from_internal_energy(p->rho, u);
 }
 
 /**
