@@ -150,6 +150,9 @@ void write_header(char *fileName) {
  *
  * @param parts Particle array to be interacted
  * @param count No. of particles to be interacted
+ * @param serial_inter_func Function pointer to serial interaction function
+ * @param vec_inter_func Function pointer to vectorised interaction function
+ * @param filePrefix Prefix of output files
  *
  */
 void test_interactions(struct part *parts, int count,
