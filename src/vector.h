@@ -275,7 +275,7 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal(vector x) {
 }
 
 /**
- * @brief Calculates the inverse and square root ($1/\sqrt{x}$) of a vector
+ * @brief Calculates the inverse and square root (\f$1/\sqrt{x}\f$) of a vector
  * using intrinsics and a Newton iteration to obtain the correct level of
  * accuracy.
  *

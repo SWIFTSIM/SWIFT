@@ -27,30 +27,30 @@
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
  *
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param (return) rhoSum #vector holding the cumulative sum of the density
+ * @param rhoSum (return) #vector holding the cumulative sum of the density
  * update on pi.
- * @param (return) rho_dhSum #vector holding the cumulative sum of the density
+ * @param rho_dhSum (return) #vector holding the cumulative sum of the density
  * gradient update on pi.
- * @param (return) wcountSum #vector holding the cumulative sum of the wcount
+ * @param wcountSum (return) #vector holding the cumulative sum of the wcount
  * update on pi.
- * @param (return) wcount_dhSum #vector holding the cumulative sum of the wcount
+ * @param wcount_dhSum (return) #vector holding the cumulative sum of the wcount
  * gradient update on pi.
- * @param (return) div_vSum #vector holding the cumulative sum of the divergence
+ * @param div_vSum (return) #vector holding the cumulative sum of the divergence
  * update on pi.
- * @param (return) curlvxSum #vector holding the cumulative sum of the curl of
+ * @param curlvxSum (return) #vector holding the cumulative sum of the curl of
  * vx update on pi.
- * @param (return) curlvySum #vector holding the cumulative sum of the curl of
+ * @param curlvySum (return) #vector holding the cumulative sum of the curl of
  * vy update on pi.
- * @param (return) curlvzSum #vector holding the cumulative sum of the curl of
+ * @param curlvzSum (return) #vector holding the cumulative sum of the curl of
  * vz update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
- * @param (return) icount_align Interaction count after the remainder
+ * @param icount_align (return) Interaction count after the remainder
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
@@ -136,6 +136,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * cache (Supports AVX, AVX2 and AVX512 instruction sets).
  *
  * @param mask Contains which particles need to interact.
+ * @param pjd Index of the particle to store into.
  * @param v_r2 #vector of the separation between two particles squared.
  * @param v_dx #vector of the x separation between two particles.
  * @param v_dy #vector of the y separation between two particles.
@@ -145,7 +146,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_vjy #vector of y velocity of pj.
  * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
  * @param rhoSum #vector holding the cumulative sum of the density update on pi.
