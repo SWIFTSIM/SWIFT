@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
   /* Finalize the dump. */
   dump_close(&d);
-  
+
   /* Return a happy number. */
   return 0;
 }

@@ -54,11 +54,11 @@
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    struct c2_cache *const int_cache,
-    const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
-    vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
-    vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
-    vector v_viy, vector v_viz, int *icount_align) {
+    struct c2_cache *const int_cache, const int icount, vector *rhoSum,
+    vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
+    int *icount_align) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
@@ -231,10 +231,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
-    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum,
-                        wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
-                        curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
-                        &icount_align);
+    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum, wcountSum,
+                        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum,
+                        v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     vector int_mask, int_mask2;
     int_mask.m = vec_setint1(0xFFFFFFFF);
@@ -256,7 +255,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 
 #endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 }
-#endif /* WITH_VECTORIZATION */ 
+#endif /* WITH_VECTORIZATION */
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
@@ -453,9 +452,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
@@ -779,9 +778,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     calcRemInteractions(&int_cache2, icount2, &rhoSum2, &rho_dhSum2,
