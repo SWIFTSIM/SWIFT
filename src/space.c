@@ -1770,8 +1770,9 @@ void space_init_gparts(struct space *s) {
  */
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int gravity,
-                int verbose, int dry_run) {
+                struct spart *sparts, size_t Npart, size_t Ngpart,
+                size_t Nspart, int periodic, int gravity, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1789,6 +1790,9 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
+  s->nr_sparts = Nspart;
+  s->size_sparts = Nspart;
+  s->sparts = sparts;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Decide on the minimal top-level cell size */
@@ -1848,6 +1852,11 @@ void space_init(struct space *s, const struct swift_params *params,
       gparts[k].x[1] += shift[1];
       gparts[k].x[2] += shift[2];
     }
+    for (size_t k = 0; k < Nspart; k++) {
+      sparts[k].x[0] += shift[0];
+      sparts[k].x[1] += shift[1];
+      sparts[k].x[2] += shift[2];
+    }
   }
 
   if (!dry_run) {
@@ -1879,9 +1888,23 @@ void space_init(struct space *s, const struct swift_params *params,
           if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
             error("Not all g-particles are within the specified domain.");
     }
+
+    /* Same for the sparts */
+    if (periodic) {
+      for (size_t k = 0; k < Nspart; k++)
+        for (int j = 0; j < 3; j++) {
+          while (sparts[k].x[j] < 0) sparts[k].x[j] += dim[j];
+          while (sparts[k].x[j] >= dim[j]) sparts[k].x[j] -= dim[j];
+        }
+    } else {
+      for (size_t k = 0; k < Nspart; k++)
+        for (int j = 0; j < 3; j++)
+          if (sparts[k].x[j] < 0 || sparts[k].x[j] >= dim[j])
+            error("Not all s-particles are within the specified domain.");
+    }
   }
 
-  /* Allocate the extra parts array. */
+  /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
     if (posix_memalign((void *)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
@@ -1893,6 +1916,7 @@ void space_init(struct space *s, const struct swift_params *params,
   space_init_parts(s);
   space_init_xparts(s);
   space_init_gparts(s);
+  // space_init_sparts(s);  // MATTHIEU
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

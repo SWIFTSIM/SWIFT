@@ -36,6 +36,7 @@
 /* Some constants. */
 #define part_align 128
 #define xpart_align 128
+#define spart_align 128
 #define gpart_align 128
 
 /* Import the right hydro particle definition */
@@ -61,6 +62,9 @@
 
 /* Import the right gravity particle definition */
 #include "./gravity/Default/gravity_part.h"
+
+/* Import the right star particle definition */
+#include "./stars/Default/star_part.h"
 
 void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset);
 void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts);

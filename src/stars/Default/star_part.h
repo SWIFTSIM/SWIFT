@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,29 +16,38 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINGLE_IO_H
-#define SWIFT_SINGLE_IO_H
+#ifndef SWIFT_DEFAULT_STAR_PART_H
+#define SWIFT_DEFAULT_STAR_PART_H
 
-/* Config parameters. */
-#include "../config.h"
+/* Some standard headers. */
+#include <stdlib.h>
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
+/* Star particle. */
+struct spart {
 
-#if defined(HAVE_HDF5) && !defined(WITH_MPI)
+  /* Particle ID. */
+  long long id;
 
-void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
-                    double dim[3], struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, size_t* Ngas, size_t* Ndm,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int dry_run);
+  /* Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
-void write_output_single(struct engine* e, const char* baseName,
-                         const struct UnitSystem* internal_units,
-                         const struct UnitSystem* snapshot_units);
+  /* Particle position. */
+  double x[3];
 
-#endif
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
 
-#endif /* SWIFT_SINGLE_IO_H */
+  /* Particle velocity. */
+  float v[3];
+
+  float mass;
+
+  /* Particle time of beginning of time-step. */
+  int ti_begin;
+
+  /* Particle time of end of time-step. */
+  int ti_end;
+
+} SWIFT_STRUCT_ALIGN;
+
+#endif /* SWIFT_DEFAULT_STAR_PART_H */

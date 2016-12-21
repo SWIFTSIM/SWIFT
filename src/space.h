@@ -108,6 +108,9 @@ struct space {
   /*! The total number of g-parts in the space. */
   size_t nr_gparts, size_gparts;
 
+  /*! The total number of g-parts in the space. */
+  size_t nr_sparts, size_sparts;
+
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
 
@@ -116,6 +119,9 @@ struct space {
 
   /*! The g-particle data (cells have pointers to this). */
   struct gpart *gparts;
+
+  /*! The s-particle data (cells have pointers to this). */
+  struct spart *sparts;
 
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
@@ -152,8 +158,9 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int gravity,
-                int verbose, int dry_run);
+                struct spart *sparts, size_t Npart, size_t Ngpart,
+                size_t Nspart, int periodic, int gravity, int verbose,
+                int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

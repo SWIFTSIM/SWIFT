@@ -303,6 +303,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
     message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(struct spart) is %4zi bytes.", sizeof(struct spart));
     message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
     message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
@@ -368,7 +369,8 @@ int main(int argc, char *argv[]) {
 
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
-  size_t Ngas = 0, Ngpart = 0;
+  struct spart *sparts = NULL;
+  size_t Ngas = 0, Ngpart = 0, Nspart = 0;
   double dim[3] = {0., 0., 0.};
   int periodic = 0;
   int flag_entropy_ICs = 0;
@@ -384,8 +386,8 @@ int main(int argc, char *argv[]) {
                  MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
-                 &periodic, &flag_entropy_ICs, dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
+                 &Nspart, &periodic, &flag_entropy_ICs, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -400,6 +402,7 @@ int main(int argc, char *argv[]) {
     free(gparts);
     gparts = NULL;
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
+    for (size_t k = 0; k < Nspart; ++k) sparts[k].gpart = NULL;
     Ngpart = 0;
   }
   if (!with_hydro) {
@@ -411,23 +414,26 @@ int main(int argc, char *argv[]) {
   }
 
   /* Get the total number of particles across all nodes. */
-  long long N_total[2] = {0, 0};
+  long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
+  N_total[2] = Nspart;
 #endif
   if (myrank == 0)
-    message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
-            N_total[1]);
+    message(
+        "Read %lld gas particles, %lld star particles and %lld gparts from the "
+        "ICs.",
+        N_total[0], N_total[2], N_total[1]);
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
-             with_self_gravity, talking, dry_run);
+  space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
+             periodic, with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -528,6 +534,8 @@ int main(int argc, char *argv[]) {
     free(params);
     return 0;
   }
+
+  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   /* Split the space. */
