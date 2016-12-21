@@ -16,16 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STAR_DEBUG_H
-#define SWIFT_DEFAULT_STAR_DEBUG_H
+#ifndef SWIFT_STAR_H
+#define SWIFT_STAR_H
 
-__attribute__((always_inline)) INLINE static void star_debug_particle(
-    const struct spart* p) {
-  printf(
-      "x=[%.3e,%.3e,%.3e], "
-      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
-      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
-      p->mass, p->ti_begin, p->ti_end);
-}
+/* Config parameters. */
+#include "../config.h"
 
-#endif /* SWIFT_DEFAULT_STAR_DEBUG_H */
+/* So far only one model here */
+/* Straight-forward import */
+#include "./stars/Default/star.h"
+#include "./stars/Default/star_iact.h"
+
+#endif

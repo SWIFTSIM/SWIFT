@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2016 Tom Theuns (tom.theuns@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,89 +16,64 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_H
-#define SWIFT_DEFAULT_GRAVITY_H
+#ifndef SWIFT_DEFAULT_STAR_H
+#define SWIFT_DEFAULT_STAR_H
 
 #include <float.h>
 #include "minmax.h"
 
 /**
- * @brief Computes the gravity time-step of a given particle due to self-gravity
+ * @brief Computes the gravity time-step of a given star particle.
  *
- * @param gp Pointer to the g-particle data.
+ * @param sp Pointer to the s-particle data.
  */
-__attribute__((always_inline)) INLINE static float
-gravity_compute_timestep_self(const struct gpart* const gp) {
+__attribute__((always_inline)) INLINE static float star_compute_timestep_self(
+    const struct spart* const sp) {
 
-  const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
-                    gp->a_grav[1] * gp->a_grav[1] +
-                    gp->a_grav[2] * gp->a_grav[2];
-
-  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
-
-  const float dt = sqrtf(2.f * const_gravity_eta * gp->epsilon / ac);
-
-  return dt;
+  return FLT_MAX;
 }
 
 /**
- * @brief Initialises the g-particles for the first time
+ * @brief Initialises the s-particles for the first time
  *
  * This function is called only once just after the ICs have been
  * read in to do some conversions.
  *
- * @param gp The particle to act upon
+ * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {
+__attribute__((always_inline)) INLINE static void star_first_init_spart(
+    struct spart* sp) {
 
-  gp->ti_begin = 0;
-  gp->ti_end = 0;
-  gp->epsilon = 0.;  // MATTHIEU
+  sp->ti_begin = 0;
+  sp->ti_end = 0;
 }
 
 /**
- * @brief Prepares a g-particle for the gravity calculation
+ * @brief Prepares a s-particle for its interactions
  *
- * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the variaous tasks
- *
- * @param gp The particle to act upon
+ * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void gravity_init_gpart(
-    struct gpart* gp) {
-
-  /* Zero the acceleration */
-  gp->a_grav[0] = 0.f;
-  gp->a_grav[1] = 0.f;
-  gp->a_grav[2] = 0.f;
-}
+__attribute__((always_inline)) INLINE static void star_init_spart(
+    struct spart* sp) {}
 
 /**
- * @brief Finishes the gravity calculation.
+ * @brief Finishes the calculation of (non-gravity) forces acting on stars
  *
  * Multiplies the forces and accelerations by the appropiate constants
  *
- * @param gp The particle to act upon
- * @param const_G Newton's constant in internal units
+ * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G) {
-
-  /* Let's get physical... */
-  gp->a_grav[0] *= const_G;
-  gp->a_grav[1] *= const_G;
-  gp->a_grav[2] *= const_G;
-}
+__attribute__((always_inline)) INLINE static void star_end_force(
+    struct spart* sp) {}
 
 /**
  * @brief Kick the additional variables
  *
- * @param gp The particle to act upon
+ * @param sp The particle to act upon
  * @param dt The time-step for this kick
  * @param half_dt The half time-step for this kick
  */
-__attribute__((always_inline)) INLINE static void gravity_kick_extra(
-    struct gpart* gp, float dt, float half_dt) {}
+__attribute__((always_inline)) INLINE static void star_kick_extra(
+    struct spart* sp, float dt, float half_dt) {}
 
-#endif /* SWIFT_DEFAULT_GRAVITY_H */
+#endif /* SWIFT_DEFAULT_STAR_H */

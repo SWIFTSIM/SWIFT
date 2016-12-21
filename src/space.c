@@ -52,6 +52,7 @@
 #include "memswap.h"
 #include "minmax.h"
 #include "runner.h"
+#include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
 
@@ -1749,6 +1750,32 @@ void space_init_gparts(struct space *s) {
 }
 
 /**
+ * @brief Initialises all the s-particles by setting them into a valid state
+ *
+ * Calls star_first_init_spart() on all the particles
+ */
+void space_init_sparts(struct space *s) {
+
+  const size_t nr_sparts = s->nr_sparts;
+  struct spart *restrict sp = s->sparts;
+
+  for (size_t i = 0; i < nr_sparts; ++i) {
+
+#ifdef HYDRO_DIMENSION_2D
+    sp[i].x[2] = 0.f;
+    sp[i].v[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    sp[i].x[1] = sp[i].x[2] = 0.f;
+    sp[i].v[1] = sp[i].v[2] = 0.f;
+#endif
+
+    star_first_init_spart(&sp[i]);
+  }
+}
+
+/**
  * @brief Split the space into cells given the array of particles.
  *
  * @param s The #space to initialize.
@@ -1916,7 +1943,7 @@ void space_init(struct space *s, const struct swift_params *params,
   space_init_parts(s);
   space_init_xparts(s);
   space_init_gparts(s);
-  // space_init_sparts(s);  // MATTHIEU
+  space_init_sparts(s);
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
