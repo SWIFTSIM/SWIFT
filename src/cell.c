@@ -82,6 +82,47 @@ int cell_getsize(struct cell *c) {
 }
 
 /**
+ * @brief Pack the data of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pc Pointer to an array of packed cells in which the
+ *      cells will be packed.
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack(struct cell *c, struct pcell *pc) {
+
+#ifdef WITH_MPI
+
+  /* Start by packing the data of the current cell. */
+  pc->h_max = c->h_max;
+  pc->ti_end_min = c->ti_end_min;
+  pc->ti_end_max = c->ti_end_max;
+  pc->count = c->count;
+  pc->gcount = c->gcount;
+  pc->scount = c->scount;
+  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      pc->progeny[k] = count;
+      count += cell_pack(c->progeny[k], &pc[count]);
+    } else
+      pc->progeny[k] = -1;
+
+  /* Return the number of packed cells used. */
+  c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
  * @param pc An array of packed #pcell.
@@ -100,6 +141,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->ti_end_max = pc->ti_end_max;
   c->count = pc->count;
   c->gcount = pc->gcount;
+  c->scount = pc->scount;
   c->tag = pc->tag;
 
   /* Number of new cells created. */
@@ -111,6 +153,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       struct cell *temp = space_getcell(s);
       temp->count = 0;
       temp->gcount = 0;
+      temp->scount = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -189,46 +232,6 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 
   /* Return the total number of linked particles. */
   return c->gcount;
-}
-
-/**
- * @brief Pack the data of the given cell and all it's sub-cells.
- *
- * @param c The #cell.
- * @param pc Pointer to an array of packed cells in which the
- *      cells will be packed.
- *
- * @return The number of packed cells.
- */
-int cell_pack(struct cell *c, struct pcell *pc) {
-
-#ifdef WITH_MPI
-
-  /* Start by packing the data of the current cell. */
-  pc->h_max = c->h_max;
-  pc->ti_end_min = c->ti_end_min;
-  pc->ti_end_max = c->ti_end_max;
-  pc->count = c->count;
-  pc->gcount = c->gcount;
-  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      pc->progeny[k] = count;
-      count += cell_pack(c->progeny[k], &pc[count]);
-    } else
-      pc->progeny[k] = -1;
-
-  /* Return the number of packed cells used. */
-  c->pcell_size = count;
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
 }
 
 /**
@@ -422,6 +425,70 @@ int cell_glocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #spart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_slocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to lock this cell. */
+  if (c->shold || lock_trylock(&c->slock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->shold) {
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+
+    /* Lock this cell. */
+    if (lock_trylock(&finger->slock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->shold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->slock) != 0) error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->shold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -455,6 +522,25 @@ void cell_gunlocktree(struct cell *c) {
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->ghold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
+ * @brief Unlock a cell's parents for access to #spart array.
+ *
+ * @param c The #cell.
+ */
+void cell_sunlocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->shold);
 
   TIMER_TOC(timer_locktree);
 }

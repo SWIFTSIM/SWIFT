@@ -76,7 +76,7 @@ struct pcell {
   int ti_end_min, ti_end_max;
 
   /* Number of particles in this cell. */
-  int count, gcount;
+  int count, gcount, scount;
 
   /* tag used for MPI communication. */
   int tag;
@@ -116,6 +116,9 @@ struct cell {
 
   /*! Pointer to the #gpart data. */
   struct gpart *gparts;
+
+  /*! Pointer to the #spart data. */
+  struct gpart *sparts;
 
   /*! Pointer for the sorted indices. */
   struct entry *sort;
@@ -229,6 +232,9 @@ struct cell {
   /*! Nr of #gpart in this cell. */
   int gcount;
 
+  /*! Nr of #spart in this cell. */
+  int scount;
+
   /*! The size of the sort array */
   int sortsize;
 
@@ -241,6 +247,9 @@ struct cell {
   /*! Spin lock for various uses (#gpart case). */
   swift_lock_type glock;
 
+  /*! Spin lock for various uses (#spart case). */
+  swift_lock_type slock;
+
   /*! ID of the previous owner, e.g. runner. */
   int owner;
 
@@ -250,6 +259,9 @@ struct cell {
   /*! Number of #gpart updated in this cell. */
   int g_updated;
 
+  /*! Number of #spart updated in this cell. */
+  int s_updated;
+
   /*! ID of the node this cell lives on. */
   int nodeID;
 
@@ -258,6 +270,9 @@ struct cell {
 
   /*! Is the #gpart data of this cell being used in a sub-cell? */
   int ghold;
+
+  /*! Is the #spart data of this cell being used in a sub-cell? */
+  int shold;
 
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
@@ -285,6 +300,8 @@ int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
+int cell_slocktree(struct cell *c);
+void cell_sunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_pack_ti_ends(struct cell *c, int *ti_ends);
