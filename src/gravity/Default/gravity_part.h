@@ -25,6 +25,10 @@
 /* Gravity particle. */
 struct gpart {
 
+  /* Particle ID. If negative, it is the negative offset of the #part with
+     which this gpart is linked. */
+  long long id_or_neg_offset;
+
   /* Particle position. */
   double x[3];
 
@@ -49,9 +53,8 @@ struct gpart {
   /* Particle time of end of time-step. */
   int ti_end;
 
-  /* Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
-  long long id_or_neg_offset;
+  /* Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
 
 } SWIFT_STRUCT_ALIGN;
 

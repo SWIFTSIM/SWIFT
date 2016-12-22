@@ -629,7 +629,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
   }
 
   /* Re-link the gparts. */
-  if (count > 0 && gcount > 0) part_relink_gparts(parts, count, parts_offset);
+  if (count > 0 && gcount > 0)
+    part_relink_gparts_to_parts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
@@ -744,7 +745,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
 
   /* Re-link the parts. */
   if (count > 0 && gcount > 0)
-    part_relink_parts(gparts, gcount, parts - parts_offset);
+    part_relink_parts_to_gparts(gparts, gcount, parts - parts_offset);
 }
 
 /**

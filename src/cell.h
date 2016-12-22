@@ -118,7 +118,7 @@ struct cell {
   struct gpart *gparts;
 
   /*! Pointer to the #spart data. */
-  struct gpart *sparts;
+  struct spart *sparts;
 
   /*! Pointer for the sorted indices. */
   struct entry *sort;

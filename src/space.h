@@ -153,6 +153,8 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
 void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
+void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
+                       int verbose);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
@@ -176,6 +178,8 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
                              void *extra_data);
 void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
+void space_sparts_sort_mapper(void *map_data, int num_elements,
+                              void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *list_begin,
@@ -187,8 +191,11 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
                                 int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
                                  int verbose);
+void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
+                                 int verbose);
 void space_do_parts_sort();
 void space_do_gparts_sort();
+void space_do_sparts_sort();
 void space_init_parts(struct space *s);
 void space_init_gparts(struct space *s);
 void space_init_sparts(struct space *s);

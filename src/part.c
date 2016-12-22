@@ -36,7 +36,8 @@
  * @param N The number of particles to re-link;
  * @param offset The offset of #part%s relative to the global parts list.
  */
-void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
+void part_relink_gparts_to_parts(struct part *parts, size_t N,
+                                 ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (parts[k].gpart) {
       parts[k].gpart->id_or_neg_offset = -(k + offset);
@@ -45,16 +46,49 @@ void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
 }
 
 /**
- * @brief Re-link the #gpart%s associated with the list of #part%s.
+ * @brief Re-link the #gpart%s associated with the list of #spart%s.
+ *
+ * @param sparts The list of #spart.
+ * @param N The number of s-particles to re-link;
+ * @param offset The offset of #spart%s relative to the global sparts list.
+ */
+void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
+                                  ptrdiff_t offset) {
+  for (size_t k = 0; k < N; k++) {
+    if (sparts[k].gpart) {
+      sparts[k].gpart->id_or_neg_offset = -(k + offset);
+    }
+  }
+}
+
+/**
+ * @brief Re-link the #part%s associated with the list of #gpart%s.
  *
  * @param gparts The list of #gpart.
  * @param N The number of particles to re-link;
- * @param parts The global part array in which to find the #gpart offsets.
+ * @param parts The global #part array in which to find the #gpart offsets.
  */
-void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts) {
+void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
+                                 struct part *parts) {
   for (size_t k = 0; k < N; k++) {
-    if (gparts[k].id_or_neg_offset <= 0) {
+    if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
+/**
+ * @brief Re-link the #spart%s associated with the list of #gpart%s.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param sparts The global #spart array in which to find the #gpart offsets.
+ */
+void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
+                                  struct spart *sparts) {
+  for (size_t k = 0; k < N; k++) {
+    if (gparts[k].type == swift_type_star) {
+      sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
 }

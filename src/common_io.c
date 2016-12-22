@@ -390,6 +390,8 @@ void writeCodeDescription(hid_t h_file) {
   H5Gclose(h_grpcode);
 }
 
+#endif /* HAVE_HDF5 */
+
 /* ------------------------------------------------------------------------------------------------
  * This part writes the XMF file descriptor enabling a visualisation through
  * ParaView
@@ -586,6 +588,9 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
     if (gparts[i].id_or_neg_offset <= 0)
       error("0 or negative ID for DM particle %zu: ID=%lld", i,
             gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_dark_matter;
   }
 }
 
@@ -617,6 +622,9 @@ void duplicate_hydro_gparts(struct part* const parts,
     gparts[i + Ndm].v_full[2] = parts[i].v[2];
 
     gparts[i + Ndm].mass = hydro_get_mass(&parts[i]);
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_gas;
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;
@@ -652,6 +660,9 @@ void duplicate_star_gparts(struct spart* const sparts,
     gparts[i + Ndm].v_full[2] = sparts[i].v[2];
 
     gparts[i + Ndm].mass = sparts[i].mass;
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_star;
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;
@@ -690,5 +701,3 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
     error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
 }
-
-#endif

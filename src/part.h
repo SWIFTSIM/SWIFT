@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "align.h"
+#include "part_type.h"
 
 /* Some constants. */
 #define part_align 128
@@ -66,8 +67,14 @@
 /* Import the right star particle definition */
 #include "./stars/Default/star_part.h"
 
-void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset);
-void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts);
+void part_relink_gparts_to_parts(struct part *parts, size_t N,
+                                 ptrdiff_t offset);
+void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
+                                  ptrdiff_t offset);
+void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
+                                 struct part *parts);
+void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
+                                  struct spart *sparts);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype part_mpi_type;

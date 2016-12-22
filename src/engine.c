@@ -2840,7 +2840,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-link the gparts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_gparts(s->parts, s->nr_parts, 0);
+    part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -2857,7 +2857,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_parts(s->gparts, s->nr_gparts, s->parts);
+    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
