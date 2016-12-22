@@ -135,6 +135,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->ti_old = 1;
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 
