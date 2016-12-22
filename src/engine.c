@@ -2261,7 +2261,10 @@ void engine_prepare(struct engine *e, int nodrift) {
 
   TIMER_TIC;
 
-  /* Check for rebuild */
+  /* Unskip active tasks and check for rebuild */
+  engine_unskip(e);
+
+  /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
 
 /* Collect the values of rebuild from all nodes. */
@@ -2286,9 +2289,6 @@ void engine_prepare(struct engine *e, int nodrift) {
 
     engine_rebuild(e);
   }
-
-  /* Run through the tasks and mark as skip or not (after rebuild). */
-  engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
