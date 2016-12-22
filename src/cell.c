@@ -556,12 +556,14 @@ void cell_sunlocktree(struct cell *c) {
  * @param gbuff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices for the gparts.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff) {
 
-  const int count = c->count, gcount = c->gcount;
+  const int count = c->count, gcount = c->gcount, scount = c->scount;
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
+  struct spart *sparts = c->sparts;
   struct gpart *gparts = c->gparts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
@@ -575,6 +577,16 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents.");
+  }
+  for (int k = 0; k < gcount; k++) {
+    if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
+        gbuff[k].x[2] != gparts[k].x[2])
+      error("Inconsistent gbuff contents.");
+  }
+  for (int k = 0; k < scount; k++) {
+    if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
+        sbuff[k].x[2] != sparts[k].x[2])
+      error("Inconsistent sbuff contents.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -694,7 +706,60 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
       error("Sorting failed (progeny=7).");
 #endif
 
-  /* Now do the same song and dance for the gparts. */
+  /* Now do the same song and dance for the sparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < scount; k++) {
+    const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
+                    (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    sbuff[k].ind = bid;
+  }
+
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = sbuff[k].ind;
+      if (bid != bucket) {
+        struct spart spart = sparts[k];
+        struct cell_buff temp_buff = sbuff[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (sbuff[j].ind == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&sparts[j], &spart, sizeof(struct spart));
+          memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
+          bid = temp_buff.ind;
+        }
+        sparts[k] = spart;
+        sbuff[k] = temp_buff;
+      }
+      bucket_count[bid]++;
+    }
+  }
+
+  /* Store the counts and offsets. */
+  for (int k = 0; k < 8; k++) {
+    c->progeny[k]->scount = bucket_count[k];
+    c->progeny[k]->sparts = &c->sparts[bucket_offset[k]];
+  }
+
+  /* Re-link the gparts. */
+  if (scount > 0 && gcount > 0)
+    part_relink_gparts_to_sparts(sparts, count, sparts_offset);
+
+  /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill the buffer with the indices. */
@@ -746,6 +811,10 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
   /* Re-link the parts. */
   if (count > 0 && gcount > 0)
     part_relink_parts_to_gparts(gparts, gcount, parts - parts_offset);
+
+  /* Re-link the sparts. */
+  if (scount > 0 && gcount > 0)
+    part_relink_sparts_to_gparts(gparts, gcount, sparts - sparts_offset);
 }
 
 /**

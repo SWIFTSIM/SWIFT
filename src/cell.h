@@ -293,7 +293,8 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);

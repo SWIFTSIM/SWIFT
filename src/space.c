@@ -659,7 +659,7 @@ void space_rebuild(struct space *s, int verbose) {
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_sindex = 0;
-  sind[nr_parts] = s->nr_cells;  // sentinel.
+  sind[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (sind[k] < sind[k + 1]) {
       cells_top[sind[k]].scount = k - last_sindex + 1;
@@ -1749,14 +1749,18 @@ void space_map_cells_pre(struct space *s, int full,
  * @param c The #cell to split recursively.
  * @param buff A buffer for particle sorting, should be of size at least
  *        c->count or @c NULL.
+ * @param sbuff A buffer for particle sorting, should be of size at least
+ *        c->scount or @c NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
  *        c->gcount or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
-                           struct cell_buff *buff, struct cell_buff *gbuff) {
+                           struct cell_buff *buff, struct cell_buff *sbuff,
+                           struct cell_buff *gbuff) {
 
   const int count = c->count;
   const int gcount = c->gcount;
+  const int scount = c->scount;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -1764,11 +1768,12 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct cell *temp;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts;
   struct xpart *xparts = c->xparts;
   struct engine *e = s->e;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
-  const int allocate_buffer = (buff == NULL && gbuff == NULL);
+  const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
       if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
@@ -1790,6 +1795,16 @@ void space_split_recursive(struct space *s, struct cell *c,
         gbuff[k].x[2] = gparts[k].x[2];
       }
     }
+    if (scount > 0) {
+      if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * scount) != 0)
+        error("Failed to allocate temporary indices.");
+      for (int k = 0; k < scount; k++) {
+        sbuff[k].x[0] = sparts[k].x[0];
+        sbuff[k].x[1] = sparts[k].x[1];
+        sbuff[k].x[2] = sparts[k].x[2];
+      }
+    }
   }
 
   /* Check the depth. */
@@ -1804,7 +1819,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize) {
+  if (count > space_splitsize || gcount > space_splitsize ||
+      scount > space_splitsize) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -1814,6 +1830,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       temp = space_getcell(s);
       temp->count = 0;
       temp->gcount = 0;
+      temp->scount = 0;
       temp->ti_old = e->ti_current;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
@@ -1836,18 +1853,23 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell data. */
-    cell_split(c, c->parts - s->parts, buff, gbuff);
+    cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
+               gbuff);
 
     /* Remove any progeny with zero parts. */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff;
+    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
+                     *progeny_sbuff = sbuff;
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
+      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
+          c->progeny[k]->scount == 0) {
         space_recycle(s, c->progeny[k]);
         c->progeny[k] = NULL;
       } else {
-        space_split_recursive(s, c->progeny[k], progeny_buff, progeny_gbuff);
+        space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
+                              progeny_gbuff);
         progeny_buff += c->progeny[k]->count;
         progeny_gbuff += c->progeny[k]->gcount;
+        progeny_sbuff += c->progeny[k]->scount;
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
@@ -1887,6 +1909,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
+    for (int k = 0; k < scount; k++) {
+      struct spart *sp = &sparts[k];
+      const int ti_end = sp->ti_end;
+      sp->x_diff[0] = 0.f;
+      sp->x_diff[1] = 0.f;
+      sp->x_diff[2] = 0.f;
+      if (ti_end < ti_end_min) ti_end_min = ti_end;
+      if (ti_end > ti_end_max) ti_end_max = ti_end;
+    }
   }
 
   /* Set the values for this cell. */
@@ -1899,6 +1930,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  else if (s->nr_sparts > 0)
+    c->owner =
+        ((c->sparts - s->sparts) % s->nr_sparts) * s->nr_queues / s->nr_sparts;
   else if (s->nr_gparts > 0)
     c->owner =
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
@@ -1909,6 +1943,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   if (allocate_buffer) {
     if (buff != NULL) free(buff);
     if (gbuff != NULL) free(gbuff);
+    if (sbuff != NULL) free(sbuff);
   }
 }
 
@@ -1928,7 +1963,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    space_split_recursive(s, c, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
