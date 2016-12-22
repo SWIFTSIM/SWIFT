@@ -2253,16 +2253,18 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
- * @param nodrift Whether to drift particles before rebuilding or not. Will
+ * @param drift_all Whether to drift particles before rebuilding or not. Will
  *                not be necessary if all particles have already been
  *                drifted (before repartitioning for instance).
+ * @param deferskip Whether to defer the skip until after the rebuild.
+ *                  Needed after a repartition.
  */
-void engine_prepare(struct engine *e, int nodrift) {
+void engine_prepare(struct engine *e, int drift_all, int deferskip) {
 
   TIMER_TIC;
 
   /* Unskip active tasks and check for rebuild */
-  engine_unskip(e);
+  if (!deferskip) engine_unskip(e);
 
   /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
@@ -2280,7 +2282,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   if (rebuild) {
 
     /* Drift all particles to the current time if needed. */
-    if (!nodrift) engine_drift_all(e);
+    if (drift_all) engine_drift_all(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that all cells have been drifted to the current time */
@@ -2289,6 +2291,7 @@ void engine_prepare(struct engine *e, int nodrift) {
 
     engine_rebuild(e);
   }
+  if (deferskip) engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2566,7 +2569,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
-  engine_prepare(e, 1);
+  engine_prepare(e, 0, 0);
 
   engine_marktasks(e);
 
@@ -2671,7 +2674,7 @@ void engine_step(struct engine *e) {
   if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e, (drift_all || repart));
+  engine_prepare(e, !(drift_all || repart), repart);
 
   if (e->verbose) engine_print_task_counts(e);
 
