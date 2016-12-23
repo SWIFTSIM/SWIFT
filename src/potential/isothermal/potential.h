@@ -102,7 +102,10 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * Note that the accelerations are multiplied by Newton's G constant
  * later on.
  *
- * a = v_rot^2 * (x,y,z) / (r^2 + epsilon^2)
+ * a_x = -(v_rot^2 / G) * x / (r^2 + epsilon^2)
+ * a_y = -(v_rot^2 / G) * y / (r^2 + epsilon^2)
+ * a_z = -(v_rot^2 / G) * z / (r^2 + epsilon^2)
+ *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
@@ -118,7 +121,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float r2_plus_epsilon2_inv =
       1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
 
-  const double term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
+  const float term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
 
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
@@ -128,6 +131,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 /**
  * @brief Computes the gravitational potential energy of a particle in an
  * isothermal potential.
+ *
+ * phi = 0.5 * vrot^2 * ln(r^2 + epsilon^2)
  *
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
@@ -145,6 +150,7 @@ external_gravity_get_potential_energy(
   return 0.5f * potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy * dz * dz + potential->epsilon2);
 }
+
 /**
  * @brief Initialises the external potential properties in the internal system
  * of units.
