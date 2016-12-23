@@ -2434,7 +2434,7 @@ void engine_collect_timestep(struct engine *e) {
     ti_end_min = in_i[0];
   }
   {
-    unsigned long long in_ll[2], out_ll[2];
+    long long in_ll[2], out_ll[2];
     out_ll[0] = updates;
     out_ll[1] = g_updates;
     if (MPI_Allreduce(out_ll, in_ll, 2, MPI_LONG_LONG_INT, MPI_SUM,
