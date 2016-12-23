@@ -102,7 +102,7 @@ void proxy_cells_exch2(struct proxy *p) {
 
   /* Re-allocate the pcell_in buffer. */
   if (p->pcells_in != NULL) free(p->pcells_in);
-  if (posix_memalign((void **)p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 

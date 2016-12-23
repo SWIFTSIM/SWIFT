@@ -1413,8 +1413,8 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if ((s->queues = (struct queue *)malloc(sizeof(struct queue) * nr_queues)) ==
-      NULL)
+  if (posix_memalign((void **)&s->queues, queue_struct_align,
+                     sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
   /* Initialize each queue. */
