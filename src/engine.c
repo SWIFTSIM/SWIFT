@@ -143,6 +143,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
+      /* Add the drift task and dependency. */
+      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+
+      scheduler_addunlock(s, c->drift, c->init);
+
       /* Generate the ghost task. */
       if (is_hydro)
         c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
@@ -668,6 +674,11 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
+
+      if (ci->super->drift == NULL)
+        ci->super->drift = scheduler_addtask(
+            s, task_type_drift, task_subtype_none, 0, 0, ci->super, NULL, 0);
+
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
                                4 * ci->tag, 0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
@@ -703,6 +714,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
+
+      scheduler_addunlock(s, ci->super->drift, t_xv);
 #endif
 
       /* The super-cell's kick task should unlock the send_ti task. */
@@ -2054,6 +2067,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        if (cj->super->drift)
+          scheduler_activate(s, cj->super->drift);
+        else
+          error("Drift task missing !");
+
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
@@ -2081,6 +2099,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        if (ci->super->drift)
+          scheduler_activate(s, ci->super->drift);
+        else
+          error("Drift task missing !");
+
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
@@ -2101,6 +2124,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_kick) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    }
+
+    /* Drift? */
+    else if (t->type == task_type_drift) {
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
@@ -2225,13 +2253,18 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
- * @param nodrift Whether to drift particles before rebuilding or not. Will
+ * @param drift_all Whether to drift particles before rebuilding or not. Will
  *                not be necessary if all particles have already been
  *                drifted (before repartitioning for instance).
+ * @param deferskip Whether to defer the skip until after the rebuild.
+ *                  Needed after a repartition.
  */
-void engine_prepare(struct engine *e, int nodrift) {
+void engine_prepare(struct engine *e, int drift_all, int deferskip) {
 
   TIMER_TIC;
+
+  /* Unskip active tasks and check for rebuild */
+  if (!deferskip) engine_unskip(e);
 
   /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
@@ -2249,13 +2282,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   if (rebuild) {
 
     /* Drift all particles to the current time if needed. */
-    if (!nodrift) {
-      e->drift_all = 1;
-      engine_drift(e);
-
-      /* Restore the default drifting policy */
-      e->drift_all = (e->policy & engine_policy_drift_all);
-    }
+    if (drift_all) engine_drift_all(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that all cells have been drifted to the current time */
@@ -2264,6 +2291,7 @@ void engine_prepare(struct engine *e, int nodrift) {
 
     engine_rebuild(e);
   }
+  if (deferskip) engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2478,7 +2506,8 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->subtype == task_subtype_force || t->type == task_type_kick ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms)
+        t->type == task_type_cooling || t->type == task_type_sourceterms ||
+        t->type == task_type_drift)
       t->skip = 1;
   }
 }
@@ -2540,7 +2569,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
-  engine_prepare(e, 1);
+  engine_prepare(e, 0, 0);
 
   engine_marktasks(e);
 
@@ -2606,11 +2635,7 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
-    e->drift_all = 1;
-    engine_drift(e);
-
-    /* Restore the default drifting policy */
-    e->drift_all = (e->policy & engine_policy_drift_all);
+    engine_drift_all(e);
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2642,17 +2667,14 @@ void engine_step(struct engine *e) {
   /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   const int repart = (e->forcerepart != REPART_NONE);
-  e->drift_all = repart || e->drift_all;
-  engine_drift(e);
+  const int drift_all = (e->policy & engine_policy_drift_all);
+  if (repart || drift_all) engine_drift_all(e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e, e->drift_all);
-
-  /* Restore the default drifting policy */
-  e->drift_all = (e->policy & engine_policy_drift_all);
+  engine_prepare(e, !(drift_all || repart), repart);
 
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2683,19 +2705,35 @@ int engine_is_done(struct engine *e) {
 }
 
 /**
- * @brief Drift particles using the current engine drift policy.
+ * @brief Unskip all the tasks that act on active cells at this time.
  *
  * @param e The #engine.
  */
-void engine_drift(struct engine *e) {
+void engine_unskip(struct engine *e) {
+
+  const ticks tic = getticks();
+  threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Drift *all* particles forward to the current time.
+ *
+ * @param e The #engine.
+ */
+void engine_drift_all(struct engine *e) {
 
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->verbose)
-    message("took %.3f %s (including task unskipping).",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -3033,7 +3071,6 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
-  e->drift_all = (policy & engine_policy_drift_all);
   e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
@@ -3418,7 +3455,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 1; k < 32; k++)
+  for (int k = 1; k < 31; k++)
     if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);

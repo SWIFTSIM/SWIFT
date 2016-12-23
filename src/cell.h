@@ -73,7 +73,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  int ti_end_min, ti_end_max;
+  int ti_end_min, ti_end_max, ti_old;
 
   /* Number of particles in this cell. */
   int count, gcount;
@@ -152,6 +152,9 @@ struct cell {
 
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;
+
+  /*! The drift task */
+  struct task *drift;
 
   /*! The kick task */
   struct task *kick;
@@ -302,5 +305,6 @@ void cell_check_drift_point(struct cell *c, void *data);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
+void cell_drift(struct cell *c, const struct engine *e);
 
 #endif /* SWIFT_CELL_H */

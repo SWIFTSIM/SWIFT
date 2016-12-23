@@ -744,15 +744,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Drift particles and g-particles in a cell forward in time,
- *              unskipping any tasks associated with active cells.
+ * @brief Unskip any tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
- * @param drift whether to actually drift the particles, will not be
- *              necessary for non-local cells.
  */
-static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
+static void runner_do_unskip(struct cell *c, struct engine *e) {
 
   /* Unskip any active tasks. */
   if (cell_is_active(c, e)) {
@@ -760,124 +757,58 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
-  /* Do we really need to drift? */
-  if (drift) {
-    if (!e->drift_all && !cell_is_drift_needed(c, e)) return;
-  } else {
-
-    /* Not drifting, but may still need to recurse for task un-skipping. */
-    if (c->split) {
-      for (int k = 0; k < 8; k++) {
-        if (c->progeny[k] != NULL) {
-          struct cell *cp = c->progeny[k];
-          runner_do_drift(cp, e, 0);
-        }
-      }
-    }
-    return;
-  }
-
-  /* Now, we can drift */
-
-  /* Get some information first */
-  const double timeBase = e->timeBase;
-  const int ti_old = c->ti_old;
-  const int ti_current = e->ti_current;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
-
-  /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-
-  /* No children? */
-  if (!c->split) {
-
-    /* Check that we are actually going to move forward. */
-    if (ti_current > ti_old) {
-
-      /* Loop over all the g-particles in the cell */
-      const size_t nr_gparts = c->gcount;
-      for (size_t k = 0; k < nr_gparts; k++) {
-
-        /* Get a handle on the gpart. */
-        struct gpart *const gp = &gparts[k];
-
-        /* Drift... */
-        drift_gpart(gp, dt, timeBase, ti_old, ti_current);
-
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                          gp->x_diff[1] * gp->x_diff[1] +
-                          gp->x_diff[2] * gp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
-      }
-
-      /* Loop over all the particles in the cell */
-      const size_t nr_parts = c->count;
-      for (size_t k = 0; k < nr_parts; k++) {
-
-        /* Get a handle on the part. */
-        struct part *const p = &parts[k];
-        struct xpart *const xp = &xparts[k];
-
-        /* Drift... */
-        drift_part(p, xp, dt, timeBase, ti_old, ti_current);
-
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
-                          xp->x_diff[1] * xp->x_diff[1] +
-                          xp->x_diff[2] * xp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
-
-        /* Maximal smoothing length */
-        h_max = (h_max > p->h) ? h_max : p->h;
-      }
-
-      /* Now, get the maximal particle motion from its square */
-      dx_max = sqrtf(dx2_max);
-
-    } /* Check that we are actually going to move forward. */
-
-    else {
-      /* ti_old == ti_current, just keep the current cell values. */
-      h_max = c->h_max;
-      dx_max = c->dx_max;
-    }
-  }
-
-  /* Otherwise, aggregate data from children. */
-  else {
-
-    /* Loop over the progeny and collect their data. */
-    for (int k = 0; k < 8; k++)
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-
-        /* Recurse. */
-        runner_do_drift(cp, e, drift);
-        dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
+        runner_do_unskip(cp, e);
       }
+    }
   }
-
-  /* Store the values */
-  c->h_max = h_max;
-  c->dx_max = dx_max;
-
-  /* Update the time of the last drift */
-  c->ti_old = ti_current;
 }
 
 /**
- * @brief Mapper function to drift particles and g-particles forward in time.
+ * @brief Mapper function to unskip active tasks.
  *
  * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
+void runner_do_unskip_mapper(void *map_data, int num_elements,
+                             void *extra_data) {
 
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+    if (c != NULL) runner_do_unskip(c, e);
+  }
+}
+/**
+ * @brief Drift particles in real space.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift(c, r->e);
+
+  if (timer) TIMER_TOC(timer_drift);
+}
+
+/**
+ * @brief Mapper function to drift ALL particle and g-particles forward in time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
 void runner_do_drift_mapper(void *map_data, int num_elements,
                             void *extra_data) {
 
@@ -886,17 +817,12 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-#ifdef WITH_MPI
-    if (c != NULL) runner_do_drift(c, e, (c->nodeID == e->nodeID));
-#else
-    if (c != NULL) runner_do_drift(c, e, 1);
-#endif
+    if (c != NULL && c->nodeID == e->nodeID) cell_drift(c, e);
   }
 }
 
 /**
- * @brief Kick particles in momentum space and collect statistics (floating
- * time-step case)
+ * @brief Kick particles in momentum space and collect statistics.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1032,7 +958,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
   const size_t nr_gparts = c->gcount;
-  // const int ti_current = r->e->ti_current;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC;
 
@@ -1075,6 +1001,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_old = ti_current;
   c->h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
@@ -1125,8 +1052,10 @@ void *runner_main(void *data) {
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
       if (cj == NULL) { /* self */
-        if (!cell_is_active(ci, e) && t->type != task_type_sort)
+        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
+            t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1144,12 +1073,15 @@ void *runner_main(void *data) {
 
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
-          error(
-              "Task (type='%s/%s') should have been skipped ti_current=%d "
-              "ci->ti_end_min=%d cj->ti_end_min=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min, cj->ti_end_min);
+
+          if (t->type != task_type_send && t->type != task_type_recv)
+            error(
+                "Task (type='%s/%s') should have been skipped ti_current=%d "
+                "ci->ti_end_min=%d cj->ti_end_min=%d",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                e->ti_current, ci->ti_end_min, cj->ti_end_min);
       }
+#endif
 #endif
 
       /* Different types of tasks... */
@@ -1231,6 +1163,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
+        case task_type_drift:
+          runner_do_drift(r, ci, 1);
+          break;
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;

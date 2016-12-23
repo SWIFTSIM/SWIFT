@@ -49,6 +49,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "drift.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -98,6 +99,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->h_max = pc->h_max;
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
+  c->ti_old = pc->ti_old;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->tag = pc->tag;
@@ -126,6 +128,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+      temp->ti_old = c->ti_old;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s);
@@ -208,6 +211,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->h_max = c->h_max;
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
+  pc->ti_old = c->ti_old;
   pc->count = c->count;
   pc->gcount = c->gcount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
@@ -755,7 +759,7 @@ void cell_check_drift_point(struct cell *c, void *data) {
 
   const int ti_current = *(int *)data;
 
-  if (c->ti_old != ti_current)
+  if (c->ti_old != ti_current && c->nodeID == engine_rank)
     error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
           c->ti_old, ti_current);
 }
@@ -945,6 +949,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        if (cj->super->drift)
+          scheduler_activate(s, cj->super->drift);
+        else
+          error("Drift task missing !");
+
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
@@ -963,6 +972,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, cj->recv_xv);
         scheduler_activate(s, cj->recv_rho);
         scheduler_activate(s, cj->recv_ti);
+
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -970,6 +980,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+
+        if (ci->super->drift)
+          scheduler_activate(s, ci->super->drift);
+        else
+          error("Drift task missing !");
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
@@ -997,6 +1012,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick != NULL) scheduler_activate(s, c->kick);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
@@ -1022,4 +1038,95 @@ void cell_set_super(struct cell *c, struct cell *super) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+}
+
+/**
+ * @brief Recursively drifts all particles and g-particles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift(struct cell *c, const struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const int ti_old = c->ti_old;
+  const int ti_current = e->ti_current;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old) * timeBase;
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old) error("Attempt to drift to the past");
+
+  /* Are we not in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        cell_drift(cp, e);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
+      }
+
+  } else if (ti_current > ti_old) {
+
+    /* Loop over all the g-particles in the cell */
+    const size_t nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
+
+      /* Get a handle on the gpart. */
+      struct gpart *const gp = &gparts[k];
+
+      /* Drift... */
+      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+    }
+
+    /* Loop over all the particles in the cell */
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
+
+      /* Drift... */
+      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                        xp->x_diff[1] * xp->x_diff[1] +
+                        xp->x_diff[2] * xp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+
+      /* Maximal smoothing length */
+      h_max = (h_max > p->h) ? h_max : p->h;
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+  } else {
+
+    h_max = c->h_max;
+    dx_max = c->dx_max;
+  }
+
+  /* Store the values */
+  c->h_max = h_max;
+  c->dx_max = dx_max;
+
+  /* Update the time of the last drift */
+  c->ti_old = ti_current;
 }

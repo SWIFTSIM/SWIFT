@@ -45,6 +45,7 @@ enum task_types {
   task_type_init,
   task_type_ghost,
   task_type_extra_ghost,
+  task_type_drift,
   task_type_kick,
   task_type_send,
   task_type_recv,
