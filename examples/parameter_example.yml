@@ -81,15 +81,7 @@ IsothermalPotential:
   position_z:      100.
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
-
-# External potential parameters
-SoftenedIsothermalPotential:
-  position_x:      0.       # Location of centre of isothermal potential with respect to centre of the box (internal units)
-  position_y:      0.
-  position_z:      0.	
-  vrot:            200.     # rotation speed of isothermal potential (internal units)
   epsilon:         0.1      # Softening size (internal units)
-  timestep_mult:   0.03     # controls time step
   
 # Disk-patch potential parameters
 DiscPatchPotential:

@@ -214,6 +214,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->extra_ghost = NULL;
     c->ghost = NULL;
     c->kick = NULL;
+    c->drift = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
     c->super = c;
@@ -345,6 +346,12 @@ void space_regrid(struct space *s, int verbose) {
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2]) {
 
+/* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+    message("re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
+    fflush(stdout);
+#endif
+
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
@@ -461,8 +468,11 @@ void space_rebuild(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Be verbose about this. */
-  // message("re)building space..."); fflush(stdout);
+/* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+  message("re)building space");
+  fflush(stdout);
+#endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
@@ -1472,7 +1482,6 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct xpart *xparts = c->xparts;
-  struct engine *e = s->e;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL);
@@ -1502,7 +1511,7 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
       temp = space_getcell(s);
       temp->count = 0;
       temp->gcount = 0;
-      temp->ti_old = e->ti_current;
+      temp->ti_old = c->ti_old;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];

@@ -227,21 +227,21 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   if (c->h_max != h_max) {
     message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
             h_max);
-    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    error("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
   if (c->dx_max != dx_max) {
     message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max, dx_max);
-    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    error("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
 
   /* Check rebuild criterion. */
-  if (h_max > c->dmin) {
+  /* if (h_max > c->dmin) {
     message("%d Inconsistent c->dmin: %f > %f", *depth, h_max, c->dmin);
-    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    error("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
-  }
+  } */
 
   return result;
 }
