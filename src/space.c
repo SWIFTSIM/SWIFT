@@ -1482,6 +1482,7 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct xpart *xparts = c->xparts;
+  struct engine *e = s->e;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL);
