@@ -766,9 +766,6 @@ case "$with_potential" in
    isothermal)
       AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
    ;; 
-   softened-isothermal)
-      AC_DEFINE([EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL], [1], [Softened isothermal external potential])
-   ;; 
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
    ;; 
