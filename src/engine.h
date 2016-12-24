@@ -114,11 +114,11 @@ struct engine {
 
   /* The previous system time. */
   double timeOld;
-  int ti_old;
+  integertime_t ti_old;
 
   /* The current system time. */
   double time;
-  int ti_current;
+  integertime_t ti_current;
 
   /* Time step */
   double timeStep;
@@ -128,7 +128,7 @@ struct engine {
   double timeBase_inv;
 
   /* Minimal ti_end for the next time-step */
-  int ti_end_min;
+  integertime_t ti_end_min;
 
   /* Number of particles updated */
   size_t updates, g_updates;
@@ -139,7 +139,7 @@ struct engine {
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
-  int ti_nextSnapshot;
+  integertime_t ti_nextSnapshot;
   char snapshotBaseName[200];
   int snapshotCompression;
   struct UnitSystem *snapshotUnits;

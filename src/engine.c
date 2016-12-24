@@ -1998,7 +1998,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  const int ti_end = ((size_t *)extra_data)[0];
+  const integertime_t ti_end = ((size_t *)extra_data)[0];
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
 
@@ -2357,7 +2357,7 @@ void engine_collect_kick(struct cell *c) {
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0 || c->gcount != 0) {
@@ -2401,7 +2401,7 @@ void engine_collect_timestep(struct engine *e) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0;
-  int ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
 
   /* Collect the cell data. */

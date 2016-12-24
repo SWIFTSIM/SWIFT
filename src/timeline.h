@@ -32,12 +32,10 @@ typedef unsigned long long integertime_t;
 typedef char timebin_t;
 
 /*! The number of time bins */
-#define num_time_bins 20
+#define num_time_bins 50
 
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
-
-//#define ceil_div(x ,y) (x + y - 1) / y
 
 /**
  * @brief Returns the integer time interval corresponding to a time bin

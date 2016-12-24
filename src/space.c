@@ -1477,7 +1477,7 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
   struct cell *temp;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
@@ -1565,7 +1565,8 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
       struct part *p = &parts[k];
       struct xpart *xp = &xparts[k];
       const float h = p->h;
-      const int ti_end = get_integer_time_end(e->ti_current, p->time_bin);
+      const integertime_t ti_end =
+          get_integer_time_end(e->ti_current, p->time_bin);
       xp->x_diff[0] = 0.f;
       xp->x_diff[1] = 0.f;
       xp->x_diff[2] = 0.f;
@@ -1575,7 +1576,8 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
     }
     for (int k = 0; k < gcount; k++) {
       struct gpart *gp = &gparts[k];
-      const int ti_end = get_integer_time_end(e->ti_current, gp->time_bin);
+      const integertime_t ti_end =
+          get_integer_time_end(e->ti_current, gp->time_bin);
       gp->x_diff[0] = 0.f;
       gp->x_diff[1] = 0.f;
       gp->x_diff[2] = 0.f;

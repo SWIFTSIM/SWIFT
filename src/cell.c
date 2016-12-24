@@ -715,10 +715,10 @@ void cell_clean_links(struct cell *c, void *data) {
  */
 void cell_check_drift_point(struct cell *c, void *data) {
 
-  const int ti_current = *(int *)data;
+  integertime_t ti_current = *(int *)data;
 
   if (c->ti_old != ti_current && c->nodeID == engine_rank)
-    error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
+    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_current=%lld",
           c->ti_old, ti_current);
 }
 
@@ -1007,8 +1007,8 @@ void cell_set_super(struct cell *c, struct cell *super) {
 void cell_drift(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
-  const int ti_old = c->ti_old;
-  const int ti_current = e->ti_current;
+  const integertime_t ti_old = c->ti_old;
+  const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;

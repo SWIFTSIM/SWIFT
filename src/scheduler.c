@@ -1056,7 +1056,7 @@ void scheduler_start(struct scheduler *s) {
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const int ti_current = s->space->e->ti_current;
+  const integertime_t ti_current = s->space->e->ti_current;
 
   if (ti_current > 0) {
 
@@ -1071,8 +1071,9 @@ void scheduler_start(struct scheduler *s) {
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type != task_type_sort && t->type)
           error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "c->ti_end_min=%d",
+              "Task (type='%s/%s') should not have been skipped "
+              "ti_current=%lld "
+              "c->ti_end_min=%lld",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min);
 
@@ -1080,8 +1081,9 @@ void scheduler_start(struct scheduler *s) {
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type == task_type_sort && t->flags == 0)
           error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "c->ti_end_min=%d t->flags=%d",
+              "Task (type='%s/%s') should not have been skipped "
+              "ti_current=%lld "
+              "c->ti_end_min=%lld t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, t->flags);
 
@@ -1090,8 +1092,9 @@ void scheduler_start(struct scheduler *s) {
         if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
             t->skip)
           error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "ci->ti_end_min=%d cj->ti_end_min=%d",
+              "Task (type='%s/%s') should not have been skipped "
+              "ti_current=%lld "
+              "ci->ti_end_min=%lld cj->ti_end_min=%lld",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, cj->ti_end_min);
       }

@@ -85,8 +85,8 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti = make_integer_timestep(new_dt, gp->time_bin, e->ti_current,
-                                            e->timeBase_inv);
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, gp->time_bin, e->ti_current, e->timeBase_inv);
 
   return new_dti;
 }
@@ -141,8 +141,8 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti = make_integer_timestep(new_dt, p->time_bin, e->ti_current,
-                                            e->timeBase_inv);
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, p->time_bin, e->ti_current, e->timeBase_inv);
 
   return new_dti;
 }

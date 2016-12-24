@@ -41,8 +41,8 @@ __attribute__((always_inline)) INLINE static int cell_is_drifted(
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->ti_old > e->ti_current)
     error(
-        "Cell has been drifted too far forward in time! c->ti_old=%d "
-        "e->ti_current=%d",
+        "Cell has been drifted too far forward in time! c->ti_old=%lld "
+        "e->ti_current=%lld",
         c->ti_old, e->ti_current);
 #endif
 
@@ -61,8 +61,10 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->ti_end_min < e->ti_current)
-    error("cell in an impossible time-zone! c->ti_end_min=%d e->ti_current=%d",
-          c->ti_end_min, e->ti_current);
+    error(
+        "cell in an impossible time-zone! c->ti_end_min=%lld "
+        "e->ti_current=%lld",
+        c->ti_end_min, e->ti_current);
 #endif
 
   return (c->ti_end_min == e->ti_current);
@@ -80,8 +82,10 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->ti_end_max < e->ti_current)
-    error("cell in an impossible time-zone! c->ti_end_max=%d e->ti_current=%d",
-          c->ti_end_max, e->ti_current);
+    error(
+        "cell in an impossible time-zone! c->ti_end_max=%lld "
+        "e->ti_current=%lld",
+        c->ti_end_max, e->ti_current);
 #endif
 
   return (c->ti_end_max == e->ti_current);

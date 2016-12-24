@@ -44,8 +44,8 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
       get_integer_time_begin(ti_current, gp->time_bin);
   const integertime_t old_ti_end =
       get_integer_time_end(ti_current, gp->time_bin);
-  const int ti_start = (old_ti_begin + old_ti_end) / 2;
-  const int ti_end = old_ti_end + new_dti / 2;
+  const integertime_t ti_start = (old_ti_begin + old_ti_end) / 2;
+  const integertime_t ti_end = old_ti_end + new_dti / 2;
   const float dt = (ti_end - ti_start) * timeBase;
   const float half_dt = (ti_end - old_ti_end) * timeBase;
 
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_part(
-    struct part *restrict p, struct xpart *restrict xp, int new_dti,
+    struct part *restrict p, struct xpart *restrict xp, integertime_t new_dti,
     integertime_t ti_current, double timeBase) {
 
   /* Compute the time step for this kick */
@@ -81,8 +81,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
       get_integer_time_begin(ti_current, p->time_bin);
   const integertime_t old_ti_end =
       get_integer_time_end(ti_current, p->time_bin);
-  const int ti_start = (old_ti_begin + old_ti_end) / 2;
-  const int ti_end = old_ti_end + new_dti / 2;
+  const integertime_t ti_start = (old_ti_begin + old_ti_end) / 2;
+  const integertime_t ti_end = old_ti_end + new_dti / 2;
   const float dt = (ti_end - ti_start) * timeBase;
   const float half_dt = (ti_end - old_ti_end) * timeBase;
 

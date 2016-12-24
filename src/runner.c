@@ -114,7 +114,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #include "runner_doiact_grav.h"
 
 #undef ICHECK
-#define ICHECK -116650
+#define ICHECK 116650
 
 /**
  * @brief Perform source terms
@@ -594,7 +594,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   int redo, count = c->count;
   const struct engine *e = r->e;
-  const int ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const double timeBase = e->timeBase;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
@@ -837,7 +837,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const double timeBase = e->timeBase;
-  const int ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
   struct part *restrict parts = c->parts;
@@ -855,7 +855,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   }
 
   int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -887,8 +887,8 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         /* Minimal time for next end of time-step */
         const integertime_t ti_end =
             get_integer_time_end(ti_current, gp->time_bin);
-        ti_end_min = min((int)ti_end, ti_end_min);
-        ti_end_max = max((int)ti_end, ti_end_max);
+        ti_end_min = min(ti_end, ti_end_min);
+        ti_end_max = max(ti_end, ti_end_max);
       }
     }
 
@@ -905,7 +905,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
 
       if (p->id == ICHECK)
-        message("Particle in kick ti_end=%lld ti_current=%d", ti_end,
+        message("Particle in kick ti_end=%lld ti_current=%lld", ti_end,
                 e->ti_current);
 
       /* If particle needs to be kicked */
@@ -918,10 +918,10 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
         /* Compute the next timestep (hydro condition) */
-        const int new_dti = get_part_timestep(p, xp, e);
+        const integertime_t new_dti = get_part_timestep(p, xp, e);
 
         if (p->id == ICHECK)
-          message("time_step=%d (%e)", new_dti, new_dti * e->timeBase);
+          message("time_step=%lld (%e)", new_dti, new_dti * e->timeBase);
 
         /* Now we have a time step, proceed with the kick */
         kick_part(p, xp, new_dti, e->ti_current, timeBase);
@@ -936,11 +936,11 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       }
 
       if (p->id == ICHECK)
-        message("ti_current = %d dti=%lld ti_end=%lld (%f)", ti_current,
+        message("ti_current = %lld dti=%lld ti_end=%lld (%f)", ti_current,
                 get_integer_timestep(p->time_bin), ti_end,
                 ti_end * e->timeBase);
-      ti_end_min = min((int)ti_end, ti_end_min);
-      ti_end_max = max((int)ti_end, ti_end_max);
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_end_max = max(ti_end, ti_end_max);
     }
   }
 
@@ -972,6 +972,8 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_kick);
 }
 
+#ifdef WITH_MPI
+
 /**
  * @brief Construct the cell properties from the received particles
  *
@@ -989,8 +991,8 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  int ti_end_min = max_nr_timesteps;
-  int ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
   float h_max = 0.f;
 
   /* If this cell is a leaf, collect the particle data. */
@@ -998,14 +1000,14 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      const int ti_end = 0;  // parts[k].ti_end; //MATTHIEU
+      const integertime_t ti_end = 0;  // parts[k].ti_end; //MATTHIEU
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
     }
     for (size_t k = 0; k < nr_gparts; k++) {
-      const int ti_end = 0;  // gparts[k].ti_end; //MATTHIEU
+      const integertime_t ti_end = 0;  // gparts[k].ti_end; //MATTHIEU
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
@@ -1033,6 +1035,8 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
 }
+
+#endif /* WITH_MPI */
 
 /**
  * @brief The #runner main thread routine.
@@ -1084,8 +1088,8 @@ void *runner_main(void *data) {
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
             t->type != task_type_send && t->type != task_type_recv)
           error(
-              "Task (type='%s/%s') should have been skipped ti_current=%d "
-              "c->ti_end_min=%d",
+              "Task (type='%s/%s') should have been skipped ti_current=%lld "
+              "c->ti_end_min=%lld",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min);
 
@@ -1093,8 +1097,8 @@ void *runner_main(void *data) {
         if (!cell_is_active(ci, e) && t->type == task_type_sort &&
             t->flags == 0)
           error(
-              "Task (type='%s/%s') should have been skipped ti_current=%d "
-              "c->ti_end_min=%d t->flags=%d",
+              "Task (type='%s/%s') should have been skipped ti_current=%lld "
+              "c->ti_end_min=%lld t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
 
@@ -1103,8 +1107,8 @@ void *runner_main(void *data) {
 
           if (t->type != task_type_send && t->type != task_type_recv)
             error(
-                "Task (type='%s/%s') should have been skipped ti_current=%d "
-                "ci->ti_end_min=%d cj->ti_end_min=%d",
+                "Task (type='%s/%s') should have been skipped ti_current=%lld "
+                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
                 taskID_names[t->type], subtaskID_names[t->subtype],
                 e->ti_current, ci->ti_end_min, cj->ti_end_min);
       }

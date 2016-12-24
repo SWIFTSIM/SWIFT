@@ -365,8 +365,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, float dt, int t0,
-    int t1, double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt,
+    integertime_t t0, integertime_t t1, double timeBase) {
 
   const float h_inv = 1.f / p->h;
 
