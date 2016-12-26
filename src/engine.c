@@ -2683,9 +2683,14 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
 
+#ifdef SWIFT_DEBUG_CHECKS
   for (size_t i = 0; i < e->s->nr_parts; ++i) {
     if (e->s->parts[i].time_bin == 0) error("Particle in bin 0");
   }
+#endif
+
+  /* if(e->step > 2) */
+  /*   error("Done"); */
 
   /* Save some statistics */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {

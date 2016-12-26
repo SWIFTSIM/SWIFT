@@ -39,8 +39,8 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, float dt, double timeBase, int ti_old,
-    int ti_current) {
+    struct gpart *restrict gp, float dt, double timeBase, integertime_t ti_old,
+    integertime_t ti_current) {
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
   gp->x[1] += gp->v_full[1] * dt;
@@ -64,7 +64,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  */
 __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, float dt,
-    double timeBase, int ti_old, int ti_current) {
+    double timeBase, integertime_t ti_old, integertime_t ti_current) {
 
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt;

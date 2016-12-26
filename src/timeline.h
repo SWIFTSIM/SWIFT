@@ -101,7 +101,7 @@ static INLINE integertime_t get_integer_time_end(integertime_t ti_current,
   if (dti == 0)
     return 0;
   else
-    return dti * ceil((double)ti_current / (double)dti);
+    return dti * ceill((double)ti_current / (double)dti);
 }
 
 /**

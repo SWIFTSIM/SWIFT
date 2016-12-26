@@ -1988,7 +1988,7 @@ void space_link_cleanup(struct space *s) {
  * @param s The #space to check.
  * @param ti_current The (integer) time.
  */
-void space_check_drift_point(struct space *s, int ti_current) {
+void space_check_drift_point(struct space *s, integertime_t ti_current) {
 
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_drift_point, &ti_current);

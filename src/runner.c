@@ -113,9 +113,6 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #include "runner_doiact_fft.h"
 #include "runner_doiact_grav.h"
 
-#undef ICHECK
-#define ICHECK 116650
-
 /**
  * @brief Perform source terms
  *
@@ -972,8 +969,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_kick);
 }
 
-#ifdef WITH_MPI
-
 /**
  * @brief Construct the cell properties from the received particles
  *
@@ -1035,8 +1030,6 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
 }
-
-#endif /* WITH_MPI */
 
 /**
  * @brief The #runner main thread routine.
