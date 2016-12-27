@@ -246,7 +246,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -480,7 +480,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells_top = s->cells_top;
-  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid

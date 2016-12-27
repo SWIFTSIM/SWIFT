@@ -56,7 +56,7 @@ static INLINE integertime_t get_integer_timestep(timebin_t bin) {
 static INLINE timebin_t get_time_bin(integertime_t time_step) {
 
   /* ((int) log_2(time_step)) - 1 */
-  return 62 - intrinsics_clzll(time_step);
+  return (timebin_t)(62 - intrinsics_clzll(time_step));
 }
 
 /**

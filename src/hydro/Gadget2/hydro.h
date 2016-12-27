@@ -288,8 +288,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp, int ti_current,
-    double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp,
+    integertime_t ti_current, double timeBase) {
 
   const float fac_mu = 1.f; /* Will change with cosmological integration */
 
