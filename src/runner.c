@@ -979,10 +979,10 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
   const struct part *restrict parts = c->parts;
-  // const struct gpart *restrict gparts = c->gparts;
+  const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
   const size_t nr_gparts = c->gcount;
-  const int ti_current = r->e->ti_current;
+  const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
 
@@ -995,14 +995,16 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      const integertime_t ti_end = 0;  // parts[k].ti_end; //MATTHIEU
+      const integertime_t ti_end =
+          get_integer_time_end(ti_current, parts[k].time_bin);
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
     }
     for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end = 0;  // gparts[k].ti_end; //MATTHIEU
+      const integertime_t ti_end =
+          get_integer_time_end(ti_current, gparts[k].time_bin);
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
