@@ -44,7 +44,7 @@ typedef char timebin_t;
  */
 static INLINE integertime_t get_integer_timestep(timebin_t bin) {
 
-  if (bin == 0) return 0;
+  if (bin <= 0) return 0;
   return 1LL << (bin + 1);
 }
 
@@ -101,7 +101,7 @@ static INLINE integertime_t get_integer_time_end(integertime_t ti_current,
   if (dti == 0)
     return 0;
   else
-    return dti * ceill((double)ti_current / (double)dti);
+    return dti * ceil((double)ti_current / (double)dti);
 }
 
 /**

@@ -42,15 +42,16 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
   /* Convert to integer time */
   integertime_t new_dti = (integertime_t)(new_dt * timeBase_inv);
 
-  if (verbose) message("new_dti=%lld", new_dti);
+  /* if (verbose) message("new_dti=%lld", new_dti); */
 
   /* Current time-step */
   integertime_t current_dti = get_integer_timestep(old_bin);
   integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
 
-  if (verbose)
-    message("current_dti=%lld old_bin=%d ti_end=%lld", current_dti, old_bin,
-            ti_end);
+  /* if (verbose) */
+  /*   message("current_dti=%lld old_bin=%d ti_end=%lld", current_dti, old_bin,
+   */
+  /*           ti_end); */
 
   /* Limit timestep increase */
   if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
@@ -60,14 +61,14 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
   while (new_dti < dti_timeline) dti_timeline /= 2LL;
   new_dti = dti_timeline;
 
-  if (verbose) message("new_dti=%lld", new_dti);
+  /* if (verbose) message("new_dti=%lld", new_dti); */
 
   /* Make sure we are allowed to increase the timestep size */
   if (new_dti > current_dti) {
     if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
 
-  if (verbose) message("new_dti=%lld", new_dti);
+  /* if (verbose) message("new_dti=%lld", new_dti); */
 
   return new_dti;
 }
@@ -150,13 +151,13 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   new_dt = min(new_dt, e->dt_max);
   new_dt = max(new_dt, e->dt_min);
 
-  if (p->id == ICHECK) message("new_dt=%e", new_dt);
+  /* if (p->id == ICHECK) message("new_dt=%e", new_dt); */
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, e->ti_current, e->timeBase_inv, p->id == ICHECK);
 
-  if (p->id == ICHECK) message("new_dti=%lld", new_dti);
+  /* if (p->id == ICHECK) message("new_dti=%lld", new_dti); */
 
   return new_dti;
 }

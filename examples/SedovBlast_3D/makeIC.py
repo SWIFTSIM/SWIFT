@@ -54,7 +54,6 @@ u[:] = P0 / (rho0 * (gamma - 1))
 # Make the central particles detonate
 index = argsort(r)
 u[index[0:N_inject]] = E0 / (N_inject * m[0])
-print ids[index[0:N_inject]]
 
 #--------------------------------------------------
 
