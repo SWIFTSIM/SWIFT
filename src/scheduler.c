@@ -132,7 +132,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
     /* Non-splittable task? */
     if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
-        ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
@@ -963,7 +964,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_ghost:
         if (t->ci == t->ci->super) cost = wscale * t->ci->count;
         break;
-      case task_type_kick:
+      case task_type_kick1:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_kick2:
         cost = wscale * t->ci->count;
         break;
       case task_type_init:
@@ -1154,7 +1158,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
-      case task_type_kick:
+      case task_type_kick1:
+      case task_type_kick2:
       case task_type_drift:
       case task_type_init:
         qid = t->ci->super->owner;

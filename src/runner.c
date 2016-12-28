@@ -823,6 +823,121 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
   }
 }
 
+void runner_do_kick1(struct runner *r, struct cell *c, int timer) {}
+
+void runner_do_kick2(struct runner *r, struct cell *c, int timer) {}
+
+/**
+ * @brief Kick particles in momentum space and collect statistics.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_kick(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  // const double timeBase = e->timeBase;
+  const integertime_t ti_current = e->ti_current;
+  const int count = c->count;
+  // const int gcount = c->gcount;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  // struct gpart *restrict gparts = c->gparts;
+  const double const_G = e->physical_constants->const_newton_G;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) {
+    c->updated = 0;
+    c->g_updated = 0;
+    return;
+  }
+
+  int updated = 0, g_updated = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+
+  /* No children? */
+  if (!c->split) {
+
+    /* Loop over the particles and kick the active ones. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be kicked */
+      if (part_is_active(p, e)) {
+
+        /* First, finish the force loop */
+        hydro_end_force(p);
+        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
+
+        const integertime_t ti_step = get_integer_timestep(p->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        /* And finish the time-step with a second half-kick */
+        kick_part(p, xp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current);
+      }
+    }
+
+    /* Loop over the particles and kick the active ones. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be kicked */
+      if (part_is_active(p, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(p->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        /* And finish the time-step with a second half-kick */
+        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current);
+      }
+    }
+  }
+
+  /* Otherwise, aggregate data from children. */
+  else {
+
+    /* Loop over the progeny. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Recurse */
+        runner_do_kick(r, cp, 0);
+
+        /* And aggregate */
+        updated += cp->updated;
+        g_updated += cp->g_updated;
+        ti_end_min = min(cp->ti_end_min, ti_end_min);
+        ti_end_max = max(cp->ti_end_max, ti_end_max);
+      }
+  }
+
+  /* Store the values. */
+  c->updated = updated;
+  c->g_updated = g_updated;
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+
+  if (timer) TIMER_TOC(timer_kick);
+}
+
+#ifdef OLD_KICK
+
 /**
  * @brief Kick particles in momentum space and collect statistics.
  *
@@ -968,6 +1083,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_kick);
 }
+#endif
 
 /**
  * @brief Construct the cell properties from the received particles
@@ -1192,8 +1308,11 @@ void *runner_main(void *data) {
         case task_type_drift:
           runner_do_drift(r, ci, 1);
           break;
-        case task_type_kick:
-          runner_do_kick(r, ci, 1);
+        case task_type_kick1:
+          runner_do_kick1(r, ci, 1);
+          break;
+        case task_type_kick2:
+          runner_do_kick2(r, ci, 1);
           break;
 #ifdef WITH_MPI
         case task_type_send:

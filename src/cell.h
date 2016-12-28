@@ -150,8 +150,11 @@ struct cell {
   /*! The drift task */
   struct task *drift;
 
-  /*! The kick task */
-  struct task *kick;
+  /*! The first kick task */
+  struct task *kick1;
+
+  /*! The second kick task */
+  struct task *kick2;
 
   /*! Task constructing the multipole from the particles */
   struct task *grav_up;

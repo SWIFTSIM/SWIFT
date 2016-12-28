@@ -140,8 +140,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      /* Add the two half kicks */
+      c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+
+      c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
 
       /* Add the drift task and dependency. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
@@ -692,7 +696,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      scheduler_addunlock(s, t_gradient, ci->super->kick);
+      scheduler_addunlock(s, t_gradient, ci->super->kick2);
 
       scheduler_addunlock(s, ci->super->extra_ghost, t_gradient);
 
@@ -707,7 +711,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
 #else
       /* The send_rho task should unlock the super-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->super->kick);
+      scheduler_addunlock(s, t_rho, ci->super->kick2);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->super->ghost, t_rho);
@@ -719,7 +723,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* The super-cell's kick task should unlock the send_ti task. */
-      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
+      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick2, t_ti);
     }
 
     /* Add them to the local cell. */
@@ -1454,7 +1458,7 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
 
   /* init --> gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
 
   /* grav_up --> gravity ( --> kick) */
   scheduler_addunlock(sched, c->super->grav_up, gravity);
@@ -1473,7 +1477,7 @@ static inline void engine_make_external_gravity_dependencies(
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
 }
 
 /**
@@ -1512,7 +1516,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* Gather the multipoles --> mm interaction --> kick */
       scheduler_addunlock(sched, gather, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick);
+      scheduler_addunlock(sched, t, t->ci->super->kick2);
 
       /* init --> mm interaction */
       scheduler_addunlock(sched, t->ci->super->init, t);
@@ -1596,14 +1600,16 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *gradient,
                                                         struct task *force,
                                                         struct cell *c) {
-  /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
-  /* extra_ghost --> force loop --> kick */
+  /* kick1 --> init --> density loop --> ghost --> gradient loop --> extra_ghost
+   */
+  /* extra_ghost --> force loop --> kick2 */
+  scheduler_addunlock(sched, c->super->kick1, c->super->init);
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, gradient);
   scheduler_addunlock(sched, gradient, c->super->extra_ghost);
   scheduler_addunlock(sched, c->super->extra_ghost, force);
-  scheduler_addunlock(sched, force, c->super->kick);
+  scheduler_addunlock(sched, force, c->super->kick2);
 }
 
 #else
@@ -1620,11 +1626,12 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
                                                         struct cell *c) {
-  /* init --> density loop --> ghost --> force loop --> kick */
+  /* kick1 --> init --> density loop --> ghost --> force loop --> kick2 */
+  scheduler_addunlock(sched, c->super->kick1, c->super->init);
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);
-  scheduler_addunlock(sched, force, c->super->kick);
+  scheduler_addunlock(sched, force, c->super->kick2);
 }
 
 #endif
@@ -1818,18 +1825,21 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       }
 #endif
     }
-    /* Cooling tasks should depend on kick and unlock sourceterms */
-    else if (t->type == task_type_cooling) {
-      scheduler_addunlock(sched, t->ci->kick, t);
-    }
-    /* source terms depend on cooling if performed, else on kick. It is the last
-       task */
-    else if (t->type == task_type_sourceterms) {
-      if (e->policy == engine_policy_cooling)
-        scheduler_addunlock(sched, t->ci->cooling, t);
-      else
-        scheduler_addunlock(sched, t->ci->kick, t);
-    }
+
+    /* /\* Cooling tasks should depend on kick and unlock sourceterms *\/ */
+    /* else if (t->type == task_type_cooling) { */
+    /*   scheduler_addunlock(sched, t->ci->kick, t); */
+    /* } */
+    /* /\* source terms depend on cooling if performed, else on kick. It is the
+     * last */
+    /*    task *\/ */
+    /* else if (t->type == task_type_sourceterms) { */
+    /*   if (e->policy == engine_policy_cooling) */
+    /*     scheduler_addunlock(sched, t->ci->cooling, t); */
+    /*   else */
+    /*     scheduler_addunlock(sched, t->ci->kick, t); */
+    /* } */
+    // MATTHIEU
   }
 }
 
@@ -2121,7 +2131,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Kick? */
-    else if (t->type == task_type_kick) {
+    else if (t->type == task_type_kick1) {
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_kick2) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
@@ -2353,7 +2367,7 @@ void engine_barrier(struct engine *e, int tid) {
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
-  if (c->kick != NULL) return;
+  if (c->kick2 != NULL) return;
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
@@ -2505,9 +2519,10 @@ void engine_skip_force_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->subtype == task_subtype_force || t->type == task_type_kick ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms ||
-        t->type == task_type_drift)
+    if (t->subtype ==
+            task_subtype_force ||  // t->type == task_type_kick || //MATTHIEU
+        t->type == task_type_cooling ||
+        t->type == task_type_sourceterms || t->type == task_type_drift)
       t->skip = 1;
   }
 }

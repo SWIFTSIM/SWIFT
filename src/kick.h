@@ -27,6 +27,8 @@
 #include "debug.h"
 #include "timeline.h"
 
+#if 0
+
 /**
  * @brief Perform the 'kick' operation on a #gpart
  *
@@ -125,5 +127,11 @@ __attribute__((always_inline)) INLINE static void kick_part(
   hydro_kick_extra(p, xp, dt, half_dt);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt, half_dt);
 }
+
+#endif
+
+__attribute__((always_inline)) INLINE static void kick_part(
+    struct part *restrict p, struct xpart *restrict xp, integertime_t ti_start,
+    integertime_t ti_end, integertime_t ti_current) {}
 
 #endif /* SWIFT_KICK_H */
