@@ -99,6 +99,6 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
-    struct gpart* gp, float dt, float half_dt) {}
+    struct gpart* gp, float dt) {}
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

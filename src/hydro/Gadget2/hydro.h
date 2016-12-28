@@ -427,8 +427,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt,
-    float half_dt) {
+    struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   const float entropy_change = p->entropy_dt * dt;
@@ -436,10 +435,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->entropy += entropy_change;
   else
     p->entropy *= 0.5f;
-
-  /* Do not 'overcool' when timestep increases */
-  if (p->entropy + p->entropy_dt * half_dt < 0.5f * p->entropy)
-    p->entropy_dt = -0.5f * p->entropy / half_dt;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);

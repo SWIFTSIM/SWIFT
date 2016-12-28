@@ -832,6 +832,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const int count = c->count;
   const int gcount = c->gcount;
   const integertime_t ti_current = e->ti_current;
+  const double timeBase = e->timeBase;
 
   TIMER_TIC;
 
@@ -861,7 +862,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
             get_integer_time_end(ti_current, p->time_bin);
 
         /* do the kick */
-        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current);
+        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current, timeBase);
       }
     }
 
@@ -874,14 +875,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
 
-	const integertime_t ti_step = get_integer_timestep(gp->time_bin);
-	const integertime_t ti_begin =
-	  get_integer_time_begin(ti_current, gp->time_bin);
+        const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, gp->time_bin);
         const integertime_t ti_end =
-	  get_integer_time_end(ti_current, gp->time_bin);
-	
+            get_integer_time_end(ti_current, gp->time_bin);
+
         /* do the kick */
-        kick_gpart(gp, ti_begin, ti_end + ti_step / 2, ti_current);
+        kick_gpart(gp, ti_begin, ti_end + ti_step / 2, ti_current, timeBase);
       }
     }
   }
@@ -892,6 +893,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const double timeBase = e->timeBase;
   const int count = c->count;
   const int gcount = c->gcount;
   struct part *restrict parts = c->parts;
@@ -934,8 +936,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
 
-        /* And finish the time-step with a second half-kick */
-        kick_part(p, xp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current);
+        /* Finish the time-step with a second half-kick */
+        kick_part(p, xp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current,
+                  timeBase);
       }
     }
 
@@ -947,7 +950,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
-	
+
         /* First, finish the force loop */
         gravity_end_force(gp, const_G);
 
@@ -957,8 +960,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, gp->time_bin);
 
-        /* And finish the time-step with a second half-kick */
-        kick_gpart(gp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current);
+        /* Finish the time-step with a second half-kick */
+        kick_gpart(gp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current,
+                   timeBase);
       }
     }
   }

@@ -132,10 +132,48 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
 __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, integertime_t ti_start,
-    integertime_t ti_end, integertime_t ti_current) {}
+    integertime_t ti_end, integertime_t ti_current, double timeBase) {
+
+  /* Time interval for this half-kick */
+  const float dt = (ti_end - ti_start) * timeBase;
+
+  /* Get the acceleration */
+  float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
+  if (p->gpart != NULL) {
+    a_tot[0] += p->gpart->a_grav[0];
+    a_tot[1] += p->gpart->a_grav[1];
+    a_tot[2] += p->gpart->a_grav[2];
+  }
+
+  /* Kick particles in momentum space */
+  xp->v_full[0] += a_tot[0] * dt;
+  xp->v_full[1] += a_tot[1] * dt;
+  xp->v_full[2] += a_tot[2] * dt;
+  if (p->gpart != NULL) {
+    p->gpart->v_full[0] = xp->v_full[0];
+    p->gpart->v_full[1] = xp->v_full[1];
+    p->gpart->v_full[2] = xp->v_full[2];
+  }
+
+  /* Extra kick work */
+  hydro_kick_extra(p, xp, dt);
+  if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt);
+}
 
 __attribute__((always_inline)) INLINE static void kick_gpart(
     struct gpart *restrict gp, integertime_t ti_start, integertime_t ti_end,
-    integertime_t ti_current) {}
+    integertime_t ti_current, double timeBase) {
+
+  /* Time interval for this half-kick */
+  const float dt = (ti_end - ti_start) * timeBase;
+
+  /* Kick particles in momentum space */
+  gp->v_full[0] += gp->a_grav[0] * dt;
+  gp->v_full[1] += gp->a_grav[1] * dt;
+  gp->v_full[2] += gp->a_grav[2] * dt;
+
+  /* Kick extra variables */
+  gravity_kick_extra(gp, dt);
+}
 
 #endif /* SWIFT_KICK_H */
