@@ -147,10 +147,11 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      /* Add the drift task and dependency. */
+      /* Add the drift task and its dependencies. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
+      scheduler_addunlock(s, c->kick1, c->drift);
       scheduler_addunlock(s, c->drift, c->init);
 
       /* Generate the ghost task. */
@@ -1600,10 +1601,8 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *gradient,
                                                         struct task *force,
                                                         struct cell *c) {
-  /* kick1 --> init --> density loop --> ghost --> gradient loop --> extra_ghost
-   */
+  /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop --> kick2 */
-  scheduler_addunlock(sched, c->super->kick1, c->super->init);
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, gradient);
@@ -1626,8 +1625,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
                                                         struct cell *c) {
-  /* kick1 --> init --> density loop --> ghost --> force loop --> kick2 */
-  scheduler_addunlock(sched, c->super->kick1, c->super->init);
+  /* init --> density loop --> ghost --> force loop --> kick2 */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);

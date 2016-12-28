@@ -930,6 +930,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
@@ -937,6 +939,21 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp);
+
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
+
+        /* Update particle */
+        p->time_bin = get_time_bin(ti_new_step);
+        if (p->gpart != NULL) p->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated particles */
+        updated++;
+        if (p->gpart != NULL) g_updated++;
+
+        /* What is the next sync-point ? */
+        ti_end_min = min(ti_end + ti_new_step, ti_end_min);
+        ti_end_max = max(ti_end + ti_new_step, ti_end_max);
       }
     }
 
@@ -955,10 +972,25 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, gp->time_bin);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, gp->time_bin);
 
         /* Finish the time-step with a second half-kick */
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
                    timeBase);
+
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_gpart_timestep(gp, e);
+
+        /* Update particle */
+        gp->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated g-particles */
+        g_updated++;
+
+        /* What is the next sync-point ? */
+        ti_end_min = min(ti_end + ti_new_step, ti_end_min);
+        ti_end_max = max(ti_end + ti_new_step, ti_end_max);
       }
     }
   }
