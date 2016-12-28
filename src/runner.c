@@ -823,27 +823,80 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
   }
 }
 
-void runner_do_kick1(struct runner *r, struct cell *c, int timer) {}
-
-void runner_do_kick2(struct runner *r, struct cell *c, int timer) {}
-
-/**
- * @brief Kick particles in momentum space and collect statistics.
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer Are we timing this ?
- */
-void runner_do_kick(struct runner *r, struct cell *c, int timer) {
+void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
-  // const double timeBase = e->timeBase;
-  const integertime_t ti_current = e->ti_current;
-  const int count = c->count;
-  // const int gcount = c->gcount;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
-  // struct gpart *restrict gparts = c->gparts;
+  struct gpart *restrict gparts = c->gparts;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  const integertime_t ti_current = e->ti_current;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_kick1(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be kicked */
+      if (part_is_active(p, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(p->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        /* do the kick */
+        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current);
+      }
+    }
+
+    /* Loop over the parts in this cell. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the part. */
+      struct gpart *restrict gp = &gparts[k];
+
+      /* If the g-particle has no counterpart and needs to be kicked */
+      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+
+	const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+	const integertime_t ti_begin =
+	  get_integer_time_begin(ti_current, gp->time_bin);
+        const integertime_t ti_end =
+	  get_integer_time_end(ti_current, gp->time_bin);
+	
+        /* do the kick */
+        kick_gpart(gp, ti_begin, ti_end + ti_step / 2, ti_current);
+      }
+    }
+  }
+  if (timer) TIMER_TOC(timer_kick1);
+}
+
+void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const integertime_t ti_current = e->ti_current;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
   const double const_G = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
@@ -861,7 +914,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   /* No children? */
   if (!c->split) {
 
-    /* Loop over the particles and kick the active ones. */
+    /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
@@ -886,24 +939,26 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the particles and kick the active ones. */
-    for (int k = 0; k < count; k++) {
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
-      /* If particle needs to be kicked */
-      if (part_is_active(p, e)) {
+      /* If the g-particle has no counterpart and needs to be kicked */
+      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+	
+        /* First, finish the force loop */
+        gravity_end_force(gp, const_G);
 
-        const integertime_t ti_step = get_integer_timestep(p->time_bin);
+        const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, p->time_bin);
+            get_integer_time_begin(ti_current, gp->time_bin);
         const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
+            get_integer_time_end(ti_current, gp->time_bin);
 
         /* And finish the time-step with a second half-kick */
-        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current);
+        kick_gpart(gp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current);
       }
     }
   }
@@ -917,7 +972,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
-        runner_do_kick(r, cp, 0);
+        runner_do_kick2(r, cp, 0);
 
         /* And aggregate */
         updated += cp->updated;
@@ -933,7 +988,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
-  if (timer) TIMER_TOC(timer_kick);
+  if (timer) TIMER_TOC(timer_kick2);
 }
 
 #ifdef OLD_KICK

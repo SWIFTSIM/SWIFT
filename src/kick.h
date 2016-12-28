@@ -134,4 +134,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, integertime_t ti_start,
     integertime_t ti_end, integertime_t ti_current) {}
 
+__attribute__((always_inline)) INLINE static void kick_gpart(
+    struct gpart *restrict gp, integertime_t ti_start, integertime_t ti_end,
+    integertime_t ti_current) {}
+
 #endif /* SWIFT_KICK_H */
