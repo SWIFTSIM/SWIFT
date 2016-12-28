@@ -858,11 +858,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
 
         /* do the kick */
-        kick_part(p, xp, ti_begin, ti_end + ti_step / 2, ti_current, timeBase);
+        kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, ti_current,
+                  timeBase);
       }
     }
 
@@ -878,11 +877,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, gp->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
 
         /* do the kick */
-        kick_gpart(gp, ti_begin, ti_end + ti_step / 2, ti_current, timeBase);
+        kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, ti_current, timeBase);
       }
     }
   }
@@ -933,12 +930,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current,
+        kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
                   timeBase);
+
+        /* Prepare the values to be drifted */
+        hydro_reset_predicted_values(p, xp);
       }
     }
 
@@ -957,11 +955,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, gp->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
 
         /* Finish the time-step with a second half-kick */
-        kick_gpart(gp, ti_begin + ti_step / 2, ti_end + ti_step, ti_current,
+        kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
                    timeBase);
       }
     }

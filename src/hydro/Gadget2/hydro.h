@@ -354,6 +354,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.v_sig = 0.0f;
 }
 
+__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
+    struct part *restrict p, const struct xpart *restrict xp) {
+
+  /* Re-set the predicted velocities */
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
+}
+
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
