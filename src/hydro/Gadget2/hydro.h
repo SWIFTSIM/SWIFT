@@ -354,6 +354,13 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.v_sig = 0.0f;
 }
 
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param p The particle.
+ * @param xp The extended data of this particle.
+ */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp) {
 
@@ -433,7 +440,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p The particle to act upon
  * @param xp The particle extended data to act upon
  * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {

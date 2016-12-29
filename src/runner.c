@@ -823,6 +823,13 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Perform the first half-kick on all the active particles in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
 void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
@@ -865,7 +872,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the parts in this cell. */
+    /* Loop over the gparts in this cell. */
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
@@ -886,6 +893,16 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_kick1);
 }
 
+/**
+ * @brief Perform the second half-kick on all the active particles in a cell.
+ *
+ * Also computes the next time-step of all active particles, prepare them to be 
+ * drifted and update the cell's statistics. 
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
 void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
@@ -957,7 +974,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the particles in this cell. */
+    /* Loop over the g-particles in this cell. */
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
@@ -1022,155 +1039,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_kick2);
 }
-
-#ifdef OLD_KICK
-
-/**
- * @brief Kick particles in momentum space and collect statistics.
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer Are we timing this ?
- */
-void runner_do_kick(struct runner *r, struct cell *c, int timer) {
-
-  const struct engine *e = r->e;
-  const double timeBase = e->timeBase;
-  const integertime_t ti_current = e->ti_current;
-  const int count = c->count;
-  const int gcount = c->gcount;
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  struct gpart *restrict gparts = c->gparts;
-  const double const_G = e->physical_constants->const_newton_G;
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(c, e)) {
-    c->updated = 0;
-    c->g_updated = 0;
-    return;
-  }
-
-  int updated = 0, g_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
-
-  /* No children? */
-  if (!c->split) {
-
-    /* Loop over the g-particles and kick the active ones. */
-    for (int k = 0; k < gcount; k++) {
-
-      /* Get a handle on the part. */
-      struct gpart *restrict gp = &gparts[k];
-
-      /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id_or_neg_offset > 0) {
-
-        if (gpart_is_active(gp, e)) {
-
-          /* First, finish the force calculation */
-          gravity_end_force(gp, const_G);
-
-          /* Compute the next timestep */
-          const int new_dti = get_gpart_timestep(gp, e);
-
-          /* Now we have a time step, proceed with the kick */
-          kick_gpart(gp, new_dti, e->ti_current, timeBase);
-
-          /* Number of updated g-particles */
-          g_updated++;
-        }
-
-        /* Minimal time for next end of time-step */
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
-        ti_end_min = min(ti_end, ti_end_min);
-        ti_end_max = max(ti_end, ti_end_max);
-      }
-    }
-
-    /* Now do the hydro ones... */
-
-    /* Loop over the particles and kick the active ones. */
-    for (int k = 0; k < count; k++) {
-
-      /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
-
-      /* Minimal time for next end of time-step */
-      integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-
-      if (p->id == ICHECK)
-        message("Particle in kick ti_end=%lld ti_current=%lld", ti_end,
-                e->ti_current);
-
-      /* If particle needs to be kicked */
-      if (part_is_active(p, e)) {
-
-        if (p->id == ICHECK) message("Particle active in kick");
-
-        /* First, finish the force loop */
-        hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
-
-        /* Compute the next timestep (hydro condition) */
-        const integertime_t new_dti = get_part_timestep(p, xp, e);
-
-        if (p->id == ICHECK)
-          message("time_step=%lld (%e)", new_dti, new_dti * e->timeBase);
-
-        /* Now we have a time step, proceed with the kick */
-        kick_part(p, xp, new_dti, e->ti_current, timeBase);
-
-        // if (p->id == ICHECK) printParticle_single(p, xp);
-
-        /* Number of updated particles */
-        updated++;
-        if (p->gpart != NULL) g_updated++;
-
-        ti_end += get_integer_timestep(p->time_bin);
-      }
-
-      if (p->id == ICHECK)
-        message("ti_current = %lld dti=%lld ti_end=%lld (%f)", ti_current,
-                get_integer_timestep(p->time_bin), ti_end,
-                ti_end * e->timeBase);
-      ti_end_min = min(ti_end, ti_end_min);
-      ti_end_max = max(ti_end, ti_end_max);
-    }
-  }
-
-  /* Otherwise, aggregate data from children. */
-  else {
-
-    /* Loop over the progeny. */
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) {
-        struct cell *restrict cp = c->progeny[k];
-
-        /* Recurse */
-        runner_do_kick(r, cp, 0);
-
-        /* And aggregate */
-        updated += cp->updated;
-        g_updated += cp->g_updated;
-        ti_end_min = min(cp->ti_end_min, ti_end_min);
-        ti_end_max = max(cp->ti_end_max, ti_end_max);
-      }
-  }
-
-  /* Store the values. */
-  c->updated = updated;
-  c->g_updated = g_updated;
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-
-  if (timer) TIMER_TOC(timer_kick);
-}
-#endif
 
 /**
  * @brief Construct the cell properties from the received particles
