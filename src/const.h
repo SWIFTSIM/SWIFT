@@ -59,6 +59,4 @@
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK
 
-#define ICHECK -116650
-
 #endif /* SWIFT_CONST_H */

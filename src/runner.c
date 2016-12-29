@@ -896,8 +896,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 /**
  * @brief Perform the second half-kick on all the active particles in a cell.
  *
- * Also computes the next time-step of all active particles, prepare them to be 
- * drifted and update the cell's statistics. 
+ * Also computes the next time-step of all active particles, prepare them to be
+ * drifted and update the cell's statistics.
  *
  * @param r The runner thread.
  * @param c The cell.

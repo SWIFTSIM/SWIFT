@@ -71,12 +71,6 @@ struct part {
   /* Particle mass. */
   float mass;
 
-  /* Particle time of beginning of time-step. */
-  // int ti_begin;
-
-  /* Particle time of end of time-step. */
-  // int ti_end;
-
   /* Particle density. */
   float rho;
 
