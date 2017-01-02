@@ -972,6 +972,16 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         ti_end_min = min(ti_end + ti_new_step, ti_end_min);
         ti_end_max = max(ti_end + ti_new_step, ti_end_max);
       }
+
+      else { /* part is inactive */
+
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        /* What is the next sync-point ? */
+        ti_end_min = min(ti_end, ti_end_min);
+        ti_end_max = max(ti_end, ti_end_max);
+      }
     }
 
     /* Loop over the g-particles in this cell. */
@@ -980,34 +990,46 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
-      /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+      /* If the g-particle has no counterpart */
+      if (gp->id_or_neg_offset > 0) {
 
-        /* First, finish the force loop */
-        gravity_end_force(gp, const_G);
+        /* need to be kicked ? */
+        if (gpart_is_active(gp, e)) {
 
-        const integertime_t ti_step = get_integer_timestep(gp->time_bin);
-        const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, gp->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
+          /* First, finish the force loop */
+          gravity_end_force(gp, const_G);
 
-        /* Finish the time-step with a second half-kick */
-        kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
-                   timeBase);
+          const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current, gp->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, gp->time_bin);
 
-        /* Get new time-step */
-        const integertime_t ti_new_step = get_gpart_timestep(gp, e);
+          /* Finish the time-step with a second half-kick */
+          kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
+                     timeBase);
 
-        /* Update particle */
-        gp->time_bin = get_time_bin(ti_new_step);
+          /* Get new time-step */
+          const integertime_t ti_new_step = get_gpart_timestep(gp, e);
 
-        /* Number of updated g-particles */
-        g_updated++;
+          /* Update particle */
+          gp->time_bin = get_time_bin(ti_new_step);
 
-        /* What is the next sync-point ? */
-        ti_end_min = min(ti_end + ti_new_step, ti_end_min);
-        ti_end_max = max(ti_end + ti_new_step, ti_end_max);
+          /* Number of updated g-particles */
+          g_updated++;
+
+          /* What is the next sync-point ? */
+          ti_end_min = min(ti_end + ti_new_step, ti_end_min);
+          ti_end_max = max(ti_end + ti_new_step, ti_end_max);
+        } else { /* gpart is inactive */
+
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, gp->time_bin);
+
+          /* What is the next sync-point ? */
+          ti_end_min = min(ti_end, ti_end_min);
+          ti_end_max = max(ti_end, ti_end_max);
+        }
       }
     }
   }
