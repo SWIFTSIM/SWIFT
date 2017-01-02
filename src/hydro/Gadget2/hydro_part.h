@@ -42,6 +42,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /* Entropy at the last full step. */
+  float entropy_full;
+
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 

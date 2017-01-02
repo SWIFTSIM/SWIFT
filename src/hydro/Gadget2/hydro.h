@@ -48,7 +48,7 @@
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p, float dt) {
 
-  const float entropy = p->entropy + p->entropy_dt * dt;
+  const float entropy = p->entropy + dt * p->entropy_dt;
 
   return gas_internal_energy_from_entropy(p->rho, entropy);
 }
@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p, float dt) {
 
-  const float entropy = p->entropy + p->entropy_dt * dt;
+  const float entropy = p->entropy + dt * p->entropy_dt;
 
   return gas_pressure_from_entropy(p->rho, entropy);
 }
@@ -76,7 +76,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part *restrict p, float dt) {
 
-  return p->entropy + p->entropy_dt * dt;
+  return p->entropy + dt * p->entropy_dt;
 }
 
 /**
@@ -216,6 +216,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
+  xp->entropy_full = p->entropy;
 }
 
 /**
@@ -228,9 +229,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p) {
+
+  p->rho = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
-  p->rho = 0.f;
   p->density.rho_dh = 0.f;
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
@@ -302,11 +304,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float abs_div_v = fabsf(p->density.div_v);
 
   /* Compute the pressure */
-  const integertime_t ti_begin =
-      get_integer_time_begin(ti_current, p->time_bin);
-  const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-  const float half_dt = (ti_current - (ti_begin + ti_end) / 2) * timeBase;
-  const float pressure = hydro_get_pressure(p, half_dt);
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
 
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
@@ -368,6 +366,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[0] = xp->v_full[0];
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
+
+  /* Re-set the entropy */
+  p->entropy = xp->entropy_full;
 }
 
 /**
@@ -400,11 +401,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->rho *= expf(w2);
 
-  /* Drift the pressure */
-  const integertime_t ti_begin = get_integer_time_begin(t0, p->time_bin);
-  const integertime_t ti_end = get_integer_time_end(t0, p->time_bin);
-  const float dt_entr = (t1 - (ti_begin + ti_end) / 2) * timeBase;
-  const float pressure = hydro_get_pressure(p, dt_entr);
+  /* Predict the entropy */
+  p->entropy += p->entropy_dt * dt;
+
+  /* Re-compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
 
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
@@ -446,13 +447,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   const float entropy_change = p->entropy_dt * dt;
-  if (entropy_change > -0.5f * p->entropy)
-    p->entropy += entropy_change;
+  if (entropy_change > -0.5f * xp->entropy_full)
+    xp->entropy_full += entropy_change;
   else
-    p->entropy *= 0.5f;
+    xp->entropy_full *= 0.5f;
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
 
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
@@ -473,10 +474,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   /* We read u in the entropy field. We now get S from u */
-  p->entropy = gas_entropy_from_internal_energy(p->rho, p->entropy);
+  xp->entropy_full = gas_entropy_from_internal_energy(p->rho, p->entropy);
+  p->entropy = xp->entropy_full;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);

@@ -104,8 +104,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct part *restrict parts = (struct part *)map_data;
   const struct xpart *restrict xparts =
       s->xparts + (ptrdiff_t)(parts - s->parts);
-  // const integertime_t ti_current = s->e->ti_current;
-  // const double timeBase = s->e->timeBase;
+  const integertime_t ti_current = s->e->ti_current;
+  const double timeBase = s->e->timeBase;
   const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
@@ -125,32 +125,27 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const struct xpart *xp = &xparts[k];
     const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
-    /* Get useful variables */
-    // const integertime_t ti_begin =
-    //    get_integer_time_begin(ti_current, p->time_bin);
-    // const integertime_t ti_end = get_integer_time_end(ti_current,
-    // p->time_bin);
-    // const integertime_t dti = get_integer_timestep(p->time_bin);
-    const float dt =
-        0.f;  //(ti_current - (ti_begin + ti_end) / 2) * timeBase; //MATTHIEU
-    const double x[3] = {p->x[0], p->x[1], p->x[2]};
+    /* Get useful time variables */
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, p->time_bin);
+    const integertime_t ti_step = get_integer_timestep(p->time_bin);
+    const float dt = (ti_current - (ti_begin + ti_step / 2)) * timeBase;
+
+    /* Get the total acceleration */
     float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
     if (gp != NULL) {
       a_tot[0] += gp->a_grav[0];
       a_tot[1] += gp->a_grav[1];
       a_tot[2] += gp->a_grav[2];
     }
+
+    /* Extrapolate velocities to current time */
     const float v[3] = {xp->v_full[0] + a_tot[0] * dt,
                         xp->v_full[1] + a_tot[1] * dt,
                         xp->v_full[2] + a_tot[2] * dt};
 
     const float m = hydro_get_mass(p);
-
-    /* if (p->id == ICHECK) */
-    /*   message("bin=%d dti=%lld ti_begin=%lld ti_end=%lld dt=%e v=[%e %e %e]",
-     */
-    /* 	      p->time_bin, dti, ti_begin, ti_end, */
-    /*           dt, v[0], v[1], v[2]); */
+    const double x[3] = {p->x[0], p->x[1], p->x[2]};
 
     /* Collect mass */
     stats.mass += m;
@@ -167,13 +162,12 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    stats.E_int += m * hydro_get_internal_energy(p, dt);
+    stats.E_rad += cooling_get_radiated_energy(xp);
     stats.E_pot_self += 0.f;
     if (gp != NULL)
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
-    stats.E_int += m * hydro_get_internal_energy(p, dt);
-    stats.E_rad += cooling_get_radiated_energy(xp);
-
     /* Collect entropy */
     stats.entropy += m * hydro_get_entropy(p, dt);
   }
