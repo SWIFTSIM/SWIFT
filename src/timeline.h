@@ -28,7 +28,7 @@
 
 #include <math.h>
 
-typedef unsigned long long integertime_t;
+typedef long long integertime_t;
 typedef char timebin_t;
 
 /*! The number of time bins */

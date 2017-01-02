@@ -2689,6 +2689,12 @@ void engine_step(struct engine *e) {
 
   if (e->verbose) engine_print_task_counts(e);
 
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
+  }
+
   /* Send off the runners. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
@@ -2699,15 +2705,6 @@ void engine_step(struct engine *e) {
     if (e->s->parts[i].time_bin == 0) error("Particle in bin 0");
   }
 #endif
-
-  /* if(e->step > 2) */
-  /*   error("Done"); */
-
-  /* Save some statistics */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
-    engine_print_stats(e);
-    e->timeLastStatistics += e->deltaTimeStatistics;
-  }
 
   TIMER_TOC2(timer_step);
 
