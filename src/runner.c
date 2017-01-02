@@ -1049,6 +1049,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
+#ifdef WITH_MPI
+
   const struct part *restrict parts = c->parts;
   const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
@@ -1102,6 +1104,10 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   c->h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }
 
 /**

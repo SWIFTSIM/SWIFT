@@ -825,5 +825,8 @@ AC_MSG_RESULT([
    Debugging checks   : $enable_debugging_checks
 ])
 
+# Make sure the latest git revision string gets included
+touch src/version.c
+
 # Generate output.
 AC_OUTPUT
