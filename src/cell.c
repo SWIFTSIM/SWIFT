@@ -49,6 +49,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "drift.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -82,47 +83,6 @@ int cell_getsize(struct cell *c) {
 }
 
 /**
- * @brief Pack the data of the given cell and all it's sub-cells.
- *
- * @param c The #cell.
- * @param pc Pointer to an array of packed cells in which the
- *      cells will be packed.
- *
- * @return The number of packed cells.
- */
-int cell_pack(struct cell *c, struct pcell *pc) {
-
-#ifdef WITH_MPI
-
-  /* Start by packing the data of the current cell. */
-  pc->h_max = c->h_max;
-  pc->ti_end_min = c->ti_end_min;
-  pc->ti_end_max = c->ti_end_max;
-  pc->count = c->count;
-  pc->gcount = c->gcount;
-  pc->scount = c->scount;
-  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      pc->progeny[k] = count;
-      count += cell_pack(c->progeny[k], &pc[count]);
-    } else
-      pc->progeny[k] = -1;
-
-  /* Return the number of packed cells used. */
-  c->pcell_size = count;
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
  * @param pc An array of packed #pcell.
@@ -139,6 +99,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->h_max = pc->h_max;
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
+  c->ti_old = pc->ti_old;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
@@ -169,6 +130,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+      temp->ti_old = c->ti_old;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s);
@@ -232,6 +194,46 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 
   /* Return the total number of linked particles. */
   return c->gcount;
+}
+
+/**
+ * @brief Pack the data of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pc Pointer to an array of packed cells in which the
+ *      cells will be packed.
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack(struct cell *c, struct pcell *pc) {
+
+#ifdef WITH_MPI
+
+  /* Start by packing the data of the current cell. */
+  pc->h_max = c->h_max;
+  pc->ti_end_min = c->ti_end_min;
+  pc->ti_end_max = c->ti_end_max;
+  pc->count = c->count;
+  pc->gcount = c->gcount;
+  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      pc->progeny[k] = count;
+      count += cell_pack(c->progeny[k], &pc[count]);
+    } else
+      pc->progeny[k] = -1;
+
+  /* Return the number of packed cells used. */
+  c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
 }
 
 /**
@@ -563,7 +565,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   const int count = c->count, gcount = c->gcount, scount = c->scount;
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
-  struct spart *sparts = c->sparts;
   struct gpart *gparts = c->gparts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
@@ -592,10 +593,10 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < count; k++) {
-    const int bid = (buff[k].x[0] > pivot[0]) * 4 +
-                    (buff[k].x[1] > pivot[1]) * 2 + (buff[k].x[2] > pivot[2]);
+    const int bid = (parts[k].x[0] > pivot[0]) * 4 +
+                    (parts[k].x[1] > pivot[1]) * 2 + (parts[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    buff[k].ind = bid;
+    buff[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -609,25 +610,23 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k].ind;
+      int bid = buff[k];
       if (bid != bucket) {
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
-        struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j].ind == bid) {
+          while (buff[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
-          memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          memswap(&buff[j], &bid, sizeof(int));
         }
         parts[k] = part;
         xparts[k] = xpart;
-        buff[k] = temp_buff;
+        buff[k] = bid;
       }
       bucket_count[bid]++;
     }
@@ -645,14 +644,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     part_relink_gparts_to_parts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK. */
-  for (int k = 1; k < count; k++) {
-    if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
-    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
-        buff[k].x[2] != parts[k].x[2])
-      error("Inconsistent buff contents (k=%i).", k);
-  }
-
   /* Verify that _all_ the parts have been assigned to a cell. */
   for (int k = 1; k < 8; k++)
     if (&c->progeny[k - 1]->parts[c->progeny[k - 1]->count] !=
@@ -679,31 +670,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         c->progeny[2]->parts[k].x[1] <= pivot[1] ||
         c->progeny[2]->parts[k].x[2] > pivot[2])
       error("Sorting failed (progeny=2).");
-  for (int k = 0; k < c->progeny[3]->count; k++)
-    if (c->progeny[3]->parts[k].x[0] > pivot[0] ||
-        c->progeny[3]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[3]->parts[k].x[2] <= pivot[2])
-      error("Sorting failed (progeny=3).");
-  for (int k = 0; k < c->progeny[4]->count; k++)
-    if (c->progeny[4]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[4]->parts[k].x[1] > pivot[1] ||
-        c->progeny[4]->parts[k].x[2] > pivot[2])
-      error("Sorting failed (progeny=4).");
-  for (int k = 0; k < c->progeny[5]->count; k++)
-    if (c->progeny[5]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[5]->parts[k].x[1] > pivot[1] ||
-        c->progeny[5]->parts[k].x[2] <= pivot[2])
-      error("Sorting failed (progeny=5).");
-  for (int k = 0; k < c->progeny[6]->count; k++)
-    if (c->progeny[6]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[6]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[6]->parts[k].x[2] > pivot[2])
-      error("Sorting failed (progeny=6).");
-  for (int k = 0; k < c->progeny[7]->count; k++)
-    if (c->progeny[7]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[7]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[7]->parts[k].x[2] <= pivot[2])
-      error("Sorting failed (progeny=7).");
 #endif
 
   /* Now do the same song and dance for the sparts. */
@@ -764,10 +730,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < gcount; k++) {
-    const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
-                    (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
+    const int bid = (gparts[k].x[0] > pivot[0]) * 4 +
+                    (gparts[k].x[1] > pivot[1]) * 2 +
+                    (gparts[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    gbuff[k].ind = bid;
+    buff[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -781,22 +748,20 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = gbuff[k].ind;
+      int bid = buff[k];
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
-        struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (gbuff[j].ind == bid) {
+          while (buff[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&gparts[j], &gpart, sizeof(struct gpart));
-          memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          memswap(&buff[j], &bid, sizeof(int));
         }
         gparts[k] = gpart;
-        gbuff[k] = temp_buff;
+        buff[k] = bid;
       }
       bucket_count[bid]++;
     }
@@ -911,7 +876,7 @@ void cell_check_drift_point(struct cell *c, void *data) {
 
   const int ti_current = *(int *)data;
 
-  if (c->ti_old != ti_current)
+  if (c->ti_old != ti_current && c->nodeID == engine_rank)
     error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
           c->ti_old, ti_current);
 }
@@ -1101,6 +1066,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        if (cj->super->drift)
+          scheduler_activate(s, cj->super->drift);
+        else
+          error("Drift task missing !");
+
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
@@ -1119,6 +1089,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, cj->recv_xv);
         scheduler_activate(s, cj->recv_rho);
         scheduler_activate(s, cj->recv_ti);
+
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -1126,6 +1097,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
+
+        if (ci->super->drift)
+          scheduler_activate(s, ci->super->drift);
+        else
+          error("Drift task missing !");
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
@@ -1153,6 +1129,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick != NULL) scheduler_activate(s, c->kick);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
@@ -1178,4 +1155,95 @@ void cell_set_super(struct cell *c, struct cell *super) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+}
+
+/**
+ * @brief Recursively drifts all particles and g-particles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift(struct cell *c, const struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const int ti_old = c->ti_old;
+  const int ti_current = e->ti_current;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old) * timeBase;
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old) error("Attempt to drift to the past");
+
+  /* Are we not in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        cell_drift(cp, e);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
+      }
+
+  } else if (ti_current > ti_old) {
+
+    /* Loop over all the g-particles in the cell */
+    const size_t nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
+
+      /* Get a handle on the gpart. */
+      struct gpart *const gp = &gparts[k];
+
+      /* Drift... */
+      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+    }
+
+    /* Loop over all the particles in the cell */
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
+
+      /* Drift... */
+      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                        xp->x_diff[1] * xp->x_diff[1] +
+                        xp->x_diff[2] * xp->x_diff[2];
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+
+      /* Maximal smoothing length */
+      h_max = (h_max > p->h) ? h_max : p->h;
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+  } else {
+
+    h_max = c->h_max;
+    dx_max = c->dx_max;
+  }
+
+  /* Store the values */
+  c->h_max = h_max;
+  c->dx_max = dx_max;
+
+  /* Update the time of the last drift */
+  c->ti_old = ti_current;
 }

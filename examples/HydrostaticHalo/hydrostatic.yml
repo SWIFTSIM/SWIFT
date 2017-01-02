@@ -34,7 +34,7 @@ InitialConditions:
   file_name:  Hydrostatic.hdf5       # The file to read
  
 # External potential parameters
-SoftenedIsothermalPotential:
+IsothermalPotential:
   position_x:      0.     # location of centre of isothermal potential in internal units
   position_y:      0.
   position_z:      0.	

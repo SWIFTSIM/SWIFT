@@ -133,6 +133,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
     /* Non-splittable task? */
     if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
         ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
       t->skip = 1;
@@ -214,7 +215,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
@@ -782,7 +783,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock!");
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                taskID_names[t->unlock_tasks[i]->type],
+                subtaskID_names[t->unlock_tasks[i]->subtype]);
       }
     }
   }
@@ -1065,7 +1069,7 @@ void scheduler_start(struct scheduler *s) {
       if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort)
+            t->type != task_type_sort && t->type)
           error(
               "Task (type='%s/%s') should not have been skipped ti_current=%d "
               "c->ti_end_min=%d",
@@ -1148,6 +1152,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
+      case task_type_drift:
       case task_type_init:
         qid = t->ci->super->owner;
         break;

@@ -56,6 +56,8 @@ void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
+void runner_do_unskip_mapper(void *map_data, int num_elements,
+                             void *extra_data);
 void runner_do_drift_mapper(void *map_data, int num_elements, void *extra_data);
 
 #endif /* SWIFT_RUNNER_H */

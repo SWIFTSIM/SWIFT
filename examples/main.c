@@ -296,7 +296,8 @@ int main(int argc, char *argv[]) {
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-    if (myrank == 0) message("Floating point exceptions will be reported.");
+    if (myrank == 0)
+      message("WARNING: Floating point exceptions will be reported.");
   }
 
   /* How large are the parts? */
