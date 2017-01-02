@@ -1840,7 +1840,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       temp->count = 0;
       temp->gcount = 0;
       temp->scount = 0;
-      temp->ti_old = e->ti_current;
+      temp->ti_old = c->ti_old;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];

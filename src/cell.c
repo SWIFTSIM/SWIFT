@@ -566,6 +566,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -596,7 +597,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     const int bid = (parts[k].x[0] > pivot[0]) * 4 +
                     (parts[k].x[1] > pivot[1]) * 2 + (parts[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    buff[k] = bid;
+    buff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -610,13 +611,13 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k];
+      int bid = buff[k].ind;
       if (bid != bucket) {
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j] == bid) {
+          while (buff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
@@ -626,7 +627,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         }
         parts[k] = part;
         xparts[k] = xpart;
-        buff[k] = bid;
+        buff[k].ind = bid;
       }
       bucket_count[bid]++;
     }
@@ -734,7 +735,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                     (gparts[k].x[1] > pivot[1]) * 2 +
                     (gparts[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    buff[k] = bid;
+    buff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -748,12 +749,12 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k];
+      int bid = buff[k].ind;
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j] == bid) {
+          while (buff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
@@ -761,7 +762,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           memswap(&buff[j], &bid, sizeof(int));
         }
         gparts[k] = gpart;
-        buff[k] = bid;
+        buff[k].ind = bid;
       }
       bucket_count[bid]++;
     }
