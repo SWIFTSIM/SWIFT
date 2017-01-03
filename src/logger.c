@@ -238,7 +238,7 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
 }
 
 void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
-                      struct dump *dump) {
+                          struct dump *dump) {
 
   /* Start by computing the size of the message. */
   const int size = logger_size(logger_mask_timestamp);
@@ -252,7 +252,7 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
                   ((uint64_t)logger_mask_timestamp << 56);
   memcpy(buff, &temp, 8);
   buff += 8;
-  
+
   /* Store the timestamp. */
   memcpy(buff, &timestamp, sizeof(unsigned long long int));
 
