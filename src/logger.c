@@ -90,7 +90,7 @@ int logger_size(unsigned int mask) {
 /**
  * @brief Dump a #part to the log.
  *
- * @param part The #part to dump.
+ * @param p The #part to dump.
  * @param mask The mask of the data to dump.
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
@@ -111,7 +111,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
   char *buff = dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
                   ((uint64_t)mask << 56);
   memcpy(buff, &temp, 8);
   buff += 8;
@@ -171,7 +171,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
 /**
  * @brief Dump a #gpart to the log.
  *
- * @param gpart The #gpart to dump.
+ * @param p The #gpart to dump.
  * @param mask The mask of the data to dump.
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
@@ -196,7 +196,7 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   char *buff = dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
                   ((uint64_t)mask << 56);
   memcpy(buff, &temp, 8);
   buff += 8;
@@ -248,7 +248,7 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
   char *buff = dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
                   ((uint64_t)logger_mask_timestamp << 56);
   memcpy(buff, &temp, 8);
   buff += 8;
@@ -258,4 +258,185 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
 
   /* Update the log message offset. */
   *offset = offset_new;
+}
+
+/**
+ * @brief Read a logger message and store the data in a #part.
+ *
+ * @param p The #part in which to store the values.
+ * @param offset Pointer to the offset of the logger message in the buffer,
+ *        will be overwritten with the offset of the previous message.
+ * @param buff Pointer to the start of an encoded logger message.
+ *
+ * @return The mask containing the values read.
+ */
+
+int logger_read_part(struct part *p, size_t *offset, const char *buff) {
+
+  /* Jump to the offset. */
+  buff = &buff[*offset];
+
+  /* Start by reading the logger mask for this entry. */
+  uint64_t temp;
+  memcpy(&temp, buff, 8);
+  const int mask = temp >> 56;
+  *offset -= temp & 0xffffffffffffffULL;
+
+  /* We are only interested in particle data. */
+  if (mask & logger_mask_timestamp)
+    error("Trying to read timestamp as particle.");
+
+  /* Particle position as three doubles. */
+  if (mask & logger_mask_x) {
+    memcpy(p->x, buff, 3 * sizeof(double));
+    buff += 3 * sizeof(double);
+  }
+
+  /* Particle velocity as three floats. */
+  if (mask & logger_mask_v) {
+    memcpy(p->v, buff, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle accelleration as three floats. */
+  if (mask & logger_mask_a) {
+    memcpy(p->a_hydro, buff, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle internal energy as a single float. */
+  if (mask & logger_mask_u) {
+#if defined(GADGET2_SPH)
+    memcpy(&p->entropy, buff, sizeof(float));
+#else
+    memcpy(&p->u, buff, sizeof(float));
+#endif
+    buff += sizeof(float);
+  }
+
+  /* Particle smoothing length as a single float. */
+  if (mask & logger_mask_h) {
+    memcpy(&p->h, buff, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle density as a single float. */
+  if (mask & logger_mask_rho) {
+    memcpy(&p->rho, buff, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle constants, which is a bit more complicated. */
+  if (mask & logger_mask_rho) {
+    memcpy(&p->mass, buff, sizeof(float));
+    buff += sizeof(float);
+    memcpy(&p->id, buff, sizeof(long long));
+    buff += sizeof(long long);
+  }
+
+  /* Finally, return the mask of the values we just read. */
+  return mask;
+}
+
+/**
+ * @brief Read a logger message and store the data in a #gpart.
+ *
+ * @param p The #gpart in which to store the values.
+ * @param offset Pointer to the offset of the logger message in the buffer,
+ *        will be overwritten with the offset of the previous message.
+ * @param buff Pointer to the start of an encoded logger message.
+ *
+ * @return The mask containing the values read.
+ */
+
+int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
+
+  /* Jump to the offset. */
+  buff = &buff[*offset];
+
+  /* Start by reading the logger mask for this entry. */
+  uint64_t temp;
+  memcpy(&temp, buff, 8);
+  const int mask = temp >> 56;
+  *offset -= temp & 0xffffffffffffffULL;
+
+  /* We are only interested in particle data. */
+  if (mask & logger_mask_timestamp)
+    error("Trying to read timestamp as particle.");
+    
+  /* We can't store all part fields in a gpart. */
+  if (mask & (logger_mask_u | logger_mask_rho))
+    error("Trying to read SPH quantities into a gpart.");
+
+  /* Particle position as three doubles. */
+  if (mask & logger_mask_x) {
+    memcpy(p->x, buff, 3 * sizeof(double));
+    buff += 3 * sizeof(double);
+  }
+
+  /* Particle velocity as three floats. */
+  if (mask & logger_mask_v) {
+    memcpy(p->v_full, buff, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle accelleration as three floats. */
+  if (mask & logger_mask_a) {
+    memcpy(p->a_grav, buff, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle smoothing length as a single float. */
+  if (mask & logger_mask_h) {
+    memcpy(&p->epsilon, buff, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle constants, which is a bit more complicated. */
+  if (mask & logger_mask_rho) {
+    memcpy(&p->mass, buff, sizeof(float));
+    buff += sizeof(float);
+    memcpy(&p->id_or_neg_offset, buff, sizeof(long long));
+    buff += sizeof(long long);
+  }
+
+  /* Finally, return the mask of the values we just read. */
+  return mask;
+}
+
+/**
+ * @brief Read a logger message for a timestamp.
+ *
+ * @param t The timestamp in which to store the value.
+ * @param offset Pointer to the offset of the logger message in the buffer,
+ *        will be overwritten with the offset of the previous message.
+ * @param buff Pointer to the start of an encoded logger message.
+ *
+ * @return The mask containing the values read.
+ */
+
+int logger_read_timestamp(unsigned long long int *t, size_t *offset, const char *buff) {
+
+  /* Jump to the offset. */
+  buff = &buff[*offset];
+
+  /* Start by reading the logger mask for this entry. */
+  uint64_t temp;
+  memcpy(&temp, buff, 8);
+  const int mask = temp >> 56;
+  *offset -= temp & 0xffffffffffffffULL;
+
+  /* We are only interested in timestamps. */
+  if (!(mask & logger_mask_timestamp))
+    error("Trying to read timestamp from a particle.");
+    
+  /* Make sure we don't have extra fields. */
+  if (mask != logger_mask_timestamp)
+    error("Timestamp message contains extra fields.");
+
+  /* Copy the timestamp value from the buffer. */
+  memcpy(t, buff, sizeof(unsigned long long int));
+
+  /* Finally, return the mask of the values we just read. */
+  return mask;
 }
