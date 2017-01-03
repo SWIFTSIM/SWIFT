@@ -25,7 +25,7 @@
 
 /**
  * Logger entries contain messages representing the particle data at a given
- * point in time during the simulation. 
+ * point in time during the simulation.
  *
  * The logger messages always start with an 8-byte header structured as
  * follows:
@@ -43,7 +43,8 @@
  *       |        |      | stored as three doubles.
  *   1   | v      | 12   | Particle velocity, stored as three floats.
  *   2   | a      | 12   | Particle acceleration, stored as three floats.
- *   3   | u      | 4    | Particle internal energy, stored as a single float.
+ *   3   | u      | 4    | Particle internal energy (or entropy, if Gadget-SPH
+ *       |        |      | is used), stored as a single float.
  *   4   | h      | 4    | Particle smoothing length, stored as a single float.
  *   5   | rho    | 4    | Particle density, stored as a single float.
  *   6   | consts | 12   | Particle constants, i.e. mass and ID.
@@ -71,8 +72,11 @@
 
 /* Function prototypes. */
 int logger_size(unsigned int mask);
-void logger_log_part(struct part *p, unsigned int mask, struct dump *dump);
-void logger_log_gpart(struct gpart *p, unsigned int mask, struct dump *dump);
-void logger_lot_timestamp(unsigned long long int timestamp, struct dump *dump);
+void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
+                     struct dump *dump);
+void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
+                      struct dump *dump);
+void logger_lot_timestamp(unsigned long long int timestamp, size_t *offset,
+                          struct dump *dump);
 
 #endif /* SWIFT_LOGGER_H */

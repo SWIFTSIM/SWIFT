@@ -118,25 +118,29 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
 
   /* Particle position as three doubles. */
   if (mask & logger_mask_x) {
-    memcpy(buff, p->x, 3 * sizeof(double))
+    memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Particle velocity as three floats. */
   if (mask & logger_mask_v) {
-    memcpy(buff, p->v, 3 * sizeof(float))
+    memcpy(buff, p->v, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle accelleration as three floats. */
   if (mask & logger_mask_a) {
-    memcpy(buff, p->a_hydro, 3 * sizeof(float))
+    memcpy(buff, p->a_hydro, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle internal energy as a single float. */
   if (mask & logger_mask_u) {
+#if defined(GADGET2_SPH)
+    memcpy(buff, &p->entropy, sizeof(float));
+#else
     memcpy(buff, &p->u, sizeof(float));
+#endif
     buff += sizeof(float);
   }
 
