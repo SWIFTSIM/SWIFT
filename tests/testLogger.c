@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
   size_t offset_old = offset;
   int mask = logger_read_part(&p, &offset, d.data);
   printf(
-      "Recovered part at offset %#016zx with mask %#02x: p.x[0]=%e, "
+      "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
       offset_old, mask, p.x[0], p.v[0]);
   if (p.x[0] != 2.0 || p.v[0] != 2.0) {
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   offset_old = offset;
   mask = logger_read_part(&p, &offset, d.data);
   printf(
-      "Recovered part at offset %#016zx with mask %#02x: p.x[0]=%e, "
+      "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
       offset_old, mask, p.x[0], p.v[0]);
   if (p.x[0] != 1.0 || p.v[0] != 0.0) {
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
   offset_old = offset;
   mask = logger_read_part(&p, &offset, d.data);
   printf(
-      "Recovered part at offset %#016zx with mask %#02x: p.x[0]=%e, "
+      "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
       offset_old, mask, p.x[0], p.v[0]);
   if (p.x[0] != 0.0 || p.v[0] != 0.0) {
