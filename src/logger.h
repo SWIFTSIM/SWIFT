@@ -46,8 +46,8 @@
  *   3   | u      | 4    | Particle internal energy, stored as a single float.
  *   4   | h      | 4    | Particle smoothing length, stored as a single float.
  *   5   | rho    | 4    | Particle density, stored as a single float.
- *   6   | consts | ???  | Particle constants, e.g. mass, ID, etc...
- *   7   | ts     | 8    | Timestamp, not associated with a particle, just
+ *   6   | consts | 12   | Particle constants, i.e. mass and ID.
+ *   7   | time   | 8    | Timestamp, not associated with a particle, just
  *       |        |      | marks the transitions from one timestep to another.
  *
  * There is no distinction between gravity and SPH particles.
@@ -71,8 +71,8 @@
 
 /* Function prototypes. */
 int logger_size(unsigned int mask);
-void logger_log_part(struct part *p, struct xpart *xp, unsigned int mask, struct dump *dump);
-void logger_log_gpart(struct gpart *p, struct xpart *xp, unsigned int mask, struct dump *dump);
+void logger_log_part(struct part *p, unsigned int mask, struct dump *dump);
+void logger_log_gpart(struct gpart *p, unsigned int mask, struct dump *dump);
 void logger_lot_timestamp(unsigned long long int timestamp, struct dump *dump);
 
 #endif /* SWIFT_LOGGER_H */

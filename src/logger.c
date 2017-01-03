@@ -21,9 +21,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <float.h>
-#include <limits.h>
-#include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,6 +36,10 @@
 
 /**
  * @brief Compute the size of a message given its mask.
+ *
+ * @param mask The mask that will be used to dump a #part or #gpart.
+ *
+ * @return The size of the logger message in bytes.
  */
 
 int logger_size(unsigned int mask) {
@@ -83,4 +85,81 @@ int logger_size(unsigned int mask) {
   }
 
   return size;
+}
+
+/**
+ * @brief Dump a #part to the log.
+ *
+ * @param part The #part to dump.
+ * @param mask The mask of the data to dump.
+ * @param offset Pointer to the offset of the previous log of this particle.
+ * @param dump The #dump in which to log the particle data.
+ */
+
+void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
+                     struct dump *dump) {
+
+  /* Make sure we're not writing a timestamp. */
+  if (mask & logger_mask_timestamp)
+    error("You should not log particles as timestamps.");
+
+  /* Start by computing the size of the message. */
+  const int size = logger_size(mask);
+
+  /* Allocate a chunk of memory in the dump of the right size. */
+  size_t offset_new;
+  char *buff = dump_get(dump, size, &offset_new);
+
+  /* Write the header. */
+  uint64_t temp =
+      (((uint64_t) * offset) & 0xffffffffffffffL) | ((uint64_t)mask << 56);
+  memcpy(buff, &temp, 8);
+  buff += 8;
+
+  /* Particle position as three doubles. */
+  if (mask & logger_mask_x) {
+    memcpy(buff, p->x, 3 * sizeof(double))
+    buff += 3 * sizeof(double);
+  }
+
+  /* Particle velocity as three floats. */
+  if (mask & logger_mask_v) {
+    memcpy(buff, p->v, 3 * sizeof(float))
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle accelleration as three floats. */
+  if (mask & logger_mask_a) {
+    memcpy(buff, p->a_hydro, 3 * sizeof(float))
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle internal energy as a single float. */
+  if (mask & logger_mask_u) {
+    memcpy(buff, &p->u, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle smoothing length as a single float. */
+  if (mask & logger_mask_h) {
+    memcpy(buff, &p->h, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle density as a single float. */
+  if (mask & logger_mask_rho) {
+    memcpy(buff, &p->rho, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle constants, which is a bit more complicated. */
+  if (mask & logger_mask_rho) {
+    memcpy(buff, &p->mass, sizeof(float));
+    buff += sizeof(float);
+    memcpy(buff, &p->id, sizeof(long long));
+    buff += sizeof(long long);
+  }
+
+  /* Update the log message offset. */
+  *offset = offset_new;
 }
