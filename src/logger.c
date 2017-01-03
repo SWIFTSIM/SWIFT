@@ -281,6 +281,7 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
   memcpy(&temp, buff, 8);
   const int mask = temp >> 56;
   *offset -= temp & 0xffffffffffffffULL;
+  buff += 8;
 
   /* We are only interested in particle data. */
   if (mask & logger_mask_timestamp)
@@ -359,6 +360,7 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
   memcpy(&temp, buff, 8);
   const int mask = temp >> 56;
   *offset -= temp & 0xffffffffffffffULL;
+  buff += 8;
 
   /* We are only interested in particle data. */
   if (mask & logger_mask_timestamp)
@@ -426,6 +428,7 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
   memcpy(&temp, buff, 8);
   const int mask = temp >> 56;
   *offset -= temp & 0xffffffffffffffULL;
+  buff += 8;
 
   /* We are only interested in timestamps. */
   if (!(mask & logger_mask_timestamp))
