@@ -111,8 +111,8 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
   char *buff = dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp =
-      (((uint64_t) * offset) & 0xffffffffffffffL) | ((uint64_t)mask << 56);
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+                  ((uint64_t)mask << 56);
   memcpy(buff, &temp, 8);
   buff += 8;
 
@@ -163,6 +163,98 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
   }
+
+  /* Update the log message offset. */
+  *offset = offset_new;
+}
+
+/**
+ * @brief Dump a #gpart to the log.
+ *
+ * @param gpart The #gpart to dump.
+ * @param mask The mask of the data to dump.
+ * @param offset Pointer to the offset of the previous log of this particle.
+ * @param dump The #dump in which to log the particle data.
+ */
+
+void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
+                      struct dump *dump) {
+
+  /* Make sure we're not writing a timestamp. */
+  if (mask & logger_mask_timestamp)
+    error("You should not log particles as timestamps.");
+
+  /* Make sure we're not looging fields not supported by gparts. */
+  if (mask & (logger_mask_u | logger_mask_rho))
+    error("Can't log SPH quantities for gparts.");
+
+  /* Start by computing the size of the message. */
+  const int size = logger_size(mask);
+
+  /* Allocate a chunk of memory in the dump of the right size. */
+  size_t offset_new;
+  char *buff = dump_get(dump, size, &offset_new);
+
+  /* Write the header. */
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+                  ((uint64_t)mask << 56);
+  memcpy(buff, &temp, 8);
+  buff += 8;
+
+  /* Particle position as three doubles. */
+  if (mask & logger_mask_x) {
+    memcpy(buff, p->x, 3 * sizeof(double));
+    buff += 3 * sizeof(double);
+  }
+
+  /* Particle velocity as three floats. */
+  if (mask & logger_mask_v) {
+    memcpy(buff, p->v_full, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle accelleration as three floats. */
+  if (mask & logger_mask_a) {
+    memcpy(buff, p->a_grav, 3 * sizeof(float));
+    buff += 3 * sizeof(float);
+  }
+
+  /* Particle smoothing length as a single float. */
+  if (mask & logger_mask_h) {
+    memcpy(buff, &p->epsilon, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Particle constants, which is a bit more complicated. */
+  if (mask & logger_mask_rho) {
+    memcpy(buff, &p->mass, sizeof(float));
+    buff += sizeof(float);
+    memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
+    buff += sizeof(long long);
+  }
+
+  /* Update the log message offset. */
+  *offset = offset_new;
+}
+
+void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
+                      struct dump *dump) {
+
+  /* Start by computing the size of the message. */
+  const int size = logger_size(logger_mask_timestamp);
+
+  /* Allocate a chunk of memory in the dump of the right size. */
+  size_t offset_new;
+  char *buff = dump_get(dump, size, &offset_new);
+
+  /* Write the header. */
+  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffL) |
+                  ((uint64_t)logger_mask_timestamp << 56);
+  memcpy(buff, &temp, 8);
+  buff += 8;
+  
+  /* Store the timestamp. */
+  memcpy(buff, &timestamp, sizeof(unsigned long long int));
 
   /* Update the log message offset. */
   *offset = offset_new;

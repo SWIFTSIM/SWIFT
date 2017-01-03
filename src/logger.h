@@ -45,7 +45,8 @@
  *   2   | a      | 12   | Particle acceleration, stored as three floats.
  *   3   | u      | 4    | Particle internal energy (or entropy, if Gadget-SPH
  *       |        |      | is used), stored as a single float.
- *   4   | h      | 4    | Particle smoothing length, stored as a single float.
+ *   4   | h      | 4    | Particle smoothing length (or epsilon, if a gpart),
+ *       |        |      | stored as a single float.
  *   5   | rho    | 4    | Particle density, stored as a single float.
  *   6   | consts | 12   | Particle constants, i.e. mass and ID.
  *   7   | time   | 8    | Timestamp, not associated with a particle, just
