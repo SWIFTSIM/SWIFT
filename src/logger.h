@@ -77,7 +77,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
                      struct dump *dump);
 void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
                       struct dump *dump);
-void logger_lot_timestamp(unsigned long long int timestamp, size_t *offset,
+void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
                           struct dump *dump);
 
 #endif /* SWIFT_LOGGER_H */
