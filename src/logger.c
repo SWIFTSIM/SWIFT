@@ -363,7 +363,7 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
   /* We are only interested in particle data. */
   if (mask & logger_mask_timestamp)
     error("Trying to read timestamp as particle.");
-    
+
   /* We can't store all part fields in a gpart. */
   if (mask & (logger_mask_u | logger_mask_rho))
     error("Trying to read SPH quantities into a gpart.");
@@ -415,7 +415,8 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
  * @return The mask containing the values read.
  */
 
-int logger_read_timestamp(unsigned long long int *t, size_t *offset, const char *buff) {
+int logger_read_timestamp(unsigned long long int *t, size_t *offset,
+                          const char *buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
@@ -429,7 +430,7 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset, const char 
   /* We are only interested in timestamps. */
   if (!(mask & logger_mask_timestamp))
     error("Trying to read timestamp from a particle.");
-    
+
   /* Make sure we don't have extra fields. */
   if (mask != logger_mask_timestamp)
     error("Timestamp message contains extra fields.");
