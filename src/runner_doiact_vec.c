@@ -226,6 +226,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
       (*icount)++;
     }
   }
+
+#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
+
   /* Flush the c2 cache if it has reached capacity. */
   if (*icount >= (C2_CACHE_SIZE - (NUM_VEC_PROC * VEC_SIZE))) {
 
@@ -254,7 +257,6 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     *icount = 0;
   }
 
-#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 }
 #endif /* WITH_VECTORIZATION */
 
