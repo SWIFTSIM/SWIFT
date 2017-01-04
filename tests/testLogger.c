@@ -169,6 +169,56 @@ void test_log_gparts(struct dump *d) {
   }
 }
 
+void test_log_timestamps(struct dump *d) {
+
+  /* The timestamp to log. */
+  unsigned long long int t = 10;
+
+  /* Start with an offset at the end of the dump. */
+  size_t offset = d->count;
+
+  /* Log three consecutive timestamps. */
+  logger_log_timestamp(t, &offset, d);
+  printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
+  t += 10;
+  logger_log_timestamp(t, &offset, d);
+  printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
+  t += 10;
+  logger_log_timestamp(t, &offset, d);
+  printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
+
+  /* Recover the three timestamps. */
+  size_t offset_old = offset;
+  t = 0;
+  int mask = logger_read_timestamp(&t, &offset, d->data);
+  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
+         offset_old, mask);
+  if (t != 30) {
+    printf("FAIL: could not recover correct timestamp.\n");
+    abort();
+  }
+
+  offset_old = offset;
+  t = 0;
+  mask = logger_read_timestamp(&t, &offset, d->data);
+  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
+         offset_old, mask);
+  if (t != 20) {
+    printf("FAIL: could not recover correct timestamp.\n");
+    abort();
+  }
+
+  offset_old = offset;
+  t = 0;
+  mask = logger_read_timestamp(&t, &offset, d->data);
+  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
+         offset_old, mask);
+  if (t != 10) {
+    printf("FAIL: could not recover correct timestamp.\n");
+    abort();
+  }
+}
+
 int main(int argc, char *argv[]) {
 
   /* Some constants. */
@@ -181,8 +231,11 @@ int main(int argc, char *argv[]) {
   /* Test writing/reading parts. */
   test_log_parts(&d);
 
-  /* Test writing/reading parts. */
+  /* Test writing/reading gparts. */
   test_log_gparts(&d);
+
+  /* Test writing/reading timestamps. */
+  test_log_timestamps(&d);
 
   /* Finalize the dump. */
   dump_close(&d);
