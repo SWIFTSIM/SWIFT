@@ -27,38 +27,38 @@
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
  *
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param (return) rhoSum #vector holding the cumulative sum of the density
+ * @param rhoSum (return) #vector holding the cumulative sum of the density
  * update on pi.
- * @param (return) rho_dhSum #vector holding the cumulative sum of the density
+ * @param rho_dhSum (return) #vector holding the cumulative sum of the density
  * gradient update on pi.
- * @param (return) wcountSum #vector holding the cumulative sum of the wcount
+ * @param wcountSum (return) #vector holding the cumulative sum of the wcount
  * update on pi.
- * @param (return) wcount_dhSum #vector holding the cumulative sum of the wcount
+ * @param wcount_dhSum (return) #vector holding the cumulative sum of the wcount
  * gradient update on pi.
- * @param (return) div_vSum #vector holding the cumulative sum of the divergence
+ * @param div_vSum (return) #vector holding the cumulative sum of the divergence
  * update on pi.
- * @param (return) curlvxSum #vector holding the cumulative sum of the curl of
+ * @param curlvxSum (return) #vector holding the cumulative sum of the curl of
  * vx update on pi.
- * @param (return) curlvySum #vector holding the cumulative sum of the curl of
+ * @param curlvySum (return) #vector holding the cumulative sum of the curl of
  * vy update on pi.
- * @param (return) curlvzSum #vector holding the cumulative sum of the curl of
+ * @param curlvzSum (return) #vector holding the cumulative sum of the curl of
  * vz update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
- * @param (return) icount_align Interaction count after the remainder
+ * @param icount_align (return) Interaction count after the remainder
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    struct c2_cache *const int_cache,
-    const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
-    vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
-    vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
-    vector v_viy, vector v_viz, int *icount_align) {
+    struct c2_cache *const int_cache, const int icount, vector *rhoSum,
+    vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
+    int *icount_align) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
@@ -136,6 +136,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * cache (Supports AVX, AVX2 and AVX512 instruction sets).
  *
  * @param mask Contains which particles need to interact.
+ * @param pjd Index of the particle to store into.
  * @param v_r2 #vector of the separation between two particles squared.
  * @param v_dx #vector of the x separation between two particles.
  * @param v_dy #vector of the y separation between two particles.
@@ -145,7 +146,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_vjy #vector of y velocity of pj.
  * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
  * @param rhoSum #vector holding the cumulative sum of the density update on pi.
@@ -231,10 +232,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
-    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum,
-                        wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
-                        curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
-                        &icount_align);
+    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum, wcountSum,
+                        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum,
+                        v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     vector int_mask, int_mask2;
     int_mask.m = vec_setint1(0xFFFFFFFF);
@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 
 #endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 }
-#endif /* WITH_VECTORIZATION */ 
+#endif /* WITH_VECTORIZATION */
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
@@ -453,9 +453,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
@@ -779,9 +779,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     calcRemInteractions(&int_cache2, icount2, &rhoSum2, &rho_dhSum2,

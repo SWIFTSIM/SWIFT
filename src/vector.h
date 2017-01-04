@@ -258,7 +258,8 @@ typedef union {
 } vector;
 
 /**
- * @brief Calculates the inverse ($1/x$) of a vector using intrinsics and a Newton iteration to obtain the correct level of accuracy.
+ * @brief Calculates the inverse ($1/x$) of a vector using intrinsics and a
+ * Newton iteration to obtain the correct level of accuracy.
  *
  * @param x #vector to be inverted.
  * @return x_inv #vector inverted x.
@@ -268,13 +269,16 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal(vector x) {
   vector x_inv;
 
   x_inv.v = vec_rcp(x.v);
-  x_inv.v = vec_sub(x_inv.v, vec_mul(x_inv.v, (vec_fma(x.v, x_inv.v, vec_set1(-1.0f)))));
+  x_inv.v = vec_sub(x_inv.v,
+                    vec_mul(x_inv.v, (vec_fma(x.v, x_inv.v, vec_set1(-1.0f)))));
 
   return x_inv;
 }
 
 /**
- * @brief Calculates the inverse and square root ($1/\sqrt{x}$) of a vector using intrinsics and a Newton iteration to obtain the correct level of accuracy.
+ * @brief Calculates the inverse and square root (\f$1/\sqrt{x}\f$) of a vector
+ * using intrinsics and a Newton iteration to obtain the correct level of
+ * accuracy.
  *
  * @param x #vector to be inverted.
  * @return x_inv #vector inverted x.
@@ -284,8 +288,11 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
   vector x_inv;
 
   x_inv.v = vec_rsqrt(x.v);
-  x_inv.v = vec_sub(x_inv.v, vec_mul(vec_mul(vec_set1(0.5f), x_inv.v), (vec_fma(x.v, vec_mul(x_inv.v, x_inv.v), vec_set1(-1.0f)))));
-  
+  x_inv.v = vec_sub(
+      x_inv.v,
+      vec_mul(vec_mul(vec_set1(0.5f), x_inv.v),
+              (vec_fma(x.v, vec_mul(x_inv.v, x_inv.v), vec_set1(-1.0f)))));
+
   return x_inv;
 }
 
