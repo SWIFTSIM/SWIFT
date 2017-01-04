@@ -256,7 +256,6 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     /* Reset interaction count. */
     *icount = 0;
   }
-
 }
 #endif /* WITH_VECTORIZATION */
 
