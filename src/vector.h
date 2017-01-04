@@ -112,6 +112,7 @@
 #define VEC_INT __m256i
 #define vec_load(a) _mm256_load_ps(a)
 #define vec_store(a, addr) _mm256_store_ps(addr, a)
+#define vec_unaligned_store(a, addr) _mm256_storeu_ps(addr, a)
 #define vec_setzero() _mm256_setzero_ps()
 #define vec_setintzero() _mm256_setzero_si256()
 #define vec_set1(a) _mm256_set1_ps(a)
@@ -171,7 +172,7 @@
     pack += __builtin_popcount(mask);                                          \
   }
 #define VEC_LEFT_PACK(a, mask, result) \
-  *((__m256 *)(result)) = _mm256_permutevar8x32_ps(a, mask)
+  vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask),result)
 #endif
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
