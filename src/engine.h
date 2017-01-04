@@ -133,9 +133,6 @@ struct engine {
   /* Minimal ti_end for the next time-step */
   int ti_end_min;
 
-  /* Are we drifting all particles now ? */
-  int drift_all;
-
   /* Number of particles updated */
   size_t updates, g_updates;
 
@@ -218,7 +215,8 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
-void engine_drift(struct engine *e);
+void engine_unskip(struct engine *e);
+void engine_drift_all(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -230,7 +228,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct cooling_function_data *cooling,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners);
-void engine_prepare(struct engine *e, int nodrift);
+void engine_prepare(struct engine *e, int drift_all, int deferskip);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);

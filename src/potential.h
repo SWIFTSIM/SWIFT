@@ -34,8 +34,6 @@
 #include "./potential/point_mass/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_ISOTHERMAL)
 #include "./potential/isothermal/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL)
-#include "./potential/softened_isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_DISC_PATCH)
 #include "./potential/disc_patch/potential.h"
 #else

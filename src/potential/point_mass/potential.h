@@ -120,13 +120,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in a point
  * mass potential.
  *
+ * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
   const float dx = g->x[0] - potential->x;
