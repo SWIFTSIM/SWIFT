@@ -6,7 +6,7 @@ do
 
     rm -f brute_force_27_standard.dat swift_dopair_27_standard.dat
 
-    ./test27cells -n 6 -r 1 -d 0 -f standard -v $v
+    ./test27cells -n 6 -r 1 -d 0 -f standard -v $v -a 1e-4
 
     if [ -e brute_force_27_standard.dat ]
     then
