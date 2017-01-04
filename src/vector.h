@@ -172,7 +172,7 @@
     pack += __builtin_popcount(mask);                                          \
   }
 #define VEC_LEFT_PACK(a, mask, result) \
-  vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask),result)
+  vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask), result)
 #endif
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
