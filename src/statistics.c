@@ -191,8 +191,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
   const struct gpart *restrict gparts = (struct gpart *)map_data;
-  // const integertime_t ti_current = s->e->ti_current;
-  // const double timeBase = s->e->timeBase;
+  const integertime_t ti_current = s->e->ti_current;
+  const double timeBase = s->e->timeBase;
   const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
@@ -214,18 +214,18 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     if (gp->id_or_neg_offset < 0) continue;
 
     /* Get useful variables */
-    // const integertime_t ti_begin =
-    //    get_integer_time_begin(ti_current, gp->time_bin);
-    // const integertime_t ti_end = get_integer_time_end(ti_current,
-    // gp->time_bin);
-    const float dt =
-        0.f;  //(ti_current - (ti_begin + ti_end) / 2) * timeBase; // MATTHIEU
-    const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current, gp->time_bin);
+    const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+    const float dt = (ti_current - (ti_begin + ti_step / 2)) * timeBase;
+
+    /* Extrapolate velocities */
     const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,
                         gp->v_full[1] + gp->a_grav[1] * dt,
                         gp->v_full[2] + gp->a_grav[2] * dt};
 
     const float m = gp->mass;
+    const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
 
     /* Collect mass */
     stats.mass += m;
