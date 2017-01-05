@@ -225,6 +225,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
       (*icount)++;
     }
   }
+#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
+
   /* Flush the c2 cache if it has reached capacity. */
   if (*icount >= (C2_CACHE_SIZE - (NUM_VEC_PROC * VEC_SIZE))) {
 
@@ -254,7 +256,6 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     *icount = 0;
   }
 
-#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 }
 #endif /* WITH_VECTORIZATION */ 
 
@@ -882,13 +883,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   struct c2_cache int_cache;
   int num_vec_proc = 1;
 
-  vector v_hi, v_vix, v_viy, v_viz, v_hig2;//, v_r2;
-
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+  vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
   TIMER_TIC;
 
@@ -949,8 +944,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     struct part *restrict pi = &parts_i[sort_i[pid].i];
     if (!part_is_active(pi, e)) continue;
 
-    //int ci_cache_idx = sort_i[pid].i;
-    int ci_cache_idx = pid;
+    int ci_cache_idx = pid; //sort_i[pid].i;
 
     const float hi = ci_cache->h[ci_cache_idx];
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -1017,8 +1011,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
 
       /* Get the cache index to the jth particle. */
-      //int cj_cache_idx = sort_j[pjd].i;
-      int cj_cache_idx = pjd;
+      int cj_cache_idx = pjd; //sort_j[pjd].i;
 
       vector v_dx, v_dy, v_dz, v_r2;
 
@@ -1117,67 +1110,167 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     /* Get a hold of the jth part in cj. */
     struct part *restrict pj = &parts_j[sort_j[pjd].i];
     if (!part_is_active(pj, e)) continue;
-    const float hj = pj->h;
+
+    int cj_cache_idx = pjd;
+
+    const float hj = cj_cache.h[cj_cache_idx];
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
 
-    double pjx[3];
-    for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
     const float hjg2 = hj * hj * kernel_gamma2;
 
-    /* Loop over the parts in ci. */
-    for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+    vector pjx, pjy, pjz;
+    vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
+    /* Fill particle pi vectors. */
+    pjx.v = vec_set1(cj_cache.x[cj_cache_idx]);
+    pjy.v = vec_set1(cj_cache.y[cj_cache_idx]);
+    pjz.v = vec_set1(cj_cache.z[cj_cache_idx]);
+    v_hj.v = vec_set1(hj);
+    v_vjx.v = vec_set1(cj_cache.vx[cj_cache_idx]);
+    v_vjy.v = vec_set1(cj_cache.vy[cj_cache_idx]);
+    v_vjz.v = vec_set1(cj_cache.vz[cj_cache_idx]);
+
+    v_hjg2.v = vec_set1(hjg2);
+
+    /* Reset cumulative sums of update vectors. */
+    vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
+        curlvySum, curlvzSum;
+
+    /* Get the inverse of hj. */
+    vector v_hj_inv;
+
+    v_hj_inv = vec_reciprocal(v_hj);
+
+    rhoSum.v = vec_setzero();
+    rho_dhSum.v = vec_setzero();
+    wcountSum.v = vec_setzero();
+    wcount_dhSum.v = vec_setzero();
+    div_vSum.v = vec_setzero();
+    curlvxSum.v = vec_setzero();
+    curlvySum.v = vec_setzero();
+    curlvzSum.v = vec_setzero();
+
+    int exit_iteration = 0;
+    for (int pid = count_i - 1; pid >= 0; pid--) {
+      if(sort_i[pid].d <= dj) exit_iteration = pid;
+    }
+
+    /* Pad cache if there is a serial remainder. */
+    int exit_iteration_align = exit_iteration;
+    int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      exit_iteration_align -= pad;
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = exit_iteration; i >= exit_iteration_align; i--) {
+        ci_cache->x[i] = pjx.f[0];
+        ci_cache->y[i] = pjy.f[0];
+        ci_cache->z[i] = pjz.f[0];
+      }
+    }
+
+    vector pix, piy, piz;
+    vector pivx, pivy, pivz, mi;
+
+    /* Loop over the parts in ci. */
+    //for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+    for (int pid = count_i - 1; pid >= 0; pid -= VEC_SIZE) {
+
+      /* Get the cache index to the ith particle. */
+      int ci_cache_idx = pid; //sort_i[pid].i;
+
+      vector v_dx, v_dy, v_dz, v_r2;
+
+      /* Load 2 sets of vectors from the particle cache. */
+      pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
+      piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
+      piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
+      pivx.v = vec_load(&ci_cache->vx[ci_cache_idx]);
+      pivy.v = vec_load(&ci_cache->vy[ci_cache_idx]);
+      pivz.v = vec_load(&ci_cache->vz[ci_cache_idx]);
+      mi.v = vec_load(&ci_cache->m[ci_cache_idx]);
 
       /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
-      for (int k = 0; k < 3; k++) {
-        dx[k] = pjx[k] - pi->x[k];
-        r2 += dx[k] * dx[k];
-      }
+      v_dx.v = vec_sub(pjx.v, pix.v);
+      v_dy.v = vec_sub(pjy.v, piy.v);
+      v_dz.v = vec_sub(pjz.v, piz.v);
 
-      /* Hit or miss? */
-      if (r2 < hjg2) {
+      v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-#ifndef WITH_VECTORIZATION
+      vector v_doj_mask, v_doj_mask_check;
+      int doj_mask;
 
-        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      v_doj_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doj_mask.v = vec_cmp_lt(v_r2.v, v_hjg2.v);
 
-#else
+      /* Combine two masks and form integer mask. */
+      doj_mask = vec_cmp_result(vec_and(v_doj_mask.v, v_doj_mask_check.v));
 
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hj;
-        hjq[icount] = pi->h;
-        piq[icount] = pj;
-        pjq[icount] = pi;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          runner_iact_nonsym_vec_density(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
-      }
-
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doj_mask)
+        storeInteractions(doj_mask, ci_cache_idx, &v_r2, &v_dx, &v_dy, &v_dz,
+                          &mi, &pivx, &pivy, &pivz, ci_cache, &int_cache,
+                          &icount, &rhoSum, &rho_dhSum, &wcountSum,
+                          &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                          &curlvzSum, v_hj_inv, v_vjx, v_vjy, v_vjz);
+      
     } /* loop over the parts in cj. */
 
-  } /* loop over the parts in ci. */
-
-#ifdef WITH_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      runner_iact_nonsym_density(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
+    /* Perform padded vector remainder interactions if any are present. */
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
+                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
+                        &curlvySum, &curlvzSum, v_hj_inv, v_vjx, v_vjy, v_vjz,
+                        &icount_align);
+    
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    vector int_mask, int_mask2;
+#ifdef HAVE_AVX512_F
+    KNL_MASK_16 knl_mask = 0xFFFF;
+    KNL_MASK_16 knl_mask2 = 0xFFFF;
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
+#else
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
 #endif
+
+    /* Perform interaction with 2 vectors. */
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
+      runner_iact_nonsym_2_vec_density(
+          &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
+          &int_cache.dzq[pjd], v_hj_inv, v_vjx, v_vjy, v_vjz,
+          &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
+          &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
+#ifdef HAVE_AVX512_F
+          knl_mask, knl_mask2);
+#else
+      0, 0);
+#endif
+    }
+
+    /* Perform horizontal adds on vector sums and store result in particle pi.
+     */
+    VEC_HADD(rhoSum, pj->rho);
+    VEC_HADD(rho_dhSum, pj->density.rho_dh);
+    VEC_HADD(wcountSum, pj->density.wcount);
+    VEC_HADD(wcount_dhSum, pj->density.wcount_dh);
+    VEC_HADD(div_vSum, pj->density.div_v);
+    VEC_HADD(curlvxSum, pj->density.rot_v[0]);
+    VEC_HADD(curlvySum, pj->density.rot_v[1]);
+    VEC_HADD(curlvzSum, pj->density.rot_v[2]);
+
+    icount = 0;
+
+  } /* loop over the parts in ci. */
 
   TIMER_TOC(timer_dopair_density);
 
