@@ -64,10 +64,20 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  */
 __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, integertime_t ti_start,
-    integertime_t ti_end, integertime_t ti_current, double timeBase) {
+    integertime_t ti_end, double timeBase) {
 
   /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->ti_kick != ti_start)
+    error(
+        "Particle has not been kicked to the current time p->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld",
+        p->ti_kick, ti_start, ti_end);
+
+  p->ti_kick = ti_end;
+#endif
 
   /* Get the acceleration */
   float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};

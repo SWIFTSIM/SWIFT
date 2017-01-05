@@ -66,6 +66,16 @@ __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, float dt,
     double timeBase, integertime_t ti_old, integertime_t ti_current) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->ti_drift != ti_old)
+    error(
+        "Particle has not been drifted to the current time p->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        p->ti_drift, ti_old, ti_current);
+
+  p->ti_drift = ti_current;
+#endif
+
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt;
   p->x[1] += xp->v_full[1] * dt;

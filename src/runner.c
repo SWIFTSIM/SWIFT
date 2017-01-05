@@ -867,8 +867,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
             get_integer_time_begin(ti_current, p->time_bin);
 
         /* do the kick */
-        kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, ti_current,
-                  timeBase);
+        kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, timeBase);
       }
     }
 
@@ -944,8 +943,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
             get_integer_time_begin(ti_current, p->time_bin);
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
-                  timeBase);
+        kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp);

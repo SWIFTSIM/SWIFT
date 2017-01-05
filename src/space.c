@@ -1770,6 +1770,11 @@ void space_init_parts(struct space *s) {
 #endif
 
     hydro_first_init_part(&p[i], &xp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    p->ti_drift = 0;
+    p->ti_kick = 0;
+#endif
   }
 }
 
