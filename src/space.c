@@ -215,6 +215,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->ghost = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
+    c->timestep = NULL;
     c->drift = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;

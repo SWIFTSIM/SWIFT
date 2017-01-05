@@ -156,6 +156,9 @@ struct cell {
   /*! The second kick task */
   struct task *kick2;
 
+  /*! The task to compute time-steps */
+  struct task *timestep;
+
   /*! Task constructing the multipole from the particles */
   struct task *grav_up;
 

@@ -896,8 +896,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 /**
  * @brief Perform the second half-kick on all the active particles in a cell.
  *
- * Also computes the next time-step of all active particles, prepare them to be
- * drifted and update the cell's statistics.
+ * Also prepares particles to be drifted.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -918,17 +917,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) {
-    c->updated = 0;
-    c->g_updated = 0;
-    return;
-  }
+  if (!cell_is_active(c, e)) return;
 
-  int updated = 0, g_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
-
-  /* No children? */
-  if (!c->split) {
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], 0);
+  } else {
 
     /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {
@@ -947,8 +942,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
@@ -956,6 +949,82 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp);
+      }
+    }
+
+    /* Loop over the g-particles in this cell. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the part. */
+      struct gpart *restrict gp = &gparts[k];
+
+      /* If the g-particle has no counterpart */
+      if (gp->id_or_neg_offset > 0) {
+
+        /* need to be kicked ? */
+        if (gpart_is_active(gp, e)) {
+
+          /* First, finish the force loop */
+          gravity_end_force(gp, const_G);
+
+          const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current, gp->time_bin);
+
+          /* Finish the time-step with a second half-kick */
+          kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
+                     timeBase);
+        }
+      }
+    }
+  }
+  if (timer) TIMER_TOC(timer_kick2);
+}
+
+/**
+ * @brief Computes the next time-step of all active particles in this cell
+ * and update the cell's statistics.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const integertime_t ti_current = e->ti_current;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
+
+  TIMER_TIC;
+
+  int updated = 0, g_updated = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+
+  /* No children? */
+  if (!c->split) {
+
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs updating */
+      if (part_is_active(p, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
 
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
@@ -969,8 +1038,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) g_updated++;
 
         /* What is the next sync-point ? */
-        ti_end_min = min(ti_end + ti_new_step, ti_end_min);
-        ti_end_max = max(ti_end + ti_new_step, ti_end_max);
+        ti_end_min = min(ti_current + ti_new_step, ti_end_min);
+        ti_end_max = max(ti_current + ti_new_step, ti_end_max);
       }
 
       else { /* part is inactive */
@@ -993,21 +1062,17 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart */
       if (gp->id_or_neg_offset > 0) {
 
-        /* need to be kicked ? */
+        /* need to be updated ? */
         if (gpart_is_active(gp, e)) {
 
-          /* First, finish the force loop */
-          gravity_end_force(gp, const_G);
-
-          const integertime_t ti_step = get_integer_timestep(gp->time_bin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current, gp->time_bin);
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Current end of time-step */
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
 
-          /* Finish the time-step with a second half-kick */
-          kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
-                     timeBase);
+          if (ti_end != ti_current)
+            error("Computing time-step of rogue particle.");
+#endif
 
           /* Get new time-step */
           const integertime_t ti_new_step = get_gpart_timestep(gp, e);
@@ -1019,8 +1084,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           g_updated++;
 
           /* What is the next sync-point ? */
-          ti_end_min = min(ti_end + ti_new_step, ti_end_min);
-          ti_end_max = max(ti_end + ti_new_step, ti_end_max);
+          ti_end_min = min(ti_current + ti_new_step, ti_end_min);
+          ti_end_max = max(ti_current + ti_new_step, ti_end_max);
         } else { /* gpart is inactive */
 
           const integertime_t ti_end =
@@ -1032,10 +1097,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         }
       }
     }
-  }
-
-  /* Otherwise, aggregate data from children. */
-  else {
+  } else {
 
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
@@ -1043,7 +1105,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
-        runner_do_kick2(r, cp, 0);
+        runner_do_timestep(r, cp, 0);
 
         /* And aggregate */
         updated += cp->updated;
@@ -1059,7 +1121,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
-  if (timer) TIMER_TOC(timer_kick2);
+  if (timer) TIMER_TOC(timer_timestep);
 }
 
 /**
@@ -1296,6 +1358,9 @@ void *runner_main(void *data) {
           break;
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);
+          break;
+        case task_type_timestep:
+          runner_do_timestep(r, ci, 1);
           break;
 #ifdef WITH_MPI
         case task_type_send:

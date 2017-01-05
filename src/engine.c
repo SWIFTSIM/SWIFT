@@ -147,6 +147,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
+      /* Add the time-step calculation task and its dependency */
+      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
+                                      0, 0, c, NULL, 0);
+
+      scheduler_addunlock(s, c->kick2, c->timestep);
+
       /* Add the drift task and its dependencies. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
@@ -2131,9 +2137,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Kick? */
     else if (t->type == task_type_kick1) {
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    } else if (t->type == task_type_kick2) {
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
-    else if (t->type == task_type_kick2) {
+    /* Time-step? */
+    else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
@@ -2365,7 +2374,7 @@ void engine_barrier(struct engine *e, int tid) {
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
-  if (c->kick2 != NULL) return;
+  if (c->timestep != NULL) return;
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
