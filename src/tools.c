@@ -600,6 +600,9 @@ int compare_values(double a, double b, double threshold, double *absDiff,
  * @return 1 if difference found, 0 otherwise
  */
 int compare_particles(struct part a, struct part b, double threshold) {
+
+#ifdef GADGET2_SPH
+
   int result = 0;
   double absDiff = 0.0, absSum = 0.0, relDiff = 0.0;
 
@@ -720,6 +723,13 @@ int compare_particles(struct part a, struct part b, double threshold) {
   }
 
   return result;
+
+#else
+
+  error("Function not supported for this flavour of SPH");
+  return 0;
+
+#endif
 }
 
 /** @brief Computes the forces between all g-particles using the N^2 algorithm

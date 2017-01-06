@@ -143,6 +143,8 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
 __attribute__((always_inline)) INLINE void cache_read_particles(
     const struct cell *const ci, struct cache *const ci_cache) {
 
+#if defined(GADGET2_SPH)
+
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < ci->count; i++) {
@@ -156,6 +158,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     ci_cache->vy[i] = ci->parts[i].v[1];
     ci_cache->vz[i] = ci->parts[i].v[2];
   }
+
+#endif
 }
 
 #endif /* SWIFT_CACHE_H */

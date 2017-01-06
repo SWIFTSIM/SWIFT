@@ -1095,7 +1095,7 @@ void *runner_main(void *data) {
       switch (t->type) {
         case task_type_self:
           if (t->subtype == task_subtype_density) {
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
             runner_doself1_density_vec(r, ci);
 #else
             runner_doself1_density(r, ci);
