@@ -362,6 +362,117 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
       dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
 }
 
+/* Define constant vectors for the Wendland C2 kernel coefficients. */
+#ifdef WENDLAND_C2_KERNEL
+static const vector wendland_const_c0 = FILL_VEC(4.f);
+static const vector wendland_const_c1 = FILL_VEC(-15.f);
+static const vector wendland_const_c2 = FILL_VEC(20.f);
+static const vector wendland_const_c3 = FILL_VEC(-10.f);
+static const vector wendland_const_c4 = FILL_VEC(0.f);
+static const vector wendland_const_c5 = FILL_VEC(1.f);
+#endif
+
+/**
+ * @brief Computes the kernel function and its derivative for two particles
+ * using interleaved vectors.
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ * @param u2 The ratio of the distance to the smoothing length $u = x/h$ for
+ * second particle.
+ * @param w2 (return) The value of the kernel function $W(x,h)$ for second
+ * particle.
+ * @param dw_dx2 (return) The norm of the gradient of $|\\nabla W(x,h)|$ for
+ * second particle.
+ */
+__attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
+    vector *u, vector *w, vector *dw_dx, vector *u2, vector *w2,
+    vector *dw_dx2) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  vector x, x2;
+  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+  x2.v = vec_mul(u2->v, kernel_gamma_inv_vec.v);
+
+#ifdef WENDLAND_C2_KERNEL
+  /* Init the iteration for Horner's scheme. */
+  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
+  w2->v = vec_fma(wendland_const_c0.v, x2.v, wendland_const_c1.v);
+  dw_dx->v = wendland_const_c0.v;
+  dw_dx2->v = wendland_const_c0.v;
+
+  /* Calculate the polynomial interleaving vector operations */
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c2.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c3.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c4.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c4.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
+  w2->v = vec_fma(x2.v, w2->v, wendland_const_c5.v);
+
+  /* Return everything */
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  w2->v = vec_mul(w2->v,
+                  vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
+                                         kernel_gamma_inv_dim_plus_one_vec.v));
+#else
+
+  /* Load x and get the interval id. */
+  vector ind, ind2;
+  ind.m = vec_ftoi(vec_fmin(x.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
+  ind2.m = vec_ftoi(vec_fmin(x2.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
+
+  /* load the coefficients. */
+  vector c[kernel_degree + 1], c2[kernel_degree + 1];
+  for (int k = 0; k < VEC_SIZE; k++)
+    for (int j = 0; j < kernel_degree + 1; j++) {
+      c[j].f[k] = kernel_coeffs[ind.i[k] * (kernel_degree + 1) + j];
+      c2[j].f[k] = kernel_coeffs[ind2.i[k] * (kernel_degree + 1) + j];
+    }
+
+  /* Init the iteration for Horner's scheme. */
+  w->v = (c[0].v * x.v) + c[1].v;
+  w2->v = (c2[0].v * x2.v) + c2[1].v;
+  dw_dx->v = c[0].v;
+  dw_dx2->v = c2[0].v;
+
+  /* And we're off! */
+  for (int k = 2; k <= kernel_degree; k++) {
+    dw_dx->v = (dw_dx->v * x.v) + w->v;
+    dw_dx2->v = (dw_dx2->v * x2.v) + w2->v;
+    w->v = (x.v * w->v) + c[k].v;
+    w2->v = (x2.v * w2->v) + c2[k].v;
+  }
+  /* Return everything */
+  w->v = w->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
+  w2->v = w2->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
+  dw_dx->v =
+      dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
+  dw_dx2->v =
+      dw_dx2->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
+
+#endif
+}
+
 #endif
 
 /* Some cross-check functions */

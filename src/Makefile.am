@@ -44,7 +44,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h statistics.h memswap.h profiler.h dump.h logger.h
+    sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
+    dump.h logger.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -53,11 +54,11 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
-    statistics.c profiler.c dump.c logger.c
+    statistics.c runner_doiact_vec.c profiler.c dump.c logger.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 kernel_long_gravity.h vector.h runner_doiact.h runner_doiact_grav.h runner_doiact_fft.h \
+		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h equation_of_state.h active.h \
 		 gravity.h gravity_io.h \
@@ -82,7 +83,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
-     memswap.h dump.h logger.h
+                 memswap.h dump.h logger.h
 
 
 # Sources and flags for regular library

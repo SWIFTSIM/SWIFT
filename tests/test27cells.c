@@ -30,6 +30,23 @@
 /* Local headers. */
 #include "swift.h"
 
+#define ACC_THRESHOLD 1e-5
+
+#if defined(WITH_VECTORIZATION) && defined(DOSELF1_VEC)
+#define DOSELF1 runner_doself1_density_vec
+#define DOSELF1_NAME "runner_doself1_density_vec"
+#endif
+
+#if defined(WITH_VECTORIZATION) && defined(DOSELF1_VEC_2)
+#define DOSELF1 runner_doself1_density_vec_2
+#define DOSELF1_NAME "runner_doself1_density_vec_2"
+#endif
+
+#ifndef DOSELF1
+#define DOSELF1 runner_doself1_density
+#define DOSELF1_NAME "runner_doself1_density"
+#endif
+
 enum velocity_types {
   velocity_zero,
   velocity_random,
@@ -255,15 +272,41 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fclose(file);
 }
 
+/**
+ * @brief Compares the vectorised result against
+ * the serial result of the interaction.
+ *
+ * @param serial_parts Particle array that has been interacted serially
+ * @param vec_parts Particle array to be interacted using vectors
+ * @param count No. of particles that have been interacted
+ * @param threshold Level of accuracy needed
+ *
+ * @return Non-zero value if difference found, 0 otherwise
+ */
+int check_results(struct part *serial_parts, struct part *vec_parts, int count,
+                  double threshold) {
+  int result = 0;
+
+  for (int i = 0; i < count; i++)
+    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
+
+  return result;
+}
+
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_doself1_density_vec(struct runner *r, struct cell *ci);
+void runner_doself1_density_vec_2(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
+
+  engine_pin();
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
+  double threshold = ACC_THRESHOLD;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
@@ -279,7 +322,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -304,6 +347,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'v':
         sscanf(optarg, "%d", (int *)&vel);
+        break;
+      case 'a':
+        sscanf(optarg, "%lf", &threshold);
         break;
       case '?':
         error("Unknown option.");
@@ -330,6 +376,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("Function called: %s", DOSELF1_NAME);
+  message("Vector size: %d", VEC_SIZE);
   message("Adiabatic index: ga = %f", hydro_gamma);
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
@@ -372,6 +420,9 @@ int main(int argc, char *argv[]) {
   /* Store the main cell for future use */
   main_cell = cells[13];
 
+  ticks timings[27];
+  for (int i = 0; i < 27; i++) timings[i] = 0;
+
   ticks time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -382,12 +433,30 @@ int main(int argc, char *argv[]) {
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs */
-    for (int j = 0; j < 27; ++j)
-      if (cells[j] != main_cell)
+    for (int j = 0; j < 27; ++j) {
+      if (cells[j] != main_cell) {
+        const ticks sub_tic = getticks();
+
         runner_dopair1_density(&runner, main_cell, cells[j]);
 
-    /* And now the self-interaction */
-    runner_doself1_density(&runner, main_cell);
+        const ticks sub_toc = getticks();
+        timings[j] += sub_toc - sub_tic;
+      }
+    }
+
+/* And now the self-interaction */
+#ifdef WITH_VECTORIZATION
+    runner.par_cache.count = 0;
+    cache_init(&runner.par_cache, 512);
+#endif
+
+    const ticks self_tic = getticks();
+
+    DOSELF1(&runner, main_cell);
+
+    const ticks self_toc = getticks();
+
+    timings[13] += self_toc - self_tic;
 
 #endif
 
@@ -405,8 +474,26 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Store the vectorised particle results. */
+  struct part vec_parts[main_cell->count];
+  for (int i = 0; i < main_cell->count; i++) vec_parts[i] = main_cell->parts[i];
+
   /* Output timing */
-  message("SWIFT calculation took       : %15lli ticks.", time / runs);
+  ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
+                      timings[18] + timings[20] + timings[24] + timings[26];
+
+  ticks edge_time = timings[1] + timings[3] + timings[5] + timings[7] +
+                    timings[9] + timings[11] + timings[15] + timings[17] +
+                    timings[19] + timings[21] + timings[23] + timings[25];
+
+  ticks face_time = timings[4] + timings[10] + timings[12] + timings[14] +
+                    timings[16] + timings[22];
+
+  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
+  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
+  message("Face calculations took         : %15lli ticks.", face_time / runs);
+  message("Self calculations took         : %15lli ticks.", timings[13] / runs);
+  message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -434,6 +521,10 @@ int main(int argc, char *argv[]) {
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
+
+  /* Check serial results against the vectorised results. */
+  if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
+    message("Differences found...");
 
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
