@@ -23,6 +23,8 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
+#include "cache.h"
+
 extern const double runner_shift[13][3];
 extern const char runner_flip[27];
 
@@ -45,6 +47,9 @@ struct runner {
 
   /*! The engine owing this runner. */
   struct engine *e;
+
+  /*! The particle cache of this runner. */
+  struct cache par_cache;
 };
 
 /* Function prototypes. */
