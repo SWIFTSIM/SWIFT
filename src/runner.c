@@ -867,6 +867,13 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
 
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, p->time_bin);
+
+        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+#endif
+
         /* do the kick */
         kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, timeBase);
       }
@@ -884,6 +891,13 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, gp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, gp->time_bin);
+
+        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+#endif
 
         /* do the kick */
         kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, ti_current, timeBase);
@@ -943,6 +957,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current, p->time_bin);
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ti_begin + ti_step != ti_current)
+          error("Particle in wrong time-bin");
+#endif
+
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
@@ -969,6 +988,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           const integertime_t ti_step = get_integer_timestep(gp->time_bin);
           const integertime_t ti_begin =
               get_integer_time_begin(ti_current, gp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (ti_begin + ti_step != ti_current)
+            error("Particle in wrong time-bin");
+#endif
 
           /* Finish the time-step with a second half-kick */
           kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
