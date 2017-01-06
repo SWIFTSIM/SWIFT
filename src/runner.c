@@ -900,7 +900,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* do the kick */
-        kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, ti_current, timeBase);
+        kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
       }
     }
   }
@@ -976,28 +976,23 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
-      /* If the g-particle has no counterpart */
-      if (gp->id_or_neg_offset > 0) {
+      /* If the g-particle has no counterpart and needs to be kicked */
+      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
 
-        /* need to be kicked ? */
-        if (gpart_is_active(gp, e)) {
+        /* First, finish the force loop */
+        gravity_end_force(gp, const_G);
 
-          /* First, finish the force loop */
-          gravity_end_force(gp, const_G);
-
-          const integertime_t ti_step = get_integer_timestep(gp->time_bin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current, gp->time_bin);
+        const integertime_t ti_step = get_integer_timestep(gp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, gp->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if (ti_begin + ti_step != ti_current)
-            error("Particle in wrong time-bin");
+        if (ti_begin + ti_step != ti_current)
+          error("Particle in wrong time-bin");
 #endif
 
-          /* Finish the time-step with a second half-kick */
-          kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, ti_current,
-                     timeBase);
-        }
+        /* Finish the time-step with a second half-kick */
+        kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
       }
     }
   }

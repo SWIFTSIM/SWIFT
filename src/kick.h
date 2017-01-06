@@ -33,12 +33,11 @@
  * @param gp The #gpart to kick.
  * @param ti_start The starting (integer) time of the kick
  * @param ti_end The ending (integer) time of the kick
- * @param ti_current The current (integer) time.
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_gpart(
     struct gpart *restrict gp, integertime_t ti_start, integertime_t ti_end,
-    integertime_t ti_current, double timeBase) {
+    double timeBase) {
 
   /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
@@ -59,7 +58,6 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param xp The #xpart of the particle.
  * @param ti_start The starting (integer) time of the kick
  * @param ti_end The ending (integer) time of the kick
- * @param ti_current The current (integer) time.
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_part(
