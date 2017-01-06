@@ -134,13 +134,11 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
     buff += 3 * sizeof(float);
   }
 
+#if defined(GADGET2_SPH)
+
   /* Particle internal energy as a single float. */
   if (mask & logger_mask_u) {
-#if defined(GADGET2_SPH)
     memcpy(buff, &p->entropy, sizeof(float));
-#else
-    memcpy(buff, &p->u, sizeof(float));
-#endif
     buff += sizeof(float);
   }
 
@@ -163,6 +161,8 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
   }
+
+#endif
 
   /* Update the log message offset. */
   *offset = offset_new;
@@ -305,13 +305,11 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
     buff += 3 * sizeof(float);
   }
 
+#if defined(GADGET2_SPH)
+
   /* Particle internal energy as a single float. */
   if (mask & logger_mask_u) {
-#if defined(GADGET2_SPH)
     memcpy(&p->entropy, buff, sizeof(float));
-#else
-    memcpy(&p->u, buff, sizeof(float));
-#endif
     buff += sizeof(float);
   }
 
@@ -334,6 +332,8 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
     memcpy(&p->id, buff, sizeof(long long));
     buff += sizeof(long long);
   }
+
+#endif
 
   /* Finally, return the mask of the values we just read. */
   return mask;
