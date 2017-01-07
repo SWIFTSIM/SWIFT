@@ -271,8 +271,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp,
-    integertime_t ti_current, double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   const float fac_mu = 1.f; /* Will change with cosmological integration */
 
@@ -363,8 +362,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, float dt,
-    integertime_t t0, integertime_t t1, double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt) {
 
   const float h_inv = 1.f / p->h;
 

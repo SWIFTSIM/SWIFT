@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[2] += p->a_hydro[2] * dt;
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt, ti_old, ti_current, timeBase);
+  hydro_predict_extra(p, xp, dt);
 
   /* Compute offset since last cell construction */
   xp->x_diff[0] -= xp->v_full[0] * dt;
