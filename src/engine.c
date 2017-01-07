@@ -2515,7 +2515,7 @@ void engine_print_stats(struct engine *e) {
 }
 
 /**
- * @brief Sets all the force and kick tasks to be skipped.
+ * @brief Sets all the force, drift and kick tasks to be skipped.
  *
  * @param e The #engine to act on.
  */
@@ -2529,8 +2529,31 @@ void engine_skip_force_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_kick1 || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms || t->type == task_type_drift)
+    if (t->type == task_type_drift || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->subtype == task_subtype_force || t->type == task_type_cooling ||
+        t->type == task_type_sourceterms)
+      t->skip = 1;
+  }
+}
+
+/**
+ * @brief Sets all the drift and first kick tasks to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_skip_drift_and_kick(struct engine *e) {
+
+  struct task *tasks = e->sched.tasks;
+  const int nr_tasks = e->sched.nr_tasks;
+
+  for (int i = 0; i < nr_tasks; ++i) {
+
+    struct task *t = &tasks[i];
+
+    /* Skip everything that updates the particles */
+    if (t->type == task_type_drift || t->type == task_type_kick1 ||
+        t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }
 }
@@ -2590,7 +2613,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->nodeID == 0) message("Running initialisation fake time-step.");
+  if (e->nodeID == 0) message("Computing initial gas densities.");
 
   engine_prepare(e, 0, 0);
 
@@ -2607,6 +2630,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
 
+    if (e->nodeID == 0) message("Converting internal energy variable.");
+
     /* Apply the conversion */
     space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
@@ -2617,6 +2642,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
       engine_launch(e, e->nr_threads);
     }
   }
+
+  /* Now time to get ready for the first time-step */
+  if (e->nodeID == 0) message("Running initial fake time-step.");
+
+  engine_marktasks(e);
+
+  engine_skip_drift_and_kick(e);
+
+  engine_launch(e, e->nr_threads);
 
   clocks_gettime(&time2);
 
