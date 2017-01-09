@@ -32,7 +32,7 @@
 
 #define ACC_THRESHOLD 1e-5
 
-#if defined(WITH_VECTORIZATION) && defined(DOSELF1_VEC)
+#if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #endif
