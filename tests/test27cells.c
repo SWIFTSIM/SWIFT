@@ -37,11 +37,6 @@
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #endif
 
-#if defined(WITH_VECTORIZATION) && defined(DOSELF1_VEC_2)
-#define DOSELF1 runner_doself1_density_vec_2
-#define DOSELF1_NAME "runner_doself1_density_vec_2"
-#endif
-
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
 #define DOSELF1_NAME "runner_doself1_density"
@@ -297,7 +292,6 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_doself1_density_vec_2(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
