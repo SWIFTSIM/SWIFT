@@ -52,6 +52,11 @@
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
+#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_AUTO_VEC)
+#define DOPAIR1 runner_dopair1_density_auto_vec
+#define DOPAIR1_NAME "runner_dopair1_density_auto_vec"
+#endif
+
 #ifndef DOPAIR1
 #define DOPAIR1 runner_dopair1_density
 #define DOPAIR1_NAME "runner_dopair1_density"
@@ -305,6 +310,7 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec_2(struct runner *r, struct cell *ci);
