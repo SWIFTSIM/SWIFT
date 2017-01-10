@@ -1276,3 +1276,193 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
 #endif /* WITH_VECTORIZATION */
 }
+
+/**
+ * @brief Compute the interactions between a cell pair (non-symmetric).
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct cell *cj) {
+
+#ifdef WITH_VECTORIZATION
+  const struct engine *restrict e = r->e;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, e);
+  cell_is_drifted(cj, e);
+#endif
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+    error("Trying to interact unsorted cells.");
+
+  /* Get the cutoff shift. */
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
+  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+  /* Get some other useful values. */
+  const double hi_max = ci->h_max * kernel_gamma - rshift;
+  const double hj_max = cj->h_max * kernel_gamma;
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+  const double di_max = sort_i[count_i - 1].d - rshift;
+  const double dj_min = sort_j[0].d;
+  const float dx_max = (ci->dx_max + cj->dx_max);
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict ci_cache = &r->par_cache;
+
+  if (ci_cache->count < count_i) {
+    cache_init(ci_cache, count_i);
+  }
+  if (cj_cache.count < count_j) {
+    cache_init(&cj_cache, count_j);
+  }
+
+  //cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
+  cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
+
+  /* Loop over the parts in ci. */
+  for (int pid = count_i - 1;
+       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+
+    /* Get a hold of the ith part in ci. */
+    struct part *restrict pi = &parts_i[sort_i[pid].i];
+    if (!part_is_active(pi, e)) continue;
+
+    int ci_cache_idx = pid; //sort_i[pid].i;
+
+    const float hi = ci_cache->h[ci_cache_idx];
+    const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+    if (di < dj_min) continue;
+
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    float pix, piy, piz;
+    float vix, viy, viz;
+    float hi_inv;
+
+    /* Fill particle pi vectors. */
+    pix = ci_cache->x[ci_cache_idx];
+    piy = ci_cache->y[ci_cache_idx];
+    piz = ci_cache->z[ci_cache_idx];
+    vix = ci_cache->vx[ci_cache_idx];
+    viy = ci_cache->vy[ci_cache_idx];
+    viz = ci_cache->vz[ci_cache_idx];
+
+    /* Get the inverse of hi. */
+    hi_inv = 1.0f / hi;
+
+    int exit_iteration = count_j;
+    for (int pjd = 0; pjd < count_j ; pjd++) {
+      if(sort_j[pjd].d >= di) {
+        exit_iteration = pjd;
+        break;
+      }
+    }
+
+    /* Loop over the parts in cj. */
+//#pragma simd
+    for (int pjd = 0; pjd < exit_iteration; pjd++) {
+
+      /* Get the cache index to the jth particle. */
+      int cj_cache_idx = pjd; //sort_j[pjd].i;
+
+      float dx, dy, dz, r2;
+
+      /* Compute the pairwise distance. */
+      dx = pix - cj_cache.x[cj_cache_idx];
+      dy = piy - cj_cache.y[cj_cache_idx];
+      dz = piz - cj_cache.z[cj_cache_idx];
+
+      r2 = dx*dx + dy*dy + dz*dz;
+
+      runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &pi->rho, &pi->density.rho_dh, &pi->density.wcount, &pi->density.wcount_dh, &pi->density.div_v, &pi->density.rot_v[0], &pi->density.rot_v[1], &pi->density.rot_v[2]);
+      
+    } /* loop over the parts in cj. */
+    
+  } /* loop over the parts in ci. */
+
+  /* Loop over the parts in cj. */
+  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+       pjd++) {
+
+    /* Get a hold of the jth part in cj. */
+    struct part *restrict pj = &parts_j[sort_j[pjd].i];
+    if (!part_is_active(pj, e)) continue;
+
+    int cj_cache_idx = pjd;
+
+    const float hj = cj_cache.h[cj_cache_idx];
+    const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+    if (dj > di_max) continue;
+
+    const float hjg2 = hj * hj * kernel_gamma2;
+
+    float pjx, pjy, pjz;
+    float vjx, vjy, vjz;
+    float hj_inv;
+
+    /* Fill particle pi vectors. */
+    pjx = cj_cache.x[cj_cache_idx];
+    pjy = cj_cache.y[cj_cache_idx];
+    pjz = cj_cache.z[cj_cache_idx];
+    vjx = cj_cache.vx[cj_cache_idx];
+    vjy = cj_cache.vy[cj_cache_idx];
+    vjz = cj_cache.vz[cj_cache_idx];
+
+    /* Get the inverse of hj. */
+    hj_inv = 1.0f / hj;
+
+    int exit_iteration = count_i - 1;
+    for (int pid = count_i - 1; pid >= 0; pid--) {
+      if(sort_i[pid].d <= dj) {
+        exit_iteration = pid;
+        break;
+      }
+    }
+    
+    /* Loop over the parts in ci. */
+    //for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+//#pragma simd
+    for (int pid = count_i - 1; pid > exit_iteration; pid--) {
+
+      /* Get the cache index to the ith particle. */
+      int ci_cache_idx = pid; //sort_i[pid].i;
+
+      float dx, dy, dz, r2;
+
+      /* Compute the pairwise distance. */
+      dx = pjx - ci_cache->x[ci_cache_idx];
+      dy = pjy - ci_cache->y[ci_cache_idx];
+      dz = pjz - ci_cache->z[ci_cache_idx];
+
+      r2 = dx*dx + dy*dy + dz*dz;
+      
+      runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &pj->rho, &pj->density.rho_dh, &pj->density.wcount, &pj->density.wcount_dh, &pj->density.div_v, &pj->density.rot_v[0], &pj->density.rot_v[1], &pj->density.rot_v[2]);
+      
+    } /* loop over the parts in ci. */
+  } /* loop over the parts in cj. */
+
+  TIMER_TOC(timer_dopair_density);
+
+#endif /* WITH_VECTORIZATION */
+}
