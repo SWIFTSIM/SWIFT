@@ -274,6 +274,49 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[2] += fac * curlvr[2];
 }
 
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_density_jsw(
+    const float r2, const float hig2, const float dx, const float dy, const float dz, const float h_inv, const float hj, const float vi_x, const float vi_y, const float vi_z, const float vj_x, const float vj_y, const float vj_z, const float mj, float *const restrict rho, float *const restrict rho_dh, float *const restrict wcount, float *const restrict wcount_dh, float *const restrict div_v, float *const restrict curl_vx, float *const restrict curl_vy, float *const restrict curl_vz) {
+
+  if (r2 < hig2) {
+
+    //interactionCount++;
+    float wi, wi_dx;
+
+    /* Get r and r inverse. */
+    const float r = sqrtf(r2);
+    const float ri = 1.0f / r;
+
+    /* Compute kernel function */
+    const float u = r * h_inv;
+    kernel_deval(u, &wi, &wi_dx);
+
+    const float fac = mj * wi_dx * ri;
+    
+    /* Compute dv dot r */
+    const float dv_x = vi_x - vj_x;
+    const float dv_y = vi_y - vj_y;
+    const float dv_z = vi_z - vj_z;
+    const float dvdr = dv_x * dx + dv_y * dy + dv_z * dz;
+    *div_v -= fac * dvdr;
+
+    /* Compute dv cross r */
+    const float curlvr_x = dv_y * dz - dv_z * dy;
+    const float curlvr_y = dv_z * dx - dv_x * dz;
+    const float curlvr_z = dv_x * dy - dv_y * dx;
+
+    /* Compute contribution to the density */
+    *rho += mj * wi;
+    *rho_dh -= mj * (3.0f * wi + u * wi_dx);
+
+    /* Compute contribution to the number of neighbours */
+    *wcount += wi;
+    *wcount_dh -= u * wi_dx;
+    *curl_vx += fac * curlvr_x;
+    *curl_vy += fac * curlvr_y;
+    *curl_vz += fac * curlvr_z;
+  }
+}
+
 /**
  * @brief Density loop (non-symmetric vectorized version)
  */
