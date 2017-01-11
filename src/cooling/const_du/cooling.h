@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
   /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
+  const float u_old = hydro_get_internal_energy(p);
 
   /* Get cooling function properties */
   const float du_dt = -cooling->cooling_rate;
@@ -102,7 +102,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy = hydro_get_internal_energy(p, 0);
+  const float internal_energy = hydro_get_internal_energy(p);
   return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 }
 

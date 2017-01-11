@@ -206,13 +206,16 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
-  // const int ti_current = r->e->ti_current;
-  const struct cooling_function_data *cooling_func = r->e->cooling_func;
-  const struct phys_const *constants = r->e->physical_constants;
-  const struct UnitSystem *us = r->e->internalUnits;
-  const double timeBase = r->e->timeBase;
+  const struct engine *e = r->e;
+  const struct cooling_function_data *cooling_func = e->cooling_func;
+  const struct phys_const *constants = e->physical_constants;
+  const struct UnitSystem *us = e->internalUnits;
+  const double timeBase = e->timeBase;
 
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -227,13 +230,10 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
-      /* Kick has already updated ti_end, so need to check ti_begin */
-      // if (p->ti_begin == ti_current) {
-      {
+      if (part_is_active(p, e)) {
 
-        // const double dt = (p->ti_end - p->ti_begin) * timeBase;
-        const double dt = 1. * timeBase;  // MATTHIEU
-
+        /* Let's cool ! */
+        const double dt = get_timestep(p->time_bin, timeBase);
         cooling_cool_part(constants, us, cooling_func, p, xp, dt);
       }
     }

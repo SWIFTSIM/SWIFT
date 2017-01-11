@@ -378,7 +378,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt) {
 
   float oldm, oldp[3], anew[3];
-  const float half_dt = 0.5f * dt; //MATTHIEU
+  const float half_dt = 0.5f * dt;  // MATTHIEU
 
   /* Retrieve the current value of the gravitational acceleration from the
      gpart. We are only allowed to do this because this is the kick. We still

@@ -76,31 +76,28 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
-  /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
-
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 
-  /* Calculate du_dt */
-  const float du_dt = cooling_rate(phys_const, us, cooling, p);
+  /* Current energy */
+  const float u_old = hydro_get_internal_energy(p);
 
-  /* Integrate cooling equation, but enforce energy floor */
-  float u_new;
-  if (u_old + du_dt * dt > u_floor) {
-    u_new = u_old + du_dt * dt;
-  } else {
-    u_new = u_floor;
+  /* Current du_dt */
+  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+
+  /* Calculate cooling du_dt */
+  float cooling_du_dt = cooling_rate(phys_const, us, cooling, p);
+
+  /* Integrate cooling equation to enforce energy floor */
+  if (u_old + cooling_du_dt * dt < u_floor) {
+    cooling_du_dt = (u_old - u_floor) / dt;
   }
 
-  /* Don't allow particle to cool too much in one timestep */
-  if (u_new < 0.5f * u_old) u_new = 0.5f * u_old;
-
-  /* Update the internal energy */
-  hydro_set_internal_energy(p, u_new);
+  /* Update the internal energy time derivative */
+  hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
+  xp->cooling_data.radiated_energy += hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 /**
@@ -117,11 +114,10 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   /* Get current internal energy (dt=0) */
-  const float u = hydro_get_internal_energy(p, 0.f);
+  const float u = hydro_get_internal_energy(p);
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
 
-  /* If we are close to (or below) the energy floor, we ignore cooling timestep
-   */
+  /* If we are close to (or below) the energy floor, we ignore the condition */
   if (u < 1.01f * cooling->min_energy)
     return FLT_MAX;
   else

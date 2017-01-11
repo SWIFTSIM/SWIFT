@@ -43,40 +43,33 @@
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
-  const float entropy = p->entropy + dt * p->entropy_dt;
-
-  return gas_internal_energy_from_entropy(p->rho, entropy);
+  return gas_internal_energy_from_entropy(p->rho, p->entropy);
 }
 
 /**
  * @brief Returns the pressure of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
-  const float entropy = p->entropy + dt * p->entropy_dt;
-
-  return gas_pressure_from_entropy(p->rho, entropy);
+  return gas_pressure_from_entropy(p->rho, p->entropy);
 }
 
 /**
  * @brief Returns the entropy of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
-  return p->entropy + dt * p->entropy_dt;
+  return p->entropy;
 }
 
 /**
@@ -86,7 +79,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
   return p->force.soundspeed;
 }
@@ -114,70 +107,32 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
- * @brief Modifies the thermal state of a particle to the imposed internal
- * energy
+ * @brief Returns the time derivative of internal energy of a particle
  *
- * This overwrites the current state of the particle but does *not* change its
- * time-derivatives. Entropy, pressure, sound-speed and signal velocity will be
- * updated.
+ * We assume a constant density.
  *
- * @param p The particle
- * @param u The new internal energy
+ * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part *restrict p, float u) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
+    const struct part *restrict p) {
 
-  p->entropy = gas_entropy_from_internal_energy(p->rho, u);
-
-  /* Compute the new pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, u);
-
-  /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
-
-  /* Update the signal velocity */
-  const float v_sig_old = p->force.v_sig;
-  const float v_sig_new = p->force.v_sig - p->force.soundspeed + soundspeed;
-  const float v_sig = max(v_sig_old, v_sig_new);
-
-  const float rho_inv = 1.f / p->rho;
-
-  p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
-  p->force.v_sig = v_sig;
+  return gas_internal_energy_from_entropy(p->rho, p->entropy_dt);
 }
 
 /**
- * @brief Modifies the thermal state of a particle to the imposed entropy
+ * @brief Returns the time derivative of internal energy of a particle
  *
- * This overwrites the current state of the particle but does *not* change its
- * time-derivatives. Entropy, pressure, sound-speed and signal velocity will be
- * updated.
+ * We assume a constant density.
  *
- * @param p The particle
- * @param S The new entropy
+ * @param p The particle of interest.
+ * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part *restrict p, float S) {
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
+    struct part *restrict p, float du_dt) {
 
-  p->entropy = S;
+  const float ds_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-
-  /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
-
-  /* Update the signal velocity */
-  const float v_sig_old = p->force.v_sig;
-  const float v_sig_new = p->force.v_sig - p->force.soundspeed + soundspeed;
-  const float v_sig = max(v_sig_old, v_sig_new);
-
-  const float rho_inv = 1.f / p->rho;
-
-  p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
-  p->force.v_sig = v_sig;
+  p->entropy_dt = ds_dt;
 }
 
 /**

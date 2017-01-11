@@ -5,7 +5,7 @@ echo "Generating initial conditions for the cooling box example..."
 
 python makeIC.py 10
 
-../swift -s -C -t 16 coolingBox.yml 
+../swift -s -C -t 1 coolingBox.yml
 
 #-C 2>&1 | tee output.log
 

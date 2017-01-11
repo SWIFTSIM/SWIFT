@@ -1833,20 +1833,11 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 #endif
     }
 
-    /* /\* Cooling tasks should depend on kick and unlock sourceterms *\/ */
-    /* else if (t->type == task_type_cooling) { */
-    /*   scheduler_addunlock(sched, t->ci->kick, t); */
-    /* } */
-    /* /\* source terms depend on cooling if performed, else on kick. It is the
-     * last */
-    /*    task *\/ */
-    /* else if (t->type == task_type_sourceterms) { */
-    /*   if (e->policy == engine_policy_cooling) */
-    /*     scheduler_addunlock(sched, t->ci->cooling, t); */
-    /*   else */
-    /*     scheduler_addunlock(sched, t->ci->kick, t); */
-    /* } */
-    // MATTHIEU
+    /* Cooling tasks take place after the second kick */
+    else if (t->type == task_type_cooling) {
+      scheduler_addunlock(sched, t->ci->kick2, t);
+      scheduler_addunlock(sched, t, t->ci->timestep);
+    }
   }
 }
 
