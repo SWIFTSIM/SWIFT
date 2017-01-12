@@ -252,6 +252,27 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
+#ifdef WENDLAND_C2_KERNEL
+  /* Pick the correct branch of the kernel */
+  const float *const coeffs = &kernel_coeffs[0];
+
+  /* First two terms of the polynomial ... */
+  float w = coeffs[0] * x + coeffs[1];
+  float dw_dx = coeffs[0];
+
+  dw_dx = dw_dx * x + w;
+  w = x * w + coeffs[2];
+
+  dw_dx = dw_dx * x + w;
+  w = x * w + coeffs[3];
+  
+  dw_dx = dw_dx * x + w;
+  w = x * w + coeffs[4];
+  
+  dw_dx = dw_dx * x + w;
+  w = x * w + coeffs[5];
+
+#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
@@ -266,6 +287,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
   }
+#endif
 
   /* Return everything */
   *W = w * kernel_constant * kernel_gamma_inv_dim;
