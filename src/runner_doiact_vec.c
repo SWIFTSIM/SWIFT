@@ -1379,8 +1379,9 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
       }
     }
 
+    float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
+
     /* Loop over the parts in cj. */
-//#pragma simd
     for (int pjd = 0; pjd < exit_iteration; pjd++) {
 
       /* Get the cache index to the jth particle. */
@@ -1395,10 +1396,19 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
 
       r2 = dx*dx + dy*dy + dz*dz;
 
-      runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &pi->rho, &pi->density.rho_dh, &pi->density.wcount, &pi->density.wcount_dh, &pi->density.div_v, &pi->density.rot_v[0], &pi->density.rot_v[1], &pi->density.rot_v[2]);
+      //runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &pi->rho, &pi->density.rho_dh, &pi->density.wcount, &pi->density.wcount_dh, &pi->density.div_v, &pi->density.rot_v[0], &pi->density.rot_v[1], &pi->density.rot_v[2]);
+      //runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &ci_cache->rho[ci_cache_idx], &ci_cache->rho_dh[ci_cache_idx], &ci_cache->wcount[ci_cache_idx], &ci_cache->wcount_dh[ci_cache_idx], &ci_cache->div_v[ci_cache_idx], &ci_cache->curl_vx[ci_cache_idx], &ci_cache->curl_vy[ci_cache_idx], &ci_cache->curl_vz[ci_cache_idx]);
+      runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &rho, &rho_dh, &wcount, &wcount_dh, &div_v, &curl_vx, &curl_vy, &curl_vz);
       
     } /* loop over the parts in cj. */
-    
+    pi->rho += rho;
+    pi->density.rho_dh += rho_dh;
+    pi->density.wcount += wcount;
+    pi->density.wcount_dh += wcount_dh;
+    pi->density.div_v += div_v;
+    pi->density.rot_v[0] += curl_vx;
+    pi->density.rot_v[1] += curl_vy;
+    pi->density.rot_v[2] += curl_vz;
   } /* loop over the parts in ci. */
 
   /* Loop over the parts in cj. */
@@ -1440,9 +1450,10 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
       }
     }
     
+    float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
+
     /* Loop over the parts in ci. */
     //for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
-//#pragma simd
     for (int pid = count_i - 1; pid > exit_iteration; pid--) {
 
       /* Get the cache index to the ith particle. */
@@ -1457,10 +1468,22 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
 
       r2 = dx*dx + dy*dy + dz*dz;
       
-      runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &pj->rho, &pj->density.rho_dh, &pj->density.wcount, &pj->density.wcount_dh, &pj->density.div_v, &pj->density.rot_v[0], &pj->density.rot_v[1], &pj->density.rot_v[2]);
+      //runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &pj->rho, &pj->density.rho_dh, &pj->density.wcount, &pj->density.wcount_dh, &pj->density.div_v, &pj->density.rot_v[0], &pj->density.rot_v[1], &pj->density.rot_v[2]);
+      //runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &cj_cache.rho[cj_cache_idx], &cj_cache.rho_dh[cj_cache_idx], &cj_cache.wcount[cj_cache_idx], &cj_cache.wcount_dh[cj_cache_idx], &cj_cache.div_v[cj_cache_idx], &cj_cache.curl_vx[cj_cache_idx], &cj_cache.curl_vy[cj_cache_idx], &cj_cache.curl_vz[cj_cache_idx]);
+      runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &rho, &rho_dh, &wcount, &wcount_dh, &div_v, &curl_vx, &curl_vy, &curl_vz);
       
     } /* loop over the parts in ci. */
+    pj->rho += rho;
+    pj->density.rho_dh += rho_dh;
+    pj->density.wcount += wcount;
+    pj->density.wcount_dh += wcount_dh;
+    pj->density.div_v += div_v;
+    pj->density.rot_v[0] += curl_vx;
+    pj->density.rot_v[1] += curl_vy;
+    pj->density.rot_v[2] += curl_vz;
   } /* loop over the parts in cj. */
+
+  //cache_write_sorted_particles(ci_cache, &cj_cache, ci, cj, sort_i, sort_j);
 
   TIMER_TOC(timer_dopair_density);
 
