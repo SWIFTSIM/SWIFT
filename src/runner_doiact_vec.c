@@ -257,6 +257,34 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
   }
 
 }
+
+__attribute__((always_inline)) INLINE static void populate_max_d(const struct cell *ci, const struct cell *cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const struct cache *ci_cache, const struct cache *cj_cache, const float dx_max, const float rshift, float *max_di, float *max_dj) {
+
+  float h = ci_cache->h[0];
+  float d;
+  
+  /* For particles in ci */  
+  max_di[0] = sort_i[0].d + h * kernel_gamma + dx_max - rshift;
+
+  for (int k = 1; k < ci->count; k++) {
+    h = ci_cache->h[k];
+    d = sort_i[k].d + h * kernel_gamma + dx_max - rshift;
+    
+    max_di[k] = fmaxf(max_di[k - 1], d);
+  }
+
+  /* For particles in cj */  
+  h = cj_cache->h[0];
+  max_dj[0] = sort_j[0].d - h * kernel_gamma - dx_max - rshift;
+  
+  for (int k = 1; k < cj->count; k++) {
+    h = cj_cache->h[k];
+    d = sort_j[k].d - h * kernel_gamma - dx_max - rshift;
+    
+    max_dj[k] = fmaxf(max_dj[k - 1], d);
+  }
+}
+
 #endif /* WITH_VECTORIZATION */ 
 
 /**
@@ -1277,6 +1305,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 #endif /* WITH_VECTORIZATION */
 }
 
+float max_di[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into ci */
+float max_dj[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into cj */
+
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *
@@ -1316,8 +1347,6 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
 
   /* Get some other useful values. */
-  const double hi_max = ci->h_max * kernel_gamma - rshift;
-  const double hj_max = cj->h_max * kernel_gamma;
   const int count_i = ci->count;
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
@@ -1340,13 +1369,28 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
   //cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
   cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
 
+  /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
+  /* For particles in ci */  
+  populate_max_d(ci, cj, sort_i, sort_j, ci_cache, &cj_cache, dx_max, rshift, max_di, max_dj);
+
+  float di, dj;
+
+  int max_ind_j = count_j - 1;
+
   /* Loop over the parts in ci. */
-  for (int pid = count_i - 1;
-       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+  for (int pid = count_i - 1; pid >= 0 && max_ind_j >= 0; pid--) {
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[sort_i[pid].i];
     if (!part_is_active(pi, e)) continue;
+
+    dj = sort_j[max_ind_j].d;
+    while(max_ind_j > 0 && max_di[pid] < dj) {
+      max_ind_j--;
+
+      dj = sort_j[max_ind_j].d;
+    }
+    int exit_iteration = max_ind_j;    
 
     int ci_cache_idx = pid; //sort_i[pid].i;
 
@@ -1371,18 +1415,10 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
     /* Get the inverse of hi. */
     hi_inv = 1.0f / hi;
 
-    int exit_iteration = count_j;
-    for (int pjd = 0; pjd < count_j ; pjd++) {
-      if(sort_j[pjd].d >= di) {
-        exit_iteration = pjd;
-        break;
-      }
-    }
-
     float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < exit_iteration; pjd++) {
+    for (int pjd = 0; pjd <= exit_iteration; pjd++) {
 
       /* Get the cache index to the jth particle. */
       int cj_cache_idx = pjd; //sort_j[pjd].i;
@@ -1411,13 +1447,22 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
     pi->density.rot_v[2] += curl_vz;
   } /* loop over the parts in ci. */
 
+  int max_ind_i = 0;
   /* Loop over the parts in cj. */
-  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
-       pjd++) {
+  for (int pjd = 0; pjd < count_j && max_ind_i < count_i; pjd++) {
 
     /* Get a hold of the jth part in cj. */
     struct part *restrict pj = &parts_j[sort_j[pjd].i];
     if (!part_is_active(pj, e)) continue;
+
+    di = sort_i[max_ind_i].d;
+
+    while(max_ind_i < count_i - 1 && max_dj[pjd] > di) {
+      max_ind_i++;
+
+      di = sort_i[max_ind_i].d;
+    }
+    int exit_iteration = max_ind_i;
 
     int cj_cache_idx = pjd;
 
@@ -1442,19 +1487,10 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
     /* Get the inverse of hj. */
     hj_inv = 1.0f / hj;
 
-    int exit_iteration = count_i - 1;
-    for (int pid = count_i - 1; pid >= 0; pid--) {
-      if(sort_i[pid].d <= dj) {
-        exit_iteration = pid;
-        break;
-      }
-    }
-    
     float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
 
     /* Loop over the parts in ci. */
-    //for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
-    for (int pid = count_i - 1; pid > exit_iteration; pid--) {
+    for (int pid = exit_iteration; pid < count_i; pid++) {
 
       /* Get the cache index to the ith particle. */
       int ci_cache_idx = pid; //sort_i[pid].i;
