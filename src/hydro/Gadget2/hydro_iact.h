@@ -279,7 +279,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density_jsw
 
   if (r2 < hig2) {
 
-    //interactionCount++;
     float wi, wi_dx;
 
     /* Get r and r inverse. */
