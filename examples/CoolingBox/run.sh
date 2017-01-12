@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
@@ -16,3 +17,4 @@ fi
 ../swift -s -C -t 1 coolingBox.yml
 
 # Check energy conservation and cooling rate
+python energy_plot.py
