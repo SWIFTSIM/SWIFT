@@ -110,7 +110,8 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   /* Fill the progeny recursively, depth-first. */
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-      struct cell *temp = space_getcell(s);
+      struct cell *temp;
+      space_getcells(s, 1, &temp);
       temp->count = 0;
       temp->gcount = 0;
       temp->loc[0] = c->loc[0];
