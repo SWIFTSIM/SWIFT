@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy += hydro_get_mass(p) * cooling_du_dt * dt;
+  xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 /**
@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
-  /* Get current internal energy (dt=0) */
+  /* Get current internal energy */
   const float u = hydro_get_internal_energy(p);
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
 
