@@ -147,7 +147,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
 void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
-struct cell *space_getcell(struct space *s);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,

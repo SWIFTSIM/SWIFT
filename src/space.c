@@ -1480,7 +1480,6 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
   int maxdepth = 0;
   float h_max = 0.0f;
   integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  struct cell *temp;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct xpart *xparts = c->xparts;
@@ -1510,29 +1509,29 @@ void space_split_recursive(struct space *s, struct cell *c, int *buff) {
     c->split = 1;
 
     /* Create the cell's progeny. */
+    space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
-      temp = space_getcell(s);
-      temp->count = 0;
-      temp->gcount = 0;
-      temp->ti_old = c->ti_old;
-      temp->loc[0] = c->loc[0];
-      temp->loc[1] = c->loc[1];
-      temp->loc[2] = c->loc[2];
-      temp->width[0] = c->width[0] / 2;
-      temp->width[1] = c->width[1] / 2;
-      temp->width[2] = c->width[2] / 2;
-      temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->width[0];
-      if (k & 2) temp->loc[1] += temp->width[1];
-      if (k & 1) temp->loc[2] += temp->width[2];
-      temp->depth = c->depth + 1;
-      temp->split = 0;
-      temp->h_max = 0.0;
-      temp->dx_max = 0.f;
-      temp->nodeID = c->nodeID;
-      temp->parent = c;
-      temp->super = NULL;
-      c->progeny[k] = temp;
+      struct cell *cp = c->progeny[k];
+      cp->count = 0;
+      cp->gcount = 0;
+      cp->ti_old = c->ti_old;
+      cp->loc[0] = c->loc[0];
+      cp->loc[1] = c->loc[1];
+      cp->loc[2] = c->loc[2];
+      cp->width[0] = c->width[0] / 2;
+      cp->width[1] = c->width[1] / 2;
+      cp->width[2] = c->width[2] / 2;
+      cp->dmin = c->dmin / 2;
+      if (k & 4) cp->loc[0] += cp->width[0];
+      if (k & 2) cp->loc[1] += cp->width[1];
+      if (k & 1) cp->loc[2] += cp->width[2];
+      cp->depth = c->depth + 1;
+      cp->split = 0;
+      cp->h_max = 0.0;
+      cp->dx_max = 0.f;
+      cp->nodeID = c->nodeID;
+      cp->parent = c;
+      cp->super = NULL;
     }
 
     /* Split the cell data. */
@@ -1711,39 +1710,46 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
  * If we have no cells, allocate a new chunk of memory and pick one from there.
  *
  * @param s The #space.
+ * @param nr_cells Number of #cell to pick up.
+ * @param cells Array of @c nr_cells #cell pointers in which to store the
+ *        new cells.
  */
-struct cell *space_getcell(struct space *s) {
+void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  /* Is the buffer empty? */
-  if (s->cells_sub == NULL) {
-    if (posix_memalign((void *)&s->cells_sub, cell_align,
-                       space_cellallocchunk * sizeof(struct cell)) != 0)
-      error("Failed to allocate more cells.");
+  /* For each requested cell... */
+  for (int j = 0; j < nr_cells; j++) {
 
-    /* Constructed a linked list */
-    for (int k = 0; k < space_cellallocchunk - 1; k++)
-      s->cells_sub[k].next = &s->cells_sub[k + 1];
-    s->cells_sub[space_cellallocchunk - 1].next = NULL;
+    /* Is the buffer empty? */
+    if (s->cells_sub == NULL) {
+      if (posix_memalign((void *)&s->cells_sub, cell_align,
+                         space_cellallocchunk * sizeof(struct cell)) != 0)
+        error("Failed to allocate more cells.");
+
+      /* Constructed a linked list */
+      for (int k = 0; k < space_cellallocchunk - 1; k++)
+        s->cells_sub[k].next = &s->cells_sub[k + 1];
+      s->cells_sub[space_cellallocchunk - 1].next = NULL;
+    }
+
+    /* Pick off the next cell. */
+    cells[j] = s->cells_sub;
+    s->cells_sub = cells[j]->next;
+    s->tot_cells += 1;
   }
-
-  /* Pick off the next cell. */
-  struct cell *c = s->cells_sub;
-  s->cells_sub = c->next;
-  s->tot_cells += 1;
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
 
   /* Init some things in the cell we just got. */
-  bzero(c, sizeof(struct cell));
-  c->nodeID = -1;
-  if (lock_init(&c->lock) != 0 || lock_init(&c->glock) != 0)
-    error("Failed to initialize cell spinlocks.");
-
-  return c;
+  for (int j = 0; j < nr_cells; j++) {
+    bzero(cells[j], sizeof(struct cell));
+    cells[j]->nodeID = -1;
+    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0)
+      error("Failed to initialize cell spinlocks.");
+  }
 }
 
 /**
