@@ -281,11 +281,11 @@ void check_riemann_symmetry() {
     check_value(Whalf1[3], Whalf2[3], "V[2] solution");
     check_value(Whalf1[4], Whalf2[4], "Pressure solution");
   } else {
-    message(
-        "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
-        Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0],
-        Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]);
+    /* message( */
+    /*     "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
+    /*     "[%.3e,%.3e,%.3e,%.3e,%.3e]\n", */
+    /*     Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0], */
+    /*     Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]); */
   }
 
   vij[0] = random_uniform(-10.0f, 10.0f);
@@ -314,11 +314,11 @@ void check_riemann_symmetry() {
     check_value(totflux1[3], totflux2[3], "Momentum[2] flux");
     check_value(totflux1[4], totflux2[4], "Energy flux");
   } else {
-    message(
-        "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
-        totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
-        totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
+    /* message( */
+    /*     "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
+    /*     "[%.3e,%.3e,%.3e,%.3e,%.3e]\n", */
+    /*     totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4], */
+    /*     totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]); */
   }
 }
 

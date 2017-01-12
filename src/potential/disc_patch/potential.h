@@ -83,37 +83,37 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   float dt = dt_dyn;
 
   /* absolute value of height above disc */
-  const float dz = fabs(g->x[2] - potential->z_disc);
+  const float dz = fabsf(g->x[2] - potential->z_disc);
 
-  /* vertical cceleration */
+  /* vertical acceleration */
   const float z_accel = 2.f * M_PI * phys_const->const_newton_G *
                         potential->surface_density *
-                        tanh(dz / potential->scale_height);
+                        tanhf(dz / potential->scale_height);
 
   /* demand that dt * velocity <  fraction of scale height of disc */
   float dt1 = FLT_MAX;
-  if (fabs(g->v_full[2]) > 0) {
-    dt1 = potential->scale_height / fabs(g->v_full[2]);
+  if (g->v_full[2] != 0.f) {
+    dt1 = potential->scale_height / fabsf(g->v_full[2]);
     if (dt1 < dt) dt = dt1;
   }
 
   /* demand that dt^2 * acceleration < fraction of scale height of disc */
   float dt2 = FLT_MAX;
-  if (fabs(z_accel) > 0) {
-    dt2 = potential->scale_height / fabs(z_accel);
-    if (dt2 < dt * dt) dt = sqrt(dt2);
+  if (z_accel != 0.f) {
+    dt2 = potential->scale_height / fabsf(z_accel);
+    if (dt2 < dt * dt) dt = sqrtf(dt2);
   }
 
-  /* demand that dt^3 jerk < fraction of scale height of disc */
+  /* demand that dt^3 * jerk < fraction of scale height of disc */
   float dt3 = FLT_MAX;
-  if (abs(g->v_full[2]) > 0) {
+  if (g->v_full[2] != 0.f) {
     const float dz_accel_over_dt =
         2.f * M_PI * phys_const->const_newton_G * potential->surface_density /
-        potential->scale_height / cosh(dz / potential->scale_height) /
-        cosh(dz / potential->scale_height) * fabs(g->v_full[2]);
+        potential->scale_height / coshf(dz / potential->scale_height) /
+        coshf(dz / potential->scale_height) * fabsf(g->v_full[2]);
 
-    dt3 = potential->scale_height / fabs(dz_accel_over_dt);
-    if (dt3 < dt * dt * dt) dt = pow(dt3, 1. / 3.);
+    dt3 = potential->scale_height / fabsf(dz_accel_over_dt);
+    if (dt3 < dt * dt * dt) dt = cbrtf(dt3);
   }
 
   return potential->timestep_mult * dt;
@@ -123,7 +123,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @brief Computes the gravitational acceleration along z due to a hydrostatic
  * disc
  *
- * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
+ * equation 17.
  *
  * @param time The current time in internal units.
  * @param potential The properties of the potential.
@@ -144,7 +145,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   /* Accelerations. Note that they are multiplied by G later on */
   const float z_accel = reduction_factor * 2.f * M_PI *
                         potential->surface_density *
-                        tanh(fabs(dz) / potential->scale_height);
+                        tanhf(fabsf(dz) / potential->scale_height);
 
   if (dz > 0) g->a_grav[2] -= z_accel;
   if (dz < 0) g->a_grav[2] += z_accel;
@@ -153,25 +154,39 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 /**
  * @brief Computes the gravitational potential energy of a particle in the
  * disc patch potential.
- * Time evolving system so not sure how to do this
- * Placeholder for now- just returns 0
  *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
+ * equation 24.
+ *
+ * @param time The current time.
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
- * @param p Pointer to the particle data.
+ * @param gp Pointer to the particle data.
  */
-
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* p) {
+    double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, const struct gpart* gp) {
 
-  return 0.f;
+  const float dz = gp->x[2] - potential->z_disc;
+  const float t_dyn = potential->dynamical_time;
+
+  float reduction_factor = 1.f;
+  if (time < potential->growth_time * t_dyn)
+    reduction_factor = time / (potential->growth_time * t_dyn);
+
+  /* Accelerations. Note that they are multiplied by G later on */
+  return reduction_factor * 2.f * M_PI * phys_const->const_newton_G *
+         potential->surface_density * potential->scale_height *
+         logf(coshf(dz / potential->scale_height));
 }
 
 /**
  * @brief Initialises the external potential properties in the internal system
  * of units.
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
+ * equation 22.
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
