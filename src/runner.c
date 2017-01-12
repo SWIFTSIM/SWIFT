@@ -53,6 +53,7 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
+#include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sourceterms.h"
 #include "space.h"
@@ -1093,7 +1094,13 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) {
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+            runner_doself1_density_vec(r, ci);
+#else
+            runner_doself1_density(r, ci);
+#endif
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_doself1_gradient(r, ci);

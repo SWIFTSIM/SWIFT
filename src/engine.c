@@ -70,6 +70,9 @@
 #include "units.h"
 #include "version.h"
 
+/* Particle cache size. */
+#define CACHE_SIZE 512
+
 const char *engine_policy_names[16] = {"none",
                                        "rand",
                                        "steal",
@@ -3412,6 +3415,11 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
+
+    /* Allocate particle cache. */
+    e->runners[k].par_cache.count = 0;
+    cache_init(&e->runners[k].par_cache, CACHE_SIZE);
+
     if (verbose) {
       if (with_aff)
         message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,

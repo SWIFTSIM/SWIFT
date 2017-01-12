@@ -6,7 +6,7 @@ do
 
     rm -f brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat
 
-    ./test27cells -n 6 -r 1 -d 0.1 -f perturbed -v $v
+    ./test27cells -n 6 -r 1 -d 0.1 -f perturbed -v $v -a 5e-4
 
     if [ -e brute_force_27_perturbed.dat ]
     then
