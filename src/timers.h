@@ -36,6 +36,7 @@ enum {
   timer_kick1,
   timer_kick2,
   timer_timestep,
+  timer_endforce,
   timer_dosort,
   timer_doself_density,
   timer_doself_gradient,

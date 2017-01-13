@@ -176,13 +176,18 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 #endif
 
       /* Cooling task */
-      if (is_with_cooling)
+      if (is_with_cooling) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
+
+        scheduler_addunlock(s, c->cooling, c->kick2);
+      }
+
       /* add source terms */
-      if (is_with_sourceterms)
+      if (is_with_sourceterms) {
         c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
                                            task_subtype_none, 0, 0, c, NULL, 0);
+      }
     }
 
   } else { /* We are above the super-cell so need to go deeper */
@@ -1634,11 +1639,18 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
                                                         struct cell *c) {
-  /* init --> density loop --> ghost --> force loop --> kick2 */
+  /* init --> density loop --> ghost --> force loop */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);
-  scheduler_addunlock(sched, force, c->super->kick2);
+
+  if (c->super->cooling != NULL) {
+    /* force loop --> cooling (--> kick2)  */
+    scheduler_addunlock(sched, force, c->super->cooling);
+  } else {
+    /* force loop --> kick2 */
+    scheduler_addunlock(sched, force, c->super->kick2);
+  }
 }
 
 #endif
@@ -1831,12 +1843,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
 #endif
-    }
-
-    /* Cooling tasks take place after the second kick */
-    else if (t->type == task_type_cooling) {
-      scheduler_addunlock(sched, t->ci->kick2, t);
-      scheduler_addunlock(sched, t, t->ci->timestep);
     }
   }
 }
@@ -2543,9 +2549,7 @@ void engine_skip_drift_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_drift || t->type == task_type_kick1 ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms)
-      t->skip = 1;
+    if (t->type == task_type_drift || t->type == task_type_kick1) t->skip = 1;
   }
 }
 

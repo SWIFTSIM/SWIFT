@@ -83,7 +83,7 @@ rho_cgs = rho * unit_mass / (unit_length)**3
 time_cgs = time * unit_time
 total_energy_cgs = total_energy / total_mass[0] * unit_length**2 / (unit_time)**2
 kinetic_energy_cgs = kinetic_energy / total_mass[0] * unit_length**2 / (unit_time)**2
-internal_energy_cgs = kinetic_energy / total_mass[0] * unit_length**2 / (unit_time)**2
+internal_energy_cgs = internal_energy / total_mass[0] * unit_length**2 / (unit_time)**2
 radiated_energy_cgs = radiated_energy / total_mass[0] * unit_length**2 / (unit_time)**2  
 
 # Find the energy floor
@@ -100,19 +100,27 @@ u_analytic_cgs[u_analytic_cgs < u_floor_cgs] = u_floor_cgs
 
 print "Cooling time:", cooling_time_cgs, "[s]"
 
+# Read snapshots
+u_snapshots_cgs = zeros(25)
+t_snapshots_cgs = zeros(25)
+for i in range(25):
+    snap = h5.File("coolingBox_%0.3d.hdf5"%i,'r')
+    u_snapshots_cgs[i] = sum(snap["/PartType0/InternalEnergy"][:] * snap["/PartType0/Masses"][:])  / total_mass[0] * unit_length**2 / (unit_time)**2
+    t_snapshots_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
+
+
 figure()
-#plot(time_cgs, internal_energy_cgs, 'b-', lw=1.5, label="Gas internal energy")
-#plot(time_cgs, kinetic_energy_cgs, 'y-', lw=1.5, label="Gas kinetic energy")
 plot(time_cgs, total_energy_cgs, 'r-', lw=1.6, label="Gas total energy")
+plot(t_snapshots_cgs, u_snapshots_cgs, 'rD', ms=3)
 plot(time_cgs, radiated_energy_cgs, 'g-', lw=1.6, label="Radiated energy")
 plot(time_cgs, total_energy_cgs + radiated_energy_cgs, 'b-', lw=0.6, label="Gas total + radiated")
 
 plot(analytic_time_cgs, u_analytic_cgs, '--', color='k', alpha=0.8, lw=1.0, label="Analytic solution")
 
-legend(loc="upper right", fontsize=8)
+legend(loc="upper right", fontsize=8, frameon=False, handlelength=3, ncol=1)
 xlabel("${\\rm{Time~[s]}}$", labelpad=0)
-ylabel("${\\rm{Gas~internal~energy~[erg]}}$")
-xlim(0, 1.8*cooling_time_cgs)
+ylabel("${\\rm{Energy~[erg]}}$")
+xlim(0, 1.5*cooling_time_cgs)
 ylim(0, 1.5*u_analytic_cgs[0])
 
 savefig("energy.png", dpi=200)

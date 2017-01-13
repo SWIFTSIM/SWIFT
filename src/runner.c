@@ -924,7 +924,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
-  const double const_G = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
 
@@ -946,10 +945,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
-
-        /* First, finish the force loop */
-        hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
@@ -976,9 +971,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
-
-        /* First, finish the force loop */
-        gravity_end_force(gp, const_G);
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -1138,6 +1130,63 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->ti_end_max = ti_end_max;
 
   if (timer) TIMER_TOC(timer_timestep);
+}
+
+/**
+ * @brief End the force calculation of all active particles in a cell
+ * by multiplying the acccelerations by the relevant constants
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  struct part *restrict parts = c->parts;
+  struct gpart *restrict gparts = c->gparts;
+  const double const_G = e->physical_constants->const_newton_G;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+
+      if (part_is_active(p, e)) {
+
+        /* First, finish the force loop */
+        hydro_end_force(p);
+        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
+      }
+    }
+
+    /* Loop over the g-particles in this cell. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the gpart. */
+      struct gpart *restrict gp = &gparts[k];
+
+      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+        gravity_end_force(gp, const_G);
+      }
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_endforce);
 }
 
 /**
@@ -1379,6 +1428,8 @@ void *runner_main(void *data) {
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_kick2:
+          if (!(e->policy & engine_policy_cooling))
+            runner_do_end_force(r, ci, 1);
           runner_do_kick2(r, ci, 1);
           break;
         case task_type_timestep:
@@ -1411,6 +1462,7 @@ void *runner_main(void *data) {
           runner_do_grav_fft(r);
           break;
         case task_type_cooling:
+          if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
           runner_do_cooling(r, t->ci, 1);
           break;
         case task_type_sourceterms:
