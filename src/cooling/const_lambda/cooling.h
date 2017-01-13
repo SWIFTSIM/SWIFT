@@ -89,8 +89,10 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   float cooling_du_dt = cooling_rate(phys_const, us, cooling, p);
 
   /* Integrate cooling equation to enforce energy floor */
-  if (u_old + cooling_du_dt * dt < u_floor) {
-    cooling_du_dt = (u_old - u_floor) / dt;
+  if (u_old + hydro_du_dt < u_floor) {
+    cooling_du_dt = 0.f;
+  } else if (u_old + (hydro_du_dt + cooling_du_dt) * dt < u_floor) {
+    cooling_du_dt = (u_old + dt * hydro_du_dt - u_floor) / dt;
   }
 
   /* Update the internal energy time derivative */

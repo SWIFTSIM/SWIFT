@@ -94,7 +94,7 @@ initial_energy_cgs = initial_energy/total_mass[0] * unit_length**2 / (unit_time)
 n_H_cgs = X_H * rho_cgs / m_p
 du_dt_cgs = -cooling_lambda * n_H_cgs**2 / rho_cgs
 cooling_time_cgs = (initial_energy_cgs/(-du_dt_cgs))[0]
-analytic_time_cgs = np.linspace(0, cooling_time_cgs*1.5,1000)
+analytic_time_cgs = np.linspace(0, cooling_time_cgs * 1.8, 1000)
 u_analytic_cgs = du_dt_cgs*analytic_time_cgs + initial_energy_cgs
 u_analytic_cgs[u_analytic_cgs < u_floor_cgs] = u_floor_cgs
 
@@ -103,11 +103,11 @@ print "Cooling time:", cooling_time_cgs, "[s]"
 figure()
 #plot(time_cgs, internal_energy_cgs, 'b-', lw=1.5, label="Gas internal energy")
 #plot(time_cgs, kinetic_energy_cgs, 'y-', lw=1.5, label="Gas kinetic energy")
-plot(time_cgs, total_energy_cgs, 'r-', lw=1.5, label="Gas total energy")
-plot(time_cgs, radiated_energy_cgs, 'g-', lw=1.5, label="Radiated energy")
-plot(time_cgs, total_energy_cgs + radiated_energy_cgs, 'k-', lw=0.6, label="Gas+radiated")
+plot(time_cgs, total_energy_cgs, 'r-', lw=1.6, label="Gas total energy")
+plot(time_cgs, radiated_energy_cgs, 'g-', lw=1.6, label="Radiated energy")
+plot(time_cgs, total_energy_cgs + radiated_energy_cgs, 'b-', lw=0.6, label="Gas total + radiated")
 
-plot(analytic_time_cgs, u_analytic_cgs, '--', color='k', alpha=0.8, lw=1.2, label="Analytic solution")
+plot(analytic_time_cgs, u_analytic_cgs, '--', color='k', alpha=0.8, lw=1.0, label="Analytic solution")
 
 legend(loc="upper right", fontsize=8)
 xlabel("${\\rm{Time~[s]}}$", labelpad=0)

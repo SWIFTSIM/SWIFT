@@ -130,9 +130,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
 __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
     struct part *restrict p, float du_dt) {
 
-  const float ds_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
-
-  p->entropy_dt = ds_dt;
+  p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
 }
 
 /**
@@ -379,12 +377,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
-  /* Do not decrease the entropy (temperature) by more than a factor of 2*/
+  /* Do not decrease the entropy by more than a factor of 2 */
   const float entropy_change = p->entropy_dt * dt;
-  if (entropy_change > -0.5f * xp->entropy_full)
-    xp->entropy_full += entropy_change;
-  else
-    xp->entropy_full *= 0.5f;
+  xp->entropy_full =
+      max(xp->entropy_full + entropy_change, 0.5f * xp->entropy_full);
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
