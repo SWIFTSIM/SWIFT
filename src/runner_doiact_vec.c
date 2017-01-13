@@ -1357,21 +1357,21 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
-  struct cache *restrict ci_cache = &r->par_cache;
+  //struct cache *restrict ci_cache = &r->par_cache;
 
-  if (ci_cache->count < count_i) {
-    cache_init(ci_cache, count_i);
-  }
-  if (cj_cache.count < count_j) {
-    cache_init(&cj_cache, count_j);
-  }
+  //if (ci_cache->count < count_i) {
+  //  cache_init(ci_cache, count_i);
+  //}
+  //if (cj_cache.count < count_j) {
+  //  cache_init(&cj_cache, count_j);
+  //}
 
   //cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
-  cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
+  cache_read_two_cells_sorted(ci, cj, &ci_cache, &cj_cache, sort_i, sort_j, shift);
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
-  populate_max_d(ci, cj, sort_i, sort_j, ci_cache, &cj_cache, dx_max, rshift, max_di, max_dj);
+  populate_max_d(ci, cj, sort_i, sort_j, &ci_cache, &cj_cache, dx_max, rshift, max_di, max_dj);
 
   float di, dj;
 
@@ -1394,7 +1394,7 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
 
     int ci_cache_idx = pid; //sort_i[pid].i;
 
-    const float hi = ci_cache->h[ci_cache_idx];
+    const float hi = ci_cache.h[ci_cache_idx];
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
@@ -1405,46 +1405,35 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
     float hi_inv;
 
     /* Fill particle pi vectors. */
-    pix = ci_cache->x[ci_cache_idx];
-    piy = ci_cache->y[ci_cache_idx];
-    piz = ci_cache->z[ci_cache_idx];
-    vix = ci_cache->vx[ci_cache_idx];
-    viy = ci_cache->vy[ci_cache_idx];
-    viz = ci_cache->vz[ci_cache_idx];
+    pix = ci_cache.x[ci_cache_idx];
+    piy = ci_cache.y[ci_cache_idx];
+    piz = ci_cache.z[ci_cache_idx];
+    vix = ci_cache.vx[ci_cache_idx];
+    viy = ci_cache.vy[ci_cache_idx];
+    viz = ci_cache.vz[ci_cache_idx];
 
     /* Get the inverse of hi. */
     hi_inv = 1.0f / hi;
-
-    float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd <= exit_iteration; pjd++) {
 
       /* Get the cache index to the jth particle. */
-      int cj_cache_idx = pjd; //sort_j[pjd].i;
+      //int cj_cache_idx = pjd; //sort_j[pjd].i;
 
       float dx, dy, dz, r2;
 
       /* Compute the pairwise distance. */
-      dx = pix - cj_cache.x[cj_cache_idx];
-      dy = piy - cj_cache.y[cj_cache_idx];
-      dz = piz - cj_cache.z[cj_cache_idx];
+      dx =  pix - cj_cache.x[pjd];
+      dy =  piy - cj_cache.y[pjd];
+      dz =  piz - cj_cache.z[pjd];
 
       r2 = dx*dx + dy*dy + dz*dz;
 
-      //runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &pi->rho, &pi->density.rho_dh, &pi->density.wcount, &pi->density.wcount_dh, &pi->density.div_v, &pi->density.rot_v[0], &pi->density.rot_v[1], &pi->density.rot_v[2]);
-      //runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &ci_cache->rho[ci_cache_idx], &ci_cache->rho_dh[ci_cache_idx], &ci_cache->wcount[ci_cache_idx], &ci_cache->wcount_dh[ci_cache_idx], &ci_cache->div_v[ci_cache_idx], &ci_cache->curl_vx[ci_cache_idx], &ci_cache->curl_vy[ci_cache_idx], &ci_cache->curl_vz[ci_cache_idx]);
-      runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[cj_cache_idx], vix, viy, viz, cj_cache.vx[cj_cache_idx], cj_cache.vy[cj_cache_idx], cj_cache.vz[cj_cache_idx], cj_cache.m[cj_cache_idx], &rho, &rho_dh, &wcount, &wcount_dh, &div_v, &curl_vx, &curl_vy, &curl_vz);
+      runner_iact_nonsym_density_jsw(r2, hig2, dx, dy, dz, hi_inv, cj_cache.h[pjd], vix, viy, viz, cj_cache.vx[pjd], cj_cache.vy[pjd], cj_cache.vz[pjd], cj_cache.m[pjd], &ci_cache.rho[pid], &ci_cache.rho_dh[pid], &ci_cache.wcount[pid], &ci_cache.wcount_dh[pid], &ci_cache.div_v[pid], &ci_cache.curl_vx[pid], &ci_cache.curl_vy[pid], &ci_cache.curl_vz[pid]);
       
     } /* loop over the parts in cj. */
-    pi->rho += rho;
-    pi->density.rho_dh += rho_dh;
-    pi->density.wcount += wcount;
-    pi->density.wcount_dh += wcount_dh;
-    pi->density.div_v += div_v;
-    pi->density.rot_v[0] += curl_vx;
-    pi->density.rot_v[1] += curl_vy;
-    pi->density.rot_v[2] += curl_vz;
+    
   } /* loop over the parts in ci. */
 
   int max_ind_i = 0;
@@ -1487,8 +1476,6 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
     /* Get the inverse of hj. */
     hj_inv = 1.0f / hj;
 
-    float rho = 0, rho_dh = 0, wcount = 0, wcount_dh = 0, div_v = 0, curl_vx = 0, curl_vy = 0, curl_vz = 0;
-
     /* Loop over the parts in ci. */
     for (int pid = exit_iteration; pid < count_i; pid++) {
 
@@ -1498,28 +1485,19 @@ void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct c
       float dx, dy, dz, r2;
 
       /* Compute the pairwise distance. */
-      dx = pjx - ci_cache->x[ci_cache_idx];
-      dy = pjy - ci_cache->y[ci_cache_idx];
-      dz = pjz - ci_cache->z[ci_cache_idx];
+      dx = pjx - ci_cache.x[ci_cache_idx];
+      dy = pjy - ci_cache.y[ci_cache_idx];
+      dz = pjz - ci_cache.z[ci_cache_idx];
 
       r2 = dx*dx + dy*dy + dz*dz;
       
-      //runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &pj->rho, &pj->density.rho_dh, &pj->density.wcount, &pj->density.wcount_dh, &pj->density.div_v, &pj->density.rot_v[0], &pj->density.rot_v[1], &pj->density.rot_v[2]);
-      //runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &cj_cache.rho[cj_cache_idx], &cj_cache.rho_dh[cj_cache_idx], &cj_cache.wcount[cj_cache_idx], &cj_cache.wcount_dh[cj_cache_idx], &cj_cache.div_v[cj_cache_idx], &cj_cache.curl_vx[cj_cache_idx], &cj_cache.curl_vy[cj_cache_idx], &cj_cache.curl_vz[cj_cache_idx]);
-      runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache->h[ci_cache_idx], vjx, vjy, vjz, ci_cache->vx[ci_cache_idx], ci_cache->vy[ci_cache_idx], ci_cache->vz[ci_cache_idx], ci_cache->m[ci_cache_idx], &rho, &rho_dh, &wcount, &wcount_dh, &div_v, &curl_vx, &curl_vy, &curl_vz);
+      runner_iact_nonsym_density_jsw(r2, hjg2, dx, dy, dz, hj_inv, ci_cache.h[ci_cache_idx], vjx, vjy, vjz, ci_cache.vx[ci_cache_idx], ci_cache.vy[ci_cache_idx], ci_cache.vz[ci_cache_idx], ci_cache.m[ci_cache_idx], &cj_cache.rho[cj_cache_idx], &cj_cache.rho_dh[cj_cache_idx], &cj_cache.wcount[cj_cache_idx], &cj_cache.wcount_dh[cj_cache_idx], &cj_cache.div_v[cj_cache_idx], &cj_cache.curl_vx[cj_cache_idx], &cj_cache.curl_vy[cj_cache_idx], &cj_cache.curl_vz[cj_cache_idx]);
       
     } /* loop over the parts in ci. */
-    pj->rho += rho;
-    pj->density.rho_dh += rho_dh;
-    pj->density.wcount += wcount;
-    pj->density.wcount_dh += wcount_dh;
-    pj->density.div_v += div_v;
-    pj->density.rot_v[0] += curl_vx;
-    pj->density.rot_v[1] += curl_vy;
-    pj->density.rot_v[2] += curl_vz;
+    
   } /* loop over the parts in cj. */
-
-  //cache_write_sorted_particles(ci_cache, &cj_cache, ci, cj, sort_i, sort_j);
+    
+  cache_write_sorted_particles(&ci_cache, &cj_cache, ci, cj, sort_i, sort_j);
 
   TIMER_TOC(timer_dopair_density);
 
