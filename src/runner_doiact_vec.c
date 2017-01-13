@@ -895,6 +895,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 #endif /* WITH_VECTORIZATION */
 }
 
+float max_di[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into ci */
+float max_dj[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into cj */
+
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *
@@ -1013,9 +1016,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
     int exit_iteration = count_j;
     for (int pjd = 0; pjd < count_j ; pjd++) {
-      if(sort_j[pjd].d >= di) exit_iteration = pjd;
+      if(sort_j[pjd].d > di) {
+        exit_iteration = pjd;
+        break;
+      }
     }
-
+    
     /* Pad cache if there is a serial remainder. */
     int exit_iteration_align = exit_iteration;
     int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
@@ -1023,13 +1029,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
       exit_iteration_align += pad;
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = exit_iteration; i < exit_iteration_align; i++) {
-        cj_cache.x[i] = pix.f[0];
-        cj_cache.y[i] = piy.f[0];
-        cj_cache.z[i] = piz.f[0];
-      }
     }
 
     vector pjx, pjy, pjz;
@@ -1061,15 +1060,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-      vector v_doi_mask, v_doi_mask_check;
+      vector v_doi_mask;
       int doi_mask;
 
-      /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      /* Form r2 < hig2 mask. */
       v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
 
-      /* Combine two masks and form integer mask. */
-      doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
+      /* Form integer mask. */
+      doi_mask = vec_cmp_result(v_doi_mask.v);
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
@@ -1181,7 +1179,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
     int exit_iteration = 0;
     for (int pid = count_i - 1; pid >= 0; pid--) {
-      if(sort_i[pid].d <= dj) exit_iteration = pid;
+      if(sort_i[pid].d < dj) {
+        exit_iteration = pid;
+        break;
+      }
     }
 
     /* Pad cache if there is a serial remainder. */
@@ -1191,13 +1192,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
       exit_iteration_align -= pad;
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = exit_iteration; i >= exit_iteration_align; i--) {
-        ci_cache->x[i] = pjx.f[0];
-        ci_cache->y[i] = pjy.f[0];
-        ci_cache->z[i] = pjz.f[0];
-      }
     }
 
     vector pix, piy, piz;
@@ -1230,15 +1224,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-      vector v_doj_mask, v_doj_mask_check;
+      vector v_doj_mask;
       int doj_mask;
 
-      /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doj_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      /* Form r2 < hig2 mask. */
       v_doj_mask.v = vec_cmp_lt(v_r2.v, v_hjg2.v);
 
-      /* Combine two masks and form integer mask. */
-      doj_mask = vec_cmp_result(vec_and(v_doj_mask.v, v_doj_mask_check.v));
+      /* Form integer mask. */
+      doj_mask = vec_cmp_result(v_doj_mask.v);
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
@@ -1305,8 +1298,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 #endif /* WITH_VECTORIZATION */
 }
 
-float max_di[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into ci */
-float max_dj[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into cj */
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).
