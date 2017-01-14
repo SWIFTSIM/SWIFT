@@ -76,7 +76,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  * @brief Returns the sound speed of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p) {
