@@ -128,8 +128,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy_one_over_gamma = 1.f;
 #endif
 
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 0;
         ++part;
       }
     }
@@ -147,9 +146,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 1;
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old = 0;
+  cell->ti_end_min = 0;
+  cell->ti_end_max = 0;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -390,7 +389,7 @@ int main(int argc, char *argv[]) {
   struct engine engine;
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 0;
 
   struct runner runner;
   runner.e = &engine;

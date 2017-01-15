@@ -68,8 +68,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #else
         part->mass = density * volume / count;
 #endif
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
         ++part;
       }
     }
