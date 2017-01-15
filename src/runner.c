@@ -1157,7 +1157,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_end_force(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the particles in this cell. */
