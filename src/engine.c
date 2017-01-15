@@ -1634,17 +1634,19 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * @param density The density task to link.
  * @param force The force task to link.
  * @param c The cell.
+ * @param with_cooling Are we running with cooling switched on ?
  */
 static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
-                                                        struct cell *c) {
+                                                        struct cell *c,
+                                                        int with_cooling) {
   /* init --> density loop --> ghost --> force loop */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);
 
-  if (c->super->cooling != NULL) {
+  if (with_cooling) {
     /* force loop --> cooling (--> kick2)  */
     scheduler_addunlock(sched, force, c->super->cooling);
   } else {
@@ -1671,6 +1673,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const int nodeID = e->nodeID;
+  const int with_cooling = (e->policy & engine_policy_cooling);
 
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
@@ -1702,7 +1705,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       engine_addlink(e, &t->ci->force, t2);
 
       /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
 #endif
     }
 
@@ -1744,10 +1747,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
       }
 
 #endif
@@ -1790,7 +1793,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
 #endif
     }
@@ -1837,10 +1840,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
       }
 #endif
     }
