@@ -419,17 +419,17 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
 
       v_dx_tmp.v = vec_sub(pix.v, pjx.v);
-      v_dy_tmp.v = vec_sub(piy.v, pjy.v);
-      v_dz_tmp.v = vec_sub(piz.v, pjz.v);
       v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
+      v_dy_tmp.v = vec_sub(piy.v, pjy.v);
       v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
+      v_dz_tmp.v = vec_sub(piz.v, pjz.v);
       v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
 
       v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
-      v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
-      v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
       v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
+      v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
       v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
       v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
 /* Form a mask from r2 < hig2 and r2 > 0.*/
@@ -1307,7 +1307,7 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
 
-  int num_vec_proc = 1;
+  int num_vec_proc = 2;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
@@ -1373,6 +1373,7 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[sort_i[pid].i];
+    //struct part *restrict pi2 = &parts_i[sort_i[pid - 1].i];
     if (!part_is_active(pi, e)) continue;
 
     dj = sort_j[max_ind_j].d;
@@ -1432,19 +1433,24 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
     }
 
     vector pjx, pjy, pjz;
+    vector pjx2, pjy2, pjz2;
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
+    for (int pjd = 0; pjd < exit_iteration_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Get the cache index to the jth particle. */
       int cj_cache_idx = pjd; //sort_j[pjd].i;
 
       vector v_dx, v_dy, v_dz, v_r2;
+      vector v_dx2, v_dy2, v_dz2, v_r2_2;
 
       /* Load 2 sets of vectors from the particle cache. */
       pjx.v = vec_load(&cj_cache.x[cj_cache_idx]);
+      pjx2.v = vec_load(&cj_cache.x[cj_cache_idx + VEC_SIZE]);
       pjy.v = vec_load(&cj_cache.y[cj_cache_idx]);
+      pjy2.v = vec_load(&cj_cache.y[cj_cache_idx + VEC_SIZE]);
       pjz.v = vec_load(&cj_cache.z[cj_cache_idx]);
+      pjz2.v = vec_load(&cj_cache.z[cj_cache_idx + VEC_SIZE]);
       //pjvx.v = vec_load(&cj_cache.vx[cj_cache_idx]);
       //pjvy.v = vec_load(&cj_cache.vy[cj_cache_idx]);
       //pjvz.v = vec_load(&cj_cache.vz[cj_cache_idx]);
@@ -1452,21 +1458,29 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pix.v, pjx.v);
+      v_dx2.v = vec_sub(pix.v, pjx2.v);
       v_dy.v = vec_sub(piy.v, pjy.v);
+      v_dy2.v = vec_sub(piy.v, pjy2.v);
       v_dz.v = vec_sub(piz.v, pjz.v);
+      v_dz2.v = vec_sub(piz.v, pjz2.v);
 
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2_2.v = vec_mul(v_dx2.v, v_dx2.v);
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dy2.v, v_dy2.v, v_r2_2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dz2.v, v_dz2.v, v_r2_2.v);
 
-      vector v_doi_mask;
-      int doi_mask;
+      vector v_doi_mask, v_doi_mask2;
+      int doi_mask, doi_mask2;
 
       /* Form r2 < hig2 mask. */
       v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
 
       /* Form integer mask. */
       doi_mask = vec_cmp_result(v_doi_mask.v);
+      doi_mask2 = vec_cmp_result(v_doi_mask2.v);
 
       if(doi_mask)
         runner_iact_nonsym_intrinsic_vec_density(
@@ -1479,7 +1493,17 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 #else
           0);
 #endif
-            
+      if(doi_mask2)
+        runner_iact_nonsym_intrinsic_vec_density(
+          &v_r2_2, &v_dx2, &v_dy2,&v_dz2, v_hi_inv, v_vix, v_viy, v_viz,
+          &cj_cache.vx[cj_cache_idx + VEC_SIZE], &cj_cache.vy[cj_cache_idx + VEC_SIZE], &cj_cache.vz[cj_cache_idx + VEC_SIZE],
+          &cj_cache.m[cj_cache_idx + VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doi_mask2,
+#ifdef HAVE_AVX512_F
+          knl_mask);
+#else
+          0);
+#endif     
     } /* loop over the parts in cj. */
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
@@ -1561,20 +1585,25 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
     }
 
     vector pix, piy, piz;
+    vector pix2, piy2, piz2;
     //vector pivx, pivy, pivz, mi;
 
     /* Loop over the parts in ci. */
-    for (int pid = count_i - 1; pid >= 0; pid -= VEC_SIZE) {
+    for (int pid = count_i - 1; pid >= 0; pid -= (num_vec_proc * VEC_SIZE)) {
 
       /* Get the cache index to the ith particle. */
       int ci_cache_idx = pid; //sort_i[pid].i;
 
       vector v_dx, v_dy, v_dz, v_r2;
+      vector v_dx2, v_dy2, v_dz2, v_r2_2;
 
       /* Load 2 sets of vectors from the particle cache. */
       pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
+      pix2.v = vec_load(&ci_cache->x[ci_cache_idx - VEC_SIZE]);
       piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
+      piy2.v = vec_load(&ci_cache->y[ci_cache_idx - VEC_SIZE]);
       piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
+      piz2.v = vec_load(&ci_cache->z[ci_cache_idx - VEC_SIZE]);
       //pivx.v = vec_load(&ci_cache->vx[ci_cache_idx]);
       //pivy.v = vec_load(&ci_cache->vy[ci_cache_idx]);
       //pivz.v = vec_load(&ci_cache->vz[ci_cache_idx]);
@@ -1582,21 +1611,29 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pjx.v, pix.v);
+      v_dx2.v = vec_sub(pjx.v, pix2.v);
       v_dy.v = vec_sub(pjy.v, piy.v);
+      v_dy2.v = vec_sub(pjy.v, piy2.v);
       v_dz.v = vec_sub(pjz.v, piz.v);
+      v_dz2.v = vec_sub(pjz.v, piz2.v);
 
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2_2.v = vec_mul(v_dx2.v, v_dx2.v);
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dy2.v, v_dy2.v, v_r2_2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dz2.v, v_dz2.v, v_r2_2.v);
 
-      vector v_doj_mask;
-      int doj_mask;
+      vector v_doj_mask, v_doj_mask2;
+      int doj_mask, doj_mask2;
 
       /* Form r2 < hig2 mask. */
       v_doj_mask.v = vec_cmp_lt(v_r2.v, v_hjg2.v);
+      v_doj_mask2.v = vec_cmp_lt(v_r2_2.v, v_hjg2.v);
 
       /* Form integer mask. */
       doj_mask = vec_cmp_result(v_doj_mask.v);
+      doj_mask2 = vec_cmp_result(v_doj_mask2.v);
 
       /* Perform interaction with 2 vectors. */
       if (doj_mask)
@@ -1610,7 +1647,17 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 #else
       0);
 #endif
-        
+       if (doj_mask2)
+        runner_iact_nonsym_intrinsic_vec_density(
+          &v_r2_2, &v_dx2, &v_dy2, &v_dz2, v_hj_inv, v_vjx, v_vjy, v_vjz,
+          &ci_cache->vx[ci_cache_idx - VEC_SIZE], &ci_cache->vy[ci_cache_idx - VEC_SIZE], &ci_cache->vz[ci_cache_idx - VEC_SIZE],
+          &ci_cache->m[ci_cache_idx - VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doj_mask2,
+#ifdef HAVE_AVX512_F
+          knl_mask);
+#else
+      0);
+#endif 
     } /* loop over the parts in cj. */
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
