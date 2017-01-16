@@ -522,8 +522,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub_self && t->type != task_type_sub_self &&
-        t->type != task_type_ghost && t->type != task_type_kick &&
-        t->type != task_type_init)
+        t->type != task_type_ghost && t->type != task_type_kick1 &&
+	t->type != task_type_kick2 && t->type != task_type_timestep &&
+	t->type != task_type_drift && t->type != task_type_init)
       continue;
 
     /* Get the task weight. */
@@ -554,7 +555,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_kick) {
+    if (t->type == task_type_ghost || t->type == task_type_kick1 ||
+	t->type == task_type_kick2 || t->type == task_type_timestep ||
+	t->type == task_type_drift) {
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
 
