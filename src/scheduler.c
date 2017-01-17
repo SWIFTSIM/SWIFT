@@ -1093,14 +1093,18 @@ void scheduler_start(struct scheduler *s) {
 
       } else { /* pair */
 
-        if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-            t->skip)
-          error(
-              "Task (type='%s/%s') should not have been skipped "
-              "ti_current=%lld "
-              "ci->ti_end_min=%lld cj->ti_end_min=%lld",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, cj->ti_end_min);
+	/* Don't check MPI stuff */
+	if(t->type != task_type_send && t->type != task_type_recv) {
+
+	  if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
+	      t->skip)
+	    error(
+		  "Task (type='%s/%s') should not have been skipped "
+		  "ti_current=%lld "
+		  "ci->ti_end_min=%lld cj->ti_end_min=%lld",
+		  taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+		  ci->ti_end_min, cj->ti_end_min);
+	}
       }
     }
   }
