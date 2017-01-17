@@ -129,7 +129,6 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
-      temp->ti_old = c->ti_old;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s);

@@ -1222,15 +1222,18 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
       const integertime_t ti_end =
           get_integer_time_end(ti_current, parts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if(parts[k].ti_drift != ti_current)
+	error("Received un-drifted particle !");
+#endif
     }
     for (size_t k = 0; k < nr_gparts; k++) {
       const integertime_t ti_end =
           get_integer_time_end(ti_current, gparts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
     }
