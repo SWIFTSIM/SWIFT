@@ -33,6 +33,7 @@
  */
 
 #include "minmax.h"
+#include "cache.h"
 
 /**
  * @brief Density loop
@@ -438,6 +439,108 @@ runner_iact_nonsym_intrinsic_vec_density(
   vjx.v = vec_load(Vjx);
   vjy.v = vec_load(Vjy);
   vjz.v = vec_load(Vjz);
+  //dx.v = vec_load(Dx);
+  //dy.v = vec_load(Dy);
+  //dz.v = vec_load(Dz);
+
+  /* Get the radius and inverse radius. */
+  //r2.v = vec_load(R2);
+  ri = vec_reciprocal_sqrt(*r2);
+  r.v = vec_mul(r2->v, ri.v);
+
+  xi.v = vec_mul(r.v, hi_inv.v);
+
+  /* Calculate the kernel for two particles. */
+  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
+
+  /* Compute dv dot r */
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+  dvdr.v = vec_mul(dvdr.v, ri.v);
+
+  /* Compute dv cross r */
+  curlvrx.v =
+      vec_fma(dvy.v, dz->v, vec_mul(vec_set1(-1.0f), vec_mul(dvz.v, dy->v)));
+  curlvry.v =
+      vec_fma(dvz.v, dx->v, vec_mul(vec_set1(-1.0f), vec_mul(dvx.v, dz->v)));
+  curlvrz.v =
+      vec_fma(dvx.v, dy->v, vec_mul(vec_set1(-1.0f), vec_mul(dvy.v, dx->v)));
+  curlvrx.v = vec_mul(curlvrx.v, ri.v);
+  curlvry.v = vec_mul(curlvry.v, ri.v);
+  curlvrz.v = vec_mul(curlvrz.v, ri.v);
+
+/* Mask updates to intermediate vector sums for particle pi. */
+#ifdef HAVE_AVX512_F
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask, vec_mul(mj.v, wi.v), rhoSum->v);
+
+  rho_dhSum->v =
+      _mm512_mask_sub_ps(rho_dhSum->v, knlMask, rho_dhSum->v,
+                         vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                               vec_mul(xi.v, wi_dx.v))));
+
+  wcountSum->v = _mm512_mask_add_ps(wcountSum->v, knlMask, wi.v, wcountSum->v);
+
+  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask,
+                                       wcount_dhSum->v, vec_mul(xi.v, wi_dx.v));
+
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask, div_vSum->v,
+                                   vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
+
+  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
+                                    curlvxSum->v);
+  
+  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
+                                    curlvySum->v);
+  
+  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
+                                    curlvzSum->v);
+  #else
+  rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
+  rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                                vec_mul(xi.v, wi_dx.v))), mask.v);
+  wcountSum->v += vec_and(wi.v, mask.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
+  div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
+  curlvxSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)), mask.v);
+  curlvySum->v += vec_and(vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)), mask.v);
+  curlvzSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)), mask.v);
+#endif
+}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_intrinsic_vec_2_density(
+    const struct cache *const cj_cache, const int *const indices, vector *r2, vector *dx, vector *dy, vector *dz, vector hi_inv, vector vix,
+    vector viy, vector viz,
+    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector mask, int knlMask) {
+
+  //vector r, ri, r2, xi, wi, wi_dx;
+  vector r, ri, xi, wi, wi_dx;
+  vector mj;
+  //vector dx, dy, dz, dvx, dvy, dvz;
+  vector dvx, dvy, dvz;
+  vector vjx, vjy, vjz;
+  vector dvdr;
+  vector curlvrx, curlvry, curlvrz;
+  
+  /* Fill the vectors. */
+  mj.v = vec_set(cj_cache->m[indices[0]], cj_cache->m[indices[1]], cj_cache->m[indices[2]], cj_cache->m[indices[3]],
+                 cj_cache->m[indices[4]], cj_cache->m[indices[5]], cj_cache->m[indices[6]], cj_cache->m[indices[7]]);
+  vjx.v = vec_set(cj_cache->vx[indices[0]], cj_cache->vx[indices[1]], cj_cache->vx[indices[2]], cj_cache->vx[indices[3]],
+                 cj_cache->vx[indices[4]], cj_cache->vx[indices[5]], cj_cache->vx[indices[6]], cj_cache->vx[indices[7]]);                
+  vjy.v = vec_set(cj_cache->vy[indices[0]], cj_cache->vy[indices[1]], cj_cache->vy[indices[2]], cj_cache->vy[indices[3]],
+                 cj_cache->vy[indices[4]], cj_cache->vy[indices[5]], cj_cache->vy[indices[6]], cj_cache->vy[indices[7]]);                
+  vjz.v = vec_set(cj_cache->vz[indices[0]], cj_cache->vz[indices[1]], cj_cache->vz[indices[2]], cj_cache->vz[indices[3]],
+                 cj_cache->vz[indices[4]], cj_cache->vz[indices[5]], cj_cache->vz[indices[6]], cj_cache->vz[indices[7]]);                
   //dx.v = vec_load(Dx);
   //dy.v = vec_load(Dy);
   //dz.v = vec_load(Dz);
