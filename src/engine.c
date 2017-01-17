@@ -2666,7 +2666,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   clocks_gettime(&time2);
 
   /* Ready to go */
-  e->step = -1;
+  e->step = 0;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
