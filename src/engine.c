@@ -734,8 +734,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
 
-      scheduler_addunlock(s, ci->super->drift, t_xv);
 #endif
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->super->drift, t_xv);
 
       /* The super-cell's kick task should unlock the send_ti task. */
       if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick2, t_ti);
