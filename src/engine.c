@@ -737,8 +737,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, ci->super->drift, t_xv);
 #endif
 
-      /* The super-cell's kick task should unlock the send_ti task. */
-      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick2, t_ti);
+      /* The super-cell's timestep task should unlock the send_ti task. */
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     /* Add them to the local cell. */
@@ -747,7 +747,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->send_gradient, t_gradient);
 #endif
-    if (t_ti != NULL) engine_addlink(e, &ci->send_ti, t_ti);
+    engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
@@ -823,7 +823,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
-    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+    //scheduler_addunlock(s, l->t, c->time);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
@@ -2457,13 +2457,13 @@ void engine_collect_timestep(struct engine *e) {
       c->g_updated = 0;
     }
 
-/* Aggregate the data from the different nodes. */
+  /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    int in_i[1], out_i[1];
+    integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate t_end_min.");
     ti_end_min = in_i[0];
@@ -2642,7 +2642,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
     /* Apply the conversion */
-    space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+    //space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+    for(size_t i = 0; i < s->nr_parts; ++i)
+      hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {

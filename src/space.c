@@ -1461,7 +1461,7 @@ void space_map_cells_pre(struct space *s, int full,
 
   /* Call the recursive function on all higher-level cells. */
   for (int cid = 0; cid < s->nr_cells; cid++)
-    rec_map_cells_pre(&s->cells_top[cid], full, fun, data);
+      rec_map_cells_pre(&s->cells_top[cid], full, fun, data);
 }
 
 /**
