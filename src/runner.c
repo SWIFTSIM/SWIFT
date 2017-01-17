@@ -752,6 +752,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_unskip(struct cell *c, struct engine *e) {
 
+  /* Only operate on local cells */
+  if(c->nodeID != e->nodeID) return;
+
   /* Unskip any active tasks. */
   if (cell_is_active(c, e)) {
     const int forcerebuild = cell_unskip_tasks(c, &e->sched);
