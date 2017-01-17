@@ -73,8 +73,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     struct task **unlocks_new;
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
-    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
-                                              size_unlocks_new)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(
+             sizeof(struct task *) *size_unlocks_new)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
             NULL)
       error("Failed to re-allocate unlocks.");
@@ -114,11 +114,13 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
-  static const int pts[7][8] = {
-      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
-      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
-      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
-      {-1, -1, -1, -1, -1, -1, -1, 12}};
+  static const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
+                                {-1, -1, 11, 10, 5, 4, 2, 1},
+                                {-1, -1, -1, 12, 7, 6, 4, 3},
+                                {-1, -1, -1, -1, 8, 7, 5, 4},
+                                {-1, -1, -1, -1, -1, 12, 10, 9},
+                                {-1, -1, -1, -1, -1, -1, 11, 10},
+                                {-1, -1, -1, -1, -1, -1, -1, 12}};
   static const float sid_scale[13] = {
       0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
       0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
@@ -1056,6 +1058,8 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
+  message("launching %i active tasks.", s->active_count);
+
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -1077,7 +1081,7 @@ void scheduler_start(struct scheduler *s) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj == NULL) { /* self */
+      if (cj == NULL) {/* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type != task_type_sort && t->type)
@@ -1098,20 +1102,20 @@ void scheduler_start(struct scheduler *s) {
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, t->flags);
 
-      } else { /* pair */
+      } else {/* pair */
 
-	/* Don't check MPI stuff */
-	if(t->type != task_type_send && t->type != task_type_recv) {
+        /* Don't check MPI stuff */
+        if (t->type != task_type_send && t->type != task_type_recv) {
 
-	  if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-	      t->skip)
-	    error(
-		  "Task (type='%s/%s') should not have been skipped "
-		  "ti_current=%lld "
-		  "ci->ti_end_min=%lld cj->ti_end_min=%lld",
-		  taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-		  ci->ti_end_min, cj->ti_end_min);
-	}
+          if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
+              t->skip)
+            error(
+                "Task (type='%s/%s') should not have been skipped "
+                "ti_current=%lld "
+                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
+                taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+                ci->ti_end_min, cj->ti_end_min);
+        }
       }
     }
   }
@@ -1186,9 +1190,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
         } else {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1207,10 +1212,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
           cell_pack_ti_ends(t->ci, t->buff);
-          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
+          err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
         } else {
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1447,7 +1453,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
