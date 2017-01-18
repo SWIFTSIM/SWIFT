@@ -62,26 +62,30 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
-  /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
-
-  /* Get cooling function properties */
-  const float du_dt = -cooling->cooling_rate;
+  /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 
-  /* Constant cooling with a minimal floor */
-  float u_new;
-  if (u_old - du_dt * dt > u_floor) {
-    u_new = u_old + du_dt * dt;
-  } else {
-    u_new = u_floor;
+  /* Get current internal energy */
+  const float u_old = hydro_get_internal_energy(p);
+
+  /* Current du_dt */
+  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+
+  /* Get cooling function properties */
+  float cooling_du_dt = -cooling->cooling_rate;
+
+  /* Integrate cooling equation to enforce energy floor */
+  if (u_old + hydro_du_dt * dt < u_floor) {
+    cooling_du_dt = 0.f;
+  } else if (u_old + (hydro_du_dt + cooling_du_dt) * dt < u_floor) {
+    cooling_du_dt = (u_old + dt * hydro_du_dt - u_floor) / dt;
   }
 
-  /* Update the internal energy */
-  hydro_set_internal_energy(p, u_new);
+  /* Update the internal energy time derivative */
+  hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
+  xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 /**
@@ -102,7 +106,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy = hydro_get_internal_energy(p, 0);
+  const float internal_energy = hydro_get_internal_energy(p);
   return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 }
 

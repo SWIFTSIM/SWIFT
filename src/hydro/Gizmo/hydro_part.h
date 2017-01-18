@@ -38,6 +38,12 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
+  /* Particle ID. */
+  long long id;
+
+  /* Associated gravitas. */
+  struct gpart *gpart;
+
   /* Particle position. */
   double x[3];
 
@@ -49,12 +55,6 @@ struct part {
 
   /* Particle smoothing length. */
   float h;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
 
   /* Old internal energy flux */
   float du_dt;
@@ -197,11 +197,18 @@ struct part {
 
   } gravity;
 
-  /* Particle ID. */
-  long long id;
+  /* Time-step length */
+  timebin_t time_bin;
 
-  /* Associated gravitas. */
-  struct gpart *gpart;
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 

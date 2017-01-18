@@ -19,9 +19,6 @@
 #ifndef SWIFT_DEFAULT_GRAVITY_PART_H
 #define SWIFT_DEFAULT_GRAVITY_PART_H
 
-/* Some standard headers. */
-#include <stdlib.h>
-
 /* Gravity particle. */
 struct gpart {
 
@@ -47,11 +44,8 @@ struct gpart {
   /* Softening length */
   float epsilon;
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
+  /* Time-step length */
+  timebin_t time_bin;
 
   /* Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;

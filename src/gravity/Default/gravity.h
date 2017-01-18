@@ -53,8 +53,7 @@ gravity_compute_timestep_self(const struct gpart* const gp) {
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
 
-  gp->ti_begin = 0;
-  gp->ti_end = 0;
+  gp->time_bin = 0;
   gp->epsilon = 0.;  // MATTHIEU
 }
 
@@ -97,9 +96,8 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  *
  * @param gp The particle to act upon
  * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
-    struct gpart* gp, float dt, float half_dt) {}
+    struct gpart* gp, float dt) {}
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

@@ -56,7 +56,10 @@ struct runner {
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_do_kick(struct runner *r, struct cell *c, int timer);
+void runner_do_drift(struct runner *r, struct cell *c, int timer);
+void runner_do_kick1(struct runner *r, struct cell *c, int timer);
+void runner_do_kick2(struct runner *r, struct cell *c, int timer);
+void runner_do_end_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);

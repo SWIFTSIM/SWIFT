@@ -49,6 +49,9 @@ struct xpart {
   /*! Velocity at the last full step. */
   float v_full[3];
 
+  /*! Internal energy at the last full step. */
+  float u_full;
+
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
@@ -62,6 +65,12 @@ struct xpart {
  * variables should be declared in the main part of the part structure,
  */
 struct part {
+
+  /*! Particle unique ID. */
+  long long id;
+
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
   /*! Particle position. */
   double x[3];
@@ -77,12 +86,6 @@ struct part {
 
   /*! Particle smoothing length. */
   float h;
-
-  /*! Time at the beginning of time-step. */
-  int ti_begin;
-
-  /*! Time at the end of time-step. */
-  int ti_end;
 
   /*! Particle internal energy. */
   float u;
@@ -143,11 +146,18 @@ struct part {
     } force;
   };
 
-  /*! Particle unique ID. */
-  long long id;
+  /*! Time-step length */
+  timebin_t time_bin;
 
-  /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 

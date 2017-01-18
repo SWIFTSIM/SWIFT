@@ -272,8 +272,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         hydro_first_init_part(part, xpart);
 
         part->id = ++(*partId);
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
 
 #if defined(GIZMO_SPH)
         part->geometry.volume = part->conserved.mass / density;
@@ -290,6 +289,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
                     part->conserved.momentum[1] * part->conserved.momentum[1] +
                     part->conserved.momentum[2] * part->conserved.momentum[2]) /
                 part->conserved.mass;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+        part->ti_drift = 8;
+        part->ti_kick = 8;
 #endif
 
         ++part;
@@ -311,9 +315,9 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 1;
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old = 8;
+  cell->ti_end_min = 8;
+  cell->ti_end_max = 8;
 
   // shuffle_particles(cell->parts, cell->count);
 
@@ -364,10 +368,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             main_cell->parts[pid].density.div_v,
 #endif
-            hydro_get_entropy(&main_cell->parts[pid], 0.f),
-            hydro_get_internal_energy(&main_cell->parts[pid], 0.f),
-            hydro_get_pressure(&main_cell->parts[pid], 0.f),
-            hydro_get_soundspeed(&main_cell->parts[pid], 0.f),
+            hydro_get_entropy(&main_cell->parts[pid]),
+            hydro_get_internal_energy(&main_cell->parts[pid]),
+            hydro_get_pressure(&main_cell->parts[pid]),
+            hydro_get_soundspeed(&main_cell->parts[pid]),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
 #if defined(GADGET2_SPH)
@@ -527,7 +531,7 @@ int main(int argc, char *argv[]) {
   engine.physical_constants = &prog_const;
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 8;
 
   struct runner runner;
   runner.e = &engine;
@@ -571,6 +575,12 @@ int main(int argc, char *argv[]) {
   for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
+
+    /* Start with a gentle kick */
+    // runner_do_kick1(&runner, main_cell, 0);
+
+    /* And a gentle drift */
+    // runner_do_drift(&runner, main_cell, 0);
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
@@ -640,7 +650,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Finally, give a gentle kick */
-    runner_do_kick(&runner, main_cell, 0);
+    runner_do_end_force(&runner, main_cell, 0);
+    // runner_do_kick2(&runner, main_cell, 0);
 
     const ticks toc = getticks();
     time += toc - tic;
@@ -662,6 +673,12 @@ int main(int argc, char *argv[]) {
   /* NOW BRUTE-FORCE CALCULATION */
 
   const ticks tic = getticks();
+
+  /* Kick the central cell */
+  // runner_do_kick1(&runner, main_cell, 0);
+
+  /* And drift it */
+  runner_do_drift(&runner, main_cell, 0);
 
   /* Initialise the particles */
   for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
@@ -728,7 +745,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Finally, give a gentle kick */
-  runner_do_kick(&runner, main_cell, 0);
+  runner_do_end_force(&runner, main_cell, 0);
+  // runner_do_kick2(&runner, main_cell, 0);
 
   const ticks toc = getticks();
 
