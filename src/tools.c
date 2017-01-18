@@ -558,7 +558,181 @@ void shuffle_particles(struct part *parts, const int count) {
 }
 
 /**
- * @brief Computes the forces between all g-particles using the N^2 algorithm
+ * @brief Compares two values based on their relative difference: |a - b|/|a +
+ * b|
+ *
+ * @param a Value a
+ * @param b Value b
+ * @param threshold The limit on the relative difference between the two values
+ * @param absDiff Absolute difference: |a - b|
+ * @param absSum Absolute sum: |a + b|
+ * @param relDiff Relative difference: |a - b|/|a + b|
+ *
+ * @return 1 if difference found, 0 otherwise
+ */
+int compare_values(double a, double b, double threshold, double *absDiff,
+                   double *absSum, double *relDiff) {
+
+  int result = 0;
+  *absDiff = 0.0, *absSum = 0.0, *relDiff = 0.0;
+
+  *absDiff = fabs(a - b);
+  *absSum = fabs(a + b);
+  if (*absSum > 0.f) {
+    *relDiff = *absDiff / *absSum;
+  }
+
+  if (*relDiff > threshold) {
+    result = 1;
+  }
+
+  return result;
+}
+
+/**
+ * @brief Compares two particles' properties using the relative difference and a
+ * threshold.
+ *
+ * @param a Particle A
+ * @param b Particle B
+ * @param threshold The limit on the relative difference between the two values
+ *
+ * @return 1 if difference found, 0 otherwise
+ */
+int compare_particles(struct part a, struct part b, double threshold) {
+
+#ifdef GADGET2_SPH
+
+  int result = 0;
+  double absDiff = 0.0, absSum = 0.0, relDiff = 0.0;
+
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.x[k], b.x[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for x[%d] of "
+          "particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.x[k], b.x[k]);
+      result = 1;
+    }
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.v[k], b.v[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for v[%d] of "
+          "particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.v[k], b.v[k]);
+      result = 1;
+    }
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.a_hydro[k], b.a_hydro[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for a_hydro[%d] "
+          "of particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.a_hydro[k], b.a_hydro[k]);
+      result = 1;
+    }
+  }
+  if (compare_values(a.rho, b.rho, threshold, &absDiff, &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for rho of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.rho, b.rho);
+    result = 1;
+  }
+  if (compare_values(a.density.rho_dh, b.density.rho_dh, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for rho_dh of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.rho_dh, b.density.rho_dh);
+    result = 1;
+  }
+  if (compare_values(a.density.wcount, b.density.wcount, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for wcount of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.wcount, b.density.wcount);
+    result = 1;
+  }
+  if (compare_values(a.density.wcount_dh, b.density.wcount_dh, threshold,
+                     &absDiff, &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for wcount_dh of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.wcount_dh, b.density.wcount_dh);
+    result = 1;
+  }
+  if (compare_values(a.force.h_dt, b.force.h_dt, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for h_dt of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.force.h_dt, b.force.h_dt);
+    result = 1;
+  }
+  if (compare_values(a.force.v_sig, b.force.v_sig, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for v_sig of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.force.v_sig, b.force.v_sig);
+    result = 1;
+  }
+  if (compare_values(a.entropy_dt, b.entropy_dt, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for entropy_dt of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.entropy_dt, b.entropy_dt);
+    result = 1;
+  }
+  if (compare_values(a.density.div_v, b.density.div_v, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for div_v of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.div_v, b.density.div_v);
+    result = 1;
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.density.rot_v[k], b.density.rot_v[k], threshold,
+                       &absDiff, &absSum, &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for rot_v[%d] "
+          "of particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.density.rot_v[k], b.density.rot_v[k]);
+      result = 1;
+    }
+  }
+
+  return result;
+
+#else
+
+  error("Function not supported for this flavour of SPH");
+  return 0;
+
+#endif
+}
+
+/** @brief Computes the forces between all g-particles using the N^2 algorithm
  *
  * Overwrites the accelerations of the gparts with the values.
  * Do not use for actual runs.

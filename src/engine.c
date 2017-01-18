@@ -70,6 +70,9 @@
 #include "units.h"
 #include "version.h"
 
+/* Particle cache size. */
+#define CACHE_SIZE 512
+
 const char *engine_policy_names[16] = {"none",
                                        "rand",
                                        "steal",
@@ -715,8 +718,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
 
-      scheduler_addunlock(s, ci->super->drift, t_xv);
 #endif
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->super->drift, t_xv);
 
       /* The super-cell's kick task should unlock the send_ti task. */
       if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
@@ -3412,6 +3417,11 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
+
+    /* Allocate particle cache. */
+    e->runners[k].par_cache.count = 0;
+    cache_init(&e->runners[k].par_cache, CACHE_SIZE);
+
     if (verbose) {
       if (with_aff)
         message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,47 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+
+#ifndef SWIFT_RUNNER_VEC_H
+#define SWIFT_RUNNER_VEC_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "atomic.h"
-#include "cache.h"
+/* Local headers */
 #include "cell.h"
-#include "clocks.h"
-#include "const.h"
-#include "cooling.h"
-#include "cycle.h"
-#include "debug.h"
 #include "engine.h"
-#include "error.h"
-#include "gravity.h"
 #include "hydro.h"
-#include "hydro_properties.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "parser.h"
 #include "part.h"
-#include "partition.h"
-#include "physical_constants.h"
-#include "potential.h"
-#include "profiler.h"
-#include "queue.h"
 #include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "sourceterms.h"
-#include "space.h"
-#include "task.h"
 #include "timers.h"
-#include "tools.h"
-#include "units.h"
-#include "version.h"
+#include "vector.h"
 
-#endif /* SWIFT_SWIFT_H */
+/* Function prototypes. */
+void runner_doself1_density_vec(struct runner *r, struct cell *restrict c);
+void runner_doself1_density_vec_2(struct runner *r, struct cell *restrict c);
+
+#endif /* SWIFT_RUNNER_VEC_H */
