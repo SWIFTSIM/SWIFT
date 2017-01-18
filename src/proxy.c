@@ -308,8 +308,8 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     do {
       p->size_parts_out *= proxy_buffgrow;
     } while (p->nr_parts_out + N > p->size_parts_out);
-    struct part *tp;
-    struct xpart *txp;
+    struct part *tp = NULL;
+    struct xpart *txp = NULL;
     if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
             NULL ||
         (txp = (struct xpart *)malloc(sizeof(struct xpart) *
