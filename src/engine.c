@@ -813,7 +813,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_gradient, l->t);
-    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+    scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #else
@@ -823,7 +823,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
-    // scheduler_addunlock(s, l->t, c->time);
+    scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
