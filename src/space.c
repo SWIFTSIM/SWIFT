@@ -1775,7 +1775,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   int maxdepth = 0;
   float h_max = 0.0f;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  struct cell *temp;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct spart *sparts = c->sparts;
