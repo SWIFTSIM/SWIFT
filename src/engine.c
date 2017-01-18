@@ -823,7 +823,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
-    //scheduler_addunlock(s, l->t, c->time);
+    // scheduler_addunlock(s, l->t, c->time);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
@@ -2457,14 +2457,14 @@ void engine_collect_timestep(struct engine *e) {
       c->g_updated = 0;
     }
 
-  /* Aggregate the data from the different nodes. */
+/* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
     integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate t_end_min.");
     ti_end_min = in_i[0];
   }
@@ -2642,8 +2642,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
     /* Apply the conversion */
-    //space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
-    for(size_t i = 0; i < s->nr_parts; ++i)
+    // space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+    for (size_t i = 0; i < s->nr_parts; ++i)
       hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */

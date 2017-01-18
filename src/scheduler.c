@@ -73,8 +73,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     struct task **unlocks_new;
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
-    if ((unlocks_new = (struct task **)malloc(
-             sizeof(struct task *) *size_unlocks_new)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
+                                              size_unlocks_new)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
             NULL)
       error("Failed to re-allocate unlocks.");
@@ -114,13 +114,11 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
-  static const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                                {-1, -1, 11, 10, 5, 4, 2, 1},
-                                {-1, -1, -1, 12, 7, 6, 4, 3},
-                                {-1, -1, -1, -1, 8, 7, 5, 4},
-                                {-1, -1, -1, -1, -1, 12, 10, 9},
-                                {-1, -1, -1, -1, -1, -1, 11, 10},
-                                {-1, -1, -1, -1, -1, -1, -1, 12}};
+  static const int pts[7][8] = {
+      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
+      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
+      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
+      {-1, -1, -1, -1, -1, -1, -1, 12}};
   static const float sid_scale[13] = {
       0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
       0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
@@ -1081,7 +1079,7 @@ void scheduler_start(struct scheduler *s) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj == NULL) {/* self */
+      if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type != task_type_sort && t->type)
@@ -1102,7 +1100,7 @@ void scheduler_start(struct scheduler *s) {
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
               ci->ti_end_min, t->flags);
 
-      } else {/* pair */
+      } else { /* pair */
 
         /* Don't check MPI stuff */
         if (t->type != task_type_send && t->type != task_type_recv) {
@@ -1453,7 +1451,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
