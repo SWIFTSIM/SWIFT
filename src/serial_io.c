@@ -536,7 +536,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(flag_entropy, 1, MPI_INT, 0, comm);
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
-  MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG, 0, comm);
+  MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
   MPI_Bcast(ic_units, sizeof(struct UnitSystem), MPI_BYTE, 0, comm);
 
@@ -694,12 +694,12 @@ void write_output_serial(struct engine* e, const char* baseName,
   size_t N[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
-  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG, MPI_SUM, comm);
+  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG_INT, MPI_SUM, comm);
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
     N_total[ptype] = offset[ptype] + N[ptype];
 
   /* The last rank now has the correct N_total. Let's broadcast from there */
-  MPI_Bcast(&N_total, 6, MPI_LONG_LONG, mpi_size - 1, comm);
+  MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
   /* Now everybody konws its offset and the total number of particles of each
    * type */
