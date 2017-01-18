@@ -869,7 +869,15 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
 
+<<<<<<< HEAD
         if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, ti_step=%lld time_bin=%d ti_current=%lld", ti_end, ti_begin, ti_step, p->time_bin, ti_current);
+=======
+        if (ti_end - ti_begin != ti_step && ti_current > 0)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
+>>>>>>> 674f1bc38893e37847ea3c773e3f34ae27ed8a65
 #endif
 
         /* do the kick */
@@ -951,8 +959,16 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
             get_integer_time_begin(ti_current, p->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
+<<<<<<< HEAD
         if (ti_begin + ti_step != ti_current) 
 	  error("Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld time_bin=%d ti_current=%lld", ti_begin, ti_step, p->time_bin, ti_current);
+=======
+        if (ti_begin + ti_step != ti_current && ti_current > 0)
+          error(
+              "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
+              "time_bin=%d ti_current=%lld",
+              ti_begin, ti_step, p->time_bin, ti_current);
+>>>>>>> 674f1bc38893e37847ea3c773e3f34ae27ed8a65
 #endif
 
         /* Finish the time-step with a second half-kick */
@@ -1224,8 +1240,8 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
       h_max = max(h_max, parts[k].h);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if(parts[k].ti_drift != ti_current)
-	error("Received un-drifted particle !");
+      if (parts[k].ti_drift != ti_current)
+        error("Received un-drifted particle !");
 #endif
     }
     for (size_t k = 0; k < nr_gparts; k++) {
