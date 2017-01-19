@@ -53,6 +53,12 @@ struct scheduler;
 /* Global variables. */
 extern int cell_next_tag;
 
+/* Struct to temporarily buffer the particle locations and bin id. */
+struct cell_buff {
+  double x[3];
+  int ind;
+} SWIFT_STRUCT_ALIGN;
+
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
 
@@ -282,7 +288,8 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff);
+void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+                struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
