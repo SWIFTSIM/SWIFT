@@ -143,13 +143,24 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      /* Add the two half kicks */
+      c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
 
-      /* Add the drift task and dependency. */
+      c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+
+      /* Add the time-step calculation task and its dependency */
+      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
+                                      0, 0, c, NULL, 0);
+
+      scheduler_addunlock(s, c->kick2, c->timestep);
+
+      /* Add the drift task and its dependencies. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
+      scheduler_addunlock(s, c->kick1, c->drift);
       scheduler_addunlock(s, c->drift, c->init);
 
       /* Generate the ghost task. */
@@ -165,13 +176,18 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 #endif
 
       /* Cooling task */
-      if (is_with_cooling)
+      if (is_with_cooling) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
+
+        scheduler_addunlock(s, c->cooling, c->kick2);
+      }
+
       /* add source terms */
-      if (is_with_sourceterms)
+      if (is_with_sourceterms) {
         c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
                                            task_subtype_none, 0, 0, c, NULL, 0);
+      }
     }
 
   } else { /* We are above the super-cell so need to go deeper */
@@ -695,7 +711,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      scheduler_addunlock(s, t_gradient, ci->super->kick);
+      scheduler_addunlock(s, t_gradient, ci->super->kick2);
 
       scheduler_addunlock(s, ci->super->extra_ghost, t_gradient);
 
@@ -710,7 +726,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
 #else
       /* The send_rho task should unlock the super-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->super->kick);
+      scheduler_addunlock(s, t_rho, ci->super->kick2);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->super->ghost, t_rho);
@@ -724,7 +740,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, ci->super->drift, t_xv);
 
       /* The super-cell's kick task should unlock the send_ti task. */
-      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
+      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick2, t_ti);
     }
 
     /* Add them to the local cell. */
@@ -1459,7 +1475,7 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
 
   /* init --> gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
 
   /* grav_up --> gravity ( --> kick) */
   scheduler_addunlock(sched, c->super->grav_up, gravity);
@@ -1478,7 +1494,7 @@ static inline void engine_make_external_gravity_dependencies(
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
 }
 
 /**
@@ -1517,7 +1533,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* Gather the multipoles --> mm interaction --> kick */
       scheduler_addunlock(sched, gather, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick);
+      scheduler_addunlock(sched, t, t->ci->super->kick2);
 
       /* init --> mm interaction */
       scheduler_addunlock(sched, t->ci->super->init, t);
@@ -1596,19 +1612,24 @@ void engine_link_gravity_tasks(struct engine *e) {
  * @param force The force task to link.
  * @param c The cell.
  */
-static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
-                                                        struct task *density,
-                                                        struct task *gradient,
-                                                        struct task *force,
-                                                        struct cell *c) {
+static inline void engine_make_hydro_loops_dependencies(
+    struct scheduler *sched, struct task *density, struct task *gradient,
+    struct task *force, struct cell *c, int with_cooling) {
   /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
-  /* extra_ghost --> force loop --> kick */
+  /* extra_ghost --> force loop  */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, gradient);
   scheduler_addunlock(sched, gradient, c->super->extra_ghost);
   scheduler_addunlock(sched, c->super->extra_ghost, force);
-  scheduler_addunlock(sched, force, c->super->kick);
+
+  if (with_cooling) {
+    /* force loop --> cooling (--> kick2)  */
+    scheduler_addunlock(sched, force, c->super->cooling);
+  } else {
+    /* force loop --> kick2 */
+    scheduler_addunlock(sched, force, c->super->kick2);
+  }
 }
 
 #else
@@ -1620,16 +1641,25 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * @param density The density task to link.
  * @param force The force task to link.
  * @param c The cell.
+ * @param with_cooling Are we running with cooling switched on ?
  */
 static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
-                                                        struct cell *c) {
-  /* init --> density loop --> ghost --> force loop --> kick */
+                                                        struct cell *c,
+                                                        int with_cooling) {
+  /* init --> density loop --> ghost --> force loop */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);
-  scheduler_addunlock(sched, force, c->super->kick);
+
+  if (with_cooling) {
+    /* force loop --> cooling (--> kick2)  */
+    scheduler_addunlock(sched, force, c->super->cooling);
+  } else {
+    /* force loop --> kick2 */
+    scheduler_addunlock(sched, force, c->super->kick2);
+  }
 }
 
 #endif
@@ -1650,6 +1680,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const int nodeID = e->nodeID;
+  const int with_cooling = (e->policy & engine_policy_cooling);
 
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
@@ -1669,7 +1700,8 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       engine_addlink(e, &t->ci->force, t3);
 
       /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+      engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
+                                           with_cooling);
 
 #else
 
@@ -1681,7 +1713,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       engine_addlink(e, &t->ci->force, t2);
 
       /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
 #endif
     }
 
@@ -1704,10 +1736,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
+                                             with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
+                                             with_cooling);
       }
 
 #else
@@ -1723,10 +1757,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
       }
 
 #endif
@@ -1754,7 +1788,8 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
+                                             with_cooling);
       }
 
 #else
@@ -1769,7 +1804,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
 #endif
     }
@@ -1797,10 +1832,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
+                                             with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
+                                             with_cooling);
       }
 
 #else
@@ -1816,24 +1853,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
       }
 #endif
-    }
-    /* Cooling tasks should depend on kick and unlock sourceterms */
-    else if (t->type == task_type_cooling) {
-      scheduler_addunlock(sched, t->ci->kick, t);
-    }
-    /* source terms depend on cooling if performed, else on kick. It is the last
-       task */
-    else if (t->type == task_type_sourceterms) {
-      if (e->policy == engine_policy_cooling)
-        scheduler_addunlock(sched, t->ci->cooling, t);
-      else
-        scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
 }
@@ -2003,7 +2028,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  const int ti_end = ((size_t *)extra_data)[0];
+  const integertime_t ti_end = ((size_t *)extra_data)[0];
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
 
@@ -2126,7 +2151,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Kick? */
-    else if (t->type == task_type_kick) {
+    else if (t->type == task_type_kick1) {
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    } else if (t->type == task_type_kick2) {
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    }
+
+    /* Time-step? */
+    else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
@@ -2358,11 +2390,11 @@ void engine_barrier(struct engine *e, int tid) {
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
-  if (c->kick != NULL) return;
+  if (c->timestep != NULL) return;
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0 || c->gcount != 0) {
@@ -2406,7 +2438,7 @@ void engine_collect_timestep(struct engine *e) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0;
-  int ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
 
   /* Collect the cell data. */
@@ -2496,7 +2528,7 @@ void engine_print_stats(struct engine *e) {
 }
 
 /**
- * @brief Sets all the force and kick tasks to be skipped.
+ * @brief Sets all the force, drift and kick tasks to be skipped.
  *
  * @param e The #engine to act on.
  */
@@ -2510,10 +2542,30 @@ void engine_skip_force_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->subtype == task_subtype_force || t->type == task_type_kick ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms ||
-        t->type == task_type_drift)
+    if (t->type == task_type_drift || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->subtype == task_subtype_force || t->type == task_type_cooling ||
+        t->type == task_type_sourceterms)
       t->skip = 1;
+  }
+}
+
+/**
+ * @brief Sets all the drift and first kick tasks to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_skip_drift_and_kick(struct engine *e) {
+
+  struct task *tasks = e->sched.tasks;
+  const int nr_tasks = e->sched.nr_tasks;
+
+  for (int i = 0; i < nr_tasks; ++i) {
+
+    struct task *t = &tasks[i];
+
+    /* Skip everything that updates the particles */
+    if (t->type == task_type_drift || t->type == task_type_kick1) t->skip = 1;
   }
 }
 
@@ -2572,7 +2624,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->nodeID == 0) message("Running initialisation fake time-step.");
+  if (e->nodeID == 0) message("Computing initial gas densities.");
 
   engine_prepare(e, 0, 0);
 
@@ -2589,6 +2641,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
 
+    if (e->nodeID == 0) message("Converting internal energy variable.");
+
     /* Apply the conversion */
     space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
@@ -2599,6 +2653,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
       engine_launch(e, e->nr_threads);
     }
   }
+
+  /* Now time to get ready for the first time-step */
+  if (e->nodeID == 0) message("Running initial fake time-step.");
+
+  engine_marktasks(e);
+
+  engine_skip_drift_and_kick(e);
+
+  engine_launch(e, e->nr_threads);
 
   clocks_gettime(&time2);
 
@@ -2683,16 +2746,22 @@ void engine_step(struct engine *e) {
 
   if (e->verbose) engine_print_task_counts(e);
 
-  /* Send off the runners. */
-  TIMER_TIC;
-  engine_launch(e, e->nr_threads);
-  TIMER_TOC(timer_runners);
-
   /* Save some statistics */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
     engine_print_stats(e);
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
+
+  /* Send off the runners. */
+  TIMER_TIC;
+  engine_launch(e, e->nr_threads);
+  TIMER_TOC(timer_runners);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (size_t i = 0; i < e->s->nr_parts; ++i) {
+    if (e->s->parts[i].time_bin == 0) error("Particle in bin 0");
+  }
+#endif
 
   TIMER_TOC2(timer_step);
 

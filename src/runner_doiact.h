@@ -780,6 +780,14 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
         r2 += dx[k] * dx[k];
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pi->ti_drift != e->ti_current)
+        error("Particle pi not drifted to current time");
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
+
       /* Hit or miss? */
       if (r2 < hig2) {
 
@@ -841,6 +849,14 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
         dx[k] = pjx[k] - pi->x[k];
         r2 += dx[k] * dx[k];
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pi->ti_drift != e->ti_current)
+        error("Particle pi not drifted to current time");
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
 
       /* Hit or miss? */
       if (r2 < hjg2) {
@@ -1008,6 +1024,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2) {
 
@@ -1058,6 +1082,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           dx[k] = pix[k] - pj->x[k];
           r2 += dx[k] * dx[k];
         }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Hit or miss? */
         if (r2 < hig2) {
@@ -1152,6 +1184,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
 
@@ -1201,6 +1241,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           dx[k] = pjx[k] - pi->x[k];
           r2 += dx[k] * dx[k];
         }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
@@ -1348,6 +1396,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -1411,6 +1467,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         }
         const int doj =
             (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Hit or miss? */
         if (r2 < hig2 || doj) {
@@ -1589,6 +1653,14 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
@@ -1642,6 +1714,14 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           dx[k] = pix[k] - pj->x[k];
           r2 += dx[k] * dx[k];
         }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {

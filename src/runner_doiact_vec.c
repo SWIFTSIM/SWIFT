@@ -20,6 +20,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include "active.h"
+
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
@@ -270,7 +272,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
   int doi_mask;
   struct part *restrict pi;
   int count_align;
@@ -283,8 +285,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   TIMER_TIC
 
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift(c, e);
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -308,7 +311,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     pi = &parts[pid];
 
     /* Is the ith particle active? */
-    if (pi->ti_end > ti_current) continue;
+    if (!part_is_active(pi, e)) continue;
 
     vector pix, piy, piz;
 
@@ -509,6 +512,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
  * intrinsics with two particle pis at a time.
+ *
  * CURRENTLY BROKEN DO NOT USE.
  *
  * @param r The #runner.
@@ -518,7 +522,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
   int doi_mask;
   int doi2_mask;
   struct part *restrict pi;
@@ -530,9 +534,11 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 
   TIMER_TIC
 
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+
   /* TODO: Need to find two active particles, not just one. */
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -563,7 +569,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     pi2 = &parts[pid + 1];
 
     /* Is the ith particle active? */
-    if (pi->ti_end > ti_current) continue;
+    if (!part_is_active(pi, e)) continue;
 
     vector pix, piy, piz;
     vector pix2, piy2, piz2;

@@ -411,7 +411,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      UPDATE particle j.
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
-  if (mode == 1 || pj->ti_end > pi->ti_end) {
+
+  // MATTHIEU
+  const integertime_t pj_ti_end = 0;  // get_integer_time_end(pj->time_bin);
+  const integertime_t pi_ti_end = 0;  // get_integer_time_end(pi->time_bin);
+
+  if (mode == 1 || pj_ti_end > pi_ti_end) {
     /* Store mass flux */
     mflux = dtj * Anorm * totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];

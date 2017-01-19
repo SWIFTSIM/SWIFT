@@ -729,9 +729,10 @@ void cell_sanitize(struct cell *c) {
 void cell_convert_hydro(struct cell *c, void *data) {
 
   struct part *p = c->parts;
+  struct xpart *xp = c->xparts;
 
   for (int i = 0; i < c->count; ++i) {
-    hydro_convert_quantities(&p[i]);
+    hydro_convert_quantities(&p[i], &xp[i]);
   }
 }
 
@@ -758,10 +759,10 @@ void cell_clean_links(struct cell *c, void *data) {
  */
 void cell_check_drift_point(struct cell *c, void *data) {
 
-  const int ti_current = *(int *)data;
+  integertime_t ti_current = *(integertime_t *)data;
 
   if (c->ti_old != ti_current && c->nodeID == engine_rank)
-    error("Cell in an incorrect time-zone! c->ti_old=%d ti_current=%d",
+    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_current=%lld",
           c->ti_old, ti_current);
 }
 
@@ -1014,7 +1015,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init != NULL) scheduler_activate(s, c->init);
   if (c->drift != NULL) scheduler_activate(s, c->drift);
-  if (c->kick != NULL) scheduler_activate(s, c->kick);
+  if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+  if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+  if (c->timestep != NULL) scheduler_activate(s, c->timestep);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
@@ -1050,8 +1053,8 @@ void cell_set_super(struct cell *c, struct cell *super) {
 void cell_drift(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
-  const int ti_old = c->ti_old;
-  const int ti_current = e->ti_current;
+  const integertime_t ti_old = c->ti_old;
+  const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;

@@ -1,27 +1,27 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     2.0e33   # Solar masses
-  UnitLength_in_cgs:   3.0857e21   # Kiloparsecs
-  UnitVelocity_in_cgs: 1.0e5   # Time unit is cooling time
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
+  UnitCurrent_in_cgs:  1          # Amperes
+  UnitTemp_in_cgs:     1          # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   4.    # The end time of the simulation (in internal units).
-  dt_min:     1e-4  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  time_end:   0.25  # The end time of the simulation (in internal units).
+  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            coolingBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
-  delta_time:          1.0e-1       # Time difference between consecutive outputs (in internal units)
+  delta_time:          1e-2       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
+  delta_time:          1e-3 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -35,8 +35,8 @@ InitialConditions:
 
 # Dimensionless pre-factor for the time-step condition
 LambdaCooling:
-  lambda_cgs:                 1.0e-22    # Cooling rate (in cgs units)
-  minimum_temperature:         1.0e4  # Minimal temperature (Kelvin)
-  mean_molecular_weight:       0.59   # Mean molecular weight
-  hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
-  cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition
+  lambda_cgs:                  1.0e-22    # Cooling rate (in cgs units)
+  minimum_temperature:         1.0e4      # Minimal temperature (Kelvin)
+  mean_molecular_weight:       0.59       # Mean molecular weight
+  hydrogen_mass_abundance:     0.75       # Hydrogen mass abundance (dimensionless)
+  cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
