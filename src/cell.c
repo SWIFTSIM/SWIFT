@@ -1091,3 +1091,26 @@ void cell_drift(struct cell *c, const struct engine *e) {
   /* Update the time of the last drift */
   c->ti_old = ti_current;
 }
+
+/**
+ * @brief Recursively checks that all particles in a cell have a time-step
+ */
+void cell_check_timesteps(struct cell *c) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if(c->nodeID != engine_rank) return;
+
+  if(c->ti_end_min == 0) error("Cell without assigned time-step");
+  
+  if(c->split) {
+    for(int k=0; k<8; ++k)
+      if(c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+  } else {
+
+    for(int i=0; i<c->count; ++i)
+      if(c->parts[i].time_bin == 0) 
+	error("Particle without assigned time-bin");
+
+  }
+#endif
+}

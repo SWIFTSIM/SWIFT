@@ -2665,6 +2665,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   clocks_gettime(&time2);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  space_check_timesteps(e->s);
+#endif 
+
   /* Ready to go */
   e->step = 0;
   e->forcerebuild = 1;

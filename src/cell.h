@@ -306,5 +306,6 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift(struct cell *c, const struct engine *e);
+void cell_check_timesteps(struct cell *c);
 
 #endif /* SWIFT_CELL_H */
