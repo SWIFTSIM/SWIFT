@@ -83,6 +83,7 @@ void print_help_message() {
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
+  printf("  %2s %8s %s\n", "-S", "", "Run with stars");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
@@ -156,6 +157,7 @@ int main(int argc, char *argv[]) {
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+  int with_stars = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int verbose = 0;
@@ -165,7 +167,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -212,6 +214,9 @@ int main(int argc, char *argv[]) {
         break;
       case 's':
         with_hydro = 1;
+        break;
+      case 'S':
+        with_stars = 1;
         break;
       case 't':
         if (sscanf(optarg, "%d", &nr_threads) != 1) {
@@ -406,11 +411,17 @@ int main(int argc, char *argv[]) {
     for (size_t k = 0; k < Nspart; ++k) sparts[k].gpart = NULL;
     Ngpart = 0;
   }
+  if (!with_stars) {
+    free(sparts);
+    sparts = NULL;
+    for (size_t k = 0; k < Nspart; ++k)
+      if (gparts[k].type == swift_type_star) error("Linking problem");
+  }
   if (!with_hydro) {
     free(parts);
     parts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
+      if (gparts[k].type == swift_type_gas) error("Linking problem");
     Ngas = 0;
   }
 
@@ -535,8 +546,6 @@ int main(int argc, char *argv[]) {
     free(params);
     return 0;
   }
-
-  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   /* Split the space. */
