@@ -55,12 +55,6 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
   /* Particle internal energy. */
   float u;
 
@@ -124,6 +118,9 @@ struct part {
 
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
+
+  /* Particle time-bin */
+  timebin_t time_bin;
 
 } SWIFT_STRUCT_ALIGN;
 
