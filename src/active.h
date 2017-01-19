@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_end_min < e->ti_current && c->nodeID != e->nodeID)
+  if (c->ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e)",
