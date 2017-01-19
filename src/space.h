@@ -189,5 +189,4 @@ void space_check_drift_point(struct space *s, integertime_t ti_current);
 void space_check_timesteps(struct space *s);
 void space_clean(struct space *s);
 
-
 #endif /* SWIFT_SPACE_H */

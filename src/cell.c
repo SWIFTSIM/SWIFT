@@ -1140,18 +1140,18 @@ void cell_drift(struct cell *c, const struct engine *e) {
 void cell_check_timesteps(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if(c->nodeID != engine_rank) return;
-
-  if(c->ti_end_min == 0) error("Cell without assigned time-step");
+  if(c->ti_end_min == 0 && c->nr_tasks > 0)
+    error("Cell without assigned time-step");
   
   if(c->split) {
     for(int k=0; k<8; ++k)
       if(c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
   } else {
 
-    for(int i=0; i<c->count; ++i)
-      if(c->parts[i].time_bin == 0) 
-	error("Particle without assigned time-bin");
+    if(c->nodeID == engine_rank)
+      for(int i=0; i<c->count; ++i)
+	if(c->parts[i].time_bin == 0) 
+	  error("Particle without assigned time-bin");
 
   }
 #endif
