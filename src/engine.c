@@ -2389,36 +2389,33 @@ void engine_barrier(struct engine *e, int tid) {
  */
 void engine_collect_kick(struct cell *c) {
 
-  /* Skip super-cells (Their values are already set) */
+/* Skip super-cells (Their values are already set) */
+#ifdef WITH_MPI
+  if (c->timestep != NULL || c->recv_ti != NULL) return;
+#else
   if (c->timestep != NULL) return;
+#endif /* WITH_MPI */
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
   integertime_t ti_end_min = max_nr_timesteps;
 
-  /* Only do something is the cell is non-empty */
-  if (c->count != 0 || c->gcount != 0) {
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL && (cp->count > 0 || cp->gcount > 0)) {
 
-    /* If this cell is not split, I'm in trouble. */
-    if (!c->split) error("Cell is not split.");
+      /* Recurse */
+      engine_collect_kick(cp);
 
-    /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      if (cp != NULL) {
+      /* And update */
+      ti_end_min = min(ti_end_min, cp->ti_end_min);
+      updated += cp->updated;
+      g_updated += cp->g_updated;
 
-        /* Recurse */
-        engine_collect_kick(cp);
-
-        /* And update */
-        ti_end_min = min(ti_end_min, cp->ti_end_min);
-        updated += cp->updated;
-        g_updated += cp->g_updated;
-
-        /* Collected, so clear for next time. */
-        cp->updated = 0;
-        cp->g_updated = 0;
-      }
+      /* Collected, so clear for next time. */
+      cp->updated = 0;
+      cp->g_updated = 0;
     }
   }
 
@@ -2442,9 +2439,9 @@ void engine_collect_timestep(struct engine *e) {
   const struct space *s = e->s;
 
   /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells_top[k];
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    if (c->count > 0 || c->gcount > 0) {
 
       /* Make the top-cells recurse */
       engine_collect_kick(c);
@@ -2458,6 +2455,7 @@ void engine_collect_timestep(struct engine *e) {
       c->updated = 0;
       c->g_updated = 0;
     }
+  }
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
@@ -2669,7 +2667,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-#endif 
+#endif
 
   /* Ready to go */
   e->step = 0;
