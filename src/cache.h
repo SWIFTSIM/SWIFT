@@ -29,7 +29,9 @@
 #include "vector.h"
 #include "sort.h"
 
+#define MAX_NO_OF_PARTS 1000
 #define NUM_VEC_PROC 2
+#define CACHE_ALIGN sizeof(float) * VEC_SIZE
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 #define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
@@ -37,35 +39,87 @@
  * properties required for density/force calculations.*/
 struct cache {
 
+#ifdef DOPAIR1_AUTO_VEC
+  float x[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* x position*/
+  float y[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* y position*/
+  float z[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* z position*/
+  float m[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Mass */
+  float vx[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* x velocity */
+  float vy[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* y velocity */
+  float vz[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* z velocity */ 
+  float h[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Smoothing length */
+
+  /*Cached arrays to hold particle updates*/
+  float rho[MAX_NO_OF_PARTS]        __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Density */
+  float rho_dh[MAX_NO_OF_PARTS]     __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Density gradient */
+  float wcount[MAX_NO_OF_PARTS]     __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* No. of contributions*/
+  float wcount_dh[MAX_NO_OF_PARTS]  __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Mass */
+  float div_v[MAX_NO_OF_PARTS]      __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Velocity divergence */
+  float curl_vx[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Velocity curl x */
+  float curl_vy[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Velocity curl y */ 
+  float curl_vz[MAX_NO_OF_PARTS]    __attribute__((aligned(sizeof(float) * VEC_SIZE))); /* Velocity curl z */
+
+  int count;
+#else
   /* Particle x position. */
-  float *restrict x __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict x __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle y position. */
-  float *restrict y __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict y __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle z position. */
-  float *restrict z __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict z __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle smoothing length. */
-  float *restrict h __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict h __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle mass. */
-  float *restrict m __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict m __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle x velocity. */
-  float *restrict vx __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict vx __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle y velocity. */
-  float *restrict vy __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict vy __attribute__((aligned(CACHE_ALIGN)));
 
   /* Particle z velocity. */
-  float *restrict vz __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
+
+#endif
+  /* Particle x position. */
+  //float *restrict rho __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle y position. */
+  //float *restrict rho_dh __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle z position. */
+  //float *restrict wcount __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle smoothing length. */
+  //float *restrict wcount_dh __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle mass. */
+  //float *restrict div_v __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle x velocity. */
+  //float *restrict curl_vx __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle y velocity. */
+  //float *restrict curl_vy __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  ///* Particle z velocity. */
+  //float *restrict curl_vz __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
 };
 
+#ifdef DOPAIR1_AUTO_VEC
+struct cache ci_cache, cj_cache;
+#else
 struct cache cj_cache;
+#endif
 
 /* Secondary cache struct to hold a list of interactions between two
  * particles.*/
@@ -121,6 +175,14 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
+    //free(c->rho);
+    //free(c->rho_dh);
+    //free(c->wcount);
+    //free(c->wcount_dh);
+    //free(c->div_v);
+    //free(c->curl_vx);
+    //free(c->curl_vy);
+    //free(c->curl_vz);
   }
 
   error += posix_memalign((void **)&c->x, alignment, sizeBytes);
@@ -131,6 +193,14 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, alignment, sizeBytes);
   error += posix_memalign((void **)&c->vz, alignment, sizeBytes);
   error += posix_memalign((void **)&c->h, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->rho, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->rho_dh, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->wcount, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->wcount_dh, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->div_v, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->curl_vx, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->curl_vy, alignment, sizeBytes);
+  //error += posix_memalign((void **)&c->curl_vz, alignment, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -215,6 +285,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
   int idx;
   /* Shift the particles positions to a local frame (ci frame) so single precision can be
    * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+#ifdef WITH_VECTORIZATION
+#pragma simd
+#endif
   for (int i = 0; i < ci->count; i++) {
     idx = sort_i[i].i;
     ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
@@ -226,8 +299,22 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
     ci_cache->vx[i] = ci->parts[idx].v[0];
     ci_cache->vy[i] = ci->parts[idx].v[1];
     ci_cache->vz[i] = ci->parts[idx].v[2];
+
+#ifdef DOPAIR1_AUTO_VEC
+    ci_cache->rho[i]         = 0.0f; 
+    ci_cache->rho_dh[i]      = 0.0f; 
+    ci_cache->wcount[i]      = 0.0f; 
+    ci_cache->wcount_dh[i]   = 0.0f; 
+    ci_cache->div_v[i]       = 0.0f; 
+    ci_cache->curl_vx[i]     = 0.0f; 
+    ci_cache->curl_vy[i]     = 0.0f; 
+    ci_cache->curl_vz[i]     = 0.0f; 
+#endif
   }
-  
+ 
+#ifdef WITH_VECTORIZATION
+#pragma simd
+#endif
   for (int i = 0; i < cj->count; i++) {
     idx = sort_j[i].i;
     cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
@@ -239,7 +326,50 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
     cj_cache->vx[i] = cj->parts[idx].v[0];
     cj_cache->vy[i] = cj->parts[idx].v[1];
     cj_cache->vz[i] = cj->parts[idx].v[2];
+#ifdef DOPAIR1_AUTO_VEC
+    cj_cache->rho[i]         = 0.0f; 
+    cj_cache->rho_dh[i]      = 0.0f; 
+    cj_cache->wcount[i]      = 0.0f; 
+    cj_cache->wcount_dh[i]   = 0.0f; 
+    cj_cache->div_v[i]       = 0.0f; 
+    cj_cache->curl_vx[i]     = 0.0f; 
+    cj_cache->curl_vy[i]     = 0.0f; 
+    cj_cache->curl_vz[i]     = 0.0f; 
+#endif
   }
 }
 
+__attribute__((always_inline)) INLINE static void cache_write_sorted_particles(const struct cache *const ci_cache, const struct cache *const cj_cache, const struct cell *const ci, const struct cell *const cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j) {
+
+#ifdef DOPAIR1_AUTO_VEC
+    struct part *restrict pi, *restrict pj;
+
+    int idx = 0;
+    for (int i=0; i<ci->count; i++) {
+      idx = sort_i[i].i;  
+      pi = &ci->parts[idx];
+      pi->rho                 +=  ci_cache->rho[i];
+      pi->density.rho_dh      +=  ci_cache->rho_dh[i];
+      pi->density.wcount      +=  ci_cache->wcount[i];
+      pi->density.wcount_dh   +=  ci_cache->wcount_dh[i];
+      pi->density.div_v       +=  ci_cache->div_v[i];
+      pi->density.rot_v[0]    +=  ci_cache->curl_vx[i];
+      pi->density.rot_v[1]    +=  ci_cache->curl_vy[i];
+      pi->density.rot_v[2]    +=  ci_cache->curl_vz[i];
+    }
+
+    for (int i=0; i<cj->count; i++) {
+      idx = sort_j[i].i;  
+      pj = &cj->parts[idx];
+      pj->rho                 += cj_cache->rho[i];                     
+      pj->density.rho_dh      += cj_cache->rho_dh[i];
+      pj->density.wcount      += cj_cache->wcount[i];
+      pj->density.wcount_dh   += cj_cache->wcount_dh[i];
+      pj->density.div_v       += cj_cache->div_v[i];
+      pj->density.rot_v[0]    += cj_cache->curl_vx[i];               
+      pj->density.rot_v[1]    += cj_cache->curl_vy[i];               
+      pj->density.rot_v[2]    += cj_cache->curl_vz[i];               
+    }
+#endif
+}
 #endif /* SWIFT_CACHE_H */
