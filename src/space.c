@@ -2393,6 +2393,19 @@ void space_check_drift_point(struct space *s, integertime_t ti_current) {
 }
 
 /**
+ * @brief Checks that all particles and local cells have a non-zero time-step.
+ */ 
+void space_check_timesteps(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  for (int i=0; i<s->nr_cells; ++i) {
+    cell_check_timesteps(&s->cells_top[i]);
+  }
+
+#endif
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {
