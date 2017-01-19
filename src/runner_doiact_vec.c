@@ -1709,6 +1709,7 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 
       /* Get the cache index to the ith particle. */
       int ci_cache_idx = pid; //sort_i[pid].i;
+      int ci2_cache_idx = pid + VEC_SIZE;
 
       vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx2, v_dy2, v_dz2, v_r2_2;
@@ -1717,11 +1718,11 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
 
       /* Load 2 sets of vectors from the particle cache. */
       pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
-      pix2.v = vec_load(&ci_cache->x[ci_cache_idx + VEC_SIZE]);
+      pix2.v = vec_load(&ci_cache->x[ci2_cache_idx]);
       piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
-      piy2.v = vec_load(&ci_cache->y[ci_cache_idx + VEC_SIZE]);
+      piy2.v = vec_load(&ci_cache->y[ci2_cache_idx]);
       piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
-      piz2.v = vec_load(&ci_cache->z[ci_cache_idx + VEC_SIZE]);
+      piz2.v = vec_load(&ci_cache->z[ci2_cache_idx]);
       //pivx.v = vec_load(&ci_cache->vx[ci_cache_idx]);
       //pivy.v = vec_load(&ci_cache->vy[ci_cache_idx]);
       //pivz.v = vec_load(&ci_cache->vz[ci_cache_idx]);
@@ -1791,8 +1792,8 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
        if (doj_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v_r2_2, &v_dx2, &v_dy2, &v_dz2, v_hj_inv, v_vjx, v_vjy, v_vjz,
-          &ci_cache->vx[ci_cache_idx + VEC_SIZE], &ci_cache->vy[ci_cache_idx + VEC_SIZE], &ci_cache->vz[ci_cache_idx + VEC_SIZE],
-          &ci_cache->m[ci_cache_idx + VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &ci_cache->vx[ci2_cache_idx], &ci_cache->vy[ci2_cache_idx], &ci_cache->vz[ci2_cache_idx],
+          &ci_cache->m[ci2_cache_idx], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doj_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -1813,8 +1814,8 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
        if (doj2_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v2_r2_2, &v2_dx2, &v2_dy2, &v2_dz2, v_hj_inv_2, v_vjx2, v_vjy2, v_vjz2,
-          &ci_cache->vx[ci_cache_idx + VEC_SIZE], &ci_cache->vy[ci_cache_idx + VEC_SIZE], &ci_cache->vz[ci_cache_idx + VEC_SIZE],
-          &ci_cache->m[ci_cache_idx + VEC_SIZE], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
+          &ci_cache->vx[ci2_cache_idx], &ci_cache->vy[ci2_cache_idx], &ci_cache->vz[ci2_cache_idx],
+          &ci_cache->m[ci2_cache_idx], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
           &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v2_doj_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
