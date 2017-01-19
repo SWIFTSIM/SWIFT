@@ -958,7 +958,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
             get_integer_time_begin(ti_current, p->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ti_begin + ti_step != ti_current) 
+        if (ti_begin + ti_step != ti_current)
           error(
               "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
               "time_bin=%d ti_current=%lld",

@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static int cell_is_drifted(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e)",
         c->ti_old, c->ti_old * e->timeBase, e->ti_current,
-	e->ti_current * e->timeBase);
+        e->ti_current * e->timeBase);
 #endif
 
   return (c->ti_old == e->ti_current);
@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e)",
         c->ti_end_min, c->ti_end_min * e->timeBase, e->ti_current,
-	e->ti_current * e->timeBase);
+        e->ti_current * e->timeBase);
 #endif
 
   return (c->ti_end_min == e->ti_current);
