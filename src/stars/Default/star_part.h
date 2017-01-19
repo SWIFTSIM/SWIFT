@@ -34,20 +34,14 @@ struct spart {
   /* Particle position. */
   double x[3];
 
-  /* Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
   /* Particle velocity. */
   float v[3];
 
   /* Star mass */
   float mass;
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
+  /* Particle time bin */
+  timebin_t time_bin;
 
 } SWIFT_STRUCT_ALIGN;
 

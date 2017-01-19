@@ -1924,10 +1924,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
     for (int k = 0; k < scount; k++) {
       struct spart *sp = &sparts[k];
-      const int ti_end = sp->ti_end;
-      sp->x_diff[0] = 0.f;
-      sp->x_diff[1] = 0.f;
-      sp->x_diff[2] = 0.f;
+      const integertime_t ti_end =
+          get_integer_time_end(e->ti_current, sp->time_bin);
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
@@ -2214,8 +2212,10 @@ void space_init_sparts(struct space *s) {
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
+ * @param sparts Array of star particles.
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
+ * @param Nspart The number of star particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param gravity flag whether we are doing gravity or not.
  * @param verbose Print messages to stdout or not.

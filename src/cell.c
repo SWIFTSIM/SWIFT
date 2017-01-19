@@ -555,8 +555,12 @@ void cell_sunlocktree(struct cell *c) {
  * @param c The #cell array to be sorted.
  * @param parts_offset Offset of the cell parts array relative to the
  *        space's parts array, i.e. c->parts - s->parts.
+ * @param sparts_offset Offset of the cell sparts array relative to the
+ *        space's sparts array, i.e. c->sparts - s->sparts.
  * @param buff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices.
+ * @param sbuff A buffer with at least max(c->scount, c->gcount) entries,
+ *        used for sorting indices for the sparts.
  * @param gbuff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices for the gparts.
  */
