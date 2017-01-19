@@ -1079,6 +1079,10 @@ void scheduler_start(struct scheduler *s) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
+      /* Don't check MPI stuff */
+      if(t->type == task_type_send || t->type == task_type_recv) 
+	continue;
+
       if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
@@ -1102,11 +1106,11 @@ void scheduler_start(struct scheduler *s) {
 
       } else { /* pair */
 
-        /* Don't check MPI stuff */
-        if (t->type != task_type_send && t->type != task_type_recv) {
+        if (t->skip) {
 
-          if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-              t->skip)
+	  /* Check that the pair is active if the local cell is active */
+          if ((ci->ti_end_min == ti_current && ci->nodeID == engine_rank)
+	      || ( cj->ti_end_min == ti_current && cj->nodeID == engine_rank) )
             error(
                 "Task (type='%s/%s') should not have been skipped "
                 "ti_current=%lld "
