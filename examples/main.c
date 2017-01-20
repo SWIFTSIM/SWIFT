@@ -526,11 +526,16 @@ int main(int argc, char *argv[]) {
 
   /* Get some info to the user. */
   if (myrank == 0) {
+    long long N_DM = N_total[1] - N_total[2] - N_total[0];
     message(
-        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
-        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
-        e.sched.nr_queues, e.dt_min, e.dt_max);
+        "Running on %lld gas particles, %lld star particles and %lld DM "
+        "particles (%lld gravity particles)",
+        N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+    message(
+        "from t=%.3e until t=%.3e with %d threads and %d queues (dt_min=%.3e, "
+        "dt_max=%.3e)...",
+        e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
+        e.dt_max);
     fflush(stdout);
   }
 
