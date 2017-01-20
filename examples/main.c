@@ -416,6 +416,7 @@ int main(int argc, char *argv[]) {
     sparts = NULL;
     for (size_t k = 0; k < Nspart; ++k)
       if (gparts[k].type == swift_type_star) error("Linking problem");
+    Nspart = 0;
   }
   if (!with_hydro) {
     free(parts);

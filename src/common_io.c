@@ -590,7 +590,7 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
             gparts[i].id_or_neg_offset);
 
     /* Set gpart type */
-    gparts[i + Ndm].type = swift_type_dark_matter;
+    gparts[i].type = swift_type_dark_matter;
   }
 }
 
@@ -690,7 +690,7 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
      * gparts[i].part); */
 
     /* And collect the DM ones */
-    if (gparts[i].id_or_neg_offset > 0) {
+    if (gparts[i].type == swift_type_dark_matter) {
       dmparts[count] = gparts[i];
       count++;
     }
