@@ -1682,6 +1682,16 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
    * the cache if it is not big enough for the cell. */
   struct cache *restrict ci_cache = &r->par_cache;
 
+  //for(int i=0; i<ci->count; i++)
+  //  message("i:%d di: %f",i,sort_i[i].d);
+  //
+  //message("Max distance into cj: %f", sort_i[ci->count - 1].d + ci->h_max);
+
+  //for(int i=0; i<cj->count; i++)
+  //  message("i:%d dj: %f",i,sort_j[i].d);
+  //
+  //message("Max distance into ci: %f", sort_j[0].d - cj->h_max);
+  
   if (ci_cache->count < count_i) {
     cache_init(ci_cache, count_i);
   }
@@ -2727,30 +2737,30 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
   if (ci_cache->count < count_i) {
     cache_init(ci_cache, count_i);
   }
-  if (cj_cache.count < count_j) {
-    cache_init(&cj_cache, count_j);
-  }
+  
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
 
-  //cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
-  //cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
-  cache_read_cell_sorted(cj, &cj_cache, sort_j, shift);
+  double shift_cj[3] = {0.0,0.0,0.0};
+
+  cache_read_cell_sorted(cj, ci_cache, sort_j, loc, shift_cj);
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
-  populate_max_d(ci, cj, sort_i, sort_j, ci_cache, &cj_cache, dx_max, rshift, max_di, max_dj);
+  float h = parts_i[sort_i[0].i].h;
+  float d;
+  
+  /* For particles in ci */  
+  max_di[0] = sort_i[0].d + h * kernel_gamma + dx_max - rshift;
 
-  //float h = parts_i[sort_i[0]].h;
-  //float d;
-  //
-  ///* For particles in ci */  
-  //max_di[0] = sort_i[0].d + h * kernel_gamma + dx_max - rshift;
-
-  //for (int k = 1; k < ci->count; k++) {
-  //  h = parts_i[sort_i[k]].h;
-  //  d = sort_i[k].d + h * kernel_gamma + dx_max - rshift;
-  //  
-  //  max_di[k] = fmaxf(max_di[k - 1], d);
-  //}
+  for (int k = 1; k < ci->count; k++) {
+    h = parts_i[sort_i[k].i].h;
+    d = sort_i[k].d + h * kernel_gamma + dx_max - rshift;
+    
+    max_di[k] = fmaxf(max_di[k - 1], d);
+  }
 
   float di, dj;
 
@@ -2772,10 +2782,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     }
     int exit_iteration = max_ind_j;    
 
-    int ci_cache_idx = pid;//sort_i[pid].i;
-
-    const float hi = ci_cache->h[ci_cache_idx];
-    const float hi_2 = ci_cache->h[ci_cache_idx - 1];
+    const float hi = pi->h;
+    const float hi_2 = pi2->h;
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
@@ -2786,23 +2794,23 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     vector pix2, piy2, piz2;
 
     /* Fill particle pi vectors. */
-    pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
-    piy.v = vec_set1(ci_cache->y[ci_cache_idx]);
-    piz.v = vec_set1(ci_cache->z[ci_cache_idx]);
+    pix.v = vec_set1(pi->x[0] - loc[0] - shift[0]);
+    piy.v = vec_set1(pi->x[1] - loc[1] - shift[1]);
+    piz.v = vec_set1(pi->x[2] - loc[2] - shift[2]);
     v_hi.v = vec_set1(hi);
-    v_vix.v = vec_set1(ci_cache->vx[ci_cache_idx]);
-    v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
-    v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
+    v_vix.v = vec_set1(pi->v[0]);
+    v_viy.v = vec_set1(pi->v[1]);
+    v_viz.v = vec_set1(pi->v[2]);
 
     v_hig2.v = vec_set1(hig2);
 
-    pix2.v = vec_set1(ci_cache->x[ci_cache_idx - 1]);
-    piy2.v = vec_set1(ci_cache->y[ci_cache_idx - 1]);
-    piz2.v = vec_set1(ci_cache->z[ci_cache_idx - 1]);
+    pix2.v = vec_set1(pi2->x[0] - loc[0] - shift[0]);
+    piy2.v = vec_set1(pi2->x[1] - loc[1] - shift[1]);
+    piz2.v = vec_set1(pi2->x[2] - loc[2] - shift[2]);
     v_hi_2.v = vec_set1(hi_2);
-    v_vix2.v = vec_set1(ci_cache->vx[ci_cache_idx - 1]);
-    v_viy2.v = vec_set1(ci_cache->vy[ci_cache_idx - 1]);
-    v_viz2.v = vec_set1(ci_cache->vz[ci_cache_idx - 1]);
+    v_vix2.v = vec_set1(pi2->v[0]);
+    v_viy2.v = vec_set1(pi2->v[1]);
+    v_viz2.v = vec_set1(pi2->v[2]);
 
     v_hig2_2.v = vec_set1(hig2_2);
 
@@ -2837,7 +2845,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     curlvxSum2.v = vec_setzero();
     curlvySum2.v = vec_setzero();
     curlvzSum2.v = vec_setzero();
-
+  
+    //exit_iteration = count_j;
     /* Pad cache if there is a serial remainder. */
     int exit_iteration_align = exit_iteration;
     int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
@@ -2862,16 +2871,16 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
       vector v2_dx2, v2_dy2, v2_dz2, v2_r2_2;
 
       /* Load 2 sets of vectors from the particle cache. */
-      pjx.v = vec_load(&cj_cache.x[cj_cache_idx]);
-      pjx2.v = vec_load(&cj_cache.x[cj_cache_idx + VEC_SIZE]);
-      pjy.v = vec_load(&cj_cache.y[cj_cache_idx]);
-      pjy2.v = vec_load(&cj_cache.y[cj_cache_idx + VEC_SIZE]);
-      pjz.v = vec_load(&cj_cache.z[cj_cache_idx]);
-      pjz2.v = vec_load(&cj_cache.z[cj_cache_idx + VEC_SIZE]);
-      //pjvx.v = vec_load(&cj_cache.vx[cj_cache_idx]);
-      //pjvy.v = vec_load(&cj_cache.vy[cj_cache_idx]);
-      //pjvz.v = vec_load(&cj_cache.vz[cj_cache_idx]);
-      //mj.v = vec_load(&cj_cache.m[cj_cache_idx]);
+      pjx.v = vec_load(&ci_cache->x[cj_cache_idx]);
+      pjx2.v = vec_load(&ci_cache->x[cj_cache_idx + VEC_SIZE]);
+      pjy.v = vec_load(&ci_cache->y[cj_cache_idx]);
+      pjy2.v = vec_load(&ci_cache->y[cj_cache_idx + VEC_SIZE]);
+      pjz.v = vec_load(&ci_cache->z[cj_cache_idx]);
+      pjz2.v = vec_load(&ci_cache->z[cj_cache_idx + VEC_SIZE]);
+      //pjvx.v = vec_load(&ci_cache->vx[cj_cache_idx]);
+      //pjvy.v = vec_load(&ci_cache->vy[cj_cache_idx]);
+      //pjvz.v = vec_load(&ci_cache->vz[cj_cache_idx]);
+      //mj.v = vec_load(&ci_cache->m[cj_cache_idx]);
 
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pix.v, pjx.v);
@@ -2925,8 +2934,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
       if(doi_mask)
         runner_iact_nonsym_intrinsic_vec_density(
           &v_r2, &v_dx, &v_dy,&v_dz, v_hi_inv, v_vix, v_viy, v_viz,
-          &cj_cache.vx[cj_cache_idx], &cj_cache.vy[cj_cache_idx], &cj_cache.vz[cj_cache_idx],
-          &cj_cache.m[cj_cache_idx], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &ci_cache->vx[cj_cache_idx], &ci_cache->vy[cj_cache_idx], &ci_cache->vz[cj_cache_idx],
+          &ci_cache->m[cj_cache_idx], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doi_mask,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -2936,8 +2945,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
       if(doi_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v_r2_2, &v_dx2, &v_dy2,&v_dz2, v_hi_inv, v_vix, v_viy, v_viz,
-          &cj_cache.vx[cj_cache_idx + VEC_SIZE], &cj_cache.vy[cj_cache_idx + VEC_SIZE], &cj_cache.vz[cj_cache_idx + VEC_SIZE],
-          &cj_cache.m[cj_cache_idx + VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &ci_cache->vx[cj_cache_idx + VEC_SIZE], &ci_cache->vy[cj_cache_idx + VEC_SIZE], &ci_cache->vz[cj_cache_idx + VEC_SIZE],
+          &ci_cache->m[cj_cache_idx + VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doi_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -2947,8 +2956,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
        if(doi2_mask)
         runner_iact_nonsym_intrinsic_vec_density(
           &v2_r2, &v2_dx, &v2_dy, &v2_dz, v_hi_inv_2, v_vix2, v_viy2, v_viz2,
-          &cj_cache.vx[cj_cache_idx], &cj_cache.vy[cj_cache_idx], &cj_cache.vz[cj_cache_idx],
-          &cj_cache.m[cj_cache_idx], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
+          &ci_cache->vx[cj_cache_idx], &ci_cache->vy[cj_cache_idx], &ci_cache->vz[cj_cache_idx],
+          &ci_cache->m[cj_cache_idx], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
           &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v2_doi_mask,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -2958,8 +2967,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
       if(doi2_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v2_r2_2, &v2_dx2, &v2_dy2, &v2_dz2, v_hi_inv_2, v_vix2, v_viy2, v_viz2,
-          &cj_cache.vx[cj_cache_idx + VEC_SIZE], &cj_cache.vy[cj_cache_idx + VEC_SIZE], &cj_cache.vz[cj_cache_idx + VEC_SIZE],
-          &cj_cache.m[cj_cache_idx + VEC_SIZE], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
+          &ci_cache->vx[cj_cache_idx + VEC_SIZE], &ci_cache->vy[cj_cache_idx + VEC_SIZE], &ci_cache->vz[cj_cache_idx + VEC_SIZE],
+          &ci_cache->m[cj_cache_idx + VEC_SIZE], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
           &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v2_doi_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -2991,6 +3000,18 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
 
   } /* loop over the parts in ci. */
 
+  cache_read_cell_sorted(ci, ci_cache, sort_i, loc, shift);
+
+  h = parts_j[sort_j[0].i].h;
+  max_dj[0] = sort_j[0].d - h * kernel_gamma - dx_max - rshift;
+  
+  for (int k = 1; k < cj->count; k++) {
+    h = parts_j[sort_j[k].i].h;
+    d = sort_j[k].d - h * kernel_gamma - dx_max - rshift;
+    
+    max_dj[k] = fmaxf(max_dj[k - 1], d);
+  }
+
   int max_ind_i = 0;
   /* Loop over the parts in cj. */
   for (int pjd = 0; pjd < count_j && max_ind_i < count_i; pjd+=2) {
@@ -3008,10 +3029,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     }
     int exit_iteration = max_ind_i;
     
-    int cj_cache_idx = pjd;
-
-    const float hj = cj_cache.h[cj_cache_idx];
-    const float hj_2 = cj_cache.h[cj_cache_idx + 1];
+    const float hj = pj->h;
+    const float hj_2 = pj2->h;
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
 
@@ -3024,23 +3043,23 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     vector v_hj_2, v_vjx2, v_vjy2, v_vjz2, v_hjg2_2;
 
     /* Fill particle pi vectors. */
-    pjx.v = vec_set1(cj_cache.x[cj_cache_idx]);
-    pjy.v = vec_set1(cj_cache.y[cj_cache_idx]);
-    pjz.v = vec_set1(cj_cache.z[cj_cache_idx]);
+    pjx.v = vec_set1(pj->x[0] - loc[0]);
+    pjy.v = vec_set1(pj->x[1] - loc[1]);
+    pjz.v = vec_set1(pj->x[2] - loc[2]);
     v_hj.v = vec_set1(hj);
-    v_vjx.v = vec_set1(cj_cache.vx[cj_cache_idx]);
-    v_vjy.v = vec_set1(cj_cache.vy[cj_cache_idx]);
-    v_vjz.v = vec_set1(cj_cache.vz[cj_cache_idx]);
+    v_vjx.v = vec_set1(pj->v[0]);
+    v_vjy.v = vec_set1(pj->v[1]);
+    v_vjz.v = vec_set1(pj->v[2]);
 
     v_hjg2.v = vec_set1(hjg2);
 
-    pjx2.v = vec_set1(cj_cache.x[cj_cache_idx + 1]);
-    pjy2.v = vec_set1(cj_cache.y[cj_cache_idx + 1]);
-    pjz2.v = vec_set1(cj_cache.z[cj_cache_idx + 1]);
+    pjx2.v = vec_set1(pj2->x[0] - loc[0]);
+    pjy2.v = vec_set1(pj2->x[1] - loc[1]);
+    pjz2.v = vec_set1(pj2->x[2] - loc[2]);
     v_hj_2.v = vec_set1(hj_2);
-    v_vjx2.v = vec_set1(cj_cache.vx[cj_cache_idx + 1]);
-    v_vjy2.v = vec_set1(cj_cache.vy[cj_cache_idx + 1]);
-    v_vjz2.v = vec_set1(cj_cache.vz[cj_cache_idx + 1]);
+    v_vjx2.v = vec_set1(pj2->v[0]);
+    v_vjy2.v = vec_set1(pj2->v[1]);
+    v_vjz2.v = vec_set1(pj2->v[2]);
 
     v_hjg2_2.v = vec_set1(hjg2_2);
 
@@ -3076,25 +3095,28 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
     curlvySum2.v = vec_setzero();
     curlvzSum2.v = vec_setzero();
 
+    //exit_iteration = 0;
     /* Pad cache if there is a serial remainder. */
     int exit_iteration_align = exit_iteration;
     int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
-    if (rem != 0) {
-      int pad = (num_vec_proc * VEC_SIZE) - rem;
+    //if (rem != 0) {
+    //  int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-      exit_iteration_align -= pad;
-    }
+    //  exit_iteration_align -= pad;
+    //}
 
     vector pix, piy, piz;
     vector pix2, piy2, piz2;
     //vector pivx, pivy, pivz, mi;
 
     /* Loop over the parts in ci. */
-    for (int pid = count_i - 1; pid >= 0; pid -= (num_vec_proc * VEC_SIZE)) {
+    //for (int pid = count_i - 1; pid >= 0; pid -= (num_vec_proc * VEC_SIZE)) {
     //for (int pid = count_i - 1; pid >= exit_iteration_align; pid -= (num_vec_proc * VEC_SIZE)) {
+    for (int pid = exit_iteration_align; pid < (count_i + (num_vec_proc * VEC_SIZE) - rem); pid += (num_vec_proc * VEC_SIZE)) {
 
       /* Get the cache index to the ith particle. */
       int ci_cache_idx = pid; //sort_i[pid].i;
+      int ci2_cache_idx = pid + VEC_SIZE;
 
       vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx2, v_dy2, v_dz2, v_r2_2;
@@ -3103,11 +3125,11 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
 
       /* Load 2 sets of vectors from the particle cache. */
       pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
-      pix2.v = vec_load(&ci_cache->x[ci_cache_idx - VEC_SIZE]);
+      pix2.v = vec_load(&ci_cache->x[ci2_cache_idx]);
       piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
-      piy2.v = vec_load(&ci_cache->y[ci_cache_idx - VEC_SIZE]);
+      piy2.v = vec_load(&ci_cache->y[ci2_cache_idx]);
       piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
-      piz2.v = vec_load(&ci_cache->z[ci_cache_idx - VEC_SIZE]);
+      piz2.v = vec_load(&ci_cache->z[ci2_cache_idx]);
       //pivx.v = vec_load(&ci_cache->vx[ci_cache_idx]);
       //pivy.v = vec_load(&ci_cache->vy[ci_cache_idx]);
       //pivz.v = vec_load(&ci_cache->vz[ci_cache_idx]);
@@ -3177,8 +3199,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
        if (doj_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v_r2_2, &v_dx2, &v_dy2, &v_dz2, v_hj_inv, v_vjx, v_vjy, v_vjz,
-          &ci_cache->vx[ci_cache_idx - VEC_SIZE], &ci_cache->vy[ci_cache_idx - VEC_SIZE], &ci_cache->vz[ci_cache_idx - VEC_SIZE],
-          &ci_cache->m[ci_cache_idx - VEC_SIZE], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &ci_cache->vx[ci2_cache_idx], &ci_cache->vy[ci2_cache_idx], &ci_cache->vz[ci2_cache_idx],
+          &ci_cache->m[ci2_cache_idx], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, v_doj_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
@@ -3199,8 +3221,8 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
        if (doj2_mask2)
         runner_iact_nonsym_intrinsic_vec_density(
           &v2_r2_2, &v2_dx2, &v2_dy2, &v2_dz2, v_hj_inv_2, v_vjx2, v_vjy2, v_vjz2,
-          &ci_cache->vx[ci_cache_idx - VEC_SIZE], &ci_cache->vy[ci_cache_idx - VEC_SIZE], &ci_cache->vz[ci_cache_idx - VEC_SIZE],
-          &ci_cache->m[ci_cache_idx - VEC_SIZE], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
+          &ci_cache->vx[ci2_cache_idx], &ci_cache->vy[ci2_cache_idx], &ci_cache->vz[ci2_cache_idx],
+          &ci_cache->m[ci2_cache_idx], &rhoSum2, &rho_dhSum2, &wcountSum2, &wcount_dhSum2,
           &div_vSum2, &curlvxSum2, &curlvySum2, &curlvzSum2, v2_doj_mask2,
 #ifdef HAVE_AVX512_F
           knl_mask);
