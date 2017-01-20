@@ -271,7 +271,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells(
 }
 
 __attribute__((always_inline)) INLINE void cache_read_cell_sorted(
-    const struct cell *const ci, struct cache *const ci_cache, const struct entry *restrict sort_i, const double *const shift) {
+    const struct cell *const ci, struct cache *const ci_cache, const struct entry *restrict sort_i, double *const loc, double *const shift) {
 
   int idx;
   /* Shift the particles positions to a local frame (ci frame) so single precision can be
@@ -282,9 +282,9 @@ __attribute__((always_inline)) INLINE void cache_read_cell_sorted(
   for (int i = 0; i < ci->count; i++) {
     idx = sort_i[i].i;
     
-    ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[i] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[i] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
+    ci_cache->x[i] = ci->parts[idx].x[0] - loc[0] - shift[0];
+    ci_cache->y[i] = ci->parts[idx].x[1] - loc[1] - shift[1];
+    ci_cache->z[i] = ci->parts[idx].x[2] - loc[2] - shift[2];
     ci_cache->h[i] = ci->parts[idx].h;
 
     ci_cache->m[i] = ci->parts[idx].mass;
