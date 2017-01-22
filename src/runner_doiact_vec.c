@@ -910,6 +910,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
 
+  static int faceIntCount = 0;
+  static int faceCtr = 0;
+  static int edgeIntCount = 0;
+  static int edgeCtr = 0;
+  static int cornerIntCount = 0;
+  static int cornerCtr = 0;
   int icount = 0, icount_align = 0;
   struct c2_cache int_cache;
   int num_vec_proc = 1;
@@ -929,6 +935,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  int face = (sid == 4 || sid == 10 || sid == 12);
+  int edge = (sid == 1 || sid == 3 || sid == 5 || sid == 7 || sid == 9 || sid == 11);
+  int corner = (sid == 0 || sid == 2 || sid == 6 || sid == 8);
 
   /* Have the cells been sorted? */
   if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
@@ -1130,9 +1140,26 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     VEC_HADD(curlvySum, pi->density.rot_v[1]);
     VEC_HADD(curlvzSum, pi->density.rot_v[2]);
 
+    if(face) faceIntCount += icount;
+    else if(edge) edgeIntCount += icount;
+    else if(corner) cornerIntCount += icount;
+
     icount = 0;
 
   } /* loop over the parts in ci. */
+
+  if(face) {
+    faceCtr++;
+    message("Total number of face interactions: %d, average per particle: %f.", faceIntCount, ((float)faceIntCount) / ((float)faceCtr * (float)count_i));
+  }
+  else if(edge) {
+    edgeCtr++;
+    message("Total number of edge interactions: %d, average per particle: %f.", edgeIntCount, ((float)edgeIntCount) / ((float)edgeCtr * (float)count_i));
+  }
+  else if(corner) {
+    cornerCtr++;
+    message("Total number of corner interactions: %d, average per particle: %f.",cornerIntCount, ((float)cornerIntCount) / ((float)cornerCtr * (float)count_i));
+  }
 
   int max_ind_i = 0;
   /* Loop over the parts in cj. */
