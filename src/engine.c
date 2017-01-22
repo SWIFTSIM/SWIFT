@@ -48,6 +48,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
@@ -698,9 +699,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
         ci->super->drift = scheduler_addtask(
             s, task_type_drift, task_subtype_none, 0, 0, ci->super, NULL, 0);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                               4 * ci->tag, 0, ci, cj, 0);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
+                               0, ci, cj, 0);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 4 * ci->tag + 1, 0, ci, cj, 0);
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                4 * ci->tag + 2, 0, ci, cj, 0);
@@ -2028,9 +2029,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  const integertime_t ti_end = ((size_t *)extra_data)[0];
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
+  struct engine *e = (struct engine *)((size_t *)extra_data)[0];
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
@@ -2041,7 +2042,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Pair? */
@@ -2059,7 +2060,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         *rebuild_space = 1;
 
       /* Set this task's skip, otherwise nothing to do. */
-      if (ci->ti_end_min <= ti_end || cj->ti_end_min <= ti_end)
+      if (cell_is_active(t->ci, e) || cell_is_active(t->cj, e))
         scheduler_activate(s, t);
       else
         continue;
@@ -2086,8 +2087,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Activate the tasks to recv foreign cell ci's data. */
         scheduler_activate(s, ci->recv_xv);
-        scheduler_activate(s, ci->recv_rho);
-        scheduler_activate(s, ci->recv_ti);
+        if (cell_is_active(ci, e)) {
+          scheduler_activate(s, ci->recv_rho);
+          scheduler_activate(s, ci->recv_ti);
+        }
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -2102,24 +2105,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else
           error("Drift task missing !");
 
-        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(cj, e)) {
+          for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
 
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
         scheduler_activate(s, cj->recv_xv);
-        scheduler_activate(s, cj->recv_rho);
-        scheduler_activate(s, cj->recv_ti);
+        if (cell_is_active(cj, e)) {
+          scheduler_activate(s, cj->recv_rho);
+          scheduler_activate(s, cj->recv_ti);
+        }
 
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
@@ -2134,44 +2141,35 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else
           error("Drift task missing !");
 
-        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(ci, e)) {
+          for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
       }
 
 #endif
     }
 
-    /* Kick? */
-    else if (t->type == task_type_kick1) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    } else if (t->type == task_type_kick2) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    /* Kick/Drift/Init? */
+    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+             t->type == task_type_drift || t->type == task_type_init) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Time-step? */
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    }
-
-    /* Drift? */
-    else if (t->type == task_type_drift) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    }
-
-    /* Init? */
-    else if (t->type == task_type_init) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Tasks with no cells should not be skipped? */
@@ -2194,7 +2192,7 @@ int engine_marktasks(struct engine *e) {
   int rebuild_space = 0;
 
   /* Run through the tasks and mark as skip or not. */
-  size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
+  size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 10000, extra_data);
   rebuild_space = extra_data[1];

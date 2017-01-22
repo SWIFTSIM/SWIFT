@@ -1317,6 +1317,7 @@ void *runner_main(void *data) {
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
+      t->ti_run = e->ti_current;
 #ifndef WITH_MPI
       if (cj == NULL) { /* self */
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
