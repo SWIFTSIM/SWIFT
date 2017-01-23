@@ -2415,4 +2415,5 @@ void space_clean(struct space *s) {
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
+  free(s->sparts);
 }
