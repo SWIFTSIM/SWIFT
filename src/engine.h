@@ -131,7 +131,7 @@ struct engine {
   integertime_t ti_end_min;
 
   /* Number of particles updated */
-  size_t updates, g_updates;
+  size_t updates, g_updates, s_updates;
 
   /* The internal system of units */
   const struct UnitSystem *internalUnits;

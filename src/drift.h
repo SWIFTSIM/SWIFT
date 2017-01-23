@@ -95,4 +95,23 @@ __attribute__((always_inline)) INLINE static void drift_part(
   xp->x_diff[2] -= xp->v_full[2] * dt;
 }
 
+/**
+ * @brief Perform the 'drift' operation on a #spart
+ *
+ * @param sp The #spart to drift.
+ * @param dt The drift time-step
+ * @param timeBase The minimal allowed time-step size.
+ * @param ti_old Integer start of time-step
+ * @param ti_current Integer end of time-step
+ */
+__attribute__((always_inline)) INLINE static void drift_spart(
+    struct spart *restrict sp, float dt, double timeBase, integertime_t ti_old,
+    integertime_t ti_current) {
+
+  /* Drift... */
+  sp->x[0] += sp->v[0] * dt;
+  sp->x[1] += sp->v[1] * dt;
+  sp->x[2] += sp->v[2] * dt;
+}
+
 #endif /* SWIFT_DRIFT_H */

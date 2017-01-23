@@ -57,6 +57,7 @@
 #include "scheduler.h"
 #include "sourceterms.h"
 #include "space.h"
+#include "stars.h"
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
@@ -843,8 +844,10 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
+  struct spart *restrict sparts = c->sparts;
   const int count = c->count;
   const int gcount = c->gcount;
+  const int scount = c->scount;
   const integertime_t ti_current = e->ti_current;
   const double timeBase = e->timeBase;
 
@@ -892,7 +895,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+      if (gp->type == swift_type_dark_matter && gpart_is_active(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -909,7 +912,33 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
       }
     }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the s-part. */
+      struct spart *restrict sp = &sparts[k];
+
+      /* If particle needs to be kicked */
+      if (spart_is_active(sp, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, sp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sp->time_bin);
+
+        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+#endif
+
+        /* do the kick */
+        kick_spart(sp, ti_begin, ti_begin + ti_step / 2, timeBase);
+      }
+    }
   }
+
   if (timer) TIMER_TOC(timer_kick1);
 }
 
@@ -929,9 +958,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const double timeBase = e->timeBase;
   const int count = c->count;
   const int gcount = c->gcount;
+  const int scount = c->scount;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
+  struct spart *restrict sparts = c->sparts;
 
   TIMER_TIC;
 
@@ -978,7 +1009,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+      if (gp->type == swift_type_dark_matter && gpart_is_active(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -991,6 +1022,32 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+      }
+    }
+
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the part. */
+      struct spart *restrict sp = &sparts[k];
+
+      /* If particle needs to be kicked */
+      if (spart_is_active(sp, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, sp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ti_begin + ti_step != ti_current)
+          error("Particle in wrong time-bin");
+#endif
+
+        /* Finish the time-step with a second half-kick */
+        kick_spart(sp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+
+        /* Prepare the values to be drifted */
+        star_reset_predicted_values(sp);
       }
     }
   }
@@ -1011,13 +1068,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const integertime_t ti_current = e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
+  const int scount = c->scount;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
+  struct spart *restrict sparts = c->sparts;
 
   TIMER_TIC;
 
-  int updated = 0, g_updated = 0;
+  int updated = 0, g_updated = 0, s_updated = 0;
   integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* No children? */
@@ -1076,7 +1135,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->id_or_neg_offset > 0) {
+      if (gp->type == swift_type_dark_matter) {
 
         /* need to be updated ? */
         if (gpart_is_active(gp, e)) {
@@ -1089,7 +1148,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           if (ti_end != ti_current)
             error("Computing time-step of rogue particle.");
 #endif
-
           /* Get new time-step */
           const integertime_t ti_new_step = get_gpart_timestep(gp, e);
 
@@ -1102,6 +1160,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           /* What is the next sync-point ? */
           ti_end_min = min(ti_current + ti_new_step, ti_end_min);
           ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+
         } else { /* gpart is inactive */
 
           const integertime_t ti_end =
@@ -1111,6 +1170,48 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           ti_end_min = min(ti_end, ti_end_min);
           ti_end_max = max(ti_end, ti_end_max);
         }
+      }
+    }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the part. */
+      struct spart *restrict sp = &sparts[k];
+
+      /* need to be updated ? */
+      if (spart_is_active(sp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sp->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_spart_timestep(sp, e);
+
+        /* Update particle */
+        sp->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated s-particles */
+        s_updated++;
+        g_updated++;
+
+        /* What is the next sync-point ? */
+        ti_end_min = min(ti_current + ti_new_step, ti_end_min);
+        ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+
+      } else { /* star particle is inactive */
+
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sp->time_bin);
+
+        /* What is the next sync-point ? */
+        ti_end_min = min(ti_end, ti_end_min);
+        ti_end_max = max(ti_end, ti_end_max);
       }
     }
   } else {
@@ -1126,6 +1227,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* And aggregate */
         updated += cp->updated;
         g_updated += cp->g_updated;
+        s_updated += cp->s_updated;
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
       }
@@ -1134,6 +1236,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   /* Store the values. */
   c->updated = updated;
   c->g_updated = g_updated;
+  c->s_updated = s_updated;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
@@ -1153,8 +1256,10 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const int count = c->count;
   const int gcount = c->gcount;
+  const int scount = c->scount;
   struct part *restrict parts = c->parts;
   struct gpart *restrict gparts = c->gparts;
+  struct spart *restrict sparts = c->sparts;
   const double const_G = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
@@ -1168,7 +1273,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_end_force(r, c->progeny[k], 0);
   } else {
 
-    /* Loop over the particles in this cell. */
+    /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
@@ -1188,8 +1293,22 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the gpart. */
       struct gpart *restrict gp = &gparts[k];
 
-      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
-        gravity_end_force(gp, const_G);
+      if (gp->type == swift_type_dark_matter) {
+        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
+      }
+    }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the part. */
+      struct spart *restrict sp = &sparts[k];
+
+      if (spart_is_active(sp, e)) {
+
+        /* First, finish the force loop */
+        star_end_force(sp);
+        gravity_end_force(sp->gpart, const_G);
       }
     }
   }

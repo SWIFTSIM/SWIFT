@@ -27,7 +27,7 @@
  *
  * @param sp Pointer to the s-particle data.
  */
-__attribute__((always_inline)) INLINE static float star_compute_timestep_self(
+__attribute__((always_inline)) INLINE static float star_compute_timestep(
     const struct spart* const sp) {
 
   return FLT_MAX;
@@ -56,6 +56,15 @@ __attribute__((always_inline)) INLINE static void star_init_spart(
     struct spart* sp) {}
 
 /**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param s The particle.
+ */
+__attribute__((always_inline)) INLINE static void star_reset_predicted_values(
+    struct spart* restrict sp) {}
+
+/**
  * @brief Finishes the calculation of (non-gravity) forces acting on stars
  *
  * Multiplies the forces and accelerations by the appropiate constants
@@ -73,6 +82,6 @@ __attribute__((always_inline)) INLINE static void star_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void star_kick_extra(
-    struct spart* sp, float dt, float half_dt) {}
+    struct spart* sp, float dt) {}
 
 #endif /* SWIFT_DEFAULT_STAR_H */

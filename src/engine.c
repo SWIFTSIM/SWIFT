@@ -2144,6 +2144,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
+      t->ci->s_updated = 0;
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
@@ -2376,7 +2377,7 @@ void engine_collect_kick(struct cell *c) {
   if (c->timestep != NULL) return;
 
   /* Counters for the different quantities. */
-  int updated = 0, g_updated = 0;
+  int updated = 0, g_updated = 0, s_updated = 0;
   integertime_t ti_end_min = max_nr_timesteps;
 
   /* Only do something is the cell is non-empty */
@@ -2397,10 +2398,12 @@ void engine_collect_kick(struct cell *c) {
         ti_end_min = min(ti_end_min, cp->ti_end_min);
         updated += cp->updated;
         g_updated += cp->g_updated;
+        s_updated += cp->s_updated;
 
         /* Collected, so clear for next time. */
         cp->updated = 0;
         cp->g_updated = 0;
+        cp->s_updated = 0;
       }
     }
   }
@@ -2409,6 +2412,7 @@ void engine_collect_kick(struct cell *c) {
   c->ti_end_min = ti_end_min;
   c->updated = updated;
   c->g_updated = g_updated;
+  c->s_updated = s_updated;
 }
 
 /**
@@ -2420,7 +2424,7 @@ void engine_collect_kick(struct cell *c) {
 void engine_collect_timestep(struct engine *e) {
 
   const ticks tic = getticks();
-  int updates = 0, g_updates = 0;
+  int updates = 0, g_updates = 0, s_updates = 0;
   integertime_t ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
 
@@ -2436,10 +2440,12 @@ void engine_collect_timestep(struct engine *e) {
       ti_end_min = min(ti_end_min, c->ti_end_min);
       updates += c->updated;
       g_updates += c->g_updated;
+      s_updates += c->s_updated;
 
       /* Collected, so clear for next time. */
       c->updated = 0;
       c->g_updated = 0;
+      c->s_updated = 0;
     }
 
 /* Aggregate the data from the different nodes. */
@@ -2454,20 +2460,23 @@ void engine_collect_timestep(struct engine *e) {
     ti_end_min = in_i[0];
   }
   {
-    long long in_ll[2], out_ll[2];
+    long long in_ll[3], out_ll[3];
     out_ll[0] = updates;
     out_ll[1] = g_updates;
-    if (MPI_Allreduce(out_ll, in_ll, 2, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[2] = s_updates;
+    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate energies.");
     updates = in_ll[0];
     g_updates = in_ll[1];
+    s_updates = in_ll[2];
   }
 #endif
 
   e->ti_end_min = ti_end_min;
   e->updates = updates;
   e->g_updates = g_updates;
+  e->s_updates = s_updates;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2650,7 +2659,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-#endif 
+#endif
 
   /* Ready to go */
   e->step = -1;
@@ -2710,12 +2719,14 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->s_updates,
+           e->wallclock_time);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
-            e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
+            e->step, e->time, e->timeStep, e->updates, e->g_updates,
+            e->s_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
 

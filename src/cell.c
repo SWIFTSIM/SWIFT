@@ -1217,6 +1217,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
+  struct spart *const sparts = c->sparts;
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
@@ -1256,7 +1257,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
       dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
     }
 
-    /* Loop over all the particles in the cell */
+    /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
     for (size_t k = 0; k < nr_parts; k++) {
 
@@ -1275,6 +1276,19 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
       /* Maximal smoothing length */
       h_max = (h_max > p->h) ? h_max : p->h;
+    }
+
+    /* Loop over all the star particles in the cell */
+    const size_t nr_sparts = c->scount;
+    for (size_t k = 0; k < nr_sparts; k++) {
+
+      /* Get a handle on the spart. */
+      struct spart *const sp = &sparts[k];
+
+      /* Drift... */
+      drift_spart(sp, dt, timeBase, ti_old, ti_current);
+
+      /* Note: no need to compute dx_max as all spart have a gpart */
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -1300,19 +1314,18 @@ void cell_drift(struct cell *c, const struct engine *e) {
 void cell_check_timesteps(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if(c->nodeID != engine_rank) return;
+  if (c->nodeID != engine_rank) return;
 
-  if(c->ti_end_min == 0) error("Cell without assigned time-step");
-  
-  if(c->split) {
-    for(int k=0; k<8; ++k)
-      if(c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+  if (c->ti_end_min == 0) error("Cell without assigned time-step");
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
   } else {
 
-    for(int i=0; i<c->count; ++i)
-      if(c->parts[i].time_bin == 0) 
-	error("Particle without assigned time-bin");
-
+    for (int i = 0; i < c->count; ++i)
+      if (c->parts[i].time_bin == 0)
+        error("Particle without assigned time-bin");
   }
 #endif
 }
