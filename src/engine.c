@@ -532,27 +532,10 @@ void engine_redistribute(struct engine *e) {
             cells[cid].nodeID);
   }
 
-  /* Verify that the links are correct */
-  for (size_t k = 0; k < nr_gparts; ++k) {
-
-    if (gparts_new[k].id_or_neg_offset <= 0) {
-
-      struct part *part = &parts_new[-gparts_new[k].id_or_neg_offset];
-
-      if (part->gpart != &gparts_new[k]) error("Linking problem !");
-
-      if (gparts_new[k].x[0] != part->x[0] ||
-          gparts_new[k].x[1] != part->x[1] || gparts_new[k].x[2] != part->x[2])
-        error("Linked particles are not at the same position !");
-    }
-  }
-  for (size_t k = 0; k < nr_parts; ++k) {
-
-    if (parts_new[k].gpart != NULL &&
-        parts_new[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
-      error("Linking problem !");
-    }
-  }
+/* Verify that the links are correct */
+// part_verify_links(parts_new, gparts_new, sparts_new, nr_parts, nr_gparts,
+// nr_sparts);
+// MATTHIEU
 #endif
 
   /* Set the new part data, free the old. */
@@ -2972,28 +2955,9 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Verify that the links are correct */
-  for (size_t k = 0; k < s->nr_gparts; ++k) {
-
-    if (s->gparts[k].id_or_neg_offset <= 0) {
-
-      struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
-
-      if (part->gpart != &s->gparts[k]) error("Linking problem !");
-
-      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
-          s->gparts[k].x[2] != part->x[2])
-        error("Linked particles are not at the same position !");
-    }
-  }
-  for (size_t k = 0; k < s->nr_parts; ++k) {
-
-    if (s->parts[k].gpart != NULL &&
-        s->parts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k)
-      error("Linking problem !");
-  }
-
+  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
+                    s->nr_sparts);
 #endif
 
 #else

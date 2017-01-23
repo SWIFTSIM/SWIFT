@@ -738,26 +738,8 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  for (size_t k = 0; k < nr_gparts; ++k) {
-
-    if (s->gparts[k].id_or_neg_offset < 0) {
-
-      const struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
-
-      if (part->gpart != &s->gparts[k]) error("Linking problem !");
-
-      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
-          s->gparts[k].x[2] != part->x[2])
-        error("Linked particles are not at the same position !");
-    }
-  }
-  for (size_t k = 0; k < nr_parts; ++k) {
-
-    if (s->parts[k].gpart != NULL &&
-        s->parts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
-      error("Linking problem !");
-    }
-  }
+  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
+                    nr_sparts);
 #endif
 
   /* Hook the cells up to the parts. */

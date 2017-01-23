@@ -93,6 +93,112 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
   }
 }
 
+/**
+ * @brief Verifies that the #gpart, #part and #spart are correctly linked
+ * together
+ * and that the particle poisitions match.
+ *
+ * This is a debugging function.
+ *
+ * @param parts The #part array.
+ * @param gparts The #gpart array.
+ * @param sparts The #spart array.
+ * @param nr_parts The number of #part in the array.
+ * @param nr_gparts The number of #gpart in the array.
+ * @param nr_sparts The number of #spart in the array.
+ */
+void part_verify_links(struct part *parts, struct gpart *gparts,
+                       struct spart *sparts, size_t nr_parts, size_t nr_gparts,
+                       size_t nr_sparts) {
+
+  for (size_t k = 0; k < nr_gparts; ++k) {
+
+    /* We have a DM particle */
+    if (gparts[k].type == swift_type_dark_matter) {
+
+      /* Check that it's not linked */
+      if (gparts[k].id_or_neg_offset < 0)
+        error("DM gpart particle linked to something !");
+    }
+
+    /* We have a gas particle */
+    else if (gparts[k].type == swift_type_gas) {
+
+      /* Check that it is linked */
+      if (gparts[k].id_or_neg_offset > 0)
+        error("Gas gpart not linked to anything !");
+
+      /* Find its link */
+      const struct part *part = &parts[-gparts[k].id_or_neg_offset];
+
+      /* Check the reverse link */
+      if (part->gpart != &gparts[k]) error("Linking problem !");
+
+      /* Check that the particles are at the same place */
+      if (gparts[k].x[0] != part->x[0] || gparts[k].x[1] != part->x[1] ||
+          gparts[k].x[2] != part->x[2])
+        error("Linked particles are not at the same position !");
+
+    }
+
+    else if (gparts[k].type == swift_type_star) {
+
+      /* Check that it is linked */
+      if (gparts[k].id_or_neg_offset > 0)
+        error("Gas gpart not linked to anything !");
+
+      /* Find its link */
+      const struct spart *spart = &sparts[-gparts[k].id_or_neg_offset];
+
+      /* Check the reverse link */
+      if (spart->gpart != &gparts[k]) error("Linking problem !");
+
+      /* Check that the particles are at the same place */
+      if (gparts[k].x[0] != spart->x[0] || gparts[k].x[1] != spart->x[1] ||
+          gparts[k].x[2] != spart->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+
+  /* Now check that all parts are linked */
+  for (size_t k = 0; k < nr_parts; ++k) {
+
+    /* Ok, there is a link */
+    if (parts[k].gpart != NULL) {
+
+      /* Check the link */
+      if (parts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
+        error("Linking problem !");
+      }
+
+      /* Check that the particles are at the same place */
+      if (parts[k].x[0] != parts[k].gpart->x[0] ||
+          parts[k].x[1] != parts[k].gpart->x[1] ||
+          parts[k].x[2] != parts[k].gpart->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+
+  /* Now check that all sparts are linked */
+  for (size_t k = 0; k < nr_sparts; ++k) {
+
+    /* Ok, there is a link */
+    if (sparts[k].gpart != NULL) {
+
+      /* Check the link */
+      if (sparts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
+        error("Linking problem !");
+
+        /* Check that the particles are at the same place */
+        if (sparts[k].x[0] != sparts[k].gpart->x[0] ||
+            sparts[k].x[1] != sparts[k].gpart->x[1] ||
+            sparts[k].x[2] != sparts[k].gpart->x[2])
+          error("Linked particles are not at the same position !");
+      }
+    }
+  }
+}
+
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 MPI_Datatype part_mpi_type;
