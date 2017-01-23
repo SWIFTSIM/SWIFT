@@ -734,8 +734,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count) {
+      message("Smoothing length failed to converge on %i particles.", count);
+
+      error("Aborting....");
+    }
+#else
     if (count)
       message("Smoothing length failed to converge on %i particles.", count);
+#endif
 
     /* Be clean */
     free(pid);
