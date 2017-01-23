@@ -2381,7 +2381,7 @@ void engine_collect_kick(struct cell *c) {
   integertime_t ti_end_min = max_nr_timesteps;
 
   /* Only do something is the cell is non-empty */
-  if (c->count != 0 || c->gcount != 0) {
+  if (c->count != 0 || c->gcount != 0 || c->scount != 0) {
 
     /* If this cell is not split, I'm in trouble. */
     if (!c->split) error("Cell is not split.");
@@ -3555,6 +3555,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_clean(struct engine *e) {
 
+  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].par_cache);
+  free(e->runners);
   free(e->snapshotUnits);
   free(e->links);
   scheduler_clean(&e->sched);
