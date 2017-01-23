@@ -48,6 +48,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
@@ -681,14 +682,14 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
         ci->super->drift = scheduler_addtask(
             s, task_type_drift, task_subtype_none, 0, 0, ci->super, NULL, 0);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                               4 * ci->tag, 0, ci, cj, 0);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
+                               0, ci, cj, 0);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 4 * ci->tag + 1, 0, ci, cj, 0);
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                4 * ci->tag + 2, 0, ci, cj, 0);
 #ifdef EXTRA_HYDRO_LOOP
-      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_none,
+      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      4 * ci->tag + 3, 0, ci, cj, 0);
 #endif
 
@@ -722,8 +723,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       /* Drift before you send */
       scheduler_addunlock(s, ci->super->drift, t_xv);
 
-      /* The super-cell's kick task should unlock the send_ti task. */
-      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick2, t_ti);
+      /* The super-cell's timestep task should unlock the send_ti task. */
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     /* Add them to the local cell. */
@@ -732,7 +733,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->send_gradient, t_gradient);
 #endif
-    if (t_ti != NULL) engine_addlink(e, &ci->send_ti, t_ti);
+    engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
@@ -770,14 +771,14 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 4 * c->tag,
-                             0, c, NULL, 0);
-    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag, 0,
+                             c, NULL, 0);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
                               4 * c->tag + 1, 0, c, NULL, 0);
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
                              4 * c->tag + 2, 0, c, NULL, 0);
 #ifdef EXTRA_HYDRO_LOOP
-    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_none,
+    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    4 * c->tag + 3, 0, c, NULL, 0);
 #endif
   }
@@ -798,7 +799,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_gradient, l->t);
-    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+    scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #else
@@ -808,7 +809,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
-    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+    scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
@@ -2011,9 +2012,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  const integertime_t ti_end = ((size_t *)extra_data)[0];
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
+  struct engine *e = (struct engine *)((size_t *)extra_data)[0];
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
@@ -2024,7 +2025,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Pair? */
@@ -2042,7 +2043,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         *rebuild_space = 1;
 
       /* Set this task's skip, otherwise nothing to do. */
-      if (ci->ti_end_min <= ti_end || cj->ti_end_min <= ti_end)
+      if (cell_is_active(t->ci, e) || cell_is_active(t->cj, e))
         scheduler_activate(s, t);
       else
         continue;
@@ -2069,8 +2070,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Activate the tasks to recv foreign cell ci's data. */
         scheduler_activate(s, ci->recv_xv);
-        scheduler_activate(s, ci->recv_rho);
-        scheduler_activate(s, ci->recv_ti);
+        if (cell_is_active(ci, e)) {
+          scheduler_activate(s, ci->recv_rho);
+          scheduler_activate(s, ci->recv_ti);
+        }
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -2085,24 +2088,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else
           error("Drift task missing !");
 
-        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(cj, e)) {
+          for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
 
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
         scheduler_activate(s, cj->recv_xv);
-        scheduler_activate(s, cj->recv_rho);
-        scheduler_activate(s, cj->recv_ti);
+        if (cell_is_active(cj, e)) {
+          scheduler_activate(s, cj->recv_rho);
+          scheduler_activate(s, cj->recv_ti);
+        }
 
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
@@ -2117,27 +2124,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else
           error("Drift task missing !");
 
-        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(ci, e)) {
+          for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
       }
 
 #endif
     }
 
-    /* Kick? */
-    else if (t->type == task_type_kick1) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    } else if (t->type == task_type_kick2) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    /* Kick/Drift/Init? */
+    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+             t->type == task_type_drift || t->type == task_type_init) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Time-step? */
@@ -2145,17 +2153,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       t->ci->s_updated = 0;
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    }
-
-    /* Drift? */
-    else if (t->type == task_type_drift) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
-    }
-
-    /* Init? */
-    else if (t->type == task_type_init) {
-      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Tasks with no cells should not be skipped? */
@@ -2178,7 +2176,7 @@ int engine_marktasks(struct engine *e) {
   int rebuild_space = 0;
 
   /* Run through the tasks and mark as skip or not. */
-  size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
+  size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 10000, extra_data);
   rebuild_space = extra_data[1];
@@ -2277,15 +2275,16 @@ void engine_rebuild(struct engine *e) {
  * @param drift_all Whether to drift particles before rebuilding or not. Will
  *                not be necessary if all particles have already been
  *                drifted (before repartitioning for instance).
- * @param deferskip Whether to defer the skip until after the rebuild.
- *                  Needed after a repartition.
+ * @param postrepart If we have just repartitioned, if so we need to defer the
+ *                   skip until after the rebuild and not check the if all
+ *                   cells have been drifted.
  */
-void engine_prepare(struct engine *e, int drift_all, int deferskip) {
+void engine_prepare(struct engine *e, int drift_all, int postrepart) {
 
   TIMER_TIC;
 
   /* Unskip active tasks and check for rebuild */
-  if (!deferskip) engine_unskip(e);
+  if (!postrepart) engine_unskip(e);
 
   /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
@@ -2306,13 +2305,15 @@ void engine_prepare(struct engine *e, int drift_all, int deferskip) {
     if (drift_all) engine_drift_all(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Check that all cells have been drifted to the current time */
-    space_check_drift_point(e->s, e->ti_current);
+    /* Check that all cells have been drifted to the current time, unless
+     * we have just repartitioned, that can include cells that have not
+     * previously been active on this rank. */
+    if (!postrepart) space_check_drift_point(e->s, e->ti_current);
 #endif
 
     engine_rebuild(e);
   }
-  if (deferskip) engine_unskip(e);
+  if (postrepart) engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2373,38 +2374,34 @@ void engine_barrier(struct engine *e, int tid) {
  */
 void engine_collect_kick(struct cell *c) {
 
-  /* Skip super-cells (Their values are already set) */
+/* Skip super-cells (Their values are already set) */
+#ifdef WITH_MPI
+  if (c->timestep != NULL || c->recv_ti != NULL) return;
+#else
   if (c->timestep != NULL) return;
+#endif /* WITH_MPI */
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0, s_updated = 0;
   integertime_t ti_end_min = max_nr_timesteps;
 
-  /* Only do something is the cell is non-empty */
-  if (c->count != 0 || c->gcount != 0 || c->scount != 0) {
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL && (cp->count > 0 || cp->gcount > 0)) {
 
-    /* If this cell is not split, I'm in trouble. */
-    if (!c->split) error("Cell is not split.");
+      /* Recurse */
+      engine_collect_kick(cp);
 
-    /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      if (cp != NULL) {
+      /* And update */
+      ti_end_min = min(ti_end_min, cp->ti_end_min);
+      updated += cp->updated;
+      g_updated += cp->g_updated;
 
-        /* Recurse */
-        engine_collect_kick(cp);
-
-        /* And update */
-        ti_end_min = min(ti_end_min, cp->ti_end_min);
-        updated += cp->updated;
-        g_updated += cp->g_updated;
-        s_updated += cp->s_updated;
-
-        /* Collected, so clear for next time. */
-        cp->updated = 0;
-        cp->g_updated = 0;
-        cp->s_updated = 0;
-      }
+      /* Collected, so clear for next time. */
+      cp->updated = 0;
+      cp->g_updated = 0;
+      cp->s_updated = 0;
     }
   }
 
@@ -2429,9 +2426,9 @@ void engine_collect_timestep(struct engine *e) {
   const struct space *s = e->s;
 
   /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells_top[k];
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
       /* Make the top-cells recurse */
       engine_collect_kick(c);
@@ -2451,11 +2448,11 @@ void engine_collect_timestep(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    int in_i[1], out_i[1];
+    integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate t_end_min.");
     ti_end_min = in_i[0];
   }
@@ -2636,7 +2633,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
     /* Apply the conversion */
-    space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+    // space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+    for (size_t i = 0; i < s->nr_parts; ++i)
+      hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {
@@ -2662,7 +2661,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Ready to go */
-  e->step = -1;
+  e->step = 0;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
@@ -2802,6 +2801,11 @@ void engine_drift_all(struct engine *e) {
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time. */
+  space_check_drift_point(e->s, e->ti_current);
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2967,9 +2971,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
+    part_relink_parts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
+
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
                     s->nr_sparts);

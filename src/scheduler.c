@@ -135,6 +135,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_timestep) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
       t->skip = 1;
@@ -964,10 +965,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_ghost:
         if (t->ci == t->ci->super) cost = wscale * t->ci->count;
         break;
+      case task_type_drift:
+        cost = wscale * t->ci->count;
+        break;
       case task_type_kick1:
         cost = wscale * t->ci->count;
         break;
       case task_type_kick2:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_timestep:
         cost = wscale * t->ci->count;
         break;
       case task_type_init:
@@ -1070,7 +1077,10 @@ void scheduler_start(struct scheduler *s) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (ci == NULL && cj == NULL) {
+      /* Don't check MPI stuff */
+      if (t->type == task_type_send || t->type == task_type_recv) continue;
+
+     if (ci == NULL && cj == NULL) {	
 
         if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
           error("Task not associated with cells!");
@@ -1098,14 +1108,18 @@ void scheduler_start(struct scheduler *s) {
 
       } else { /* pair */
 
-        if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-            t->skip)
-          error(
-              "Task (type='%s/%s') should not have been skipped "
-              "ti_current=%lld "
-              "ci->ti_end_min=%lld cj->ti_end_min=%lld",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, cj->ti_end_min);
+        if (t->skip) {
+
+          /* Check that the pair is active if the local cell is active */
+          if ((ci->ti_end_min == ti_current && ci->nodeID == engine_rank) ||
+              (cj->ti_end_min == ti_current && cj->nodeID == engine_rank))
+            error(
+                "Task (type='%s/%s') should not have been skipped "
+                "ti_current=%lld "
+                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
+                taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+                ci->ti_end_min, cj->ti_end_min);
+        }
       }
     }
   }
@@ -1166,6 +1180,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_kick1:
       case task_type_kick2:
       case task_type_drift:
+      case task_type_timestep:
       case task_type_init:
         qid = t->ci->super->owner;
         break;
@@ -1179,9 +1194,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
         } else {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1200,11 +1216,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
           cell_pack_ti_ends(t->ci, t->buff);
-          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
+          err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
         } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          for (int k = 0; k < t->ci->count; k++)
+            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
+              error("Sending un-drifted particle !");
+#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         }

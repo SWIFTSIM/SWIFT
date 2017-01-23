@@ -761,6 +761,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_unskip(struct cell *c, struct engine *e) {
 
+  /* Ignore empty cells. */
+  if (c->count == 0 && c->gcount == 0) return;
+
   /* Unskip any active tasks. */
   if (cell_is_active(c, e)) {
     const int forcerebuild = cell_unskip_tasks(c, &e->sched);
@@ -880,7 +883,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+        if (ti_end - ti_begin != ti_step)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
 #endif
 
         /* do the kick */
@@ -991,7 +998,10 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_begin + ti_step != ti_current)
-          error("Particle in wrong time-bin");
+          error(
+              "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
+              "time_bin=%d ti_current=%lld",
+              ti_begin, ti_step, p->time_bin, ti_current);
 #endif
 
         /* Finish the time-step with a second half-kick */
@@ -1346,15 +1356,18 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
       const integertime_t ti_end =
           get_integer_time_end(ti_current, parts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].ti_drift != ti_current)
+        error("Received un-drifted particle !");
+#endif
     }
     for (size_t k = 0; k < nr_gparts; k++) {
       const integertime_t ti_end =
           get_integer_time_end(ti_current, gparts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
     }
@@ -1431,6 +1444,7 @@ void *runner_main(void *data) {
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
+      t->ti_run = e->ti_current;
 #ifndef WITH_MPI
       if (ci == NULL && cj == NULL) {
 
