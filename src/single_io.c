@@ -323,7 +323,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
- * @param with_hydro Are we reading/creating #gpart arrays ?
+ * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
