@@ -788,8 +788,8 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag,
-                             0, c, NULL, 0);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag, 0,
+                             c, NULL, 0);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
                               4 * c->tag + 1, 0, c, NULL, 0);
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
