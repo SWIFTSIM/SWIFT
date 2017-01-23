@@ -1205,6 +1205,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         /* Update particle */
         sp->time_bin = get_time_bin(ti_new_step);
+        sp->gpart->time_bin = get_time_bin(ti_new_step);
 
         /* Number of updated s-particles */
         s_updated++;
