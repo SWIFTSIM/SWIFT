@@ -734,8 +734,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count) {
+      message("Smoothing length failed to converge on %i particles.", count);
+
+      error("Aborting....");
+    }
+#else
     if (count)
       message("Smoothing length failed to converge on %i particles.", count);
+#endif
 
     /* Be clean */
     free(pid);
@@ -1305,7 +1313,13 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
 #ifndef WITH_MPI
-      if (cj == NULL) { /* self */
+      if (ci == NULL && cj == NULL) {
+
+        if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
+          error("Task not associated with cells!");
+
+      } else if (cj == NULL) { /* self */
+
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
             t->type != task_type_send && t->type != task_type_recv)
           error(

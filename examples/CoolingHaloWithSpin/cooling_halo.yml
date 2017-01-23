@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.    # The end time of the simulation (in internal units).
-  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
@@ -35,12 +35,12 @@ InitialConditions:
  
 # External potential parameters
 IsothermalPotential:
-  position_x:      0.     # location of centre of isothermal potential in internal units
+  position_x:      0.     # Location of centre of isothermal potential in internal units
   position_y:      0.
   position_z:      0.	
-  vrot:            200.     # rotation speed of isothermal potential in internal units
-  timestep_mult:   0.03     # controls time step
-  epsilon:         1.0      #softening for the isothermal potential
+  vrot:            200.   # Rotation speed of isothermal potential in internal units
+  timestep_mult:   0.03   # Controls time step
+  epsilon:         1.0    # Softening for the isothermal potential
 
 # Cooling parameters
 LambdaCooling:
@@ -48,4 +48,4 @@ LambdaCooling:
   minimum_temperature:         1.0e4  # Minimal temperature (Kelvin)
   mean_molecular_weight:       0.59   # Mean molecular weight
   hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
-  cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition
+  cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition

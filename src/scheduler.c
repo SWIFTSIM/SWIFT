@@ -1070,7 +1070,12 @@ void scheduler_start(struct scheduler *s) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj == NULL) { /* self */
+      if (ci == NULL && cj == NULL) {
+
+        if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
+          error("Task not associated with cells!");
+
+      } else if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type != task_type_sort && t->type)
