@@ -563,8 +563,9 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
-           "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+    printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
+           "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+           clocks_getunit());
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {

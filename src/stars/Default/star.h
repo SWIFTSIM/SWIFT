@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void star_init_spart(
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
- * @param s The particle.
+ * @param sp The particle.
  */
 __attribute__((always_inline)) INLINE static void star_reset_predicted_values(
     struct spart* restrict sp) {}
@@ -79,7 +79,6 @@ __attribute__((always_inline)) INLINE static void star_end_force(
  *
  * @param sp The particle to act upon
  * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void star_kick_extra(
     struct spart* sp, float dt) {}

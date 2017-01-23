@@ -78,6 +78,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+	 	 stars.h stars_io.h \
 		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
 		 stars/Default/star_debug.h stars/Default/star_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
