@@ -907,6 +907,10 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
  */
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
+  /* Reset the sort flags if the particles have moved too much. */
+  if (c->dx_max > space_maxreldx * c->h_max)
+    c->sorted = 0;
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -926,12 +930,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
-    /* Check whether there was too much particle motion */
+    /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
       if (t->tight &&
-          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
+          max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
         return 1;
 
 #ifdef WITH_MPI
