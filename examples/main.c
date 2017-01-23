@@ -274,6 +274,9 @@ int main(int argc, char *argv[]) {
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
 
+  /* How vocal are we ? */
+  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   if (myrank == 0 && dry_run)
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
@@ -286,11 +289,16 @@ int main(int argc, char *argv[]) {
 
 /* Report host name(s). */
 #ifdef WITH_MPI
-  if (myrank == 0 || verbose > 1) {
+  if (talking) {
     message("Rank %d running on: %s", myrank, hostname());
   }
 #else
   message("Running on: %s", hostname());
+#endif
+
+#ifdef WITH_MPI
+  if (with_stars)
+    error("No support for stars over MPI for now. Buy Matthieu a drink first.");
 #endif
 
 /* Do we have debugging checks ? */
@@ -314,9 +322,6 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
     message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
-
-  /* How vocal are we ? */
-  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
   /* Read the parameter file */
   struct swift_params *params = malloc(sizeof(struct swift_params));
@@ -373,6 +378,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
+  /* Get ready to read particles of all kinds */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
@@ -415,7 +421,7 @@ int main(int argc, char *argv[]) {
       if (gparts[k].type == swift_type_gas) error("Linking problem");
   }
 #endif
-  
+
   /* Get the total number of particles across all nodes. */
   long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
