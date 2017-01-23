@@ -1056,8 +1056,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-  message("launching %i active tasks.", s->active_count);
-
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -1082,7 +1080,12 @@ void scheduler_start(struct scheduler *s) {
       /* Don't check MPI stuff */
       if (t->type == task_type_send || t->type == task_type_recv) continue;
 
-      if (cj == NULL) { /* self */
+     if (ci == NULL && cj == NULL) {	
+
+        if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
+          error("Task not associated with cells!");
+
+      } else if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
             t->type != task_type_sort && t->type)
