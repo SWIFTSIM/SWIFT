@@ -393,7 +393,9 @@ int main(int argc, char *argv[]) {
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
-                 &Nspart, &periodic, &flag_entropy_ICs, dry_run);
+                 &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                 (with_external_gravity || with_self_gravity), with_stars,
+                 dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -414,7 +416,7 @@ int main(int argc, char *argv[]) {
   if (!with_stars) {
     free(sparts);
     sparts = NULL;
-    for (size_t k = 0; k < Nspart; ++k)
+    for (size_t k = 0; k < Ngpart; ++k)
       if (gparts[k].type == swift_type_star) error("Linking problem");
     Nspart = 0;
   }
