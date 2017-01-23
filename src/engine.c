@@ -2444,6 +2444,7 @@ void engine_collect_timestep(struct engine *e) {
       c->g_updated = 0;
       c->s_updated = 0;
     }
+  }
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
@@ -2971,7 +2972,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_parts(s->gparts, s->nr_gparts, s->parts);
+    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -3040,7 +3041,7 @@ static cpu_set_t *engine_entry_affinity() {
 
 /**
  * @brief  Ensure the NUMA node on which we initialise (first touch) everything
- *  doesn't change before engine_init allocates NUMA-local workers.
+ * doesn't change before engine_init allocates NUMA-local workers.
  */
 void engine_pin() {
 

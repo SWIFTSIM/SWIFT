@@ -245,7 +245,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
+int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends) {
 
 #ifdef WITH_MPI
 

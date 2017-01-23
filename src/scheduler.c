@@ -1080,7 +1080,7 @@ void scheduler_start(struct scheduler *s) {
       /* Don't check MPI stuff */
       if (t->type == task_type_send || t->type == task_type_recv) continue;
 
-     if (ci == NULL && cj == NULL) {	
+      if (ci == NULL && cj == NULL) {
 
         if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
           error("Task not associated with cells!");
