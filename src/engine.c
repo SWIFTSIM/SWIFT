@@ -2291,15 +2291,16 @@ void engine_rebuild(struct engine *e) {
  * @param drift_all Whether to drift particles before rebuilding or not. Will
  *                not be necessary if all particles have already been
  *                drifted (before repartitioning for instance).
- * @param deferskip Whether to defer the skip until after the rebuild.
- *                  Needed after a repartition.
+ * @param postrepart If we have just repartitioned, if so we need to defer the
+ *                   skip until after the rebuild and not check the if all
+ *                   cells have been drifted.
  */
-void engine_prepare(struct engine *e, int drift_all, int deferskip) {
+void engine_prepare(struct engine *e, int drift_all, int postrepart) {
 
   TIMER_TIC;
 
   /* Unskip active tasks and check for rebuild */
-  if (!deferskip) engine_unskip(e);
+  if (!postrepart) engine_unskip(e);
 
   /* Run through the tasks and mark as skip or not. */
   int rebuild = e->forcerebuild;
@@ -2320,13 +2321,15 @@ void engine_prepare(struct engine *e, int drift_all, int deferskip) {
     if (drift_all) engine_drift_all(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Check that all cells have been drifted to the current time */
-    space_check_drift_point(e->s, e->ti_current);
+    /* Check that all cells have been drifted to the current time, unless
+     * we have just repartitioned, that can include cells that have not
+     * previously been active on this rank. */
+    if (!postrepart) space_check_drift_point(e->s, e->ti_current);
 #endif
 
     engine_rebuild(e);
   }
-  if (deferskip) engine_unskip(e);
+  if (postrepart) engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
