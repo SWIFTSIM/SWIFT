@@ -404,30 +404,18 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  /* Discard gparts if we don't have gravity
-   * (Better implementation of i/o will come)*/
-  if (!with_external_gravity && !with_self_gravity) {
-    free(gparts);
-    gparts = NULL;
-    for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
-    for (size_t k = 0; k < Nspart; ++k) sparts[k].gpart = NULL;
-    Ngpart = 0;
-  }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check once and for all that we don't have unwanted links */
   if (!with_stars) {
-    free(sparts);
-    sparts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
       if (gparts[k].type == swift_type_star) error("Linking problem");
-    Nspart = 0;
   }
   if (!with_hydro) {
-    free(parts);
-    parts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
       if (gparts[k].type == swift_type_gas) error("Linking problem");
-    Ngas = 0;
   }
-
+#endif
+  
   /* Get the total number of particles across all nodes. */
   long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)

@@ -321,8 +321,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param Nstars (output) The number of #spart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
- * InternalEnergy
- * field
+ * InternalEnergy field
+ * @param with_hydro Are we reading gas particles ?
+ * @param with_hydro Are we reading/creating #gpart arrays ?
+ * @param with_stars Are we reading star particles ?
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
