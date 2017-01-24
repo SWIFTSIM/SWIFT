@@ -300,7 +300,7 @@ void engine_redistribute(struct engine *e) {
         /* As the addresses will be invalidated by the communications, we will
          * instead store the absolute index from the start of the sub-array of
          * particles to be sent to a given node.
-         * Recall that gparts without partners have a negative id.
+         * Recall that gparts without partners have a positive id.
          * We will restore the pointers on the receiving node later on. */
         if (dest[k] != current_dest) {
           current_dest = dest[k];
@@ -308,7 +308,7 @@ void engine_redistribute(struct engine *e) {
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id_or_neg_offset >= 0)
+        if (s->parts[k].gpart->id_or_neg_offset > 0)
           error("Trying to link a partnerless gpart !");
 #endif
 
@@ -346,17 +346,17 @@ void engine_redistribute(struct engine *e) {
   /* Sort the particles according to their cell index. */
   space_sparts_sort(s, s_dest, s->nr_sparts, 0, nr_nodes - 1, e->verbose);
 
-  /* We need to re-link the gpart partners of parts. */
+  /* We need to re-link the gpart partners of sparts. */
   if (s->nr_sparts > 0) {
     int current_dest = s_dest[0];
     size_t count_this_dest = 0;
-    for (size_t k = 0; k < s->nr_parts; ++k) {
+    for (size_t k = 0; k < s->nr_sparts; ++k) {
       if (s->sparts[k].gpart != NULL) {
 
         /* As the addresses will be invalidated by the communications, we will
          * instead store the absolute index from the start of the sub-array of
          * particles to be sent to a given node.
-         * Recall that gparts without partners have a negative id.
+         * Recall that gparts without partners have a positive id.
          * We will restore the pointers on the receiving node later on. */
         if (s_dest[k] != current_dest) {
           current_dest = s_dest[k];
@@ -364,7 +364,7 @@ void engine_redistribute(struct engine *e) {
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (s->sparts[k].gpart->id_or_neg_offset >= 0)
+        if (s->sparts[k].gpart->id_or_neg_offset > 0)
           error("Trying to link a partnerless gpart !");
 #endif
 
@@ -444,8 +444,8 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
-  /* Each node knows how many parts and gparts will be transferred to every
-     other node. We can start preparing to receive data */
+  /* Each node knows how many parts, sparts and gparts will be transferred 
+     to every other node. We can start preparing to receive data */
 
   /* Get the new number of parts and gparts for this node */
   size_t nr_parts = 0, nr_gparts = 0, nr_sparts = 0;
