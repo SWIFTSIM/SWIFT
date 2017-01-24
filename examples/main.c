@@ -296,11 +296,6 @@ int main(int argc, char *argv[]) {
   message("Running on: %s", hostname());
 #endif
 
-#ifdef WITH_MPI
-  if (with_stars)
-    error("No support for stars over MPI for now. Buy Matthieu a drink first.");
-#endif
-
 /* Do we have debugging checks ? */
 #ifdef SWIFT_DEBUG_CHECKS
   message("WARNING: Debugging checks activated. Code will be slower !");
@@ -426,8 +421,8 @@ int main(int argc, char *argv[]) {
   /* Get the total number of particles across all nodes. */
   long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
-  long long N_long[2] = {Ngas, Ngpart};
-  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  long long N_long[3] = {Ngas, Ngpart, Nspart};
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
