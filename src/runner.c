@@ -1339,9 +1339,9 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->parts;
-  const struct gpart *restrict gparts = c->gparts;
+  //const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
-  const size_t nr_gparts = c->gcount;
+  //const size_t nr_gparts = c->gcount;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -1366,12 +1366,12 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
         error("Received un-drifted particle !");
 #endif
     }
-    for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, gparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
-    }
+    /* for (size_t k = 0; k < nr_gparts; k++) { */
+    /*   const integertime_t ti_end = */
+    /*       get_integer_time_end(ti_current, gparts[k].time_bin); */
+    /*   ti_end_min = min(ti_end_min, ti_end); */
+    /*   ti_end_max = max(ti_end_max, ti_end); */
+    /* } */
 
   }
 
@@ -1386,6 +1386,12 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
       }
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if(ti_end_min < ti_current)
+    error("Received a cell at an incorrect time c->ti_end_min=%lld, e->ti_current=%lld.",
+	  ti_end_min, ti_current);
+#endif
 
   /* ... and store. */
   c->ti_end_min = ti_end_min;
