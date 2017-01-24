@@ -2632,7 +2632,7 @@ void engine_collect_kick(struct cell *c) {
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
-    if (cp != NULL && (cp->count > 0 || cp->gcount > 0)) {
+    if (cp != NULL && (cp->count > 0 || cp->gcount > 0 || cp->scount > 0)) {
 
       /* Recurse */
       engine_collect_kick(cp);
@@ -2641,6 +2641,7 @@ void engine_collect_kick(struct cell *c) {
       ti_end_min = min(ti_end_min, cp->ti_end_min);
       updated += cp->updated;
       g_updated += cp->g_updated;
+      s_updated += cp->s_updated;
 
       /* Collected, so clear for next time. */
       cp->updated = 0;
@@ -2903,6 +2904,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts,
+		    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
 #endif
 
   /* Ready to go */
