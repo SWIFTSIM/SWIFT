@@ -46,6 +46,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "stars_io.h"
 #include "units.h"
 
 /*-----------------------------------------------------------------------------
@@ -952,7 +953,7 @@ void write_output_serial(struct engine* e, const char* baseName,
             break;
 
           case STAR:
-            N = Nstars;
+            Nparticles = Nstars;
             star_write_particles(sparts, list, &num_fields);
             break;
 
