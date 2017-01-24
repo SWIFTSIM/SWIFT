@@ -2762,12 +2762,6 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  for (size_t i = 0; i < e->s->nr_parts; ++i) {
-    if (e->s->parts[i].time_bin == 0) error("Particle in bin 0");
-  }
-#endif
-
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
