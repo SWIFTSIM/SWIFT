@@ -502,6 +502,7 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
   if (with_cooling) engine_policies |= engine_policy_cooling;
   if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
+  if (with_stars) engine_policies |= engine_policy_stars;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);

@@ -88,7 +88,8 @@ const char *engine_policy_names[16] = {"none",
                                        "cosmology_integration",
                                        "drift_all",
                                        "cooling",
-                                       "sourceterms"};
+                                       "sourceterms",
+				       "stars"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
