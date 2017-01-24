@@ -1339,9 +1339,9 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->parts;
-  //const struct gpart *restrict gparts = c->gparts;
+  // const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
-  //const size_t nr_gparts = c->gcount;
+  // const size_t nr_gparts = c->gcount;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -1388,9 +1388,11 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(ti_end_min < ti_current)
-    error("Received a cell at an incorrect time c->ti_end_min=%lld, e->ti_current=%lld.",
-	  ti_end_min, ti_current);
+  if (ti_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_end_min, ti_current);
 #endif
 
   /* ... and store. */

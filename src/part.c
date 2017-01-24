@@ -140,7 +140,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linked particles are not at the same position !");
 
       /* Check that the particles are at the same time */
-      if(gparts[k].time_bin != part->time_bin)
+      if (gparts[k].time_bin != part->time_bin)
         error("Linked particles are not at the same time !");
     }
 
@@ -162,7 +162,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linked particles are not at the same position !");
 
       /* Check that the particles are at the same time */
-      if(gparts[k].time_bin != spart->time_bin)
+      if (gparts[k].time_bin != spart->time_bin)
         error("Linked particles are not at the same time !");
     }
   }
@@ -186,7 +186,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
       /* Check that the particles are at the same time */
       if (parts[k].time_bin != parts[k].gpart->time_bin)
-	error("Linked particles are not at the same time !");
+        error("Linked particles are not at the same time !");
     }
   }
 
@@ -206,10 +206,9 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             sparts[k].x[2] != sparts[k].gpart->x[2])
           error("Linked particles are not at the same position !");
 
-	/* Check that the particles are at the same time */
-	if (sparts[k].time_bin != sparts[k].gpart->time_bin)
-	  error("Linked particles are not at the same time !");
-      
+        /* Check that the particles are at the same time */
+        if (sparts[k].time_bin != sparts[k].gpart->time_bin)
+          error("Linked particles are not at the same time !");
       }
     }
   }

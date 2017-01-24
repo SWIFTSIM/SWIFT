@@ -444,7 +444,7 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
-  /* Each node knows how many parts, sparts and gparts will be transferred 
+  /* Each node knows how many parts, sparts and gparts will be transferred
      to every other node. We can start preparing to receive data */
 
   /* Get the new number of parts and gparts for this node */
@@ -2904,8 +2904,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts,
-		    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts);
 #endif
 
   /* Ready to go */

@@ -422,7 +422,8 @@ int main(int argc, char *argv[]) {
   long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
   long long N_long[3] = {Ngas, Ngpart, Nspart};
-  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+             MPI_COMM_WORLD);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
