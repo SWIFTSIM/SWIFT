@@ -3197,9 +3197,26 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->parts = parts_new;
   s->xparts = xparts_new;
 
-  /* Re-link the gparts. */
+  /* Re-link the gparts to their parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
+
+  /* Re-allocate the local sparts. */
+  if (e->verbose)
+    message("Re-allocating sparts array from %zu to %zu.", s->size_sparts,
+            (size_t)(s->nr_sparts * 1.2));
+  s->size_sparts = s->nr_sparts * 1.2;
+  struct spart *sparts_new = NULL;
+  if (posix_memalign((void **)&sparts_new, spart_align,
+                     sizeof(struct spart) * s->size_sparts) != 0)
+    error("Failed to allocate new spart data.");
+  memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
+  free(s->sparts);
+  s->sparts = sparts_new;
+
+  /* Re-link the gparts to their sparts. */
+  if (s->nr_sparts > 0 && s->nr_gparts > 0)
+    part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -3217,6 +3234,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
+
+  /* Re-link the sparts. */
+  if (s->nr_sparts > 0 && s->nr_gparts > 0)
+    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
