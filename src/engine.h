@@ -234,7 +234,9 @@ void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart);
+                            int *ind_gpart, size_t *Ngpart,
+                            size_t offset_sparts, int *ind_spart,
+                            size_t *Nspart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);

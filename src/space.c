@@ -521,18 +521,22 @@ void space_rebuild(struct space *s, int verbose) {
   for (size_t k = 0; k < nr_parts;) {
     if (cells_top[ind[k]].nodeID != local_nodeID) {
       nr_parts -= 1;
+      /* Swap the particle */
       const struct part tp = s->parts[k];
       s->parts[k] = s->parts[nr_parts];
       s->parts[nr_parts] = tp;
+      /* Swap the link with the gpart */
       if (s->parts[k].gpart != NULL) {
         s->parts[k].gpart->id_or_neg_offset = -k;
       }
       if (s->parts[nr_parts].gpart != NULL) {
         s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
       }
+      /* Swap the xpart */
       const struct xpart txp = s->xparts[k];
       s->xparts[k] = s->xparts[nr_parts];
       s->xparts[nr_parts] = txp;
+      /* Swap the index */
       const int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
@@ -556,20 +560,67 @@ void space_rebuild(struct space *s, int verbose) {
   }
 #endif
 
+  /* Move non-local sparts to the end of the list. */
+  for (size_t k = 0; k < nr_sparts;) {
+    if (cells_top[sind[k]].nodeID != local_nodeID) {
+      nr_sparts -= 1;
+      /* Swap the particle */
+      const struct spart tp = s->sparts[k];
+      s->sparts[k] = s->sparts[nr_sparts];
+      s->sparts[nr_sparts] = tp;
+      /* Swap the link with the gpart */
+      if (s->sparts[k].gpart != NULL) {
+        s->sparts[k].gpart->id_or_neg_offset = -k;
+      }
+      if (s->sparts[nr_parts].gpart != NULL) {
+        s->sparts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
+      }
+      /* Swap the index */
+      const int t = sind[k];
+      sind[k] = sind[nr_sparts];
+      sind[nr_sparts] = t;
+    } else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all sparts are in the correct place (untested). */
+  for (size_t k = 0; k < nr_sparts; k++) {
+    if (cells_top[sind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local sparts to send list");
+    }
+  }
+  for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
+    if (cells_top[sind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local sparts from send list");
+    }
+  }
+#endif
+
   /* Move non-local gparts to the end of the list. */
   for (size_t k = 0; k < nr_gparts;) {
     if (cells_top[gind[k]].nodeID != local_nodeID) {
       nr_gparts -= 1;
+      /* Swap the particle */
       const struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
       s->gparts[nr_gparts] = tp;
-      if (s->gparts[k].id_or_neg_offset <= 0) {
+      /* Swap the link with part/spart */
+      if (s->gparts[k].type == swift_type_gas) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_star) {
+        s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
-      if (s->gparts[nr_gparts].id_or_neg_offset <= 0) {
+      if (s->gparts[nr_gparts].type == swift_type_gas) {
         s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
+      } else if (s->gparts[nr_gparts].type == swift_type_star) {
+        s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
       }
+      /* Swap the index */
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
       gind[nr_gparts] = t;
@@ -597,14 +648,17 @@ void space_rebuild(struct space *s, int verbose) {
      the parts arrays. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
   size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
+  size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
-                         nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged);
+                         nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
+                         nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
 
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
   s->nr_gparts = nr_gparts + nr_gparts_exchanged;
+  s->nr_sparts = nr_sparts + nr_sparts_exchanged;
 
-  /* Re-allocate the index array if needed.. */
+  /* Re-allocate the index array for the parts if needed.. */
   if (s->nr_parts + 1 > ind_size) {
     int *ind_new;
     if ((ind_new = (int *)malloc(sizeof(int) * (s->nr_parts + 1))) == NULL)
@@ -614,10 +668,20 @@ void space_rebuild(struct space *s, int verbose) {
     ind = ind_new;
   }
 
+  /* Re-allocate the index array for the sparts if needed.. */
+  if (s->nr_sparts + 1 > ind_size) {
+    int *sind_new;
+    if ((sind_new = (int *)malloc(sizeof(int) * (s->nr_sparts + 1))) == NULL)
+      error("Failed to allocate temporary particle indices.");
+    memcpy(sind_new, sind, sizeof(int) * nr_sparts);
+    free(sind);
+    sind = sind_new;
+  }
+
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
-  /* Assign each particle to its cell. */
+  /* Assign each part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
     ind[k] =
@@ -629,6 +693,19 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
   }
   nr_parts = s->nr_parts;
+
+  /* Assign each spart to its cell. */
+  for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
+    const struct spart *const sp = &s->sparts[k];
+    sind[k] =
+        cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells_top[sind[k]].nodeID != local_nodeID)
+      error("Received part that does not belong to me (nodeID=%i).",
+            cells_top[sind[k]].nodeID);
+#endif
+  }
+  nr_sparts = s->nr_sparts;
 
 #endif /* WITH_MPI */
 
@@ -685,7 +762,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef WITH_MPI
 
-  /* Re-allocate the index array if needed.. */
+  /* Re-allocate the index array for the gparts if needed.. */
   if (s->nr_gparts + 1 > gind_size) {
     int *gind_new;
     if ((gind_new = (int *)malloc(sizeof(int) * (s->nr_gparts + 1))) == NULL)
@@ -695,7 +772,7 @@ void space_rebuild(struct space *s, int verbose) {
     gind = gind_new;
   }
 
-  /* Assign each particle to its cell. */
+  /* Assign each gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =

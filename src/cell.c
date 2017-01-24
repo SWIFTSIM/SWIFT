@@ -197,6 +197,31 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #spart array.
+ *
+ * @param c The #cell.
+ * @param sparts The #spart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_sparts(struct cell *c, struct spart *sparts) {
+
+  c->sparts = sparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_sparts(c->progeny[k], &sparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->scount;
+}
+
+/**
  * @brief Pack the data of the given cell and all it's sub-cells.
  *
  * @param c The #cell.
@@ -216,6 +241,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->ti_old = c->ti_old;
   pc->count = c->count;
   pc->gcount = c->gcount;
+  pc->scount = c->scount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
   /* Fill in the progeny, depth-first recursion. */

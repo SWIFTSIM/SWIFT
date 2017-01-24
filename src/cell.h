@@ -320,6 +320,7 @@ int cell_unpack_ti_ends(struct cell *c, integertime_t *ti_ends);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_sparts(struct cell *c, struct spart *sparts);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
 int cell_are_neighbours(const struct cell *restrict ci,
