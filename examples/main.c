@@ -393,9 +393,10 @@ int main(int argc, char *argv[]) {
                    &periodic, &flag_entropy_ICs, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
-                 &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
-                 MPI_INFO_NULL, dry_run);
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
+                 &Nsparts, &periodic, &flag_entropy_ICs, with_hydro,
+                 (with_external_gravity || with_self_gravity), with_stars,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
