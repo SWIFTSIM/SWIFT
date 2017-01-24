@@ -1537,6 +1537,9 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1);
+            /* Only need to update h_max if the cell has active particles */
+          } else if (t->subtype == task_subtype_rho && cell_is_active(ci, e)) {
+            runner_do_recv_part(r, ci, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
           }

@@ -1202,9 +1202,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_rho) {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
-	  // message( "receiving %i parts with tag=%i from %i to %i." ,
-	  //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
-	  // fflush(stdout);
+          // message( "receiving %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
+          // fflush(stdout);
         } else if (t->subtype == task_subtype_gpart) {
           err = MPI_Irecv(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1237,10 +1237,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
 
-	  // message( "sending %i parts with tag=%i from %i to %i." ,
-	  //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
-	  // fflush(stdout);
-	} else if (t->subtype == task_subtype_gpart) {
+          // message( "sending %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
           err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
