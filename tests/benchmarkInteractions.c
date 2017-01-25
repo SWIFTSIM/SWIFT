@@ -68,7 +68,7 @@
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(int count, double *offset, double spacing, double h,
+struct part *make_particles(size_t count, double *offset, double spacing, double h,
                             long long *partId) {
 
   struct part *particles;
@@ -118,7 +118,7 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
 /**
  * @brief Populates particle properties needed for the force calculation.
  */
-void prepare_force(struct part *parts, int count) {
+void prepare_force(struct part *parts, size_t count) {
 
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
@@ -211,7 +211,7 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
  * @param runs No. of times to call interactions
  *
  */
-void test_interactions(struct part test_part, struct part *parts, int count,
+void test_interactions(struct part test_part, struct part *parts, size_t count,
                        char *filePrefix, int runs) {
 
   ticks serial_time = 0;
@@ -232,21 +232,19 @@ void test_interactions(struct part test_part, struct part *parts, int count,
   write_header(vec_filename);
 
   struct part pi_serial, pi_vec;
-  struct part pj_serial[count], pi_list_vec[count], pj_vec[count];
+  struct part pj_serial[count], pj_vec[count];
 
   float r2[count] __attribute__((aligned(array_align)));
   float dx[3 * count] __attribute__((aligned(array_align)));
 
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));
-  float hjq[count] __attribute__((aligned(array_align)));
   float dxq[count] __attribute__((aligned(array_align)));
 
   struct part *piq[count], *pjq[count];
 
   float dyq[count] __attribute__((aligned(array_align)));
   float dzq[count] __attribute__((aligned(array_align)));
-  float miq[count] __attribute__((aligned(array_align)));
   float mjq[count] __attribute__((aligned(array_align)));
   float vixq[count] __attribute__((aligned(array_align)));
   float viyq[count] __attribute__((aligned(array_align)));
@@ -259,7 +257,7 @@ void test_interactions(struct part test_part, struct part *parts, int count,
   for (int k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_serial = test_part;
-    for (int i = 0; i < count; i++) pj_serial[i] = parts[i];
+    for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
 
     /* Only dump data on first run. */
     if (k == 0) {
@@ -270,7 +268,7 @@ void test_interactions(struct part test_part, struct part *parts, int count,
     }
 
     /* Perform serial interaction */
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
       r2[i] = 0.0f;
       for (int k = 0; k < 3; k++) {
@@ -283,7 +281,7 @@ void test_interactions(struct part test_part, struct part *parts, int count,
     const ticks tic = getticks();
 /* Perform serial interaction */
 #pragma novector
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       IACT(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h, &pi_serial,
            &pj_serial[i]);
     }
@@ -303,11 +301,10 @@ void test_interactions(struct part test_part, struct part *parts, int count,
   for (int k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_vec = test_part;
-    for (int i = 0; i < count; i++) pj_vec[i] = parts[i];
-    for (int i = 0; i < count; i++) pi_list_vec[i] = test_part;
+    for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
 
     /* Setup arrays for vector interaction. */
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -319,13 +316,11 @@ void test_interactions(struct part test_part, struct part *parts, int count,
       r2q[i] = r2;
       dxq[i] = dx[0];
       hiq[i] = pi_vec.h;
-      hjq[i] = pj_vec[i].h;
       piq[i] = &pi_vec;
       pjq[i] = &pj_vec[i];
 
       dyq[i] = dx[1];
       dzq[i] = dx[2];
-      miq[i] = pi_vec.mass;
       mjq[i] = pj_vec[i].mass;
       vixq[i] = pi_vec.v[0];
       viyq[i] = pi_vec.v[1];
@@ -375,7 +370,7 @@ void test_interactions(struct part test_part, struct part *parts, int count,
 
     const ticks vec_tic = getticks();
 
-    for (int i = 0; i < count; i += 2 * VEC_SIZE) {
+    for (size_t i = 0; i < count; i += 2 * VEC_SIZE) {
 
       IACT_VEC(&(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (hi_inv_vec),
                (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
@@ -430,7 +425,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 10000;
   double h = 1.0, spacing = 0.5;
   double offset[3] = {0.0, 0.0, 0.0};
-  int count = 256;
+  size_t count = 256;
 
   /* Get some randomness going */
   srand(0);
@@ -444,7 +439,7 @@ int main(int argc, char *argv[]) {
       case 's':
         sscanf(optarg, "%lf", &spacing);
       case 'n':
-        sscanf(optarg, "%d", &count);
+        sscanf(optarg, "%zu", &count);
         break;
       case 'r':
         sscanf(optarg, "%zu", &runs);
