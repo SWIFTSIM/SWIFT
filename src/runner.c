@@ -1158,6 +1158,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           if (ti_end != ti_current)
             error("Computing time-step of rogue particle.");
 #endif
+
           /* Get new time-step */
           const integertime_t ti_new_step = get_gpart_timestep(gp, e);
 
@@ -1328,20 +1329,18 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Construct the cell properties from the received particles
+ * @brief Construct the cell properties from the received #part.
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
+void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->parts;
-  // const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
-  // const size_t nr_gparts = c->gcount;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -1366,20 +1365,13 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
         error("Received un-drifted particle !");
 #endif
     }
-    /* for (size_t k = 0; k < nr_gparts; k++) { */
-    /*   const integertime_t ti_end = */
-    /*       get_integer_time_end(ti_current, gparts[k].time_bin); */
-    /*   ti_end_min = min(ti_end_min, ti_end); */
-    /*   ti_end_max = max(ti_end_max, ti_end); */
-    /* } */
-
   }
 
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_recv_cell(r, c->progeny[k], 0);
+        runner_do_recv_part(r, c->progeny[k], 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
         h_max = max(h_max, c->progeny[k]->h_max);
@@ -1401,7 +1393,70 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   c->ti_old = ti_current;
   c->h_max = h_max;
 
-  if (timer) TIMER_TOC(timer_dorecv_cell);
+  if (timer) TIMER_TOC(timer_dorecv_part);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Construct the cell properties from the received #gpart.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_MPI
+
+  const struct gpart *restrict gparts = c->gparts;
+  const size_t nr_gparts = c->gcount;
+  const integertime_t ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_gparts; k++) {
+      const integertime_t ti_end =
+          get_integer_time_end(ti_current, gparts[k].time_bin);
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+    }
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_recv_cell(r, c->progeny[k], 0);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->ti_old = ti_current;
+
+  if (timer) TIMER_TOC(timer_dorecv_gpart);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1601,8 +1656,11 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend) {
             cell_unpack_ti_ends(ci, t->buff);
             free(t->buff);
-          } else {
-            runner_do_recv_cell(r, ci, 1);
+          } else if (t->subtype == task_subtype_xv ||
+                     t->subtype == task_subtype_rho) {
+            runner_do_recv_part(r, ci, 1);
+          } else if (t->subtype == task_subtype_gpart) {
+            runner_do_recv_gpart(r, ci, 1);
           }
           break;
 #endif
