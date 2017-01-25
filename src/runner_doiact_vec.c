@@ -904,6 +904,10 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 float max_di[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into ci */
 float max_dj[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into cj */
 
+FILE *faceIntFile;
+FILE *edgeIntFile;
+FILE *cornerIntFile;
+
 /** C2_CACHE VERSION
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *  
@@ -922,6 +926,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   static int edgeCtr = 0;
   static int cornerIntCount = 0;
   static int cornerCtr = 0;
+  static int numFaceTested = 0;
+  static int numEdgeTested = 0;
+  static int numCornerTested = 0;
   int icount = 0, icount_align = 0;
   struct c2_cache int_cache;
   int num_vec_proc = 1;
@@ -929,6 +936,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
   TIMER_TIC;
+
+  if(faceCtr + edgeCtr + cornerCtr == 0) {
+    faceIntFile = fopen("particle_interactions_face.dat","w"); 
+    edgeIntFile = fopen("particle_interactions_edge.dat","w"); 
+    cornerIntFile = fopen("particle_interactions_corner.dat","w"); 
+  }
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
@@ -1146,9 +1159,21 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     VEC_HADD(curlvySum, pi->density.rot_v[1]);
     VEC_HADD(curlvzSum, pi->density.rot_v[2]);
 
-    if(face) faceIntCount += icount;
-    else if(edge) edgeIntCount += icount;
-    else if(corner) cornerIntCount += icount;
+    if(face) {
+      faceIntCount += icount;
+      fprintf(faceIntFile,"%d\n",icount);
+      numFaceTested++;
+    }
+    else if(edge) {
+      edgeIntCount += icount;
+      fprintf(edgeIntFile,"%d\n",icount);
+      numEdgeTested++;
+    }
+    else if(corner) {
+      cornerIntCount += icount;
+      fprintf(cornerIntFile,"%d\n",icount);
+      numCornerTested++;
+    }
 
     icount = 0;
 
@@ -1156,15 +1181,15 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
   if(face) {
     faceCtr++;
-    message("Total number of face interactions: %d, average per particle: %f.", faceIntCount, ((float)faceIntCount) / ((float)faceCtr * (float)count_i));
+    message("Total number of face interactions: %d, average per particle: %f, number tested: %d.", faceIntCount, ((float)faceIntCount) / ((float)numFaceTested), numFaceTested);
   }
   else if(edge) {
     edgeCtr++;
-    message("Total number of edge interactions: %d, average per particle: %f.", edgeIntCount, ((float)edgeIntCount) / ((float)edgeCtr * (float)count_i));
+    message("Total number of edge interactions: %d, average per particle: %f, number tested: %d", edgeIntCount, ((float)edgeIntCount) / ((float)numEdgeTested), numEdgeTested);
   }
   else if(corner) {
     cornerCtr++;
-    message("Total number of corner interactions: %d, average per particle: %f.",cornerIntCount, ((float)cornerIntCount) / ((float)cornerCtr * (float)count_i));
+    message("Total number of corner interactions: %d, average per particle: %f, number tested: %d", cornerIntCount, ((float)cornerIntCount) / ((float)numCornerTested), numCornerTested);
   }
 
   int max_ind_i = 0;
