@@ -384,10 +384,10 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
-                   &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
-		   (with_external_gravity || with_self_gravity), with_stars, 
-		   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
+                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   (with_external_gravity || with_self_gravity), with_stars,
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
                  &Nspart, &periodic, &flag_entropy_ICs, with_hydro,

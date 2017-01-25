@@ -374,11 +374,11 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
-                      struct spart** sparts, size_t* Ngas, size_t* Ngparts, 
-		      size_t* Nstars, int* periodic, int* flag_entropy, 
-		      int with_hydro, int with_gravity, int with_stars,
-		      int mpi_rank, int mpi_size,  MPI_Comm comm, MPI_Info info, 
-		      int dry_run) {
+                      struct spart** sparts, size_t* Ngas, size_t* Ngparts,
+                      size_t* Nstars, int* periodic, int* flag_entropy,
+                      int with_hydro, int with_gravity, int with_stars,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -499,8 +499,8 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align, (*Ngas) * sizeof(struct part)) !=
-	0)
+    if (posix_memalign((void*)parts, part_align,
+                       (*Ngas) * sizeof(struct part)) != 0)
       error("Error while allocating memory for particles");
     bzero(*parts, *Ngas * sizeof(struct part));
   }
@@ -519,7 +519,7 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
     Ndm = N[1];
     *Ngparts = (with_hydro ? N[GAS] : 0) + N[DM] + (with_stars ? N[STAR] : 0);
     if (posix_memalign((void*)gparts, gpart_align,
-		       *Ngparts * sizeof(struct gpart)) != 0)
+                       *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
@@ -553,25 +553,25 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
     switch (ptype) {
 
       case GAS:
-	if (with_hydro) {
-	  Nparticles = *Ngas;
-	  hydro_read_particles(*parts, list, &num_fields);
-	}
+        if (with_hydro) {
+          Nparticles = *Ngas;
+          hydro_read_particles(*parts, list, &num_fields);
+        }
         break;
 
       case DM:
-	if (with_gravity) {
-	  Nparticles = Ndm;
-	  darkmatter_read_particles(*gparts, list, &num_fields);
-	}
+        if (with_gravity) {
+          Nparticles = Ndm;
+          darkmatter_read_particles(*gparts, list, &num_fields);
+        }
         break;
 
       case STAR:
         if (with_stars) {
-	  Nparticles = *Nstars;
-	  star_read_particles(*sparts, list, &num_fields);
-	}
-	break;
+          Nparticles = *Nstars;
+          star_read_particles(*sparts, list, &num_fields);
+        }
+        break;
 
       default:
         message("Particle Type %d not yet supported. Particles ignored", ptype);
@@ -851,9 +851,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
         break;
 
       case STAR:
-	Nparticles = Nstars;
-	star_write_particles(sparts, list, &num_fields);
-	break;
+        Nparticles = Nstars;
+        star_write_particles(sparts, list, &num_fields);
+        break;
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
@@ -864,7 +864,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
       writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
                  Nparticles, N_total[ptype], mpi_rank, offset[ptype],
                  internal_units, snapshot_units);
-    
+
     /* Free temporary array */
     if (dmparts) {
       free(dmparts);
