@@ -78,6 +78,7 @@ tests/testRiemannHLLC
 tests/testMatrixInversion
 tests/testDump
 tests/testLogger
+tests/benchmarkInteractions
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
