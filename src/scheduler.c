@@ -138,6 +138,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         ((t->type == task_type_timestep) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
       t->skip = 1;
       break;
     }
@@ -1082,6 +1084,8 @@ void scheduler_start(struct scheduler *s) {
       struct task *t = &s->tasks[k];
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+      if (t->type == task_type_none) continue;
 
       /* Don't check MPI stuff */
       if (t->type == task_type_send || t->type == task_type_recv) continue;
