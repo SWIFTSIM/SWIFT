@@ -334,11 +334,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   struct entry *finger;
   struct entry *fingers[8];
   struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
   struct entry *sort;
-  int j, k, count = c->count;
-  int i, ind, off[8], inds[8], temp_i, missing;
+  const int count = c->count;
+  int off[8], inds[8], temp_i, missing;
   float buff[8];
-  double px[3];
 
   TIMER_TIC
 
@@ -360,27 +360,28 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   if (c->split) {
 
     /* Fill in the gaps within the progeny. */
-    for (k = 0; k < 8; k++) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       missing = flags & ~c->progeny[k]->sorted;
       if (missing) runner_do_sort(r, c->progeny[k], missing, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
-    for (j = 0; j < 13; j++) {
+    for (int j = 0; j < 13; j++) {
 
       /* Has this sort array been flagged? */
       if (!(flags & (1 << j))) continue;
 
       /* Init the particle index offsets. */
-      for (off[0] = 0, k = 1; k < 8; k++)
+      off[0] = 0;
+      for (int k = 1; k < 8; k++)
         if (c->progeny[k - 1] != NULL)
           off[k] = off[k - 1] + c->progeny[k - 1]->count;
         else
           off[k] = off[k - 1];
 
       /* Init the entries and indices. */
-      for (k = 0; k < 8; k++) {
+      for (int k = 0; k < 8; k++) {
         inds[k] = k;
         if (c->progeny[k] != NULL && c->progeny[k]->count > 0) {
           fingers[k] = &c->progeny[k]->sort[j * (c->progeny[k]->count + 1)];
@@ -391,8 +392,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       }
 
       /* Sort the buffer. */
-      for (i = 0; i < 7; i++)
-        for (k = i + 1; k < 8; k++)
+      for (int i = 0; i < 7; i++)
+        for (int k = i + 1; k < 8; k++)
           if (buff[inds[k]] < buff[inds[i]]) {
             temp_i = inds[i];
             inds[i] = inds[k];
@@ -401,7 +402,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
       /* For each entry in the new sort list. */
       finger = &sort[j * (count + 1)];
-      for (ind = 0; ind < count; ind++) {
+      for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
         finger[ind].d = buff[inds[0]];
@@ -412,7 +413,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
         buff[inds[0]] = fingers[inds[0]]->d;
 
         /* Find the smallest entry. */
-        for (k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
+        for (int k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
           temp_i = inds[k - 1];
           inds[k - 1] = inds[k];
           inds[k] = temp_i;
@@ -435,11 +436,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   else {
 
     /* Fill the sort array. */
-    for (k = 0; k < count; k++) {
-      px[0] = parts[k].x[0];
-      px[1] = parts[k].x[1];
-      px[2] = parts[k].x[2];
-      for (j = 0; j < 13; j++)
+    for (int k = 0; k < count; k++) {
+      xparts[k].x_diff_sort[0] = xparts[k].x_diff_sort[1] =
+          xparts[k].x_diff_sort[2] = 0.0f;
+      const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
+      for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
           sort[j * (count + 1) + k].i = k;
           sort[j * (count + 1) + k].d = px[0] * runner_shift[j][0] +
@@ -449,7 +450,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
     }
 
     /* Add the sentinel and sort. */
-    for (j = 0; j < 13; j++)
+    for (int j = 0; j < 13; j++)
       if (flags & (1 << j)) {
         sort[j * (count + 1) + count].d = FLT_MAX;
         sort[j * (count + 1) + count].i = 0;
@@ -460,10 +461,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
-  for (j = 0; j < 13; j++) {
+  for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
     finger = &sort[j * (count + 1)];
-    for (k = 1; k < count; k++) {
+    for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
       if (finger[k].i >= count) error("Sorting failed, indices borked.");
@@ -1056,9 +1057,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
-      }
-
-      else { /* part is inactive */
+      } else { /* part is inactive */
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);

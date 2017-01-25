@@ -461,7 +461,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
-  const float dxj = cj->dx_max;
+  const float dxj = cj->dx_max_sort;
 
   /* Parts are on the left? */
   if (!flipped) {
@@ -749,7 +749,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max + cj->dx_max);
+  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1;
@@ -960,7 +960,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const double dx_max = (ci->dx_max + cj->dx_max);
+  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   /* Collect the number of parts left and right below dt. */
   int countdt_i = 0, countdt_j = 0;
@@ -1832,7 +1832,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+              cj->dx_max_sort <
           h / 2) {
 
     /* Different types of flags. */
@@ -2118,7 +2119,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+              cj->dx_max_sort <
           h / 2) {
 
     /* Different types of flags. */
@@ -2424,7 +2426,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Recurse? */
     if (ci->split && cj->split &&
-        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+                cj->dx_max_sort <
             h / 2) {
 
       /* Get the type of pair if not specified explicitly. */

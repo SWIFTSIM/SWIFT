@@ -127,6 +127,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max = 0.f;
+      temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       temp->ti_old = c->ti_old;
@@ -908,8 +909,7 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
   /* Reset the sort flags if the particles have moved too much. */
-  if (c->dx_max > space_maxreldx * c->h_max)
-    c->sorted = 0;
+  if (c->dx_max_sort > space_maxreldx * c->h_max) c->sorted = 0;
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -1066,7 +1066,9 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f;
+  float dx_max_sort = 0.f, dx2_max_sort = 0.f;
+  float h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
@@ -1080,6 +1082,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
         cell_drift(cp, e);
         dx_max = max(dx_max, cp->dx_max);
+        dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         h_max = max(h_max, cp->h_max);
       }
 
@@ -1118,6 +1121,10 @@ void cell_drift(struct cell *c, const struct engine *e) {
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
       dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+                             xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+                             xp->x_diff_sort[2] * xp->x_diff_sort[2];
+      dx2_max_sort = (dx2_max_sort > dx2_sort) ? dx2_max_sort : dx2_sort;
 
       /* Maximal smoothing length */
       h_max = (h_max > p->h) ? h_max : p->h;
@@ -1125,16 +1132,19 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
+    dx_max_sort = sqrt(dx2_max_sort);
 
   } else {
 
     h_max = c->h_max;
     dx_max = c->dx_max;
+    dx_max_sort = c->dx_max_sort;
   }
 
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
+  c->dx_max_sort = dx_max_sort;
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;

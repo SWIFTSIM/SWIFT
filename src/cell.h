@@ -232,6 +232,9 @@ struct cell {
   /*! Maximum particle movement in this cell since last construction. */
   float dx_max;
 
+  /*! Maximum particle movement in this cell since the last sort. */
+  float dx_max_sort;
+
   /*! Nr of #part in this cell. */
   int count;
 
