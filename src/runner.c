@@ -1436,7 +1436,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   else {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_recv_cell(r, c->progeny[k], 0);
+        runner_do_recv_gpart(r, c->progeny[k], 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
       }
@@ -1457,6 +1457,69 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   c->ti_old = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_gpart);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Construct the cell properties from the received #spart.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_MPI
+
+  const struct spart *restrict sparts = c->sparts;
+  const size_t nr_sparts = c->scount;
+  const integertime_t ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_sparts; k++) {
+      const integertime_t ti_end =
+          get_integer_time_end(ti_current, sparts[k].time_bin);
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+    }
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_recv_spart(r, c->progeny[k], 0);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->ti_old = ti_current;
+
+  if (timer) TIMER_TOC(timer_dorecv_spart);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1661,6 +1724,10 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
+          } else if (t->subtype == task_subtype_spart) {
+            runner_do_recv_spart(r, ci, 1);
+          } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
 #endif

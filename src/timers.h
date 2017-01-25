@@ -62,6 +62,7 @@ enum {
   timer_do_extra_ghost,
   timer_dorecv_part,
   timer_dorecv_gpart,
+  timer_dorecv_spart,
   timer_gettask,
   timer_qget,
   timer_qsteal,
