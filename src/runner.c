@@ -1147,6 +1147,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
+  /* Clear the sort field */
+  c->sorted = 0;
+
   if (timer) TIMER_TOC(timer_timestep);
 }
 
@@ -1272,6 +1275,9 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   c->ti_end_max = ti_end_max;
   c->ti_old = ti_current;
   c->h_max = h_max;
+
+  /* Clear the sort field */
+  c->sorted = 0;
 
   if (timer) TIMER_TOC(timer_dorecv_cell);
 
