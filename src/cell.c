@@ -908,24 +908,29 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
  */
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
-  /* Reset the sort flags if the particles have moved too much. */
-  if (c->dx_max_sort > space_maxreldx * c->h_max) c->sorted = 0;
-
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
-    const struct cell *ci = t->ci;
-    const struct cell *cj = t->cj;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
     scheduler_activate(s, t);
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
+      if (1 || ci->dx_max_sort > space_maxreldx * ci->dmin) ci->sorted = 0;
+      if (1 || cj->dx_max_sort > space_maxreldx * cj->dmin) cj->sorted = 0;
       if (!(ci->sorted & (1 << t->flags))) {
-        atomic_or(&ci->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(ci->sorts->flags & (1 << t->flags)))
+          error("bad flags in sort task.");
+#endif
         scheduler_activate(s, ci->sorts);
       }
       if (!(cj->sorted & (1 << t->flags))) {
-        atomic_or(&cj->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(cj->sorts->flags & (1 << t->flags)))
+          error("bad flags in sort task.");
+#endif
         scheduler_activate(s, cj->sorts);
       }
     }

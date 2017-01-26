@@ -162,6 +162,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, c->kick1, c->drift);
       scheduler_addunlock(s, c->drift, c->init);
+      scheduler_addunlock(s, c->drift, c->sorts);
 
       /* Generate the ghost task. */
       if (is_hydro)

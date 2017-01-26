@@ -337,13 +337,13 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   struct xpart *xparts = c->xparts;
   struct entry *sort;
   const int count = c->count;
-  int off[8], inds[8], temp_i, missing;
+  int off[8], inds[8], temp_i;
   float buff[8];
 
   TIMER_TIC
 
   /* Clean-up the flags, i.e. filter out what's already been sorted. */
-  flags &= ~c->sorted;
+  // flags &= ~c->sorted;
   if (flags == 0) return;
 
   /* start by allocating the entry arrays. */
@@ -361,9 +361,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
     /* Fill in the gaps within the progeny. */
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] == NULL) continue;
-      missing = flags & ~c->progeny[k]->sorted;
-      if (missing) runner_do_sort(r, c->progeny[k], missing, 0);
+      if (c->progeny[k] != NULL) 
+        runner_do_sort(r, c->progeny[k], flags, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -458,6 +457,9 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
         c->sorted |= (1 << j);
       }
   }
+  
+  /* Finally, clear the dx_max_sort field of this cell. */
+  c->dx_max_sort = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */

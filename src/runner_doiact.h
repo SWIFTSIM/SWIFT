@@ -38,8 +38,11 @@
 #define _DOPAIR_SUBSET_NAIVE(f) PASTE(runner_dopair_subset_naive, f)
 #define DOPAIR_SUBSET_NAIVE _DOPAIR_SUBSET_NAIVE(FUNCTION)
 
-#define _DOPAIR_NAIVE(f) PASTE(runner_dopair_naive, f)
-#define DOPAIR_NAIVE _DOPAIR_NAIVE(FUNCTION)
+#define _DOPAIR1_NAIVE(f) PASTE(runner_dopair1_naive, f)
+#define DOPAIR1_NAIVE _DOPAIR1_NAIVE(FUNCTION)
+
+#define _DOPAIR2_NAIVE(f) PASTE(runner_dopair2_naive, f)
+#define DOPAIR2_NAIVE _DOPAIR2_NAIVE(FUNCTION)
 
 #define _DOSELF_NAIVE(f) PASTE(runner_doself_naive, f)
 #define DOSELF_NAIVE _DOSELF_NAIVE(FUNCTION)
@@ -99,18 +102,152 @@
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
 /**
- * @brief Compute the interactions between a cell pair.
+ * @brief Compute the interactions between a cell pair (non-symmetric).
  *
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
                   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
-  error("Don't use in actual runs ! Slow code !");
+#ifndef SWIFT_DEBUG_CHECKS
+  // error("Don't use in actual runs ! Slow code !");
+#endif
+
+#ifdef WITH_VECTORIZATION
+  int icount = 0;
+  float r2q[VEC_SIZE] __attribute__((aligned(16)));
+  float hiq[VEC_SIZE] __attribute__((aligned(16)));
+  float hjq[VEC_SIZE] __attribute__((aligned(16)));
+  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
+  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+#endif
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+  /* Loop over the parts in ci. */
+  for (int pid = 0; pid < count_i; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct part *restrict pi = &parts_i[pid];
+    const float hi = pi->h;
+
+    double pix[3];
+    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      for (int k = 0; k < 3; k++) {
+        dx[k] = pix[k] - pj->x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+#ifndef WITH_VECTORIZATION
+
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = dx[0];
+        dxq[3 * icount + 1] = dx[1];
+        dxq[3 * icount + 2] = dx[2];
+        hiq[icount] = hi;
+        hjq[icount] = pj->h;
+        piq[icount] = pi;
+        pjq[icount] = pj;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+      if (r2 < pj->h * pj->h * kernel_gamma2) {
+
+#ifndef WITH_VECTORIZATION
+        
+        for (int k = 0; k < 3; k++) dx[k] = -dx[k];
+        IACT_NONSYM(r2, dx, pj->h, hi, pj, pi);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = -dx[0];
+        dxq[3 * icount + 1] = -dx[1];
+        dxq[3 * icount + 2] = -dx[2];
+        hiq[icount] = pj->h;
+        hjq[icount] = hi;
+        piq[icount] = pj;
+        pjq[icount] = pi;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+
+    } /* loop over the parts in cj. */
+
+  } /* loop over the parts in ci. */
+
+#ifdef WITH_VECTORIZATION
+  /* Pick up any leftovers. */
+  if (icount > 0)
+    for (int k = 0; k < icount; k++)
+      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
+#endif
+
+  TIMER_TOC(TIMER_DOPAIR);
+}
+
+void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
+                  struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+#ifndef SWIFT_DEBUG_CHECKS
+  // error("Don't use in actual runs ! Slow code !");
+#endif
 
 #ifdef WITH_VECTORIZATION
   int icount = 0;
@@ -211,7 +348,9 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-  error("Don't use in actual runs ! Slow code !");
+#ifndef SWIFT_DEBUG_CHECKS
+  // error("Don't use in actual runs ! Slow code !");
+#endif
 
 #ifdef WITH_VECTORIZATION
   int icount = 0;
