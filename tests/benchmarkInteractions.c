@@ -237,11 +237,12 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float r2[count] __attribute__((aligned(array_align)));
   float dx[3 * count] __attribute__((aligned(array_align)));
 
+  struct part *piq[count], *pjq[count];
+
+#ifdef WITH_VECTORIZATION
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));
   float dxq[count] __attribute__((aligned(array_align)));
-
-  struct part *piq[count], *pjq[count];
 
   float dyq[count] __attribute__((aligned(array_align)));
   float dzq[count] __attribute__((aligned(array_align)));
@@ -252,6 +253,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float vjxq[count] __attribute__((aligned(array_align)));
   float vjyq[count] __attribute__((aligned(array_align)));
   float vjzq[count] __attribute__((aligned(array_align)));
+#endif
 
   /* Call serial interaction a set number of times. */
   for (int k = 0; k < runs; k++) {
@@ -315,6 +317,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
         r2 += dx[k] * dx[k];
       }
 
+#ifdef WITH_VECTORIZATION
       r2q[i] = r2;
       dxq[i] = dx[0];
       hiq[i] = pi_vec.h;
@@ -330,6 +333,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
       vjxq[i] = pj_vec[i].v[0];
       vjyq[i] = pj_vec[i].v[1];
       vjzq[i] = pj_vec[i].v[2];
+#endif
     }
 
     /* Only dump data on first run. */
