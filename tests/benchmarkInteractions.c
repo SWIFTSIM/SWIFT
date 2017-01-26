@@ -279,8 +279,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     }
 
     const ticks tic = getticks();
-/* Perform serial interaction */
+    /* Perform serial interaction */
+#ifdef __ICC
 #pragma novector
+#endif
     for (size_t i = 0; i < count; i++) {
       IACT(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h, &pi_serial,
            &pj_serial[i]);
