@@ -332,6 +332,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->rho *= expf(w2);
 
+  if(p->entropy + p->entropy_dt*dt < 0.0)
+    printf("Negative entropy: Old entropy = %g, New entropy = %g ", p->entropy,p->entropy + p->entropy_dt*dt);
   /* Predict the entropy */
   p->entropy += p->entropy_dt * dt;
 
@@ -377,9 +379,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy by more than a factor of 2 */
-  const float entropy_change = p->entropy_dt * dt;
-  xp->entropy_full =
-      max(xp->entropy_full + entropy_change, 0.5f * xp->entropy_full);
+  p->entropy_dt = max(-0.5f * xp->entropy_full / dt , p->entropy_dt); 
+  xp->entropy_full += p->entropy_dt * dt;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
