@@ -844,6 +844,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if(pos_x > dim_x || pos_y > dim_y || pos_z > pos_z ||
+       pos_x < 0. || pos_y < 0. || pos_z < 0.)
+      error("Particle outside of simulation box. p->x=[%e %e %e]", 
+	    pos_x, pos_y, pos_z);
+#endif
+
     /* Update the position */
     p->x[0] = pos_x;
     p->x[1] = pos_y;
