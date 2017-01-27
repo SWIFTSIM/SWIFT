@@ -1177,7 +1177,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Otherwise, look for a suitable queue. */
   else {
 #ifdef WITH_MPI
-    int err;
+    int err = MPI_SUCCESS;
 #endif
 
     /* Find the previous owner for each task type, and do
@@ -1208,16 +1208,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(integertime_t),
                           MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
-        } else {
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho) {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          // message( "receiving %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          err = MPI_Irecv(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
-        // message( "receiving %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
-        // fflush(stdout);
         qid = 1 % s->nr_queues;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1231,7 +1237,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(integertime_t),
                           MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
-        } else {
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho) {
 #ifdef SWIFT_DEBUG_CHECKS
           for (int k = 0; k < t->ci->count; k++)
             if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
@@ -1239,13 +1246,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+
+          // message( "sending %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
-        // message( "sending %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
-        // fflush(stdout);
         qid = 0;
 #else
         error("SWIFT was not compiled with MPI support.");
