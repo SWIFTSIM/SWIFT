@@ -377,9 +377,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy by more than a factor of 2 */
-  const float entropy_change = p->entropy_dt * dt;
-  xp->entropy_full =
-      max(xp->entropy_full + entropy_change, 0.5f * xp->entropy_full);
+  if (p->entropy_dt < -0.5f * xp->entropy_full / dt) {
+    /* message("Warning! Limiting entropy_dt. Possible cooling error.\n
+     * entropy_full = %g \n entropy_dt * dt =%g \n", */
+    /* 	     xp->entropy_full,p->entropy_dt * dt); */
+    p->entropy_dt = -0.5f * xp->entropy_full / dt;
+  }
+  xp->entropy_full += p->entropy_dt * dt;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);

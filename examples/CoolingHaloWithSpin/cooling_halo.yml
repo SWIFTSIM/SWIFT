@@ -9,8 +9,8 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   10.    # The end time of the simulation (in internal units).
-  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  time_end:   10.   # The end time of the simulation (in internal units).
+  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
@@ -48,4 +48,4 @@ LambdaCooling:
   minimum_temperature:         1.0e4  # Minimal temperature (Kelvin)
   mean_molecular_weight:       0.59   # Mean molecular weight
   hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
-  cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition
+  cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition
