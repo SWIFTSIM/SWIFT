@@ -68,8 +68,8 @@
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(size_t count, double *offset, double spacing, double h,
-                            long long *partId) {
+struct part *make_particles(size_t count, double *offset, double spacing,
+                            double h, long long *partId) {
 
   struct part *particles;
   if (posix_memalign((void **)&particles, part_align,
@@ -279,7 +279,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     }
 
     const ticks tic = getticks();
-    /* Perform serial interaction */
+/* Perform serial interaction */
 #ifdef __ICC
 #pragma novector
 #endif

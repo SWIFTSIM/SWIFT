@@ -334,6 +334,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the entropy */
   p->entropy += p->entropy_dt * dt;
+
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
 
@@ -376,12 +377,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy by more than a factor of 2 */
-
-   if (p->entropy_dt < -0.5f * xp->entropy_full / dt){
-     message("Warning! Limiting entropy_dt. Possible cooling error.\n entropy_full = %g \n entropy_dt * dt =%g \n",
-	     xp->entropy_full,p->entropy_dt * dt);
-     p->entropy_dt = -0.5f * xp->entropy_full / dt; 
-   }
+  if (p->entropy_dt < -0.5f * xp->entropy_full / dt) {
+    /* message("Warning! Limiting entropy_dt. Possible cooling error.\n
+     * entropy_full = %g \n entropy_dt * dt =%g \n", */
+    /* 	     xp->entropy_full,p->entropy_dt * dt); */
+    p->entropy_dt = -0.5f * xp->entropy_full / dt;
+  }
   xp->entropy_full += p->entropy_dt * dt;
 
   /* Compute the pressure */
@@ -411,6 +412,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* We read u in the entropy field. We now get S from u */
   xp->entropy_full = gas_entropy_from_internal_energy(p->rho, p->entropy);
   p->entropy = xp->entropy_full;
+
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
 
