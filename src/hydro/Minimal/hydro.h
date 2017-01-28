@@ -360,8 +360,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the energy by more than a factor of 2*/
-  const float u_change = p->u_dt * dt;
-  xp->u_full = max(xp->u_full + u_change, 0.5f * xp->u_full);
+  if (p->u_dt < -0.5f * xp->u_full / dt) {
+    p->u_dt = -0.5f * xp->u_full / dt;
+  }
+  xp->u_full += p->u_dt * dt;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, xp->u_full);
