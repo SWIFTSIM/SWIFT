@@ -32,6 +32,12 @@
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
 
+#define _DOPAIR1_NOSORT(f) PASTE(runner_dopair1_sort, f)
+#define DOPAIR1_NOSORT _DOPAIR1_NOSORT(FUNCTION)
+
+#define _DOPAIR2_NOSORT(f) PASTE(runner_dopair2_sort, f)
+#define DOPAIR2_NOSORT _DOPAIR2_NOSORT(FUNCTION)
+
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset, f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
 
@@ -97,6 +103,8 @@
 
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
+
+#include "runner_doiact_nosort.h"
 
 /**
  * @brief Compute the interactions between a cell pair.
@@ -707,6 +715,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
+#ifdef WITH_MPI
+  if(ci->nodeID != cj->nodeID) {
+    DOPAIR1_NOSORT(r, ci, cj);
+    return;
+  }
+#endif
+
 #ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -911,6 +926,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
+
+#ifdef WITH_MPI
+  if(ci->nodeID != cj->nodeID) {
+    DOPAIR2_NOSORT(r, ci, cj);
+    return;
+  }
+#endif
 
 #ifdef WITH_VECTORIZATION
   int icount1 = 0;
