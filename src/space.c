@@ -816,7 +816,7 @@ void space_rebuild(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
-                    nr_sparts);
+                    nr_sparts, verbose);
 #endif
 
   /* Hook the cells up to the parts. */

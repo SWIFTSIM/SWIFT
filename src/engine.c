@@ -689,7 +689,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Verify that the links are correct */
   part_verify_links(parts_new, gparts_new, sparts_new, nr_parts, nr_gparts,
-                    nr_sparts);
+                    nr_sparts, e->verbose);
 #endif
 
   /* Set the new part data, free the old. */
@@ -2910,7 +2910,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
   part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
-                    e->s->nr_gparts, e->s->nr_sparts);
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
 #endif
 
   /* Ready to go */
@@ -3245,7 +3245,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
-                    s->nr_sparts);
+                    s->nr_sparts, e->verbose);
 #endif
 
 #else

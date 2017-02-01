@@ -78,7 +78,7 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct spart *sparts);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sparts);
+                       size_t nr_sparts, int verbose);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

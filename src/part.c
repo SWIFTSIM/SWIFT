@@ -106,10 +106,11 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
  * @param nr_parts The number of #part in the array.
  * @param nr_gparts The number of #gpart in the array.
  * @param nr_sparts The number of #spart in the array.
+ * @param verbose Do we report verbosely in case of success ?
  */
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sparts) {
+                       size_t nr_sparts, int verbose) {
 
   for (size_t k = 0; k < nr_gparts; ++k) {
 
@@ -223,7 +224,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
     }
   }
 
-  message("All links OK");
+  if(verbose) message("All links OK");
 }
 
 #ifdef WITH_MPI
