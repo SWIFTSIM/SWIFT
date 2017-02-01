@@ -394,7 +394,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  if (p->entropy_dt < -0.5f * xp->entropy_full / dt) {
+  if (dt > 0. && p->entropy_dt * dt < -0.5f * xp->entropy_full) {
     p->entropy_dt = -0.5f * xp->entropy_full / dt;
   }
   xp->entropy_full += p->entropy_dt * dt;

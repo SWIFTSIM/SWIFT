@@ -2080,7 +2080,8 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Otherwise, compute self-interaction. */
   else {
-#if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+#if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
+    defined(GADGET2_SPH)
     runner_doself1_density_vec(r, ci);
 #else
     DOSELF1(r, ci);
