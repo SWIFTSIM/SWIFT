@@ -3005,12 +3005,6 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  for (size_t i = 0; i < e->s->nr_parts; ++i) {
-    if (e->s->parts[i].time_bin == 0) error("Particle in bin 0");
-  }
-#endif
-
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
@@ -3545,6 +3539,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   if (with_aff) {
+#ifdef HAVE_SETAFFINITY
 #ifdef WITH_MPI
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
            clocks_get_timesincestart());
@@ -3553,6 +3548,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
     for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
     printf("].\n");
+#endif
   }
 
   /* Are we doing stuff in parallel? */
