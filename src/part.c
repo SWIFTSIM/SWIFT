@@ -137,7 +137,12 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check that the particles are at the same place */
       if (gparts[k].x[0] != part->x[0] || gparts[k].x[1] != part->x[1] ||
           gparts[k].x[2] != part->x[2])
-        error("Linked particles are not at the same position !");
+        error("Linked particles are not at the same position !\n"
+	      "gp->x=[%e %e %e] p->x=[%e %e %e] diff=[%e %e %e]",
+	      gparts[k].x[0], gparts[k].x[1], gparts[k].x[2],
+	      part->x[0], part->x[1], part->x[2],
+	      gparts[k].x[0] - part->x[0], gparts[k].x[1] - part->x[1],
+	      gparts[k].x[2] - part->x[2]);
 
       /* Check that the particles are at the same time */
       if (gparts[k].time_bin != part->time_bin)
@@ -159,7 +164,12 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check that the particles are at the same place */
       if (gparts[k].x[0] != spart->x[0] || gparts[k].x[1] != spart->x[1] ||
           gparts[k].x[2] != spart->x[2])
-        error("Linked particles are not at the same position !");
+        error("Linked particles are not at the same position !\n"
+	      "gp->x=[%e %e %e] p->x=[%e %e %e] diff=[%e %e %e]",
+	      gparts[k].x[0], gparts[k].x[1], gparts[k].x[2],
+	      spart->x[0], spart->x[1], spart->x[2],
+	      gparts[k].x[0] - spart->x[0], gparts[k].x[1] - spart->x[1],
+	      gparts[k].x[2] - spart->x[2]);
 
       /* Check that the particles are at the same time */
       if (gparts[k].time_bin != spart->time_bin)
@@ -212,6 +222,8 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       }
     }
   }
+
+  message("All links OK");
 }
 
 #ifdef WITH_MPI
