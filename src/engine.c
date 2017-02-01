@@ -1169,7 +1169,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     e->proxies[k].nr_sparts_out = 0;
   }
 
-  /* Put the parts and gparts into the corresponding proxies. */
+  /* Put the parts into the corresponding proxies. */
   for (size_t k = 0; k < *Npart; k++) {
     /* Get the target node and proxy ID. */
     const int node_id = e->s->cells_top[ind_part[k]].nodeID;
@@ -1195,22 +1195,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
                      &s->xparts[offset_parts + k], 1);
   }
-  for (size_t k = 0; k < *Ngpart; k++) {
-    const int node_id = e->s->cells_top[ind_gpart[k]].nodeID;
-    if (node_id < 0 || node_id >= e->nr_nodes)
-      error("Bad node ID %i.", node_id);
-    const int pid = e->proxy_ind[node_id];
-    if (pid < 0)
-      error(
-          "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lli, x=[%e,%e,%e].",
-          node_id, s->gparts[offset_gparts + k].id_or_neg_offset,
-          s->gparts[offset_gparts + k].x[0], s->gparts[offset_gparts + k].x[1],
-          s->gparts[offset_gparts + k].x[2]);
 
-    /* Load the gpart into the proxy */
-    proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
-  }
+  /* Put the sparts into the corresponding proxies. */
   for (size_t k = 0; k < *Nspart; k++) {
     const int node_id = e->s->cells_top[ind_spart[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
@@ -1232,6 +1218,24 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
     /* Load the spart into the proxy */
     proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
+  }
+
+  /* Put the gparts into the corresponding proxies. */
+  for (size_t k = 0; k < *Ngpart; k++) {
+    const int node_id = e->s->cells_top[ind_gpart[k]].nodeID;
+    if (node_id < 0 || node_id >= e->nr_nodes)
+      error("Bad node ID %i.", node_id);
+    const int pid = e->proxy_ind[node_id];
+    if (pid < 0)
+      error(
+          "Do not have a proxy for the requested nodeID %i for part with "
+          "id=%lli, x=[%e,%e,%e].",
+          node_id, s->gparts[offset_gparts + k].id_or_neg_offset,
+          s->gparts[offset_gparts + k].x[0], s->gparts[offset_gparts + k].x[1],
+          s->gparts[offset_gparts + k].x[2]);
+
+    /* Load the gpart into the proxy */
+    proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
   }
 
   /* Launch the proxies. */

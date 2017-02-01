@@ -1416,22 +1416,24 @@ void space_sparts_sort_mapper(void *map_data, int num_elements,
         }
       }
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*       /\* Verify space_sort_struct. *\/ */
-/*       for (int k = i; k <= jj; k++) */
-/*         if (ind[k] > pivot) { */
-/*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", */
-/*                   k, ind[k], pivot, i, j); */
-/*           error("Partition failed (<=pivot)."); */
-/*         } */
-/*       for (int k = jj + 1; k <= j; k++) */
-/*         if (ind[k] <= pivot) { */
-/*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", */
-/*                   k, ind[k], pivot, i, j); */
-/*           error("Partition failed (>pivot)."); */
-/*         } */
-/* #endif */
-//MATTHIEU --> Check what happens here when Nspart == 0
+      /* #ifdef SWIFT_DEBUG_CHECKS */
+      /*       /\* Verify space_sort_struct. *\/ */
+      /*       for (int k = i; k <= jj; k++) */
+      /*         if (ind[k] > pivot) { */
+      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
+       * j=%li.", */
+      /*                   k, ind[k], pivot, i, j); */
+      /*           error("Partition failed (<=pivot)."); */
+      /*         } */
+      /*       for (int k = jj + 1; k <= j; k++) */
+      /*         if (ind[k] <= pivot) { */
+      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
+       * j=%li.", */
+      /*                   k, ind[k], pivot, i, j); */
+      /*           error("Partition failed (>pivot)."); */
+      /*         } */
+      /* #endif */
+      // MATTHIEU --> Check what happens here when Nspart == 0
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
