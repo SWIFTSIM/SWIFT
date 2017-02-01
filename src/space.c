@@ -515,9 +515,9 @@ void space_rebuild(struct space *s, int verbose) {
     space_sparts_get_cell_index(s, sind, cells_top, verbose);
 
 #ifdef WITH_MPI
+  const int local_nodeID = s->e->nodeID;
 
   /* Move non-local parts to the end of the list. */
-  const int local_nodeID = s->e->nodeID;
   for (size_t k = 0; k < nr_parts;) {
     if (cells_top[ind[k]].nodeID != local_nodeID) {
       nr_parts -= 1;
@@ -669,10 +669,10 @@ void space_rebuild(struct space *s, int verbose) {
   }
 
   /* Re-allocate the index array for the sparts if needed.. */
-  if (s->nr_sparts + 1 > ind_size) {
+  if (s->nr_sparts + 1 > sind_size) {
     int *sind_new;
     if ((sind_new = (int *)malloc(sizeof(int) * (s->nr_sparts + 1))) == NULL)
-      error("Failed to allocate temporary particle indices.");
+      error("Failed to allocate temporary s-particle indices.");
     memcpy(sind_new, sind, sizeof(int) * nr_sparts);
     free(sind);
     sind = sind_new;
@@ -681,7 +681,7 @@ void space_rebuild(struct space *s, int verbose) {
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
-  /* Assign each part to its cell. */
+  /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
     ind[k] =
@@ -694,14 +694,14 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_parts = s->nr_parts;
 
-  /* Assign each spart to its cell. */
+  /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
     sind[k] =
         cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[sind[k]].nodeID != local_nodeID)
-      error("Received part that does not belong to me (nodeID=%i).",
+      error("Received s-part that does not belong to me (nodeID=%i).",
             cells_top[sind[k]].nodeID);
 #endif
   }
@@ -772,7 +772,7 @@ void space_rebuild(struct space *s, int verbose) {
     gind = gind_new;
   }
 
-  /* Assign each gpart to its cell. */
+  /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
@@ -780,7 +780,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[gind[k]].nodeID != s->e->nodeID)
-      error("Received part that does not belong to me (nodeID=%i).",
+      error("Received g-part that does not belong to me (nodeID=%i).",
             cells_top[gind[k]].nodeID);
 #endif
   }
@@ -1416,21 +1416,22 @@ void space_sparts_sort_mapper(void *map_data, int num_elements,
         }
       }
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Verify space_sort_struct. */
-      for (int k = i; k <= jj; k++)
-        if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (<=pivot).");
-        }
-      for (int k = jj + 1; k <= j; k++)
-        if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (>pivot).");
-        }
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*       /\* Verify space_sort_struct. *\/ */
+/*       for (int k = i; k <= jj; k++) */
+/*         if (ind[k] > pivot) { */
+/*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", */
+/*                   k, ind[k], pivot, i, j); */
+/*           error("Partition failed (<=pivot)."); */
+/*         } */
+/*       for (int k = jj + 1; k <= j; k++) */
+/*         if (ind[k] <= pivot) { */
+/*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", */
+/*                   k, ind[k], pivot, i, j); */
+/*           error("Partition failed (>pivot)."); */
+/*         } */
+/* #endif */
+//MATTHIEU --> Check what happens here when Nspart == 0
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {

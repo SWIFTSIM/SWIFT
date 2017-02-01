@@ -1224,7 +1224,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
           s->sparts[offset_sparts + k].x[0], s->sparts[offset_sparts + k].x[1],
           s->sparts[offset_sparts + k].x[2]);
 
-    /* Re-link the associated gpart with the buffer offset of the part. */
+    /* Re-link the associated gpart with the buffer offset of the spart. */
     if (s->sparts[offset_sparts + k].gpart != NULL) {
       s->sparts[offset_sparts + k].gpart->id_or_neg_offset =
           -e->proxies[pid].nr_sparts_out;
@@ -1307,7 +1307,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * offset_sparts);
     free(s->sparts);
     s->sparts = sparts_new;
-    for (size_t k = 0; k < offset_parts; k++) {
+    for (size_t k = 0; k < offset_sparts; k++) {
       if (s->sparts[k].gpart != NULL) {
         s->sparts[k].gpart->id_or_neg_offset = -k;
       }
