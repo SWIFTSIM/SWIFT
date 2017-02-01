@@ -1420,7 +1420,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
         if (gp->type == swift_type_gas) {
           struct part *p =
-              &s->parts[offset_gparts + count_parts - gp->id_or_neg_offset];
+              &s->parts[offset_parts + count_parts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->parts - p;
           p->gpart = gp;
         } else if (gp->type == swift_type_star) {
