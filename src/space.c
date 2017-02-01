@@ -572,8 +572,8 @@ void space_rebuild(struct space *s, int verbose) {
       if (s->sparts[k].gpart != NULL) {
         s->sparts[k].gpart->id_or_neg_offset = -k;
       }
-      if (s->sparts[nr_parts].gpart != NULL) {
-        s->sparts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
+      if (s->sparts[nr_sparts].gpart != NULL) {
+        s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
       }
       /* Swap the index */
       const int t = sind[k];
@@ -1124,7 +1124,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
   data.ind = sind;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
-                 s->sparts, s->nr_sparts, sizeof(struct gpart), 1000, &data);
+                 s->sparts, s->nr_sparts, sizeof(struct spart), 1000, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
