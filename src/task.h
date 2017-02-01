@@ -71,6 +71,9 @@ enum task_subtypes {
   task_subtype_grav,
   task_subtype_external_grav,
   task_subtype_tend,
+  task_subtype_xv,
+  task_subtype_rho,
+  task_subtype_gpart,
   task_subtype_count
 } __attribute__((packed));
 
@@ -158,6 +161,10 @@ struct task {
 
   /*! Start and end time of this task */
   ticks tic, toc;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  int ti_run;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
