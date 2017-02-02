@@ -94,8 +94,6 @@ for task in FULLTYPES:
     SUBCOLOURS[task] = colours[ncolours]
     ncolours = (ncolours + 1) % maxcolours
 
-print SUBCOLOURS
-
 #  Show docs if help is requested.
 if len( sys.argv ) == 2 and ( sys.argv[1][0:2] == "-h" or sys.argv[1][0:3] == "--h" ):
     from pydoc import help
