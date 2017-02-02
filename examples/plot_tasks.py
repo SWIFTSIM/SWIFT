@@ -31,10 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import matplotlib
 import matplotlib.collections as collections
 matplotlib.use('Agg')
-from matplotlib import colors
 import pylab as pl
 import numpy as np
-import six
 import sys
 
 #  Basic plot configuration.
