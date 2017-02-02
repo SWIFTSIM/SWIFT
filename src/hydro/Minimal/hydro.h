@@ -360,7 +360,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the energy by more than a factor of 2*/
-  if (p->u_dt < -0.5f * xp->u_full / dt) {
+  if (dt > 0. && p->u_dt * dt < -0.5f * xp->u_full) {
     p->u_dt = -0.5f * xp->u_full / dt;
   }
   xp->u_full += p->u_dt * dt;
