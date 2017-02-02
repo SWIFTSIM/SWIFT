@@ -244,11 +244,11 @@ void engine_redistribute(struct engine *e) {
      and the destination of each particle */
   int *counts, *g_counts, *s_counts;
   if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate count temporary buffer.");
+    error("Failed to allocate counts temporary buffer.");
   if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate gcount temporary buffer.");
+    error("Failed to allocate g_gcount temporary buffer.");
   if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate gcount temporary buffer.");
+    error("Failed to allocate s_counts temporary buffer.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
   bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
@@ -407,7 +407,7 @@ void engine_redistribute(struct engine *e) {
                     MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce particle transfer counts.");
 
-  /* Get all the g_counts from all the nodes. */
+  /* Get all the s_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, g_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce gparticle transfer counts.");
