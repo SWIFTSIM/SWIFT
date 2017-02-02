@@ -237,9 +237,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float r2[count] __attribute__((aligned(array_align)));
   float dx[3 * count] __attribute__((aligned(array_align)));
 
+#ifdef WITH_VECTORIZATION
   struct part *piq[count], *pjq[count];
 
-#ifdef WITH_VECTORIZATION
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));
   float dxq[count] __attribute__((aligned(array_align)));
@@ -338,10 +338,12 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
     /* Only dump data on first run. */
     if (k == 0) {
+#ifdef WITH_VECTORIZATION
       /* Dump state of particles before vector interaction. */
       dump_indv_particle_fields(vec_filename, piq[0]);
       for (size_t i = 0; i < count; i++)
         dump_indv_particle_fields(vec_filename, pjq[i]);
+#endif
     }
 
 /* Perform vector interaction. */
@@ -407,10 +409,12 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
   fclose(file);
 
+#ifdef WITH_VECTORIZATION
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
+#endif
 
 #ifdef WITH_VECTORIZATION
   /* Check serial results against the vectorised results. */
