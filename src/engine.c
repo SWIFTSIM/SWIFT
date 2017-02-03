@@ -1394,7 +1394,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       error("MPI_Waitany failed (%s).", buff);
     }
     if (pid == MPI_UNDEFINED) break;
-    // message( "request from proxy %i has arrived." , pid / 3 );
+    // message( "request from proxy %i has arrived." , pid / 4 );
     pid = 4 * (pid / 4);
 
     /* If all the requests for a given proxy have arrived... */
@@ -1403,7 +1403,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
         reqs_in[pid + 2] == MPI_REQUEST_NULL &&
         reqs_in[pid + 3] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / 3];
+      struct proxy *prox = &e->proxies[pid / 4];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
              sizeof(struct part) * prox->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
@@ -1444,7 +1444,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
-    if (MPI_Waitall(3 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+    if (MPI_Waitall(4 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
