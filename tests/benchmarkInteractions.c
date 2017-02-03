@@ -238,6 +238,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float dx[3 * count] __attribute__((aligned(array_align)));
 
   struct part *piq[count], *pjq[count];
+  for (int k = 0; k < count; k++) {
+    piq[k] = NULL; pjq[k] = NULL;
+  }
 
 #ifdef WITH_VECTORIZATION
   float r2q[count] __attribute__((aligned(array_align)));
