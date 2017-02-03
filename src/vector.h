@@ -251,7 +251,7 @@
 #define vec_dbl_fmax(a, b) _mm_max_pd(a, b)
 #define FILL_VEC(a) \
   { .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a }
-#define VEC_HADD(a, b)            \
+#define VEC_HADD(a, b)         \
   a.v = _mm_hadd_ps(a.v, a.v); \
   b += a.f[0] + a.f[1];
 #ifndef vec_fma

@@ -239,7 +239,8 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
   struct part *piq[count], *pjq[count];
   for (size_t k = 0; k < count; k++) {
-    piq[k] = NULL; pjq[k] = NULL;
+    piq[k] = NULL;
+    pjq[k] = NULL;
   }
 
 #ifdef WITH_VECTORIZATION
