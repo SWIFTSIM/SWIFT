@@ -722,7 +722,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif
 
-#ifdef WITH_VECTORIZATION
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -935,7 +934,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif
 
-#ifdef WITH_VECTORIZATION
 #ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
