@@ -472,7 +472,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-  message("re)building space");
+  if(s->e->nodeID == 0 || verbose) message("re)building space");
   fflush(stdout);
 #endif
 
@@ -1014,7 +1014,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
             ind[i - 1], i, ind[i], min, max);
-  message("Sorting succeeded.");
+  if(s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
 #endif
 
   /* Clean up. */
@@ -1192,7 +1192,7 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
             ind[i - 1], i, ind[i], min, max);
-  message("Sorting succeeded.");
+    if(s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
 #endif
 
   /* Clean up. */
