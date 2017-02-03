@@ -3293,6 +3293,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   if (with_aff) {
+#ifdef HAVE_SETAFFINITY
 #ifdef WITH_MPI
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
            clocks_get_timesincestart());
@@ -3301,6 +3302,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
     for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
     printf("].\n");
+#endif
   }
 
   /* Are we doing stuff in parallel? */
