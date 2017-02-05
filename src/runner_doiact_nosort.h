@@ -6,8 +6,7 @@
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR1_NOSORT(struct runner *r, struct cell *ci,
-		    struct cell *cj) {
+void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
 
@@ -71,7 +70,6 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in ci. */
 
-
   /* Loop over the parts in cj. */
   for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -115,10 +113,8 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in cj. */
 
-
   TIMER_TOC(TIMER_DOPAIR);
 }
-
 
 /**
  * @brief Compute the interactions between a cell pair.
@@ -127,8 +123,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR2_NOSORT(struct runner *r, struct cell *ci,
-		    struct cell *cj) {
+void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
 
@@ -193,7 +188,6 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in ci. */
 
-
   /* Loop over the parts in cj. */
   for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -238,10 +232,8 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in cj. */
 
-
   TIMER_TOC(TIMER_DOPAIR);
 }
-
 
 /**
  * @brief Compute the interactions between a cell pair, but only for the
@@ -255,11 +247,10 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci,
  * @param cj The second #cell.
  */
 void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
-			  struct part *restrict parts_i, int *restrict ind, int count,
-			  struct cell *restrict cj) {
+                          struct part *restrict parts_i, int *restrict ind,
+                          int count, struct cell *restrict cj) {
 
   struct engine *e = r->e;
-
 
   TIMER_TIC;
 
@@ -275,7 +266,6 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -286,7 +276,7 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
-    if (!part_is_active(pi, e)) 
+    if (!part_is_active(pi, e))
       error("Trying to correct smoothing length of inactive particle !");
 
     /* Loop over the parts in cj. */
@@ -307,10 +297,9 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
       }
     } /* loop over the parts in cj. */
-  } /* loop over the parts in ci. */
+  }   /* loop over the parts in ci. */
 
   TIMER_TOC(timer_dopair_subset);
 }

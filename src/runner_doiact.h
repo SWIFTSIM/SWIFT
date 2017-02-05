@@ -434,7 +434,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   struct engine *e = r->e;
 
 #ifdef WITH_MPI
-  if(ci->nodeID != cj->nodeID) {
+  if (ci->nodeID != cj->nodeID) {
     DOPAIR_SUBSET_NOSORT(r, ci, parts_i, ind, count, cj);
     return;
   }
@@ -726,7 +726,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *restrict e = r->e;
 
 #ifdef WITH_MPI
-  if(ci->nodeID != cj->nodeID) {
+  if (ci->nodeID != cj->nodeID) {
     DOPAIR1_NOSORT(r, ci, cj);
     return;
   }
@@ -938,7 +938,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct engine *restrict e = r->e;
 
 #ifdef WITH_MPI
-  if(ci->nodeID != cj->nodeID) {
+  if (ci->nodeID != cj->nodeID) {
     DOPAIR2_NOSORT(r, ci, cj);
     return;
   }
