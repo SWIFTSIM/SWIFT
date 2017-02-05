@@ -7,4 +7,5 @@ then
     python makeIC.py 10000
 fi
 
+rm -rf pointMass_*.hdf5
 ../swift -g -t 1 externalPointMass.yml 2>&1 | tee output.log
