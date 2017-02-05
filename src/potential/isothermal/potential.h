@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in an
  * isothermal potential.
  *
- * phi = 0.5 * vrot^2 * ln(r^2 + epsilon^2)
+ * phi = -0.5 * vrot^2 * ln(r^2 + epsilon^2)
  *
  * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
@@ -148,8 +148,8 @@ external_gravity_get_potential_energy(
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
 
-  return 0.5f * potential->vrot * potential->vrot *
-         logf(dx * dx + dy * dy * dz * dz + potential->epsilon2);
+  return -0.5f * potential->vrot * potential->vrot *
+         logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 
 /**
