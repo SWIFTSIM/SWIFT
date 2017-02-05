@@ -27,7 +27,7 @@ import random
 # Generates a random distriution of particles, for motion in an external potnetial centred at (0,0,0)
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.672e-8
+NEWTON_GRAVITY_CGS  = 6.67408e-8
 SOLAR_MASS_IN_CGS   = 1.9885e33
 PARSEC_IN_CGS       = 3.0856776e18
 
