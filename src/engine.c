@@ -292,14 +292,24 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
-  for (size_t k = 1; k < s->nr_parts; k++) {
-    if (dest[k - 1] > dest[k]) {
-      error("Sort failed!");
-    } else if (dest[k] != cell_getid(s->cdim, parts[k].x[0] * iwidth[0],
-                                     parts[k].x[1] * iwidth[1],
-                                     parts[k].x[2] * iwidth[2])) {
-      error("Incorrect indices!");
-    }
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    const struct part *p = &s->parts[k];
+
+    /* New cell index */
+    const int new_ind =
+        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
+                   p->x[2] * s->iwidth[2]);
+
+    /* New cell of this part */
+    const struct cell *c = &s->cells_top[new_ind];
+
+    if (dest[k] != new_ind)
+      error("part's new cell index not matching sorted index.");
+
+    if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
+        p->x[1] < c->loc[1] || p->x[1] > c->loc[1] + c->width[1] ||
+        p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
+      error("part not sorted into the right top-level cell!");
   }
 #endif
 
@@ -361,14 +371,24 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
-  for (size_t k = 1; k < s->nr_sparts; k++) {
-    if (s_dest[k - 1] > s_dest[k]) {
-      error("Sort failed!");
-    } else if (s_dest[k] != cell_getid(s->cdim, sparts[k].x[0] * iwidth[0],
-                                       sparts[k].x[1] * iwidth[1],
-                                       sparts[k].x[2] * iwidth[2])) {
-      error("Incorrect indices!");
-    }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    const struct spart *sp = &s->sparts[k];
+
+    /* New cell index */
+    const int new_sind =
+        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
+                   sp->x[2] * s->iwidth[2]);
+
+    /* New cell of this spart */
+    const struct cell *c = &s->cells_top[new_sind];
+
+    if (s_dest[k] != new_sind)
+      error("spart's new cell index not matching sorted index.");
+
+    if (sp->x[0] < c->loc[0] || sp->x[0] > c->loc[0] + c->width[0] ||
+        sp->x[1] < c->loc[1] || sp->x[1] > c->loc[1] + c->width[1] ||
+        sp->x[2] < c->loc[2] || sp->x[2] > c->loc[2] + c->width[2])
+      error("spart not sorted into the right top-level cell!");
   }
 #endif
 
@@ -430,14 +450,24 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
-  for (size_t k = 1; k < s->nr_gparts; k++) {
-    if (g_dest[k - 1] > g_dest[k]) {
-      error("Sort failed!");
-    } else if (g_dest[k] != cell_getid(s->cdim, gparts[k].x[0] * iwidth[0],
-                                       gparts[k].x[1] * iwidth[1],
-                                       gparts[k].x[2] * iwidth[2])) {
-      error("Incorrect indices!");
-    }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    const struct gpart *gp = &s->gparts[k];
+
+    /* New cell index */
+    const int new_gind =
+        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
+                   gp->x[2] * s->iwidth[2]);
+
+    /* New cell of this gpart */
+    const struct cell *c = &s->cells_top[new_gind];
+
+    if (g_dest[k] != new_gind)
+      error("gpart's new cell index not matching sorted index.");
+
+    if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
+        gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
+        gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
+      error("gpart not sorted into the right top-level cell!");
   }
 #endif
 

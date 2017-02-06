@@ -716,11 +716,23 @@ void space_rebuild(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
-    if (ind[k] != cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
-                             s->parts[k].x[1] * s->iwidth[1],
-                             s->parts[k].x[2] * s->iwidth[2])) {
+    const struct part *p = &s->parts[k];
+
+    /* New cell index */
+    const int new_ind =
+        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
+                   p->x[2] * s->iwidth[2]);
+
+    /* New cell of this part */
+    const struct cell *c = &s->cells_top[new_ind];
+
+    if (ind[k] != new_ind)
+      error("part's new cell index not matching sorted index.");
+
+    if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
+        p->x[1] < c->loc[1] || p->x[1] > c->loc[1] + c->width[1] ||
+        p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
-    }
   }
 #endif
 
@@ -731,11 +743,23 @@ void space_rebuild(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
   for (size_t k = 0; k < nr_sparts; k++) {
-    if (sind[k] != cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
-                              s->sparts[k].x[1] * s->iwidth[1],
-                              s->sparts[k].x[2] * s->iwidth[2])) {
+    const struct spart *sp = &s->sparts[k];
+
+    /* New cell index */
+    const int new_sind =
+        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
+                   sp->x[2] * s->iwidth[2]);
+
+    /* New cell of this spart */
+    const struct cell *c = &s->cells_top[new_sind];
+
+    if (sind[k] != new_sind)
+      error("spart's new cell index not matching sorted index.");
+
+    if (sp->x[0] < c->loc[0] || sp->x[0] > c->loc[0] + c->width[0] ||
+        sp->x[1] < c->loc[1] || sp->x[1] > c->loc[1] + c->width[1] ||
+        sp->x[2] < c->loc[2] || sp->x[2] > c->loc[2] + c->width[2])
       error("spart not sorted into the right top-level cell!");
-    }
   }
 #endif
 
@@ -804,11 +828,23 @@ void space_rebuild(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (gind[k] != cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
-                              s->gparts[k].x[1] * s->iwidth[1],
-                              s->gparts[k].x[2] * s->iwidth[2])) {
+    const struct gpart *gp = &s->gparts[k];
+
+    /* New cell index */
+    const int new_gind =
+        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
+                   gp->x[2] * s->iwidth[2]);
+
+    /* New cell of this gpart */
+    const struct cell *c = &s->cells_top[new_gind];
+
+    if (gind[k] != new_gind)
+      error("gpart's new cell index not matching sorted index.");
+
+    if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
+        gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
+        gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
       error("gpart not sorted into the right top-level cell!");
-    }
   }
 #endif
 
