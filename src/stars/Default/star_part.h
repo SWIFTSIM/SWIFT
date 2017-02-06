@@ -22,25 +22,29 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* Star particle. */
+/**
+ * @brief Particle fields for the star particles.
+ *
+ * All quantities related to gravity are stored in the associate #gpart.
+ */
 struct spart {
 
-  /* Particle ID. */
+  /*! Particle ID. */
   long long id;
 
-  /* Pointer to corresponding gravity part. */
+  /*! Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-  /* Particle position. */
+  /*! Particle position. */
   double x[3];
 
-  /* Particle velocity. */
+  /*! Particle velocity. */
   float v[3];
 
-  /* Star mass */
+  /*! Star mass */
   float mass;
 
-  /* Particle time bin */
+  /*! Particle time bin */
   timebin_t time_bin;
 
 } SWIFT_STRUCT_ALIGN;
