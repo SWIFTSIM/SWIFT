@@ -290,6 +290,19 @@ void engine_redistribute(struct engine *e) {
   /* Sort the particles according to their cell index. */
   space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the part have been sorted correctly. */
+  for (size_t k = 1; k < s->nr_parts; k++) {
+    if (dest[k - 1] > dest[k]) {
+      error("Sort failed!");
+    } else if (dest[k] != cell_getid(s->cdim, parts[k].x[0] * iwidth[0],
+                                     parts[k].x[1] * iwidth[1],
+                                     parts[k].x[2] * iwidth[2])) {
+      error("Incorrect indices!");
+    }
+  }
+#endif
+
   /* We need to re-link the gpart partners of parts. */
   if (s->nr_parts > 0) {
     int current_dest = dest[0];
@@ -346,6 +359,19 @@ void engine_redistribute(struct engine *e) {
   /* Sort the particles according to their cell index. */
   space_sparts_sort(s, s_dest, s->nr_sparts, 0, nr_nodes - 1, e->verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the spart have been sorted correctly. */
+  for (size_t k = 1; k < s->nr_sparts; k++) {
+    if (s_dest[k - 1] > s_dest[k]) {
+      error("Sort failed!");
+    } else if (s_dest[k] != cell_getid(s->cdim, sparts[k].x[0] * iwidth[0],
+                                       sparts[k].x[1] * iwidth[1],
+                                       sparts[k].x[2] * iwidth[2])) {
+      error("Incorrect indices!");
+    }
+  }
+#endif
+
   /* We need to re-link the gpart partners of sparts. */
   if (s->nr_sparts > 0) {
     int current_dest = s_dest[0];
@@ -401,6 +427,19 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the gpart have been sorted correctly. */
+  for (size_t k = 1; k < s->nr_gparts; k++) {
+    if (g_dest[k - 1] > g_dest[k]) {
+      error("Sort failed!");
+    } else if (g_dest[k] != cell_getid(s->cdim, gparts[k].x[0] * iwidth[0],
+                                       gparts[k].x[1] * iwidth[1],
+                                       gparts[k].x[2] * iwidth[2])) {
+      error("Incorrect indices!");
+    }
+  }
+#endif
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
