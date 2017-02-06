@@ -713,28 +713,37 @@ void space_rebuild(struct space *s, int verbose) {
   if (nr_parts > 0)
     space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the part have been sorted correctly. */
+  for (size_t k = 0; k < nr_parts; k++) {
+    if (ind[k] != cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
+                             s->parts[k].x[1] * s->iwidth[1],
+                             s->parts[k].x[2] * s->iwidth[2])) {
+      error("part not sorted into the right top-level cell!");
+    }
+  }
+#endif
+
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
     space_sparts_sort(s, sind, nr_sparts, 0, s->nr_cells - 1, verbose);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the spart have been sorted correctly. */
+  for (size_t k = 0; k < nr_sparts; k++) {
+    if (sind[k] != cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
+                              s->sparts[k].x[1] * s->iwidth[1],
+                              s->sparts[k].x[2] * s->iwidth[2])) {
+      error("spart not sorted into the right top-level cell!");
+    }
+  }
+#endif
 
   /* Re-link the gparts to their (s-)particles. */
   if (nr_parts > 0 && nr_gparts > 0)
     part_relink_gparts_to_parts(s->parts, nr_parts, 0);
   if (nr_sparts > 0 && nr_gparts > 0)
     part_relink_gparts_to_sparts(s->sparts, nr_sparts, 0);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Verify space_sort_struct. */
-  for (size_t k = 1; k < nr_parts; k++) {
-    if (ind[k - 1] > ind[k]) {
-      error("Sort failed!");
-    } else if (ind[k] != cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
-                                    s->parts[k].x[1] * s->iwidth[1],
-                                    s->parts[k].x[2] * s->iwidth[2])) {
-      error("Incorrect indices!");
-    }
-  }
-#endif
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_index = 0;
@@ -791,6 +800,17 @@ void space_rebuild(struct space *s, int verbose) {
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
     space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the gpart have been sorted correctly. */
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (gind[k] != cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
+                              s->gparts[k].x[1] * s->iwidth[1],
+                              s->gparts[k].x[2] * s->iwidth[2])) {
+      error("gpart not sorted into the right top-level cell!");
+    }
+  }
+#endif
 
   /* Re-link the parts. */
   if (nr_parts > 0 && nr_gparts > 0)
@@ -1242,18 +1262,24 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Verify space_sort_struct. */
-      for (int k = i; k <= jj; k++)
-        if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (<=pivot).");
+      if (i != j) {
+        for (int k = i; k <= jj; k++) {
+          if (ind[k] > pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
+                ind[k], pivot, i, j);
+            error("Partition failed (<=pivot).");
+          }
         }
-      for (int k = jj + 1; k <= j; k++)
-        if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (>pivot).");
+        for (int k = jj + 1; k <= j; k++) {
+          if (ind[k] <= pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
+                ind[k], pivot, i, j);
+            error("Partition failed (>pivot).");
+          }
         }
+      }
 #endif
 
       /* Split-off largest interval. */
@@ -1416,24 +1442,28 @@ void space_sparts_sort_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* #ifdef SWIFT_DEBUG_CHECKS */
-      /*       /\* Verify space_sort_struct. *\/ */
-      /*       for (int k = i; k <= jj; k++) */
-      /*         if (ind[k] > pivot) { */
-      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
-       * j=%li.", */
-      /*                   k, ind[k], pivot, i, j); */
-      /*           error("Partition failed (<=pivot)."); */
-      /*         } */
-      /*       for (int k = jj + 1; k <= j; k++) */
-      /*         if (ind[k] <= pivot) { */
-      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
-       * j=%li.", */
-      /*                   k, ind[k], pivot, i, j); */
-      /*           error("Partition failed (>pivot)."); */
-      /*         } */
-      /* #endif */
-      // MATTHIEU --> Check what happens here when Nspart == 0
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify space_sort_struct. */
+      if (i != j) {
+        for (int k = i; k <= jj; k++) {
+          if (ind[k] > pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li "
+                "min=%i max=%i.",
+                k, ind[k], pivot, i, j, min, max);
+            error("Partition failed (<=pivot).");
+          }
+        }
+        for (int k = jj + 1; k <= j; k++) {
+          if (ind[k] <= pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
+                ind[k], pivot, i, j);
+            error("Partition failed (>pivot).");
+          }
+        }
+      }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
@@ -1597,18 +1627,24 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Verify space_sort_struct. */
-      for (int k = i; k <= jj; k++)
-        if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (<=pivot).");
+      if (i != j) {
+        for (int k = i; k <= jj; k++) {
+          if (ind[k] > pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
+                ind[k], pivot, i, j);
+            error("Partition failed (<=pivot).");
+          }
         }
-      for (int k = jj + 1; k <= j; k++)
-        if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (>pivot).");
+        for (int k = jj + 1; k <= j; k++) {
+          if (ind[k] <= pivot) {
+            message(
+                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
+                ind[k], pivot, i, j);
+            error("Partition failed (>pivot).");
+          }
         }
+      }
 #endif
 
       /* Split-off largest interval. */
