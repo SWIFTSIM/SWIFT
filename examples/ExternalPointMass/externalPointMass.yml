@@ -31,7 +31,7 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  Sphere.hdf5           # The file to read
+  file_name:  PointMass.hdf5        # The file to read
   shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    50.
   shift_z:    50.
