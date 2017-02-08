@@ -49,10 +49,10 @@ print 'G in internal units: ', const_G
 
 
 # Parameters
-periodic= 1            # 1 For periodic box
-boxSize = 100.         # 
-Radius  = boxSize / 4. # maximum radius of particles
-Mass    = 1e10         
+periodic   = 1            # 1 For periodic box
+boxSize    = 100.         # 
+max_radius = boxSize / 4. # maximum radius of particles
+Mass       = 1e10         
 print "Mass at the centre:  ", Mass
 
 numPart = int(sys.argv[1])  # Number of particles
@@ -95,22 +95,23 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 grp1 = file.create_group("/PartType1")
 
 #generate particle positions
-radius = Radius * (numpy.random.rand(numPart))**(1./3.) 
-ctheta = -1. + 2 * numpy.random.rand(numPart)
-stheta = numpy.sqrt(1.-ctheta**2)
-phi    =  2 * math.pi * numpy.random.rand(numPart)
+radius = max_radius * (numpy.random.rand(numPart))**(1./3.)
+print '---------------------'
+print 'Radius: minimum = ',min(radius)
+print 'Radius: maximum = ',max(radius)
+radius = numpy.sort(radius)
 r      = numpy.zeros((numPart, 3))
 r[:,0] = radius
 
 #generate particle velocities
 speed  = numpy.sqrt(const_G * Mass / radius)
-v      = numpy.zeros((numPart, 3))
 omega  = speed / radius
 period = 2.*math.pi/omega
 print '---------------------'
 print 'Period: minimum = ',min(period)
 print 'Period: maximum = ',max(period)
 
+v      = numpy.zeros((numPart, 3))
 v[:,0] = -omega * r[:,1]
 v[:,1] =  omega * r[:,0]
 
