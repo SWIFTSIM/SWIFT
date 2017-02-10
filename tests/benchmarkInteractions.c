@@ -239,6 +239,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
 #ifdef WITH_VECTORIZATION
   struct part *piq[count], *pjq[count];
+  for (size_t k = 0; k < count; k++) {
+    piq[k] = NULL;
+    pjq[k] = NULL;
+  }
 
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));

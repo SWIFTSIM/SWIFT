@@ -15,7 +15,7 @@ TimeIntegration:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
+  delta_time:          1e-3 # Time between statistics output
   
 # Parameters governing the snapshots
 Snapshots:
@@ -23,25 +23,18 @@ Snapshots:
   time_first:          0.         # Time of the first output (in internal units)
   delta_time:          0.02       # Time difference between consecutive outputs (in internal units)
 
-# Parameters for the hydrodynamics scheme
-SPH:
-  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      1.       # The tolerance for the targetted number of neighbours.
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  max_smoothing_length:  40.      # Maximal smoothing length allowed (in internal units).
-
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Isothermal.hdf5       # The file to read
-  shift_x:    100.                  # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    100.
-  shift_z:    100.
+  shift_x:    200.                  # Shift all particles to be in the potential
+  shift_y:    200.
+  shift_z:    200.
  
 # External potential parameters
 IsothermalPotential:
-  position_x:      100.     # location of centre of isothermal potential in internal units
-  position_y:      100.
-  position_z:      100.	
+  position_x:      0.       # location of centre of isothermal potential in internal units
+  position_y:      0.
+  position_z:      0.
   vrot:            200.     # rotation speed of isothermal potential in internal units
-  timestep_mult:   0.03     # controls time step
-
+  timestep_mult:   0.01     # controls time step
+  epsilon:         0.       # No softening at the centre of the halo

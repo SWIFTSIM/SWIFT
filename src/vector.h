@@ -216,9 +216,15 @@
 #define VEC_INT __m128i
 #define vec_load(a) _mm_load_ps(a)
 #define vec_store(a, addr) _mm_store_ps(addr, a)
+#define vec_setzero() _mm_setzero_ps()
+#define vec_setintzero() _mm_setzero_si256()
 #define vec_set1(a) _mm_set1_ps(a)
+#define vec_setint1(a) _mm_set1_epi32(a)
 #define vec_set(a, b, c, d) _mm_set_ps(d, c, b, a)
 #define vec_dbl_set(a, b) _mm_set_pd(b, a)
+#define vec_add(a, b) _mm_add_ps(a, b)
+#define vec_sub(a, b) _mm_sub_ps(a, b)
+#define vec_mul(a, b) _mm_mul_ps(a, b)
 #define vec_sqrt(a) _mm_sqrt_ps(a)
 #define vec_rcp(a) _mm_rcp_ps(a)
 #define vec_rsqrt(a) _mm_rsqrt_ps(a)
@@ -227,9 +233,11 @@
 #define vec_fmax(a, b) _mm_max_ps(a, b)
 #define vec_fabs(a) _mm_andnot_ps(_mm_set1_ps(-0.f), a)
 #define vec_floor(a) _mm_floor_ps(a)
+#define vec_cmp_gt(a, b) _mm_cmpgt_ps(a, b)
 #define vec_cmp_lt(a, b) _mm_cmplt_ps(a, b)
 #define vec_cmp_lte(a, b) _mm_cmp_ps(a, b, _CMP_LE_OQ)
 #define vec_cmp_result(a) _mm_movemask_ps(a)
+#define vec_and(a, b) _mm_and_ps(a, b)
 #define vec_todbl_lo(a) _mm_cvtps_pd(a)
 #define vec_todbl_hi(a) _mm_cvtps_pd(_mm_movehl_ps(a, a))
 #define vec_dbl_tofloat(a, b) _mm_movelh_ps(_mm_cvtpd_ps(a), _mm_cvtpd_ps(b))
@@ -243,6 +251,12 @@
 #define vec_dbl_fmax(a, b) _mm_max_pd(a, b)
 #define FILL_VEC(a) \
   { .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a }
+#define VEC_HADD(a, b)         \
+  a.v = _mm_hadd_ps(a.v, a.v); \
+  b += a.f[0] + a.f[1];
+#ifndef vec_fma
+#define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
+#endif
 #else
 #define VEC_SIZE 4
 #endif

@@ -63,11 +63,11 @@ EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
 	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
 	     EAGLE_50/eagle_50.yml EAGLE_50/getIC.sh EAGLE_50/README EAGLE_50/run.sh \
-	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/test.pro \
+	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/energy_plot.py \
 	     GreshoVortex_2D/getGlass.sh GreshoVortex_2D/gresho.yml GreshoVortex_2D/makeIC.py GreshoVortex_2D/plotSolution.py GreshoVortex_2D/run.sh \
 	     HydrostaticHalo/README HydrostaticHalo/hydrostatic.yml HydrostaticHalo/makeIC.py HydrostaticHalo/run.sh \
 	     HydrostaticHalo/density_profile.py HydrostaticHalo/velocity_profile.py HydrostaticHalo/internal_energy_profile.py HydrostaticHalo/test_energy_conservation.py \
-	     IsothermalPotential/README IsothermalPotential/run.sh IsothermalPotential/test.pro IsothermalPotential/isothermal.yml IsothermalPotential/makeIC.py \
+	     IsothermalPotential/README IsothermalPotential/run.sh IsothermalPotential/energy_plot.py IsothermalPotential/isothermal.yml IsothermalPotential/makeIC.py \
 	     KelvinHelmholtz_2D/kelvinHelmholtz.yml KelvinHelmholtz_2D/makeIC.py KelvinHelmholtz_2D/plotSolution.py KelvinHelmholtz_2D/run.sh \
 	     MultiTypes/makeIC.py  MultiTypes/multiTypes.yml MultiTypes/run.sh \
 	     PerturbedBox_2D/makeIC.py PerturbedBox_2D/perturbedPlane.yml \
