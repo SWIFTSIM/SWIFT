@@ -336,10 +336,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct entry *sort;
-  int j, k, count = c->count;
-  int i, ind, off[8], inds[8], temp_i, missing;
+  const int count = c->count;
   float buff[8];
-  double px[3];
 
   TIMER_TIC
 
@@ -387,6 +385,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       if (!(flags & (1 << j))) continue;
 
       /* Init the particle index offsets. */
+      int off[8];
       off[0] = 0;
       for (int k = 1; k < 8; k++)
         if (c->progeny[k - 1] != NULL)
@@ -395,6 +394,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
           off[k] = off[k - 1];
 
       /* Init the entries and indices. */
+      int inds[8];
       for (int k = 0; k < 8; k++) {
         inds[k] = k;
         if (c->progeny[k] != NULL && c->progeny[k]->count > 0) {
@@ -409,7 +409,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       for (int i = 0; i < 7; i++)
         for (int k = i + 1; k < 8; k++)
           if (buff[inds[k]] < buff[inds[i]]) {
-            temp_i = inds[i];
+            int temp_i = inds[i];
             inds[i] = inds[k];
             inds[k] = temp_i;
           }
@@ -428,7 +428,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
         /* Find the smallest entry. */
         for (int k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
-          temp_i = inds[k - 1];
+          int temp_i = inds[k - 1];
           inds[k - 1] = inds[k];
           inds[k] = temp_i;
         }
@@ -1416,7 +1416,8 @@ void *runner_main(void *data) {
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_send && t->type != task_type_recv)
+            t->type != task_type_drift && t->type != task_type_send &&
+            t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",

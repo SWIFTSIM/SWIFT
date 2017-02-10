@@ -2075,9 +2075,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Too much particle movement? */
       if (t->tight &&
-          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
+          max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
         *rebuild_space = 1;
 
       /* Set this task's skip, otherwise nothing to do. */
@@ -2089,22 +2087,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* If this is not a density task, we don't have to do any of the below. */
       if (t->subtype != task_subtype_density) continue;
 
-      /* Set the sort flags. */
+      /* Set the correct sorting flags */
       if (t->type == task_type_pair) {
-        if (ci->dx_max_sort > space_maxreldx * ci->dmin) ci->sorted = 0;
-        if (cj->dx_max_sort > space_maxreldx * cj->dmin) cj->sorted = 0;
+        if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
+          for (struct cell *finger = ci; finger != NULL;
+               finger = finger->parent)
+            finger->sorted = 0;
+        }
+        if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
+          for (struct cell *finger = cj; finger != NULL;
+               finger = finger->parent)
+            finger->sorted = 0;
+        }
         if (!(ci->sorted & (1 << t->flags))) {
-          atomic_or(&ci->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(ci->sorts->flags & (1 << t->flags)))
+            error("bad flags in sort task.");
+#endif
           scheduler_activate(s, ci->sorts);
+          scheduler_activate(s, ci->super->drift);
         }
         if (!(cj->sorted & (1 << t->flags))) {
-          atomic_or(&cj->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(cj->sorts->flags & (1 << t->flags)))
+            error("bad flags in sort task.");
+#endif
           scheduler_activate(s, cj->sorts);
+          scheduler_activate(s, cj->super->drift);
         }
       }
 
 #ifdef WITH_MPI
-
       /* Activate the send/recv flags. */
       if (ci->nodeID != engine_rank) {
 
@@ -2177,8 +2190,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-      }
 
+      } else {
+        scheduler_activate(s, ci->super->drift);
+        scheduler_activate(s, cj->super->drift);
+      }
+#else
+      scheduler_activate(s, ci->super->drift);
+      scheduler_activate(s, cj->super->drift);
 #endif
     }
 
