@@ -296,20 +296,22 @@ void engine_redistribute(struct engine *e) {
     const struct part *p = &s->parts[k];
 
     /* New cell index */
-    const int new_ind =
+    const int new_cid =
         cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
                    p->x[2] * s->iwidth[2]);
 
     /* New cell of this part */
-    const struct cell *c = &s->cells_top[new_ind];
+    const struct cell *c = &s->cells_top[new_cid];
+    const int new_node = c->nodeID;
 
-    if (dest[k] != new_ind)
-      error("part's new cell index not matching sorted index.");
+    if (dest[k] != new_node)
+      error("part's new node index not matching sorted index.");
 
     if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] < c->loc[1] || p->x[1] > c->loc[1] + c->width[1] ||
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
+
   }
 #endif
 
@@ -375,15 +377,16 @@ void engine_redistribute(struct engine *e) {
     const struct spart *sp = &s->sparts[k];
 
     /* New cell index */
-    const int new_sind =
+    const int new_cid =
         cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
                    sp->x[2] * s->iwidth[2]);
 
     /* New cell of this spart */
-    const struct cell *c = &s->cells_top[new_sind];
+    const struct cell *c = &s->cells_top[new_cid];
+    const int new_node = c->nodeID;
 
-    if (s_dest[k] != new_sind)
-      error("spart's new cell index not matching sorted index.");
+    if (s_dest[k] != new_node)
+      error("spart's new node index not matching sorted index.");
 
     if (sp->x[0] < c->loc[0] || sp->x[0] > c->loc[0] + c->width[0] ||
         sp->x[1] < c->loc[1] || sp->x[1] > c->loc[1] + c->width[1] ||
@@ -454,15 +457,16 @@ void engine_redistribute(struct engine *e) {
     const struct gpart *gp = &s->gparts[k];
 
     /* New cell index */
-    const int new_gind =
+    const int new_cid =
         cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
                    gp->x[2] * s->iwidth[2]);
 
     /* New cell of this gpart */
-    const struct cell *c = &s->cells_top[new_gind];
+    const struct cell *c = &s->cells_top[new_cid];
+    const int new_node = c->nodeID;
 
-    if (g_dest[k] != new_gind)
-      error("gpart's new cell index not matching sorted index.");
+    if (g_dest[k] != new_node)
+      error("gpart's new node index not matching sorted index.");
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
