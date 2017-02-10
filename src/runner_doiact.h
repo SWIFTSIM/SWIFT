@@ -109,12 +109,12 @@
  * @param cj The second #cell.
  */
 void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
-                  struct cell *restrict cj) {
+                   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-  // error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 #endif
 
 #ifdef WITH_VECTORIZATION
@@ -200,7 +200,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < pj->h * pj->h * kernel_gamma2) {
 
 #ifndef WITH_VECTORIZATION
-        
+
         for (int k = 0; k < 3; k++) dx[k] = -dx[k];
         IACT_NONSYM(r2, dx, pj->h, hi, pj, pi);
 
@@ -241,12 +241,12 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 }
 
 void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
-                  struct cell *restrict cj) {
+                   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-  // error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 #endif
 
 #ifdef WITH_VECTORIZATION
@@ -349,7 +349,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-  // error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 #endif
 
 #ifdef WITH_VECTORIZATION
@@ -860,8 +860,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
+  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+    error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -878,6 +878,27 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort > 1.0e-6)
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort > 1.0e-6)
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
   const double hi_max = ci->h_max * kernel_gamma - rshift;
@@ -1071,8 +1092,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) error("Cell ci not drifted");
-  if (!cell_is_drifted(cj, e)) error("Cell cj not drifted");
+  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+    error("Interacting undrifted cells.");
 
   /* Get the shift ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1496,7 +1517,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+  if (!cell_is_drifted(c, e)) error("Interacting undrifted cell.");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -2202,7 +2223,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (!cell_is_active(ci, r->e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_is_drifted(ci, r->e);
+  if (!cell_is_drifted(ci, r->e)) error("Interacting undrifted cell.");
 #endif
 
   /* Recurse? */

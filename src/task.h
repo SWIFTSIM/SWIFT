@@ -160,6 +160,11 @@ struct task {
   ticks tic, toc;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* When was this task last run? */
+  integertime_t ti_run;
+#endif /* SWIFT_DEBUG_CHECKS */
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */

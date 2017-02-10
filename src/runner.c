@@ -342,9 +342,20 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   TIMER_TIC
 
-  /* Clean-up the flags, i.e. filter out what's already been sorted. */
-  // flags &= ~c->sorted;
+  /* Clean-up the flags, i.e. filter out what's already been sorted, but
+     only if the sorts are recent. */
+  if (c->dx_max_sort == 0.0f) {
+    /* Ignore dimensions that have been sorted. */
+    flags &= ~c->sorted;
+  } else {
+    /* Re-do all the sorts. */
+    flags |= c->sorted;
+    c->sorted = 0;
+  }
   if (flags == 0) return;
+
+  /* Sorting an un-drifted cell? */
+  if (!cell_is_drifted(c, r->e)) error("Sorting undrifted cell.");
 
   /* start by allocating the entry arrays. */
   if (c->sort == NULL || c->sortsize < count) {
@@ -361,8 +372,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
     /* Fill in the gaps within the progeny. */
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) 
-        runner_do_sort(r, c->progeny[k], flags, 0);
+      if (c->progeny[k] != NULL) {
+        if (c->progeny[k]->dx_max_sort > c->dmin * space_maxreldx)
+          runner_do_sort(r, c->progeny[k], flags, 0);
+        c->dx_max_sort = max(c->dx_max_sort, c->progeny[k]->dx_max_sort);
+      }
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -436,9 +450,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
     /* Fill the sort array. */
     for (int k = 0; k < count; k++) {
-      xparts[k].x_diff_sort[0] = xparts[k].x_diff_sort[1] =
-          xparts[k].x_diff_sort[2] = 0.0f;
-      const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
+      xparts[k].x_diff_sort[0] = 0.0f;
+      xparts[k].x_diff_sort[1] = 0.0f;
+      xparts[k].x_diff_sort[2] = 0.0f;
+      const float px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
           sort[j * (count + 1) + k].i = k;
@@ -456,10 +471,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
         runner_do_sort_ascending(&sort[j * (count + 1)], count);
         c->sorted |= (1 << j);
       }
+
+    /* Finally, clear the dx_max_sort field of this cell. */
+    c->dx_max_sort = 0.f;
   }
-  
-  /* Finally, clear the dx_max_sort field of this cell. */
-  c->dx_max_sort = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
@@ -739,9 +754,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (count) {
-      message("Smoothing length failed to converge on %i particles.", count);
-
-      error("Aborting....");
+      error("Smoothing length failed to converge on %i particles.", count);
     }
 #else
     if (count)
@@ -763,12 +776,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_unskip(struct cell *c, struct engine *e) {
 
-  /* Unskip any active tasks. */
-  if (cell_is_active(c, e)) {
-    const int forcerebuild = cell_unskip_tasks(c, &e->sched);
-    if (forcerebuild) atomic_inc(&e->forcerebuild);
-  }
-
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -777,6 +784,12 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
         runner_do_unskip(cp, e);
       }
     }
+  }
+
+  /* Unskip any active tasks. */
+  if (cell_is_active(c, e)) {
+    const int forcerebuild = cell_unskip_tasks(c, &e->sched);
+    if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 }
 
@@ -1310,6 +1323,9 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
 #endif
+#ifdef SWIFT_DEBUG_CHECKS
+      t->ti_run = e->ti_current;
+#endif
 
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1321,13 +1337,13 @@ void *runner_main(void *data) {
 
       } else if (cj == NULL) { /* self */
 
-        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
+        /* if (!cell_is_active(ci, e) && t->type != task_type_sort &&
             t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min);
+              ci->ti_end_min); */
 
         /* Special case for sorts */
         if (!cell_is_active(ci, e) && t->type == task_type_sort &&

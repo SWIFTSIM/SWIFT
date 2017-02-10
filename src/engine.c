@@ -162,7 +162,6 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, c->kick1, c->drift);
       scheduler_addunlock(s, c->drift, c->init);
-      scheduler_addunlock(s, c->drift, c->sorts);
 
       /* Generate the ghost task. */
       if (is_hydro)
@@ -1686,8 +1685,16 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
 
+    /* Sort tasks depend on the drift of the super-cell. */
+    if (t->type == task_type_sort) {
+      scheduler_addunlock(sched, t->ci->super->drift, t);
+    }
+
     /* Self-interaction? */
-    if (t->type == task_type_self && t->subtype == task_subtype_density) {
+    else if (t->type == task_type_self && t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      scheduler_addunlock(sched, t->ci->super->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -1720,6 +1727,11 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      scheduler_addunlock(sched, t->ci->super->drift, t);
+      if (t->ci->super != t->cj->super)
+        scheduler_addunlock(sched, t->cj->super->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -1772,6 +1784,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
+      /* Make all density tasks depend on the drift. */
+      scheduler_addunlock(sched, t->ci->super->drift, t);
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -1813,6 +1828,11 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair &&
              t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      scheduler_addunlock(sched, t->ci->super->drift, t);
+      if (t->ci->super != t->cj->super)
+        scheduler_addunlock(sched, t->cj->super->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2049,8 +2069,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
       /* Local pointers. */
-      const struct cell *ci = t->ci;
-      const struct cell *cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
       /* Too much particle movement? */
       if (t->tight &&
@@ -2070,6 +2090,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Set the sort flags. */
       if (t->type == task_type_pair) {
+        if (ci->dx_max_sort > space_maxreldx * ci->dmin) ci->sorted = 0;
+        if (cj->dx_max_sort > space_maxreldx * cj->dmin) cj->sorted = 0;
         if (!(ci->sorted & (1 << t->flags))) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
           scheduler_activate(s, ci->sorts);
@@ -2146,8 +2168,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           ;
         if (l == NULL) error("Missing link to send_ti task.");
         scheduler_activate(s, l->t);
+      } else {
+        scheduler_activate(s, ci->super->drift);
+        scheduler_activate(s, cj->super->drift);
       }
-
+#else
+      scheduler_activate(s, ci->super->drift);
+      scheduler_activate(s, cj->super->drift);
 #endif
     }
 

@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   /* Predict the values of the extra fields */
   hydro_predict_extra(p, xp, dt);
 
-  /* Compute offset since last cell construction */
+  /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {
     const float dx = xp->v_full[k] * dt;
     xp->x_diff[k] -= dx;

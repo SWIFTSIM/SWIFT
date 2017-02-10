@@ -917,14 +917,21 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
-      if (1 || ci->dx_max_sort > space_maxreldx * ci->dmin) ci->sorted = 0;
-      if (1 || cj->dx_max_sort > space_maxreldx * cj->dmin) cj->sorted = 0;
+      if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
+        for (struct cell *finger = ci; finger != NULL; finger = finger->parent)
+          finger->sorted = 0;
+      }
+      if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
+        for (struct cell *finger = cj; finger != NULL; finger = finger->parent)
+          finger->sorted = 0;
+      }
       if (!(ci->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(ci->sorts->flags & (1 << t->flags)))
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, ci->sorts);
+        scheduler_activate(s, ci->super->drift);
       }
       if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -932,6 +939,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, cj->sorts);
+        scheduler_activate(s, cj->super->drift);
       }
     }
 
@@ -1009,7 +1017,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           ;
         if (l == NULL) error("Missing link to send_ti task.");
         scheduler_activate(s, l->t);
+      } else {
+        scheduler_activate(s, ci->super->drift);
+        scheduler_activate(s, cj->super->drift);
       }
+#else
+      scheduler_activate(s, ci->super->drift);
+      scheduler_activate(s, cj->super->drift);
 #endif
     }
   }
@@ -1072,7 +1086,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f;
-  float dx_max_sort = 0.f, dx2_max_sort = 0.f;
+  float dx_max_sort = c->dx_max_sort, dx2_max_sort = 0.f;
   float h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
@@ -1107,7 +1121,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
     }
 
     /* Loop over all the particles in the cell */
@@ -1125,19 +1139,19 @@ void cell_drift(struct cell *c, const struct engine *e) {
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
       const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
                              xp->x_diff_sort[1] * xp->x_diff_sort[1] +
                              xp->x_diff_sort[2] * xp->x_diff_sort[2];
-      dx2_max_sort = (dx2_max_sort > dx2_sort) ? dx2_max_sort : dx2_sort;
+      dx2_max_sort = max(dx2_max_sort, dx2_sort);
 
       /* Maximal smoothing length */
-      h_max = (h_max > p->h) ? h_max : p->h;
+      h_max = max(h_max, p->h);
     }
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = sqrt(dx2_max_sort);
+    dx_max_sort = max(dx_max_sort, sqrtf(dx2_max_sort));
 
   } else {
 
