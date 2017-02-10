@@ -311,7 +311,6 @@ void engine_redistribute(struct engine *e) {
         p->x[1] < c->loc[1] || p->x[1] > c->loc[1] + c->width[1] ||
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
-
   }
 #endif
 
