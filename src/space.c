@@ -248,7 +248,8 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  //const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -398,7 +399,7 @@ void space_regrid(struct space *s, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->super = c;
-          c->ti_old = ti_current;
+          c->ti_old = ti_old;
           lock_init(&c->lock);
         }
 
@@ -476,13 +477,18 @@ void space_rebuild(struct space *s, int verbose) {
   fflush(stdout);
 #endif
 
+  /* for(int i=0; i<num_files; ++i) { */
+  /*   fprintf(files_timestep[i], "REBUILD\n"); */
+  /* } */
+  
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  //const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -732,7 +738,7 @@ void space_rebuild(struct space *s, int verbose) {
   struct gpart *gfinger = s->gparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_current;
+    c->ti_old = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -1243,21 +1249,23 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
         }
       }
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Verify space_sort_struct. */
-      for (int k = i; k <= jj; k++)
-        if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (<=pivot).");
-        }
-      for (int k = jj + 1; k <= j; k++)
-        if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
-                  k, ind[k], pivot, i, j);
-          error("Partition failed (>pivot).");
-        }
-#endif
+      /* #ifdef SWIFT_DEBUG_CHECKS */
+      /*       /\* Verify space_sort_struct. *\/ */
+      /*       for (int k = i; k <= jj; k++) */
+      /*         if (ind[k] > pivot) { */
+      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
+       * j=%li.", */
+      /*                   k, ind[k], pivot, i, j); */
+      /*           error("Partition failed (<=pivot)."); */
+      /*         } */
+      /*       for (int k = jj + 1; k <= j; k++) */
+      /*         if (ind[k] <= pivot) { */
+      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
+       * j=%li.", */
+      /*                   k, ind[k], pivot, i, j); */
+      /*           error("Partition failed (>pivot)."); */
+      /*         } */
+      /* #endif */
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
@@ -1482,7 +1490,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct xpart *xparts = c->xparts;
@@ -1572,6 +1580,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+	ti_end_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -1591,24 +1600,30 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct part *p = &parts[k];
       struct xpart *xp = &xparts[k];
       const float h = p->h;
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, p->time_bin);
+      /* const integertime_t ti_end = */
+      /*     e->ti_current + get_integer_timestep(p->time_bin); */
+      const integertime_t ti_end = get_integer_time_end(e->ti_current, p->time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(e->ti_current, p->time_bin);
       xp->x_diff[0] = 0.f;
       xp->x_diff[1] = 0.f;
       xp->x_diff[2] = 0.f;
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
     for (int k = 0; k < gcount; k++) {
       struct gpart *gp = &gparts[k];
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, gp->time_bin);
+      /* const integertime_t ti_end = */
+      /*     e->ti_current + get_integer_timestep(gp->time_bin); */
+      const integertime_t ti_end = get_integer_time_end(e->ti_current, gp->time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(e->ti_current, gp->time_bin);
       gp->x_diff[0] = 0.f;
       gp->x_diff[1] = 0.f;
       gp->x_diff[2] = 0.f;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
   }
 
@@ -1616,6 +1631,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->h_max = h_max;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -1852,6 +1868,11 @@ void space_init_gparts(struct space *s) {
 #endif
 
     gravity_first_init_gpart(&gp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    gp->ti_drift = 0;
+    gp->ti_kick = 0;
+#endif
   }
 }
 

@@ -186,6 +186,13 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
+
+#ifdef ICHECK
+        if (gp->id_or_neg_offset == ICHECK) {
+          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+          printgParticle_single(gp);
+        }
+#endif
       }
     }
   }
@@ -523,6 +530,13 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
         /* Get ready for a density calculation */
         gravity_init_gpart(gp);
+
+#ifdef ICHECK
+        if (gp->id_or_neg_offset == ICHECK) {
+          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+          printgParticle_single(gp);
+        }
+#endif
       }
     }
   }
@@ -854,8 +868,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
-
+  if (!cell_is_starting(c, e)) return;
+  
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -870,22 +884,22 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
-      if (part_is_active(p, e)) {
+      if (part_is_starting(p, e)) {
 
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, p->time_bin);
+            get_integer_time_begin(ti_current + 1, p->time_bin);
 
-#ifdef SWIFT_DEBUG_CHECKS
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*         const integertime_t ti_end = */
+/*             get_integer_time_end(ti_current, p->time_bin); */
 
-        if (ti_end - ti_begin != ti_step)
-          error(
-              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-              "ti_step=%lld time_bin=%d ti_current=%lld",
-              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
-#endif
+/*         if (ti_end - ti_begin != ti_step) */
+/*           error( */
+/*               "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, " */
+/*               "ti_step=%lld time_bin=%d ti_current=%lld", */
+/*               ti_end, ti_begin, ti_step, p->time_bin, ti_current); */
+/* #endif */
 
         /* do the kick */
         kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, timeBase);
@@ -899,21 +913,30 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
+      if (gp->id_or_neg_offset > 0 && gpart_is_starting(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, gp->time_bin);
+            get_integer_time_begin(ti_current + 1, gp->time_bin);
 
-#ifdef SWIFT_DEBUG_CHECKS
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*         const integertime_t ti_end = */
+/*             get_integer_time_end(ti_current, gp->time_bin); */
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
-#endif
+/*         if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin"); */
+/* #endif */
 
         /* do the kick */
         kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
+	
+#ifdef ICHECK
+        if (gp->id_or_neg_offset == ICHECK) {
+          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+          printgParticle_single(gp);
+        }
+#endif	
+      } else {
+	//message("aaa");
       }
     }
   }
@@ -1001,6 +1024,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+
+#ifdef ICHECK
+        if (gp->id_or_neg_offset == ICHECK) {
+          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+          printgParticle_single(gp);
+        }
+#endif
       }
     }
   }
@@ -1028,7 +1058,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   int updated = 0, g_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -1066,6 +1096,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+
+	/* What is the next starting point for this cell ? */
+	ti_beg_max = max(ti_current, ti_beg_max);
       }
 
       else { /* part is inactive */
@@ -1076,6 +1109,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_end, ti_end_min);
         ti_end_max = max(ti_end, ti_end_max);
+
+	/* What is the next starting point for this cell ? */
+	ti_beg_max = max(ti_current, ti_beg_max);
       }
     }
 
@@ -1106,13 +1142,24 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           /* Update particle */
           gp->time_bin = get_time_bin(ti_new_step);
 
+#ifdef ICHECK
+          if (gp->id_or_neg_offset == ICHECK) {
+            message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+            printgParticle_single(gp);
+          }
+#endif
+
           /* Number of updated g-particles */
           g_updated++;
 
           /* What is the next sync-point ? */
           ti_end_min = min(ti_current + ti_new_step, ti_end_min);
           ti_end_max = max(ti_current + ti_new_step, ti_end_max);
-        } else { /* gpart is inactive */
+
+	  /* What is the next starting point for this cell ? */
+	  ti_beg_max = max(ti_current, ti_beg_max);
+
+	} else { /* gpart is inactive */
 
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
@@ -1120,6 +1167,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           /* What is the next sync-point ? */
           ti_end_min = min(ti_end, ti_end_min);
           ti_end_max = max(ti_end, ti_end_max);
+
+	  /* What is the next starting point for this cell ? */
+	  ti_beg_max = max(ti_current, ti_beg_max);
         }
       }
     }
@@ -1138,6 +1188,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         g_updated += cp->g_updated;
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
+	ti_beg_max = max(cp->ti_beg_max, ti_beg_max);
       }
   }
 
@@ -1146,6 +1197,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->g_updated = g_updated;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
 
   if (timer) TIMER_TOC(timer_timestep);
 }
@@ -1201,6 +1253,13 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gp->id_or_neg_offset > 0 && gpart_is_active(gp, e)) {
         gravity_end_force(gp, const_G);
       }
+
+#ifdef ICHECK
+      if (gp->id_or_neg_offset == ICHECK) {
+        message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
+        printgParticle_single(gp);
+      }
+#endif
     }
   }
 
@@ -1397,7 +1456,8 @@ void *runner_main(void *data) {
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_send && t->type != task_type_recv)
+            t->type != task_type_send && t->type != task_type_recv
+	    && t->type != task_type_kick1)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
@@ -1413,6 +1473,15 @@ void *runner_main(void *data) {
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
 
+        /* Special case for kick1 */
+        if (!cell_is_starting(ci, e) && t->type == task_type_kick1 &&
+            t->flags == 0)
+          error(
+              "Task (type='%s/%s') should have been skipped ti_current=%lld "
+              "c->ti_end_min=%lld t->flags=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
+              ci->ti_end_min, t->flags);
+	
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
 
@@ -1511,16 +1580,24 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-        case task_type_drift:
+        case task_type_drift: {
+          /* integertime_t ti_current = e->ti_current; */
+          /* integertime_t ti_old = ci->ti_old; */
+
+          /* e->ti_current = ci->ti_old + (ti_current - ti_old) / 2; */
+
+          /* runner_do_drift(r, ci, 1); */
+
+          /* e->ti_current = ti_current; */
           runner_do_drift(r, ci, 1);
-          break;
+        } break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_kick2:
           if (!(e->policy & engine_policy_cooling))
             runner_do_end_force(r, ci, 1);
-          runner_do_kick2(r, ci, 1);
+          if (e->ti_current > 0) runner_do_kick2(r, ci, 1);
           break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);

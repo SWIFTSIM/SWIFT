@@ -40,7 +40,21 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
     double timeBase) {
 
   /* Time interval for this half-kick */
-  const float dt = (ti_end - ti_start) * timeBase;
+  const double dt = (ti_end - ti_start) * timeBase;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->ti_kick != ti_start)
+    error(
+        "Particle has not been kicked to the current time gp->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld",
+        gp->ti_kick, ti_start, ti_end);
+  
+  gp->ti_kick = ti_end;
+#endif
+
+  
+  //message("dt= %e gp->ti_kick=%lld", dt, gp->ti_kick);
+  //fprintf(files_timestep[gp->id_or_neg_offset], "kick:  dt=%e\n", dt);
 
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
@@ -65,7 +79,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
     integertime_t ti_end, double timeBase) {
 
   /* Time interval for this half-kick */
-  const float dt = (ti_end - ti_start) * timeBase;
+  const double dt = (ti_end - ti_start) * timeBase;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)

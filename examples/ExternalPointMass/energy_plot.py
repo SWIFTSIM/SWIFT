@@ -91,6 +91,9 @@ for i in range(402):
     E_tot_snap[i] = E_kin_snap[i] + E_pot_snap[i]
     Lz_snap[i] = np.sum(Lz)
 
+print "Starting energy:", E_kin_stats[0], E_pot_stats[0], E_tot_stats[0]
+print "Ending   energy:", E_kin_stats[-1], E_pot_stats[-1], E_tot_stats[-1]
+    
 # Plot energy evolution
 figure()
 plot(time_stats, E_kin_stats, "r-", lw=0.5, label="Kinetic energy")

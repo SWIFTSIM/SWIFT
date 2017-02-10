@@ -74,7 +74,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  integertime_t ti_end_min, ti_end_max, ti_old;
+  integertime_t ti_end_min, ti_end_max, ti_beg_max, ti_old;
 
   /* Number of particles in this cell. */
   int count, gcount;
@@ -224,6 +224,9 @@ struct cell {
   /*! Maximum end of (integer) time step in this cell. */
   integertime_t ti_end_max;
 
+  /*! Maximum beginning of (integer) time step in this cell. */
+  integertime_t ti_beg_max;
+  
   /*! Last (integer) time the cell's content was drifted forward in time. */
   integertime_t ti_old;
 
