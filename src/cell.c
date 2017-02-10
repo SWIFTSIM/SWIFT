@@ -130,7 +130,6 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
-      temp->ti_old = c->ti_old;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s);
@@ -245,7 +244,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
+int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends) {
 
 #ifdef WITH_MPI
 
@@ -276,7 +275,7 @@ int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
  *
  * @return The number of cells created.
  */
-int cell_unpack_ti_ends(struct cell *c, int *ti_ends) {
+int cell_unpack_ti_ends(struct cell *c, integertime_t *ti_ends) {
 
 #ifdef WITH_MPI
 
@@ -908,6 +907,10 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
  */
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
+#ifdef WITH_MPI
+  struct engine *e = s->space->e;
+#endif
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -958,8 +961,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
         scheduler_activate(s, ci->recv_xv);
-        scheduler_activate(s, ci->recv_rho);
-        scheduler_activate(s, ci->recv_ti);
+        if (cell_is_active(ci, e)) {
+          scheduler_activate(s, ci->recv_rho);
+          scheduler_activate(s, ci->recv_ti);
+        }
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -974,24 +979,28 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         else
           error("Drift task missing !");
 
-        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(cj, e)) {
+          for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
 
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
         scheduler_activate(s, cj->recv_xv);
-        scheduler_activate(s, cj->recv_rho);
-        scheduler_activate(s, cj->recv_ti);
+        if (cell_is_active(cj, e)) {
+          scheduler_activate(s, cj->recv_rho);
+          scheduler_activate(s, cj->recv_ti);
+        }
 
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
@@ -1006,17 +1015,19 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         else
           error("Drift task missing !");
 
-        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        scheduler_activate(s, l->t);
+        if (cell_is_active(ci, e)) {
+          for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          scheduler_activate(s, l->t);
 
-        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        scheduler_activate(s, l->t);
+          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          scheduler_activate(s, l->t);
+        }
       } else {
         scheduler_activate(s, ci->super->drift);
         scheduler_activate(s, cj->super->drift);
@@ -1167,4 +1178,26 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
+}
+
+/**
+ * @brief Recursively checks that all particles in a cell have a time-step
+ */
+void cell_check_timesteps(struct cell *c) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (c->ti_end_min == 0 && c->nr_tasks > 0)
+    error("Cell without assigned time-step");
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+  } else {
+
+    if (c->nodeID == engine_rank)
+      for (int i = 0; i < c->count; ++i)
+        if (c->parts[i].time_bin == 0)
+          error("Particle without assigned time-bin");
+  }
+#endif
 }

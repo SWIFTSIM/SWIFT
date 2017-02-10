@@ -290,7 +290,8 @@ int main(int argc, char *argv[]) {
 
 /* Do we have debugging checks ? */
 #ifdef SWIFT_DEBUG_CHECKS
-  message("WARNING: Debugging checks activated. Code will be slower !");
+  if (myrank == 0)
+    message("WARNING: Debugging checks activated. Code will be slower !");
 #endif
 
   /* Do we choke on FP-exceptions ? */
@@ -359,7 +360,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
-  hydro_props_init(&hydro_properties, params);
+  if (with_hydro) hydro_props_init(&hydro_properties, params);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";

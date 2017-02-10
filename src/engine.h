@@ -225,7 +225,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct cooling_function_data *cooling,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners);
-void engine_prepare(struct engine *e, int drift_all, int deferskip);
+void engine_prepare(struct engine *e, int drift_all, int postrepart);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);

@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
+  time_end:   8.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
@@ -31,7 +31,7 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  Sphere.hdf5           # The file to read
+  file_name:  PointMass.hdf5        # The file to read
   shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    50.
   shift_z:    50.

@@ -22,11 +22,10 @@
 __attribute__((always_inline)) INLINE static void gravity_debug_particle(
     const struct gpart* p) {
   printf(
-      "x=[%.3e,%.3e,%.3e], "
-      "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "mass=%.3e time_bin=%d\n",
-      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
-      p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->time_bin);
+      "mass=%.3e epsilon=%.5e time_bin=%d\n"
+      "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], a=[%.5e,%.5e,%.5e]\n",
+      p->mass, p->epsilon, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
+      p->v_full[1], p->v_full[2], p->a_grav[0], p->a_grav[1], p->a_grav[2]);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_DEBUG_H */

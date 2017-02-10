@@ -336,9 +336,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct entry *sort;
-  const int count = c->count;
-  int off[8], inds[8], temp_i;
+  int j, k, count = c->count;
+  int i, ind, off[8], inds[8], temp_i, missing;
   float buff[8];
+  double px[3];
 
   TIMER_TIC
 
@@ -776,6 +777,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_unskip(struct cell *c, struct engine *e) {
 
+  /* Ignore empty cells. */
+  if (c->count == 0 && c->gcount == 0) return;
+
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -893,7 +897,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+        if (ti_end - ti_begin != ti_step)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
 #endif
 
         /* do the kick */
@@ -976,7 +984,10 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_begin + ti_step != ti_current)
-          error("Particle in wrong time-bin");
+          error(
+              "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
+              "time_bin=%d ti_current=%lld",
+              ti_begin, ti_step, p->time_bin, ti_current);
 #endif
 
         /* Finish the time-step with a second half-kick */
@@ -1072,7 +1083,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
-      } else { /* part is inactive */
+      }
+
+      else { /* part is inactive */
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
@@ -1212,20 +1225,18 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Construct the cell properties from the received particles
+ * @brief Construct the cell properties from the received #part.
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
+void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->parts;
-  const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
-  const size_t nr_gparts = c->gcount;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -1241,26 +1252,22 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
       const integertime_t ti_end =
           get_integer_time_end(ti_current, parts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
       h_max = max(h_max, parts[k].h);
-    }
-    for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, gparts[k].time_bin);
-      // if(ti_end < ti_current) error("Received invalid particle !");
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
-    }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].ti_drift != ti_current)
+        error("Received un-drifted particle !");
+#endif
+    }
   }
 
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_recv_cell(r, c->progeny[k], 0);
+        runner_do_recv_part(r, c->progeny[k], 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
         h_max = max(h_max, c->progeny[k]->h_max);
@@ -1268,13 +1275,84 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_end_min, ti_current);
+#endif
+
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
   c->ti_old = ti_current;
   c->h_max = h_max;
 
-  if (timer) TIMER_TOC(timer_dorecv_cell);
+  if (timer) TIMER_TOC(timer_dorecv_part);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Construct the cell properties from the received #gpart.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_MPI
+
+  const struct gpart *restrict gparts = c->gparts;
+  const size_t nr_gparts = c->gcount;
+  const integertime_t ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_gparts; k++) {
+      const integertime_t ti_end =
+          get_integer_time_end(ti_current, gparts[k].time_bin);
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+    }
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_recv_gpart(r, c->progeny[k], 0);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->ti_old = ti_current;
+
+  if (timer) TIMER_TOC(timer_dorecv_gpart);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1337,13 +1415,13 @@ void *runner_main(void *data) {
 
       } else if (cj == NULL) { /* self */
 
-        /* if (!cell_is_active(ci, e) && t->type != task_type_sort &&
+        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
             t->type != task_type_send && t->type != task_type_recv)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min); */
+              ci->ti_end_min);
 
         /* Special case for sorts */
         if (!cell_is_active(ci, e) && t->type == task_type_sort &&
@@ -1476,8 +1554,11 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend) {
             cell_unpack_ti_ends(ci, t->buff);
             free(t->buff);
-          } else {
-            runner_do_recv_cell(r, ci, 1);
+          } else if (t->subtype == task_subtype_xv ||
+                     t->subtype == task_subtype_rho) {
+            runner_do_recv_part(r, ci, 1);
+          } else if (t->subtype == task_subtype_gpart) {
+            runner_do_recv_gpart(r, ci, 1);
           }
           break;
 #endif

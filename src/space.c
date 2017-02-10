@@ -473,7 +473,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-  message("re)building space");
+  if (s->e->nodeID == 0 || verbose) message("re)building space");
   fflush(stdout);
 #endif
 
@@ -845,6 +845,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pos_x > dim_x || pos_y > dim_y || pos_z > pos_z || pos_x < 0. ||
+        pos_y < 0. || pos_z < 0.)
+      error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
+            pos_z);
+#endif
+
     /* Update the position */
     p->x[0] = pos_x;
     p->x[1] = pos_y;
@@ -1008,7 +1015,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
             ind[i - 1], i, ind[i], min, max);
-  message("Sorting succeeded.");
+  if (s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
 #endif
 
   /* Clean up. */
@@ -1186,7 +1193,7 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
             ind[i - 1], i, ind[i], min, max);
-  message("Sorting succeeded.");
+  if (s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
 #endif
 
   /* Clean up. */
@@ -2035,6 +2042,19 @@ void space_check_drift_point(struct space *s, integertime_t ti_current) {
 
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_drift_point, &ti_current);
+}
+
+/**
+ * @brief Checks that all particles and local cells have a non-zero time-step.
+ */
+void space_check_timesteps(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_check_timesteps(&s->cells_top[i]);
+  }
+
+#endif
 }
 
 /**

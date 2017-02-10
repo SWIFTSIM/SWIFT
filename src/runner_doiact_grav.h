@@ -25,8 +25,6 @@
 #include "gravity.h"
 #include "part.h"
 
-#define ICHECK -1000
-
 /**
  * @brief Compute the recursive upward sweep, i.e. construct the
  *        multipoles in a cell hierarchy.

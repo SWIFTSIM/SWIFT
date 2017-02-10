@@ -394,11 +394,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  const float entropy_change = p->entropy_dt * dt;
-  if (entropy_change > -0.5f * xp->entropy_full)
-    xp->entropy_full += entropy_change;
-  else
-    xp->entropy_full *= 0.5f;
+  if (dt > 0. && p->entropy_dt * dt < -0.5f * xp->entropy_full) {
+    p->entropy_dt = -0.5f * xp->entropy_full / dt;
+  }
+  xp->entropy_full += p->entropy_dt * dt;
 
   /* Compute the pressure */
   const float pressure =
