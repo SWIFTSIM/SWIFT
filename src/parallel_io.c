@@ -383,8 +383,8 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
-  int numParticles[NUM_PARTICLE_TYPES] = {0};
-  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
@@ -430,8 +430,8 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
   *flag_entropy = flag_entropy_temp[0];
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
-  readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
+  readAttribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
+  readAttribute(h_grp, "NumPart_Total_HighWord", LONGLONG, numParticles_highWord);
 
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
     N_total[ptype] = ((long long)numParticles[ptype]) +
@@ -441,10 +441,9 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
 
-  /* message("Found %d particles in a %speriodic box of size
-   * [%f %f %f].",  */
-  /* 	 N_total, (periodic ? "": "non-"), dim[0],
-   * dim[1], dim[2]); */
+  /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
+  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */
+  /* 	  dim[1], dim[2]); */
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
