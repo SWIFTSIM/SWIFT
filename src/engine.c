@@ -2612,8 +2612,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   engine_rebuild(e);
 
-  // engine_prepare(e);
-
   engine_marktasks(e);
 
   /* No time integration. We just want the density and ghosts */
@@ -2726,8 +2724,6 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched. */
   engine_prepare(e);
 
-  if (e->step == 1) e->forcerebuild = 1;
-
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2742,6 +2738,17 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
 
+
+  /* Collect the values of rebuild from all nodes. */
+#ifdef WITH_MPI
+  int buff = 0;
+  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
+      MPI_SUCCESS)
+    error("Failed to aggregate the rebuild flag across nodes.");
+  e->forcerebuild = buff;
+#endif
+
+  /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
@@ -2762,7 +2769,6 @@ void engine_step(struct engine *e) {
   message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
 	  e->forcerepart);
 
-  
   /* Write a snapshot ? */
   if (e->dump_snapshot) {
 
