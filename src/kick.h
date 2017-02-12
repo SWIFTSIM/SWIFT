@@ -52,9 +52,6 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   gp->ti_kick = ti_end;
 #endif
 
-  // message("dt= %e gp->ti_kick=%lld", dt, gp->ti_kick);
-  // fprintf(files_timestep[gp->id_or_neg_offset], "kick:  dt=%e\n", dt);
-
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
   gp->v_full[1] += gp->a_grav[1] * dt;

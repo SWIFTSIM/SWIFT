@@ -477,10 +477,6 @@ void space_rebuild(struct space *s, int verbose) {
   fflush(stdout);
 #endif
 
-  /* for(int i=0; i<num_files; ++i) { */
-  /*   fprintf(files_timestep[i], "REBUILD\n"); */
-  /* } */
-
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
@@ -1256,23 +1252,21 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* #ifdef SWIFT_DEBUG_CHECKS */
-      /*       /\* Verify space_sort_struct. *\/ */
-      /*       for (int k = i; k <= jj; k++) */
-      /*         if (ind[k] > pivot) { */
-      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
-       * j=%li.", */
-      /*                   k, ind[k], pivot, i, j); */
-      /*           error("Partition failed (<=pivot)."); */
-      /*         } */
-      /*       for (int k = jj + 1; k <= j; k++) */
-      /*         if (ind[k] <= pivot) { */
-      /*           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li,
-       * j=%li.", */
-      /*                   k, ind[k], pivot, i, j); */
-      /*           error("Partition failed (>pivot)."); */
-      /*         } */
-      /* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify space_sort_struct. */
+      for (int k = i; k <= jj; k++)
+        if (ind[k] > pivot) {
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
+          error("Partition failed (<=pivot).");
+        }
+      for (int k = jj + 1; k <= j; k++)
+        if (ind[k] <= pivot) {
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
+          error("Partition failed (>pivot).");
+        }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {

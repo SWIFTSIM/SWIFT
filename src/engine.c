@@ -71,8 +71,6 @@
 #include "units.h"
 #include "version.h"
 
-FILE *files_timestep[num_files];
-
 /* Particle cache size. */
 #define CACHE_SIZE 512
 
@@ -2608,7 +2606,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->nodeID == 0) message("Computing initial gas densities.\n\n\n");
+  if (e->nodeID == 0) message("Computing initial gas densities.");
 
   engine_rebuild(e);
 
@@ -2704,15 +2702,6 @@ void engine_step(struct engine *e) {
     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
             e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(e->file_timesteps);
-
-    /* for(int i=0; i<num_files; ++i) { */
-    /* fprintf(files_timestep[i], "  %6d %14e %14e %10zu %10zu %21.3f\n",
-     * e->step, */
-    /*         e->time, e->timeStep, e->updates, e->g_updates,
-     * e->wallclock_time); */
-    /* fflush(files_timestep[i]); */
-
-    /* } */
   }
 
   /* Do we need repartitioning ? */
@@ -2738,12 +2727,11 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
 
-
-  /* Collect the values of rebuild from all nodes. */
+/* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
   int buff = 0;
-  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
+  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   e->forcerebuild = buff;
 #endif
@@ -2767,7 +2755,7 @@ void engine_step(struct engine *e) {
   }
 
   message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
-	  e->forcerepart);
+          e->forcerepart);
 
   /* Write a snapshot ? */
   if (e->dump_snapshot) {
@@ -2781,8 +2769,6 @@ void engine_step(struct engine *e) {
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
-
-
 
   TIMER_TOC2(timer_step);
 
@@ -2825,10 +2811,6 @@ void engine_unskip(struct engine *e) {
 void engine_drift_all(struct engine *e) {
 
   message("drift all");
-
-  /* for(int i=0; i<num_files; ++i) { */
-  /*   fprintf(files_timestep[i], "drift all\n"); */
-  /* } */
 
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
@@ -3046,10 +3028,6 @@ void engine_dump_snapshot(struct engine *e) {
   clocks_gettime(&time1);
 
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
-
-  /* for(int i=0; i<num_files; ++i) { */
-  /*   fprintf(files_timestep[i], "dump\n"); */
-  /* } */
 
   message("dump");
 
@@ -3554,12 +3532,6 @@ void engine_init(struct engine *e, struct space *s,
   free(buf);
 #endif
 
-  for (int i = 0; i < num_files; ++i) {
-    char name[10];
-    sprintf(name, "dt_%d.txt", i);
-    files_timestep[i] = fopen(name, "w");
-  }
-
   /* Wait for the runner threads to be in place. */
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
@@ -3626,8 +3598,6 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  * @brief Frees up the memory allocated for this #engine
  */
 void engine_clean(struct engine *e) {
-
-  for (int i = 0; i < num_files; ++i) fclose(files_timestep[i]);
 
   free(e->snapshotUnits);
   free(e->links);

@@ -20,8 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-#include <stdio.h>
-
 /* SPH Viscosity constants. */
 #define const_viscosity_alpha 0.8f
 #define const_viscosity_alpha_min \
@@ -62,8 +60,5 @@
 //#define SOURCETERMS_SN_FEEDBACK
 
 #define ICHECK 0
-
-#define num_files 4
-extern FILE* files_timestep[num_files];
 
 #endif /* SWIFT_CONST_H */

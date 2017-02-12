@@ -42,5 +42,5 @@ PointMassPotential:
   position_y:      50.
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
-  timestep_mult:   0.001     # controls time step
+  timestep_mult:   0.03     # controls time step
 

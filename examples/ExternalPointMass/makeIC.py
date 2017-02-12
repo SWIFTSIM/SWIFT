@@ -96,10 +96,6 @@ grp1 = file.create_group("/PartType1")
 
 #generate particle positions
 radius = max_radius * (numpy.random.rand(numPart))**(1./3.)
-#radius =  numpy.zeros(3)
-#radius[0] = 8.
-#radius[1] = 10.
-#radius[2] = 20.
 print '---------------------'
 print 'Radius: minimum = ',min(radius)
 print 'Radius: maximum = ',max(radius)

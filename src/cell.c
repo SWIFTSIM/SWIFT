@@ -60,8 +60,6 @@
 #include "space.h"
 #include "timers.h"
 
-int counter = 0;
-
 /* Global variables. */
 int cell_next_tag = 0;
 
@@ -913,7 +911,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   int rebuild = 0;
-  
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -1078,10 +1076,6 @@ void cell_drift(struct cell *c, const struct engine *e) {
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
-  /* if (c->gcount > 0) */
-  /*   message("dt=%e, ti_old=%lld ti_current=%lld", dt, c->ti_old,
-   * e->ti_current); */
-
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
 
@@ -1113,8 +1107,6 @@ void cell_drift(struct cell *c, const struct engine *e) {
       if (gp->id_or_neg_offset == ICHECK) {
         message("--- ti_current=%lld time=%e dt=%e---", e->ti_current, e->time,
                 dt);
-        counter++;
-        message("Drift counter: %d", counter);
         printgParticle_single(gp);
       }
 #endif

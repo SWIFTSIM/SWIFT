@@ -783,8 +783,6 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
-  //  message("c->depth=%d c->split=%d c->count=%.5d c->ti_end_min=%lld c->ti_end_max=%lld c->ti_beg_max=%lld ti_current=%lld", c->depth, c->split, c->count, c->ti_end_min, c->ti_end_max, c->ti_beg_max ,e->ti_current);
-  
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
