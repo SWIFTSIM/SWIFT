@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
     double timeBase) {
 
   /* Time interval for this half-kick */
-  const double dt = (ti_end - ti_start) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_kick != ti_start)
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
     integertime_t ti_end, double timeBase) {
 
   /* Time interval for this half-kick */
-  const double dt = (ti_end - ti_start) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)

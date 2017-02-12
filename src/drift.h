@@ -39,7 +39,7 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, double dt, double timeBase, integertime_t ti_old,
+    struct gpart *restrict gp, float dt, double timeBase, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -52,9 +52,6 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 
   gp->ti_drift = ti_current;
 #endif
-
-  // message("dt= %e", dt);
-  // fprintf(files_timestep[gp->id_or_neg_offset], "drift: dt=%e\n", dt);
 
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
@@ -78,7 +75,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part *restrict p, struct xpart *restrict xp, double dt,
+    struct part *restrict p, struct xpart *restrict xp, float dt,
     double timeBase, integertime_t ti_old, integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS

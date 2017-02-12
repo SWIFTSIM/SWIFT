@@ -64,33 +64,27 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  const double G_newton = phys_const->const_newton_G;
-  const double dx = g->x[0] - potential->x;
-  const double dy = g->x[1] - potential->y;
-  const double dz = g->x[2] - potential->z;
-  /* const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz); */
-  /* const float rinv2 = rinv * rinv; */
-  /* const float rinv3 = rinv2 * rinv; */
-  /* const float drdv = (g->x[0] - potential->x) * (g->v_full[0]) + */
-  /*                    (g->x[1] - potential->y) * (g->v_full[1]) + */
-  /*                    (g->x[2] - potential->z) * (g->v_full[2]); */
-  /* const float dota_x = G_newton * potential->mass * rinv3 * */
-  /*                      (-g->v_full[0] + 3.f * rinv2 * drdv * dx); */
-  /* const float dota_y = G_newton * potential->mass * rinv3 * */
-  /*                      (-g->v_full[1] + 3.f * rinv2 * drdv * dy); */
-  /* const float dota_z = G_newton * potential->mass * rinv3 * */
-  /*                      (-g->v_full[2] + 3.f * rinv2 * drdv * dz); */
-  /* const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
-   */
-  /* const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1]
-   */
-  /*   + g->a_grav[2] * g->a_grav[2]; */
+  const float G_newton = phys_const->const_newton_G;
+  const float dx = g->x[0] - potential->x;
+  const float dy = g->x[1] - potential->y;
+  const float dz = g->x[2] - potential->z;
+  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
+  const float rinv2 = rinv * rinv;
+  const float rinv3 = rinv2 * rinv;
+  const float drdv = (g->x[0] - potential->x) * (g->v_full[0]) +
+                     (g->x[1] - potential->y) * (g->v_full[1]) +
+                     (g->x[2] - potential->z) * (g->v_full[2]);
+  const float dota_x = G_newton * potential->mass * rinv3 *
+                       (-g->v_full[0] + 3.f * rinv2 * drdv * dx);
+  const float dota_y = G_newton * potential->mass * rinv3 *
+                       (-g->v_full[1] + 3.f * rinv2 * drdv * dy);
+  const float dota_z = G_newton * potential->mass * rinv3 *
+                       (-g->v_full[2] + 3.f * rinv2 * drdv * dz);
+  const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
+  const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
+                    g->a_grav[2] * g->a_grav[2];
 
-  /* return potential->timestep_mult * sqrtf(a_2 / dota_2); */
-
-  const double r = sqrt(dx * dx + dy * dy + dz * dz);
-  return potential->timestep_mult *
-         sqrt(r * r * r / (G_newton * potential->mass));
+  return potential->timestep_mult * sqrtf(a_2 / dota_2);
 }
 
 /**
@@ -111,11 +105,11 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
-  const double dx = g->x[0] - potential->x;
-  const double dy = g->x[1] - potential->y;
-  const double dz = g->x[2] - potential->z;
-  const double rinv = 1. / sqrt(dx * dx + dy * dy + dz * dz);
-  const double rinv3 = rinv * rinv * rinv;
+  const float dx = g->x[0] - potential->x;
+  const float dy = g->x[1] - potential->y;
+  const float dz = g->x[2] - potential->z;
+  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
+  const float rinv3 = rinv * rinv * rinv;
 
   g->a_grav[0] += -potential->mass * dx * rinv3;
   g->a_grav[1] += -potential->mass * dy * rinv3;
