@@ -600,10 +600,16 @@ void engine_repartition(struct engine *e) {
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
   ticks tic = getticks();
-
+  
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current);
+  /* Be verbose about this. */
+  if (e->nodeID == 0 || e->verbose) message("repartitionning space");
+  fflush(stdout);
+
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_old);
 #endif
 
   /* Clear the repartition flag. */
@@ -2257,10 +2263,15 @@ void engine_rebuild(struct engine *e) {
 
   const ticks tic = getticks();
 
-  message("REBUILD !!!!");
-
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_old);
+#endif
 
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
@@ -2608,9 +2619,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Computing initial gas densities.");
 
+  /* Construct all cells and tasks to start everything */
   engine_rebuild(e);
-
-  engine_marktasks(e);
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
@@ -2629,7 +2639,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
     /* Apply the conversion */
-    // space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
     for (size_t i = 0; i < s->nr_parts; ++i)
       hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
 
@@ -2644,13 +2653,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
+  /* Prepare all the tasks again for a new round */
   engine_marktasks(e);
 
+  /* No drift this time */
   engine_skip_drift(e);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+  /* Run the 0th time-step */
   engine_launch(e, e->nr_threads);
 
   /* Recover the (integer) end of the next time-step */
@@ -2663,7 +2675,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Ready to go */
-  e->step = 0;
+  e->step = -1;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
@@ -2683,6 +2695,9 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time1);
 
   e->tic_step = getticks();
+
+  message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
+          e->forcerepart);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -2740,19 +2755,11 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
+
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if (e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE) {
-
+  if (e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE)
     engine_drift_all(e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that all cells have been drifted to the current time.
-     * That can include cells that have not
-     * previously been active on this rank. */
-    space_check_drift_point(e->s, e->ti_current);
-#endif
-  }
 
   message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
           e->forcerepart);
@@ -3026,6 +3033,13 @@ void engine_dump_snapshot(struct engine *e) {
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_current);
+#endif
 
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 
