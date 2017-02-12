@@ -130,6 +130,12 @@ struct engine {
   /* Minimal ti_end for the next time-step */
   integertime_t ti_end_min;
 
+  /* Maximal ti_end for the next time-step */
+  integertime_t ti_end_max;
+
+  /* Maximal ti_beg for the next time-step */
+  integertime_t ti_beg_max;
+
   /* Number of particles updated */
   size_t updates, g_updates;
 
@@ -182,7 +188,7 @@ struct engine {
 
   /* Need to dump a snapshot ? */
   int dump_snapshot;
-  
+
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 

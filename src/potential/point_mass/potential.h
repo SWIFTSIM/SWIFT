@@ -80,14 +80,17 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   /*                      (-g->v_full[1] + 3.f * rinv2 * drdv * dy); */
   /* const float dota_z = G_newton * potential->mass * rinv3 * */
   /*                      (-g->v_full[2] + 3.f * rinv2 * drdv * dz); */
-  /* const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z; */
-  /* const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1]  */
+  /* const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
+   */
+  /* const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1]
+   */
   /*   + g->a_grav[2] * g->a_grav[2]; */
 
   /* return potential->timestep_mult * sqrtf(a_2 / dota_2); */
 
   const double r = sqrt(dx * dx + dy * dy + dz * dz);
-  return potential->timestep_mult * sqrt(r * r * r / (G_newton * potential->mass));
+  return potential->timestep_mult *
+         sqrt(r * r * r / (G_newton * potential->mass));
 }
 
 /**

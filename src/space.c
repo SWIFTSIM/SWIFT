@@ -248,7 +248,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  //const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  // const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the cells and get the current h_max. */
@@ -480,14 +480,14 @@ void space_rebuild(struct space *s, int verbose) {
   /* for(int i=0; i<num_files; ++i) { */
   /*   fprintf(files_timestep[i], "REBUILD\n"); */
   /* } */
-  
+
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells_top = s->cells_top;
-  //const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  // const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the particles and get their cell index. Allocates
@@ -1587,7 +1587,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-	ti_end_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
+        ti_beg_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -1607,10 +1607,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct part *p = &parts[k];
       struct xpart *xp = &xparts[k];
       const float h = p->h;
+      const integertime_t ti_end =
+          get_integer_time_end(e->ti_current, p->time_bin);
       /* const integertime_t ti_end = */
-      /*     e->ti_current + get_integer_timestep(p->time_bin); */
-      const integertime_t ti_end = get_integer_time_end(e->ti_current, p->time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(e->ti_current, p->time_bin);
+      /*     get_integer_time_end(e->ti_current, p->time_bin); */
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, p->time_bin);
       xp->x_diff[0] = 0.f;
       xp->x_diff[1] = 0.f;
       xp->x_diff[2] = 0.f;
@@ -1621,10 +1623,12 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
     for (int k = 0; k < gcount; k++) {
       struct gpart *gp = &gparts[k];
+      const integertime_t ti_end =
+          get_integer_time_end(e->ti_current, gp->time_bin);
       /* const integertime_t ti_end = */
-      /*     e->ti_current + get_integer_timestep(gp->time_bin); */
-      const integertime_t ti_end = get_integer_time_end(e->ti_current, gp->time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(e->ti_current, gp->time_bin);
+      /*     get_integer_time_end(e->ti_current, gp->time_bin); */
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, gp->time_bin);
       gp->x_diff[0] = 0.f;
       gp->x_diff[1] = 0.f;
       gp->x_diff[2] = 0.f;

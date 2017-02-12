@@ -53,8 +53,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->ti_drift = ti_current;
 #endif
 
-  //message("dt= %e", dt);
-  //fprintf(files_timestep[gp->id_or_neg_offset], "drift: dt=%e\n", dt);
+  // message("dt= %e", dt);
+  // fprintf(files_timestep[gp->id_or_neg_offset], "drift: dt=%e\n", dt);
 
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;

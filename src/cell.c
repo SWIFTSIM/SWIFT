@@ -912,6 +912,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
 #endif
 
+  //message("unskip! c=%p c->kick1=%p c->drift=%p", c, c->kick1, c->drift);
+  //task_print(c->drift);
+
+  int ret = 0;
+  
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -937,7 +942,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
-        return 1;
+        ret = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv flags. */
@@ -1034,7 +1039,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
-  return 0;
+  //task_print(c->drift);
+  
+  return ret;
 }
 
 /**
@@ -1077,7 +1084,8 @@ void cell_drift(struct cell *c, const struct engine *e) {
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   /* if (c->gcount > 0) */
-  /*   message("dt=%e, ti_old=%lld ti_current=%lld", dt, c->ti_old, e->ti_current); */
+  /*   message("dt=%e, ti_old=%lld ti_current=%lld", dt, c->ti_old,
+   * e->ti_current); */
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");

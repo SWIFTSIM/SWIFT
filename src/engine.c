@@ -71,7 +71,7 @@
 #include "units.h"
 #include "version.h"
 
-FILE* files_timestep[num_files];
+FILE *files_timestep[num_files];
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -2162,10 +2162,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Kick/Drift/Init? */
-    else if (t->type == task_type_kick1 || t->type == task_type_kick2 || t->type == task_type_drift || t->type == task_type_init) {
+    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+             t->type == task_type_drift || t->type == task_type_init) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
-    
+
     /* Time-step? */
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
@@ -2191,6 +2192,8 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;
+
+  message("marktasks");
 
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
@@ -2280,7 +2283,7 @@ void engine_rebuild(struct engine *e) {
     error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
-  //if (e->verbose) engine_print_task_counts(e);
+  // if (e->verbose) engine_print_task_counts(e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2317,60 +2320,6 @@ void engine_prepare(struct engine *e) {
     message("took %.3f %s (including unskip and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
-
-/* void engine_prepare(struct engine *e, int drift_all, int postrepart) { */
-
-/*   TIMER_TIC; */
-
-/*   // message("e->forcerebuild: %d", e->forcerebuild); */
-
-/*   /\* Unskip active tasks and check for rebuild *\/ */
-/*   if (!postrepart) engine_unskip(e); */
-
-/*   /\* Run through the tasks and mark as skip or not. *\/ */
-/*   int rebuild = e->forcerebuild; */
-
-/* // message("e->forcerebuild: %d", e->forcerebuild); */
-
-/* /\* Collect the values of rebuild from all nodes. *\/ */
-/* #ifdef WITH_MPI */
-/*   int buff = 0; */
-/*   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
- */
-/*       MPI_SUCCESS) */
-/*     error("Failed to aggregate the rebuild flag across nodes."); */
-/*   rebuild = buff; */
-/* #endif */
-
-/*   /\* And rebuild if necessary. *\/ */
-/*   if (rebuild) { */
-
-/*     /\* Drift all particles to the current time if needed. *\/ */
-/*     if (drift_all) engine_drift_all(e); */
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*     /\* Check that all cells have been drifted to the current time, unless */
-/*      * we have just repartitioned, that can include cells that have not */
-/*      * previously been active on this rank. *\/ */
-/*     if (!postrepart) space_check_drift_point(e->s, e->ti_current); */
-/* #endif */
-
-/*     engine_rebuild(e); */
-/*   } */
-/*   if (postrepart) engine_unskip(e); */
-
-/*   /\* Re-rank the tasks every now and then. *\/ */
-/*   if (e->tasks_age % engine_tasksreweight == 1) { */
-/*     scheduler_reweight(&e->sched, e->verbose); */
-/*   } */
-/*   e->tasks_age += 1; */
-
-/*   TIMER_TOC(timer_prepare); */
-
-/*   if (e->verbose) */
-/*     message("took %.3f %s (including drift all, rebuild and reweight).", */
-/*             clocks_from_ticks(getticks() - tic), clocks_getunit()); */
-/* } */
 
 /**
  * @brief Implements a barrier for the #runner threads.
@@ -2468,7 +2417,7 @@ void engine_collect_timestep(struct engine *e) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0;
-  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
   const struct space *s = e->s;
 
   /* Collect the cell data. */
@@ -2481,6 +2430,8 @@ void engine_collect_timestep(struct engine *e) {
 
       /* And aggregate */
       ti_end_min = min(ti_end_min, c->ti_end_min);
+      ti_end_max = max(ti_end_max, c->ti_end_max);
+      ti_beg_max = max(ti_beg_max, c->ti_beg_max);
       updates += c->updated;
       g_updates += c->g_updated;
 
@@ -2514,6 +2465,8 @@ void engine_collect_timestep(struct engine *e) {
 #endif
 
   e->ti_end_min = ti_end_min;
+  e->ti_end_max = ti_end_max;
+  e->ti_beg_max = ti_beg_max;
   e->updates = updates;
   e->g_updates = g_updates;
 
@@ -2668,7 +2621,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
-  
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
@@ -2701,7 +2654,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
-  
+
   engine_launch(e, e->nr_threads);
 
   /* Recover the (integer) end of the next time-step */
@@ -2715,7 +2668,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Ready to go */
   e->step = 0;
-  e->forcerebuild = 0;
+  e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
@@ -2746,8 +2699,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    printf("  %6d %lld %14e %14e %10zu %10zu %21.3f\n", e->step, e->ti_current,
+           e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
@@ -2755,24 +2708,26 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
 
     /* for(int i=0; i<num_files; ++i) { */
-    /* fprintf(files_timestep[i], "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, */
-    /*         e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time); */
+    /* fprintf(files_timestep[i], "  %6d %14e %14e %10zu %10zu %21.3f\n",
+     * e->step, */
+    /*         e->time, e->timeStep, e->updates, e->g_updates,
+     * e->wallclock_time); */
     /* fflush(files_timestep[i]); */
 
     /* } */
   }
 
   /* Do we need repartitioning ? */
-  if(e->forcerepart) engine_repartition(e);
+  if (e->forcerepart != REPART_NONE) engine_repartition(e);
 
   /* Do we need rebuilding ? */
-  if(e->forcerebuild) engine_rebuild(e);
-  
+  if (e->forcerebuild) engine_rebuild(e);
+
   /* Prepare the tasks to be launched. */
   engine_prepare(e);
 
-  if (e->step % 99 == 0) e->forcerebuild = 1;
-  
+  if (e->step == 1) e->forcerebuild = 1;
+
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2792,8 +2747,7 @@ void engine_step(struct engine *e) {
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if(e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE) {
-    message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild, e->forcerepart);
+  if (e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE) {
 
     engine_drift_all(e);
 
@@ -2803,11 +2757,14 @@ void engine_step(struct engine *e) {
      * previously been active on this rank. */
     space_check_drift_point(e->s, e->ti_current);
 #endif
-
   }
 
+  message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
+	  e->forcerepart);
+
+  
   /* Write a snapshot ? */
-  if(e->dump_snapshot) {
+  if (e->dump_snapshot) {
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2815,49 +2772,11 @@ void engine_step(struct engine *e) {
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
   }
-  
+
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
-  
-/*   /\* Check for snapshot dump *\/ */
-/*   while  { */
-
-/*     /\* Drift everybody (i.e. what has not yet been drifted) *\/ */
-/*     /\* to the current time *\/ */
-/*     engine_drift_all(e); */
-
-/*     /\* Dump... *\/ */
-/*     engine_dump_snapshot(e); */
-
-/*     /\* ... and find the next output time *\/ */
-/*     engine_compute_next_snapshot_time(e); */
-/*   } */
 
 
-/*   /\*  Repartition if necessary *\/ */
-/*   if (e->forcerepart != REPART_NONE) { */
-
-/*     /\* Drift all particles to the current time if needed. *\/ */
-/*     engine_drift_all(e); */
-
-/*     engine_repartition(e); */
-/*   } */
-
-/*   /\* Rebuild if necessary *\/ */
-/*   if (e->forcerebuild) { */
-
-/*     /\* Drift all particles to the current time if needed. *\/ */
-/*     engine_drift_all(e); */
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*     /\* Check that all cells have been drifted to the current time. */
-/*      * That can include cells that have not */
-/*      * previously been active on this rank. *\/ */
-/*     space_check_drift_point(e->s, e->ti_current); */
-/* #endif */
-
-/*     engine_rebuild(e); */
-/*   } */
 
   TIMER_TOC2(timer_step);
 
@@ -2866,91 +2785,6 @@ void engine_step(struct engine *e) {
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
   e->toc_step = getticks();
 }
-
-/* void engine_step(struct engine *e) { */
-
-/*   TIMER_TIC2; */
-
-/*   struct clocks_time time1, time2; */
-/*   clocks_gettime(&time1); */
-
-/*   e->tic_step = getticks(); */
-
-/*   /\* Recover the (integer) end of the next time-step *\/ */
-/*   engine_collect_timestep(e); */
-
-/*   /\* Move forward in time *\/ */
-/*   e->ti_old = e->ti_current; */
-/*   e->ti_current = e->ti_end_min; */
-/*   e->step += 1; */
-/*   e->time = e->ti_current * e->timeBase + e->timeBegin; */
-/*   e->timeOld = e->ti_old * e->timeBase + e->timeBegin; */
-/*   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase; */
-/*   // if(e->step % 100 == 0) e->forcerebuild = 1; */
-
-/*   if (e->nodeID == 0) { */
-
-/*     /\* Print some information to the screen *\/ */
-/*     printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time, */
-/*            e->timeStep, e->updates, e->g_updates, e->wallclock_time); */
-/*     fflush(stdout); */
-
-/*     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n",
- * e->step, */
-/*             e->time, e->timeStep, e->updates, e->g_updates,
- * e->wallclock_time); */
-/*     fflush(e->file_timesteps); */
-/*   } */
-
-/*   /\* Drift only the necessary particles, that means all particles */
-/*    * if we are about to repartition. *\/ */
-/*   const int repart = (e->forcerepart != REPART_NONE); */
-/*   // message("repart: %d", repart); */
-/*   const int drift_all = (e->policy & engine_policy_drift_all); */
-/*   // message("drift_all: %d", drift_all); */
-/*   if (repart || drift_all) engine_drift_all(e); */
-
-/*   /\* Re-distribute the particles amongst the nodes? *\/ */
-/*   if (repart) engine_repartition(e); */
-
-/*   /\* Prepare the space. *\/ */
-/*   engine_prepare(e, !(drift_all || repart), repart); */
-
-/*   if (e->verbose) engine_print_task_counts(e); */
-
-/*   /\* Save some statistics *\/ */
-/*   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) { */
-/*     engine_print_stats(e); */
-/*     e->timeLastStatistics += e->deltaTimeStatistics; */
-/*   } */
-
-/*   /\* Send off the runners. *\/ */
-/*   TIMER_TIC; */
-/*   engine_launch(e, e->nr_threads); */
-/*   TIMER_TOC(timer_runners); */
-
-/*   /\* Check for output *\/ */
-/*   while (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) { */
-
-/*     /\* Drift everybody (i.e. what has not yet been drifted) to the snapshot
- */
-/*      * position *\/ */
-/*     engine_drift_all(e); */
-
-/*     /\* Dump... *\/ */
-/*     engine_dump_snapshot(e); */
-
-/*     /\* ... and find the next output time *\/ */
-/*     engine_compute_next_snapshot_time(e); */
-/*   } */
-
-/*   TIMER_TOC2(timer_step); */
-
-/*   clocks_gettime(&time2); */
-
-/*   e->wallclock_time = (float)clocks_diff(&time1, &time2); */
-/*   e->toc_step = getticks(); */
-/* } */
 
 /**
  * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
@@ -2965,6 +2799,8 @@ int engine_is_done(struct engine *e) {
  * @param e The #engine.
  */
 void engine_unskip(struct engine *e) {
+
+  message("unskip");
 
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
@@ -2988,7 +2824,6 @@ void engine_drift_all(struct engine *e) {
   /*   fprintf(files_timestep[i], "drift all\n"); */
   /* } */
 
-  
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
@@ -3210,7 +3045,6 @@ void engine_dump_snapshot(struct engine *e) {
   /*   fprintf(files_timestep[i], "dump\n"); */
   /* } */
 
-  
   message("dump");
 
 /* Dump... */
@@ -3230,7 +3064,7 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
   e->dump_snapshot = 0;
-  
+
   clocks_gettime(&time2);
   if (e->verbose)
     message("writing particle properties took %.3f %s.",
@@ -3714,12 +3548,12 @@ void engine_init(struct engine *e, struct space *s,
   free(buf);
 #endif
 
-  for(int i=0; i<num_files; ++i) {
+  for (int i = 0; i < num_files; ++i) {
     char name[10];
     sprintf(name, "dt_%d.txt", i);
     files_timestep[i] = fopen(name, "w");
   }
-  
+
   /* Wait for the runner threads to be in place. */
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
@@ -3787,9 +3621,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_clean(struct engine *e) {
 
-  for(int i=0; i<num_files; ++i)
-    fclose(files_timestep[i]);
-  
+  for (int i = 0; i < num_files; ++i) fclose(files_timestep[i]);
+
   free(e->snapshotUnits);
   free(e->links);
   scheduler_clean(&e->sched);

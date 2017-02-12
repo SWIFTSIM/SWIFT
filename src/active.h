@@ -143,7 +143,6 @@ __attribute__((always_inline)) INLINE static int gpart_is_active(
   return (ti_end == ti_current);
 }
 
-
 /* Are cells / particles active for kick1 tasks ? */
 
 /**
@@ -179,7 +178,8 @@ __attribute__((always_inline)) INLINE static int part_is_starting(
     const struct part *p, const struct engine *e) {
 
   const integertime_t ti_current = e->ti_current;
-  const integertime_t ti_beg = get_integer_time_begin(ti_current+1, p->time_bin);
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current + 1, p->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_beg > ti_current)
@@ -203,7 +203,8 @@ __attribute__((always_inline)) INLINE static int gpart_is_starting(
     const struct gpart *gp, const struct engine *e) {
 
   const integertime_t ti_current = e->ti_current;
-  const integertime_t ti_beg = get_integer_time_begin(ti_current+1, gp->time_bin);
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current + 1, gp->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_beg > ti_current)
@@ -215,6 +216,5 @@ __attribute__((always_inline)) INLINE static int gpart_is_starting(
 
   return (ti_beg == ti_current);
 }
-
 
 #endif /* SWIFT_ACTIVE_H */

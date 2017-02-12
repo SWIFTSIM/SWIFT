@@ -226,7 +226,7 @@ struct cell {
 
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
-  
+
   /*! Last (integer) time the cell's content was drifted forward in time. */
   integertime_t ti_old;
 

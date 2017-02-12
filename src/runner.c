@@ -783,6 +783,8 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
+  //  message("c->depth=%d c->split=%d c->count=%.5d c->ti_end_min=%lld c->ti_end_max=%lld c->ti_beg_max=%lld ti_current=%lld", c->depth, c->split, c->count, c->ti_end_min, c->ti_end_max, c->ti_beg_max ,e->ti_current);
+  
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -869,7 +871,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_starting(c, e)) return;
-  
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -890,16 +892,16 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current + 1, p->time_bin);
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*         const integertime_t ti_end = */
-/*             get_integer_time_end(ti_current, p->time_bin); */
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current + 1, p->time_bin);
 
-/*         if (ti_end - ti_begin != ti_step) */
-/*           error( */
-/*               "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, " */
-/*               "ti_step=%lld time_bin=%d ti_current=%lld", */
-/*               ti_end, ti_begin, ti_step, p->time_bin, ti_current); */
-/* #endif */
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
+#endif
 
         /* do the kick */
         kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, timeBase);
@@ -919,24 +921,26 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current + 1, gp->time_bin);
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*         const integertime_t ti_end = */
-/*             get_integer_time_end(ti_current, gp->time_bin); */
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current + 1, gp->time_bin);
 
-/*         if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin"); */
-/* #endif */
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, gp->time_bin, ti_current);
+#endif
 
         /* do the kick */
         kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
-	
+
 #ifdef ICHECK
         if (gp->id_or_neg_offset == ICHECK) {
           message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
           printgParticle_single(gp);
         }
-#endif	
-      } else {
-	//message("aaa");
+#endif
       }
     }
   }
@@ -1097,8 +1101,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
 
-	/* What is the next starting point for this cell ? */
-	ti_beg_max = max(ti_current, ti_beg_max);
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_current, ti_beg_max);
       }
 
       else { /* part is inactive */
@@ -1110,8 +1114,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_end_min = min(ti_end, ti_end_min);
         ti_end_max = max(ti_end, ti_end_max);
 
-	/* What is the next starting point for this cell ? */
-	ti_beg_max = max(ti_current, ti_beg_max);
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, p->time_bin);
+
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_beg, ti_beg_max);
       }
     }
 
@@ -1156,10 +1163,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           ti_end_min = min(ti_current + ti_new_step, ti_end_min);
           ti_end_max = max(ti_current + ti_new_step, ti_end_max);
 
-	  /* What is the next starting point for this cell ? */
-	  ti_beg_max = max(ti_current, ti_beg_max);
+          /* What is the next starting point for this cell ? */
+          ti_beg_max = max(ti_current, ti_beg_max);
 
-	} else { /* gpart is inactive */
+        } else { /* gpart is inactive */
 
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
@@ -1168,8 +1175,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           ti_end_min = min(ti_end, ti_end_min);
           ti_end_max = max(ti_end, ti_end_max);
 
-	  /* What is the next starting point for this cell ? */
-	  ti_beg_max = max(ti_current, ti_beg_max);
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, gp->time_bin);
+
+          /* What is the next starting point for this cell ? */
+          ti_beg_max = max(ti_beg, ti_beg_max);
         }
       }
     }
@@ -1188,7 +1198,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         g_updated += cp->g_updated;
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
-	ti_beg_max = max(cp->ti_beg_max, ti_beg_max);
+        ti_beg_max = max(cp->ti_beg_max, ti_beg_max);
       }
   }
 
@@ -1456,8 +1466,8 @@ void *runner_main(void *data) {
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_send && t->type != task_type_recv
-	    && t->type != task_type_kick1)
+            t->type != task_type_send && t->type != task_type_recv &&
+            t->type != task_type_kick1)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
@@ -1481,7 +1491,7 @@ void *runner_main(void *data) {
               "c->ti_end_min=%lld t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min, t->flags);
-	
+
       } else { /* pair */
         if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
 
@@ -1580,24 +1590,16 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-        case task_type_drift: {
-          /* integertime_t ti_current = e->ti_current; */
-          /* integertime_t ti_old = ci->ti_old; */
-
-          /* e->ti_current = ci->ti_old + (ti_current - ti_old) / 2; */
-
-          /* runner_do_drift(r, ci, 1); */
-
-          /* e->ti_current = ti_current; */
+        case task_type_drift:
           runner_do_drift(r, ci, 1);
-        } break;
+          break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_kick2:
           if (!(e->policy & engine_policy_cooling))
             runner_do_end_force(r, ci, 1);
-          if (e->ti_current > 0) runner_do_kick2(r, ci, 1);
+          runner_do_kick2(r, ci, 1);
           break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
