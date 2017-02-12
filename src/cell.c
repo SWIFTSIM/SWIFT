@@ -758,11 +758,11 @@ void cell_clean_links(struct cell *c, void *data) {
  */
 void cell_check_drift_point(struct cell *c, void *data) {
 
-  integertime_t ti_current = *(integertime_t *)data;
+  const integertime_t ti_drift = *(integertime_t *)data;
 
-  if (c->ti_old != ti_current && c->nodeID == engine_rank)
-    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_current=%lld",
-          c->ti_old, ti_current);
+  if (c->ti_old != ti_drift && c->nodeID == engine_rank)
+    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_drift=%lld",
+          c->ti_old, ti_drift);
 }
 
 /**
