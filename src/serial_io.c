@@ -434,8 +434,8 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now*/
-  int numParticles[NUM_PARTICLE_TYPES] = {0};
-  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
@@ -482,8 +482,8 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
     readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
     *flag_entropy = flag_entropy_temp[0];
     readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
-    readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
-    readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
+    readAttribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
+    readAttribute(h_grp, "NumPart_Total_HighWord", LONGLONG, numParticles_highWord);
 
     for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
       N_total[ptype] = ((long long)numParticles[ptype]) +
