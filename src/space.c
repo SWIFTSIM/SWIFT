@@ -1427,7 +1427,7 @@ void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
             ind[i - 1], i, ind[i], min, max);
-  if (s->e->nodeID == 0 || verbose)  message("Sorting succeeded.");
+  if (s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
 #endif
 
   /* Clean up. */
