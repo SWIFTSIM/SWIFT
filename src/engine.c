@@ -814,6 +814,10 @@ void engine_repartition(struct engine *e) {
   ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Be verbose about this. */
+  if (e->nodeID == 0 || e->verbose) message("repartitioning space");
+  fflush(stdout);
+
   /* Check that all cells have been drifted to the current time */
   space_check_drift_point(e->s, e->ti_current);
 #endif
