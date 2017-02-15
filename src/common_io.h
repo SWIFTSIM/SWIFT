@@ -75,6 +75,9 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm);
 void duplicate_hydro_gparts(struct part* const parts,
                             struct gpart* const gparts, size_t Ngas,
                             size_t Ndm);
+void duplicate_star_gparts(struct spart* const sparts,
+                           struct gpart* const gparts, size_t Nstars,
+                           size_t Ndm);
 
 void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data);
 

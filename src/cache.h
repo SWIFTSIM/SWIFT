@@ -162,4 +162,22 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 #endif
 }
 
+/**
+ * @brief Clean the memory allocated by a #cache object.
+ *
+ * @param c The #cache to clean.
+ */
+static INLINE void cache_clean(struct cache *c) {
+  if (c->count > 0) {
+    free(c->x);
+    free(c->y);
+    free(c->z);
+    free(c->m);
+    free(c->vx);
+    free(c->vy);
+    free(c->vz);
+    free(c->h);
+  }
+}
+
 #endif /* SWIFT_CACHE_H */

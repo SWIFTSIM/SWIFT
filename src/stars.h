@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,30 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINGLE_IO_H
-#define SWIFT_SINGLE_IO_H
+#ifndef SWIFT_STAR_H
+#define SWIFT_STAR_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
-
-#if defined(HAVE_HDF5) && !defined(WITH_MPI)
-
-void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
-                    double dim[3], struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, size_t* Ngas, size_t* Ndm,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int dry_run);
-
-void write_output_single(struct engine* e, const char* baseName,
-                         const struct UnitSystem* internal_units,
-                         const struct UnitSystem* snapshot_units);
+/* So far only one model here */
+/* Straight-forward import */
+#include "./stars/Default/star.h"
+#include "./stars/Default/star_iact.h"
 
 #endif
-
-#endif /* SWIFT_SINGLE_IO_H */

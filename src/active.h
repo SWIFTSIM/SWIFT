@@ -143,6 +143,32 @@ __attribute__((always_inline)) INLINE static int gpart_is_active(
   return (ti_end == ti_current);
 }
 
+/**
+ * @brief Is this s-particle active ?
+ *
+ * @param sp The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #spart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_is_active(
+    const struct spart *sp, const struct engine *e) {
+
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = get_integer_time_end(ti_current, sp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_current)
+    error(
+        "s-particle in an impossible time-zone! gp->ti_end=%lld "
+        "e->ti_current=%lld",
+        ti_end, ti_current);
+#endif
+
+  return (ti_end == ti_current);
+}
+
+
+
 /* Are cells / particles active for kick1 tasks ? */
 
 /**
@@ -216,5 +242,4 @@ __attribute__((always_inline)) INLINE static int gpart_is_starting(
 
   return (ti_beg == ti_current);
 }
-
 #endif /* SWIFT_ACTIVE_H */

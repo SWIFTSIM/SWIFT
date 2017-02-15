@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,50 +16,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_PART_H
-#define SWIFT_DEFAULT_GRAVITY_PART_H
+#ifndef SWIFT_DEFAULT_STAR_PART_H
+#define SWIFT_DEFAULT_STAR_PART_H
 
-/* Gravity particle. */
-struct gpart {
+/* Some standard headers. */
+#include <stdlib.h>
 
-  /* Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
-  long long id_or_neg_offset;
+/**
+ * @brief Particle fields for the star particles.
+ *
+ * All quantities related to gravity are stored in the associate #gpart.
+ */
+struct spart {
 
-  /* Particle position. */
+  /*! Particle ID. */
+  long long id;
+
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
+
+  /*! Particle position. */
   double x[3];
 
-  /* Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
+  /*! Particle velocity. */
+  float v[3];
 
-  /* Particle velocity. */
-  float v_full[3];
-
-  /* Particle acceleration. */
-  float a_grav[3];
-
-  /* Particle mass. */
+  /*! Star mass */
   float mass;
 
-  /* Softening length */
-  float epsilon;
-
-  /* Time-step length */
+  /*! Particle time bin */
   timebin_t time_bin;
-
-  /* Type of the #gpart (DM, gas, star, ...) */
-  enum part_type type;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  /* Time of the last drift */
-  integertime_t ti_drift;
-
-  /* Time of the last kick */
-  integertime_t ti_kick;
-
-#endif
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
+#endif /* SWIFT_DEFAULT_STAR_PART_H */
