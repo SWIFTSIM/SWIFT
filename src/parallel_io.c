@@ -389,7 +389,7 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
-  size_t Ndm;
+  size_t Ndm = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */

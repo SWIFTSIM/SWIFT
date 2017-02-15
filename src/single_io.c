@@ -350,7 +350,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
-  size_t Ndm;
+  size_t Ndm = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
