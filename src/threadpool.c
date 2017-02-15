@@ -91,6 +91,10 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->num_threads = num_threads;
   tp->num_threads_waiting = 0;
 
+  /* If there is only a single thread, do nothing more as of here as
+     we will just do work in the (blocked) calling thread. */
+  if (num_threads == 1) return;
+
   /* Init the threadpool mutexes. */
   if (pthread_mutex_init(&tp->thread_mutex, NULL) != 0)
     error("Failed to initialize mutexex.");
@@ -143,6 +147,12 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data) {
+
+  /* If we just have a single thread, call the map function directly. */
+  if (tp->num_threads == 1) {
+    map_function(map_data, N, extra_data);
+    return;
+  }
 
   /* Set the map data and signal the threads. */
   pthread_mutex_lock(&tp->thread_mutex);

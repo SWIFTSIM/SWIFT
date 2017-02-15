@@ -35,6 +35,7 @@
 #include "multipole.h"
 #include "part.h"
 #include "task.h"
+#include "timeline.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -52,6 +53,12 @@ struct scheduler;
 /* Global variables. */
 extern int cell_next_tag;
 
+/* Struct to temporarily buffer the particle locations and bin id. */
+struct cell_buff {
+  double x[3];
+  int ind;
+} SWIFT_STRUCT_ALIGN;
+
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
 
@@ -67,7 +74,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  int ti_end_min, ti_end_max;
+  integertime_t ti_end_min, ti_end_max, ti_old;
 
   /* Number of particles in this cell. */
   int count, gcount;
@@ -147,8 +154,17 @@ struct cell {
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;
 
-  /*! The kick task */
-  struct task *kick;
+  /*! The drift task */
+  struct task *drift;
+
+  /*! The first kick task */
+  struct task *kick1;
+
+  /*! The second kick task */
+  struct task *kick2;
+
+  /*! The task to compute time-steps */
+  struct task *timestep;
 
   /*! Task constructing the multipole from the particles */
   struct task *grav_up;
@@ -203,13 +219,13 @@ struct cell {
 #endif
 
   /*! Minimum end of (integer) time step in this cell. */
-  int ti_end_min;
+  integertime_t ti_end_min;
 
   /*! Maximum end of (integer) time step in this cell. */
-  int ti_end_max;
+  integertime_t ti_end_max;
 
   /*! Last (integer) time the cell's content was drifted forward in time. */
-  int ti_old;
+  integertime_t ti_old;
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -272,7 +288,8 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, int *buff);
+void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+                struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
@@ -280,8 +297,8 @@ int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
-int cell_pack_ti_ends(struct cell *c, int *ti_ends);
-int cell_unpack_ti_ends(struct cell *c, int *ti_ends);
+int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends);
+int cell_unpack_ti_ends(struct cell *c, integertime_t *ti_ends);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -295,5 +312,7 @@ void cell_check_drift_point(struct cell *c, void *data);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
+void cell_drift(struct cell *c, const struct engine *e);
+void cell_check_timesteps(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

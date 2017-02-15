@@ -20,6 +20,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include "active.h"
+
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
@@ -27,38 +29,38 @@
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
  *
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param (return) rhoSum #vector holding the cumulative sum of the density
+ * @param rhoSum (return) #vector holding the cumulative sum of the density
  * update on pi.
- * @param (return) rho_dhSum #vector holding the cumulative sum of the density
+ * @param rho_dhSum (return) #vector holding the cumulative sum of the density
  * gradient update on pi.
- * @param (return) wcountSum #vector holding the cumulative sum of the wcount
+ * @param wcountSum (return) #vector holding the cumulative sum of the wcount
  * update on pi.
- * @param (return) wcount_dhSum #vector holding the cumulative sum of the wcount
+ * @param wcount_dhSum (return) #vector holding the cumulative sum of the wcount
  * gradient update on pi.
- * @param (return) div_vSum #vector holding the cumulative sum of the divergence
+ * @param div_vSum (return) #vector holding the cumulative sum of the divergence
  * update on pi.
- * @param (return) curlvxSum #vector holding the cumulative sum of the curl of
+ * @param curlvxSum (return) #vector holding the cumulative sum of the curl of
  * vx update on pi.
- * @param (return) curlvySum #vector holding the cumulative sum of the curl of
+ * @param curlvySum (return) #vector holding the cumulative sum of the curl of
  * vy update on pi.
- * @param (return) curlvzSum #vector holding the cumulative sum of the curl of
+ * @param curlvzSum (return) #vector holding the cumulative sum of the curl of
  * vz update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
- * @param (return) icount_align Interaction count after the remainder
+ * @param icount_align (return) Interaction count after the remainder
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
-    struct c2_cache *const int_cache,
-    const int icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
-    vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
-    vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
-    vector v_viy, vector v_viz, int *icount_align) {
+    struct c2_cache *const int_cache, const int icount, vector *rhoSum,
+    vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
+    int *icount_align) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
@@ -136,6 +138,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * cache (Supports AVX, AVX2 and AVX512 instruction sets).
  *
  * @param mask Contains which particles need to interact.
+ * @param pjd Index of the particle to store into.
  * @param v_r2 #vector of the separation between two particles squared.
  * @param v_dx #vector of the x separation between two particles.
  * @param v_dy #vector of the y separation between two particles.
@@ -145,7 +148,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_vjy #vector of y velocity of pj.
  * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
- * @param (return) int_cache secondary cache of interactions between two
+ * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
  * @param rhoSum #vector holding the cumulative sum of the density update on pi.
@@ -225,6 +228,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
       (*icount)++;
     }
   }
+
 #endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
 
   /* Flush the c2 cache if it has reached capacity. */
@@ -233,10 +237,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
-    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum,
-                        wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
-                        curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
-                        &icount_align);
+    calcRemInteractions(int_cache, *icount, rhoSum, rho_dhSum, wcountSum,
+                        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum,
+                        v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     vector int_mask, int_mask2;
     int_mask.m = vec_setint1(0xFFFFFFFF);
@@ -255,7 +258,6 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     /* Reset interaction count. */
     *icount = 0;
   }
-
 }
 
 __attribute__((always_inline)) INLINE static void populate_max_d(const struct cell *ci, const struct cell *cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const struct cache *ci_cache, const struct cache *cj_cache, const float dx_max, const float rshift, float *max_di, float *max_dj) {
@@ -298,7 +300,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
   int doi_mask;
   struct part *restrict pi;
   int count_align;
@@ -313,8 +315,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   TIMER_TIC
 
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift(c, e);
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -338,7 +341,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     pi = &parts[pid];
 
     /* Is the ith particle active? */
-    if (pi->ti_end > ti_current) continue;
+    if (!part_is_active(pi, e)) continue;
 
     vector pix, piy, piz;
 
@@ -484,9 +487,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
@@ -543,6 +546,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
  * intrinsics with two particle pis at a time.
+ *
  * CURRENTLY BROKEN DO NOT USE.
  *
  * @param r The #runner.
@@ -552,7 +556,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
   int doi_mask;
   int doi2_mask;
   struct part *restrict pi;
@@ -564,9 +568,11 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 
   TIMER_TIC
 
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+
   /* TODO: Need to find two active particles, not just one. */
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -597,7 +603,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     pi2 = &parts[pid + 1];
 
     /* Is the ith particle active? */
-    if (pi->ti_end > ti_current) continue;
+    if (!part_is_active(pi, e)) continue;
 
     vector pix, piy, piz;
     vector pix2, piy2, piz2;
@@ -814,9 +820,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum,
-                        &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                        &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     calcRemInteractions(&int_cache2, icount2, &rhoSum2, &rho_dhSum2,

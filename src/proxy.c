@@ -65,8 +65,8 @@ void proxy_cells_exch1(struct proxy *p) {
 
   /* Allocate and fill the pcell buffer. */
   if (p->pcells_out != NULL) free(p->pcells_out);
-  if ((p->pcells_out = malloc(sizeof(struct pcell) * p->size_pcells_out)) ==
-      NULL)
+  if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->pcell,
@@ -102,8 +102,8 @@ void proxy_cells_exch2(struct proxy *p) {
 
   /* Re-allocate the pcell_in buffer. */
   if (p->pcells_in != NULL) free(p->pcells_in);
-  if ((p->pcells_in = (struct pcell *)malloc(sizeof(struct pcell) *
-                                             p->size_pcells_in)) == NULL)
+  if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 
   /* Receive the particle buffers. */
@@ -308,8 +308,8 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     do {
       p->size_parts_out *= proxy_buffgrow;
     } while (p->nr_parts_out + N > p->size_parts_out);
-    struct part *tp;
-    struct xpart *txp;
+    struct part *tp = NULL;
+    struct xpart *txp = NULL;
     if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
             NULL ||
         (txp = (struct xpart *)malloc(sizeof(struct xpart) *

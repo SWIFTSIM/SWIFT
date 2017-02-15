@@ -55,40 +55,44 @@ PLOT_PARAMS = {"axes.labelsize": 10,
 pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
-TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
-             "extra_ghost", "kick", "send", "recv",
-             "grav_gather_m", "grav_fft", "grav_mm", "grav_up",
-             "grav_external", "cooling", "count"]
+TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
+             "init", "ghost", "extra_ghost", "drift", "kick1", "kick2",
+             "timestep", "send", "recv", "grav_gather_m", "grav_fft",
+             "grav_mm", "grav_up", "cooling", "sourceterms", "count"]
+SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
+            "tend", "xv", "rho", "gpart", "count"]
 
-TASKCOLOURS = {"none": "black",
-               "sort": "lightblue",
-               "self": "greenyellow",
-               "pair": "navy",
-               "sub_self": "greenyellow",
-               "sub_pair": "navy",
-               "init": "indigo",
-               "ghost": "cyan",
-               "extra_ghost": "cyan",
-               "kick": "green",
-               "send": "yellow",
-               "recv": "magenta",
-               "grav_gather_m": "mediumorchid",
-               "grav_fft": "mediumnightblue",
-               "grav_mm": "mediumturquoise",
-               "grav_up": "mediumvioletred",
-               "grav_external": "darkred",
-               "cooling": "darkblue",
-               "count": "powerblue"}
+#  Task/subtypes of interest.
+FULLTYPES = ["self/force", "self/density", "sub_self/force",
+             "sub_self/density", "pair/force", "pair/density", "sub_pair/force",
+             "sub_pair/density", "recv/xv", "send/xv", "recv/rho", "send/rho",
+             "recv/tend", "send/tend"]
 
-SUBTYPES = ["none", "density", "gradient", "force", "grav", "tend", "count"]
+#  Get a number of colours for the various types.
+colours = ["black", "gray", "rosybrown", "firebrick", "red", "darksalmon",
+           "sienna", "sandybrown", "bisque", "tan", "moccasin", "gold", "darkkhaki",
+           "lightgoldenrodyellow", "olivedrab", "chartreuse", "darksage", "lightgreen",
+           "green", "mediumseagreen", "mediumaquamarine", "mediumturquoise", "darkslategrey",
+           "cyan", "cadetblue", "skyblue", "dodgerblue", "slategray", "darkblue",
+           "slateblue", "blueviolet", "mediumorchid", "purple", "magenta", "hotpink",
+           "pink"]
+maxcolours = len(colours)
 
-SUBCOLOURS = {"none": "black",
-              "density": "red",
-              "gradient": "powerblue",
-              "force": "blue",
-              "grav": "indigo",
-              "tend": "grey",
-              "count": "black"}
+#  Set colours of task/subtype.
+TASKCOLOURS = {}
+ncolours = 0
+for task in TASKTYPES:
+    TASKCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
+
+SUBCOLOURS = {}
+for task in SUBTYPES:
+    SUBCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
+
+for task in FULLTYPES:
+    SUBCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
 
 #  Show docs if help is requested.
 if len( sys.argv ) == 2 and ( sys.argv[1][0:2] == "-h" or sys.argv[1][0:3] == "--h" ):
@@ -149,39 +153,26 @@ num_lines = pl.size(data) / 10
 for line in range(num_lines):
     thread = int(data[line,0])
     tasks[thread].append({})
-    tasks[thread][-1]["type"] = TASKTYPES[int(data[line,1])]
-    tasks[thread][-1]["subtype"] = SUBTYPES[int(data[line,2])]
+    tasktype = TASKTYPES[int(data[line,1])]
+    subtype = SUBTYPES[int(data[line,2])]
+    tasks[thread][-1]["type"] = tasktype
+    tasks[thread][-1]["subtype"] = subtype
     tic = int(data[line,4]) / CPU_CLOCK * 1000
     toc = int(data[line,5]) / CPU_CLOCK * 1000
     tasks[thread][-1]["tic"] = tic
     tasks[thread][-1]["toc"] = toc
     tasks[thread][-1]["t"] = (toc + tic)/ 2
+    if "self" in tasktype or "pair" in tasktype:
+        fulltype = tasktype + "/" + subtype
+        if fulltype in SUBCOLOURS:
+            tasks[thread][-1]["colour"] = SUBCOLOURS[fulltype]
+        else:
+            tasks[thread][-1]["colour"] = SUBCOLOURS[subtype]
+    else:
+        tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
     
-combtasks = {}
-combtasks[-1] = []
-for i in range(nthread):
-    combtasks[i] = []
-
 for thread in range(nthread):
     tasks[thread] = sorted(tasks[thread], key=lambda l: l["t"])
-    lasttype = ""
-    types = []
-    for task in tasks[thread]:
-        if task["type"] not in types:
-            types.append(task["type"])
-        if lasttype == "" or not lasttype == task["type"]:
-            combtasks[thread].append({})
-            combtasks[thread][-1]["type"] = task["type"]
-            combtasks[thread][-1]["subtype"] = task["subtype"]
-            combtasks[thread][-1]["tic"] = task["tic"]
-            combtasks[thread][-1]["toc"] = task["toc"]
-            if task["type"] == "self" or task["type"] == "pair" or task["type"] == "sub":
-                combtasks[thread][-1]["colour"] = SUBCOLOURS[task["subtype"]]
-            else:
-                combtasks[thread][-1]["colour"] = TASKCOLOURS[task["type"]]
-            lasttype = task["type"]
-        else:
-            combtasks[thread][-1]["toc"] = task["toc"]
             
 typesseen = []
 fig = pl.figure()
@@ -192,11 +183,11 @@ tictoc = np.zeros(2)
 for i in range(nthread):
 
     #  Collect ranges and colours into arrays.
-    tictocs = np.zeros(len(combtasks[i])*2)
-    colours = np.empty(len(combtasks[i])*2, dtype='object')
+    tictocs = np.zeros(len(tasks[i])*2)
+    colours = np.empty(len(tasks[i])*2, dtype='object')
     coloursseen = []
     j = 0
-    for task in combtasks[i]:
+    for task in tasks[i]:
         tictocs[j] = task["tic"]
         tictocs[j+1] = task["toc"]
         colours[j] = task["colour"]

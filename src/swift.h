@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "cache.h"
 #include "cell.h"
@@ -45,6 +46,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "profiler.h"
 #include "queue.h"
 #include "runner.h"
 #include "scheduler.h"
@@ -53,6 +55,7 @@
 #include "sourceterms.h"
 #include "space.h"
 #include "task.h"
+#include "timeline.h"
 #include "timers.h"
 #include "tools.h"
 #include "units.h"

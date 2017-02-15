@@ -28,7 +28,7 @@ unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
-v_c = float(params.attrs["SoftenedIsothermalPotential:vrot"])
+v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
 lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
 X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
@@ -101,18 +101,18 @@ for i in range(n_snaps):
         rho_0 = density[0]
 
         rho_analytic_init = rho_0 * (radial_bin_mids/r_0)**(-2)
-    plt.plot(radial_bin_mids,density/rho_analytic_init,'ko',label = "Average density of shell")
-    #plt.plot(t,rho_analytic,label = "Initial analytic density profile"
+    plt.plot(radial_bin_mids,density,'ko',label = "Average density of shell")
+    plt.plot(radial_bin_mids,rho_analytic_init,label = "Initial analytic density profile")
     plt.xlabel(r"$r / r_{vir}$")
-    plt.ylabel(r"$\rho / \rho_{init})$")
+    plt.ylabel(r"$(\rho / \rho_{init})$")
     plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
     #plt.ylim((1.e-2,1.e1))
-    plt.plot((r_cool_over_r_vir,r_cool_over_r_vir),(0,20),'r',label = "Cooling radius")
+    plt.plot((r_cool_over_r_vir,r_cool_over_r_vir),(1.0e-4,1.0e4),'r',label = "Cooling radius")
     plt.xlim((radial_bin_mids[0],max_r))
-    plt.ylim((0,20))
-    plt.plot((0,max_r),(1,1))
+    plt.ylim((1.0e-4,1.0e4))
+    #plt.plot((0,max_r),(1,1))
     #plt.xscale('log')
-    #plt.yscale('log')
+    plt.yscale('log')
     plt.legend(loc = "upper right")
     plot_filename = "density_profile_%03d.png" %i
     plt.savefig(plot_filename,format = "png")

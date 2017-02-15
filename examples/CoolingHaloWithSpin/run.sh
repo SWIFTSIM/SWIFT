@@ -4,7 +4,8 @@
 echo "Generating initial conditions for the isothermal potential box example..."
 python makeIC.py 10000 
 
-../swift -g -s -C -t 16 cooling_halo.yml 2>&1 | tee output.log
+# Run SWIFT with external potential, SPH and cooling
+../swift -g -s -C -t 1 cooling_halo.yml 2>&1 | tee output.log
 
 # python radial_profile.py 10
 

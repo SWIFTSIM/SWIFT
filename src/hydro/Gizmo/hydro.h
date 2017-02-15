@@ -178,11 +178,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase Conversion factor between integer time and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp, int ti_current,
-    double timeBase) {
+    struct part* restrict p, struct xpart* restrict xp) {
 
   /* Set the physical time step */
-  p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
+  p->force.dt = get_timestep(p->time_bin, 0.);  // MATTHIEU 0
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -234,6 +233,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 }
 
 /**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param p The particle.
+ * @param xp The extended data of this particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
+    struct part* restrict p, const struct xpart* restrict xp) {}
+
+/**
  * @brief Converts the hydrodynamic variables from the initial condition file to
  * conserved variables that can be used during the integration
  *
@@ -250,7 +259,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p) {
+    struct part* p, struct xpart* xp) {
 
   const float volume = p->geometry.volume;
   const float m = p->conserved.mass;
@@ -283,8 +292,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt, int t0, int t1,
-    double timeBase) {
+    struct part* p, struct xpart* xp, float dt) {
 
   const float h_inv = 1.0f / p->h;
 
@@ -367,9 +375,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {
+    struct part* p, struct xpart* xp, float dt) {
 
   float oldm, oldp[3], anew[3];
+  const float half_dt = 0.5f * dt;  // MATTHIEU
 
   /* Retrieve the current value of the gravitational acceleration from the
      gpart. We are only allowed to do this because this is the kick. We still
@@ -441,10 +450,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 }
@@ -453,10 +461,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
  * @brief Returns the entropy of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P / pow_gamma(p->primitives.rho);
 }
@@ -465,10 +472,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  * @brief Returns the sound speed of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
 }
@@ -477,10 +483,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  * @brief Returns the pressure of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P;
 }

@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016  Tom Theuns (tom.theuns@durham.ac.uk)
+ *                     Stefan Arridge (stefan.arridge@durham.ac.uk)
+ *                     Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -35,7 +36,8 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties - Isothermal sphere case
+ * @brief External Potential Properties - Isothermal sphere case with
+ * central softening
  */
 struct external_potential {
 
@@ -45,8 +47,13 @@ struct external_potential {
   /*! Rotation velocity */
   double vrot;
 
-  /*! Square of vrot divided by G \f$ \frac{v_{rot}^2}{G} \f$ */
+  /*! Square of vrot, the circular velocity which defines the isothermal
+   * potential devided by Newton's constant */
   double vrot2_over_G;
+
+  /*! Square of the softening length. Acceleration tends to zero within this
+   * distance from the origin */
+  double epsilon2;
 
   /*! Time-step condition pre-factor */
   double timestep_mult;
@@ -70,17 +77,18 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
 
-  const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
+  const float r2_plus_epsilon2_inv =
+      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
   const float drdv =
       dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
   const double vrot = potential->vrot;
 
-  const float dota_x =
-      vrot * vrot * rinv2 * (g->v_full[0] - 2.f * drdv * dx * rinv2);
-  const float dota_y =
-      vrot * vrot * rinv2 * (g->v_full[1] - 2.f * drdv * dy * rinv2);
-  const float dota_z =
-      vrot * vrot * rinv2 * (g->v_full[2] - 2.f * drdv * dz * rinv2);
+  const float dota_x = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[0] - 2.f * drdv * dx * r2_plus_epsilon2_inv);
+  const float dota_y = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[1] - 2.f * drdv * dy * r2_plus_epsilon2_inv);
+  const float dota_z = vrot * vrot * r2_plus_epsilon2_inv *
+                       (g->v_full[2] - 2.f * drdv * dz * r2_plus_epsilon2_inv);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
@@ -94,6 +102,10 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * Note that the accelerations are multiplied by Newton's G constant
  * later on.
  *
+ * a_x = -(v_rot^2 / G) * x / (r^2 + epsilon^2)
+ * a_y = -(v_rot^2 / G) * y / (r^2 + epsilon^2)
+ * a_z = -(v_rot^2 / G) * z / (r^2 + epsilon^2)
+ *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
@@ -106,10 +118,10 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
+  const float r2_plus_epsilon2_inv =
+      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
 
-  const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
-
-  const double term = -potential->vrot2_over_G * rinv2;
+  const float term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
 
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
@@ -120,21 +132,24 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in an
  * isothermal potential.
  *
+ * phi = -0.5 * vrot^2 * ln(r^2 + epsilon^2)
+ *
+ * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
 
-  return 0.5f * potential->vrot * potential->vrot *
-         logf(dx * dx + dy * dy * dz * dz);
+  return -0.5f * potential->vrot * potential->vrot *
+         logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 
 /**
@@ -164,9 +179,11 @@ static INLINE void potential_init_backend(
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
   potential->timestep_mult = parser_get_param_float(
       parameter_file, "IsothermalPotential:timestep_mult");
-
+  const double epsilon =
+      parser_get_param_double(parameter_file, "IsothermalPotential:epsilon");
   potential->vrot2_over_G =
       potential->vrot * potential->vrot / phys_const->const_newton_G;
+  potential->epsilon2 = epsilon * epsilon;
 }
 
 /**
@@ -180,9 +197,9 @@ static INLINE void potential_print_backend(
   message(
       "External potential is 'Isothermal' with properties are (x,y,z) = (%e, "
       "%e, %e), vrot = %e "
-      "timestep multiplier = %e.",
+      "timestep multiplier = %e, epsilon = %e",
       potential->x, potential->y, potential->z, potential->vrot,
-      potential->timestep_mult);
+      potential->timestep_mult, sqrtf(potential->epsilon2));
 }
 
-#endif /* SWIFT_POTENTIAL_ISOTHERMAL_H */
+#endif /* SWIFT_ISOTHERMAL_H */

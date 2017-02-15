@@ -645,13 +645,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
   size_t N[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
-  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG, MPI_SUM, comm);
+  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG_INT, MPI_SUM, comm);
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
     N_total[ptype] = offset[ptype] + N[ptype];
 
   /* The last rank now has the correct N_total. Let's
    * broadcast from there */
-  MPI_Bcast(&N_total, 6, MPI_LONG_LONG, mpi_size - 1, comm);
+  MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
   /* Now everybody konws its offset and the total number of
    * particles of each

@@ -24,10 +24,10 @@ import numpy
 import math
 import random
 
-# Generates a random distriution of particles, for motion in an external potnetial centred at (0,0,0)
+# Generates a random distriution of particles, for motion in an external potential centred at (0,0,0)
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.672e-8
+NEWTON_GRAVITY_CGS  = 6.67408e-8
 SOLAR_MASS_IN_CGS   = 1.9885e33
 PARSEC_IN_CGS       = 3.0856776e18
 
@@ -39,34 +39,28 @@ const_unit_velocity_in_cgs =   (1e5)
 print "UnitMass_in_cgs:     ", const_unit_mass_in_cgs 
 print "UnitLength_in_cgs:   ", const_unit_length_in_cgs
 print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
+print "UnitTime_in_cgs:     ", const_unit_length_in_cgs / const_unit_velocity_in_cgs
 
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 const_G                = ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
-print 'G=', const_G
+print '---------------------'
+print 'G in internal units: ', const_G
 
 
 # Parameters
-periodic= 1            # 1 For periodic box
-boxSize = 100.         # 
-Radius  = boxSize / 4. # maximum radius of particles
-G       = const_G 
-Mass    = 1e10         
+periodic   = 1            # 1 For periodic box
+boxSize    = 100.         # 
+max_radius = boxSize / 4. # maximum radius of particles
+Mass       = 1e10         
+print "Mass at the centre:  ", Mass
 
-N       = int(sys.argv[1])  # Number of particles
-L       = N**(1./3.)
+numPart = int(sys.argv[1])  # Number of particles
+mass    = 1.
 
-# these are not used but necessary for I/O
-rho = 2.              # Density
-P = 1.                # Pressure
-gamma = 5./3.         # Gas adiabatic index
-fileName = "Sphere.hdf5" 
+fileName = "PointMass.hdf5" 
 
 
-#---------------------------------------------------
-numPart        = N
-mass           = 1
-internalEnergy = P / ((gamma - 1.)*rho)
 
 #--------------------------------------------------
 
@@ -98,25 +92,26 @@ grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
-#grp0 = file.create_group("/PartType0")
 grp1 = file.create_group("/PartType1")
+
 #generate particle positions
-radius = Radius * (numpy.random.rand(N))**(1./3.) 
-ctheta = -1. + 2 * numpy.random.rand(N)
-stheta = numpy.sqrt(1.-ctheta**2)
-phi    =  2 * math.pi * numpy.random.rand(N)
+radius = max_radius * (numpy.random.rand(numPart))**(1./3.)
+print '---------------------'
+print 'Radius: minimum = ',min(radius)
+print 'Radius: maximum = ',max(radius)
+radius = numpy.sort(radius)
 r      = numpy.zeros((numPart, 3))
-# r[:,0] = radius * stheta * numpy.cos(phi)
-# r[:,1] = radius * stheta * numpy.sin(phi)
-# r[:,2] = radius * ctheta
 r[:,0] = radius
-#
-speed  = numpy.sqrt(G * Mass / radius)
-v      = numpy.zeros((numPart, 3))
+
+#generate particle velocities
+speed  = numpy.sqrt(const_G * Mass / radius)
 omega  = speed / radius
 period = 2.*math.pi/omega
-print 'period = minimum = ',min(period), ' maximum = ',max(period)
+print '---------------------'
+print 'Period: minimum = ',min(period)
+print 'Period: maximum = ',max(period)
 
+v      = numpy.zeros((numPart, 3))
 v[:,0] = -omega * r[:,1]
 v[:,1] =  omega * r[:,0]
 
@@ -128,17 +123,6 @@ m = numpy.full((numPart, ), mass)
 ds = grp1.create_dataset('Masses', (numPart,), 'f')
 ds[()] = m
 m = numpy.zeros(1)
-
-h = numpy.full((numPart, ), 1.1255 * boxSize / L)
-ds = grp1.create_dataset('SmoothingLength', (numPart,), 'f')
-ds[()] = h
-h = numpy.zeros(1)
-
-u = numpy.full((numPart, ), internalEnergy)
-ds = grp1.create_dataset('InternalEnergy', (numPart,), 'f')
-ds[()] = u
-u = numpy.zeros(1)
-
 
 ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False)
 ds = grp1.create_dataset('ParticleIDs', (numPart, ), 'L')

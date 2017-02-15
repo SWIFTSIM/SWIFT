@@ -45,6 +45,9 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+/* Global profiler. */
+struct profiler prof;
+
 /**
  * @brief Help messages for the command line parameters.
  */
@@ -287,13 +290,15 @@ int main(int argc, char *argv[]) {
 
 /* Do we have debugging checks ? */
 #ifdef SWIFT_DEBUG_CHECKS
-  message("WARNING: Debugging checks activated. Code will be slower !");
+  if (myrank == 0)
+    message("WARNING: Debugging checks activated. Code will be slower !");
 #endif
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-    if (myrank == 0) message("Floating point exceptions will be reported.");
+    if (myrank == 0)
+      message("WARNING: Floating point exceptions will be reported.");
   }
 
   /* How large are the parts? */
@@ -355,7 +360,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
-  hydro_props_init(&hydro_properties, params);
+  if (with_hydro) hydro_props_init(&hydro_properties, params);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";

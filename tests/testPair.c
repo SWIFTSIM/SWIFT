@@ -68,8 +68,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #else
         part->mass = density * volume / count;
 #endif
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        part->ti_drift = 8;
+        part->ti_kick = 8;
+#endif
+
         ++part;
       }
     }
@@ -87,8 +92,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old = 8;
+  cell->ti_end_min = 8;
+  cell->ti_end_max = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -245,7 +251,7 @@ int main(int argc, char *argv[]) {
 
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 8;
   runner.e = &engine;
 
   volume = particles * particles * particles;

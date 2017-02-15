@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "align.h"
+#include "timeline.h"
 
 /* Some constants. */
 #define part_align 128

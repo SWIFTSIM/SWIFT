@@ -33,7 +33,7 @@
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
   return p->u;
 }
@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
   return gas_pressure_from_internal_energy(p->rho, p->u);
 }
@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }
@@ -69,7 +69,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part *restrict p, float dt) {
+    const struct part *restrict p) {
 
   return p->force.soundspeed;
 }
@@ -97,34 +97,30 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
- * @brief Modifies the thermal state of a particle to the imposed internal
- * energy
+ * @brief Returns the time derivative of internal energy of a particle
  *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
+ * We assume a constant density.
  *
- * @param p The particle
- * @param u The new internal energy
+ * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part *restrict p, float u) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
+    const struct part *restrict p) {
 
-  p->u = u;
+  return p->force.u_dt;
 }
 
 /**
- * @brief Modifies the thermal state of a particle to the imposed entropy
+ * @brief Returns the time derivative of internal energy of a particle
  *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
+ * We assume a constant density.
  *
- * @param p The particle
- * @param S The new entropy
+ * @param p The particle of interest.
+ * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part *restrict p, float S) {
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
+    struct part *restrict p, float du_dt) {
 
-  p->u = gas_internal_energy_from_entropy(p->rho, S);
+  p->force.u_dt = du_dt;
 }
 
 /**
@@ -150,26 +146,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
                               : FLT_MAX;
 
   return min(dt_cfl, dt_u_change);
-}
-
-/**
- * @brief Initialises the particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp) {
-
-  p->ti_begin = 0;
-  p->ti_end = 0;
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
-  xp->u_full = p->u;
 }
 
 /**
@@ -244,8 +220,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param time The current time
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp, int ti_current,
-    double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -270,17 +245,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.balsara = normDiv_v / (normDiv_v + normRot_v + 0.0001f * fc * h_inv);
 
   /* Viscosity parameter decay time */
-  const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
+  /* const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
+   */
 
   /* Viscosity source term */
-  const float S = max(-normDiv_v, 0.f);
+  /* const float S = max(-normDiv_v, 0.f); */
 
   /* Compute the particle's viscosity parameter time derivative */
-  const float alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau +
-                          (const_viscosity_alpha_max - p->alpha) * S;
+  /* const float alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau + */
+  /*                         (const_viscosity_alpha_max - p->alpha) * S; */
 
   /* Update particle's viscosity paramter */
-  p->alpha += alpha_dot * (p->ti_end - p->ti_begin) * timeBase;
+  /* p->alpha += alpha_dot * (p->ti_end - p->ti_begin) * timeBase; */  // MATTHIEU
 }
 
 /**
@@ -306,6 +282,22 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 }
 
 /**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param p The particle.
+ * @param xp The extended data of this particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
+    struct part *restrict p, const struct xpart *restrict xp) {
+
+  /* Re-set the predicted velocities */
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
+}
+
+/**
  * @brief Predict additional particle fields forward in time when drifting
  *
  * @param p The particle
@@ -316,8 +308,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt, int t0,
-    int t1, double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp, float dt) {
   float u, w;
 
   const float h_inv = 1.f / p->h;
@@ -368,8 +359,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt,
-    float half_dt) {}
+    struct part *restrict p, struct xpart *restrict xp, float dt) {}
 
 /**
  *  @brief Converts hydro quantity of a particle at the start of a run
@@ -379,6 +369,28 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p) {}
+    struct part *restrict p, struct xpart *restrict xp) {}
+
+/**
+ * @brief Initialises the particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_first_init_part(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  p->time_bin = 0;
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
+  xp->u_full = p->u;
+
+  hydro_reset_acceleration(p);
+  hydro_init_part(p);
+}
 
 #endif /* SWIFT_DEFAULT_HYDRO_H */

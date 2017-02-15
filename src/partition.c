@@ -278,6 +278,18 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+
+/* qsort support. */
+struct indexval {
+  int index;
+  int count;
+};
+static int indexvalcmp(const void *p1, const void *p2) {
+  const struct indexval *iv1 = (const struct indexval *)p1;
+  const struct indexval *iv2 = (const struct indexval *)p2;
+  return iv2->count - iv1->count;
+}
+
 /**
  * @brief Partition the given space into a number of connected regions.
  *
@@ -382,14 +394,70 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
     if (regionid[k] < 0 || regionid[k] >= nregions)
       error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
 
+  /* We want a solution in which the current regions of the space are
+   * preserved when possible, to avoid unneccesary particle movement.
+   * So create a 2d-array of cells counts that are common to all pairs
+   * of old and new ranks. Each element of the array has a cell count and
+   * an unique index so we can sort into decreasing counts. */
+  int indmax = nregions * nregions;
+  struct indexval *ivs = malloc(sizeof(struct indexval) * indmax);
+  bzero(ivs, sizeof(struct indexval) * indmax);
+  for (int k = 0; k < ncells; k++) {
+    int index = regionid[k] + nregions * s->cells_top[k].nodeID;
+    ivs[index].count++;
+    ivs[index].index = index;
+  }
+  qsort(ivs, indmax, sizeof(struct indexval), indexvalcmp);
+
+  /* Go through the ivs using the largest counts first, these are the
+   * regions with the most cells in common, old partition to new. */
+  int *oldmap = malloc(sizeof(int) * nregions);
+  int *newmap = malloc(sizeof(int) * nregions);
+  for (int k = 0; k < nregions; k++) {
+    oldmap[k] = -1;
+    newmap[k] = -1;
+  }
+  for (int k = 0; k < indmax; k++) {
+
+    /* Stop when all regions with common cells have been considered. */
+    if (ivs[k].count == 0) break;
+
+    /* Store old and new IDs, if not already used. */
+    int oldregion = ivs[k].index / nregions;
+    int newregion = ivs[k].index - oldregion * nregions;
+    if (newmap[newregion] == -1 && oldmap[oldregion] == -1) {
+      newmap[newregion] = oldregion;
+      oldmap[oldregion] = newregion;
+    }
+  }
+
+  /* Handle any regions that did not get selected by picking an unused rank
+   * from oldmap and assigning to newmap. */
+  int spare = 0;
+  for (int k = 0; k < nregions; k++) {
+    if (newmap[k] == -1) {
+      for (int j = spare; j < nregions; j++) {
+        if (oldmap[j] == -1) {
+          newmap[k] = j;
+          oldmap[j] = j;
+          spare = j;
+          break;
+        }
+      }
+    }
+  }
+
   /* Set the cell list to the region index. */
   for (int k = 0; k < ncells; k++) {
-    celllist[k] = regionid[k];
+    celllist[k] = newmap[regionid[k]];
   }
 
   /* Clean up. */
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
+  free(ivs);
+  free(oldmap);
+  free(newmap);
   free(xadj);
   free(adjncy);
   free(regionid);
@@ -454,8 +522,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub_self && t->type != task_type_sub_self &&
-        t->type != task_type_ghost && t->type != task_type_kick &&
-        t->type != task_type_init)
+        t->type != task_type_ghost && t->type != task_type_kick1 &&
+        t->type != task_type_kick2 && t->type != task_type_timestep &&
+        t->type != task_type_drift && t->type != task_type_init)
       continue;
 
     /* Get the task weight. */
@@ -486,7 +555,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_kick) {
+    if (t->type == task_type_ghost || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_drift) {
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
 

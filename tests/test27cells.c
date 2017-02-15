@@ -32,7 +32,7 @@
 
 #define ACC_THRESHOLD 1e-5
 
-#if defined(WITH_VECTORIZATION) && defined(DOSELF1_VEC)
+#if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #endif
@@ -163,8 +163,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy_one_over_gamma = 1.f;
 #endif
 
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        part->ti_drift = 8;
+        part->ti_kick = 8;
+#endif
+
         ++part;
       }
     }
@@ -182,8 +187,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old = 8;
+  cell->ti_end_min = 8;
+  cell->ti_end_max = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -332,7 +338,6 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
 void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_doself1_density_vec_2(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -432,7 +437,7 @@ int main(int argc, char *argv[]) {
   struct engine engine;
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 8;
 
   struct runner runner;
   runner.e = &engine;

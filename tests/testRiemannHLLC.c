@@ -75,11 +75,11 @@ void check_riemann_symmetry() {
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
     error("Asymmetry in flux solution!");
   } else {
-    message(
-        "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
-        totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
-        totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
+    /* message( */
+    /*     "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
+    /*     "[%.3e,%.3e,%.3e,%.3e,%.3e]\n", */
+    /*     totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4], */
+    /*     totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]); */
   }
 }
 

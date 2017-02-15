@@ -39,8 +39,8 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, float dt, double timeBase, int ti_old,
-    int ti_current) {
+    struct gpart *restrict gp, float dt, double timeBase, integertime_t ti_old,
+    integertime_t ti_current) {
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
   gp->x[1] += gp->v_full[1] * dt;
@@ -64,7 +64,17 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  */
 __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, float dt,
-    double timeBase, int ti_old, int ti_current) {
+    double timeBase, integertime_t ti_old, integertime_t ti_current) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->ti_drift != ti_old)
+    error(
+        "Particle has not been drifted to the current time p->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        p->ti_drift, ti_old, ti_current);
+
+  p->ti_drift = ti_current;
+#endif
 
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt;
@@ -77,7 +87,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[2] += p->a_hydro[2] * dt;
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt, ti_old, ti_current, timeBase);
+  hydro_predict_extra(p, xp, dt);
 
   /* Compute offset since last cell construction */
   xp->x_diff[0] -= xp->v_full[0] * dt;

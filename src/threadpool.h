@@ -32,9 +32,6 @@ typedef void (*threadpool_map_function)(void *map_data, int num_elements,
 /* Data of a threadpool. */
 struct threadpool {
 
-  /* Number of threads in this pool. */
-  int num_threads;
-
   /* The threads themselves. */
   pthread_t *threads;
 
@@ -47,6 +44,9 @@ struct threadpool {
   volatile size_t map_data_count, map_data_size, map_data_stride,
       map_data_chunk;
   volatile threadpool_map_function map_function;
+
+  /* Number of threads in this pool. */
+  int num_threads;
 
   /* Counter for the number of threads that are done. */
   volatile int num_threads_waiting, num_threads_running;

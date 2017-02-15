@@ -48,13 +48,15 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",     "sort",    "self",          "pair",        "sub_self",
-    "sub_pair", "init",    "ghost",         "extra_ghost", "kick",
-    "send",     "recv",    "grav_gather_m", "grav_fft",    "grav_mm",
-    "grav_up",  "cooling", "sourceterms"};
+    "none",          "sort",     "self",     "pair",        "sub_self",
+    "sub_pair",      "init",     "ghost",    "extra_ghost", "drift",
+    "kick1",         "kick2",    "timestep", "send",        "recv",
+    "grav_gather_m", "grav_fft", "grav_mm",  "grav_up",     "cooling",
+    "sourceterms"};
 
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav", "external_grav", "tend"};
+    "none",          "density", "gradient", "force", "grav",
+    "external_grav", "tend",    "xv",       "rho",   "gpart"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -147,9 +149,12 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_init:
-    case task_type_kick:
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_timestep:
     case task_type_send:
     case task_type_recv:
+    case task_type_drift:
       if (t->ci->count > 0 && t->ci->gcount > 0)
         return task_action_all;
       else if (t->ci->count > 0)
@@ -260,6 +265,11 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
+    case task_type_drift:
+      cell_unlocktree(ci);
+      cell_gunlocktree(ci);
+      break;
+
     case task_type_sort:
       cell_unlocktree(ci);
       break;
@@ -325,6 +335,15 @@ int task_lock(struct task *t) {
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif
+      break;
+
+    case task_type_drift:
+      if (ci->hold || ci->ghold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_glocktree(ci) != 0) {
+        cell_unlocktree(ci);
+        return 0;
+      }
       break;
 
     case task_type_sort:

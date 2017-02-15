@@ -57,12 +57,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 float convert_u(struct engine* e, struct part* p) {
 
-  return hydro_get_internal_energy(p, 0);
+  return hydro_get_internal_energy(p);
 }
 
 float convert_P(struct engine* e, struct part* p) {
 
-  return hydro_get_pressure(p, 0);
+  return hydro_get_pressure(p);
 }
 
 /**

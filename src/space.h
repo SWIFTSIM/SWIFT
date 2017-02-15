@@ -147,7 +147,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
 void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
-struct cell *space_getcell(struct space *s);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,
@@ -171,6 +171,8 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
+void space_recycle_list(struct space *s, struct cell *list_begin,
+                        struct cell *list_end);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
@@ -183,7 +185,8 @@ void space_do_gparts_sort();
 void space_init_parts(struct space *s);
 void space_init_gparts(struct space *s);
 void space_link_cleanup(struct space *s);
-void space_check_drift_point(struct space *s, int ti_current);
+void space_check_drift_point(struct space *s, integertime_t ti_current);
+void space_check_timesteps(struct space *s);
 void space_clean(struct space *s);
 
 #endif /* SWIFT_SPACE_H */

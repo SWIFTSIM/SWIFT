@@ -82,9 +82,6 @@ extern const char *engine_policy_names[];
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
 
-/* The maximal number of timesteps in a simulation */
-#define max_nr_timesteps (1 << 28)
-
 /* Data structure for the engine. */
 struct engine {
 
@@ -117,11 +114,11 @@ struct engine {
 
   /* The previous system time. */
   double timeOld;
-  int ti_old;
+  integertime_t ti_old;
 
   /* The current system time. */
   double time;
-  int ti_current;
+  integertime_t ti_current;
 
   /* Time step */
   double timeStep;
@@ -131,10 +128,7 @@ struct engine {
   double timeBase_inv;
 
   /* Minimal ti_end for the next time-step */
-  int ti_end_min;
-
-  /* Are we drifting all particles now ? */
-  int drift_all;
+  integertime_t ti_end_min;
 
   /* Number of particles updated */
   size_t updates, g_updates;
@@ -145,7 +139,7 @@ struct engine {
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
-  int ti_nextSnapshot;
+  integertime_t ti_nextSnapshot;
   char snapshotBaseName[200];
   int snapshotCompression;
   struct UnitSystem *snapshotUnits;
@@ -218,7 +212,8 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
-void engine_drift(struct engine *e);
+void engine_unskip(struct engine *e);
+void engine_drift_all(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -230,7 +225,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct cooling_function_data *cooling,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners);
-void engine_prepare(struct engine *e, int nodrift);
+void engine_prepare(struct engine *e, int drift_all, int postrepart);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);
