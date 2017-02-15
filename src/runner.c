@@ -952,17 +952,21 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct spart *restrict sp = &sparts[k];
 
       /* If particle needs to be kicked */
-      if (spart_is_active(sp, e)) {
+      if (spart_is_starting(sp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(sp->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, sp->time_bin);
+            get_integer_time_begin(ti_current + 1, sp->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
         const integertime_t ti_end =
-            get_integer_time_end(ti_current, sp->time_bin);
+            get_integer_time_end(ti_current + 1, sp->time_bin);
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, sp->time_bin, ti_current);
 #endif
 
         /* do the kick */
@@ -970,6 +974,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       }
     }
   }
+
   if (timer) TIMER_TOC(timer_kick1);
 }
 
@@ -1230,6 +1235,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           /* What is the next sync-point ? */
           ti_end_min = min(ti_end, ti_end_min);
           ti_end_max = max(ti_end, ti_end_max);
+
           const integertime_t ti_beg =
               get_integer_time_begin(ti_current + 1, gp->time_bin);
 
@@ -1271,6 +1277,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
 
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_current, ti_beg_max);
+
       } else { /* star particle is inactive */
 
         const integertime_t ti_end =
@@ -1279,6 +1288,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_end, ti_end_min);
         ti_end_max = max(ti_end, ti_end_max);
+
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, sp->time_bin);
+
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_beg, ti_beg_max);
       }
     }
   } else {
@@ -1493,6 +1508,11 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
           get_integer_time_end(ti_current, gparts[k].time_bin);
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].ti_drift != ti_current)
+        error("Received un-drifted g-particle !");
+#endif
     }
   }
 
