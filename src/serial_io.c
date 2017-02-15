@@ -486,8 +486,8 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
     readAttribute(h_grp, "NumPart_Total_HighWord", LONGLONG, numParticles_highWord);
 
     for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
-      N_total[ptype] = ((long long)numParticles[ptype]) +
-                       ((long long)numParticles_highWord[ptype] << 32);
+      N_total[ptype] = (numParticles[ptype]) +
+                       (numParticles_highWord[ptype] << 32);
 
     dim[0] = boxSize[0];
     dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
