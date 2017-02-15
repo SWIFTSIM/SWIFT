@@ -102,6 +102,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->ti_old = pc->ti_old;
   c->count = pc->count;
   c->gcount = pc->gcount;
+  c->scount = pc->scount;
   c->tag = pc->tag;
 
   /* Number of new cells created. */
@@ -114,6 +115,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       space_getcells(s, 1, &temp);
       temp->count = 0;
       temp->gcount = 0;
+      temp->scount = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -195,6 +197,31 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #spart array.
+ *
+ * @param c The #cell.
+ * @param sparts The #spart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_sparts(struct cell *c, struct spart *sparts) {
+
+  c->sparts = sparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_sparts(c->progeny[k], &sparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->scount;
+}
+
+/**
  * @brief Pack the data of the given cell and all it's sub-cells.
  *
  * @param c The #cell.
@@ -214,6 +241,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->ti_old = c->ti_old;
   pc->count = c->count;
   pc->gcount = c->gcount;
+  pc->scount = c->scount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -426,6 +454,70 @@ int cell_glocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #spart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_slocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to lock this cell. */
+  if (c->shold || lock_trylock(&c->slock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->shold) {
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+
+    /* Lock this cell. */
+    if (lock_trylock(&finger->slock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->shold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->slock) != 0) error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->shold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -464,23 +556,48 @@ void cell_gunlocktree(struct cell *c) {
 }
 
 /**
+ * @brief Unlock a cell's parents for access to #spart array.
+ *
+ * @param c The #cell.
+ */
+void cell_sunlocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->shold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
  * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
  * @param parts_offset Offset of the cell parts array relative to the
  *        space's parts array, i.e. c->parts - s->parts.
+ * @param sparts_offset Offset of the cell sparts array relative to the
+ *        space's sparts array, i.e. c->sparts - s->sparts.
  * @param buff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices.
+ * @param sbuff A buffer with at least max(c->scount, c->gcount) entries,
+ *        used for sorting indices for the sparts.
  * @param gbuff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices for the gparts.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff) {
 
-  const int count = c->count, gcount = c->gcount;
+  const int count = c->count, gcount = c->gcount, scount = c->scount;
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
   struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -493,6 +610,16 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents.");
+  }
+  for (int k = 0; k < gcount; k++) {
+    if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
+        gbuff[k].x[2] != gparts[k].x[2])
+      error("Inconsistent gbuff contents.");
+  }
+  for (int k = 0; k < scount; k++) {
+    if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
+        sbuff[k].x[2] != sparts[k].x[2])
+      error("Inconsistent sbuff contents.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -547,7 +674,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
   }
 
   /* Re-link the gparts. */
-  if (count > 0 && gcount > 0) part_relink_gparts(parts, count, parts_offset);
+  if (count > 0 && gcount > 0)
+    part_relink_gparts_to_parts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
@@ -611,7 +739,60 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
       error("Sorting failed (progeny=7).");
 #endif
 
-  /* Now do the same song and dance for the gparts. */
+  /* Now do the same song and dance for the sparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < scount; k++) {
+    const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
+                    (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    sbuff[k].ind = bid;
+  }
+
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = sbuff[k].ind;
+      if (bid != bucket) {
+        struct spart spart = sparts[k];
+        struct cell_buff temp_buff = sbuff[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (sbuff[j].ind == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&sparts[j], &spart, sizeof(struct spart));
+          memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
+          bid = temp_buff.ind;
+        }
+        sparts[k] = spart;
+        sbuff[k] = temp_buff;
+      }
+      bucket_count[bid]++;
+    }
+  }
+
+  /* Store the counts and offsets. */
+  for (int k = 0; k < 8; k++) {
+    c->progeny[k]->scount = bucket_count[k];
+    c->progeny[k]->sparts = &c->sparts[bucket_offset[k]];
+  }
+
+  /* Re-link the gparts. */
+  if (scount > 0 && gcount > 0)
+    part_relink_gparts_to_sparts(sparts, scount, sparts_offset);
+
+  /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill the buffer with the indices. */
@@ -662,7 +843,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, struct cell_buff *buff,
 
   /* Re-link the parts. */
   if (count > 0 && gcount > 0)
-    part_relink_parts(gparts, gcount, parts - parts_offset);
+    part_relink_parts_to_gparts(gparts, gcount, parts - parts_offset);
+
+  /* Re-link the sparts. */
+  if (scount > 0 && gcount > 0)
+    part_relink_sparts_to_gparts(gparts, gcount, sparts - sparts_offset);
 }
 
 /**
@@ -1069,6 +1254,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
+  struct spart *const sparts = c->sparts;
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
@@ -1108,7 +1294,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
       dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
     }
 
-    /* Loop over all the particles in the cell */
+    /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
     for (size_t k = 0; k < nr_parts; k++) {
 
@@ -1127,6 +1313,19 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
       /* Maximal smoothing length */
       h_max = (h_max > p->h) ? h_max : p->h;
+    }
+
+    /* Loop over all the star particles in the cell */
+    const size_t nr_sparts = c->scount;
+    for (size_t k = 0; k < nr_sparts; k++) {
+
+      /* Get a handle on the spart. */
+      struct spart *const sp = &sparts[k];
+
+      /* Drift... */
+      drift_spart(sp, dt, timeBase, ti_old, ti_current);
+
+      /* Note: no need to compute dx_max as all spart have a gpart */
     }
 
     /* Now, get the maximal particle motion from its square */

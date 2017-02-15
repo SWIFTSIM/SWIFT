@@ -65,7 +65,8 @@ enum engine_policy {
   engine_policy_cosmology = (1 << 10),
   engine_policy_drift_all = (1 << 11),
   engine_policy_cooling = (1 << 12),
-  engine_policy_sourceterms = (1 << 13)
+  engine_policy_sourceterms = (1 << 13),
+  engine_policy_stars = (1 << 14)
 };
 
 extern const char *engine_policy_names[];
@@ -131,7 +132,7 @@ struct engine {
   integertime_t ti_end_min;
 
   /* Number of particles updated */
-  size_t updates, g_updates;
+  size_t updates, g_updates, s_updates;
 
   /* The internal system of units */
   const struct UnitSystem *internalUnits;
@@ -233,7 +234,9 @@ void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart);
+                            int *ind_gpart, size_t *Ngpart,
+                            size_t offset_sparts, int *ind_spart,
+                            size_t *Nspart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);

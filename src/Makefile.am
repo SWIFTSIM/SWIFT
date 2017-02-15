@@ -60,7 +60,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h \
+		 dimension.h equation_of_state.h part_type.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -78,6 +78,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+	 	 stars.h stars_io.h \
+		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
+		 stars/Default/star_debug.h stars/Default/star_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \

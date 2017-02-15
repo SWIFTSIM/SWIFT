@@ -390,6 +390,8 @@ void writeCodeDescription(hid_t h_file) {
   H5Gclose(h_grpcode);
 }
 
+#endif /* HAVE_HDF5 */
+
 /* ------------------------------------------------------------------------------------------------
  * This part writes the XMF file descriptor enabling a visualisation through
  * ParaView
@@ -586,6 +588,9 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
     if (gparts[i].id_or_neg_offset <= 0)
       error("0 or negative ID for DM particle %zu: ID=%lld", i,
             gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_dark_matter;
   }
 }
 
@@ -597,7 +602,7 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
  *
  * @param parts The array of #part freshly read in.
  * @param gparts The array of #gpart freshly read in with all the DM particles
- *at the start
+ * at the start
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
@@ -618,9 +623,50 @@ void duplicate_hydro_gparts(struct part* const parts,
 
     gparts[i + Ndm].mass = hydro_get_mass(&parts[i]);
 
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_gas;
+
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;
     parts[i].gpart = &gparts[i + Ndm];
+  }
+}
+
+/**
+ * @brief Copy every #spart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles and gas particles are all at
+ * the start of the gparts array and adds the star particles afterwards
+ *
+ * @param sparts The array of #spart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM and gas
+ * particles at the start.
+ * @param Nstars The number of stars particles read in.
+ * @param Ndm The number of DM and gas particles read in.
+ */
+void duplicate_star_gparts(struct spart* const sparts,
+                           struct gpart* const gparts, size_t Nstars,
+                           size_t Ndm) {
+
+  for (size_t i = 0; i < Nstars; ++i) {
+
+    /* Duplicate the crucial information */
+    gparts[i + Ndm].x[0] = sparts[i].x[0];
+    gparts[i + Ndm].x[1] = sparts[i].x[1];
+    gparts[i + Ndm].x[2] = sparts[i].x[2];
+
+    gparts[i + Ndm].v_full[0] = sparts[i].v[0];
+    gparts[i + Ndm].v_full[1] = sparts[i].v[1];
+    gparts[i + Ndm].v_full[2] = sparts[i].v[2];
+
+    gparts[i + Ndm].mass = sparts[i].mass;
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_star;
+
+    /* Link the particles */
+    gparts[i + Ndm].id_or_neg_offset = -i;
+    sparts[i].gpart = &gparts[i + Ndm];
   }
 }
 
@@ -644,7 +690,7 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
      * gparts[i].part); */
 
     /* And collect the DM ones */
-    if (gparts[i].id_or_neg_offset > 0) {
+    if (gparts[i].type == swift_type_dark_matter) {
       dmparts[count] = gparts[i];
       count++;
     }
@@ -655,5 +701,3 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
     error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
 }
-
-#endif
