@@ -47,6 +47,19 @@ struct gpart {
   /* Time-step length */
   timebin_t time_bin;
 
+  /* Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */

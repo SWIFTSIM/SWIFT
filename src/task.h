@@ -74,6 +74,7 @@ enum task_subtypes {
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_gpart,
+  task_subtype_spart,
   task_subtype_count
 } __attribute__((packed));
 

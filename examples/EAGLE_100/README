@@ -1,0 +1,16 @@
+ICs extracted from the EAGLE suite of simulations. 
+
+WARNING: The ICs are 217GB in size. They contain ~3.4G DM particles,
+~3.2G gas particles and ~170M star particles
+
+The particle distribution here is the snapshot 27 (z=0.1) of the 100Mpc
+Ref-model. h- and a- factors from the original Gadget code have been
+corrected for. Variables not used in a pure hydro & gravity code have
+been removed. 
+Everything is ready to be run without cosmological integration. 
+
+The particle load of the main EAGLE simulation can be reproduced by
+running these ICs on 4096 cores.
+
+MD5 checksum of the ICs:
+2301ea73e14207b541bbb04163c5269e  EAGLE_ICs_100.hdf5

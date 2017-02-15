@@ -18,16 +18,17 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
   if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
 
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  space_getsid(e->s, &ci, &cj, shift);
+
   const int count_i = ci->count;
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
 
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  space_getsid(e->s, &ci, &cj, shift);
 
-  if (cell_is_active(ci, e)) {
+ if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci. */
     for (int pid = 0; pid < count_i; pid++) {
@@ -143,14 +144,14 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
   if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
 
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  space_getsid(e->s, &ci, &cj, shift);
+
   const int count_i = ci->count;
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
-
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  space_getsid(e->s, &ci, &cj, shift);
 
   if (cell_is_active(ci, e)) {
 

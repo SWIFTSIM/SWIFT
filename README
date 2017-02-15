@@ -28,6 +28,7 @@ Valid options are:
   -G          Run with self-gravity
   -n    {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop. 
   -s          Run with SPH
+  -S          Run with stars
   -t    {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
   -v     [12] Increase the level of verbosity
   	      1: MPI-rank 0 writes

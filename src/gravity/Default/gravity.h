@@ -43,21 +43,6 @@ gravity_compute_timestep_self(const struct gpart* const gp) {
 }
 
 /**
- * @brief Initialises the g-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param gp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {
-
-  gp->time_bin = 0;
-  gp->epsilon = 0.;  // MATTHIEU
-}
-
-/**
  * @brief Prepares a g-particle for the gravity calculation
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
@@ -99,5 +84,22 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt) {}
+
+/**
+ * @brief Initialises the g-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
+    struct gpart* gp) {
+
+  gp->time_bin = 0;
+  gp->epsilon = 0.;  // MATTHIEU
+
+  gravity_init_gpart(gp);
+}
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_DEBUG_H
-#define SWIFT_DEFAULT_GRAVITY_DEBUG_H
+#ifndef SWIFT_DEFAULT_STAR_DEBUG_H
+#define SWIFT_DEFAULT_STAR_DEBUG_H
 
-__attribute__((always_inline)) INLINE static void gravity_debug_particle(
-    const struct gpart* p) {
+__attribute__((always_inline)) INLINE static void star_debug_particle(
+    const struct spart* p) {
   printf(
-      "mass=%.3e epsilon=%.5e time_bin=%d\n"
-      "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], a=[%.5e,%.5e,%.5e]\n",
-      p->mass, p->epsilon, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
-      p->v_full[1], p->v_full[2], p->a_grav[0], p->a_grav[1], p->a_grav[2]);
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
 }
 
-#endif /* SWIFT_DEFAULT_GRAVITY_DEBUG_H */
+#endif /* SWIFT_DEFAULT_STAR_DEBUG_H */

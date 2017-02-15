@@ -16,16 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_DEBUG_H
-#define SWIFT_DEFAULT_GRAVITY_DEBUG_H
+#ifndef SWIFT_STAR_IO_H
+#define SWIFT_STAR_IO_H
 
-__attribute__((always_inline)) INLINE static void gravity_debug_particle(
-    const struct gpart* p) {
-  printf(
-      "mass=%.3e epsilon=%.5e time_bin=%d\n"
-      "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], a=[%.5e,%.5e,%.5e]\n",
-      p->mass, p->epsilon, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
-      p->v_full[1], p->v_full[2], p->a_grav[0], p->a_grav[1], p->a_grav[2]);
-}
+#include "./const.h"
 
-#endif /* SWIFT_DEFAULT_GRAVITY_DEBUG_H */
+#include "./stars/Default/star_io.h"
+
+#endif /* SWIFT_STAR_IO_H */
