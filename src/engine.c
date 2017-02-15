@@ -3077,7 +3077,6 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
-
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
   if (e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE)

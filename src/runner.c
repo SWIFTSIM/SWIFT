@@ -968,8 +968,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         /* do the kick */
         kick_spart(sp, ti_begin, ti_begin + ti_step / 2, timeBase);
       }
-   }
-
+    }
   }
   if (timer) TIMER_TOC(timer_kick1);
 }
@@ -1119,7 +1118,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   int updated = 0, g_updated = 0, s_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_end_max = 0, ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
 
   /* No children? */
   if (!c->split) {

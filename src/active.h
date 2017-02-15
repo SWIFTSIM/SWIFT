@@ -144,7 +144,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_active(
 }
 
 /**
- * @brief Is this s-particle active ?
+ * @brief Is this s-particle finishing its time-step now ?
  *
  * @param sp The #spart.
  * @param e The #engine containing information about the current time.
@@ -159,15 +159,13 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_current)
     error(
-        "s-particle in an impossible time-zone! gp->ti_end=%lld "
+        "s-particle in an impossible time-zone! sp->ti_end=%lld "
         "e->ti_current=%lld",
         ti_end, ti_current);
 #endif
 
   return (ti_end == ti_current);
 }
-
-
 
 /* Are cells / particles active for kick1 tasks ? */
 
@@ -236,6 +234,31 @@ __attribute__((always_inline)) INLINE static int gpart_is_starting(
   if (ti_beg > ti_current)
     error(
         "g-particle in an impossible time-zone! gp->ti_beg=%lld "
+        "e->ti_current=%lld",
+        ti_beg, ti_current);
+#endif
+
+  return (ti_beg == ti_current);
+}
+
+/**
+ * @brief Is this s-particle starting its time-step now ?
+ *
+ * @param sp The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #spart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_is_starting(
+    const struct spart *sp, const struct engine *e) {
+
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current + 1, sp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_beg > ti_current)
+    error(
+        "s-particle in an impossible time-zone! sp->ti_beg=%lld "
         "e->ti_current=%lld",
         ti_beg, ti_current);
 #endif
