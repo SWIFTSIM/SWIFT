@@ -374,6 +374,65 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
   }
 }
 
+__attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
+    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, const int first_pi, const int last_pj) {
+
+  int idx;
+  /* Shift the particles positions to a local frame (ci frame) so single precision can be
+   * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+#ifdef WITH_VECTORIZATION
+#pragma simd
+#endif
+  for (int i = first_pi; i < ci->count; i++) {
+    idx = sort_i[i].i;
+    ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
+    ci_cache->y[i] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
+    ci_cache->z[i] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
+    ci_cache->h[i] = ci->parts[idx].h;
+
+    ci_cache->m[i] = ci->parts[idx].mass;
+    ci_cache->vx[i] = ci->parts[idx].v[0];
+    ci_cache->vy[i] = ci->parts[idx].v[1];
+    ci_cache->vz[i] = ci->parts[idx].v[2];
+
+#ifdef DOPAIR1_AUTO_VEC
+    ci_cache->rho[i]         = 0.0f; 
+    ci_cache->rho_dh[i]      = 0.0f; 
+    ci_cache->wcount[i]      = 0.0f; 
+    ci_cache->wcount_dh[i]   = 0.0f; 
+    ci_cache->div_v[i]       = 0.0f; 
+    ci_cache->curl_vx[i]     = 0.0f; 
+    ci_cache->curl_vy[i]     = 0.0f; 
+    ci_cache->curl_vz[i]     = 0.0f; 
+#endif
+  }
+ 
+#ifdef WITH_VECTORIZATION
+#pragma simd
+#endif
+  for (int i = 0; i <= last_pj; i++) {
+    idx = sort_j[i].i;
+    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
+    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
+    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
+    cj_cache->h[i] = cj->parts[idx].h;
+
+    cj_cache->m[i] = cj->parts[idx].mass;
+    cj_cache->vx[i] = cj->parts[idx].v[0];
+    cj_cache->vy[i] = cj->parts[idx].v[1];
+    cj_cache->vz[i] = cj->parts[idx].v[2];
+#ifdef DOPAIR1_AUTO_VEC
+    cj_cache->rho[i]         = 0.0f; 
+    cj_cache->rho_dh[i]      = 0.0f; 
+    cj_cache->wcount[i]      = 0.0f; 
+    cj_cache->wcount_dh[i]   = 0.0f; 
+    cj_cache->div_v[i]       = 0.0f; 
+    cj_cache->curl_vx[i]     = 0.0f; 
+    cj_cache->curl_vy[i]     = 0.0f; 
+    cj_cache->curl_vz[i]     = 0.0f; 
+#endif
+  }
+}
 __attribute__((always_inline)) INLINE static void cache_write_sorted_particles(const struct cache *const ci_cache, const struct cache *const cj_cache, const struct cell *const ci, const struct cell *const cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j) {
 
 #ifdef DOPAIR1_AUTO_VEC
