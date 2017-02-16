@@ -2613,12 +2613,6 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
- * @param drift_all Whether to drift particles before rebuilding or not. Will
- *                not be necessary if all particles have already been
- *                drifted (before repartitioning for instance).
- * @param postrepart If we have just repartitioned, if so we need to defer the
- *                   skip until after the rebuild and not check the if all
- *                   cells have been drifted.
  */
 void engine_prepare(struct engine *e) {
 

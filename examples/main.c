@@ -676,6 +676,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Write final output. */
+  engine_drift_all(&e);
   engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI

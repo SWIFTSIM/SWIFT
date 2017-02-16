@@ -2557,12 +2557,12 @@ void space_link_cleanup(struct space *s) {
 }
 
 /**
- * @brief Checks that all cells have been drifted to the current point in time
+ * @brief Checks that all cells have been drifted to a given point in time
  *
  * Expensive function. Should only be used for debugging purposes.
  *
  * @param s The #space to check.
- * @param ti_current The (integer) time.
+ * @param ti_drift The (integer) time.
  */
 void space_check_drift_point(struct space *s, integertime_t ti_drift) {
 
