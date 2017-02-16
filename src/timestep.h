@@ -23,39 +23,41 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "const.h"
 #include "cooling.h"
 #include "debug.h"
+#include "timeline.h"
+
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
  * @param new_dt The time-step to convert.
- * @param ti_begin The (integer) start of the previous time-step.
- * @param ti_end The (integer) end of the previous time-step.
+ * @param old_bin The old time bin.
+ * @param ti_current The current time on the integer time-line.
  * @param timeBase_inv The inverse of the system's minimal time-step.
  */
-__attribute__((always_inline)) INLINE static int get_integer_timestep(
-    float new_dt, int ti_begin, int ti_end, double timeBase_inv) {
+__attribute__((always_inline)) INLINE static integertime_t
+make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
+                      double timeBase_inv) {
 
   /* Convert to integer time */
-  int new_dti = (int)(new_dt * timeBase_inv);
+  integertime_t new_dti = (integertime_t)(new_dt * timeBase_inv);
 
-  /* Recover the current timestep */
-  const int current_dti = ti_end - ti_begin;
+  /* Current time-step */
+  integertime_t current_dti = get_integer_timestep(old_bin);
+  integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
 
   /* Limit timestep increase */
-  if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+  if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
 
   /* Put this timestep on the time line */
-  int dti_timeline = max_nr_timesteps;
-  while (new_dti < dti_timeline) dti_timeline /= 2;
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= 2LL;
   new_dti = dti_timeline;
 
   /* Make sure we are allowed to increase the timestep size */
   if (new_dti > current_dti) {
     if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
-
   return new_dti;
 }
 
@@ -65,25 +67,26 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
  * @param gp The #gpart.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static int get_gpart_timestep(
+__attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
-  const float new_dt_external = external_gravity_timestep(
-      e->time, e->external_potential, e->physical_constants, gp);
+  float new_dt = FLT_MAX;
 
-  /* const float new_dt_self = */
-  /*     gravity_compute_timestep_self(e->physical_constants, gp); */
-  const float new_dt_self = FLT_MAX;  // MATTHIEU
+  if (e->policy & engine_policy_external_gravity)
+    new_dt =
+        min(new_dt, external_gravity_timestep(e->time, e->external_potential,
+                                              e->physical_constants, gp));
 
-  float new_dt = min(new_dt_external, new_dt_self);
+  if (e->policy & engine_policy_self_gravity)
+    new_dt = min(new_dt, gravity_compute_timestep_self(gp));
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti =
-      get_integer_timestep(new_dt, gp->ti_begin, gp->ti_end, e->timeBase_inv);
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, gp->time_bin, e->ti_current, e->timeBase_inv);
 
   return new_dti;
 }
@@ -95,7 +98,7 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
  * @param xp The #xpart partner of p.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static int get_part_timestep(
+__attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e) {
 
@@ -112,14 +115,13 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   float new_dt_grav = FLT_MAX;
   if (p->gpart != NULL) {
 
-    const float new_dt_external = external_gravity_timestep(
-        e->time, e->external_potential, e->physical_constants, p->gpart);
+    if (e->policy & engine_policy_external_gravity)
+      new_dt_grav = min(new_dt_grav, external_gravity_timestep(
+                                         e->time, e->external_potential,
+                                         e->physical_constants, p->gpart));
 
-    /* const float new_dt_self = */
-    /*     gravity_compute_timestep_self(e->physical_constants, p->gpart); */
-    const float new_dt_self = FLT_MAX;  // MATTHIEU
-
-    new_dt_grav = min(new_dt_external, new_dt_self);
+    if (e->policy & engine_policy_self_gravity)
+      new_dt_grav = min(new_dt_grav, gravity_compute_timestep_self(p->gpart));
   }
 
   /* Final time-step is minimum of hydro and gravity */
@@ -138,8 +140,38 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const int new_dti =
-      get_integer_timestep(new_dt, p->ti_begin, p->ti_end, e->timeBase_inv);
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, p->time_bin, e->ti_current, e->timeBase_inv);
+
+  return new_dti;
+}
+
+/**
+ * @brief Compute the new (integer) time-step of a given #spart
+ *
+ * @param sp The #spart.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
+    const struct spart *restrict sp, const struct engine *restrict e) {
+
+  float new_dt = star_compute_timestep(sp);
+
+  if (e->policy & engine_policy_external_gravity)
+    new_dt = min(new_dt,
+                 external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, sp->gpart));
+
+  if (e->policy & engine_policy_self_gravity)
+    new_dt = min(new_dt, gravity_compute_timestep_self(sp->gpart));
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+  new_dt = max(new_dt, e->dt_min);
+
+  /* Convert to integer time */
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, sp->time_bin, e->ti_current, e->timeBase_inv);
 
   return new_dti;
 }

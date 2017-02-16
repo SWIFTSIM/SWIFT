@@ -1,6 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ # Copyright (c) 2016 Stefan Arridge (stefan.arridge@durhama.ac.uk)
  #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
@@ -22,13 +22,11 @@ import h5py
 import sys
 from numpy import *
 
-# Generates a swift IC file containing a cartesian distribution of particles
-# at a constant density and pressure in a cubic box
+# Generates a SWIFT IC file with a constant density and pressure
 
 # Parameters
 periodic= 1           # 1 For periodic box
 boxSize = 1           # 1 kiloparsec    
-L = int(sys.argv[1])  # Number of particles along one axis
 rho = 3.2e3           # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
 P = 4.5e6             # Pressure in code units (at 10^5K)
 gamma = 5./3.         # Gas adiabatic index
@@ -36,12 +34,17 @@ eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "coolingBox.hdf5" 
 
 #---------------------------------------------------
-numPart = L**3
-mass = boxSize**3 * rho / numPart
-print mass
-internalEnergy = P / ((gamma - 1.)*rho)
 
-#--------------------------------------------------
+# Read id, position and h from glass
+glass = h5py.File("glassCube_32.hdf5", "r")
+ids = glass["/PartType0/ParticleIDs"][:]
+pos = glass["/PartType0/Coordinates"][:,:] * boxSize
+h = glass["/PartType0/SmoothingLength"][:] * boxSize
+
+# Compute basic properties
+numPart = size(pos) / 3
+mass = boxSize**3 * rho / numPart
+internalEnergy = P / ((gamma - 1.) * rho)
 
 #File
 file = h5py.File(fileName, 'w')
@@ -57,11 +60,11 @@ grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 
-#Runtime parameters
+# Runtime parameters
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
 
-#Units
+# Units
 grp = file.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = 3.0857e21 
 grp.attrs["Unit mass in cgs (U_M)"] = 2.0e33 
@@ -75,35 +78,26 @@ grp = file.create_group("/PartType0")
 v  = zeros((numPart, 3))
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
-v = zeros(1)
 
 m = full((numPart, 1), mass)
 ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
-m = zeros(1)
 
-h = full((numPart, 1), eta * boxSize / L)
-ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
+h = reshape(h, (numPart, 1))
+ds = grp.create_dataset('SmoothingLength', (numPart, 1), 'f')
 ds[()] = h
-h = zeros(1)
 
 u = full((numPart, 1), internalEnergy)
 ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
 ds[()] = u
-u = zeros(1)
 
-
-ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
+ids = reshape(ids, (numPart, 1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
-ds[()] = ids + 1
-x      = ids % L;
-y      = ((ids - x) / L) % L;
-z      = (ids - x - L * y) / L**2;
-coords = zeros((numPart, 3))
-coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
-coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
-coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
+ds[()] = ids
+
 ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
+ds[()] = pos
 
 file.close()
+
+print numPart

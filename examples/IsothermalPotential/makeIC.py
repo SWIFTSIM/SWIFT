@@ -30,10 +30,10 @@ import random
 # all particles move in the xy plane, and start at y=0
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.672e-8
+NEWTON_GRAVITY_CGS  = 6.67408e-8
 SOLAR_MASS_IN_CGS   = 1.9885e33
 PARSEC_IN_CGS       = 3.0856776e18
-PROTON_MASS_IN_CGS  = 1.6726231e24
+PROTON_MASS_IN_CGS  = 1.672621898e24
 YEAR_IN_CGS         = 3.154e+7
 
 # choice of units
@@ -66,17 +66,12 @@ N       = int(sys.argv[1])  # Number of particles
 icirc   = int(sys.argv[2])  # if = 0, all particles are on circular orbits, if = 1, Lz/Lcirc uniform in ]0,1[
 L       = N**(1./3.)
 
-# these are not used but necessary for I/O
-rho = 2.              # Density
-P = 1.                # Pressure
-gamma = 5./3.         # Gas adiabatic index
 fileName = "Isothermal.hdf5" 
 
 
 #---------------------------------------------------
 numPart        = N
 mass           = 1
-internalEnergy = P / ((gamma - 1.)*rho)
 
 #--------------------------------------------------
 
@@ -111,7 +106,6 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 numpy.random.seed(1234)
 
 #Particle group
-#grp0 = file.create_group("/PartType0")
 grp1 = file.create_group("/PartType1")
 #generate particle positions
 radius = Radius * (numpy.random.rand(N))**(1./3.) 
@@ -119,10 +113,8 @@ ctheta = -1. + 2 * numpy.random.rand(N)
 stheta = numpy.sqrt(1.-ctheta**2)
 phi    =  2 * math.pi * numpy.random.rand(N)
 r      = numpy.zeros((numPart, 3))
-#r[:,0] = radius * stheta * numpy.cos(phi)
-#r[:,1] = radius * stheta * numpy.sin(phi)
-#r[:,2] = radius * ctheta
 r[:,0] = radius
+
 #
 speed  = vrot
 v      = numpy.zeros((numPart, 3))
@@ -145,17 +137,6 @@ m = numpy.full((numPart, ), mass, dtype='f')
 ds = grp1.create_dataset('Masses', (numPart,), 'f')
 ds[()] = m
 m = numpy.zeros(1)
-
-h = numpy.full((numPart, ), 1.1255 * boxSize / L,  dtype='f')
-ds = grp1.create_dataset('SmoothingLength', (numPart,), 'f')
-ds[()] = h
-h = numpy.zeros(1)
-
-u = numpy.full((numPart, ), internalEnergy,  dtype='f')
-ds = grp1.create_dataset('InternalEnergy', (numPart,), 'f')
-ds[()] = u
-u = numpy.zeros(1)
-
 
 ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False, dtype='L')
 ds = grp1.create_dataset('ParticleIDs', (numPart, ), 'L')

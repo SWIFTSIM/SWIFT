@@ -47,4 +47,8 @@ void shuffle_particles(struct part *parts, const int count);
 void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct phys_const *constants, float rlr);
 
+int compare_values(double a, double b, double threshold, double *absDiff,
+                   double *absSum, double *relDiff);
+int compare_particles(struct part a, struct part b, double threshold);
+
 #endif /* SWIFT_TOOL_H */

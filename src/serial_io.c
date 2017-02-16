@@ -46,6 +46,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "stars_io.h"
 #include "units.h"
 
 /*-----------------------------------------------------------------------------
@@ -397,11 +398,16 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param dim (output) The dimension of the volume read from the file.
  * @param parts (output) The array of #part (gas particles) read from the file.
  * @param gparts (output) The array of #gpart read from the file.
+ * @param sparts (output) Array of #spart particles.
  * @param Ngas (output) The number of #part read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
+ * @param Nstars (output) The number of #spart read from the file on that node.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
+ * @param with_hydro Are we reading gas particles ?
+ * @param with_gravity Are we reading/creating #gpart arrays ?
+ * @param with_stars Are we reading star particles ?
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -418,19 +424,23 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    size_t* Ngas, size_t* Ngparts, int* periodic,
-                    int* flag_entropy, int mpi_rank, int mpi_size,
-                    MPI_Comm comm, MPI_Info info, int dry_run) {
+                    struct spart** sparts, size_t* Ngas, size_t* Ngparts,
+                    size_t* Nstars, int* periodic, int* flag_entropy,
+                    int with_hydro, int with_gravity, int with_stars,
+                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                    int dry_run) {
+
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now*/
-  int numParticles[NUM_PARTICLE_TYPES] = {0};
-  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles[NUM_PARTICLE_TYPES] = {0};
+  long long numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
+  size_t Ndm = 0;
   struct UnitSystem* ic_units = malloc(sizeof(struct UnitSystem));
 
   /* First read some information about the content */
@@ -472,12 +482,13 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
     readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
     *flag_entropy = flag_entropy_temp[0];
     readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
-    readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
-    readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
+    readAttribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
+    readAttribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
+                  numParticles_highWord);
 
     for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
-      N_total[ptype] = ((long long)numParticles[ptype]) +
-                       ((long long)numParticles_highWord[ptype] << 32);
+      N_total[ptype] =
+          (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
     dim[0] = boxSize[0];
     dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
@@ -536,7 +547,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(flag_entropy, 1, MPI_INT, 0, comm);
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
-  MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG, 0, comm);
+  MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
   MPI_Bcast(ic_units, sizeof(struct UnitSystem), MPI_BYTE, 0, comm);
 
@@ -547,19 +558,32 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   }
 
   /* Allocate memory to store SPH particles */
-  *Ngas = N[0];
-  if (posix_memalign((void*)parts, part_align, (*Ngas) * sizeof(struct part)) !=
-      0)
-    error("Error while allocating memory for particles");
-  bzero(*parts, *Ngas * sizeof(struct part));
+  if (with_hydro) {
+    *Ngas = N[0];
+    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
+        0)
+      error("Error while allocating memory for SPH particles");
+    bzero(*parts, *Ngas * sizeof(struct part));
+  }
 
-  /* Allocate memory to store all particles */
-  const size_t Ndm = N[1];
-  *Ngparts = N[1] + N[0];
-  if (posix_memalign((void*)gparts, gpart_align,
-                     *Ngparts * sizeof(struct gpart)) != 0)
-    error("Error while allocating memory for gravity particles");
-  bzero(*gparts, *Ngparts * sizeof(struct gpart));
+  /* Allocate memory to store star particles */
+  if (with_stars) {
+    *Nstars = N[STAR];
+    if (posix_memalign((void*)sparts, spart_align,
+                       *Nstars * sizeof(struct spart)) != 0)
+      error("Error while allocating memory for star particles");
+    bzero(*sparts, *Nstars * sizeof(struct spart));
+  }
+
+  /* Allocate memory to store all gravity  particles */
+  if (with_gravity) {
+    Ndm = N[1];
+    *Ngparts = (with_hydro ? N[GAS] : 0) + N[DM] + (with_stars ? N[STAR] : 0);
+    if (posix_memalign((void*)gparts, gpart_align,
+                       *Ngparts * sizeof(struct gpart)) != 0)
+      error("Error while allocating memory for gravity particles");
+    bzero(*gparts, *Ngparts * sizeof(struct gpart));
+  }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
   /* 	  (1024.*1024.)); */
@@ -602,13 +626,24 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
         switch (ptype) {
 
           case GAS:
-            Nparticles = *Ngas;
-            hydro_read_particles(*parts, list, &num_fields);
+            if (with_hydro) {
+              Nparticles = *Ngas;
+              hydro_read_particles(*parts, list, &num_fields);
+            }
             break;
 
           case DM:
-            Nparticles = Ndm;
-            darkmatter_read_particles(*gparts, list, &num_fields);
+            if (with_gravity) {
+              Nparticles = Ndm;
+              darkmatter_read_particles(*gparts, list, &num_fields);
+            }
+            break;
+
+          case STAR:
+            if (with_stars) {
+              Nparticles = *Nstars;
+              star_read_particles(*sparts, list, &num_fields);
+            }
             break;
 
           default:
@@ -634,16 +669,21 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
     MPI_Barrier(comm);
   }
 
-  /* Clean up */
-  free(ic_units);
-
   /* Prepare the DM particles */
-  if (!dry_run) prepare_dm_gparts(*gparts, Ndm);
+  if (!dry_run && with_gravity) prepare_dm_gparts(*gparts, Ndm);
 
-  /* Now duplicate the hydro particle into gparts */
-  if (!dry_run) duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+  /* Duplicate the hydro particles into gparts */
+  if (!dry_run && with_gravity && with_hydro)
+    duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+
+  /* Duplicate the star particles into gparts */
+  if (!dry_run && with_gravity && with_stars)
+    duplicate_star_gparts(*sparts, *gparts, *Nstars, Ndm + *Ngas);
 
   /* message("Done Reading particles..."); */
+
+  /* Clean up */
+  free(ic_units);
 }
 
 /**
@@ -673,17 +713,19 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
+  const size_t Nstars = e->s->nr_sparts;
   const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
+  struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
-  const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
+  const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -691,15 +733,15 @@ void write_output_serial(struct engine* e, const char* baseName,
            outputCount);
 
   /* Compute offset in the file and total number of particles */
-  size_t N[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
+  size_t N[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0, 0, Nstars, 0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
-  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG, MPI_SUM, comm);
+  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG_INT, MPI_SUM, comm);
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
     N_total[ptype] = offset[ptype] + N[ptype];
 
   /* The last rank now has the correct N_total. Let's broadcast from there */
-  MPI_Bcast(&N_total, 6, MPI_LONG_LONG, mpi_size - 1, comm);
+  MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
   /* Now everybody konws its offset and the total number of particles of each
    * type */
@@ -909,7 +951,11 @@ void write_output_serial(struct engine* e, const char* baseName,
             /* Write DM particles */
             Nparticles = Ndm;
             darkmatter_write_particles(dmparts, list, &num_fields);
+            break;
 
+          case STAR:
+            Nparticles = Nstars;
+            star_write_particles(sparts, list, &num_fields);
             break;
 
           default:
@@ -923,7 +969,10 @@ void write_output_serial(struct engine* e, const char* baseName,
                      internal_units, snapshot_units);
 
         /* Free temporary array */
-        free(dmparts);
+        if (dmparts) {
+          free(dmparts);
+          dmparts = 0;
+        }
 
         /* Close particle group */
         H5Gclose(h_grp);

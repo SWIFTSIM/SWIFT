@@ -36,6 +36,9 @@ eta = 1.2349             # 48 ngbs with cubic spline kernel
 rhoDM = 1.
 Ldm = int(sys.argv[2])  # Number of particles along one axis
 
+massStars = 0.1
+Lstars = int(sys.argv[3])  # Number of particles along one axis
+
 fileName = "multiTypes.hdf5"
 
 #---------------------------------------------------
@@ -46,6 +49,10 @@ internalEnergy = P / ((gamma - 1.)*rhoGas)
 numDM = Ldm**3
 massDM = boxSize**3 * rhoDM / numDM
 
+numStars = Lstars**3
+massStars = massDM * massStars
+
+
 #--------------------------------------------------
 
 #File
@@ -54,9 +61,9 @@ file = h5py.File(fileName, 'w')
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [numGas, numDM, 0, 0, 0, 0]
+grp.attrs["NumPart_Total"] =  [numGas, numDM, 0, 0, numStars, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numGas, numDM, 0, 0, 0, 0]
+grp.attrs["NumPart_ThisFile"] = [numGas, numDM, 0, 0, numStars, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, massDM, 0.0, 0.0, 0.0, 0.0]
@@ -141,5 +148,34 @@ coords[:,1] = y[:,0] * boxSize / Ldm + boxSize / (2*Ldm)
 coords[:,2] = x[:,0] * boxSize / Ldm + boxSize / (2*Ldm)
 ds = grp.create_dataset('Coordinates', (numDM, 3), 'd')
 ds[()] = coords
+
+
+
+# Star Particle group
+grp = file.create_group("/PartType4")
+
+v  = zeros((numStars, 3))
+ds = grp.create_dataset('Velocities', (numStars, 3), 'f')
+ds[()] = v
+v = zeros(1)
+
+m = full((numStars, 1), massStars)
+ds = grp.create_dataset('Masses', (numStars,1), 'f')
+ds[()] = m
+m = zeros(1)
+
+ids = linspace(0, numStars, numStars, endpoint=False).reshape((numStars,1))
+ds = grp.create_dataset('ParticleIDs', (numStars, 1), 'L')
+ds[()] = ids + Lgas**3 + 1
+x      = ids % Ldm;
+y      = ((ids - x) / Ldm) % Ldm;
+z      = (ids - x - Ldm * y) / Ldm**2;
+coords = zeros((numStars, 3))
+coords[:,0] = z[:,0] * boxSize / Ldm + boxSize / (2*Ldm)
+coords[:,1] = y[:,0] * boxSize / Ldm + boxSize / (2*Ldm)
+coords[:,2] = x[:,0] * boxSize / Ldm + boxSize / (2*Ldm)
+ds = grp.create_dataset('Coordinates', (numStars, 3), 'd')
+ds[()] = coords
+
 
 file.close()

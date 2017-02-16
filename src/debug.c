@@ -194,7 +194,8 @@ int checkSpacehmax(struct space *s) {
 
 /**
  * @brief Check if the h_max and dx_max values of a cell's hierarchy are
- * consistent with the particles. Report verbosely if not.
+ * consistent with the particles. Also checks if particles are correctly
+ * in a cell. Report verbosely if not.
  *
  * @param c the top cell of the hierarchy.
  * @param depth the recursion depth for use in messages. Set to 0 initially.
@@ -206,24 +207,50 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 
   float h_max = 0.0f;
   float dx_max = 0.0f;
-  if (!c->split) {
-    const size_t nr_parts = c->count;
-    struct part *parts = c->parts;
-    for (size_t k = 0; k < nr_parts; k++) {
-      h_max = (h_max > parts[k].h) ? h_max : parts[k].h;
+  int result = 1;
+
+  const double loc_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double loc_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                             c->loc[2] + c->width[2]};
+
+  const size_t nr_parts = c->count;
+  struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
+  for (size_t k = 0; k < nr_parts; k++) {
+
+    struct part *const p = &parts[k];
+    struct xpart *const xp = &xparts[k];
+
+    if (p->x[0] < loc_min[0] || p->x[0] > loc_max[0] || p->x[1] < loc_min[1] ||
+        p->x[1] > loc_max[1] || p->x[2] < loc_min[2] || p->x[2] > loc_max[2]) {
+
+      message(
+          "Inconsistent part position p->x=[%e %e %e], c->loc=[%e %e %e] "
+          "c->width=[%e %e %e]",
+          p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
+
+      result = 0;
     }
-  } else {
-    for (int k = 0; k < 8; k++)
+
+    const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                      xp->x_diff[1] * xp->x_diff[1] +
+                      xp->x_diff[2] * xp->x_diff[2];
+
+    h_max = max(h_max, p->h);
+    dx_max = max(dx_max, sqrt(dx2));
+  }
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
         checkCellhdxmax(cp, depth);
-        dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
       }
+    }
   }
 
   /* Check. */
-  int result = 1;
   if (c->h_max != h_max) {
     message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
             h_max);
@@ -232,13 +259,6 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   }
   if (c->dx_max != dx_max) {
     message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max, dx_max);
-    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
-    result = 0;
-  }
-
-  /* Check rebuild criterion. */
-  if (h_max > c->dmin) {
-    message("%d Inconsistent c->dmin: %f > %f", *depth, h_max, c->dmin);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }

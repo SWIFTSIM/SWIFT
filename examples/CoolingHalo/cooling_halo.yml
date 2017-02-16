@@ -37,7 +37,7 @@ InitialConditions:
   shift_z:    0.
  
 # External potential parameters
-SoftenedIsothermalPotential:
+IsothermalPotential:
   position_x:      0.     # location of centre of isothermal potential in internal units
   position_y:      0.
   position_z:      0.	

@@ -7,4 +7,7 @@ then
     python makeIC.py 1000 1
 fi
 
+rm -rf Isothermal_*.hdf5
 ../swift -g -t 1 isothermal.yml 2>&1 | tee output.log
+
+python energy_plot.py

@@ -45,6 +45,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "stars_io.h"
 #include "units.h"
 
 /*-----------------------------------------------------------------------------
@@ -312,14 +313,18 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param fileName The file to read.
  * @param internal_units The system units used internally
  * @param dim (output) The dimension of the volume.
- * @param parts (output) Array of Gas particles.
+ * @param parts (output) Array of #part particles.
  * @param gparts (output) Array of #gpart particles.
+ * @param sparts (output) Array of #spart particles.
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
+ * @param Nstars (output) The number of #spart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
- * InternalEnergy
- * field
+ * InternalEnergy field
+ * @param with_hydro Are we reading gas particles ?
+ * @param with_gravity Are we reading/creating #gpart arrays ?
+ * @param with_stars Are we reading star particles ?
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
@@ -332,8 +337,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    size_t* Ngas, size_t* Ngparts, int* periodic,
-                    int* flag_entropy, int dry_run) {
+                    struct spart** sparts, size_t* Ngas, size_t* Ngparts,
+                    size_t* Nstars, int* periodic, int* flag_entropy,
+                    int with_hydro, int with_gravity, int with_stars,
+                    int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -343,7 +350,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
-  size_t Ndm;
+  size_t Ndm = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -439,19 +446,32 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
         units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
 
   /* Allocate memory to store SPH particles */
-  *Ngas = N[0];
-  if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
-      0)
-    error("Error while allocating memory for SPH particles");
-  bzero(*parts, *Ngas * sizeof(struct part));
+  if (with_hydro) {
+    *Ngas = N[GAS];
+    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
+        0)
+      error("Error while allocating memory for SPH particles");
+    bzero(*parts, *Ngas * sizeof(struct part));
+  }
 
-  /* Allocate memory to store all particles */
-  Ndm = N[1];
-  *Ngparts = N[1] + N[0];
-  if (posix_memalign((void*)gparts, gpart_align,
-                     *Ngparts * sizeof(struct gpart)) != 0)
-    error("Error while allocating memory for gravity particles");
-  bzero(*gparts, *Ngparts * sizeof(struct gpart));
+  /* Allocate memory to store star particles */
+  if (with_stars) {
+    *Nstars = N[STAR];
+    if (posix_memalign((void*)sparts, spart_align,
+                       *Nstars * sizeof(struct spart)) != 0)
+      error("Error while allocating memory for star particles");
+    bzero(*sparts, *Nstars * sizeof(struct spart));
+  }
+
+  /* Allocate memory to store all gravity particles */
+  if (with_gravity) {
+    Ndm = N[DM];
+    *Ngparts = (with_hydro ? N[GAS] : 0) + N[DM] + (with_stars ? N[STAR] : 0);
+    if (posix_memalign((void*)gparts, gpart_align,
+                       *Ngparts * sizeof(struct gpart)) != 0)
+      error("Error while allocating memory for gravity particles");
+    bzero(*gparts, *Ngparts * sizeof(struct gpart));
+  }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
    * (1024.*1024.)); */
@@ -482,13 +502,24 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
     switch (ptype) {
 
       case GAS:
-        Nparticles = *Ngas;
-        hydro_read_particles(*parts, list, &num_fields);
+        if (with_hydro) {
+          Nparticles = *Ngas;
+          hydro_read_particles(*parts, list, &num_fields);
+        }
         break;
 
       case DM:
-        Nparticles = Ndm;
-        darkmatter_read_particles(*gparts, list, &num_fields);
+        if (with_gravity) {
+          Nparticles = Ndm;
+          darkmatter_read_particles(*gparts, list, &num_fields);
+        }
+        break;
+
+      case STAR:
+        if (with_stars) {
+          Nparticles = *Nstars;
+          star_read_particles(*sparts, list, &num_fields);
+        }
         break;
 
       default:
@@ -505,10 +536,15 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   }
 
   /* Prepare the DM particles */
-  if (!dry_run) prepare_dm_gparts(*gparts, Ndm);
+  if (!dry_run && with_gravity) prepare_dm_gparts(*gparts, Ndm);
 
-  /* Now duplicate the hydro particle into gparts */
-  if (!dry_run) duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+  /* Duplicate the hydro particles into gparts */
+  if (!dry_run && with_gravity && with_hydro)
+    duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+
+  /* Duplicate the star particles into gparts */
+  if (!dry_run && with_gravity && with_stars)
+    duplicate_star_gparts(*sparts, *gparts, *Nstars, Ndm + *Ngas);
 
   /* message("Done Reading particles..."); */
 
@@ -541,18 +577,20 @@ void write_output_single(struct engine* e, const char* baseName,
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
+  const size_t Nstars = e->s->nr_sparts;
   const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
+  struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
 
   /* Number of unassociated gparts */
-  const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
+  const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
 
-  long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
+  long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0, 0, Nstars, 0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -729,6 +767,11 @@ void write_output_single(struct engine* e, const char* baseName,
         darkmatter_write_particles(dmparts, list, &num_fields);
         break;
 
+      case STAR:
+        N = Nstars;
+        star_write_particles(sparts, list, &num_fields);
+        break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -739,7 +782,10 @@ void write_output_single(struct engine* e, const char* baseName,
                  internal_units, snapshot_units);
 
     /* Free temporary array */
-    free(dmparts);
+    if (dmparts) {
+      free(dmparts);
+      dmparts = NULL;
+    }
 
     /* Close particle group */
     H5Gclose(h_grp);

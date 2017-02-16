@@ -23,7 +23,9 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
+#include "cache.h"
 #include "cell.h"
 #include "clocks.h"
 #include "const.h"
@@ -53,6 +55,7 @@
 #include "sourceterms.h"
 #include "space.h"
 #include "task.h"
+#include "timeline.h"
 #include "timers.h"
 #include "tools.h"
 #include "units.h"

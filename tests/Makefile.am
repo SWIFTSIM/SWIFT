@@ -25,15 +25,15 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh testKernelGrav testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
-        testMatrixInversion testThreadpool
+        testMatrixInversion testThreadpool testDump testLogger
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testSPHStep testPair test27cells test125cells testParser \
                  testKernel testKernelGrav testFFT testInteractions testMaths \
-                 testSymmetry testThreadpool \
+                 testSymmetry testThreadpool benchmarkInteractions \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
-                 testRiemannHLLC testMatrixInversion
+                 testRiemannHLLC testMatrixInversion testDump testLogger
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -66,6 +66,8 @@ testFFT_SOURCES = testFFT.c
 
 testInteractions_SOURCES = testInteractions.c
 
+benchmarkInteractions_SOURCES = benchmarkInteractions.c
+
 testAdiabaticIndex_SOURCES = testAdiabaticIndex.c
 
 testRiemannExact_SOURCES = testRiemannExact.c
@@ -77,6 +79,10 @@ testRiemannHLLC_SOURCES = testRiemannHLLC.c
 testMatrixInversion_SOURCES = testMatrixInversion.c
 
 testThreadpool_SOURCES = testThreadpool.c
+
+testDump_SOURCES = testDump.c
+
+testLogger_SOURCES = testLogger.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \

@@ -31,7 +31,9 @@
 
 void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    size_t* Ngas, size_t* Ndm, int* periodic, int* flag_entropy,
+                    struct spart** sparts, size_t* Ngas, size_t* Ndm,
+                    size_t* Nstars, int* periodic, int* flag_entropy,
+                    int with_hydro, int with_gravity, int with_stars,
                     int dry_run);
 
 void write_output_single(struct engine* e, const char* baseName,

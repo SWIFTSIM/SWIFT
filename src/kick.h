@@ -25,34 +25,31 @@
 /* Local headers. */
 #include "const.h"
 #include "debug.h"
+#include "stars.h"
+#include "timeline.h"
 
 /**
  * @brief Perform the 'kick' operation on a #gpart
  *
  * @param gp The #gpart to kick.
- * @param new_dti The (integer) time-step for this kick.
+ * @param ti_start The starting (integer) time of the kick
+ * @param ti_end The ending (integer) time of the kick
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_gpart(
-    struct gpart *restrict gp, int new_dti, double timeBase) {
+    struct gpart *restrict gp, integertime_t ti_start, integertime_t ti_end,
+    double timeBase) {
 
-  /* Compute the time step for this kick */
-  const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-  const int ti_end = gp->ti_end + new_dti / 2;
+  /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
-  const float half_dt = (ti_end - gp->ti_end) * timeBase;
-
-  /* Move particle forward in time */
-  gp->ti_begin = gp->ti_end;
-  gp->ti_end = gp->ti_begin + new_dti;
 
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
   gp->v_full[1] += gp->a_grav[1] * dt;
   gp->v_full[2] += gp->a_grav[2] * dt;
 
-  /* Extra kick work */
-  gravity_kick_extra(gp, dt, half_dt);
+  /* Kick extra variables */
+  gravity_kick_extra(gp, dt);
 }
 
 /**
@@ -60,26 +57,26 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  *
  * @param p The #part to kick.
  * @param xp The #xpart of the particle.
- * @param new_dti The (integer) time-step for this kick.
+ * @param ti_start The starting (integer) time of the kick
+ * @param ti_end The ending (integer) time of the kick
  * @param timeBase The minimal allowed time-step size.
  */
 __attribute__((always_inline)) INLINE static void kick_part(
-    struct part *restrict p, struct xpart *restrict xp, int new_dti,
-    double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp, integertime_t ti_start,
+    integertime_t ti_end, double timeBase) {
 
-  /* Compute the time step for this kick */
-  const int ti_start = (p->ti_begin + p->ti_end) / 2;
-  const int ti_end = p->ti_end + new_dti / 2;
+  /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
-  const float half_dt = (ti_end - p->ti_end) * timeBase;
 
-  /* Move particle forward in time */
-  p->ti_begin = p->ti_end;
-  p->ti_end = p->ti_begin + new_dti;
-  if (p->gpart != NULL) {
-    p->gpart->ti_begin = p->ti_begin;
-    p->gpart->ti_end = p->ti_end;
-  }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->ti_kick != ti_start)
+    error(
+        "Particle has not been kicked to the current time p->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld",
+        p->ti_kick, ti_start, ti_end);
+
+  p->ti_kick = ti_end;
+#endif
 
   /* Get the acceleration */
   float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
@@ -99,14 +96,40 @@ __attribute__((always_inline)) INLINE static void kick_part(
     p->gpart->v_full[2] = xp->v_full[2];
   }
 
-  /* Go back by half-step for the hydro velocity */
-  p->v[0] = xp->v_full[0] - half_dt * a_tot[0];
-  p->v[1] = xp->v_full[1] - half_dt * a_tot[1];
-  p->v[2] = xp->v_full[2] - half_dt * a_tot[2];
-
   /* Extra kick work */
-  hydro_kick_extra(p, xp, dt, half_dt);
-  if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt, half_dt);
+  hydro_kick_extra(p, xp, dt);
+  if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt);
+}
+
+/**
+ * @brief Perform the 'kick' operation on a #spart
+ *
+ * @param sp The #spart to kick.
+ * @param ti_start The starting (integer) time of the kick
+ * @param ti_end The ending (integer) time of the kick
+ * @param timeBase The minimal allowed time-step size.
+ */
+__attribute__((always_inline)) INLINE static void kick_spart(
+    struct spart *restrict sp, integertime_t ti_start, integertime_t ti_end,
+    double timeBase) {
+
+  /* Time interval for this half-kick */
+  const float dt = (ti_end - ti_start) * timeBase;
+
+  /* Acceleration from gravity */
+  const float a[3] = {sp->gpart->a_grav[0], sp->gpart->a_grav[1],
+                      sp->gpart->a_grav[2]};
+
+  /* Kick particles in momentum space */
+  sp->v[0] += a[0] * dt;
+  sp->v[1] += a[1] * dt;
+  sp->v[2] += a[2] * dt;
+  sp->gpart->v_full[0] = sp->v[0];
+  sp->gpart->v_full[1] = sp->v[1];
+  sp->gpart->v_full[2] = sp->v[2];
+
+  /* Kick extra variables */
+  star_kick_extra(sp, dt);
 }
 
 #endif /* SWIFT_KICK_H */

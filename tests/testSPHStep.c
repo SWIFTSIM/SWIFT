@@ -61,8 +61,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
             offset[2] * cellSize + z * cellSize / N + cellSize / (2 * N);
         part->h = h;
         part->id = x * N * N + y * N + z + id_offset;
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
         ++part;
       }
     }
