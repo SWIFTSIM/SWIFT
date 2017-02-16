@@ -1289,14 +1289,6 @@ void cell_drift(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
 
-#ifdef ICHECK
-      if (gp->id_or_neg_offset == ICHECK) {
-        message("--- ti_current=%lld time=%e dt=%e---", e->ti_current, e->time,
-                dt);
-        printgParticle_single(gp);
-      }
-#endif
-
       /* Compute (square of) motion since last cell construction */
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +

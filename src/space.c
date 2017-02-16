@@ -2361,6 +2361,11 @@ void space_init_sparts(struct space *s) {
 #endif
 
     star_first_init_spart(&sp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    sp->ti_drift = 0;
+    sp->ti_kick = 0;
+#endif
   }
 }
 

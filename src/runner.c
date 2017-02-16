@@ -187,13 +187,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
-
-#ifdef ICHECK
-        if (gp->id_or_neg_offset == ICHECK) {
-          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-          printgParticle_single(gp);
-        }
-#endif
       }
     }
   }
@@ -531,13 +524,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
         /* Get ready for a density calculation */
         gravity_init_gpart(gp);
-
-#ifdef ICHECK
-        if (gp->id_or_neg_offset == ICHECK) {
-          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-          printgParticle_single(gp);
-        }
-#endif
       }
     }
   }
@@ -935,13 +921,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         /* do the kick */
         kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
-
-#ifdef ICHECK
-        if (gp->id_or_neg_offset == ICHECK) {
-          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-          printgParticle_single(gp);
-        }
-#endif
       }
     }
 
@@ -1036,6 +1015,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
+#ifdef SWIFT_DEBUG_CHECKS
+	/* Check that kick and the drift are synchronized */
+	if(p->ti_drift != p->ti_kick) 
+	  error("Error integrating part in time.");
+#endif
+
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp);
       }
@@ -1062,12 +1047,14 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         /* Finish the time-step with a second half-kick */
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
-#ifdef ICHECK
-        if (gp->id_or_neg_offset == ICHECK) {
-          message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-          printgParticle_single(gp);
-        }
+#ifdef SWIFT_DEBUG_CHECKS
+	/* Check that kick and the drift are synchronized */
+	if(gp->ti_drift != gp->ti_kick) 
+	  error("Error integrating g-part in time.");
 #endif
+
+        /* Prepare the values to be drifted */
+        gravity_reset_predicted_values(gp);
       }
     }
 
@@ -1091,6 +1078,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_spart(sp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+
+#ifdef SWIFT_DEBUG_CHECKS
+	/* Check that kick and the drift are synchronized */
+	if(sp->ti_drift != sp->ti_kick) 
+	  error("Error integrating s-part in time.");
+#endif
 
         /* Prepare the values to be drifted */
         star_reset_predicted_values(sp);
@@ -1209,13 +1202,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
           /* Update particle */
           gp->time_bin = get_time_bin(ti_new_step);
-
-#ifdef ICHECK
-          if (gp->id_or_neg_offset == ICHECK) {
-            message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-            printgParticle_single(gp);
-          }
-#endif
 
           /* Number of updated g-particles */
           g_updated++;
@@ -1380,13 +1366,6 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gp->type == swift_type_dark_matter) {
         if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
       }
-
-#ifdef ICHECK
-      if (gp->id_or_neg_offset == ICHECK) {
-        message("--- ti_current=%lld time=%e ---", e->ti_current, e->time);
-        printgParticle_single(gp);
-      }
-#endif
     }
 
     /* Loop over the star particles in this cell. */
