@@ -27,8 +27,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
 
-
- if (cell_is_active(ci, e)) {
+  if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci. */
     for (int pid = 0; pid < count_i; pid++) {
