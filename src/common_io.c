@@ -373,6 +373,7 @@ void writeCodeDescription(hid_t h_file) {
   writeAttribute_s(h_grpcode, "Compiler Version", compiler_version());
   writeAttribute_s(h_grpcode, "Git Branch", git_branch());
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
+  writeAttribute_s(h_grpcode, "Git Date", git_date());
   writeAttribute_s(h_grpcode, "Configuration options", configuration_options());
   writeAttribute_s(h_grpcode, "CFLAGS", compilation_cflags());
   writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());

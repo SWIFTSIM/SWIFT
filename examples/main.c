@@ -54,7 +54,7 @@ struct profiler prof;
 void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
-  printf("       swift_mpi [OPTION]... PARAMFILE\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
