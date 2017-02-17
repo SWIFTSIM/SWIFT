@@ -2506,8 +2506,6 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
   int rebuild_space = 0;
 
-  message("marktasks");
-
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
@@ -2575,12 +2573,6 @@ void engine_rebuild(struct engine *e) {
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
-  message("rebuild"); fflush(stdout);
-
-#ifdef WITH_MPI
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
@@ -2599,8 +2591,8 @@ void engine_rebuild(struct engine *e) {
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
 
-  /* Print the status of the system */
-  // if (e->verbose) engine_print_task_counts(e);
+/* Print the status of the system */
+// if (e->verbose) engine_print_task_counts(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
@@ -2624,14 +2616,14 @@ void engine_prepare(struct engine *e) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(e->forcerepart || e->forcerebuild) {
+  if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
      * That can include cells that have not
      * previously been active on this rank. */
     space_check_drift_point(e->s, e->ti_old);
 #endif
   }
-  
+
   /* Do we need repartitioning ? */
   if (e->forcerepart) engine_repartition(e);
 
@@ -3030,9 +3022,6 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  message("START snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
-          e->forcerepart);
-
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -3044,7 +3033,7 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %lld %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->ti_current, e->time,
+    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
            e->timeStep, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time);
     fflush(stdout);
@@ -3058,7 +3047,7 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  /* Repartition the space amongst the nodes? */
+/* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
   if (e->step % 100 == 2) e->forcerepart = 1;
 #endif
@@ -3086,9 +3075,6 @@ void engine_step(struct engine *e) {
   e->forcerebuild = buff;
 #endif
 
-  message("MIDDLE snap=%d, rebuild=%d repart=%d ti_current=%lld", e->dump_snapshot, e->forcerebuild,
-          e->forcerepart, e->ti_current);
-
   /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
@@ -3097,9 +3083,6 @@ void engine_step(struct engine *e) {
   /* to the current time */
   if (e->dump_snapshot || e->forcerebuild || e->forcerepart)
     engine_drift_all(e);
-
-  message("END snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
-          e->forcerepart);
 
   /* Write a snapshot ? */
   if (e->dump_snapshot) {
@@ -3136,8 +3119,6 @@ int engine_is_done(struct engine *e) {
  */
 void engine_unskip(struct engine *e) {
 
-  message("unskip");
-
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
@@ -3153,8 +3134,6 @@ void engine_unskip(struct engine *e) {
  * @param e The #engine.
  */
 void engine_drift_all(struct engine *e) {
-
-  message("drift all");
 
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
@@ -3383,8 +3362,6 @@ void engine_dump_snapshot(struct engine *e) {
 
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 
-  message("dump");
-
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -3477,6 +3454,7 @@ void engine_unpin() {
  * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
+ * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
@@ -3487,7 +3465,7 @@ void engine_unpin() {
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
-		 enum repartition_type reparttype,
+                 enum repartition_type reparttype,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,

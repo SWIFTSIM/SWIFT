@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-/* Prepare the domain decomposition scheme */
+  /* Prepare the domain decomposition scheme */
   enum repartition_type reparttype = REPART_NONE;
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -507,8 +507,8 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-              engine_policies, talking, reparttype, &us, &prog_const, &hydro_properties,
-              &potential, &cooling_func, &sourceterms);
+              engine_policies, talking, reparttype, &us, &prog_const,
+              &hydro_properties, &potential, &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

@@ -1016,9 +1016,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
 #ifdef SWIFT_DEBUG_CHECKS
-	/* Check that kick and the drift are synchronized */
-	if(p->ti_drift != p->ti_kick) 
-	  error("Error integrating part in time.");
+        /* Check that kick and the drift are synchronized */
+        if (p->ti_drift != p->ti_kick) error("Error integrating part in time.");
 #endif
 
         /* Prepare the values to be drifted */
@@ -1048,9 +1047,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
 #ifdef SWIFT_DEBUG_CHECKS
-	/* Check that kick and the drift are synchronized */
-	if(gp->ti_drift != gp->ti_kick) 
-	  error("Error integrating g-part in time.");
+        /* Check that kick and the drift are synchronized */
+        if (gp->ti_drift != gp->ti_kick)
+          error("Error integrating g-part in time.");
 #endif
 
         /* Prepare the values to be drifted */
@@ -1080,9 +1079,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         kick_spart(sp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
 #ifdef SWIFT_DEBUG_CHECKS
-	/* Check that kick and the drift are synchronized */
-	if(sp->ti_drift != sp->ti_kick) 
-	  error("Error integrating s-part in time.");
+        /* Check that kick and the drift are synchronized */
+        if (sp->ti_drift != sp->ti_kick)
+          error("Error integrating s-part in time.");
 #endif
 
         /* Prepare the values to be drifted */
