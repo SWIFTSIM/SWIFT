@@ -2047,8 +2047,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       const float h = p->h;
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, p->time_bin);
-      /* const integertime_t ti_end = */
-      /*     get_integer_time_end(e->ti_current, p->time_bin); */
       const integertime_t ti_beg =
           get_integer_time_begin(e->ti_current + 1, p->time_bin);
       xp->x_diff[0] = 0.f;
@@ -2063,8 +2061,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct gpart *gp = &gparts[k];
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, gp->time_bin);
-      /* const integertime_t ti_end = */
-      /*     get_integer_time_end(e->ti_current, gp->time_bin); */
       const integertime_t ti_beg =
           get_integer_time_begin(e->ti_current + 1, gp->time_bin);
       gp->x_diff[0] = 0.f;
