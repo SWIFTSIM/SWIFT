@@ -3048,7 +3048,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
 /* Repartition the space amongst the nodes? */
-#ifdef WITH_MPI
+#if defined(WITH_MPI) && defined(HAVE_METIS)
   if (e->step % 100 == 2) e->forcerepart = 1;
 #endif
 
