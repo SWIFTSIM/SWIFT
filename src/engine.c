@@ -822,19 +822,18 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_old);
 #endif
 
   /* Clear the repartition flag. */
-  enum repartition_type reparttype = e->forcerepart;
-  e->forcerepart = REPART_NONE;
+  e->forcerepart = 0;
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (e->nr_nodes == 1) return;
 
   /* Do the repartitioning. */
-  partition_repartition(reparttype, e->nodeID, e->nr_nodes, e->s,
+  partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
@@ -2576,11 +2575,10 @@ void engine_rebuild(struct engine *e) {
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time.
-   * That can include cells that have not
-   * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_old);
+  message("rebuild"); fflush(stdout);
+
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
   /* Re-build the space. */
@@ -2604,6 +2602,13 @@ void engine_rebuild(struct engine *e) {
   /* Print the status of the system */
   // if (e->verbose) engine_print_task_counts(e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_old);
+#endif
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -2617,6 +2622,21 @@ void engine_rebuild(struct engine *e) {
 void engine_prepare(struct engine *e) {
 
   TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if(e->forcerepart || e->forcerebuild) {
+    /* Check that all cells have been drifted to the current time.
+     * That can include cells that have not
+     * previously been active on this rank. */
+    space_check_drift_point(e->s, e->ti_old);
+#endif
+  }
+  
+  /* Do we need repartitioning ? */
+  if (e->forcerepart) engine_repartition(e);
+
+  /* Do we need rebuilding ? */
+  if (e->forcerebuild) engine_rebuild(e);
 
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
@@ -3010,7 +3030,7 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
+  message("START snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
           e->forcerepart);
 
   /* Move forward in time */
@@ -3024,7 +3044,7 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+    printf("  %6d %lld %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->ti_current, e->time,
            e->timeStep, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time);
     fflush(stdout);
@@ -3035,14 +3055,13 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  /* Do we need repartitioning ? */
-  if (e->forcerepart != REPART_NONE) engine_repartition(e);
-
-  /* Do we need rebuilding ? */
-  if (e->forcerebuild) engine_rebuild(e);
-
-  /* Prepare the tasks to be launched. */
+  /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
+
+  /* Repartition the space amongst the nodes? */
+#ifdef WITH_MPI
+  if (e->step % 100 == 2) e->forcerepart = 1;
+#endif
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -3067,16 +3086,19 @@ void engine_step(struct engine *e) {
   e->forcerebuild = buff;
 #endif
 
+  message("MIDDLE snap=%d, rebuild=%d repart=%d ti_current=%lld", e->dump_snapshot, e->forcerebuild,
+          e->forcerepart, e->ti_current);
+
   /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if (e->dump_snapshot || e->forcerebuild || e->forcerepart != REPART_NONE)
+  if (e->dump_snapshot || e->forcerebuild || e->forcerepart)
     engine_drift_all(e);
 
-  message("snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
+  message("END snap=%d, rebuild=%d repart=%d", e->dump_snapshot, e->forcerebuild,
           e->forcerepart);
 
   /* Write a snapshot ? */
@@ -3465,6 +3487,7 @@ void engine_unpin() {
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+		 enum repartition_type reparttype,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
@@ -3485,7 +3508,8 @@ void engine_init(struct engine *e, struct space *s,
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
-  e->forcerepart = REPART_NONE;
+  e->forcerepart = 0;
+  e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->links = NULL;
   e->nr_links = 0;

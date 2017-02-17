@@ -936,18 +936,36 @@ void cell_clean_links(struct cell *c, void *data) {
 /**
  * @brief Checks that a cell is at the current point in time
  *
- * Calls error() if the cell is not at the current time.
+ * Calls error() if the cell is not at the current time. 
  *
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
 void cell_check_drift_point(struct cell *c, void *data) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   const integertime_t ti_drift = *(integertime_t *)data;
 
-  if (c->ti_old != ti_drift && c->nodeID == engine_rank)
+  /* Only check local cells */
+  if(c->nodeID != engine_rank) return;
+
+  if (c->ti_old != ti_drift)
     error("Cell in an incorrect time-zone! c->ti_old=%lld ti_drift=%lld",
           c->ti_old, ti_drift);
+
+  for(int i=0; i<c->count; ++i)
+    if(c->parts[i].ti_drift != ti_drift)
+      error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
+  	    c->parts[i].ti_drift, ti_drift);
+
+  for(int i=0; i<c->gcount; ++i)
+    if(c->gparts[i].ti_drift != ti_drift)
+      error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
+  	    c->gparts[i].ti_drift, ti_drift);      
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
@@ -1366,5 +1384,7 @@ void cell_check_timesteps(struct cell *c) {
         if (c->parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
 #endif
 }

@@ -185,7 +185,10 @@ struct engine {
 
   /* Force the engine to rebuild? */
   int forcerebuild;
-  enum repartition_type forcerepart;
+
+  /* Force the engine to repartition ? */
+  int forcerepart;
+  enum repartition_type reparttype;
 
   /* Need to dump a snapshot ? */
   int dump_snapshot;
@@ -228,6 +231,7 @@ void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+		 enum repartition_type reparttype,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
