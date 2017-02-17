@@ -2621,8 +2621,8 @@ void engine_prepare(struct engine *e) {
      * That can include cells that have not
      * previously been active on this rank. */
     space_check_drift_point(e->s, e->ti_old);
-#endif
   }
+#endif
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) engine_repartition(e);
