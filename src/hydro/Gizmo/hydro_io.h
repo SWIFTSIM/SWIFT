@@ -143,18 +143,18 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  */
 void writeSPHflavour(hid_t h_grpsph) {
   /* Gradient information */
-  writeAttribute_s(h_grpsph, "Gradient reconstruction model",
-                   HYDRO_GRADIENT_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
+                       HYDRO_GRADIENT_IMPLEMENTATION);
 
   /* Slope limiter information */
-  writeAttribute_s(h_grpsph, "Cell wide slope limiter model",
-                   HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
-  writeAttribute_s(h_grpsph, "Piecewise slope limiter model",
-                   HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Cell wide slope limiter model",
+                       HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Piecewise slope limiter model",
+                       HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
 
   /* Riemann solver information */
-  writeAttribute_s(h_grpsph, "Riemann solver type",
-                   RIEMANN_SOLVER_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Riemann solver type",
+                       RIEMANN_SOLVER_IMPLEMENTATION);
 }
 
 /**

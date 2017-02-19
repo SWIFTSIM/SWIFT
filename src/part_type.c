@@ -16,22 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PART_TYPES_H
-#define SWIFT_PART_TYPES_H
 
-/**
- * @brief The different types of particles a #gpart can link to.
- *
- * Note we use the historical values from Gadget for these fields.
- */
-enum part_type {
-  swift_type_gas = 0,
-  swift_type_dark_matter = 1,
-  swift_type_star = 4,
-  swift_type_black_hole = 5,
-  swift_type_count
-} __attribute__((packed));
+/* This object's header. */
+#include "part_type.h"
 
-extern const char* part_type_names[];
-
-#endif /* SWIFT_PART_TYPES_H */
+const char* part_type_names[swift_type_count] = {"Gas",   "DM",   "Dummy",
+                                                 "Dummy", "Star", "BH"};
