@@ -165,8 +165,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 struct spart *sparts, size_t Npart, size_t Ngpart,
-                size_t Nspart, int periodic, int gravity, int verbose,
-                int dry_run);
+                size_t Nspart, int periodic, int replicate, int gravity,
+                int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
@@ -206,6 +206,7 @@ void space_init_sparts(struct space *s);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_current);
 void space_check_timesteps(struct space *s);
+void space_replicate(struct space *s, int replicate, int verbose);
 void space_clean(struct space *s);
 
 #endif /* SWIFT_SPACE_H */
