@@ -810,11 +810,11 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_particles(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift(c, r->e);
+  cell_drift_particles(c, r->e);
 
   if (timer) TIMER_TOC(timer_drift);
 }
@@ -834,7 +834,7 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) cell_drift(c, e);
+    if (c != NULL && c->nodeID == e->nodeID) cell_drift_particles(c, e);
   }
 }
 
@@ -1700,7 +1700,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_drift:
-          runner_do_drift(r, ci, 1);
+          runner_do_drift_particles(r, ci, 1);
           break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);

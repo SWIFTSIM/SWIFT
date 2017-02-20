@@ -1246,7 +1246,7 @@ void cell_set_super(struct cell *c, struct cell *super) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift(struct cell *c, const struct engine *e) {
+void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
   const integertime_t ti_old = c->ti_old;
@@ -1270,7 +1270,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        cell_drift(cp, e);
+        cell_drift_particles(cp, e);
         dx_max = max(dx_max, cp->dx_max);
         h_max = max(h_max, cp->h_max);
       }

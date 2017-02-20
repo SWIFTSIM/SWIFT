@@ -134,7 +134,7 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  *
  * @param grp The group from which to read.
  * @param name The name of the attribute to read.
- * @param type The #DATA_TYPE of the attribute.
+ * @param type The #IO_DATA_TYPE of the attribute.
  * @param data (output) The attribute read from the HDF5 group.
  *
  * Calls #error() if an error occurs.
@@ -161,7 +161,7 @@ void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
  *
  * @param grp The group in which to write.
  * @param name The name of the attribute to write.
- * @param type The #DATA_TYPE of the attribute.
+ * @param type The #IO_DATA_TYPE of the attribute.
  * @param data The attribute to write.
  * @param num The number of elements to write
  *
