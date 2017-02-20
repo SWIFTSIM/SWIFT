@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
- * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk).
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,23 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_VERSION_H
-#define SWIFT_VERSION_H
 
-const char* package_description(void);
-const char* package_version(void);
-const char* hostname(void);
-const char* git_revision(void);
-const char* git_branch(void);
-const char* git_date(void);
-const char* configuration_options(void);
-const char* compilation_cflags(void);
-const char* compiler_name(void);
-const char* compiler_version(void);
-const char* mpi_version(void);
-const char* metis_version(void);
-const char* hdf5_version(void);
-const char* fftw3_version(void);
-void greetings(void);
+/* This object's header. */
+#include "part_type.h"
 
-#endif /* SWIFT_VERSION_H */
+const char* part_type_names[swift_type_count] = {"Gas",   "DM",   "Dummy",
+                                                 "Dummy", "Star", "BH"};

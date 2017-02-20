@@ -123,16 +123,16 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  writeAttribute_s(
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  io_write_attribute_s(
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
-  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
+  io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
+  io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
 
   /* Time integration properties */
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
-                   const_max_u_change);
+  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);
 }
 
 /**

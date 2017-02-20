@@ -23,17 +23,22 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5)
-
+/* Local includes. */
 #include "part.h"
 #include "units.h"
+
+#define FIELD_BUFFER_SIZE 200
+#define PARTICLE_GROUP_BUFFER_SIZE 50
+#define FILENAME_BUFFER_SIZE 150
+
+#if defined(HAVE_HDF5)
 
 /**
  * @brief The different types of data used in the GADGET IC files.
  *
  * (This is admittedly a poor substitute to C++ templates...)
  */
-enum DATA_TYPE {
+enum IO_DATA_TYPE {
   INT,
   LONG,
   LONGLONG,
@@ -45,68 +50,38 @@ enum DATA_TYPE {
   CHAR
 };
 
-/**
- * @brief The different particle types present in a GADGET IC file
- *
- */
-enum PARTICLE_TYPE {
-  GAS = 0,
-  DM = 1,
-  BOUNDARY = 2,
-  DUMMY = 3,
-  STAR = 4,
-  BH = 5,
-  NUM_PARTICLE_TYPES
-};
+hid_t io_hdf5_type(enum IO_DATA_TYPE type);
+size_t io_sizeof_type(enum IO_DATA_TYPE type);
+int io_is_double_precision(enum IO_DATA_TYPE type);
 
-extern const char* particle_type_names[];
+void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+                       void* data);
 
-#define FILENAME_BUFFER_SIZE 150
-#define FIELD_BUFFER_SIZE 200
-#define PARTICLE_GROUP_BUFFER_SIZE 50
+void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
+                        void* data, int num);
 
-hid_t hdf5Type(enum DATA_TYPE type);
-size_t sizeOfType(enum DATA_TYPE type);
-int isDoublePrecision(enum DATA_TYPE type);
+void io_write_attribute_d(hid_t grp, const char* name, double data);
+void io_write_attribute_f(hid_t grp, const char* name, float data);
+void io_write_attribute_i(hid_t grp, const char* name, int data);
+void io_write_attribute_l(hid_t grp, const char* name, long data);
+void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
-void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
-                       struct gpart* const dmparts, size_t Ndm);
-void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm);
-void duplicate_hydro_gparts(struct part* const parts,
-                            struct gpart* const gparts, size_t Ngas,
-                            size_t Ndm);
-void duplicate_star_gparts(struct spart* const sparts,
-                           struct gpart* const gparts, size_t Nstars,
-                           size_t Ndm);
+void io_write_code_description(hid_t h_file);
 
-void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data);
-
-void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
-                    void* data, int num);
-
-void writeAttribute_d(hid_t grp, const char* name, double data);
-void writeAttribute_f(hid_t grp, const char* name, float data);
-void writeAttribute_i(hid_t grp, const char* name, int data);
-void writeAttribute_l(hid_t grp, const char* name, long data);
-void writeAttribute_s(hid_t grp, const char* name, const char* str);
-
-void createXMFfile(const char* baseName);
-FILE* prepareXMFfile(const char* baseName);
-void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time);
-void writeXMFoutputfooter(FILE* xmfFile, int outputCount, float time);
-void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
-                         enum PARTICLE_TYPE ptype);
-void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype);
-void writeXMFline(FILE* xmfFile, const char* fileName,
-                  const char* partTypeGroupName, const char* name, size_t N,
-                  int dim, enum DATA_TYPE type);
-
-void writeCodeDescription(hid_t h_file);
-
-void readUnitSystem(hid_t h_file, struct UnitSystem* us);
-void writeUnitSystem(hid_t h_grp, const struct UnitSystem* us,
-                     const char* groupName);
+void io_read_UnitSystem(hid_t h_file, struct UnitSystem* us);
+void io_write_UnitSystem(hid_t h_grp, const struct UnitSystem* us,
+                         const char* groupName);
 
 #endif /* defined HDF5 */
+
+void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
+                          struct gpart* const dmparts, size_t Ndm);
+void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm);
+void io_duplicate_hydro_gparts(struct part* const parts,
+                               struct gpart* const gparts, size_t Ngas,
+                               size_t Ndm);
+void io_duplicate_star_gparts(struct spart* const sparts,
+                              struct gpart* const gparts, size_t Nstars,
+                              size_t Ndm);
 
 #endif /* SWIFT_COMMON_IO_H */

@@ -47,9 +47,6 @@
 #include "units.h"
 #include "version.h"
 
-const char* particle_type_names[NUM_PARTICLE_TYPES] = {
-    "Gas", "DM", "Boundary", "Dummy", "Star", "BH"};
-
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
  *
@@ -57,7 +54,7 @@ const char* particle_type_names[NUM_PARTICLE_TYPES] = {
  * to change the exact storage types matching the code types in a transparent
  *way.
  */
-hid_t hdf5Type(enum DATA_TYPE type) {
+hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
 
   switch (type) {
     case INT:
@@ -87,7 +84,7 @@ hid_t hdf5Type(enum DATA_TYPE type) {
 /**
  * @brief Returns the memory size of the data type
  */
-size_t sizeOfType(enum DATA_TYPE type) {
+size_t io_sizeof_type(enum IO_DATA_TYPE type) {
 
   switch (type) {
     case INT:
@@ -119,7 +116,7 @@ size_t sizeOfType(enum DATA_TYPE type) {
  *
  * Returns an error if the type is not FLOAT or DOUBLE
  */
-int isDoublePrecision(enum DATA_TYPE type) {
+int io_is_double_precision(enum IO_DATA_TYPE type) {
 
   switch (type) {
     case FLOAT:
@@ -142,7 +139,8 @@ int isDoublePrecision(enum DATA_TYPE type) {
  *
  * Calls #error() if an error occurs.
  */
-void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data) {
+void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+                       void* data) {
   hid_t h_attr = 0, h_err = 0;
 
   h_attr = H5Aopen(grp, name, H5P_DEFAULT);
@@ -150,7 +148,7 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data) {
     error("Error while opening attribute '%s'", name);
   }
 
-  h_err = H5Aread(h_attr, hdf5Type(type), data);
+  h_err = H5Aread(h_attr, io_hdf5_type(type), data);
   if (h_err < 0) {
     error("Error while reading attribute '%s'", name);
   }
@@ -169,8 +167,8 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data) {
  *
  * Calls #error() if an error occurs.
  */
-void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
-                    void* data, int num) {
+void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
+                        void* data, int num) {
   hid_t h_space = 0, h_attr = 0, h_err = 0;
   hsize_t dim[1] = {num};
 
@@ -184,12 +182,12 @@ void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
     error("Error while changing dataspace shape for attribute '%s'.", name);
   }
 
-  h_attr = H5Acreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
+  h_attr = H5Acreate1(grp, name, io_hdf5_type(type), h_space, H5P_DEFAULT);
   if (h_attr < 0) {
     error("Error while creating attribute '%s'.", name);
   }
 
-  h_err = H5Awrite(h_attr, hdf5Type(type), data);
+  h_err = H5Awrite(h_attr, io_hdf5_type(type), data);
   if (h_err < 0) {
     error("Error while reading attribute '%s'.", name);
   }
@@ -208,8 +206,8 @@ void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
  *
  * Calls #error() if an error occurs.
  */
-void writeStringAttribute(hid_t grp, const char* name, const char* str,
-                          int length) {
+void io_writeStringAttribute(hid_t grp, const char* name, const char* str,
+                             int length) {
   hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
   h_space = H5Screate(H5S_SCALAR);
@@ -248,8 +246,8 @@ void writeStringAttribute(hid_t grp, const char* name, const char* str,
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_d(hid_t grp, const char* name, double data) {
-  writeAttribute(grp, name, DOUBLE, &data, 1);
+void io_write_attribute_d(hid_t grp, const char* name, double data) {
+  io_write_attribute(grp, name, DOUBLE, &data, 1);
 }
 
 /**
@@ -258,8 +256,8 @@ void writeAttribute_d(hid_t grp, const char* name, double data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_f(hid_t grp, const char* name, float data) {
-  writeAttribute(grp, name, FLOAT, &data, 1);
+void io_write_attribute_f(hid_t grp, const char* name, float data) {
+  io_write_attribute(grp, name, FLOAT, &data, 1);
 }
 
 /**
@@ -269,8 +267,8 @@ void writeAttribute_f(hid_t grp, const char* name, float data) {
  * @param data The value to write
  */
 
-void writeAttribute_i(hid_t grp, const char* name, int data) {
-  writeAttribute(grp, name, INT, &data, 1);
+void io_write_attribute_i(hid_t grp, const char* name, int data) {
+  io_write_attribute(grp, name, INT, &data, 1);
 }
 
 /**
@@ -279,8 +277,8 @@ void writeAttribute_i(hid_t grp, const char* name, int data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_l(hid_t grp, const char* name, long data) {
-  writeAttribute(grp, name, LONG, &data, 1);
+void io_write_attribute_l(hid_t grp, const char* name, long data) {
+  io_write_attribute(grp, name, LONG, &data, 1);
 }
 
 /**
@@ -289,8 +287,8 @@ void writeAttribute_l(hid_t grp, const char* name, long data) {
  * @param name The name of the attribute
  * @param str The string to write
  */
-void writeAttribute_s(hid_t grp, const char* name, const char* str) {
-  writeStringAttribute(grp, name, str, strlen(str));
+void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
+  io_writeStringAttribute(grp, name, str, strlen(str));
 }
 
 /**
@@ -300,7 +298,7 @@ void writeAttribute_s(hid_t grp, const char* name, const char* str) {
  *
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
-void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
+void io_read_UnitSystem(hid_t h_file, struct UnitSystem* us) {
 
   hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
@@ -318,14 +316,16 @@ void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
   }
 
   /* Ok, Read the damn thing */
-  readAttribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
-                &us->UnitLength_in_cgs);
-  readAttribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE, &us->UnitMass_in_cgs);
-  readAttribute(h_grp, "Unit time in cgs (U_t)", DOUBLE, &us->UnitTime_in_cgs);
-  readAttribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
-                &us->UnitCurrent_in_cgs);
-  readAttribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
-                &us->UnitTemperature_in_cgs);
+  io_read_attribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
+                    &us->UnitLength_in_cgs);
+  io_read_attribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE,
+                    &us->UnitMass_in_cgs);
+  io_read_attribute(h_grp, "Unit time in cgs (U_t)", DOUBLE,
+                    &us->UnitTime_in_cgs);
+  io_read_attribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
+                    &us->UnitCurrent_in_cgs);
+  io_read_attribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
+                    &us->UnitTemperature_in_cgs);
 
   /* Clean up */
   H5Gclose(h_grp);
@@ -337,23 +337,23 @@ void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
  * @param us The UnitSystem to dump
  * @param groupName The name of the HDF5 group to write to
  */
-void writeUnitSystem(hid_t h_file, const struct UnitSystem* us,
-                     const char* groupName) {
+void io_write_UnitSystem(hid_t h_file, const struct UnitSystem* us,
+                         const char* groupName) {
 
   hid_t h_grpunit = 0;
   h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
-  writeAttribute_d(h_grpunit, "Unit mass in cgs (U_M)",
-                   units_get_base_unit(us, UNIT_MASS));
-  writeAttribute_d(h_grpunit, "Unit length in cgs (U_L)",
-                   units_get_base_unit(us, UNIT_LENGTH));
-  writeAttribute_d(h_grpunit, "Unit time in cgs (U_t)",
-                   units_get_base_unit(us, UNIT_TIME));
-  writeAttribute_d(h_grpunit, "Unit current in cgs (U_I)",
-                   units_get_base_unit(us, UNIT_CURRENT));
-  writeAttribute_d(h_grpunit, "Unit temperature in cgs (U_T)",
-                   units_get_base_unit(us, UNIT_TEMPERATURE));
+  io_write_attribute_d(h_grpunit, "Unit mass in cgs (U_M)",
+                       units_get_base_unit(us, UNIT_MASS));
+  io_write_attribute_d(h_grpunit, "Unit length in cgs (U_L)",
+                       units_get_base_unit(us, UNIT_LENGTH));
+  io_write_attribute_d(h_grpunit, "Unit time in cgs (U_t)",
+                       units_get_base_unit(us, UNIT_TIME));
+  io_write_attribute_d(h_grpunit, "Unit current in cgs (U_I)",
+                       units_get_base_unit(us, UNIT_CURRENT));
+  io_write_attribute_d(h_grpunit, "Unit temperature in cgs (U_T)",
+                       units_get_base_unit(us, UNIT_TEMPERATURE));
 
   H5Gclose(h_grpunit);
 }
@@ -362,30 +362,32 @@ void writeUnitSystem(hid_t h_file, const struct UnitSystem* us,
  * @brief Writes the code version to the file
  * @param h_file The (opened) HDF5 file in which to write
  */
-void writeCodeDescription(hid_t h_file) {
+void io_write_code_description(hid_t h_file) {
   hid_t h_grpcode = 0;
 
   h_grpcode = H5Gcreate1(h_file, "/Code", 0);
   if (h_grpcode < 0) error("Error while creating code group");
 
-  writeAttribute_s(h_grpcode, "Code Version", package_version());
-  writeAttribute_s(h_grpcode, "Compiler Name", compiler_name());
-  writeAttribute_s(h_grpcode, "Compiler Version", compiler_version());
-  writeAttribute_s(h_grpcode, "Git Branch", git_branch());
-  writeAttribute_s(h_grpcode, "Git Revision", git_revision());
-  writeAttribute_s(h_grpcode, "Configuration options", configuration_options());
-  writeAttribute_s(h_grpcode, "CFLAGS", compilation_cflags());
-  writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());
+  io_write_attribute_s(h_grpcode, "Code Version", package_version());
+  io_write_attribute_s(h_grpcode, "Compiler Name", compiler_name());
+  io_write_attribute_s(h_grpcode, "Compiler Version", compiler_version());
+  io_write_attribute_s(h_grpcode, "Git Branch", git_branch());
+  io_write_attribute_s(h_grpcode, "Git Revision", git_revision());
+  io_write_attribute_s(h_grpcode, "Git Date", git_date());
+  io_write_attribute_s(h_grpcode, "Configuration options",
+                       configuration_options());
+  io_write_attribute_s(h_grpcode, "CFLAGS", compilation_cflags());
+  io_write_attribute_s(h_grpcode, "HDF5 library version", hdf5_version());
 #ifdef HAVE_FFTW
-  writeAttribute_s(h_grpcode, "FFTW library version", fftw3_version());
+  io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
 #ifdef WITH_MPI
-  writeAttribute_s(h_grpcode, "MPI library", mpi_version());
+  io_write_attribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
-  writeAttribute_s(h_grpcode, "METIS library version", metis_version());
+  io_write_attribute_s(h_grpcode, "METIS library version", metis_version());
 #endif
 #else
-  writeAttribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
+  io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
   H5Gclose(h_grpcode);
 }
@@ -405,170 +407,6 @@ void writeCodeDescription(hid_t h_file) {
  *
  * @todo Use a proper XML library to avoid stupid copies.
  */
-FILE* prepareXMFfile(const char* baseName) {
-  char buffer[1024];
-
-  char fileName[FILENAME_BUFFER_SIZE];
-  char tempFileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
-  snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s_temp.xmf", baseName);
-  FILE* xmfFile = fopen(fileName, "r");
-  FILE* tempFile = fopen(tempFileName, "w");
-
-  if (xmfFile == NULL) error("Unable to open current XMF file.");
-
-  if (tempFile == NULL) error("Unable to open temporary file.");
-
-  /* First we make a temporary copy of the XMF file and count the lines */
-  int counter = 0;
-  while (fgets(buffer, 1024, xmfFile) != NULL) {
-    counter++;
-    fprintf(tempFile, "%s", buffer);
-  }
-  fclose(tempFile);
-  fclose(xmfFile);
-
-  /* We then copy the XMF file back up to the closing lines */
-  xmfFile = fopen(fileName, "w");
-  tempFile = fopen(tempFileName, "r");
-
-  if (xmfFile == NULL) error("Unable to open current XMF file.");
-
-  if (tempFile == NULL) error("Unable to open temporary file.");
-
-  int i = 0;
-  while (fgets(buffer, 1024, tempFile) != NULL && i < counter - 3) {
-    i++;
-    fprintf(xmfFile, "%s", buffer);
-  }
-  fprintf(xmfFile, "\n");
-  fclose(tempFile);
-  remove(tempFileName);
-
-  return xmfFile;
-}
-
-/**
- * @brief Writes the begin of the XMF file
- *
- * @todo Exploit the XML nature of the XMF format to write a proper XML writer
- *and simplify all the XMF-related stuff.
- */
-void createXMFfile(const char* baseName) {
-
-  char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
-  FILE* xmfFile = fopen(fileName, "w");
-
-  fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
-  fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");
-  fprintf(
-      xmfFile,
-      "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.1\">\n");
-  fprintf(xmfFile, "<Domain>\n");
-  fprintf(xmfFile,
-          "<Grid Name=\"TimeSeries\" GridType=\"Collection\" "
-          "CollectionType=\"Temporal\">\n\n");
-
-  fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "</Domain>\n");
-  fprintf(xmfFile, "</Xdmf>\n");
-
-  fclose(xmfFile);
-}
-
-/**
- * @brief Writes the part of the XMF entry presenting the geometry of the
- *snapshot
- *
- * @param xmfFile The file to write in.
- * @param hdfFileName The name of the HDF5 file corresponding to this output.
- * @param time The current simulation time.
- */
-void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time) {
-  /* Write end of file */
-
-  fprintf(xmfFile, "<!-- XMF description for file: %s -->\n", hdfFileName);
-  fprintf(xmfFile,
-          "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
-  fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
-}
-
-/**
- * @brief Writes the end of the XMF file (closes all open markups)
- *
- * @param xmfFile The file to write in.
- * @param output The number of this output.
- * @param time The current simulation time.
- */
-void writeXMFoutputfooter(FILE* xmfFile, int output, float time) {
-  /* Write end of the section of this time step */
-
-  fprintf(xmfFile,
-          "\n</Grid> <!-- End of meta-data for output=%03i, time=%f -->\n",
-          output, time);
-  fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
-  fprintf(xmfFile, "</Domain>\n");
-  fprintf(xmfFile, "</Xdmf>\n");
-
-  fclose(xmfFile);
-}
-
-void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
-                         enum PARTICLE_TYPE ptype) {
-  fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
-          particle_type_names[ptype]);
-  fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zu\"/>\n", N);
-  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(xmfFile,
-          "<DataItem Dimensions=\"%zu 3\" NumberType=\"Double\" "
-          "Precision=\"8\" "
-          "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
-          N, hdfFileName, (int)ptype);
-  fprintf(xmfFile,
-          "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
-          "list -->\n",
-          particle_type_names[ptype]);
-}
-
-void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
-  fprintf(xmfFile, "</Grid> <!-- End of meta-data for parttype=%s -->\n",
-          particle_type_names[ptype]);
-}
-
-/**
- * @brief Writes the lines corresponding to an array of the HDF5 output
- *
- * @param xmfFile The file in which to write
- * @param fileName The name of the HDF5 file associated to this XMF descriptor.
- * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
- * @param name The name of the array in the HDF5 file.
- * @param N The number of particles.
- * @param dim The dimension of the quantity (1 for scalars, 3 for vectors).
- * @param type The type of the data to write.
- *
- * @todo Treat the types in a better way.
- */
-void writeXMFline(FILE* xmfFile, const char* fileName,
-                  const char* partTypeGroupName, const char* name, size_t N,
-                  int dim, enum DATA_TYPE type) {
-  fprintf(xmfFile,
-          "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
-          name, dim == 1 ? "Scalar" : "Vector");
-  if (dim == 1)
-    fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zu\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
-  else
-    fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zu %d\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
-  fprintf(xmfFile, "</Attribute>\n");
-}
 
 /**
  * @brief Prepare the DM particles (in gparts) read in for the addition of the
@@ -580,7 +418,7 @@ void writeXMFline(FILE* xmfFile, const char* fileName,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
+void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
 
   /* Let's give all these gparts a negative id */
   for (size_t i = 0; i < Ndm; ++i) {
@@ -606,9 +444,9 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
-void duplicate_hydro_gparts(struct part* const parts,
-                            struct gpart* const gparts, size_t Ngas,
-                            size_t Ndm) {
+void io_duplicate_hydro_gparts(struct part* const parts,
+                               struct gpart* const gparts, size_t Ngas,
+                               size_t Ndm) {
 
   for (size_t i = 0; i < Ngas; ++i) {
 
@@ -644,9 +482,9 @@ void duplicate_hydro_gparts(struct part* const parts,
  * @param Nstars The number of stars particles read in.
  * @param Ndm The number of DM and gas particles read in.
  */
-void duplicate_star_gparts(struct spart* const sparts,
-                           struct gpart* const gparts, size_t Nstars,
-                           size_t Ndm) {
+void io_duplicate_star_gparts(struct spart* const sparts,
+                              struct gpart* const gparts, size_t Nstars,
+                              size_t Ndm) {
 
   for (size_t i = 0; i < Nstars; ++i) {
 
@@ -678,8 +516,8 @@ void duplicate_star_gparts(struct spart* const sparts,
  * @param dmparts The array of #gpart containg DM particles to be filled.
  * @param Ndm The number of DM particles.
  */
-void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
-                       struct gpart* const dmparts, size_t Ndm) {
+void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
+                          struct gpart* const dmparts, size_t Ndm) {
 
   size_t count = 0;
 

@@ -591,7 +591,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
-  int redo, count = c->count;
   const struct engine *e = r->e;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
@@ -599,6 +598,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const float min_wcount =
       target_wcount - e->hydro_properties->delta_neighbours;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
+  int redo = 0, count = 0;
 
   TIMER_TIC;
 
@@ -611,11 +611,15 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k], 0);
   } else {
 
-    /* Init the IDs that have to be updated. */
+    /* Init the list of active particles that have to be updated. */
     int *pid = NULL;
-    if ((pid = malloc(sizeof(int) * count)) == NULL)
+    if ((pid = malloc(sizeof(int) * c->count)) == NULL)
       error("Can't allocate memory for pid.");
-    for (int k = 0; k < count; k++) pid[k] = k;
+    for (int k = 0; k < c->count; k++)
+      if (part_is_active(&parts[k], e)) {
+        pid[count] = k;
+        ++count;
+      }
 
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
@@ -624,18 +628,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       /* Reset the redo-count. */
       redo = 0;
 
-      /* Loop over the parts in this cell. */
+      /* Loop over the remaining active parts in this cell. */
       for (int i = 0; i < count; i++) {
 
         /* Get a direct pointer on the part. */
         struct part *restrict p = &parts[pid[i]];
         struct xpart *restrict xp = &xparts[pid[i]];
 
+#ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
-        if (part_is_active(p, e)) {
+        if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
+#endif
 
-          /* Finish the density calculation */
-          hydro_end_density(p);
+        /* Finish the density calculation */
+        hydro_end_density(p);
+
+        /* Did we get the right number of neighbours? */
+        if (p->density.wcount > max_wcount || p->density.wcount < min_wcount) {
 
           float h_corr = 0.f;
 
@@ -651,37 +660,32 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
           }
 
-          /* Did we get the right number density? */
-          if (p->density.wcount > max_wcount ||
-              p->density.wcount < min_wcount) {
+          /* Ok, correct then */
+          p->h += h_corr;
 
-            /* Ok, correct then */
-            p->h += h_corr;
+          /* Flag for another round of fun */
+          pid[redo] = pid[i];
+          redo += 1;
 
-            /* Flag for another round of fun */
-            pid[redo] = pid[i];
-            redo += 1;
+          /* Re-initialise everything */
+          hydro_init_part(p);
 
-            /* Re-initialise everything */
-            hydro_init_part(p);
-
-            /* Off we go ! */
-            continue;
-          }
-
-          /* We now have a particle whose smoothing length has converged */
-
-          /* As of here, particle force variables will be set. */
-
-          /* Compute variables required for the force loop */
-          hydro_prepare_force(p, xp);
-
-          /* The particle force values are now set.  Do _NOT_
-             try to read any particle density variables! */
-
-          /* Prepare the particle for the force loop over neighbours */
-          hydro_reset_acceleration(p);
+          /* Off we go ! */
+          continue;
         }
+
+        /* We now have a particle whose smoothing length has converged */
+
+        /* As of here, particle force variables will be set. */
+
+        /* Compute variables required for the force loop */
+        hydro_prepare_force(p, xp);
+
+        /* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the force loop over neighbours */
+        hydro_reset_acceleration(p);
       }
 
       /* We now need to treat the particles whose smoothing length had not

@@ -54,7 +54,7 @@ struct profiler prof;
 void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
-  printf("       swift_mpi [OPTION]... PARAMFILE\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
@@ -371,6 +371,8 @@ int main(int argc, char *argv[]) {
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+  const int replicate =
+      parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
@@ -441,7 +443,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
   space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
-             periodic, with_self_gravity, talking, dry_run);
+             periodic, replicate, with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -458,6 +460,7 @@ int main(int argc, char *argv[]) {
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     fflush(stdout);
   }
@@ -519,6 +522,18 @@ int main(int argc, char *argv[]) {
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
+#endif
+
+#if defined(WITH_MPI)
+  N_long[0] = s.nr_parts;
+  N_long[1] = s.nr_gparts;
+  N_long[2] = s.nr_sparts;
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+#else
+  N_total[0] = s.nr_parts;
+  N_total[1] = s.nr_gparts;
+  N_total[2] = s.nr_sparts;
 #endif
 
   /* Get some info to the user. */

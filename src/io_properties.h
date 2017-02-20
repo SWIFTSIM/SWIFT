@@ -38,7 +38,7 @@ struct io_props {
   char name[FIELD_BUFFER_SIZE];
 
   /* Type of the field */
-  enum DATA_TYPE type;
+  enum IO_DATA_TYPE type;
 
   /* Dimension (1D, 3D, ...) */
   int dimension;
@@ -87,7 +87,7 @@ struct io_props {
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
-                                     enum DATA_TYPE type, int dimension,
+                                     enum IO_DATA_TYPE type, int dimension,
                                      enum DATA_IMPORTANCE importance,
                                      enum UnitConversionFactor units,
                                      char* field, size_t partSize) {
@@ -127,7 +127,7 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
-                                      enum DATA_TYPE type, int dimension,
+                                      enum IO_DATA_TYPE type, int dimension,
                                       enum UnitConversionFactor units,
                                       char* field, size_t partSize) {
   struct io_props r;
@@ -170,7 +170,7 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_convert_part_(
-    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum UnitConversionFactor units, char* field, size_t partSize,
     struct part* parts, float (*functionPtr)(struct engine*, struct part*)) {
 
@@ -214,7 +214,7 @@ struct io_props io_make_output_field_convert_part_(
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_convert_gpart_(
-    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum UnitConversionFactor units, char* field, size_t partSize,
     struct gpart* gparts, float (*functionPtr)(struct engine*, struct gpart*)) {
 

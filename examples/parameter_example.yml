@@ -55,6 +55,7 @@ InitialConditions:
   shift_x:    0.                    # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    0.
   shift_z:    0.
+  replicate:  2                     # (Optional) Replicate all particles along each axis a given number of times. Default 1.
 
 # Parameters governing domain decomposition
 DomainDecomposition:

@@ -112,6 +112,27 @@ const char *git_branch(void) {
 }
 
 /**
+ * @brief Return the date of the commit in the git repository
+ *
+ * The date of the commit of the code we are running.
+ *
+ * @result git branch
+ */
+const char *git_date(void) {
+  static char buf[256];
+  static int initialised = 0;
+  static const char *date = GIT_DATE;
+  if (!initialised) {
+    if (strlen(date) == 0)
+      sprintf(buf, "%s", "unknown");
+    else
+      sprintf(buf, "%s", date);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
  * @brief Return the options passed to the 'configure' script
  *
  * @result List of configuration options within simple quotes (').
@@ -332,7 +353,8 @@ void greetings(void) {
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
-  printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
+  printf(" Revision: %s, Branch: %s, Date: %s\n", git_revision(), git_branch(),
+         git_date());
   printf(" Webpage : %s\n\n", PACKAGE_URL);
   printf(" Config. options: %s\n\n", configuration_options());
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
