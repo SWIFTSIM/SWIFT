@@ -22,9 +22,6 @@ doc/Doxyfile
 
 examples/swift
 examples/swift_mpi
-examples/*.xmf
-examples/used_parameters.yml
-examples/energy.txt
 examples/*/*.xmf
 examples/*/*.hdf5
 examples/*/*.png

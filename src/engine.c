@@ -3365,16 +3365,16 @@ void engine_dump_snapshot(struct engine *e) {
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshotBaseName, e->internalUnits,
+  write_output_parallel(e, e->snapshotBaseName, e->internal_units,
                         e->snapshotUnits, e->nodeID, e->nr_nodes,
                         MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, e->snapshotBaseName, e->internalUnits,
+  write_output_serial(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
                       MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshotBaseName, e->internalUnits,
+  write_output_single(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits);
 #endif
 
@@ -3466,7 +3466,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
                  enum repartition_type reparttype,
-                 const struct UnitSystem *internal_units,
+                 const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
@@ -3500,7 +3500,7 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
-  e->internalUnits = internal_units;
+  e->internal_units = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =
@@ -3509,7 +3509,7 @@ void engine_init(struct engine *e, struct space *s,
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
   e->snapshotCompression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshotUnits = malloc(sizeof(struct UnitSystem));
+  e->snapshotUnits = malloc(sizeof(struct unit_system));
   units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");

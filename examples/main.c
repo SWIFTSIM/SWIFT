@@ -351,7 +351,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialize unit system and constants */
-  struct UnitSystem us;
+  struct unit_system us;
   struct phys_const prog_const;
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);

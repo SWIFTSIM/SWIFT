@@ -15,8 +15,8 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -140,8 +140,8 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};

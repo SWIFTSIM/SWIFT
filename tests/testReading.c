@@ -35,7 +35,7 @@ int main() {
   struct spart *sparts = NULL;
 
   /* Default unit system */
-  struct UnitSystem us;
+  struct unit_system us;
   units_init_cgs(&us);
 
   /* Properties of the ICs */

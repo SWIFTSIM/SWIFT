@@ -746,8 +746,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift(cj, e);
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1397,7 +1397,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
 
   struct part *restrict parts = c->parts;
   const int count = c->count;

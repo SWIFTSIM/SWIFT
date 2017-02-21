@@ -49,7 +49,7 @@
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us,
+    const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {}
 
@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us, const struct part* restrict p) {
 
   return FLT_MAX;
 }
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param cooling The cooling properties to initialize
  */
 static INLINE void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct UnitSystem* us,
+    const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {}
 
