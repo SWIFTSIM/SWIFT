@@ -57,6 +57,7 @@ rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 snap = int(sys.argv[1])
 
+
 # Read the simulation data
 sim = h5py.File("noh_%03d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
@@ -69,15 +70,17 @@ git = sim["Code"].attrs["Git Revision"]
 
 x = sim["/PartType0/Coordinates"][:,0]
 y = sim["/PartType0/Coordinates"][:,1]
+z = sim["/PartType0/Coordinates"][:,2]
 vx = sim["/PartType0/Velocities"][:,0]
 vy = sim["/PartType0/Velocities"][:,1]
+vz = sim["/PartType0/Velocities"][:,2]
 u = sim["/PartType0/InternalEnergy"][:]
 S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
-r = np.sqrt((x-1)**2 + (y-1)**2)
-v = -np.sqrt(vx**2 + vy**2)
+r = np.sqrt((x-1)**2 + (y-1)**2 + (z-1)**2)
+v = -np.sqrt(vx**2 + vy**2 + vz**2)
 
 # Bin te data
 r_bin_edge = np.arange(0., 1., 0.02)
@@ -98,6 +101,7 @@ P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
 S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
+
 # Analytic solution
 N = 1000  # Number of points
 
@@ -112,12 +116,12 @@ us = 0.5 * (gas_gamma - 1) * v0
 rs = us * time
 
 # Post-shock values
-rho_s[np.abs(x_s) < rs] = rho0 * ((gas_gamma + 1) / (gas_gamma - 1))**2
-P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0**2 * (gas_gamma + 1)**2 / (gas_gamma-1)
+rho_s[np.abs(x_s) < rs] = rho0 * ((gas_gamma + 1) / (gas_gamma - 1))**3
+P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0**2 * (gas_gamma + 1)**3 / (gas_gamma-1)**2
 v_s[np.abs(x_s) < rs] = 0.
 
 # Pre-shock values
-rho_s[np.abs(x_s) >= rs] = rho0 * (1 + v0 * time/np.abs(x_s[np.abs(x_s) >=rs]))
+rho_s[np.abs(x_s) >= rs] = rho0 * (1 + v0 * time/np.abs(x_s[np.abs(x_s) >=rs]))**2
 P_s[np.abs(x_s) >= rs] = 0
 v_s[x_s >= rs] = -v0
 v_s[x_s <= -rs] = v0
@@ -147,7 +151,7 @@ errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 xlim(0, 0.5)
-ylim(0.95, 19)
+ylim(0.95, 71)
 
 # Pressure profile --------------------------------
 subplot(233)
@@ -157,7 +161,7 @@ errorbar(r_bin, P_bin, yerr=P_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 xlim(0, 0.5)
-ylim(-0.5, 11)
+ylim(-0.5, 25)
 
 # Internal energy profile -------------------------
 subplot(234)
@@ -182,7 +186,7 @@ ylim(-0.05, 0.2)
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Noh problem with  $\\gamma=%.3f$ in 2D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.9, "Noh problem with  $\\gamma=%.3f$ in 3D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
 text(-0.49, 0.8, "ICs:~~ $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$"%(1e-6, 1., -1.), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
 text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
