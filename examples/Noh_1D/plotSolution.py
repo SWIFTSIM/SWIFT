@@ -160,6 +160,7 @@ ylim(-0.05, 0.2)
 subplot(236, frameon=False)
 
 text(-0.49, 0.9, "Noh problem with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.8, "ICs:~~ $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$"%(1e-6, 1., -1.), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
 text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)

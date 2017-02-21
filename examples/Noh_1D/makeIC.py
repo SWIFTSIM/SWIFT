@@ -20,7 +20,7 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the Noh problem test in a periodic cubic box
+# Generates a swift IC file for the 1D Noh problem test in a periodic box
 
 # Parameters
 numPart = 1001

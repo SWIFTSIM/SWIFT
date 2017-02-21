@@ -21,7 +21,7 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the 2D Sod Shock in a periodic box
+# Generates a swift IC file for the 2D Noh problem in a periodic box
 
 # Parameters
 gamma = 5./3.          # Gas adiabatic index
