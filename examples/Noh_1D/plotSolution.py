@@ -74,7 +74,7 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
-N = 1000  # Number of points
+N = 1001  # Number of points
 x_min = -1
 x_max = 1
 
@@ -86,7 +86,7 @@ x += x_min
 x_s = np.arange(0, 2., 2./N) - 1.
 rho_s = np.ones(N) * rho0
 P_s = np.ones(N) * rho0
-v_s = np.ones(N) * v
+v_s = np.ones(N) * v0
 
 # Shock position
 u0 = rho0 * P0 * (gas_gamma-1)
