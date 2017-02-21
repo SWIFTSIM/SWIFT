@@ -294,11 +294,11 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
 /**
  * @brief Reads the Unit System from an IC file.
  * @param h_file The (opened) HDF5 file from which to read.
- * @param us The UnitSystem to fill.
+ * @param us The unit_system to fill.
  *
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
-void io_read_UnitSystem(hid_t h_file, struct UnitSystem* us) {
+void io_read_unit_system(hid_t h_file, struct unit_system* us) {
 
   hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
@@ -334,11 +334,11 @@ void io_read_UnitSystem(hid_t h_file, struct UnitSystem* us) {
 /**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
- * @param us The UnitSystem to dump
+ * @param us The unit_system to dump
  * @param groupName The name of the HDF5 group to write to
  */
-void io_write_UnitSystem(hid_t h_file, const struct UnitSystem* us,
-                         const char* groupName) {
+void io_write_unit_system(hid_t h_file, const struct unit_system* us,
+                          const char* groupName) {
 
   hid_t h_grpunit = 0;
   h_grpunit = H5Gcreate1(h_file, groupName, 0);

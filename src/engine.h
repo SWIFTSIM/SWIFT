@@ -135,7 +135,7 @@ struct engine {
   size_t updates, g_updates, s_updates;
 
   /* The internal system of units */
-  const struct UnitSystem *internalUnits;
+  const struct unit_system *internal_units;
 
   /* Snapshot information */
   double timeFirstSnapshot;
@@ -143,7 +143,7 @@ struct engine {
   integertime_t ti_nextSnapshot;
   char snapshotBaseName[200];
   int snapshotCompression;
-  struct UnitSystem *snapshotUnits;
+  struct unit_system *snapshotUnits;
 
   /* Statistics information */
   FILE *file_stats;
@@ -219,7 +219,7 @@ void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
-                 const struct UnitSystem *internal_units,
+                 const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,

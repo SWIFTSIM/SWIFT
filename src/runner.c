@@ -210,7 +210,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cooling_function_data *cooling_func = e->cooling_func;
   const struct phys_const *constants = e->physical_constants;
-  const struct UnitSystem *us = e->internalUnits;
+  const struct unit_system *us = e->internal_units;
   const double timeBase = e->timeBase;
 
   TIMER_TIC;

@@ -68,9 +68,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_code_description(hid_t h_file);
 
-void io_read_UnitSystem(hid_t h_file, struct UnitSystem* us);
-void io_write_UnitSystem(hid_t h_grp, const struct UnitSystem* us,
-                         const char* groupName);
+void io_read_unit_system(hid_t h_file, struct unit_system* us);
+void io_write_unit_system(hid_t h_grp, const struct unit_system* us,
+                          const char* groupName);
 
 #endif /* defined HDF5 */
 

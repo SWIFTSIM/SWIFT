@@ -59,16 +59,16 @@
  * @param h_grp The group from which to read.
  * @param prop The #io_props of the field to read
  * @param N The number of particles.
- * @param internal_units The #UnitSystem used internally
- * @param ic_units The #UnitSystem used in the ICs
+ * @param internal_units The #unit_system used internally
+ * @param ic_units The #unit_system used in the ICs
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
  * will be written once the structures have been stabilized.
  */
 void readArray(hid_t h_grp, const struct io_props prop, size_t N,
-               const struct UnitSystem* internal_units,
-               const struct UnitSystem* ic_units) {
+               const struct unit_system* internal_units,
+               const struct unit_system* ic_units) {
 
   const size_t typeSize = io_sizeof_type(prop.type);
   const size_t copySize = typeSize * prop.dimension;
@@ -163,16 +163,16 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
  * the HDF5 file.
  * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
+ * @param internal_units The #unit_system used internally
+ * @param snapshot_units The #unit_system used in the snapshots
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
 void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
-                const struct UnitSystem* internal_units,
-                const struct UnitSystem* snapshot_units) {
+                const struct unit_system* internal_units,
+                const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -337,7 +337,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @todo Read snapshots distributed in more than one file.
  *
  */
-void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
+void read_ic_single(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
@@ -410,9 +410,9 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
-  struct UnitSystem* ic_units = malloc(sizeof(struct UnitSystem));
+  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_UnitSystem(h_file, ic_units);
+  io_read_unit_system(h_file, ic_units);
 
   /* Tell the user if a conversion will be needed */
   if (units_are_equal(ic_units, internal_units)) {
@@ -565,8 +565,8 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
  *
  * @param e The engine containing all the system.
  * @param baseName The common part of the snapshot file name.
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
+ * @param internal_units The #unit_system used internally
+ * @param snapshot_units The #unit_system used in the snapshots
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -577,8 +577,8 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
  *
  */
 void write_output_single(struct engine* e, const char* baseName,
-                         const struct UnitSystem* internal_units,
-                         const struct UnitSystem* snapshot_units) {
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
@@ -687,10 +687,10 @@ void write_output_single(struct engine* e, const char* baseName,
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
-  io_write_UnitSystem(h_file, snapshot_units, "Units");
+  io_write_unit_system(h_file, snapshot_units, "Units");
 
   /* Print the system of Units used internally */
-  io_write_UnitSystem(h_file, internal_units, "InternalCodeUnits");
+  io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
 
   /* Tell the user if a conversion will be needed */
   if (e->verbose) {

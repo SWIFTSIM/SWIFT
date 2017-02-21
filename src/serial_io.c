@@ -74,8 +74,8 @@
  */
 void readArray(hid_t grp, const struct io_props props, size_t N,
                long long N_total, long long offset,
-               const struct UnitSystem* internal_units,
-               const struct UnitSystem* ic_units) {
+               const struct unit_system* internal_units,
+               const struct unit_system* ic_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -182,8 +182,8 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
 void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                   char* partTypeGroupName, const struct io_props props,
                   unsigned long long N_total,
-                  const struct UnitSystem* internal_units,
-                  const struct UnitSystem* snapshot_units) {
+                  const struct unit_system* internal_units,
+                  const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -281,14 +281,14 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
  * @param partSize The size in bytes of the particle structure.
- * @param us The UnitSystem currently in use
+ * @param us The unit_system currently in use
  * @param convFactor The UnitConversionFactor for this arrayo
  */
 void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
                 long long N_total, int mpi_rank, long long offset,
-                const struct UnitSystem* internal_units,
-                const struct UnitSystem* snapshot_units) {
+                const struct unit_system* internal_units,
+                const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -424,7 +424,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @todo Read snapshots distributed in more than one file.
  *
  */
-void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
+void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
@@ -443,7 +443,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
-  struct UnitSystem* ic_units = malloc(sizeof(struct UnitSystem));
+  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -507,7 +507,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
 
     /* Read the unit system used in the ICs */
     if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-    io_read_UnitSystem(h_file, ic_units);
+    io_read_unit_system(h_file, ic_units);
 
     if (units_are_equal(ic_units, internal_units)) {
 
@@ -551,7 +551,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
   MPI_Bcast(&N_total, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
-  MPI_Bcast(ic_units, sizeof(struct UnitSystem), MPI_BYTE, 0, comm);
+  MPI_Bcast(ic_units, sizeof(struct unit_system), MPI_BYTE, 0, comm);
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
@@ -695,8 +695,8 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
  *
  * @param e The engine containing all the system.
  * @param baseName The common part of the snapshot file name.
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
+ * @param internal_units The #unit_system used internally
+ * @param snapshot_units The #unit_system used in the snapshots
  * @param mpi_rank The MPI rank of this node.
  * @param mpi_size The number of MPI ranks.
  * @param comm The MPI communicator.
@@ -711,8 +711,8 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
  *
  */
 void write_output_serial(struct engine* e, const char* baseName,
-                         const struct UnitSystem* internal_units,
-                         const struct UnitSystem* snapshot_units, int mpi_rank,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
@@ -837,10 +837,10 @@ void write_output_serial(struct engine* e, const char* baseName,
     H5Gclose(h_grp);
 
     /* Print the system of Units used in the spashot */
-    io_write_UnitSystem(h_file, snapshot_units, "Units");
+    io_write_unit_system(h_file, snapshot_units, "Units");
 
     /* Print the system of Units used internally */
-    io_write_UnitSystem(h_file, internal_units, "InternalCodeUnits");
+    io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
 
     /* Tell the user if a conversion will be needed */
     if (e->verbose) {
