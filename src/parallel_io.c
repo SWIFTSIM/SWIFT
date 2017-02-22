@@ -751,19 +751,19 @@ void write_output_parallel(struct engine* e, const char* baseName,
   io_write_code_description(h_file);
 
   /* Print the SPH parameters */
-  if(e->policy & engine_policy_hydro){
-    h_grp =
-      H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (e->policy & engine_policy_hydro) {
+    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating SPH group");
     hydro_props_print_snapshot(h_grp, e->hydro_properties);
     writeSPHflavour(h_grp);
     H5Gclose(h_grp);
   }
-    
+
   /* Print the gravity parameters */
-  if(e->policy & engine_policy_self_gravity) {
+  if (e->policy & engine_policy_self_gravity) {
     h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
-		      H5P_DEFAULT);
+                      H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating gravity group");
     gravity_props_print_snapshot(h_grp, e->gravity_properties);
     H5Gclose(h_grp);
