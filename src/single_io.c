@@ -40,6 +40,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity_io.h"
+#include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
 #include "io_properties.h"
@@ -672,12 +673,23 @@ void write_output_single(struct engine* e, const char* baseName,
   io_write_code_description(h_file);
 
   /* Print the SPH parameters */
-  h_grp =
+  if(e->policy & engine_policy_hydro) {
+    h_grp =
       H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating SPH group");
-  hydro_props_print_snapshot(h_grp, e->hydro_properties);
-  writeSPHflavour(h_grp);
-  H5Gclose(h_grp);
+    if (h_grp < 0) error("Error while creating SPH group");
+    hydro_props_print_snapshot(h_grp, e->hydro_properties);
+    writeSPHflavour(h_grp);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the gravity parameters */
+  if(e->policy & engine_policy_self_gravity) {
+    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
+		      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating gravity group");
+    gravity_props_print_snapshot(h_grp, e->gravity_properties);
+    H5Gclose(h_grp);
+  }
 
   /* Print the runtime parameters */
   h_grp =

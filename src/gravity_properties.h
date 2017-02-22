@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-#ifndef SWIFT_HYDRO_PROPERTIES
-#define SWIFT_HYDRO_PROPERTIES
+#ifndef SWIFT_GRAVITY_PROPERTIES
+#define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
 #include "../config.h"
@@ -31,28 +30,28 @@
 #include "parser.h"
 
 /**
- * @brief Contains all the constants and parameters of the hydro scheme
+ * @brief Contains all the constants and parameters of the self-gravity scheme
  */
-struct hydro_props {
+struct gravity_props {
 
-  /* Kernel properties */
-  float eta_neighbours;
-  float target_neighbours;
-  float delta_neighbours;
+  /* Tree-PM parameters */
+  float a_smooth;
+  float r_cut;
 
-  /* Kernel properties */
-  int max_smoothing_iterations;
+  /* Time integration parameters */
+  float eta;
 
-  /* Time integration properties */
-  float CFL_condition;
-  float log_max_h_change;
+  /* Softening lengths */
+  float epsilon;
 };
 
-void hydro_props_print(const struct hydro_props *p);
-void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+void gravity_props_print(const struct gravity_props *p);
+void gravity_props_init(struct gravity_props *p,
+                        const struct swift_params *params);
 
 #if defined(HAVE_HDF5)
-void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
+void gravity_props_print_snapshot(hid_t h_grpsph,
+                                  const struct gravity_props *p);
 #endif
 
-#endif /* SWIFT_HYDRO_PROPERTIES */
+#endif /* SWIFT_GRAVITY_PROPERTIES */
