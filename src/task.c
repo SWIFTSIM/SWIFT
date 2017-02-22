@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
   }
 
-  /* Silence compile warnings */
+  /* Silence compiler warnings */
   error("Unknown task_action for task");
   return task_action_none;
 }

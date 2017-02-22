@@ -311,12 +311,13 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
-    message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(struct spart) is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
-    message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)      is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)     is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(spart)     is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(gpart)     is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(multipole) is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(task)      is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)      is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file */
