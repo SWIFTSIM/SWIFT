@@ -1820,101 +1820,106 @@ static inline void engine_make_external_gravity_dependencies(
  */
 void engine_link_gravity_tasks(struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
+  /* struct scheduler *sched = &e->sched; */
+  /* const int nodeID = e->nodeID; */
+  /* const int nr_tasks = sched->nr_tasks; */
 
-  /* Add one task gathering all the multipoles */
-  struct task *gather = scheduler_addtask(
-      sched, task_type_grav_gather_m, task_subtype_none, 0, 0, NULL, NULL, 0);
+  /* /\* Add one task gathering all the multipoles *\/ */
+  /* struct task *gather = scheduler_addtask( */
+  /*     sched, task_type_grav_gather_m, task_subtype_none, 0, 0, NULL, NULL,
+   * 0); */
 
-  /* And one task performing the FFT */
-  struct task *fft = scheduler_addtask(sched, task_type_grav_fft,
-                                       task_subtype_none, 0, 0, NULL, NULL, 0);
+  /* /\* And one task performing the FFT *\/ */
+  /* struct task *fft = scheduler_addtask(sched, task_type_grav_fft, */
+  /*                                      task_subtype_none, 0, 0, NULL, NULL,
+   * 0); */
 
-  scheduler_addunlock(sched, gather, fft);
+  /* scheduler_addunlock(sched, gather, fft); */
 
-  for (int k = 0; k < nr_tasks; k++) {
+  /* for (int k = 0; k < nr_tasks; k++) { */
 
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+  /*   /\* Get a pointer to the task. *\/ */
+  /*   struct task *t = &sched->tasks[k]; */
 
-    /* Multipole construction */
-    if (t->type == task_type_grav_up) {
-      scheduler_addunlock(sched, t, gather);
-    }
+  /*   /\* Multipole construction *\/ */
+  /*   if (t->type == task_type_grav_up) { */
+  /*     scheduler_addunlock(sched, t, gather); */
+  /*   } */
 
-    /* Long-range interaction */
-    if (t->type == task_type_grav_mm) {
+  /*   /\* Long-range interaction *\/ */
+  /*   if (t->type == task_type_grav_mm) { */
 
-      /* Gather the multipoles --> mm interaction --> kick */
-      scheduler_addunlock(sched, gather, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick2);
+  /*     /\* Gather the multipoles --> mm interaction --> kick *\/ */
+  /*     scheduler_addunlock(sched, gather, t); */
+  /*     scheduler_addunlock(sched, t, t->ci->super->kick2); */
 
-      /* init --> mm interaction */
-      scheduler_addunlock(sched, t->ci->super->init, t);
-    }
+  /*     /\* init --> mm interaction *\/ */
+  /*     scheduler_addunlock(sched, t->ci->super->init, t); */
+  /*   } */
 
-    /* Self-interaction for self-gravity? */
-    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
+  /*   /\* Self-interaction for self-gravity? *\/ */
+  /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
 
-      engine_make_gravity_dependencies(sched, t, t->ci);
+  /*     engine_make_gravity_dependencies(sched, t, t->ci); */
 
-    }
+  /*   } */
 
-    /* Self-interaction for external gravity ? */
-    else if (t->type == task_type_self &&
-             t->subtype == task_subtype_external_grav) {
+  /*   /\* Self-interaction for external gravity ? *\/ */
+  /*   else if (t->type == task_type_self && */
+  /*            t->subtype == task_subtype_external_grav) { */
 
-      engine_make_external_gravity_dependencies(sched, t, t->ci);
+  /*     engine_make_external_gravity_dependencies(sched, t, t->ci); */
 
-    }
+  /*   } */
 
-    /* Otherwise, pair interaction? */
-    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+  /*   /\* Otherwise, pair interaction? *\/ */
+  /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+   */
 
-      if (t->ci->nodeID == nodeID) {
+  /*     if (t->ci->nodeID == nodeID) { */
 
-        engine_make_gravity_dependencies(sched, t, t->ci);
-      }
+  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+  /*     } */
 
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+  /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
 
-        engine_make_gravity_dependencies(sched, t, t->cj);
-      }
+  /*       engine_make_gravity_dependencies(sched, t, t->cj); */
+  /*     } */
 
-    }
+  /*   } */
 
-    /* Otherwise, sub-self interaction? */
-    else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
+  /*   /\* Otherwise, sub-self interaction? *\/ */
+  /*   else if (t->type == task_type_sub_self && t->subtype ==
+   * task_subtype_grav) { */
 
-      if (t->ci->nodeID == nodeID) {
-        engine_make_gravity_dependencies(sched, t, t->ci);
-      }
-    }
+  /*     if (t->ci->nodeID == nodeID) { */
+  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+  /*     } */
+  /*   } */
 
-    /* Sub-self-interaction for external gravity ? */
-    else if (t->type == task_type_sub_self &&
-             t->subtype == task_subtype_external_grav) {
+  /*   /\* Sub-self-interaction for external gravity ? *\/ */
+  /*   else if (t->type == task_type_sub_self && */
+  /*            t->subtype == task_subtype_external_grav) { */
 
-      if (t->ci->nodeID == nodeID) {
-        engine_make_external_gravity_dependencies(sched, t, t->ci);
-      }
-    }
+  /*     if (t->ci->nodeID == nodeID) { */
+  /*       engine_make_external_gravity_dependencies(sched, t, t->ci); */
+  /*     } */
+  /*   } */
 
-    /* Otherwise, sub-pair interaction? */
-    else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
+  /*   /\* Otherwise, sub-pair interaction? *\/ */
+  /*   else if (t->type == task_type_sub_pair && t->subtype ==
+   * task_subtype_grav) { */
 
-      if (t->ci->nodeID == nodeID) {
+  /*     if (t->ci->nodeID == nodeID) { */
 
-        engine_make_gravity_dependencies(sched, t, t->ci);
-      }
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+  /*     } */
+  /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
 
-        engine_make_gravity_dependencies(sched, t, t->cj);
-      }
-    }
-  }
+  /*       engine_make_gravity_dependencies(sched, t, t->cj); */
+  /*     } */
+  /*   } */
+  /* } */
 }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2189,32 +2194,34 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
  */
 void engine_make_gravityrecursive_tasks(struct engine *e) {
 
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells_top;
+  /* struct space *s = e->s; */
+  /* struct scheduler *sched = &e->sched; */
+  /* const int nodeID = e->nodeID; */
+  /* const int nr_cells = s->nr_cells; */
+  /* struct cell *cells = s->cells_top; */
 
-  for (int k = 0; k < nr_cells; k++) {
+  /* for (int k = 0; k < nr_cells; k++) { */
 
-    /* Only do this for local cells containing gravity particles */
-    if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
+  /*   /\* Only do this for local cells containing gravity particles *\/ */
+  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
 
-      /* Create tasks at top level. */
-      struct task *up =
-          scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0,
-                            &cells[k], NULL, 0);
+  /*     /\* Create tasks at top level. *\/ */
+  /*     struct task *up = */
+  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0,
+   * 0, */
+  /*                           &cells[k], NULL, 0); */
 
-      struct task *down = NULL;
-      /* struct task *down = */
-      /*     scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0,
-       * 0, */
-      /*                       &cells[k], NULL, 0); */
+  /*     struct task *down = NULL; */
+  /*     /\* struct task *down = *\/ */
+  /*     /\*     scheduler_addtask(sched, task_type_grav_down,
+   * task_subtype_none, 0, */
+  /*      * 0, *\/ */
+  /*     /\*                       &cells[k], NULL, 0); *\/ */
 
-      /* Push tasks down the cell hierarchy. */
-      engine_addtasks_grav(e, &cells[k], up, down);
-    }
-  }
+  /*     /\* Push tasks down the cell hierarchy. *\/ */
+  /*     engine_addtasks_grav(e, &cells[k], up, down); */
+  /*   } */
+  /* } */
 }
 
 /**
@@ -2489,10 +2496,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Tasks with no cells should not be skipped? */
-    else if (t->type == task_type_grav_gather_m ||
-             t->type == task_type_grav_fft) {
-      scheduler_activate(s, t);
-    }
+    /* else if (t->type == task_type_grav_gather_m || */
+    /*          t->type == task_type_grav_fft) { */
+    /*   scheduler_activate(s, t); */
+    /* } */
   }
 }
 

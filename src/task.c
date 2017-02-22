@@ -47,12 +47,27 @@
 #include "lock.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = {
-    "none",          "sort",     "self",     "pair",        "sub_self",
-    "sub_pair",      "init",     "ghost",    "extra_ghost", "drift",
-    "kick1",         "kick2",    "timestep", "send",        "recv",
-    "grav_gather_m", "grav_fft", "grav_mm",  "grav_up",     "cooling",
-    "sourceterms"};
+const char *taskID_names[task_type_count] = {"none",
+                                             "sort",
+                                             "self",
+                                             "pair",
+                                             "sub_self",
+                                             "sub_pair",
+                                             "init",
+                                             "ghost",
+                                             "extra_ghost",
+                                             "drift",
+                                             "kick1",
+                                             "kick2",
+                                             "timestep",
+                                             "send",
+                                             "recv",
+                                             "grav_top_level",
+                                             "grav_long_range",
+                                             "grav_mm",
+                                             "grav_down",
+                                             "cooling",
+                                             "sourceterms"};
 
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav", "external_grav",
@@ -165,12 +180,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         error("Task without particles");
       break;
 
-    case task_type_grav_gather_m:
-    case task_type_grav_fft:
+    case task_type_grav_top_level:
+    case task_type_grav_long_range:
     case task_type_grav_mm:
-    case task_type_grav_up:
       return task_action_multipole;
       break;
+
+    case task_type_grav_down:
+      return task_action_gpart;
 
     default:
       error("Unknown task_action for task");
