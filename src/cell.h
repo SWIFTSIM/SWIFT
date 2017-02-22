@@ -257,6 +257,9 @@ struct cell {
   /*! Spin lock for various uses (#gpart case). */
   swift_lock_type glock;
 
+  /*! Spin lock for various uses (#multipole case). */
+  swift_lock_type mlock;
+
   /*! Spin lock for various uses (#spart case). */
   swift_lock_type slock;
 
@@ -280,6 +283,9 @@ struct cell {
 
   /*! Is the #gpart data of this cell being used in a sub-cell? */
   int ghold;
+
+  /*! Is the #multipole data of this cell being used in a sub-cell? */
+  int mhold;
 
   /*! Is the #spart data of this cell being used in a sub-cell? */
   int shold;
@@ -311,6 +317,8 @@ int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
+int cell_mlocktree(struct cell *c);
+void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
