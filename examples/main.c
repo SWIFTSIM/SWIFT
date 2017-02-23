@@ -368,6 +368,10 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   if (with_hydro) hydro_props_init(&hydro_properties, params);
 
+  /* Initialise the gravity properties */
+  struct gravity_props gravity_properties;
+  if (with_self_gravity) gravity_props_init(&gravity_properties, params);
+
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -511,7 +515,7 @@ int main(int argc, char *argv[]) {
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
               engine_policies, talking, reparttype, &us, &prog_const,
-              &hydro_properties, &potential, &cooling_func, &sourceterms);
+              &hydro_properties, &gravity_properties, &potential, &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

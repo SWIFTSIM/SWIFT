@@ -3469,6 +3469,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
+                 const struct gravity_props *gravity,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms) {
@@ -3523,6 +3524,7 @@ void engine_init(struct engine *e, struct space *s,
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
+  e->gravity_properties = gravity;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->sourceterms = sourceterms;
@@ -3718,6 +3720,10 @@ void engine_init(struct engine *e, struct space *s,
   /* Print information about the hydro scheme */
   if (e->policy & engine_policy_hydro)
     if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+
+  /* Print information about the hydro scheme */
+  if (e->policy & engine_policy_self_gravity)
+    if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)

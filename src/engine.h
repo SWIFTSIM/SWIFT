@@ -39,6 +39,7 @@
 /* Includes. */
 #include "clocks.h"
 #include "cooling_struct.h"
+#include "gravity_properties.h"
 #include "parser.h"
 #include "partition.h"
 #include "potential.h"
@@ -209,6 +210,9 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the self-gravity scheme */
+  const struct gravity_props *gravity_properties;
+
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
@@ -235,6 +239,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
+                 const struct gravity_props *gravity,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling,
                  struct sourceterms *sourceterms);
