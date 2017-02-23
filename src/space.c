@@ -193,11 +193,14 @@ void space_rebuild_recycle_rec(struct space *s, struct cell *c,
 
         c->progeny[k]->next = *cell_rec_begin;
         *cell_rec_begin = c->progeny[k];
-        c->progeny[k]->multipole->next = *multipole_rec_begin;
-        *multipole_rec_begin = c->progeny[k]->multipole;
+
+        if (s->gravity) {
+          c->progeny[k]->multipole->next = *multipole_rec_begin;
+          *multipole_rec_begin = c->progeny[k]->multipole;
+        }
 
         if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
-        if (*multipole_rec_end == NULL)
+        if (s->gravity && *multipole_rec_end == NULL)
           *multipole_rec_end = *multipole_rec_begin;
 
         c->progeny[k]->multipole = NULL;
@@ -937,8 +940,9 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
-  for (int k = 0; k < s->nr_cells; k++)
-    cell_check_multipole(&s->cells_top[k], NULL);
+  if (s->gravity)
+    for (int k = 0; k < s->nr_cells; k++)
+      cell_check_multipole(&s->cells_top[k], NULL);
 #endif
 
   if (verbose)
@@ -2154,7 +2158,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Construct the multipole and the centre of mass*/
-    multipole_P2M(c->multipole, c->gparts, c->gcount);
+    if (s->gravity) multipole_P2M(c->multipole, c->gparts, c->gcount);
   }
 
   /* Set the values for this cell. */
@@ -2295,8 +2299,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   s->tot_cells -= count;
 
   /* Hook the multipoles into the buffer. */
-  multipole_list_end->next = s->multipoles_sub;
-  s->multipoles_sub = multipole_list_begin;
+  if (s->gravity) {
+    multipole_list_end->next = s->multipoles_sub;
+    s->multipoles_sub = multipole_list_begin;
+  }
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
