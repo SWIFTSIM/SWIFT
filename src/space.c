@@ -269,7 +269,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -437,7 +437,7 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
-          c->ti_old = ti_current;
+          c->ti_old = ti_old;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -522,7 +522,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -918,7 +918,7 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_current;
+    c->ti_old = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -1958,7 +1958,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct spart *sparts = c->sparts;
@@ -2066,6 +2066,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        ti_beg_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -2121,22 +2122,28 @@ void space_split_recursive(struct space *s, struct cell *c,
       const float h = p->h;
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, p->time_bin);
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, p->time_bin);
       xp->x_diff[0] = 0.f;
       xp->x_diff[1] = 0.f;
       xp->x_diff[2] = 0.f;
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
     for (int k = 0; k < gcount; k++) {
       struct gpart *gp = &gparts[k];
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, gp->time_bin);
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, gp->time_bin);
       gp->x_diff[0] = 0.f;
       gp->x_diff[1] = 0.f;
       gp->x_diff[2] = 0.f;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
     for (int k = 0; k < scount; k++) {
       struct spart *sp = &sparts[k];
@@ -2154,6 +2161,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->h_max = h_max;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -2436,6 +2444,11 @@ void space_init_gparts(struct space *s) {
 #endif
 
     gravity_first_init_gpart(&gp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    gp->ti_drift = 0;
+    gp->ti_kick = 0;
+#endif
   }
 }
 
@@ -2462,6 +2475,11 @@ void space_init_sparts(struct space *s) {
 #endif
 
     star_first_init_spart(&sp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    sp->ti_drift = 0;
+    sp->ti_kick = 0;
+#endif
   }
 }
 
@@ -2794,17 +2812,17 @@ void space_link_cleanup(struct space *s) {
 }
 
 /**
- * @brief Checks that all cells have been drifted to the current point in time
+ * @brief Checks that all cells have been drifted to a given point in time
  *
  * Expensive function. Should only be used for debugging purposes.
  *
  * @param s The #space to check.
- * @param ti_current The (integer) time.
+ * @param ti_drift The (integer) time.
  */
-void space_check_drift_point(struct space *s, integertime_t ti_current) {
+void space_check_drift_point(struct space *s, integertime_t ti_drift) {
 
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_current);
+  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
 }
 
 /**

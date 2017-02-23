@@ -47,6 +47,16 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_STAR_PART_H */
