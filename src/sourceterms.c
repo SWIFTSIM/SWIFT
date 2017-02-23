@@ -37,7 +37,7 @@
  * @param source the structure that has all the source term properties
  */
 void sourceterms_init(const struct swift_params* parameter_file,
-                      struct UnitSystem* us, struct sourceterms* source) {
+                      struct unit_system* us, struct sourceterms* source) {
 #ifdef SOURCETERMS_SN_FEEDBACK
   supernova_init(parameter_file, us, source);
 #endif /* SOURCETERMS_SN_FEEDBACK */

@@ -251,7 +251,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -402,7 +402,7 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
-          c->ti_old = ti_current;
+          c->ti_old = ti_old;
           lock_init(&c->lock);
         }
 
@@ -487,7 +487,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -883,7 +883,7 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_current;
+    c->ti_old = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -1917,7 +1917,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct spart *sparts = c->sparts;
@@ -2025,6 +2025,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        ti_beg_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -2046,22 +2047,28 @@ void space_split_recursive(struct space *s, struct cell *c,
       const float h = p->h;
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, p->time_bin);
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, p->time_bin);
       xp->x_diff[0] = 0.f;
       xp->x_diff[1] = 0.f;
       xp->x_diff[2] = 0.f;
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
     for (int k = 0; k < gcount; k++) {
       struct gpart *gp = &gparts[k];
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, gp->time_bin);
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, gp->time_bin);
       gp->x_diff[0] = 0.f;
       gp->x_diff[1] = 0.f;
       gp->x_diff[2] = 0.f;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
     for (int k = 0; k < scount; k++) {
       struct spart *sp = &sparts[k];
@@ -2076,6 +2083,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->h_max = h_max;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -2316,6 +2324,11 @@ void space_init_gparts(struct space *s) {
 #endif
 
     gravity_first_init_gpart(&gp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    gp->ti_drift = 0;
+    gp->ti_kick = 0;
+#endif
   }
 }
 
@@ -2342,6 +2355,11 @@ void space_init_sparts(struct space *s) {
 #endif
 
     star_first_init_spart(&sp[i]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    sp->ti_drift = 0;
+    sp->ti_kick = 0;
+#endif
   }
 }
 
@@ -2358,6 +2376,7 @@ void space_init_sparts(struct space *s) {
  * @param Ngpart The number of Gravity particles in the space.
  * @param Nspart The number of star particles in the space.
  * @param periodic flag whether the domain is periodic or not.
+ * @param replicate How many replications along each direction do we want ?
  * @param gravity flag whether we are doing gravity or not.
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
@@ -2370,8 +2389,8 @@ void space_init_sparts(struct space *s) {
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 struct spart *sparts, size_t Npart, size_t Ngpart,
-                size_t Nspart, int periodic, int gravity, int verbose,
-                int dry_run) {
+                size_t Nspart, int periodic, int replicate, int gravity,
+                int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -2394,15 +2413,29 @@ void space_init(struct space *s, const struct swift_params *params,
   s->sparts = sparts;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
+  /* Are we replicating the space ? */
+  if (replicate < 1)
+    error("Value of 'InitialConditions:replicate' (%d) is too small",
+          replicate);
+  if (replicate > 1) {
+    space_replicate(s, replicate, verbose);
+    parts = s->parts;
+    gparts = s->gparts;
+    sparts = s->sparts;
+    Npart = s->nr_parts;
+    Ngpart = s->nr_gparts;
+    Nspart = s->nr_sparts;
+  }
+
   /* Decide on the minimal top-level cell size */
-  const double dmax = max(max(dim[0], dim[1]), dim[2]);
+  const double dmax = max(max(s->dim[0], s->dim[1]), s->dim[2]);
   int maxtcells =
       parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
   s->cell_min = 0.99 * dmax / maxtcells;
 
   /* Check that it is big enough. */
-  const double dmin = min(min(dim[0], dim[1]), dim[2]);
+  const double dmin = min(min(s->dim[0], s->dim[1]), s->dim[2]);
   int needtcells = 3 * dmax / dmin;
   if (maxtcells < needtcells)
     error(
@@ -2464,13 +2497,13 @@ void space_init(struct space *s, const struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++) {
-          while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
-          while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
+          while (parts[k].x[j] < 0) parts[k].x[j] += s->dim[j];
+          while (parts[k].x[j] >= s->dim[j]) parts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++)
-          if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
+          if (parts[k].x[j] < 0 || parts[k].x[j] >= s->dim[j])
             error("Not all particles are within the specified domain.");
     }
 
@@ -2478,13 +2511,13 @@ void space_init(struct space *s, const struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++) {
-          while (gparts[k].x[j] < 0) gparts[k].x[j] += dim[j];
-          while (gparts[k].x[j] >= dim[j]) gparts[k].x[j] -= dim[j];
+          while (gparts[k].x[j] < 0) gparts[k].x[j] += s->dim[j];
+          while (gparts[k].x[j] >= s->dim[j]) gparts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++)
-          if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
+          if (gparts[k].x[j] < 0 || gparts[k].x[j] >= s->dim[j])
             error("Not all g-particles are within the specified domain.");
     }
 
@@ -2492,13 +2525,13 @@ void space_init(struct space *s, const struct swift_params *params,
     if (periodic) {
       for (size_t k = 0; k < Nspart; k++)
         for (int j = 0; j < 3; j++) {
-          while (sparts[k].x[j] < 0) sparts[k].x[j] += dim[j];
-          while (sparts[k].x[j] >= dim[j]) sparts[k].x[j] -= dim[j];
+          while (sparts[k].x[j] < 0) sparts[k].x[j] += s->dim[j];
+          while (sparts[k].x[j] >= s->dim[j]) sparts[k].x[j] -= s->dim[j];
         }
     } else {
       for (size_t k = 0; k < Nspart; k++)
         for (int j = 0; j < 3; j++)
-          if (sparts[k].x[j] < 0 || sparts[k].x[j] >= dim[j])
+          if (sparts[k].x[j] < 0 || sparts[k].x[j] >= s->dim[j])
             error("Not all s-particles are within the specified domain.");
     }
   }
@@ -2525,6 +2558,127 @@ void space_init(struct space *s, const struct swift_params *params,
 }
 
 /**
+ * @brief Replicate the content of a space along each axis.
+ *
+ * Should only be called during initialisation.
+ *
+ * @param s The #space to replicate.
+ * @param replicate The number of copies along each axis.
+ * @param verbose Are we talkative ?
+ */
+void space_replicate(struct space *s, int replicate, int verbose) {
+
+  if (replicate < 1) error("Invalid replicate value: %d", replicate);
+
+  message("Replicating space %d times along each axis.", replicate);
+
+  const int factor = replicate * replicate * replicate;
+
+  /* Store the current values */
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_gparts = s->nr_gparts;
+  const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
+
+  s->size_parts = s->nr_parts = nr_parts * factor;
+  s->size_gparts = s->nr_gparts = nr_gparts * factor;
+  s->size_sparts = s->nr_sparts = nr_sparts * factor;
+
+  /* Allocate space for new particles */
+  struct part *parts = NULL;
+  struct gpart *gparts = NULL;
+  struct spart *sparts = NULL;
+
+  if (posix_memalign((void *)&parts, part_align,
+                     s->nr_parts * sizeof(struct part)) != 0)
+    error("Failed to allocate new part array.");
+
+  if (posix_memalign((void *)&gparts, gpart_align,
+                     s->nr_gparts * sizeof(struct gpart)) != 0)
+    error("Failed to allocate new gpart array.");
+
+  if (posix_memalign((void *)&sparts, spart_align,
+                     s->nr_sparts * sizeof(struct spart)) != 0)
+    error("Failed to allocate new spart array.");
+
+  /* Replicate everything */
+  for (int i = 0; i < replicate; ++i) {
+    for (int j = 0; j < replicate; ++j) {
+      for (int k = 0; k < replicate; ++k) {
+        const size_t offset = i * replicate * replicate + j * replicate + k;
+
+        /* First copy the data */
+        memcpy(parts + offset * nr_parts, s->parts,
+               nr_parts * sizeof(struct part));
+        memcpy(sparts + offset * nr_sparts, s->sparts,
+               nr_sparts * sizeof(struct spart));
+        memcpy(gparts + offset * nr_gparts, s->gparts,
+               nr_gparts * sizeof(struct gpart));
+
+        /* Shift the positions */
+        const double shift[3] = {i * s->dim[0], j * s->dim[1], k * s->dim[2]};
+
+        for (size_t n = offset * nr_parts; n < (offset + 1) * nr_parts; ++n) {
+          parts[n].x[0] += shift[0];
+          parts[n].x[1] += shift[1];
+          parts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_gparts; n < (offset + 1) * nr_gparts; ++n) {
+          gparts[n].x[0] += shift[0];
+          gparts[n].x[1] += shift[1];
+          gparts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_sparts; n < (offset + 1) * nr_sparts; ++n) {
+          sparts[n].x[0] += shift[0];
+          sparts[n].x[1] += shift[1];
+          sparts[n].x[2] += shift[2];
+        }
+
+        /* Set the correct links (recall gpart are sorted by type at start-up):
+           first DM (unassociated gpart), then gas, then stars */
+        if (nr_parts > 0 && nr_gparts > 0) {
+          const size_t offset_part = offset * nr_parts;
+          const size_t offset_gpart = offset * nr_gparts + nr_dm;
+
+          for (size_t n = 0; n < nr_parts; ++n) {
+            parts[offset_part + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_part + n);
+          }
+        }
+        if (nr_sparts > 0 && nr_gparts > 0) {
+          const size_t offset_spart = offset * nr_sparts;
+          const size_t offset_gpart = offset * nr_gparts + nr_dm + nr_parts;
+
+          for (size_t n = 0; n < nr_sparts; ++n) {
+            sparts[offset_spart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_spart + n);
+          }
+        }
+      }
+    }
+  }
+
+  /* Replace the content of the space */
+  free(s->parts);
+  free(s->gparts);
+  free(s->sparts);
+  s->parts = parts;
+  s->gparts = gparts;
+  s->sparts = sparts;
+
+  /* Finally, update the domain size */
+  s->dim[0] *= replicate;
+  s->dim[1] *= replicate;
+  s->dim[2] *= replicate;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that everything is correct */
+  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
+                    s->nr_sparts, verbose);
+#endif
+}
+
+/**
  * @brief Cleans-up all the cell links in the space
  *
  * Expensive funtion. Should only be used for debugging purposes.
@@ -2538,17 +2692,17 @@ void space_link_cleanup(struct space *s) {
 }
 
 /**
- * @brief Checks that all cells have been drifted to the current point in time
+ * @brief Checks that all cells have been drifted to a given point in time
  *
  * Expensive function. Should only be used for debugging purposes.
  *
  * @param s The #space to check.
- * @param ti_current The (integer) time.
+ * @param ti_drift The (integer) time.
  */
-void space_check_drift_point(struct space *s, integertime_t ti_current) {
+void space_check_drift_point(struct space *s, integertime_t ti_drift) {
 
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_current);
+  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
 }
 
 /**

@@ -74,7 +74,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  integertime_t ti_end_min, ti_end_max, ti_old;
+  integertime_t ti_end_min, ti_end_max, ti_beg_max, ti_old;
 
   /* Number of particles in this cell. */
   int count, gcount, scount;
@@ -227,6 +227,9 @@ struct cell {
   /*! Maximum end of (integer) time step in this cell. */
   integertime_t ti_end_max;
 
+  /*! Maximum beginning of (integer) time step in this cell. */
+  integertime_t ti_beg_max;
+
   /*! Last (integer) time the cell's content was drifted forward in time. */
   integertime_t ti_old;
 
@@ -331,7 +334,7 @@ void cell_check_drift_point(struct cell *c, void *data);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
-void cell_drift(struct cell *c, const struct engine *e);
+void cell_drift_particles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

@@ -287,7 +287,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -536,7 +536,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift(c, e);
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
 
   /* TODO: Need to find two active particles, not just one. */
 

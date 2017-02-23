@@ -28,7 +28,10 @@ enum part_type {
   swift_type_gas = 0,
   swift_type_dark_matter = 1,
   swift_type_star = 4,
-  swift_type_black_hole = 5
+  swift_type_black_hole = 5,
+  swift_type_count
 } __attribute__((packed));
+
+extern const char* part_type_names[];
 
 #endif /* SWIFT_PART_TYPES_H */

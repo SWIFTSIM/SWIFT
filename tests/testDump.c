@@ -79,6 +79,9 @@ int main(int argc, char *argv[]) {
   /* Finalize the dump. */
   dump_close(&d);
 
+  /* Clean the threads */
+  threadpool_clean(&t);
+
   /* Return a happy number. */
   return 0;
 }

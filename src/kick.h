@@ -43,6 +43,16 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->ti_kick != ti_start)
+    error(
+        "g-particle has not been kicked to the current time gp->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld",
+        gp->ti_kick, ti_start, ti_end);
+
+  gp->ti_kick = ti_end;
+#endif
+
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
   gp->v_full[1] += gp->a_grav[1] * dt;
@@ -71,7 +81,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)
     error(
-        "Particle has not been kicked to the current time p->ti_kick=%lld, "
+        "particle has not been kicked to the current time p->ti_kick=%lld, "
         "ti_start=%lld, ti_end=%lld",
         p->ti_kick, ti_start, ti_end);
 
@@ -115,6 +125,16 @@ __attribute__((always_inline)) INLINE static void kick_spart(
 
   /* Time interval for this half-kick */
   const float dt = (ti_end - ti_start) * timeBase;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->ti_kick != ti_start)
+    error(
+        "s-particle has not been kicked to the current time sp->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld",
+        sp->ti_kick, ti_start, ti_end);
+
+  sp->ti_kick = ti_end;
+#endif
 
   /* Acceleration from gravity */
   const float a[3] = {sp->gpart->a_grav[0], sp->gpart->a_grav[1],

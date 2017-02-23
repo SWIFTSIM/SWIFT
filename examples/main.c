@@ -54,7 +54,7 @@ struct profiler prof;
 void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
-  printf("       swift_mpi [OPTION]... PARAMFILE\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
@@ -334,10 +334,10 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Prepare the domain decomposition scheme */
-  struct repartition repartition;
+  struct repartition reparttype;
 #ifdef WITH_MPI
   struct partition initial_partition;
-  partition_init(&initial_partition, &repartition, params, nr_nodes);
+  partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
   /* Let's report what we did */
   if (myrank == 0) {
@@ -346,12 +346,12 @@ int main(int argc, char *argv[]) {
     if (initial_partition.type == INITPART_GRID)
       message("grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[repartition.type]);
+    message("Using %s repartitioning", repartition_name[reparttype.type]);
   }
 #endif
 
   /* Initialize unit system and constants */
-  struct UnitSystem us;
+  struct unit_system us;
   struct phys_const prog_const;
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);
@@ -368,9 +368,15 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   if (with_hydro) hydro_props_init(&hydro_properties, params);
 
+  /* Initialise the gravity properties */
+  struct gravity_props gravity_properties;
+  if (with_self_gravity) gravity_props_init(&gravity_properties, params);
+
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+  const int replicate =
+      parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
@@ -441,7 +447,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
   space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
-             periodic, with_self_gravity, talking, dry_run);
+             periodic, replicate, with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -458,6 +464,7 @@ int main(int argc, char *argv[]) {
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     fflush(stdout);
   }
@@ -507,8 +514,9 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
-              N_total[1], with_aff, engine_policies, talking, &us, &prog_const,
-              &hydro_properties, &potential, &cooling_func, &sourceterms);
+              N_total[1], with_aff, engine_policies, talking, &reparttype,
+              &us, &prog_const, &hydro_properties, &gravity_properties, 
+              &potential, &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -519,6 +527,18 @@ int main(int argc, char *argv[]) {
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
+#endif
+
+#if defined(WITH_MPI)
+  N_long[0] = s.nr_parts;
+  N_long[1] = s.nr_gparts;
+  N_long[2] = s.nr_sparts;
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+#else
+  N_total[0] = s.nr_parts;
+  N_total[1] = s.nr_gparts;
+  N_total[2] = s.nr_sparts;
 #endif
 
   /* Get some info to the user. */
@@ -574,7 +594,7 @@ int main(int argc, char *argv[]) {
     timers_reset(timers_mask_all);
 
     /* Take a step. */
-    engine_step(&e, &repartition);
+    engine_step(&e);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
@@ -671,6 +691,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Write final output. */
+  engine_drift_all(&e);
   engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI

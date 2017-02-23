@@ -780,30 +780,31 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
  * Note that at the end of this process all the cells will be re-distributed
  * across the nodes, but the particles themselves will not be.
  *
- * @param reparttype type of repartition required.
+ * @param reparttype #repartition struct
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-void partition_repartition(enum repartition_type reparttype, int nodeID,
+void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
-      reparttype == REPART_METIS_VERTEX_EDGE) {
+  if (reparttype->type == REPART_METIS_BOTH || 
+      reparttype->type == REPART_METIS_EDGE ||
+      reparttype->type == REPART_METIS_VERTEX_EDGE) {
 
     int partweights;
     int bothweights;
-    if (reparttype == REPART_METIS_VERTEX_EDGE)
+    if (reparttype->type == REPART_METIS_VERTEX_EDGE)
       partweights = 1;
     else
       partweights = 0;
 
-    if (reparttype == REPART_METIS_BOTH)
+    if (reparttype->type == REPART_METIS_BOTH)
       bothweights = 1;
     else
       bothweights = 0;
@@ -811,7 +812,7 @@ void partition_repartition(enum repartition_type reparttype, int nodeID,
     repart_edge_metis(partweights, bothweights, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
-  } else if (reparttype == REPART_METIS_VERTEX) {
+  } else if (reparttype->type == REPART_METIS_VERTEX) {
 
     repart_vertex_metis(s, nodeID, nr_nodes);
 

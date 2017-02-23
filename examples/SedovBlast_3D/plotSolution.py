@@ -35,6 +35,7 @@ gas_gamma = 5./3.   # Gas polytropic index
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
+from scipy import stats
 import h5py
 
 # Plot parameters
@@ -84,6 +85,25 @@ u = sim["/PartType0/InternalEnergy"][:]
 S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
+
+# Bin te data
+r_bin_edge = np.arange(0., 0.5, 0.01)
+r_bin = 0.5*(r_bin_edge[1:] + r_bin_edge[:-1])
+rho_bin,_,_ = stats.binned_statistic(r, rho, statistic='mean', bins=r_bin_edge)
+v_bin,_,_ = stats.binned_statistic(r, v_r, statistic='mean', bins=r_bin_edge)
+P_bin,_,_ = stats.binned_statistic(r, P, statistic='mean', bins=r_bin_edge)
+S_bin,_,_ = stats.binned_statistic(r, S, statistic='mean', bins=r_bin_edge)
+u_bin,_,_ = stats.binned_statistic(r, u, statistic='mean', bins=r_bin_edge)
+rho2_bin,_,_ = stats.binned_statistic(r, rho**2, statistic='mean', bins=r_bin_edge)
+v2_bin,_,_ = stats.binned_statistic(r, v_r**2, statistic='mean', bins=r_bin_edge)
+P2_bin,_,_ = stats.binned_statistic(r, P**2, statistic='mean', bins=r_bin_edge)
+S2_bin,_,_ = stats.binned_statistic(r, S**2, statistic='mean', bins=r_bin_edge)
+u2_bin,_,_ = stats.binned_statistic(r, u**2, statistic='mean', bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 
 # Now, work our the solution....
@@ -214,8 +234,9 @@ figure()
 
 # Velocity profile --------------------------------
 subplot(231)
-plot(r, v_r, '.', color='r', ms=1.)
+plot(r, v_r, '.', color='r', ms=0.5, alpha=0.2)
 plot(r_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, v_bin, yerr=v_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Radial~velocity}}~v_r$", labelpad=0)
 xlim(0, 1.3 * r_shock)
@@ -223,8 +244,9 @@ ylim(-0.2, 3.8)
 
 # Density profile --------------------------------
 subplot(232)
-plot(r, rho, '.', color='r', ms=1.)
+plot(r, rho, '.', color='r', ms=0.5, alpha=0.2)
 plot(r_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho$", labelpad=2)
 xlim(0, 1.3 * r_shock)
@@ -232,8 +254,9 @@ ylim(-0.2, 5.2)
 
 # Pressure profile --------------------------------
 subplot(233)
-plot(r, P, '.', color='r', ms=1.)
+plot(r, P, '.', color='r', ms=0.5, alpha=0.2)
 plot(r_s, P_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, P_bin, yerr=P_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 xlim(0, 1.3 * r_shock)
@@ -241,8 +264,9 @@ ylim(-1, 12.5)
 
 # Internal energy profile -------------------------
 subplot(234)
-plot(r, u, '.', color='r', ms=1.)
+plot(r, u, '.', color='r', ms=0.5, alpha=0.2)
 plot(r_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, u_bin, yerr=u_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(0, 1.3 * r_shock)
@@ -250,8 +274,9 @@ ylim(-2, 22)
 
 # Entropy profile ---------------------------------
 subplot(235)
-plot(r, S, '.', color='r', ms=1.)
+plot(r, S, '.', color='r', ms=0.5, alpha=0.2)
 plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(0, 1.3 * r_shock)

@@ -28,7 +28,6 @@
 #endif
 
 /* Local includes. */
-#include "const.h"
 #include "parser.h"
 
 /**
@@ -47,11 +46,6 @@ struct hydro_props {
   /* Time integration properties */
   float CFL_condition;
   float log_max_h_change;
-
-/* Viscosity parameters */
-#ifdef GADGET_SPH
-  float const_viscosity_alpha;
-#endif
 };
 
 void hydro_props_print(const struct hydro_props *p);
