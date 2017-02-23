@@ -943,11 +943,34 @@ void cell_clean_links(struct cell *c, void *data) {
  */
 void cell_check_drift_point(struct cell *c, void *data) {
 
-  integertime_t ti_current = *(integertime_t *)data;
+#ifdef SWIFT_DEBUG_CHECKS
 
-  if (c->ti_old != ti_current && c->nodeID == engine_rank)
-    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_current=%lld",
-          c->ti_old, ti_current);
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  if (c->ti_old != ti_drift)
+    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_drift=%lld",
+          c->ti_old, ti_drift);
+
+  for (int i = 0; i < c->count; ++i)
+    if (c->parts[i].ti_drift != ti_drift)
+      error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
+            c->parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->gcount; ++i)
+    if (c->gparts[i].ti_drift != ti_drift)
+      error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
+            c->gparts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->scount; ++i)
+    if (c->sparts[i].ti_drift != ti_drift)
+      error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
+            c->sparts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
@@ -1095,6 +1118,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
 #endif
 
+  int rebuild = 0;
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -1120,7 +1145,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
-        return 1;
+        rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv flags. */
@@ -1217,7 +1242,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
-  return 0;
+  return rebuild;
 }
 
 /**
@@ -1364,5 +1389,7 @@ void cell_check_timesteps(struct cell *c) {
         if (c->parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
 #endif
 }

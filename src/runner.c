@@ -861,7 +861,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_starting(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -877,17 +877,17 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
-      if (part_is_active(p, e)) {
+      if (part_is_starting(p, e)) {
 
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, p->time_bin);
+            get_integer_time_begin(ti_current + 1, p->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
         const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
+            get_integer_time_end(ti_current + 1, p->time_bin);
 
-        if (ti_end - ti_begin != ti_step)
+        if (ti_begin != ti_current)
           error(
               "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
               "ti_step=%lld time_bin=%d ti_current=%lld",
@@ -906,17 +906,21 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->type == swift_type_dark_matter && gpart_is_active(gp, e)) {
+      if (gp->type == swift_type_dark_matter && gpart_is_starting(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, gp->time_bin);
+            get_integer_time_begin(ti_current + 1, gp->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
         const integertime_t ti_end =
-            get_integer_time_end(ti_current, gp->time_bin);
+            get_integer_time_end(ti_current + 1, gp->time_bin);
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, gp->time_bin, ti_current);
 #endif
 
         /* do the kick */
@@ -931,17 +935,21 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct spart *restrict sp = &sparts[k];
 
       /* If particle needs to be kicked */
-      if (spart_is_active(sp, e)) {
+      if (spart_is_starting(sp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(sp->time_bin);
         const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, sp->time_bin);
+            get_integer_time_begin(ti_current + 1, sp->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
         const integertime_t ti_end =
-            get_integer_time_end(ti_current, sp->time_bin);
+            get_integer_time_end(ti_current + 1, sp->time_bin);
 
-        if (ti_end - ti_begin != ti_step) error("Particle in wrong time-bin");
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, sp->time_bin, ti_current);
 #endif
 
         /* do the kick */
@@ -1011,6 +1019,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (p->ti_drift != p->ti_kick) error("Error integrating part in time.");
+#endif
+
         /* Prepare the values to be drifted */
         hydro_reset_predicted_values(p, xp);
       }
@@ -1036,6 +1049,15 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (gp->ti_drift != gp->ti_kick)
+          error("Error integrating g-part in time.");
+#endif
+
+        /* Prepare the values to be drifted */
+        gravity_reset_predicted_values(gp);
       }
     }
 
@@ -1059,6 +1081,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_spart(sp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (sp->ti_drift != sp->ti_kick)
+          error("Error integrating s-part in time.");
+#endif
 
         /* Prepare the values to be drifted */
         star_reset_predicted_values(sp);
@@ -1091,7 +1119,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   int updated = 0, g_updated = 0, s_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -1129,6 +1157,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_current, ti_beg_max);
       }
 
       else { /* part is inactive */
@@ -1139,6 +1170,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_end, ti_end_min);
         ti_end_max = max(ti_end, ti_end_max);
+
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, p->time_bin);
+
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_beg, ti_beg_max);
       }
     }
 
@@ -1176,6 +1213,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           ti_end_min = min(ti_current + ti_new_step, ti_end_min);
           ti_end_max = max(ti_current + ti_new_step, ti_end_max);
 
+          /* What is the next starting point for this cell ? */
+          ti_beg_max = max(ti_current, ti_beg_max);
+
         } else { /* gpart is inactive */
 
           const integertime_t ti_end =
@@ -1184,6 +1224,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           /* What is the next sync-point ? */
           ti_end_min = min(ti_end, ti_end_min);
           ti_end_max = max(ti_end, ti_end_max);
+
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, gp->time_bin);
+
+          /* What is the next starting point for this cell ? */
+          ti_beg_max = max(ti_beg, ti_beg_max);
         }
       }
     }
@@ -1220,6 +1266,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_end_min = min(ti_current + ti_new_step, ti_end_min);
         ti_end_max = max(ti_current + ti_new_step, ti_end_max);
 
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_current, ti_beg_max);
+
       } else { /* star particle is inactive */
 
         const integertime_t ti_end =
@@ -1228,6 +1277,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_end_min = min(ti_end, ti_end_min);
         ti_end_max = max(ti_end, ti_end_max);
+
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, sp->time_bin);
+
+        /* What is the next starting point for this cell ? */
+        ti_beg_max = max(ti_beg, ti_beg_max);
       }
     }
   } else {
@@ -1246,6 +1301,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         s_updated += cp->s_updated;
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
+        ti_beg_max = max(cp->ti_beg_max, ti_beg_max);
       }
   }
 
@@ -1255,6 +1311,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->s_updated = s_updated;
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
 
   if (timer) TIMER_TOC(timer_timestep);
 }
@@ -1433,6 +1490,11 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
           get_integer_time_end(ti_current, gparts[k].time_bin);
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].ti_drift != ti_current)
+        error("Received un-drifted g-particle !");
+#endif
     }
   }
 
@@ -1585,7 +1647,8 @@ void *runner_main(void *data) {
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_send && t->type != task_type_recv)
+            t->type != task_type_send && t->type != task_type_recv &&
+            t->type != task_type_kick1)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
@@ -1594,6 +1657,15 @@ void *runner_main(void *data) {
 
         /* Special case for sorts */
         if (!cell_is_active(ci, e) && t->type == task_type_sort &&
+            t->flags == 0)
+          error(
+              "Task (type='%s/%s') should have been skipped ti_current=%lld "
+              "c->ti_end_min=%lld t->flags=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
+              ci->ti_end_min, t->flags);
+
+        /* Special case for kick1 */
+        if (!cell_is_starting(ci, e) && t->type == task_type_kick1 &&
             t->flags == 0)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "

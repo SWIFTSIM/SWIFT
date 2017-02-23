@@ -157,12 +157,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                                       0, 0, c, NULL, 0);
 
       scheduler_addunlock(s, c->kick2, c->timestep);
+      scheduler_addunlock(s, c->timestep, c->kick1);
 
       /* Add the drift task and its dependencies. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      scheduler_addunlock(s, c->kick1, c->drift);
       scheduler_addunlock(s, c->drift, c->init);
 
       /* Generate the ghost task. */
@@ -822,19 +822,18 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_old);
 #endif
 
   /* Clear the repartition flag. */
-  enum repartition_type reparttype = e->forcerepart;
-  e->forcerepart = REPART_NONE;
+  e->forcerepart = 0;
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (e->nr_nodes == 1) return;
 
   /* Do the repartitioning. */
-  partition_repartition(reparttype, e->nodeID, e->nr_nodes, e->s,
+  partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
@@ -2592,8 +2591,15 @@ void engine_rebuild(struct engine *e) {
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
 
-  /* Print the status of the system */
-  if (e->verbose) engine_print_task_counts(e);
+/* Print the status of the system */
+// if (e->verbose) engine_print_task_counts(e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_old);
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2604,48 +2610,28 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
- * @param drift_all Whether to drift particles before rebuilding or not. Will
- *                not be necessary if all particles have already been
- *                drifted (before repartitioning for instance).
- * @param postrepart If we have just repartitioned, if so we need to defer the
- *                   skip until after the rebuild and not check the if all
- *                   cells have been drifted.
  */
-void engine_prepare(struct engine *e, int drift_all, int postrepart) {
+void engine_prepare(struct engine *e) {
 
   TIMER_TIC;
 
-  /* Unskip active tasks and check for rebuild */
-  if (!postrepart) engine_unskip(e);
-
-  /* Run through the tasks and mark as skip or not. */
-  int rebuild = e->forcerebuild;
-
-/* Collect the values of rebuild from all nodes. */
-#ifdef WITH_MPI
-  int buff = 0;
-  if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate the rebuild flag across nodes.");
-  rebuild = buff;
-#endif
-
-  /* And rebuild if necessary. */
-  if (rebuild) {
-
-    /* Drift all particles to the current time if needed. */
-    if (drift_all) engine_drift_all(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Check that all cells have been drifted to the current time, unless
-     * we have just repartitioned, that can include cells that have not
+  if (e->forcerepart || e->forcerebuild) {
+    /* Check that all cells have been drifted to the current time.
+     * That can include cells that have not
      * previously been active on this rank. */
-    if (!postrepart) space_check_drift_point(e->s, e->ti_current);
+    space_check_drift_point(e->s, e->ti_old);
+  }
 #endif
 
-    engine_rebuild(e);
-  }
-  if (postrepart) engine_unskip(e);
+  /* Do we need repartitioning ? */
+  if (e->forcerepart) engine_repartition(e);
+
+  /* Do we need rebuilding ? */
+  if (e->forcerebuild) engine_rebuild(e);
+
+  /* Unskip active tasks and check for rebuild */
+  engine_unskip(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2656,7 +2642,7 @@ void engine_prepare(struct engine *e, int drift_all, int postrepart) {
   TIMER_TOC(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s (including drift all, rebuild and reweight).",
+    message("took %.3f %s (including unskip and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
@@ -2715,7 +2701,7 @@ void engine_collect_kick(struct cell *c) {
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0, s_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2727,6 +2713,8 @@ void engine_collect_kick(struct cell *c) {
 
       /* And update */
       ti_end_min = min(ti_end_min, cp->ti_end_min);
+      ti_end_max = max(ti_end_max, cp->ti_end_max);
+      ti_beg_max = max(ti_beg_max, cp->ti_beg_max);
       updated += cp->updated;
       g_updated += cp->g_updated;
       s_updated += cp->s_updated;
@@ -2740,6 +2728,8 @@ void engine_collect_kick(struct cell *c) {
 
   /* Store the collected values in the cell. */
   c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->ti_beg_max = ti_beg_max;
   c->updated = updated;
   c->g_updated = g_updated;
   c->s_updated = s_updated;
@@ -2755,7 +2745,7 @@ void engine_collect_timestep(struct engine *e) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0, s_updates = 0;
-  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
   const struct space *s = e->s;
 
   /* Collect the cell data. */
@@ -2768,6 +2758,8 @@ void engine_collect_timestep(struct engine *e) {
 
       /* And aggregate */
       ti_end_min = min(ti_end_min, c->ti_end_min);
+      ti_end_max = max(ti_end_max, c->ti_end_max);
+      ti_beg_max = max(ti_beg_max, c->ti_beg_max);
       updates += c->updated;
       g_updates += c->g_updated;
       s_updates += c->s_updated;
@@ -2805,6 +2797,8 @@ void engine_collect_timestep(struct engine *e) {
 #endif
 
   e->ti_end_min = ti_end_min;
+  e->ti_end_max = ti_end_max;
+  e->ti_beg_max = ti_beg_max;
   e->updates = updates;
   e->g_updates = g_updates;
   e->s_updates = s_updates;
@@ -2878,7 +2872,7 @@ void engine_skip_force_and_kick(struct engine *e) {
  *
  * @param e The #engine to act on.
  */
-void engine_skip_drift_and_kick(struct engine *e) {
+void engine_skip_drift(struct engine *e) {
 
   struct task *tasks = e->sched.tasks;
   const int nr_tasks = e->sched.nr_tasks;
@@ -2888,7 +2882,7 @@ void engine_skip_drift_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_drift || t->type == task_type_kick1) t->skip = 1;
+    if (t->type == task_type_drift) t->skip = 1;
   }
 }
 
@@ -2949,12 +2943,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Computing initial gas densities.");
 
-  engine_prepare(e, 0, 0);
-
-  engine_marktasks(e);
+  /* Construct all cells and tasks to start everything */
+  engine_rebuild(e);
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
+
+  /* Print the number of active tasks ? */
+  if (e->verbose) engine_print_task_counts(e);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -2967,7 +2963,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
     /* Apply the conversion */
-    // space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
     for (size_t i = 0; i < s->nr_parts; ++i)
       hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
 
@@ -2982,11 +2977,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
+  /* Prepare all the tasks again for a new round */
   engine_marktasks(e);
 
-  engine_skip_drift_and_kick(e);
+  /* No drift this time */
+  engine_skip_drift(e);
 
+  /* Print the number of active tasks ? */
+  if (e->verbose) engine_print_task_counts(e);
+
+  /* Run the 0th time-step */
   engine_launch(e, e->nr_threads);
+
+  /* Recover the (integer) end of the next time-step */
+  engine_collect_timestep(e);
 
   clocks_gettime(&time2);
 
@@ -2997,7 +3001,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Ready to go */
-  e->step = 0;
+  e->step = -1;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
@@ -3011,8 +3015,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
  */
 void engine_step(struct engine *e) {
 
-  double snapshot_drift_time = 0.;
-
   TIMER_TIC2;
 
   struct clocks_time time1, time2;
@@ -3020,36 +3022,13 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
-
-  /* Check for output */
-  while (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
-
-    e->ti_old = e->ti_current;
-    e->ti_current = e->ti_nextSnapshot;
-    e->time = e->ti_current * e->timeBase + e->timeBegin;
-    e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-    e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
-    snapshot_drift_time = e->timeStep;
-
-    /* Drift everybody to the snapshot position */
-    engine_drift_all(e);
-
-    /* Dump... */
-    engine_dump_snapshot(e);
-
-    /* ... and find the next output time */
-    engine_compute_next_snapshot_time(e);
-  }
-
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
   e->step += 1;
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   if (e->nodeID == 0) {
 
@@ -3065,30 +3044,58 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  /* Drift only the necessary particles, that means all particles
-   * if we are about to repartition. */
-  const int repart = (e->forcerepart != REPART_NONE);
-  const int drift_all = (e->policy & engine_policy_drift_all);
-  if (repart || drift_all) engine_drift_all(e);
+  /* Prepare the tasks to be launched, rebuild or repartition if needed. */
+  engine_prepare(e);
 
-  /* Re-distribute the particles amongst the nodes? */
-  if (repart) engine_repartition(e);
+/* Repartition the space amongst the nodes? */
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  if (e->step % 100 == 2) e->forcerepart = 1;
+#endif
 
-  /* Prepare the space. */
-  engine_prepare(e, !(drift_all || repart), repart);
-
+  /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-  /* Save some statistics */
+  /* Save some statistics ? */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
     engine_print_stats(e);
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Send off the runners. */
+  /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
+
+/* Collect the values of rebuild from all nodes. */
+#ifdef WITH_MPI
+  int buff = 0;
+  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to aggregate the rebuild flag across nodes.");
+  e->forcerebuild = buff;
+#endif
+
+  /* Do we want a snapshot? */
+  if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
+    e->dump_snapshot = 1;
+
+  /* Drift everybody (i.e. what has not yet been drifted) */
+  /* to the current time */
+  if (e->dump_snapshot || e->forcerebuild || e->forcerepart)
+    engine_drift_all(e);
+
+  /* Write a snapshot ? */
+  if (e->dump_snapshot) {
+
+    /* Dump... */
+    engine_dump_snapshot(e);
+
+    /* ... and find the next output time */
+    engine_compute_next_snapshot_time(e);
+  }
+
+  /* Recover the (integer) end of the next time-step */
+  engine_collect_timestep(e);
 
   TIMER_TOC2(timer_step);
 
@@ -3346,6 +3353,13 @@ void engine_dump_snapshot(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_current);
+#endif
+
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 
 /* Dump... */
@@ -3363,6 +3377,8 @@ void engine_dump_snapshot(struct engine *e) {
   write_output_single(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits);
 #endif
+
+  e->dump_snapshot = 0;
 
   clocks_gettime(&time2);
   if (e->verbose)
@@ -3438,6 +3454,7 @@ void engine_unpin() {
  * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
+ * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
@@ -3448,6 +3465,7 @@ void engine_unpin() {
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+                 enum repartition_type reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
@@ -3469,7 +3487,9 @@ void engine_init(struct engine *e, struct space *s,
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
-  e->forcerepart = REPART_NONE;
+  e->forcerepart = 0;
+  e->reparttype = reparttype;
+  e->dump_snapshot = 0;
   e->links = NULL;
   e->nr_links = 0;
   e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");

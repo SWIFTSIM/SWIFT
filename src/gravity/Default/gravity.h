@@ -86,6 +86,15 @@ __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt) {}
 
 /**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param gp The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_reset_predicted_values(struct gpart* gp) {}
+
+/**
  * @brief Initialises the g-particles for the first time
  *
  * This function is called only once just after the ICs have been

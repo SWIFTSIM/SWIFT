@@ -204,7 +204,7 @@ void space_init_parts(struct space *s);
 void space_init_gparts(struct space *s);
 void space_init_sparts(struct space *s);
 void space_link_cleanup(struct space *s);
-void space_check_drift_point(struct space *s, integertime_t ti_current);
+void space_check_drift_point(struct space *s, integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_clean(struct space *s);
