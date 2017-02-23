@@ -94,9 +94,6 @@ struct pcell {
  */
 struct cell {
 
-  /*! This cell's multipole. */
-  struct multipole multipole;
-
   /*! The cell location on the grid. */
   double loc[3];
 
@@ -105,6 +102,9 @@ struct cell {
 
   /*! Max smoothing length in this cell. */
   double h_max;
+
+  /*! This cell's multipole. */
+  struct multipole *multipole;
 
   /*! Linking pointer for "memory management". */
   struct cell *next;

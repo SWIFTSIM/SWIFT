@@ -102,6 +102,12 @@ struct space {
   /*! Buffer of unused cells for the sub-cells. */
   struct cell *cells_sub;
 
+  /*! The multipoles associated with the top-level (level 0) cells */
+  struct multipole *multipoles_top;
+
+  /*! Buffer of unused multipoles for the sub-cells. */
+  struct multipole *multipoles_sub;
+
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
 
@@ -186,8 +192,10 @@ void space_sparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
-void space_recycle_list(struct space *s, struct cell *list_begin,
-                        struct cell *list_end);
+void space_recycle_list(struct space *s, struct cell *cell_list_begin,
+                        struct cell *cell_list_end,
+                        struct multipole *multipole_list_begin,
+                        struct multipole *multipole_list_end);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);

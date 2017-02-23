@@ -51,6 +51,7 @@
 #include "lock.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "multipole.h"
 #include "runner.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -179,14 +180,27 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  * @param rec_end Pointer to the end of the list of cells to recycle.
  */
 void space_rebuild_recycle_rec(struct space *s, struct cell *c,
-                               struct cell **rec_begin, struct cell **rec_end) {
+                               struct cell **cell_rec_begin,
+                               struct cell **cell_rec_end,
+                               struct multipole **multipole_rec_begin,
+                               struct multipole **multipole_rec_end) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        space_rebuild_recycle_rec(s, c->progeny[k], rec_begin, rec_end);
-        c->progeny[k]->next = *rec_begin;
-        *rec_begin = c->progeny[k];
-        if (*rec_end == NULL) *rec_end = *rec_begin;
+        space_rebuild_recycle_rec(s, c->progeny[k], cell_rec_begin,
+                                  cell_rec_end, multipole_rec_begin,
+                                  multipole_rec_end);
+
+        c->progeny[k]->next = *cell_rec_begin;
+        *cell_rec_begin = c->progeny[k];
+        c->progeny[k]->multipole->next = *multipole_rec_begin;
+        *multipole_rec_begin = c->progeny[k]->multipole;
+
+        if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
+        if (*multipole_rec_end == NULL)
+          *multipole_rec_end = *multipole_rec_begin;
+
+        c->progeny[k]->multipole = NULL;
         c->progeny[k] = NULL;
       }
 }
@@ -199,9 +213,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
-    struct cell *rec_begin = NULL, *rec_end = NULL;
-    space_rebuild_recycle_rec(s, c, &rec_begin, &rec_end);
-    if (rec_begin != NULL) space_recycle_list(s, rec_begin, rec_end);
+    struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
+    struct multipole *multipole_rec_begin = NULL, *multipole_rec_end = NULL;
+    space_rebuild_recycle_rec(s, c, &cell_rec_begin, &cell_rec_end,
+                              &multipole_rec_begin, &multipole_rec_end);
+    if (cell_rec_begin != NULL)
+      space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
+                         multipole_rec_end);
     c->sorts = NULL;
     c->nr_tasks = 0;
     c->density = NULL;
@@ -362,6 +380,7 @@ void space_regrid(struct space *s, int verbose) {
       threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
                      s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
       free(s->cells_top);
+      free(s->multipoles_top);
       s->maxdepth = 0;
     }
 
@@ -377,19 +396,35 @@ void space_regrid(struct space *s, int verbose) {
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
     if (posix_memalign((void *)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
-      error("Failed to allocate cells.");
+      error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
+    /* Allocate the multipoles for the top-level cells. */
+    if (s->gravity) {
+      if (posix_memalign((void *)&s->multipoles_top, multipole_align,
+                         s->nr_cells * sizeof(struct multipole)) != 0)
+        error("Failed to allocate top-level multipoles.");
+      bzero(s->multipoles_top, s->nr_cells * sizeof(struct multipole));
+    }
+
     /* Set the cells' locks */
-    for (int k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].lock) != 0)
-        error("Failed to init spinlock.");
+        error("Failed to init spinlock for hydro.");
+      if (lock_init(&s->cells_top[k].glock) != 0)
+        error("Failed to init spinlock for gravity.");
+      if (lock_init(&s->cells_top[k].mlock) != 0)
+        error("Failed to init spinlock for multipoles.");
+      if (lock_init(&s->cells_top[k].slock) != 0)
+        error("Failed to init spinlock for stars.");
+    }
 
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
-          struct cell *restrict c = &s->cells_top[cell_getid(cdim, i, j, k)];
+          const size_t cid = cell_getid(cdim, i, j, k);
+          struct cell *restrict c = &s->cells_top[cid];
           c->loc[0] = i * s->width[0];
           c->loc[1] = j * s->width[1];
           c->loc[2] = k * s->width[2];
@@ -403,7 +438,7 @@ void space_regrid(struct space *s, int verbose) {
           c->scount = 0;
           c->super = c;
           c->ti_old = ti_current;
-          lock_init(&c->lock);
+          if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
     /* Be verbose about the change. */
@@ -899,6 +934,12 @@ void space_rebuild(struct space *s, int verbose) {
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
   space_split(s, cells_top, s->nr_cells, verbose);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the multipole construction went OK */
+  for (int k = 0; k < s->nr_cells; k++)
+    cell_check_multipole(&s->cells_top[k], NULL);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2011,7 +2052,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* Remove any progeny with zero parts. */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff;
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
           c->progeny[k]->scount == 0) {
         space_recycle(s, c->progeny[k]);
@@ -2028,7 +2069,41 @@ void space_split_recursive(struct space *s, struct cell *c,
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
+    }
 
+    /* Deal with multipole */
+    if (s->gravity) {
+
+      /* Reset everything */
+      multipole_init(c->multipole);
+
+      /* Compute CoM of all progenies */
+      double CoM[3] = {0., 0., 0.};
+      double mass = 0.;
+
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct multipole *m = c->progeny[k]->multipole;
+          CoM[0] += m->CoM[0] * m->mass;
+          CoM[1] += m->CoM[1] * m->mass;
+          CoM[2] += m->CoM[2] * m->mass;
+          mass += m->mass;
+        }
+      }
+      c->multipole->CoM[0] = CoM[0] / mass;
+      c->multipole->CoM[1] = CoM[1] / mass;
+      c->multipole->CoM[2] = CoM[2] / mass;
+
+      /* Now shift progeny multipoles and add them up */
+      struct multipole temp;
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct multipole *m = c->progeny[k]->multipole;
+          multipole_M2M(&temp, m, c->multipole->CoM, m->CoM, s->periodic);
+          multipole_add(c->multipole, &temp);
+        }
+      }
+    }
   }
 
   /* Otherwise, collect the data for this cell. */
@@ -2070,6 +2145,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
+
+    /* Construct the multipole and the centre of mass*/
+    multipole_P2M(c->multipole, c->gparts, c->gcount);
   }
 
   /* Set the values for this cell. */
@@ -2137,14 +2215,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
-    error("Failed to destroy spinlock.");
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
+      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+    error("Failed to destroy spinlocks.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
   /* Lock the space. */
   lock_lock(&s->lock);
+
+  /* Hook the multipole back in the buffer */
+  if (s->gravity) {
+    c->multipole->next = s->multipoles_sub;
+    s->multipoles_sub = c->multipole;
+  }
 
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub;
@@ -2159,22 +2244,32 @@ void space_recycle(struct space *s, struct cell *c) {
  * @brief Return a list of used cells to the buffer of unused sub-cells.
  *
  * @param s The #space.
- * @param list_begin Pointer to the first #cell in the linked list of
+ * @param cell_list_begin Pointer to the first #cell in the linked list of
  *        cells joined by their @c next pointers.
- * @param list_end Pointer to the last #cell in the linked list of
+ * @param cell_list_end Pointer to the last #cell in the linked list of
  *        cells joined by their @c next pointers. It is assumed that this
  *        cell's @c next pointer is @c NULL.
+ * @param multipole_list_begin Pointer to the first #multipole in the linked
+ * list of
+ *        multipoles joined by their @c next pointers.
+ * @param multipole_list_end Pointer to the last #multipole in the linked list
+ * of
+ *        multipoles joined by their @c next pointers. It is assumed that this
+ *        multipole's @c next pointer is @c NULL.
  */
-void space_recycle_list(struct space *s, struct cell *list_begin,
-                        struct cell *list_end) {
+void space_recycle_list(struct space *s, struct cell *cell_list_begin,
+                        struct cell *cell_list_end,
+                        struct multipole *multipole_list_begin,
+                        struct multipole *multipole_list_end) {
 
   int count = 0;
 
   /* Clean up the list of cells. */
-  for (struct cell *c = list_begin; c != NULL; c = c->next) {
+  for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
-      error("Failed to destroy spinlock.");
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
+        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+      error("Failed to destroy spinlocks.");
 
     /* Clear this cell's sort arrays. */
     if (c->sort != NULL) free(c->sort);
@@ -2186,10 +2281,14 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  /* Hook this cell into the buffer. */
-  list_end->next = s->cells_sub;
-  s->cells_sub = list_begin;
+  /* Hook the cells into the buffer. */
+  cell_list_end->next = s->cells_sub;
+  s->cells_sub = cell_list_begin;
   s->tot_cells -= count;
+
+  /* Hook the multipoles into the buffer. */
+  multipole_list_end->next = s->multipoles_sub;
+  s->multipoles_sub = multipole_list_begin;
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
@@ -2214,7 +2313,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
 
-    /* Is the buffer empty? */
+    /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
       if (posix_memalign((void *)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
@@ -2226,10 +2325,28 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       s->cells_sub[space_cellallocchunk - 1].next = NULL;
     }
 
+    /* Is the multipole buffer empty? */
+    if (s->gravity && s->multipoles_sub == NULL) {
+      if (posix_memalign((void *)&s->multipoles_sub, multipole_align,
+                         space_cellallocchunk * sizeof(struct multipole)) != 0)
+        error("Failed to allocate more multipoles.");
+
+      /* Constructed a linked list */
+      for (int k = 0; k < space_cellallocchunk - 1; k++)
+        s->multipoles_sub[k].next = &s->multipoles_sub[k + 1];
+      s->multipoles_sub[space_cellallocchunk - 1].next = NULL;
+    }
+
     /* Pick off the next cell. */
     cells[j] = s->cells_sub;
     s->cells_sub = cells[j]->next;
     s->tot_cells += 1;
+
+    /* Hook the multipole */
+    if (s->gravity) {
+      cells[j]->multipole = s->multipoles_sub;
+      s->multipoles_sub = cells[j]->multipole->next;
+    }
   }
 
   /* Unlock the space. */
@@ -2237,9 +2354,12 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
+    struct multipole *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
+    cells[j]->multipole = temp;
     cells[j]->nodeID = -1;
-    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0)
+    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
+        lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -2535,7 +2655,7 @@ void space_init(struct space *s, const struct swift_params *params,
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
-  /* Build the cells and the tasks. */
+  /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 }
 
@@ -2707,6 +2827,7 @@ void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   free(s->cells_top);
+  free(s->multipoles_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);

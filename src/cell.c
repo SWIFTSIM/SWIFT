@@ -1073,50 +1073,27 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data) {
 
   struct multipole ma;
+  const double tolerance = 1e-5; /* Relative */
+
+  /* First recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k], NULL);
 
   if (c->gcount > 0) {
 
     /* Brute-force calculation */
-    multipole_init(&ma, c->gparts, c->gcount);
+    multipole_P2M(&ma, c->gparts, c->gcount);
 
-    /* Compare with recursive one */
-    struct multipole mb = c->multipole;
-
-    if (fabsf(ma.mass - mb.mass) / fabsf(ma.mass + mb.mass) > 1e-5)
-      error("Multipole masses are different (%12.15e vs. %12.15e)", ma.mass,
-            mb.mass);
-
-    for (int k = 0; k < 3; ++k)
-      if (fabs(ma.CoM[k] - mb.CoM[k]) / fabs(ma.CoM[k] + mb.CoM[k]) > 1e-5)
-        error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
-              mb.CoM[k]);
-
-#if const_gravity_multipole_order >= 2
-    if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
-        ma.I_xx > 1e-9)
-      error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
-            mb.I_xx);
-    if (fabsf(ma.I_yy - mb.I_yy) / fabsf(ma.I_yy + mb.I_yy) > 1e-5 &&
-        ma.I_yy > 1e-9)
-      error("Multipole I_yy are different (%12.15e vs. %12.15e)", ma.I_yy,
-            mb.I_yy);
-    if (fabsf(ma.I_zz - mb.I_zz) / fabsf(ma.I_zz + mb.I_zz) > 1e-5 &&
-        ma.I_zz > 1e-9)
-      error("Multipole I_zz are different (%12.15e vs. %12.15e)", ma.I_zz,
-            mb.I_zz);
-    if (fabsf(ma.I_xy - mb.I_xy) / fabsf(ma.I_xy + mb.I_xy) > 1e-5 &&
-        ma.I_xy > 1e-9)
-      error("Multipole I_xy are different (%12.15e vs. %12.15e)", ma.I_xy,
-            mb.I_xy);
-    if (fabsf(ma.I_xz - mb.I_xz) / fabsf(ma.I_xz + mb.I_xz) > 1e-5 &&
-        ma.I_xz > 1e-9)
-      error("Multipole I_xz are different (%12.15e vs. %12.15e)", ma.I_xz,
-            mb.I_xz);
-    if (fabsf(ma.I_yz - mb.I_yz) / fabsf(ma.I_yz + mb.I_yz) > 1e-5 &&
-        ma.I_yz > 1e-9)
-      error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
-            mb.I_yz);
-#endif
+    /* Now  compare the multipole expansion */
+    if (!multipole_equal(&ma, c->multipole, tolerance)) {
+      message("Multipoles are not equal at depth=%d!", c->depth);
+      message("Correct answer:");
+      multipole_print(&ma);
+      message("Recursive multipole:");
+      multipole_print(c->multipole);
+      error("Aborting");
+    }
   }
 }
 

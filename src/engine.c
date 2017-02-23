@@ -3448,6 +3448,7 @@ void engine_unpin() {
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
+ * @param gravity The #gravity_props used for this run.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param sourceterms The properties of the source terms function.
