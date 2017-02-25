@@ -1777,7 +1777,7 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
-/**
+/*
  * @brief Creates the dependency network for the gravity tasks of a given cell.
  *
  * @param sched The #scheduler.
@@ -1797,7 +1797,7 @@ void engine_count_and_link_tasks(struct engine *e) {
 /*   scheduler_addunlock(sched, c->super->grav_up, gravity); */
 /* } */
 
-/**
+/*
  * @brief Creates the dependency network for the external gravity tasks of a
  * given cell.
  *

@@ -176,8 +176,12 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  *
  * @param s The #space.
  * @param c The #cell to recycle.
- * @param rec_begin Pointer to the start of the list of cells to recycle.
- * @param rec_end Pointer to the end of the list of cells to recycle.
+ * @param cell_rec_begin Pointer to the start of the list of cells to recycle.
+ * @param cell_rec_end Pointer to the end of the list of cells to recycle.
+ * @param multipole_rec_begin Pointer to the start of the list of multipoles to
+ * recycle.
+ * @param multipole_rec_end Pointer to the end of the list of multipoles to
+ * recycle.
  */
 void space_rebuild_recycle_rec(struct space *s, struct cell *c,
                                struct cell **cell_rec_begin,
