@@ -820,31 +820,6 @@ void runner_do_drift_particles(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Mapper function to drift ALL particle and g-particles forward in time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void runner_do_drift_all_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
-      /* Drift all the particles */
-      cell_drift_particles(c, e);
-
-      /* Drift the multipole */
-      if (e->policy & engine_policy_self_gravity) cell_drift_multipole(c, e);
-    }
-  }
-}
-
-/**
  * @brief Perform the first half-kick on all the active particles in a cell.
  *
  * @param r The runner thread.
