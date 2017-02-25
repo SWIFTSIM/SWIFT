@@ -1784,17 +1784,18 @@ void engine_count_and_link_tasks(struct engine *e) {
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_gravity_dependencies(struct scheduler *sched,
-                                                    struct task *gravity,
-                                                    struct cell *c) {
+/* static inline void engine_make_gravity_dependencies(struct scheduler *sched,
+ */
+/*                                                     struct task *gravity, */
+/*                                                     struct cell *c) { */
 
-  /* init --> gravity --> kick */
-  scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick2);
+/*   /\* init --> gravity --> kick *\/ */
+/*   scheduler_addunlock(sched, c->super->init, gravity); */
+/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
 
-  /* grav_up --> gravity ( --> kick) */
-  scheduler_addunlock(sched, c->super->grav_up, gravity);
-}
+/*   /\* grav_up --> gravity ( --> kick) *\/ */
+/*   scheduler_addunlock(sched, c->super->grav_up, gravity); */
+/* } */
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
@@ -1804,13 +1805,13 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_external_gravity_dependencies(
-    struct scheduler *sched, struct task *gravity, struct cell *c) {
+/* static inline void engine_make_external_gravity_dependencies( */
+/*     struct scheduler *sched, struct task *gravity, struct cell *c) { */
 
-  /* init --> external gravity --> kick */
-  scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick2);
-}
+/*   /\* init --> external gravity --> kick *\/ */
+/*   scheduler_addunlock(sched, c->super->init, gravity); */
+/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
+/* } */
 
 /**
  * @brief Creates all the task dependencies for the gravity
