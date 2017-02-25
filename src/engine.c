@@ -3144,7 +3144,7 @@ void engine_unskip(struct engine *e) {
 void engine_drift_all(struct engine *e) {
 
   const ticks tic = getticks();
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+  threadpool_map(&e->threadpool, runner_do_drift_all_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
 #ifdef SWIFT_DEBUG_CHECKS

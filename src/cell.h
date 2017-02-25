@@ -230,8 +230,11 @@ struct cell {
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
 
-  /*! Last (integer) time the cell's content was drifted forward in time. */
+  /*! Last (integer) time the cell's particle was drifted forward in time. */
   integertime_t ti_old;
+
+  /*! Last (integer) time the cell's multipole was drifted forward in time. */
+  integertime_t ti_old_multipole;
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -343,6 +346,7 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_particles(struct cell *c, const struct engine *e);
+void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

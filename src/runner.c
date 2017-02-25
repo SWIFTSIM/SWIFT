@@ -826,15 +826,21 @@ void runner_do_drift_particles(struct runner *r, struct cell *c, int timer) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void runner_do_drift_mapper(void *map_data, int num_elements,
-                            void *extra_data) {
+void runner_do_drift_all_mapper(void *map_data, int num_elements,
+                                void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct cell *cells = (struct cell *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) cell_drift_particles(c, e);
+    if (c != NULL && c->nodeID == e->nodeID) {
+      /* Drift all the particles */
+      cell_drift_particles(c, e);
+
+      /* Drift the multipole */
+      if (e->policy & engine_policy_self_gravity) cell_drift_multipole(c, e);
+    }
   }
 }
 

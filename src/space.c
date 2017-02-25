@@ -441,6 +441,7 @@ void space_regrid(struct space *s, int verbose) {
           c->scount = 0;
           c->super = c;
           c->ti_old = ti_old;
+          c->ti_old_multipole = ti_old;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -922,6 +923,7 @@ void space_rebuild(struct space *s, int verbose) {
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->ti_old = ti_old;
+    c->ti_old_multipole = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -2030,6 +2032,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->gcount = 0;
       cp->scount = 0;
       cp->ti_old = c->ti_old;
+      cp->ti_old_multipole = c->ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];

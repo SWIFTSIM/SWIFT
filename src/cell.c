@@ -1326,7 +1326,7 @@ void cell_set_super(struct cell *c, struct cell *super) {
 }
 
 /**
- * @brief Recursively drifts all particles and g-particles in a cell hierarchy.
+ * @brief Recursively drifts particles of all kinds in a cell hierarchy.
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
@@ -1428,6 +1428,41 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
+}
+
+/**
+ * @brief Recursively drifts all multipoles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_multipole(struct cell *c, const struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const integertime_t ti_old_multipole = c->ti_old_multipole;
+  const integertime_t ti_current = e->ti_current;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old_multipole) * timeBase;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+
+  /* Are we not in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and drift the multipoles. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_drift_particles(c->progeny[k], e);
+
+  } else if (ti_current > ti_old_multipole) {
+
+    /* Drift the multipole */
+    multipole_drift(c->multipole, dt);
+  }
+
+  /* Update the time of the last drift */
+  c->ti_old_multipole = ti_current;
 }
 
 /**

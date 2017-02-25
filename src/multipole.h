@@ -186,6 +186,20 @@ INLINE static int multipole_equal(const struct multipole *ma,
 }
 
 /**
+ * @brief Drifts a #multipole forward in time.
+ *
+ * @param m The #multipole.
+ * @param dt The drift time-step.
+ */
+INLINE static void multipole_drift(struct multipole *m, double dt) {
+
+  /* Move the whole thing according to bulk motion */
+  m->CoM[0] += m->vel[0];
+  m->CoM[1] += m->vel[1];
+  m->CoM[2] += m->vel[2];
+}
+
+/**
  * @brief Applies the forces due to particles j onto particles i directly.
  *
  * @param gparts_i The #gpart to update.
