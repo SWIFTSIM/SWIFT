@@ -1932,10 +1932,12 @@ void engine_link_gravity_tasks(struct engine *e) {
  * @param gradient The gradient task to link.
  * @param force The force task to link.
  * @param c The cell.
+ * @param with_cooling Do we have a cooling task ?
  */
 static inline void engine_make_hydro_loops_dependencies(
     struct scheduler *sched, struct task *density, struct task *gradient,
     struct task *force, struct cell *c, int with_cooling) {
+
   /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop  */
   scheduler_addunlock(sched, c->super->init, density);
@@ -3392,9 +3394,12 @@ void engine_dump_snapshot(struct engine *e) {
    * That can include cells that have not
    * previously been active on this rank. */
   space_check_drift_point(e->s, e->ti_current);
-#endif
 
+  /* Be verbose about this */
+  message("writing snapshot at t=%e.", e->time);
+#else
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
+#endif
 
 /* Dump... */
 #if defined(WITH_MPI)
