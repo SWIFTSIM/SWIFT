@@ -69,9 +69,10 @@ const char *taskID_names[task_type_count] = {"none",
                                              "cooling",
                                              "sourceterms"};
 
+/* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav", "external_grav",
-    "tend", "xv",      "rho",      "gpart", "spart"};
+    "none", "density", "gradient", "force", "grav",      "external_grav",
+    "tend", "xv",      "rho",      "gpart", "multipole", "spart"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
