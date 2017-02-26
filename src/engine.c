@@ -1797,7 +1797,7 @@ void engine_count_and_link_tasks(struct engine *e) {
 /*   scheduler_addunlock(sched, c->super->grav_up, gravity); */
 /* } */
 
-/*
+/**
  * @brief Creates the dependency network for the external gravity tasks of a
  * given cell.
  *
@@ -1805,13 +1805,13 @@ void engine_count_and_link_tasks(struct engine *e) {
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-/* static inline void engine_make_external_gravity_dependencies( */
-/*     struct scheduler *sched, struct task *gravity, struct cell *c) { */
+static inline void engine_make_external_gravity_dependencies(
+    struct scheduler *sched, struct task *gravity, struct cell *c) {
 
-/*   /\* init --> external gravity --> kick *\/ */
-/*   scheduler_addunlock(sched, c->super->init, gravity); */
-/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
-/* } */
+  /* init --> external gravity --> kick */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
+}
 
 /**
  * @brief Creates all the task dependencies for the gravity
@@ -1820,42 +1820,14 @@ void engine_count_and_link_tasks(struct engine *e) {
  */
 void engine_link_gravity_tasks(struct engine *e) {
 
-  /* struct scheduler *sched = &e->sched; */
-  /* const int nodeID = e->nodeID; */
-  /* const int nr_tasks = sched->nr_tasks; */
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_tasks = sched->nr_tasks;
 
-  /* /\* Add one task gathering all the multipoles *\/ */
-  /* struct task *gather = scheduler_addtask( */
-  /*     sched, task_type_grav_gather_m, task_subtype_none, 0, 0, NULL, NULL,
-   * 0); */
+  for (int k = 0; k < nr_tasks; k++) {
 
-  /* /\* And one task performing the FFT *\/ */
-  /* struct task *fft = scheduler_addtask(sched, task_type_grav_fft, */
-  /*                                      task_subtype_none, 0, 0, NULL, NULL,
-   * 0); */
-
-  /* scheduler_addunlock(sched, gather, fft); */
-
-  /* for (int k = 0; k < nr_tasks; k++) { */
-
-  /*   /\* Get a pointer to the task. *\/ */
-  /*   struct task *t = &sched->tasks[k]; */
-
-  /*   /\* Multipole construction *\/ */
-  /*   if (t->type == task_type_grav_up) { */
-  /*     scheduler_addunlock(sched, t, gather); */
-  /*   } */
-
-  /*   /\* Long-range interaction *\/ */
-  /*   if (t->type == task_type_grav_mm) { */
-
-  /*     /\* Gather the multipoles --> mm interaction --> kick *\/ */
-  /*     scheduler_addunlock(sched, gather, t); */
-  /*     scheduler_addunlock(sched, t, t->ci->super->kick2); */
-
-  /*     /\* init --> mm interaction *\/ */
-  /*     scheduler_addunlock(sched, t->ci->super->init, t); */
-  /*   } */
+    /* Get a pointer to the task. */
+    struct task *t = &sched->tasks[k];
 
   /*   /\* Self-interaction for self-gravity? *\/ */
   /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
@@ -1864,13 +1836,12 @@ void engine_link_gravity_tasks(struct engine *e) {
 
   /*   } */
 
-  /*   /\* Self-interaction for external gravity ? *\/ */
-  /*   else if (t->type == task_type_self && */
-  /*            t->subtype == task_subtype_external_grav) { */
+    /* Self-interaction for external gravity ? */
+    if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
 
-  /*     engine_make_external_gravity_dependencies(sched, t, t->ci); */
+      engine_make_external_gravity_dependencies(sched, t, t->ci);
 
-  /*   } */
+    }
 
   /*   /\* Otherwise, pair interaction? *\/ */
   /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
@@ -1897,14 +1868,14 @@ void engine_link_gravity_tasks(struct engine *e) {
   /*     } */
   /*   } */
 
-  /*   /\* Sub-self-interaction for external gravity ? *\/ */
-  /*   else if (t->type == task_type_sub_self && */
-  /*            t->subtype == task_subtype_external_grav) { */
+    /* Sub-self-interaction for external gravity ? */
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_external_grav) {
 
-  /*     if (t->ci->nodeID == nodeID) { */
-  /*       engine_make_external_gravity_dependencies(sched, t, t->ci); */
-  /*     } */
-  /*   } */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_external_gravity_dependencies(sched, t, t->ci);
+      }
+    }
 
   /*   /\* Otherwise, sub-pair interaction? *\/ */
   /*   else if (t->type == task_type_sub_pair && t->subtype ==
@@ -1919,7 +1890,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   /*       engine_make_gravity_dependencies(sched, t, t->cj); */
   /*     } */
   /*   } */
-  /* } */
+  }
 }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2496,12 +2467,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->s_updated = 0;
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
-
-    /* Tasks with no cells should not be skipped? */
-    /* else if (t->type == task_type_grav_gather_m || */
-    /*          t->type == task_type_grav_fft) { */
-    /*   scheduler_activate(s, t); */
-    /* } */
   }
 }
 
