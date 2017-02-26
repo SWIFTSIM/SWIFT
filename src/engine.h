@@ -191,6 +191,9 @@ struct engine {
   int forcerepart;
   enum repartition_type reparttype;
 
+  /* Need to dump some statistics ? */
+  int save_stats;
+
   /* Need to dump a snapshot ? */
   int dump_snapshot;
 

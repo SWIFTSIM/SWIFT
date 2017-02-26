@@ -2827,6 +2827,8 @@ void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
 
+  e->save_stats = 0;
+
   struct statistics stats;
   stats_init(&stats);
 
@@ -3065,12 +3067,6 @@ void engine_step(struct engine *e) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-  /* Save some statistics ? */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
-    engine_print_stats(e);
-    e->timeLastStatistics += e->deltaTimeStatistics;
-  }
-
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
@@ -3085,13 +3081,18 @@ void engine_step(struct engine *e) {
   e->forcerebuild = buff;
 #endif
 
+  /* Save some statistics ? */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    e->save_stats = 1;
+  }
+
   /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if (e->dump_snapshot || e->forcerebuild || e->forcerepart)
+  if (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats)
     engine_drift_all(e);
 
   /* Write a snapshot ? */
@@ -3102,6 +3103,16 @@ void engine_step(struct engine *e) {
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
+  }
+
+  /* Save some  statistics */
+  if (e->save_stats) {
+
+    /* Dump */
+    engine_print_stats(e);
+
+    /* and move on */
+    e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
   /* Recover the (integer) end of the next time-step */
@@ -3530,6 +3541,7 @@ void engine_init(struct engine *e, struct space *s,
   e->forcerepart = 0;
   e->reparttype = reparttype;
   e->dump_snapshot = 0;
+  e->save_stats = 0;
   e->links = NULL;
   e->nr_links = 0;
   e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
