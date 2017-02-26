@@ -1829,12 +1829,12 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-  /*   /\* Self-interaction for self-gravity? *\/ */
-  /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
+    /*   /\* Self-interaction for self-gravity? *\/ */
+    /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
 
-  /*     engine_make_gravity_dependencies(sched, t, t->ci); */
+    /*     engine_make_gravity_dependencies(sched, t, t->ci); */
 
-  /*   } */
+    /*   } */
 
     /* Self-interaction for external gravity ? */
     if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
@@ -1843,30 +1843,31 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     }
 
-  /*   /\* Otherwise, pair interaction? *\/ */
-  /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
-   */
+    /*   /\* Otherwise, pair interaction? *\/ */
+    /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav)
+     * {
+     */
 
-  /*     if (t->ci->nodeID == nodeID) { */
+    /*     if (t->ci->nodeID == nodeID) { */
 
-  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-  /*     } */
+    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+    /*     } */
 
-  /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
 
-  /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-  /*     } */
+    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
+    /*     } */
 
-  /*   } */
+    /*   } */
 
-  /*   /\* Otherwise, sub-self interaction? *\/ */
-  /*   else if (t->type == task_type_sub_self && t->subtype ==
-   * task_subtype_grav) { */
+    /*   /\* Otherwise, sub-self interaction? *\/ */
+    /*   else if (t->type == task_type_sub_self && t->subtype ==
+     * task_subtype_grav) { */
 
-  /*     if (t->ci->nodeID == nodeID) { */
-  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-  /*     } */
-  /*   } */
+    /*     if (t->ci->nodeID == nodeID) { */
+    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+    /*     } */
+    /*   } */
 
     /* Sub-self-interaction for external gravity ? */
     else if (t->type == task_type_sub_self &&
@@ -1877,19 +1878,19 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
 
-  /*   /\* Otherwise, sub-pair interaction? *\/ */
-  /*   else if (t->type == task_type_sub_pair && t->subtype ==
-   * task_subtype_grav) { */
+    /*   /\* Otherwise, sub-pair interaction? *\/ */
+    /*   else if (t->type == task_type_sub_pair && t->subtype ==
+     * task_subtype_grav) { */
 
-  /*     if (t->ci->nodeID == nodeID) { */
+    /*     if (t->ci->nodeID == nodeID) { */
 
-  /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-  /*     } */
-  /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
+    /*     } */
+    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
 
-  /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-  /*     } */
-  /*   } */
+    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
+    /*     } */
+    /*   } */
   }
 }
 
