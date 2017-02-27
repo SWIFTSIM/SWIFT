@@ -3028,6 +3028,15 @@ void engine_step(struct engine *e) {
   if (e->step % 100 == 2) e->forcerepart = 1;
 #endif
 
+  /* Are we drifting everything ? */
+  if (e->policy & engine_policy_drift_all) {
+    engine_drift_all(e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    space_check_drift_point(e->s, e->ti_current);
+#endif
+  }
+
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -3147,6 +3156,11 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 void engine_drift_all(struct engine *e) {
 
   const ticks tic = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->nodeID == 0) message("Drifting all");
+#endif
+
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
