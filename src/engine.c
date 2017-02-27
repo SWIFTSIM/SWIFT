@@ -1550,7 +1550,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
  *
  * @param e The #engine.
  */
-void engine_make_gravity_tasks(struct engine *e) {
+void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -1573,8 +1573,9 @@ void engine_make_gravity_tasks(struct engine *e) {
                       0);
 
     /* Let's also build a task for all the non-neighbouring pm calculations */
-    scheduler_addtask(sched, task_type_grav_long_range, task_subtype_none, 0, 0,
-                      ci, NULL, 0);
+    /* scheduler_addtask(sched, task_type_grav_long_range, task_subtype_none, 0,
+     * 0, */
+    /*                   ci, NULL, 0); */
 
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
@@ -1784,15 +1785,14 @@ void engine_count_and_link_tasks(struct engine *e) {
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-/* static inline void engine_make_gravity_dependencies(struct scheduler *sched, */
-/*                                                     struct task *gravity, */
-/*                                                     struct cell *c) { */
+static inline void engine_make_self_gravity_dependencies(
+    struct scheduler *sched, struct task *gravity, struct cell *c) {
 
-/*   /\* init --> gravity --> grav_down --> kick *\/ */
-/*   scheduler_addunlock(sched, c->super->init, gravity); */
-/*   scheduler_addunlock(sched, gravity, c->super->grav_down); */
-/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
-/* } */
+  /* init --> gravity --> grav_down --> kick */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  // scheduler_addunlock(sched, gravity, c->super->grav_down);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
+}
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
@@ -1826,12 +1826,11 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-    /*   /\* Self-interaction for self-gravity? *\/ */
-    /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
+    /* Self-interaction for self-gravity? */
+    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-    /*     engine_make_gravity_dependencies(sched, t, t->ci); */
-
-    /*   } */
+      engine_make_self_gravity_dependencies(sched, t, t->ci);
+    }
 
     /* Self-interaction for external gravity ? */
     if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
@@ -1840,31 +1839,28 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     }
 
-    /*   /\* Otherwise, pair interaction? *\/ */
-    /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav)
-     * {
-     */
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
+      if (t->ci->nodeID == nodeID) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
 
-    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-    /*     } */
+        engine_make_self_gravity_dependencies(sched, t, t->cj);
+      }
 
-    /*   } */
+    }
 
-    /*   /\* Otherwise, sub-self interaction? *\/ */
-    /*   else if (t->type == task_type_sub_self && t->subtype ==
-     * task_subtype_grav) { */
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
-    /*   } */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
+    }
 
     /* Sub-self-interaction for external gravity ? */
     else if (t->type == task_type_sub_self &&
@@ -1875,19 +1871,18 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
 
-    /*   /\* Otherwise, sub-pair interaction? *\/ */
-    /*   else if (t->type == task_type_sub_pair && t->subtype ==
-     * task_subtype_grav) { */
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
+      if (t->ci->nodeID == nodeID) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
-    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-    /*     } */
-    /*   } */
+        engine_make_self_gravity_dependencies(sched, t, t->cj);
+      }
+    }
   }
 }
 
@@ -2214,8 +2209,8 @@ void engine_maketasks(struct engine *e) {
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) engine_make_hydroloop_tasks(e);
 
-  /* Add the gravity mm tasks. */
-  if (e->policy & engine_policy_self_gravity) engine_make_gravity_tasks(e);
+  /* Add the self gravity tasks. */
+  if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
@@ -2528,6 +2523,7 @@ void engine_print_task_counts(struct engine *e) {
   fflush(stdout);
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
