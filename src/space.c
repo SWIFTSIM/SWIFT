@@ -2160,8 +2160,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct spart *sp = &sparts[k];
       const integertime_t ti_end =
           get_integer_time_end(e->ti_current, sp->time_bin);
+      const integertime_t ti_beg =
+          get_integer_time_begin(e->ti_current + 1, sp->time_bin);
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
+      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
     }
 
     /* Construct the multipole and the centre of mass*/
