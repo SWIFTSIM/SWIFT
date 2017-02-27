@@ -599,6 +599,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       target_wcount - e->hydro_properties->delta_neighbours;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
+  const double timeBase = e->timeBase;
+  integertime_t ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -679,7 +681,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp);
+        hydro_prepare_force(p, xp, ti_current, timeBase);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */

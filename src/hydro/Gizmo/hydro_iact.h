@@ -413,8 +413,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   */
 
   // MATTHIEU
-  const integertime_t pj_ti_end = 0;  // get_integer_time_end(pj->time_bin);
-  const integertime_t pi_ti_end = 0;  // get_integer_time_end(pi->time_bin);
+  //  const integertime_t pj_ti_end = 0;  // get_integer_time_end(pj->time_bin);
+  //  const integertime_t pi_ti_end = 0;  // get_integer_time_end(pi->time_bin);
+  integertime_t pi_ti_end = pi->force.ti_end;
+  integertime_t pj_ti_end = pj->force.ti_end;
 
   if (mode == 1 || pj_ti_end > pi_ti_end) {
     /* Store mass flux */
