@@ -1612,6 +1612,8 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+/* Mark the thread we run on */
 #ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
 #endif
@@ -1815,6 +1817,18 @@ void *runner_main(void *data) {
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
+
+/* Mark that we have run this task on these cells */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci != NULL) {
+        ci->tasks_executed[t->type]++;
+        ci->subtasks_executed[t->subtype]++;
+      }
+      if (cj != NULL) {
+        cj->tasks_executed[t->type]++;
+        cj->subtasks_executed[t->subtype]++;
+      }
+#endif
 
       /* We're done with this task, see if we get a next one. */
       prev = t;

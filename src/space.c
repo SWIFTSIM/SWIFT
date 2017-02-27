@@ -2827,27 +2827,51 @@ void space_link_cleanup(struct space *s) {
 /**
  * @brief Checks that all cells have been drifted to a given point in time
  *
- * Expensive function. Should only be used for debugging purposes.
+ * Should only be used for debugging purposes.
  *
  * @param s The #space to check.
  * @param ti_drift The (integer) time.
  */
 void space_check_drift_point(struct space *s, integertime_t ti_drift) {
-
+#ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
  * @brief Checks that all particles and local cells have a non-zero time-step.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
  */
 void space_check_timesteps(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
-
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_check_timesteps(&s->cells_top[i]);
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
 
+/**
+ * @brief Resets all the individual cell task counters to 0.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to reset.
+ */
+void space_reset_task_counters(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_reset_task_counters(&s->cells_top[i]);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
 #endif
 }
 

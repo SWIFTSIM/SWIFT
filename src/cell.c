@@ -1057,6 +1057,23 @@ void cell_check_drift_point(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Resets all the individual cell task counters to 0.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param c The #cell to reset.
+ */
+void cell_reset_task_counters(struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
+  for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
@@ -1095,6 +1112,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
  */
 void cell_check_multipole(struct cell *c, void *data) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   struct multipole ma;
   const double tolerance = 1e-5; /* Relative */
 
@@ -1118,6 +1136,9 @@ void cell_check_multipole(struct cell *c, void *data) {
       error("Aborting");
     }
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**

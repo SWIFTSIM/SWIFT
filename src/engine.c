@@ -1573,8 +1573,8 @@ void engine_make_gravity_tasks(struct engine *e) {
                       0);
 
     /* Let's also build a task for all the non-neighbouring pm calculations */
-    scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
-                      NULL, 0);
+    scheduler_addtask(sched, task_type_grav_long_range, task_subtype_none, 0, 0,
+                      ci, NULL, 0);
 
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
@@ -1777,25 +1777,22 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
-/*
+/**
  * @brief Creates the dependency network for the gravity tasks of a given cell.
  *
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-/* static inline void engine_make_gravity_dependencies(struct scheduler *sched,
- */
-/*                                                     struct task *gravity, */
-/*                                                     struct cell *c) { */
+static inline void engine_make_gravity_dependencies(struct scheduler *sched,
+                                                    struct task *gravity,
+                                                    struct cell *c) {
 
-/*   /\* init --> gravity --> kick *\/ */
-/*   scheduler_addunlock(sched, c->super->init, gravity); */
-/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
-
-/*   /\* grav_up --> gravity ( --> kick) *\/ */
-/*   scheduler_addunlock(sched, c->super->grav_up, gravity); */
-/* } */
+  /* init --> gravity --> grav_down --> kick */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, gravity, c->super->grav_down);
+  scheduler_addunlock(sched, gravity, c->super->kick2);
+}
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
@@ -2873,6 +2870,11 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, int nr_runners) {
 
   const ticks tic = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Re-set all the cell task counters to 0 */
+  space_reset_task_counters(e->s);
+#endif
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);

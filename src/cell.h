@@ -308,6 +308,14 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! The list of tasks that have been executed on this cell */
+  char tasks_executed[64];
+
+  /*! The list of sub-tasks that have been executed on this cell */
+  char subtasks_executed[64];
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
@@ -342,6 +350,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 void cell_check_drift_point(struct cell *c, void *data);
+void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
