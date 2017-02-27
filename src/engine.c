@@ -2832,8 +2832,8 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
-        t->subtype == task_subtype_force || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms)
+        t->subtype == task_subtype_force || t->subtype == task_subtype_grav ||
+        t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }
 }
