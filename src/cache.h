@@ -379,11 +379,28 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
 }
 
 __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
-    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, const int first_pi, const int last_pj) {
+    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, int first_pi, int last_pj, const int num_vec_proc) {
 
   int idx;
   /* Shift the particles positions to a local frame (ci frame) so single precision can be
    * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+  /* Pad number of particles read to the vector size. */
+  int rem = (ci->count - first_pi) % (num_vec_proc * VEC_SIZE);
+  if (rem != 0) {
+    int pad = (num_vec_proc * VEC_SIZE) - rem;
+    
+    if (first_pi - pad >= 0)
+      first_pi -= pad;
+  }
+
+  rem = last_pj % (num_vec_proc * VEC_SIZE);
+  if (rem != 0) {
+    int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+    if (last_pj + pad < cj->count)
+      last_pj += pad;
+  }
+
 #ifdef WITH_VECTORIZATION
 #pragma simd
 #endif
