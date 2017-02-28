@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
@@ -196,17 +197,33 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                                       pj->primitives.gradients.v[2][2]));
   }
 
-  Wi[0] += dWi[0];
+  if (-dWi[0] > Wi[0]) {
+    Wi[0] = 0.0f;
+  } else {
+    Wi[0] += dWi[0];
+  }
   Wi[1] += dWi[1];
   Wi[2] += dWi[2];
   Wi[3] += dWi[3];
-  Wi[4] += dWi[4];
+  if (-dWi[4] > Wi[4]) {
+    Wi[4] = 0.0f;
+  } else {
+    Wi[4] += dWi[4];
+  }
 
-  Wj[0] += dWj[0];
+  if (-dWj[0] > Wj[0]) {
+    Wj[0] = 0.0f;
+  } else {
+    Wj[0] += dWj[0];
+  }
   Wj[1] += dWj[1];
   Wj[2] += dWj[2];
   Wj[3] += dWj[3];
-  Wj[4] += dWj[4];
+  if (-dWj[4] > Wj[4]) {
+    Wj[4] = 0.0f;
+  } else {
+    Wj[4] += dWj[4];
+  }
 }
 
 #endif  // SWIFT_HYDRO_GRADIENTS_H

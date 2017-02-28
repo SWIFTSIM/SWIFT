@@ -407,23 +407,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt) {
 
-  float oldm, oldp[3], anew[3];
-  const float half_dt = 0.5f * dt;  // MATTHIEU
-
-  /* Retrieve the current value of the gravitational acceleration from the
-     gpart. We are only allowed to do this because this is the kick. We still
-     need to check whether gpart exists though.*/
-  if (p->gpart) {
-    anew[0] = p->gpart->a_grav[0];
-    anew[1] = p->gpart->a_grav[1];
-    anew[2] = p->gpart->a_grav[2];
-
-    /* Copy the old mass and momentum before updating the conserved variables */
-    oldm = p->conserved.mass;
-    oldp[0] = p->conserved.momentum[0];
-    oldp[1] = p->conserved.momentum[1];
-    oldp[2] = p->conserved.momentum[2];
-  }
+  float a_grav[3];
 
   /* Update conserved variables. */
   p->conserved.mass += p->conserved.flux.mass;
@@ -434,36 +418,24 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
-    p->conserved.momentum[0] +=
-        half_dt * (oldm * p->gravity.old_a[0] + p->conserved.mass * anew[0]);
-    p->conserved.momentum[1] +=
-        half_dt * (oldm * p->gravity.old_a[1] + p->conserved.mass * anew[1]);
-    p->conserved.momentum[2] +=
-        half_dt * (oldm * p->gravity.old_a[2] + p->conserved.mass * anew[2]);
+    /* Retrieve the current value of the gravitational acceleration from the
+       gpart. We are only allowed to do this because this is the kick. We still
+       need to check whether gpart exists though.*/
+    a_grav[0] = p->gpart->a_grav[0];
+    a_grav[1] = p->gpart->a_grav[1];
+    a_grav[2] = p->gpart->a_grav[2];
 
-    float paold, panew;
-    paold = oldp[0] * p->gravity.old_a[0] + oldp[1] * p->gravity.old_a[1] +
-            oldp[2] * p->gravity.old_a[2];
-    panew = p->conserved.momentum[0] * anew[0] +
-            p->conserved.momentum[1] * anew[1] +
-            p->conserved.momentum[2] * anew[2];
-    p->conserved.energy += half_dt * (paold + panew);
+    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
+    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
+    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
 
-    float fluxaold, fluxanew;
-    fluxaold = p->gravity.old_a[0] * p->gravity.old_mflux[0] +
-               p->gravity.old_a[1] * p->gravity.old_mflux[1] +
-               p->gravity.old_a[2] * p->gravity.old_mflux[2];
-    fluxanew = anew[0] * p->gravity.mflux[0] + anew[1] * p->gravity.mflux[1] +
-               anew[2] * p->gravity.mflux[2];
-    p->conserved.energy += half_dt * (fluxaold + fluxanew);
+    p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
+                                 p->conserved.momentum[1] * a_grav[1] +
+                                 p->conserved.momentum[2] * a_grav[2]);
 
-    /* Store gravitational acceleration and mass flux for next step */
-    p->gravity.old_a[0] = anew[0];
-    p->gravity.old_a[1] = anew[1];
-    p->gravity.old_a[2] = anew[2];
-    p->gravity.old_mflux[0] = p->gravity.mflux[0];
-    p->gravity.old_mflux[1] = p->gravity.mflux[1];
-    p->gravity.old_mflux[2] = p->gravity.mflux[2];
+    p->conserved.energy += dt * (a_grav[0] * p->gravity.mflux[0] +
+                                 a_grav[1] * p->gravity.mflux[1] +
+                                 a_grav[2] * p->gravity.mflux[2]);
   }
 
   /* reset fluxes */
