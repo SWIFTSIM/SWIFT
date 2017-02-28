@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
@@ -84,7 +85,10 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  if (fabsf(dota_2) > 0.f)
+    return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  else
+    return FLT_MAX;
 }
 
 /**
