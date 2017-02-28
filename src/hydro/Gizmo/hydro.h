@@ -79,13 +79,19 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
-
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
+
+#if defined(GIZMO_FIX_PARTICLES)
+  p->v[0] = 0.;
+  p->v[1] = 0.;
+  p->v[2] = 0.;
+#else
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
+#endif
 }
 
 /**
@@ -357,6 +363,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
+#if defined(GIZMO_FIX_PARTICLES)
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+
+  p->du_dt = 0.0f;
+#else
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
@@ -383,6 +396,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
     p->du_dt = 0.0f;
   }
+#endif
 }
 
 /**
