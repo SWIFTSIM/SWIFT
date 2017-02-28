@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
   }
 
   /* Extra kick work */
-  hydro_kick_extra(p, xp, dt, ti_end);
+  hydro_kick_extra(p, xp, dt);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt);
 }
 

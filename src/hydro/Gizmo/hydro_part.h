@@ -178,8 +178,8 @@ struct part {
     /* Physical time step of the particle. */
     float dt;
 
-    /* Integer end time of the particle's time step. */
-    integertime_t ti_end;
+    /* Flag keeping track of whether this is an active or inactive particle. */
+    char active;
 
     /* Actual velocity of the particle. */
     float v_full[3];

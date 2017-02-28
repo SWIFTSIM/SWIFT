@@ -41,6 +41,27 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 }
 
 /**
+ * @brief Does some extra hydro operations once the actual physical time step
+ * for the particle is known.
+ *
+ * We use this to store the physical time step, since it is used for the flux
+ * exchange during the force loop.
+ *
+ * We also set the active flag of the particle to inactive. It will be set to
+ * active in hydro_init_part, which is called the next time the particle becomes
+ * active.
+ *
+ * @param p The particle to act upon.
+ * @param dt Physical time step of the particle during the next step.
+ */
+__attribute__((always_inline)) INLINE static void hydro_timestep_extra(
+    struct part* p, float dt) {
+
+  p->force.dt = dt;
+  p->force.active = 0;
+}
+
+/**
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
@@ -89,6 +110,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+
+  /* Set the active flag to active. */
+  p->force.active = 1;
 }
 
 /**
@@ -178,10 +202,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase Conversion factor between integer time and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp, double timeBase) {
-
-  /* Set the physical time step */
-  p->force.dt = get_timestep(p->time_bin, timeBase);  // MATTHIEU 0
+    struct part* restrict p, struct xpart* restrict xp) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -375,7 +396,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, integertime_t ti_current) {
+    struct part* p, struct xpart* xp, float dt) {
 
   float oldm, oldp[3], anew[3];
   const float half_dt = 0.5f * dt;  // MATTHIEU
@@ -429,9 +450,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Store gravitational acceleration and mass flux for next step */
     p->gravity.old_a[0] = anew[0];
+    p->gravity.old_a[1] = anew[1];
     p->gravity.old_a[2] = anew[2];
     p->gravity.old_mflux[0] = p->gravity.mflux[0];
-    p->gravity.old_a[1] = anew[1];
     p->gravity.old_mflux[1] = p->gravity.mflux[1];
     p->gravity.old_mflux[2] = p->gravity.mflux[2];
   }
@@ -444,8 +465,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[1] = 0.0f;
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
-
-  p->force.ti_end = get_integer_time_end(ti_current, p->time_bin);
 }
 
 /**
