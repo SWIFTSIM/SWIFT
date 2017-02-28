@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
@@ -79,9 +80,19 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
+  const float mass = p->conserved.mass;
+
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
+
+  /* we can already initialize the momentum */
+  p->conserved.momentum[0] = mass * p->primitives.v[0];
+  p->conserved.momentum[1] = mass * p->primitives.v[1];
+  p->conserved.momentum[2] = mass * p->primitives.v[2];
+
+  /* and the thermal energy */
+  p->conserved.energy *= mass;
 
 #if defined(GIZMO_FIX_PARTICLES)
   p->v[0] = 0.;
@@ -189,6 +200,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->primitives.v[2] = momentum[2] / m;
   const float energy = p->conserved.energy;
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
+
+  /* sanity checks */
+  if (p->primitives.rho < 0.0f || p->primitives.P < 0.0f) {
+    p->primitives.rho = 0.0f;
+    p->primitives.P = 0.0f;
+  }
 }
 
 /**
@@ -273,40 +290,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @brief Converts the hydrodynamic variables from the initial condition file to
  * conserved variables that can be used during the integration
  *
- * Requires the volume to be known.
- *
- * The initial condition file contains a mixture of primitive and conserved
- * variables. Mass is a conserved variable, and we just copy the particle
- * mass into the corresponding conserved quantity. We need the volume to
- * also derive a density, which is then used to convert the internal energy
- * to a pressure. However, we do not actually use these variables anymore.
- * We do need to initialize the linear momentum, based on the mass and the
- * velocity of the particle.
+ * We no longer do this, as the mass needs to be provided in the initial
+ * condition file, and the mass alone is enough to initialize all conserved
+ * variables. This is now done in hydro_first_init_part.
  *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp) {
-
-  const float volume = p->geometry.volume;
-  const float m = p->conserved.mass;
-  p->primitives.rho = m / volume;
-
-  /* first get the initial velocities, as they were overwritten in end_density
-   */
-  p->primitives.v[0] = p->v[0];
-  p->primitives.v[1] = p->v[1];
-  p->primitives.v[2] = p->v[2];
-
-  p->conserved.momentum[0] = m * p->primitives.v[0];
-  p->conserved.momentum[1] = m * p->primitives.v[1];
-  p->conserved.momentum[2] = m * p->primitives.v[2];
-
-  p->primitives.P =
-      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
-
-  p->conserved.energy *= m;
-}
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -363,13 +354,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-#if defined(GIZMO_FIX_PARTICLES)
-  p->a_hydro[0] = 0.0f;
-  p->a_hydro[1] = 0.0f;
-  p->a_hydro[2] = 0.0f;
-
-  p->du_dt = 0.0f;
-#else
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
@@ -396,6 +380,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
     p->du_dt = 0.0f;
   }
+
+#if defined(GIZMO_FIX_PARTICLES)
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+
+  p->du_dt = 0.0f;
+
+  /* disable the smoothing length update, since the smoothing lengths should
+     stay the same for all steps (particles don't move) */
+  p->force.h_dt = 0.0f;
 #endif
 }
 

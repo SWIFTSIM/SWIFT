@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   dtj = pj->force.dt;
 
   /* calculate the maximal signal velocity */
-  if (Wi[0] && Wj[0]) {
+  if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
     vmax =
         sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
   } else {
