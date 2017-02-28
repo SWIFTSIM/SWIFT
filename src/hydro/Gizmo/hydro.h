@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
@@ -41,6 +42,27 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 }
 
 /**
+ * @brief Does some extra hydro operations once the actual physical time step
+ * for the particle is known.
+ *
+ * We use this to store the physical time step, since it is used for the flux
+ * exchange during the force loop.
+ *
+ * We also set the active flag of the particle to inactive. It will be set to
+ * active in hydro_init_part, which is called the next time the particle becomes
+ * active.
+ *
+ * @param p The particle to act upon.
+ * @param dt Physical time step of the particle during the next step.
+ */
+__attribute__((always_inline)) INLINE static void hydro_timestep_extra(
+    struct part* p, float dt) {
+
+  p->force.dt = dt;
+  p->force.active = 0;
+}
+
+/**
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
@@ -58,13 +80,29 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  const float mass = p->conserved.mass;
 
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
+
+  /* we can already initialize the momentum */
+  p->conserved.momentum[0] = mass * p->primitives.v[0];
+  p->conserved.momentum[1] = mass * p->primitives.v[1];
+  p->conserved.momentum[2] = mass * p->primitives.v[2];
+
+  /* and the thermal energy */
+  p->conserved.energy *= mass;
+
+#if defined(GIZMO_FIX_PARTICLES)
+  p->v[0] = 0.;
+  p->v[1] = 0.;
+  p->v[2] = 0.;
+#else
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
+#endif
 }
 
 /**
@@ -89,6 +127,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+
+  /* Set the active flag to active. */
+  p->force.active = 1;
 }
 
 /**
@@ -159,6 +200,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->primitives.v[2] = momentum[2] / m;
   const float energy = p->conserved.energy;
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
+
+  /* sanity checks */
+  if (p->primitives.rho < 0.0f || p->primitives.P < 0.0f) {
+    p->primitives.rho = 0.0f;
+    p->primitives.P = 0.0f;
+  }
 }
 
 /**
@@ -179,9 +226,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp) {
-
-  /* Set the physical time step */
-  p->force.dt = get_timestep(p->time_bin, 0.);  // MATTHIEU 0
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -246,40 +290,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @brief Converts the hydrodynamic variables from the initial condition file to
  * conserved variables that can be used during the integration
  *
- * Requires the volume to be known.
- *
- * The initial condition file contains a mixture of primitive and conserved
- * variables. Mass is a conserved variable, and we just copy the particle
- * mass into the corresponding conserved quantity. We need the volume to
- * also derive a density, which is then used to convert the internal energy
- * to a pressure. However, we do not actually use these variables anymore.
- * We do need to initialize the linear momentum, based on the mass and the
- * velocity of the particle.
+ * We no longer do this, as the mass needs to be provided in the initial
+ * condition file, and the mass alone is enough to initialize all conserved
+ * variables. This is now done in hydro_first_init_part.
  *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp) {
-
-  const float volume = p->geometry.volume;
-  const float m = p->conserved.mass;
-  p->primitives.rho = m / volume;
-
-  /* first get the initial velocities, as they were overwritten in end_density
-   */
-  p->primitives.v[0] = p->v[0];
-  p->primitives.v[1] = p->v[1];
-  p->primitives.v[2] = p->v[2];
-
-  p->conserved.momentum[0] = m * p->primitives.v[0];
-  p->conserved.momentum[1] = m * p->primitives.v[1];
-  p->conserved.momentum[2] = m * p->primitives.v[2];
-
-  p->primitives.P =
-      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
-
-  p->conserved.energy *= m;
-}
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -362,6 +380,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
     p->du_dt = 0.0f;
   }
+
+#if defined(GIZMO_FIX_PARTICLES)
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+
+  p->du_dt = 0.0f;
+
+  /* disable the smoothing length update, since the smoothing lengths should
+     stay the same for all steps (particles don't move) */
+  p->force.h_dt = 0.0f;
+#endif
 }
 
 /**
