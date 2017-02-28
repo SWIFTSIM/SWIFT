@@ -23,6 +23,13 @@
 #include "io_properties.h"
 #include "riemann.h"
 
+/* Set the description of the particle movement. */
+#if defined(GIZMO_FIX_PARTICLES)
+#define GIZMO_PARTICLE_MOVEMENT "Fixed particles."
+#else
+#define GIZMO_PARTICLE_MOVEMENT "Particles move with flow velocity."
+#endif
+
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
@@ -155,6 +162,9 @@ void writeSPHflavour(hid_t h_grpsph) {
   /* Riemann solver information */
   io_write_attribute_s(h_grpsph, "Riemann solver type",
                        RIEMANN_SOLVER_IMPLEMENTATION);
+
+  /* Particle movement information */
+  io_write_attribute_s(h_grpsph, "Particle movement", GIZMO_PARTICLE_MOVEMENT);
 }
 
 /**
