@@ -52,6 +52,9 @@ struct gpart {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
+  /* Total mass this gpart interacted with */
+  double mass_interacted;
+
   /* Time of the last drift */
   integertime_t ti_drift;
 

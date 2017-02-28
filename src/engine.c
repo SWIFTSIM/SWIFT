@@ -2950,6 +2950,19 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Let's store the total mass in the system for future checks */
+  e->s->total_mass = 0.;
+  for (size_t i = 0; i < s->nr_gparts; ++i)
+    e->s->total_mass += s->gparts[i].mass;
+#ifdef WITH_MPI
+  if (MPI_Allreduce(MPI_IN_PLACE, &e->s->total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to all-reduce total mass in the system.");
+#endif
+  message("Total mass in the system: %e", e->s->total_mass);
+#endif
+
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 

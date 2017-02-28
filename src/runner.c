@@ -1332,13 +1332,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-
-      if (part_is_active(p, e)) {
-
-        /* First, finish the force loop */
-        hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
-      }
+      if (part_is_active(p, e)) hydro_end_force(p);
     }
 
     /* Loop over the g-particles in this cell. */
@@ -1346,24 +1340,26 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the gpart. */
       struct gpart *restrict gp = &gparts[k];
+      if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
 
-      if (gp->type == swift_type_dark_matter) {
-        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (e->policy & engine_policy_self_gravity) {
+        gp->mass_interacted += gp->mass;
+        if (gp->mass_interacted != e->s->total_mass)
+          error(
+              "g-particle did not interact gravitationally with all other "
+              "particles gp->mass_interacted=%e, total_mass=%e",
+              gp->mass_interacted, e->s->total_mass);
       }
+#endif
     }
 
     /* Loop over the star particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
-      /* Get a handle on the part. */
+      /* Get a handle on the spart. */
       struct spart *restrict sp = &sparts[k];
-
-      if (spart_is_active(sp, e)) {
-
-        /* First, finish the force loop */
-        star_end_force(sp);
-        gravity_end_force(sp->gpart, const_G);
-      }
+      if (spart_is_active(sp, e)) star_end_force(sp);
     }
   }
 
