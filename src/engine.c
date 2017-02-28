@@ -3028,14 +3028,8 @@ void engine_step(struct engine *e) {
   if (e->step % 100 == 2) e->forcerepart = 1;
 #endif
 
-  /* Are we drifting everything ? */
-  if (e->policy & engine_policy_drift_all) {
-    engine_drift_all(e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    space_check_drift_point(e->s, e->ti_current);
-#endif
-  }
+  /* Are we drifting everything (a la Gadget/GIZMO) ? */
+  if (e->policy & engine_policy_drift_all) engine_drift_all(e);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -3143,7 +3137,8 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       cell_drift_particles(c, e);
 
       /* Drift the multipole */
-      if (e->policy & engine_policy_self_gravity) cell_drift_multipole(c, e);
+      if (e->policy & engine_policy_self_gravity)
+        cell_drift_all_multipoles(c, e);
     }
   }
 }

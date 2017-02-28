@@ -1457,7 +1457,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_multipole(struct cell *c, const struct engine *e) {
+void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
   const integertime_t ti_old_multipole = c->ti_old_multipole;
@@ -1485,6 +1485,17 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;
 }
+
+/**
+ * @brief Drifts the multipole of a cell to the current time.
+ *
+ * Only drifts the multipole at this level. Multipoles deeper in the
+ * tree are not updated.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_multipole(struct cell *c, const struct engine *e);
 
 /**
  * @brief Recursively checks that all particles in a cell have a time-step
