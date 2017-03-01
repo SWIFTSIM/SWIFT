@@ -989,10 +989,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  cell_is_drifted(ci, e);
-  cell_is_drifted(cj, e);
-#endif
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
