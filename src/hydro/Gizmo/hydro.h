@@ -278,9 +278,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->timestepvars.vmax = 0.0f;
 
   /* Set the actual velocity of the particle */
-  p->force.v_full[0] = xp->v_full[0];
-  p->force.v_full[1] = xp->v_full[1];
-  p->force.v_full[2] = xp->v_full[2];
+  /* This should be v and not v_full. The reason is that v is updated with the
+     acceleration times the full time step, while v_full is updated using a
+     mixture of the half time steps that don't necessarily correspond to the
+     full time step. */
+  p->force.v_full[0] = p->v[0];
+  p->force.v_full[1] = p->v[1];
+  p->force.v_full[2] = p->v[2];
 }
 
 /**
@@ -520,10 +524,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
 
-  /* Set particle movement */
-  xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
-  xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
-  xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
+//  /* Set particle movement */
+//  if(p->conserved.mass > 0.){
+//    xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
+//    xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
+//    xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
+//  } else {
+//    xp->v_full[0] = 0.;
+//    xp->v_full[1] = 0.;
+//    xp->v_full[2] = 0.;
+//  }
 }
 
 /**
@@ -534,7 +544,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p) {
 
-  return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+  if(p->primitives.rho > 0.){
+    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -545,7 +559,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p) {
 
-  return p->primitives.P / pow_gamma(p->primitives.rho);
+  if(p->primitives.rho > 0.){
+    return p->primitives.P / pow_gamma(p->primitives.rho);
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -556,7 +574,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p) {
 
-  return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  if(p->primitives.rho > 0.){
+    return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -629,7 +651,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
+  p->conserved.energy = S * pow_gamma_minus_one(p->primitives.rho) * hydro_one_over_gamma_minus_one *
                         p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   p->conserved.energy += 0.5f * p->conserved.mass *
@@ -637,5 +659,5 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                           p->conserved.momentum[1] * p->primitives.v[1] +
                           p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
-  p->primitives.P = gas_pressure_from_entropy(p->primitives.rho, S);
+  p->primitives.P = S * pow_gamma(p->primitives.rho);
 }

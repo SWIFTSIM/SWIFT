@@ -276,13 +276,9 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
-/* VACUUM... */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (WL[0] == 0. || WL[4] == 0. || WR[0] == 0. || WR[4] == 0. ||
-      (4.0f * const_isothermal_soundspeed / hydro_gamma_minus_one <= vR - vL)) {
-    error("Vacuum not handled (yet)!");
+  if(WL[0] == 0. || WR[0] == 0.){
+    error("One of the states is vacuum, the isothermal solver cannot solve this!");
   }
-#endif
 
   rho = 0.;
   /* obtain a first guess for p */
