@@ -34,23 +34,23 @@
  */
 void runner_do_grav_up(struct runner *r, struct cell *c) {
 
-  if (c->split) { /* Regular node */
+  /* if (c->split) { /\* Regular node *\/ */
 
-    /* Recurse. */
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_grav_up(r, c->progeny[k]);
+  /*   /\* Recurse. *\/ */
+  /*   for (int k = 0; k < 8; k++) */
+  /*     if (c->progeny[k] != NULL) runner_do_grav_up(r, c->progeny[k]); */
 
-    /* Collect the multipoles from the progeny. */
-    multipole_reset(&c->multipole);
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        multipole_add(&c->multipole, &c->progeny[k]->multipole);
-    }
+  /*   /\* Collect the multipoles from the progeny. *\/ */
+  /*   multipole_reset(&c->multipole); */
+  /*   for (int k = 0; k < 8; k++) { */
+  /*     if (c->progeny[k] != NULL) */
+  /*       multipole_add(&c->multipole, &c->progeny[k]->multipole); */
+  /*   } */
 
-  } else { /* Leaf node. */
-    /* Just construct the multipole from the gparts. */
-    multipole_init(&c->multipole, c->gparts, c->gcount);
-  }
+  /* } else { /\* Leaf node. *\/ */
+  /*   /\* Just construct the multipole from the gparts. *\/ */
+  /*   multipole_init(&c->multipole, c->gparts, c->gcount); */
+  /* } */
 }
 
 /**
@@ -68,16 +68,15 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
-  const struct multipole multi = cj->multipole;
+  const struct multipole *multi = cj->multipole;
   const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
+  if (gcount == 0) error("Empty cell!");
 
-  if (multi.mass == 0.0)  // MATTHIEU sanity check
-    error("Multipole does not seem to have been set.");
+  if (multi->mass == 0.0) error("Multipole does not seem to have been set.");
 #endif
 
   /* Anything to do here? */
@@ -105,13 +104,17 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     if (!gpart_is_active(gp, e)) continue;
 
     /* Compute the pairwise distance. */
-    const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
-                         multi.CoM[1] - gp->x[1],   // y
-                         multi.CoM[2] - gp->x[2]};  // z
+    const float dx[3] = {multi->CoM[0] - gp->x[0],   // x
+                         multi->CoM[1] - gp->x[1],   // y
+                         multi->CoM[2] - gp->x[2]};  // z
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Interact !*/
-    runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi);
+    runner_iact_grav_pm(rlr_inv, r2, dx, gp, multi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    gp->mass_interacted += multi->mass;
+#endif
   }
 
   TIMER_TOC(timer_dopair_grav_pm);
@@ -195,18 +198,30 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 
         runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
+#ifdef SWIFT_DEBUG_CHECKS
+        gpi->mass_interacted += gpj->mass;
+        gpj->mass_interacted += gpi->mass;
+#endif
+
       } else {
 
         if (gpart_is_active(gpi, e)) {
 
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
+#ifdef SWIFT_DEBUG_CHECKS
+          gpi->mass_interacted += gpj->mass;
+#endif
         } else if (gpart_is_active(gpj, e)) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          gpj->mass_interacted += gpi->mass;
+#endif
         }
       }
     }
@@ -277,11 +292,20 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
 
         runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
+#ifdef SWIFT_DEBUG_CHECKS
+        gpi->mass_interacted += gpj->mass;
+        gpj->mass_interacted += gpi->mass;
+#endif
+
       } else {
 
         if (gpart_is_active(gpi, e)) {
 
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          gpi->mass_interacted += gpj->mass;
+#endif
 
         } else if (gpart_is_active(gpj, e)) {
 
@@ -289,6 +313,10 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
           dx[1] = -dx[1];
           dx[2] = -dx[2];
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          gpj->mass_interacted += gpi->mass;
+#endif
         }
       }
     }
@@ -466,7 +494,8 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
   }
 }
 
-static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
+static void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                                      int timer) {
 
 #if ICHECK > 0
   for (int pid = 0; pid < ci->gcount; pid++) {
@@ -485,10 +514,10 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
   const struct engine *e = r->e;
   struct cell *cells = e->s->cells_top;
   const int nr_cells = e->s->nr_cells;
-  const double max_d =
-      const_gravity_a_smooth * const_gravity_r_cut * ci->width[0];
-  const double max_d2 = max_d * max_d;
-  const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+  /* const double max_d = */
+  /*     const_gravity_a_smooth * const_gravity_r_cut * ci->width[0]; */
+  /* const double max_d2 = max_d * max_d; */
+  // const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
@@ -501,12 +530,12 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
 
     if (ci == cj) continue;
 
-    const double dx[3] = {cj->loc[0] - pos_i[0],   // x
-                          cj->loc[1] - pos_i[1],   // y
-                          cj->loc[2] - pos_i[2]};  // z
-    const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    /* const double dx[3] = {cj->loc[0] - pos_i[0],   // x */
+    /*                       cj->loc[1] - pos_i[1],   // y */
+    /*                       cj->loc[2] - pos_i[2]};  // z */
+    /* const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
 
-    if (r2 > max_d2) continue;
+    // if (r2 > max_d2) continue;
 
     if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
   }

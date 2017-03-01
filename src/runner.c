@@ -113,7 +113,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_fft.h"
-//#include "runner_doiact_grav.h"
+#include "runner_doiact_grav.h"
 
 /**
  * @brief Perform source terms
@@ -1350,11 +1350,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (e->policy & engine_policy_self_gravity) {
         gp->mass_interacted += gp->mass;
-        if (gp->mass_interacted != e->s->total_mass)
+        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
           error(
               "g-particle did not interact gravitationally with all other "
-              "particles gp->mass_interacted=%e, total_mass=%e",
-              gp->mass_interacted, e->s->total_mass);
+              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
+              gp->mass_interacted, e->s->total_mass, gp->mass);
       }
 #endif
     }
@@ -1686,8 +1686,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            // runner_doself_grav(r, ci, 1);
-            ;
+            runner_doself_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1704,8 +1703,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            // runner_dopair_grav(r, ci, cj, 1);#
-            ;
+            runner_dopair_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1720,8 +1718,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);#
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1738,8 +1735,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1806,7 +1802,7 @@ void *runner_main(void *data) {
           // runner_do_grav_top_level(r);
           break;
         case task_type_grav_long_range:
-          // runner_do_grav_fft(r);
+          runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_cooling:
           if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
