@@ -116,6 +116,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->conserved.energy *= mass;
 #endif
 
+#ifdef GIZMO_TOTAL_ENERGY
+  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->primitives.v[0] +
+                                 p->conserved.momentum[1] * p->primitives.v[1] +
+                                 p->conserved.momentum[2] * p->primitives.v[2]);
+#endif
+
 #if defined(GIZMO_FIX_PARTICLES)
   p->v[0] = 0.;
   p->v[1] = 0.;
@@ -231,7 +237,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->primitives.v[0] = momentum[0] / m;
   p->primitives.v[1] = momentum[1] / m;
   p->primitives.v[2] = momentum[2] / m;
-  const float energy = p->conserved.energy;
+
+  float energy = p->conserved.energy;
+
+#ifdef GIZMO_TOTAL_ENERGY
+  energy -= 0.5f * (momentum[0] * p->primitives.v[0] +
+                    momentum[1] * p->primitives.v[1] +
+                    momentum[2] * p->primitives.v[2]);
+#endif
+
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
 
   /* sanity checks */
@@ -594,6 +608,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
   p->conserved.energy = u * p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+  p->conserved.energy += 0.5f * p->conserved.mass *
+                         (p->conserved.momentum[0] * p->primitives.v[0] +
+                          p->conserved.momentum[1] * p->primitives.v[1] +
+                          p->conserved.momentum[2] * p->primitives.v[2]);
+#endif
   p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
 }
 
@@ -611,5 +631,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 
   p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
                         p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+  p->conserved.energy += 0.5f * p->conserved.mass *
+                         (p->conserved.momentum[0] * p->primitives.v[0] +
+                          p->conserved.momentum[1] * p->primitives.v[1] +
+                          p->conserved.momentum[2] * p->primitives.v[2]);
+#endif
   p->primitives.P = gas_pressure_from_entropy(p->primitives.rho, S);
 }

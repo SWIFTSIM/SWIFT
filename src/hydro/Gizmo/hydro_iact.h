@@ -393,6 +393,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.momentum[2] -= dti * Anorm * totflux[3];
   pi->conserved.flux.energy -= dti * Anorm * totflux[4];
 
+#ifndef GIZMO_TOTAL_ENERGY
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
@@ -400,6 +401,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
   pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
   pi->conserved.flux.energy -= dti * Anorm * totflux[0] * ekin;
+#endif
 
   /* here is how it works:
      Mode will only be 1 if both particles are ACTIVE and they are in the same
@@ -427,6 +429,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.momentum[2] += dtj * Anorm * totflux[3];
     pj->conserved.flux.energy += dtj * Anorm * totflux[4];
 
+#ifndef GIZMO_TOTAL_ENERGY
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
@@ -434,6 +437,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
     pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
     pj->conserved.flux.energy += dtj * Anorm * totflux[0] * ekin;
+#endif
   }
 }
 
