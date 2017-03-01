@@ -1797,12 +1797,11 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_grav_mm:
-            // runner_do_grav_mm(r, t->ci, 1);
-            ;
+          // runner_do_grav_mm(r, t->ci, 1);
           break;
-        /* case task_type_grav_up: */
-        /*     runner_do_grav_up(r, t->ci); */
-        /*     break; */
+        case task_type_grav_down:
+          // runner_do_grav_down(r, t->ci);
+          break;
         /*   case task_type_grav_gather_m: */
         /*     break; */
         /*   case task_type_grav_fft: */

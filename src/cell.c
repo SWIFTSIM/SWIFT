@@ -1320,6 +1320,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
   if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+  if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 

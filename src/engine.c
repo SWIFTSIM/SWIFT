@@ -2160,34 +2160,27 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
  */
 void engine_make_gravityrecursive_tasks(struct engine *e) {
 
-  /* struct space *s = e->s; */
-  /* struct scheduler *sched = &e->sched; */
-  /* const int nodeID = e->nodeID; */
-  /* const int nr_cells = s->nr_cells; */
-  /* struct cell *cells = s->cells_top; */
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_cells = s->nr_cells;
+  struct cell *cells = s->cells_top;
 
-  /* for (int k = 0; k < nr_cells; k++) { */
+  for (int k = 0; k < nr_cells; k++) {
 
-  /*   /\* Only do this for local cells containing gravity particles *\/ */
-  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
+    /* Only do this for local cells containing gravity particles */
+    if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
 
-  /*     /\* Create tasks at top level. *\/ */
-  /*     struct task *up = */
-  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0,
-   * 0, */
-  /*                           &cells[k], NULL, 0); */
+      /* Create tasks at top level. */
+      struct task *up = NULL;
+      struct task *down =
+          scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0,
+                            &cells[k], NULL, 0);
 
-  /*     struct task *down = NULL; */
-  /*     /\* struct task *down = *\/ */
-  /*     /\*     scheduler_addtask(sched, task_type_grav_down,
-   * task_subtype_none, 0, */
-  /*      * 0, *\/ */
-  /*     /\*                       &cells[k], NULL, 0); *\/ */
-
-  /*     /\* Push tasks down the cell hierarchy. *\/ */
-  /*     engine_addtasks_grav(e, &cells[k], up, down); */
-  /*   } */
-  /* } */
+      /* Push tasks down the cell hierarchy. */
+      engine_addtasks_grav(e, &cells[k], up, down);
+    }
+  }
 }
 
 /**
@@ -2450,6 +2443,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Kick/Drift/Init? */
     else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
              t->type == task_type_drift || t->type == task_type_init) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Gravity ? */
+    else if (t->type == task_type_grav_down) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
