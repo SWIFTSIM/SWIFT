@@ -422,26 +422,32 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
   if (p->force.dt) {
-    float mnew;
-    float vnew[3];
+    //    float mnew;
+    //    float vnew[3];
 
-    mnew = p->conserved.mass + p->conserved.flux.mass;
-    if (mnew > 0.) {
-      vnew[0] =
-          (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) / mnew;
-      vnew[1] =
-          (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) / mnew;
-      vnew[2] =
-          (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) / mnew;
-    } else {
-      vnew[0] = 0.;
-      vnew[1] = 0.;
-      vnew[2] = 0.;
-    }
+    //    mnew = p->conserved.mass + p->conserved.flux.mass;
+    //    if (mnew > 0.) {
+    //     vnew[0] =
+    //          (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) /
+    //          mnew;
+    //      vnew[1] =
+    //          (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) /
+    //          mnew;
+    //      vnew[2] =
+    //          (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) /
+    //          mnew;
+    //    } else {
+    //      vnew[0] = 0.;
+    //      vnew[1] = 0.;
+    //      vnew[2] = 0.;
+    //    }
 
-    p->a_hydro[0] = (vnew[0] - p->force.v_full[0]) / p->force.dt;
-    p->a_hydro[1] = (vnew[1] - p->force.v_full[1]) / p->force.dt;
-    p->a_hydro[2] = (vnew[2] - p->force.v_full[2]) / p->force.dt;
+    //    p->a_hydro[0] = (vnew[0] - p->force.v_full[0]) / p->force.dt;
+    //    p->a_hydro[1] = (vnew[1] - p->force.v_full[1]) / p->force.dt;
+    //    p->a_hydro[2] = (vnew[2] - p->force.v_full[2]) / p->force.dt;
+    p->a_hydro[0] = 0.;
+    p->a_hydro[1] = 0.;
+    p->a_hydro[2] = 0.;
 
     p->du_dt = p->conserved.flux.energy / p->force.dt;
   } else {
@@ -524,16 +530,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
 
-  //  /* Set particle movement */
-  //  if(p->conserved.mass > 0.){
-  //    xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
-  //    xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
-  //    xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
-  //  } else {
-  //    xp->v_full[0] = 0.;
-  //    xp->v_full[1] = 0.;
-  //    xp->v_full[2] = 0.;
-  //  }
+  /* Set particle movement */
+  if (p->conserved.mass > 0.) {
+    xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
+    xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
+    xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
+  } else {
+    xp->v_full[0] = 0.;
+    xp->v_full[1] = 0.;
+    xp->v_full[2] = 0.;
+  }
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
 }
 
 /**
