@@ -34,7 +34,8 @@
  * @param us The current internal system of units.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(struct UnitSystem* us, struct phys_const* internal_const) {
+void phys_const_init(struct unit_system* us,
+                     struct phys_const* internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 

@@ -175,14 +175,6 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
-    //free(c->rho);
-    //free(c->rho_dh);
-    //free(c->wcount);
-    //free(c->wcount_dh);
-    //free(c->div_v);
-    //free(c->curl_vx);
-    //free(c->curl_vy);
-    //free(c->curl_vz);
   }
 
   error += posix_memalign((void **)&c->x, alignment, sizeBytes);
@@ -487,4 +479,31 @@ __attribute__((always_inline)) INLINE static void cache_write_sorted_particles(c
     }
 #endif
 }
+
+/* @brief Clean the memory allocated by a #cache object.
+ *
+ * @param c The #cache to clean.
+ */
+static INLINE void cache_clean(struct cache *c) {
+  if (c->count > 0) {
+    free(c->x);
+    free(c->y);
+    free(c->z);
+    free(c->m);
+    free(c->vx);
+    free(c->vy);
+    free(c->vz);
+    free(c->h);
+    //free(c->rho);
+    //free(c->rho_dh);
+    //free(c->wcount);
+    //free(c->wcount_dh);
+    //free(c->div_v);
+    //free(c->curl_vx);
+    //free(c->curl_vy);
+    //free(c->curl_vz);
+
+  }
+}
+
 #endif /* SWIFT_CACHE_H */

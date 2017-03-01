@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   float new_dt_cooling = FLT_MAX;
   if (e->policy & engine_policy_cooling)
     new_dt_cooling = cooling_timestep(e->cooling_func, e->physical_constants,
-                                      e->internalUnits, p);
+                                      e->internal_units, p);
 
   /* Compute the next timestep (gravity condition) */
   float new_dt_grav = FLT_MAX;
@@ -142,6 +142,36 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, e->ti_current, e->timeBase_inv);
+
+  return new_dti;
+}
+
+/**
+ * @brief Compute the new (integer) time-step of a given #spart
+ *
+ * @param sp The #spart.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
+    const struct spart *restrict sp, const struct engine *restrict e) {
+
+  float new_dt = star_compute_timestep(sp);
+
+  if (e->policy & engine_policy_external_gravity)
+    new_dt = min(new_dt,
+                 external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, sp->gpart));
+
+  if (e->policy & engine_policy_self_gravity)
+    new_dt = min(new_dt, gravity_compute_timestep_self(sp->gpart));
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+  new_dt = max(new_dt, e->dt_min);
+
+  /* Convert to integer time */
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, sp->time_bin, e->ti_current, e->timeBase_inv);
 
   return new_dti;
 }

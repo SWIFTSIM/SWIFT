@@ -25,6 +25,7 @@ const char* package_version(void);
 const char* hostname(void);
 const char* git_revision(void);
 const char* git_branch(void);
+const char* git_date(void);
 const char* configuration_options(void);
 const char* compilation_cflags(void);
 const char* compiler_name(void);

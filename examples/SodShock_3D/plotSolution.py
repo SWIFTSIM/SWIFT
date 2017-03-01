@@ -38,6 +38,7 @@ P_R = 0.1              # Pressure right state
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
+from scipy import stats
 import h5py
 
 # Plot parameters
@@ -83,16 +84,32 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
-N = 1000  # Number of points
 x_min = -1.
 x_max = 1.
-
 x += x_min
+N = 1000
 
-# ---------------------------------------------------------------
-# Don't touch anything after this.
-# ---------------------------------------------------------------
+# Bin te data
+x_bin_edge = np.arange(-0.6, 0.6, 0.02)
+x_bin = 0.5*(x_bin_edge[1:] + x_bin_edge[:-1])
+rho_bin,_,_ = stats.binned_statistic(x, rho, statistic='mean', bins=x_bin_edge)
+v_bin,_,_ = stats.binned_statistic(x, v, statistic='mean', bins=x_bin_edge)
+P_bin,_,_ = stats.binned_statistic(x, P, statistic='mean', bins=x_bin_edge)
+S_bin,_,_ = stats.binned_statistic(x, S, statistic='mean', bins=x_bin_edge)
+u_bin,_,_ = stats.binned_statistic(x, u, statistic='mean', bins=x_bin_edge)
+rho2_bin,_,_ = stats.binned_statistic(x, rho**2, statistic='mean', bins=x_bin_edge)
+v2_bin,_,_ = stats.binned_statistic(x, v**2, statistic='mean', bins=x_bin_edge)
+P2_bin,_,_ = stats.binned_statistic(x, P**2, statistic='mean', bins=x_bin_edge)
+S2_bin,_,_ = stats.binned_statistic(x, S**2, statistic='mean', bins=x_bin_edge)
+u2_bin,_,_ = stats.binned_statistic(x, u**2, statistic='mean', bins=x_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
+
+# Analytic solution 
 c_L = sqrt(gas_gamma * P_L / rho_L)   # Speed of the rarefaction wave
 c_R = sqrt(gas_gamma * P_R / rho_R)   # Speed of the shock front
 
@@ -225,8 +242,9 @@ figure()
 
 # Velocity profile --------------------------------
 subplot(231)
-plot(x, v, '.', color='r', ms=0.5)
+plot(x, v, '.', color='r', ms=0.5, alpha=0.2)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(x_bin, v_bin, yerr=v_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 xlim(-0.5, 0.5)
@@ -234,8 +252,9 @@ ylim(-0.1, 0.95)
 
 # Density profile --------------------------------
 subplot(232)
-plot(x, rho, '.', color='r', ms=0.5)
+plot(x, rho, '.', color='r', ms=0.5, alpha=0.2)
 plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(x_bin, rho_bin, yerr=rho_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 xlim(-0.5, 0.5)
@@ -243,8 +262,9 @@ ylim(0.05, 1.1)
 
 # Pressure profile --------------------------------
 subplot(233)
-plot(x, P, '.', color='r', ms=0.5)
+plot(x, P, '.', color='r', ms=0.5, alpha=0.2)
 plot(x_s, P_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(x_bin, P_bin, yerr=P_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 xlim(-0.5, 0.5)
@@ -252,8 +272,9 @@ ylim(0.01, 1.1)
 
 # Internal energy profile -------------------------
 subplot(234)
-plot(x, u, '.', color='r', ms=0.5)
+plot(x, u, '.', color='r', ms=0.5, alpha=0.2)
 plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(x_bin, u_bin, yerr=u_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(-0.5, 0.5)
@@ -261,8 +282,9 @@ ylim(0.8, 2.2)
 
 # Entropy profile ---------------------------------
 subplot(235)
-plot(x, S, '.', color='r', ms=0.5)
+plot(x, S, '.', color='r', ms=0.5, alpha=0.2)
 plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(x_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(-0.5, 0.5)

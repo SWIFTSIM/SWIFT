@@ -37,6 +37,8 @@ typedef char timebin_t;
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
 
+#define time_bin_inactive (num_time_bins + 2)
+
 /**
  * @brief Returns the integer time interval corresponding to a time bin
  *

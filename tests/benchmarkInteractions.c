@@ -91,7 +91,10 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
   p->h = h;
   p->id = ++(*partId);
+
+#if !defined(GIZMO_SPH)
   p->mass = 1.0f;
+#endif
 
   /* Place rest of particles around the test particle
    * with random position within a unit sphere. */
@@ -110,7 +113,9 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
     p->h = h;
     p->id = ++(*partId);
+#if !defined(GIZMO_SPH)
     p->mass = 1.0f;
+#endif
   }
   return particles;
 }
@@ -120,6 +125,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
+#if !defined(GIZMO_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -130,6 +136,7 @@ void prepare_force(struct part *parts, size_t count) {
     p->force.v_sig = 0.0f;
     p->force.h_dt = 0.0f;
   }
+#endif
 }
 
 /**
@@ -144,10 +151,19 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%13e %13e %13e %13e "
           "%13e %13e %13e\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
-          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho,
-          p->density.rho_dh, p->density.wcount, p->density.wcount_dh,
-          p->force.h_dt, p->force.v_sig,
-#if defined(MINIMAL_SPH)
+          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
+#if defined(GIZMO_SPH)
+          0., 0.,
+#else
+          p->rho, p->density.rho_dh,
+#endif
+          p->density.wcount, p->density.wcount_dh, p->force.h_dt,
+#if defined(GIZMO_SPH)
+          0.,
+#else
+          p->force.v_sig,
+#endif
+#if defined(MINIMAL_SPH) || defined(GIZMO_SPH)
           0., 0., 0., 0.
 #else
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
@@ -237,13 +253,13 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float r2[count] __attribute__((aligned(array_align)));
   float dx[3 * count] __attribute__((aligned(array_align)));
 
+#ifdef WITH_VECTORIZATION
   struct part *piq[count], *pjq[count];
   for (size_t k = 0; k < count; k++) {
     piq[k] = NULL;
     pjq[k] = NULL;
   }
 
-#ifdef WITH_VECTORIZATION
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));
   float dxq[count] __attribute__((aligned(array_align)));
@@ -342,10 +358,12 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
     /* Only dump data on first run. */
     if (k == 0) {
+#ifdef WITH_VECTORIZATION
       /* Dump state of particles before vector interaction. */
       dump_indv_particle_fields(vec_filename, piq[0]);
       for (size_t i = 0; i < count; i++)
         dump_indv_particle_fields(vec_filename, pjq[i]);
+#endif
     }
 
 /* Perform vector interaction. */
@@ -411,10 +429,12 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
   fclose(file);
 
+#ifdef WITH_VECTORIZATION
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
+#endif
 
 #ifdef WITH_VECTORIZATION
   /* Check serial results against the vectorised results. */

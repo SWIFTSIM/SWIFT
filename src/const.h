@@ -55,6 +55,10 @@
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
 
+/* Options to control the movement of particles for GIZMO_SPH. */
+/* This option disables particle movement */
+//#define GIZMO_FIX_PARTICLES
+
 /* Source terms */
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK

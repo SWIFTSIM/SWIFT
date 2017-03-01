@@ -57,6 +57,10 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->mass_interacted = 0.;
+#endif
 }
 
 /**
@@ -84,6 +88,15 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt) {}
+
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param gp The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_reset_predicted_values(struct gpart* gp) {}
 
 /**
  * @brief Initialises the g-particles for the first time

@@ -163,7 +163,7 @@ external_gravity_get_potential_energy(
  */
 static INLINE void potential_init_backend(
     const struct swift_params* parameter_file,
-    const struct phys_const* phys_const, const struct UnitSystem* us,
+    const struct phys_const* phys_const, const struct unit_system* us,
     const struct space* s, struct external_potential* potential) {
 
   potential->x =

@@ -580,7 +580,7 @@ int main(int argc, char *argv[]) {
     // runner_do_kick1(&runner, main_cell, 0);
 
     /* And a gentle drift */
-    // runner_do_drift(&runner, main_cell, 0);
+    // runner_do_drift_particles(&runner, main_cell, 0);
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
@@ -678,7 +678,7 @@ int main(int argc, char *argv[]) {
   // runner_do_kick1(&runner, main_cell, 0);
 
   /* And drift it */
-  runner_do_drift(&runner, main_cell, 0);
+  runner_do_drift_particles(&runner, main_cell, 0);
 
   /* Initialise the particles */
   for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);

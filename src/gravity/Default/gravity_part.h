@@ -47,7 +47,13 @@ struct gpart {
   /* Time-step length */
   timebin_t time_bin;
 
+  /* Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* Total mass this gpart interacted with */
+  double mass_interacted;
 
   /* Time of the last drift */
   integertime_t ti_drift;

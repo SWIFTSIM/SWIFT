@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   dtj = pj->force.dt;
 
   /* calculate the maximal signal velocity */
-  if (Wi[0] && Wj[0]) {
+  if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
     vmax =
         sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
   } else {
@@ -412,11 +412,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
 
-  // MATTHIEU
-  const integertime_t pj_ti_end = 0;  // get_integer_time_end(pj->time_bin);
-  const integertime_t pi_ti_end = 0;  // get_integer_time_end(pi->time_bin);
-
-  if (mode == 1 || pj_ti_end > pi_ti_end) {
+  if (mode == 1 || pj->force.active == 0) {
     /* Store mass flux */
     mflux = dtj * Anorm * totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];

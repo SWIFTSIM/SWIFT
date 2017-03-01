@@ -51,10 +51,10 @@ enum task_types {
   task_type_timestep,
   task_type_send,
   task_type_recv,
-  task_type_grav_gather_m,
-  task_type_grav_fft,
+  task_type_grav_top_level,
+  task_type_grav_long_range,
   task_type_grav_mm,
-  task_type_grav_up,
+  task_type_grav_down,
   task_type_cooling,
   task_type_sourceterms,
   task_type_count
@@ -74,6 +74,8 @@ enum task_subtypes {
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_gpart,
+  task_subtype_multipole,
+  task_subtype_spart,
   task_subtype_count
 } __attribute__((packed));
 
