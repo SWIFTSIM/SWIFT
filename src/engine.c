@@ -132,6 +132,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int is_hydro = (e->policy & engine_policy_hydro);
+  const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
@@ -164,6 +165,19 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                                    c, NULL, 0);
 
       scheduler_addunlock(s, c->drift, c->init);
+
+      if (is_self_gravity) {
+        /* Gravity non-neighbouring pm calculations */
+        c->grav_long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL, 0);
+
+        /* Gravity top-level periodic calculation */
+        c->grav_top_level = scheduler_addtask(
+            s, task_type_grav_top_level, task_subtype_none, 0, 0, c, NULL, 0);
+
+        scheduler_addunlock(s, c->init, c->grav_long_range);
+        scheduler_addunlock(s, c->init, c->grav_top_level);
+      }
 
       /* Generate the ghost task. */
       if (is_hydro)
@@ -871,7 +885,7 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
                           struct task *down) {
 
   /* Link the tasks to this cell. */
-  c->grav_up = up;
+  // c->grav_up = up;
   c->grav_down = down;
 
   /* Recurse? */
@@ -1571,11 +1585,6 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
                       0);
-
-    /* Let's also build a task for all the non-neighbouring pm calculations */
-    /* scheduler_addtask(sched, task_type_grav_long_range, task_subtype_none, 0,
-     * 0, */
-    /*                   ci, NULL, 0); */
 
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
@@ -2447,7 +2456,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Gravity ? */
-    else if (t->type == task_type_grav_down) {
+    else if (t->type == task_type_grav_down ||
+             t->type == task_type_grav_long_range ||
+             t->type == task_type_grav_top_level) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 

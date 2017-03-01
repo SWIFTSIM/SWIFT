@@ -1802,11 +1802,12 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           // runner_do_grav_down(r, t->ci);
           break;
-        /*   case task_type_grav_gather_m: */
-        /*     break; */
-        /*   case task_type_grav_fft: */
-        /*     runner_do_grav_fft(r); */
-        /*     break; */
+        case task_type_grav_top_level:
+          // runner_do_grav_top_level(r);
+          break;
+        case task_type_grav_long_range:
+          // runner_do_grav_fft(r);
+          break;
         case task_type_cooling:
           if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
           runner_do_cooling(r, t->ci, 1);

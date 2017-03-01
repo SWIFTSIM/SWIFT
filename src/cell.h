@@ -170,7 +170,10 @@ struct cell {
   struct task *timestep;
 
   /*! Task constructing the multipole from the particles */
-  struct task *grav_up;
+  struct task *grav_top_level;
+
+  /*! Task constructing the multipole from the particles */
+  struct task *grav_long_range;
 
   /*! Task propagating the multipole to the particles */
   struct task *grav_down;
