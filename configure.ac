@@ -200,6 +200,20 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if gravity force checks are on for some particles.
+AC_ARG_ENABLE([gravity-force-checks],
+   [AS_HELP_STRING([--enable-gravity-force-checks],
+     [Activate expensive brute-force gravity checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [gravity_force_checks="$enableval"],
+   [gravity_force_checks="no"]
+)
+if test "$gravity_force_checks" == "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-gravity-force-checks!)
+elif test "$gravity_force_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
+fi
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -637,13 +651,13 @@ AC_ARG_WITH([hydro-dimension],
 )
 case "$with_dimension" in
    1)
-      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D analysis])
+      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D solver])
    ;; 
    2)
-      AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D analysis])
+      AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D solver])
    ;; 
    3)
-      AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D analysis])
+      AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D solver])
    ;; 
    *)
       AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
@@ -821,8 +835,10 @@ AC_MSG_RESULT([
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
    External potential : $with_potential
+
    Task debugging     : $enable_task_debugging
    Debugging checks   : $enable_debugging_checks
+   Gravity checks     : $gravity_force_checks
 ])
 
 # Make sure the latest git revision string gets included
