@@ -274,8 +274,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float wi_dr = hidp1 * wi_dx;
   float wj_dr = hjdp1 * wj_dx;
   dvdr *= ri;
-  pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  if (mode == 1) {
+  if (pj->primitives.rho > 0.) {
+    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
+  }
+  if (mode == 1 && pi->primitives.rho > 0.) {
     pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
   }
 

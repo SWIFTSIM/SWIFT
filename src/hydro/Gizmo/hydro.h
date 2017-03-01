@@ -38,7 +38,15 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
-  return CFL_condition * p->h / fabsf(p->timestepvars.vmax);
+  if (p->timestepvars.vmax == 0.) {
+    /* vmax can be zero in vacuum cells that only have vacuum neighbours */
+    /* in this case, the time step should be limited by the maximally
+       allowed time step. Since we do not know what that value is here, we set
+       the time step to a very large value */
+    return FLT_MAX;
+  } else {
+    return CFL_condition * p->h / fabsf(p->timestepvars.vmax);
+  }
 }
 
 /**
@@ -57,6 +65,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
     struct part* p, float dt) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (dt == 0.) {
+    error("Zero time step assigned to particle!");
+  }
+
+  if (dt != dt) {
+    error("NaN time step assigned to particle!");
+  }
+#endif
 
   p->force.dt = dt;
   p->force.active = 0;
@@ -190,6 +208,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* compute primitive variables */
   /* eqns (3)-(5) */
   const float m = p->conserved.mass;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (m == 0.) {
+    error("Mass is 0!");
+  }
+
+  if (volume == 0.) {
+    error("Volume is 0!");
+  }
+#endif
+
   float momentum[3];
   momentum[0] = p->conserved.momentum[0];
   momentum[1] = p->conserved.momentum[1];
@@ -331,9 +360,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
   p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
   p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
-  const float u = p->conserved.energy + p->du_dt * dt;
-  p->primitives.P =
-      hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+  if (p->conserved.mass > 0.) {
+    const float u = p->conserved.energy + p->du_dt * dt;
+    p->primitives.P =
+        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->h <= 0.) {
+    error("Zero or negative smoothing length (%g)!", p->h);
+  }
+#endif
 }
 
 /**
@@ -364,9 +401,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     float vnew[3];
 
     mnew = p->conserved.mass + p->conserved.flux.mass;
-    vnew[0] = (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) / mnew;
-    vnew[1] = (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) / mnew;
-    vnew[2] = (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) / mnew;
+    if (mnew > 0.) {
+      vnew[0] =
+          (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) / mnew;
+      vnew[1] =
+          (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) / mnew;
+      vnew[2] =
+          (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) / mnew;
+    } else {
+      vnew[0] = 0.;
+      vnew[1] = 0.;
+      vnew[2] = 0.;
+    }
 
     p->a_hydro[0] = (vnew[0] - p->force.v_full[0]) / p->force.dt;
     p->a_hydro[1] = (vnew[1] - p->force.v_full[1]) / p->force.dt;
