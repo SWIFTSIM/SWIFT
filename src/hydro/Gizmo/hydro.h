@@ -109,8 +109,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->conserved.momentum[1] = mass * p->primitives.v[1];
   p->conserved.momentum[2] = mass * p->primitives.v[2];
 
-  /* and the thermal energy */
+/* and the thermal energy */
+#if defined(EOS_ISOTHERMAL_GAS)
+  p->conserved.energy = mass * const_isothermal_internal_energy;
+#else
   p->conserved.energy *= mass;
+#endif
 
 #if defined(GIZMO_FIX_PARTICLES)
   p->v[0] = 0.;
@@ -350,21 +354,24 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f) {
-    p->primitives.rho *= approx_expf(w2);
-  } else {
-    p->primitives.rho *= expf(w2);
-  }
+//  const float w2 = -hydro_dimension * w1;
+//  if (fabsf(w2) < 0.2f) {
+//    p->primitives.rho *= approx_expf(w2);
+//  } else {
+//    p->primitives.rho *= expf(w2);
+//  }
 
-  p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
-  p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
-  p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
-  if (p->conserved.mass > 0.) {
-    const float u = p->conserved.energy + p->du_dt * dt;
-    p->primitives.P =
-        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
-  }
+//  p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
+//  p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
+//  p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
+
+//#if !defined(EOS_ISOTHERMAL_GAS)
+//  if (p->conserved.mass > 0.) {
+//    const float u = p->conserved.energy + p->du_dt * dt;
+//    p->primitives.P =
+//        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+//  }
+//#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.) {
@@ -460,7 +467,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.momentum[0] += p->conserved.flux.momentum[0];
   p->conserved.momentum[1] += p->conserved.flux.momentum[1];
   p->conserved.momentum[2] += p->conserved.flux.momentum[2];
+#if defined(EOS_ISOTHERMAL_GAS)
+  p->conserved.energy = p->conserved.mass * const_isothermal_internal_energy;
+#else
   p->conserved.energy += p->conserved.flux.energy;
+#endif
 
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
@@ -475,6 +486,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
 
+#if !defined(EOS_ISOTHERMAL_GAS)
     p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
                                  p->conserved.momentum[1] * a_grav[1] +
                                  p->conserved.momentum[2] * a_grav[2]);
@@ -482,6 +494,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.energy += dt * (a_grav[0] * p->gravity.mflux[0] +
                                  a_grav[1] * p->gravity.mflux[1] +
                                  a_grav[2] * p->gravity.mflux[2]);
+#endif
   }
 
   /* reset fluxes */
@@ -492,6 +505,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[1] = 0.0f;
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
+
+  /* Set particle movement */
+  xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
+  xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
+  xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
 }
 
 /**
