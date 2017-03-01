@@ -524,16 +524,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
 
-//  /* Set particle movement */
-//  if(p->conserved.mass > 0.){
-//    xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
-//    xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
-//    xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
-//  } else {
-//    xp->v_full[0] = 0.;
-//    xp->v_full[1] = 0.;
-//    xp->v_full[2] = 0.;
-//  }
+  //  /* Set particle movement */
+  //  if(p->conserved.mass > 0.){
+  //    xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
+  //    xp->v_full[1] = p->conserved.momentum[1] / p->conserved.mass;
+  //    xp->v_full[2] = p->conserved.momentum[2] / p->conserved.mass;
+  //  } else {
+  //    xp->v_full[0] = 0.;
+  //    xp->v_full[1] = 0.;
+  //    xp->v_full[2] = 0.;
+  //  }
 }
 
 /**
@@ -544,7 +544,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p) {
 
-  if(p->primitives.rho > 0.){
+  if (p->primitives.rho > 0.) {
     return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
   } else {
     return 0.;
@@ -559,7 +559,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p) {
 
-  if(p->primitives.rho > 0.){
+  if (p->primitives.rho > 0.) {
     return p->primitives.P / pow_gamma(p->primitives.rho);
   } else {
     return 0.;
@@ -574,7 +574,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p) {
 
-  if(p->primitives.rho > 0.){
+  if (p->primitives.rho > 0.) {
     return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
   } else {
     return 0.;
@@ -651,8 +651,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.energy = S * pow_gamma_minus_one(p->primitives.rho) * hydro_one_over_gamma_minus_one *
-                        p->conserved.mass;
+  p->conserved.energy = S * pow_gamma_minus_one(p->primitives.rho) *
+                        hydro_one_over_gamma_minus_one * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   p->conserved.energy += 0.5f * p->conserved.mass *
                          (p->conserved.momentum[0] * p->primitives.v[0] +
