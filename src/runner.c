@@ -1684,7 +1684,7 @@ void *runner_main(void *data) {
 
         case task_type_pair:
           if (t->subtype == task_subtype_density) {
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
             runner_dopair1_density_vec(r, ci, cj);
 #else
             runner_dopair1_density(r, ci, cj);
