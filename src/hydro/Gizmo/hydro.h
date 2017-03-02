@@ -506,6 +506,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
+    /* Kick the momentum for half a time step */
     p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
@@ -530,6 +531,21 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
 
+#if defined(GIZMO_FIX_PARTICLES)
+  xp->v_full[0] = 0.;
+  xp->v_full[1] = 0.;
+  xp->v_full[2] = 0.;
+
+  p->v[0] = 0.;
+  p->v[1] = 0.;
+  p->v[2] = 0.;
+
+  if (p->gpart) {
+    p->gpart->v_full[0] = 0.;
+    p->gpart->v_full[1] = 0.;
+    p->gpart->v_full[2] = 0.;
+  }
+#else
   /* Set particle movement */
   if (p->conserved.mass > 0.) {
     xp->v_full[0] = p->conserved.momentum[0] / p->conserved.mass;
@@ -543,6 +559,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->v[0] = xp->v_full[0];
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
+
+  /* Update gpart! */
+  if (p->gpart) {
+    p->gpart->v_full[0] = xp->v_full[0];
+    p->gpart->v_full[1] = xp->v_full[1];
+    p->gpart->v_full[2] = xp->v_full[2];
+  }
+#endif
 }
 
 /**
