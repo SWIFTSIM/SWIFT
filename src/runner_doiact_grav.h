@@ -69,7 +69,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole *multi = cj->multipole;
-  const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->width[0]);
+  const float a_smooth = e->gravity_properties->a_smooth;
+  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
 
@@ -138,7 +139,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   const int gcount_j = cj->gcount;
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
-  const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->width[0]);
+  const float a_smooth = e->gravity_properties->a_smooth;
+  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
 
@@ -244,7 +246,8 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
   const struct engine *e = r->e;
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  const float rlr_inv = 1. / (const_gravity_a_smooth * c->super->width[0]);
+  const float a_smooth = e->gravity_properties->a_smooth;
+  const float rlr_inv = 1. / (a_smooth * c->super->width[0]);
 
   TIMER_TIC;
 
