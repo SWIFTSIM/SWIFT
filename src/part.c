@@ -267,8 +267,9 @@ void part_create_mpi_types() {
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sparts.");
   }
-  if (MPI_Type_contiguous(sizeof(struct multipole) / sizeof(unsigned char),
-                          MPI_BYTE, &multipole_mpi_type) != MPI_SUCCESS ||
+  if (MPI_Type_contiguous(
+          sizeof(struct gravity_tensors) / sizeof(unsigned char), MPI_BYTE,
+          &multipole_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&multipole_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for multipole.");
   }

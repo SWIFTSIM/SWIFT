@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
-  const struct multipole *multi = cj->multipole;
+  const struct gravity_tensors *multi = cj->multipole;
   const float a_smooth = e->gravity_properties->a_smooth;
   const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
@@ -77,7 +77,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount == 0) error("Empty cell!");
 
-  if (multi->mass == 0.0) error("Multipole does not seem to have been set.");
+  if (multi->m_pole.mass == 0.0)
+    error("Multipole does not seem to have been set.");
 #endif
 
   /* Anything to do here? */
@@ -111,10 +112,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Interact !*/
-    runner_iact_grav_pm(rlr_inv, r2, dx, gp, multi);
+    runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi->m_pole);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    gp->mass_interacted += multi->mass;
+    gp->mass_interacted += multi->m_pole.mass;
 #endif
   }
 

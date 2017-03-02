@@ -104,7 +104,7 @@ struct cell {
   double h_max;
 
   /*! This cell's multipole. */
-  struct multipole *multipole;
+  struct gravity_tensors *multipole;
 
   /*! Linking pointer for "memory management". */
   struct cell *next;

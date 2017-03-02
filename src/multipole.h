@@ -36,31 +36,6 @@
 
 #define multipole_align 128
 
-/**
- * @brief The multipole expansion of a mass distribution.
- */
-struct multipole {
-
-  union {
-
-    /*! Linking pointer for "memory management". */
-    struct multipole *next;
-
-    /*! The actual content */
-    struct {
-
-      /*! Multipole mass */
-      float mass;
-
-      /*! Centre of mass of the matter dsitribution */
-      double CoM[3];
-
-      /*! Bulk velocity */
-      float vel[3];
-    };
-  };
-} SWIFT_STRUCT_ALIGN;
-
 struct acc_tensor {
 
   double F_000;
@@ -71,30 +46,43 @@ struct pot_tensor {
   double F_000;
 };
 
-struct field_tensors {
+struct multipole {
 
-  union {
+  float mass;
 
-    /*! Linking pointer for "memory management". */
-    struct field_tensors *next;
+  /*! Bulk velocity */
+  float vel[3];
+};
 
-    /*! The actual content */
-    struct {
+/**
+ * @brief The multipole expansion of a mass distribution.
+ */
+struct gravity_tensors {
 
-      /*! Field tensor for acceleration along x */
-      struct acc_tensor a_x;
+  /*! Linking pointer for "memory management". */
+  struct gravity_tensors *next;
 
-      /*! Field tensor for acceleration along y */
-      struct acc_tensor a_y;
+  /*! Centre of mass of the matter dsitribution */
+  double CoM[3];
 
-      /*! Field tensor for acceleration along z */
-      struct acc_tensor a_z;
+  /*! The actual content */
+  struct {
 
-      /*! Field tensor for the potential */
-      struct pot_tensor pot;
-    };
+    /*! Multipole mass */
+    struct multipole m_pole;
+
+    /*! Field tensor for acceleration along x */
+    struct acc_tensor a_x;
+
+    /*! Field tensor for acceleration along y */
+    struct acc_tensor a_y;
+
+    /*! Field tensor for acceleration along z */
+    struct acc_tensor a_z;
+
+    /*! Field tensor for the potential */
+    struct pot_tensor pot;
   };
-
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -102,10 +90,18 @@ struct field_tensors {
  *
  * @param m The #multipole.
  */
-INLINE static void multipole_init(struct multipole *m) {
+INLINE static void multipole_reset(struct gravity_tensors *m) {
 
   /* Just bzero the struct. */
-  bzero(m, sizeof(struct multipole));
+  bzero(m, sizeof(struct gravity_tensors));
+}
+
+INLINE static void multipole_init(struct gravity_tensors *m) {
+
+  bzero(&m->a_x, sizeof(struct acc_tensor));
+  bzero(&m->a_y, sizeof(struct acc_tensor));
+  bzero(&m->a_z, sizeof(struct acc_tensor));
+  bzero(&m->pot, sizeof(struct pot_tensor));
 }
 
 /**
@@ -117,7 +113,7 @@ INLINE static void multipole_init(struct multipole *m) {
  */
 INLINE static void multipole_print(const struct multipole *m) {
 
-  printf("CoM= [%12.5e %12.5e %12.5e\n", m->CoM[0], m->CoM[1], m->CoM[2]);
+  // printf("CoM= [%12.5e %12.5e %12.5e\n", m->CoM[0], m->CoM[1], m->CoM[2]);
   printf("Mass= %12.5e\n", m->mass);
   printf("Vel= [%12.5e %12.5e %12.5e\n", m->vel[0], m->vel[1], m->vel[2]);
 }
@@ -156,12 +152,15 @@ INLINE static int multipole_equal(const struct multipole *ma,
                                   double tolerance) {
 
   /* Check CoM */
-  if (fabs(ma->CoM[0] - mb->CoM[0]) / fabs(ma->CoM[0] + mb->CoM[0]) > tolerance)
-    return 0;
-  if (fabs(ma->CoM[1] - mb->CoM[1]) / fabs(ma->CoM[1] + mb->CoM[1]) > tolerance)
-    return 0;
-  if (fabs(ma->CoM[2] - mb->CoM[2]) / fabs(ma->CoM[2] + mb->CoM[2]) > tolerance)
-    return 0;
+  /* if (fabs(ma->CoM[0] - mb->CoM[0]) / fabs(ma->CoM[0] + mb->CoM[0]) >
+   * tolerance) */
+  /*   return 0; */
+  /* if (fabs(ma->CoM[1] - mb->CoM[1]) / fabs(ma->CoM[1] + mb->CoM[1]) >
+   * tolerance) */
+  /*   return 0; */
+  /* if (fabs(ma->CoM[2] - mb->CoM[2]) / fabs(ma->CoM[2] + mb->CoM[2]) >
+   * tolerance) */
+  /*   return 0; */
 
   /* Check bulk velocity (if non-zero)*/
   if (fabsf(ma->vel[0] + mb->vel[0]) > 0.f &&
@@ -191,12 +190,12 @@ INLINE static int multipole_equal(const struct multipole *ma,
  * @param m The #multipole.
  * @param dt The drift time-step.
  */
-INLINE static void multipole_drift(struct multipole *m, double dt) {
+INLINE static void multipole_drift(struct gravity_tensors *m, double dt) {
 
   /* Move the whole thing according to bulk motion */
-  m->CoM[0] += m->vel[0];
-  m->CoM[1] += m->vel[1];
-  m->CoM[2] += m->vel[2];
+  m->CoM[0] += m->m_pole.vel[0];
+  m->CoM[1] += m->m_pole.vel[1];
+  m->CoM[2] += m->m_pole.vel[2];
 }
 
 /**
@@ -220,7 +219,7 @@ INLINE static void multipole_P2P(struct gpart *gparts_i, int gcount_i,
  * @param gparts The #gpart.
  * @param gcount The number of particles.
  */
-INLINE static void multipole_P2M(struct multipole *m,
+INLINE static void multipole_P2M(struct gravity_tensors *m,
                                  const struct gpart *gparts, int gcount) {
 
 #if const_gravity_multipole_order >= 2
@@ -248,13 +247,13 @@ INLINE static void multipole_P2M(struct multipole *m,
   const double imass = 1.0 / mass;
 
   /* Store the data on the multipole. */
-  m->mass = mass;
+  m->m_pole.mass = mass;
   m->CoM[0] = com[0] * imass;
   m->CoM[1] = com[1] * imass;
   m->CoM[2] = com[2] * imass;
-  m->vel[0] = vel[0] * imass;
-  m->vel[1] = vel[1] * imass;
-  m->vel[2] = vel[2] * imass;
+  m->m_pole.vel[0] = vel[0] * imass;
+  m->m_pole.vel[1] = vel[1] * imass;
+  m->m_pole.vel[2] = vel[2] * imass;
 }
 
 /**
@@ -290,38 +289,39 @@ INLINE static void multipole_M2M(struct multipole *m_a,
  * @param pos_b The position of the multipole.
  * @param periodic Is the calculation periodic ?
  */
-INLINE static void multipole_M2L(struct field_tensors *l_a,
-                                 const struct multipole m_b,
-                                 const double pos_a[3], const double pos_b[3],
-                                 int periodic) {
+/* INLINE static void multipole_M2L(struct field_tensors *l_a, */
+/*                                  const struct multipole m_b, */
+/*                                  const double pos_a[3], const double
+ * pos_b[3], */
+/*                                  int periodic) { */
 
-  /* double dx, dy, dz; */
-  /* if (periodic) { */
-  /*   dx = box_wrap(pos_a[0] - pos_b[0], 0., 1.); */
-  /*   dy = box_wrap(pos_a[1] - pos_b[1], 0., 1.); */
-  /*   dz = box_wrap(pos_a[2] - pos_b[2], 0., 1.); */
-  /* } else { */
-  /*   dx = pos_a[0] - pos_b[0]; */
-  /*   dy = pos_a[1] - pos_b[1]; */
-  /*   dz = pos_a[2] - pos_b[2]; */
-  /* } */
-  /* const double r2 = dx * dx + dy * dy + dz * dz; */
+/*   /\* double dx, dy, dz; *\/ */
+/*   /\* if (periodic) { *\/ */
+/*   /\*   dx = box_wrap(pos_a[0] - pos_b[0], 0., 1.); *\/ */
+/*   /\*   dy = box_wrap(pos_a[1] - pos_b[1], 0., 1.); *\/ */
+/*   /\*   dz = box_wrap(pos_a[2] - pos_b[2], 0., 1.); *\/ */
+/*   /\* } else { *\/ */
+/*   /\*   dx = pos_a[0] - pos_b[0]; *\/ */
+/*   /\*   dy = pos_a[1] - pos_b[1]; *\/ */
+/*   /\*   dz = pos_a[2] - pos_b[2]; *\/ */
+/*   /\* } *\/ */
+/*   /\* const double r2 = dx * dx + dy * dy + dz * dz; *\/ */
 
-  /* const double r_inv = 1. / sqrt(r2); */
+/*   /\* const double r_inv = 1. / sqrt(r2); *\/ */
 
-  /* /\* 1st order multipole term *\/ */
-  /* l_a->x.F_000 =  D_100(dx, dy, dz, r_inv); */
-  /* l_a->y.F_000 =  D_010(dx, dy, dz, r_inv); */
-  /* l_a->z.F_000 =  D_001(dx, dy, dz, r_inv); */
-}
+/*   /\* /\\* 1st order multipole term *\\/ *\/ */
+/*   /\* l_a->x.F_000 =  D_100(dx, dy, dz, r_inv); *\/ */
+/*   /\* l_a->y.F_000 =  D_010(dx, dy, dz, r_inv); *\/ */
+/*   /\* l_a->z.F_000 =  D_001(dx, dy, dz, r_inv); *\/ */
+/* } */
 
 #if 0
 
 /* Multipole function prototypes. */
-void multipole_add(struct multipole *m_sum, const struct multipole *m_term);
-void multipole_init(struct multipole *m, const struct gpart *gparts,
+void multipole_add(struct gravity_tensors *m_sum, const struct gravity_tensors *m_term);
+void multipole_init(struct gravity_tensors *m, const struct gpart *gparts,
                     int gcount);
-void multipole_reset(struct multipole *m);
+void multipole_reset(struct gravity_tensors *m);
 
 /* static void multipole_iact_mm(struct multipole *ma, struct multipole *mb, */
 /*                               double *shift); */
@@ -336,7 +336,7 @@ void multipole_reset(struct multipole *m);
  * @param shift The periodicity correction.
  */
 __attribute__((always_inline)) INLINE static void multipole_iact_mm(
-    struct multipole *ma, struct multipole *mb, double *shift) {
+    struct gravity_tensors *ma, struct gravity_tensors *mb, double *shift) {
   /*   float dx[3], ir, r, r2 = 0.0f, acc; */
   /*   int k; */
 
@@ -378,7 +378,7 @@ __attribute__((always_inline)) INLINE static void multipole_iact_mm(
  * @param shift The periodicity correction.
  */
 __attribute__((always_inline)) INLINE static void multipole_iact_mp(
-    struct multipole *m, struct gpart *p, double *shift) {
+    struct gravity_tensors *m, struct gpart *p, double *shift) {
 
   /*   float dx[3], ir, r, r2 = 0.0f, acc; */
   /*   int k; */

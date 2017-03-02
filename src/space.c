@@ -186,8 +186,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 void space_rebuild_recycle_rec(struct space *s, struct cell *c,
                                struct cell **cell_rec_begin,
                                struct cell **cell_rec_end,
-                               struct multipole **multipole_rec_begin,
-                               struct multipole **multipole_rec_end) {
+                               struct gravity_tensors **multipole_rec_begin,
+                               struct gravity_tensors **multipole_rec_end) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
@@ -221,7 +221,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
     struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
-    struct multipole *multipole_rec_begin = NULL, *multipole_rec_end = NULL;
+    struct gravity_tensors *multipole_rec_begin = NULL,
+                           *multipole_rec_end = NULL;
     space_rebuild_recycle_rec(s, c, &cell_rec_begin, &cell_rec_end,
                               &multipole_rec_begin, &multipole_rec_end);
     if (cell_rec_begin != NULL)
@@ -412,9 +413,9 @@ void space_regrid(struct space *s, int verbose) {
     /* Allocate the multipoles for the top-level cells. */
     if (s->gravity) {
       if (posix_memalign((void *)&s->multipoles_top, multipole_align,
-                         s->nr_cells * sizeof(struct multipole)) != 0)
+                         s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
-      bzero(s->multipoles_top, s->nr_cells * sizeof(struct multipole));
+      bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Set the cells' locks */
@@ -2090,7 +2091,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->gravity) {
 
       /* Reset everything */
-      multipole_init(c->multipole);
+      multipole_reset(c->multipole);
 
       /* Compute CoM of all progenies */
       double CoM[3] = {0., 0., 0.};
@@ -2098,11 +2099,11 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
-          const struct multipole *m = c->progeny[k]->multipole;
-          CoM[0] += m->CoM[0] * m->mass;
-          CoM[1] += m->CoM[1] * m->mass;
-          CoM[2] += m->CoM[2] * m->mass;
-          mass += m->mass;
+          const struct gravity_tensors *m = c->progeny[k]->multipole;
+          CoM[0] += m->CoM[0] * m->m_pole.mass;
+          CoM[1] += m->CoM[1] * m->m_pole.mass;
+          CoM[2] += m->CoM[2] * m->m_pole.mass;
+          mass += m->m_pole.mass;
         }
       }
       c->multipole->CoM[0] = CoM[0] / mass;
@@ -2113,9 +2114,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct multipole temp;
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
-          const struct multipole *m = c->progeny[k]->multipole;
-          multipole_M2M(&temp, m, c->multipole->CoM, m->CoM, s->periodic);
-          multipole_add(c->multipole, &temp);
+          const struct cell *cp = c->progeny[k];
+          const struct multipole *m = &cp->multipole->m_pole;
+          multipole_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
+                        s->periodic);
+          multipole_add(&c->multipole->m_pole, &temp);
         }
       }
     }
@@ -2284,8 +2287,8 @@ void space_recycle(struct space *s, struct cell *c) {
  */
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
-                        struct multipole *multipole_list_begin,
-                        struct multipole *multipole_list_end) {
+                        struct gravity_tensors *multipole_list_begin,
+                        struct gravity_tensors *multipole_list_end) {
 
   int count = 0;
 
@@ -2354,8 +2357,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the multipole buffer empty? */
     if (s->gravity && s->multipoles_sub == NULL) {
-      if (posix_memalign((void *)&s->multipoles_sub, multipole_align,
-                         space_cellallocchunk * sizeof(struct multipole)) != 0)
+      if (posix_memalign(
+              (void *)&s->multipoles_sub, multipole_align,
+              space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
       /* Constructed a linked list */
@@ -2381,7 +2385,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    struct multipole *temp = cells[j]->multipole;
+    struct gravity_tensors *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->multipole = temp;
     cells[j]->nodeID = -1;

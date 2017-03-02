@@ -1113,7 +1113,7 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  struct multipole ma;
+  struct gravity_tensors ma;
   const double tolerance = 1e-5; /* Relative */
 
   /* First recurse */
@@ -1127,12 +1127,12 @@ void cell_check_multipole(struct cell *c, void *data) {
     multipole_P2M(&ma, c->gparts, c->gcount);
 
     /* Now  compare the multipole expansion */
-    if (!multipole_equal(&ma, c->multipole, tolerance)) {
+    if (!multipole_equal(&ma.m_pole, &c->multipole->m_pole, tolerance)) {
       message("Multipoles are not equal at depth=%d!", c->depth);
       message("Correct answer:");
-      multipole_print(&ma);
+      multipole_print(&ma.m_pole);
       message("Recursive multipole:");
-      multipole_print(c->multipole);
+      multipole_print(&c->multipole->m_pole);
       error("Aborting");
     }
   }
