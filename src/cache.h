@@ -84,35 +84,17 @@ struct cache {
 
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
+  
+  /* Maximum distance of pi particles into cj. */
+  float *restrict max_di __attribute__((aligned(CACHE_ALIGN)));
+
+  /* Maximum distance of pj particles into ci. */
+  float *restrict max_dj __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
 
 #endif
-  /* Particle x position. */
-  //float *restrict rho __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle y position. */
-  //float *restrict rho_dh __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle z position. */
-  //float *restrict wcount __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle smoothing length. */
-  //float *restrict wcount_dh __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle mass. */
-  //float *restrict div_v __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle x velocity. */
-  //float *restrict curl_vx __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle y velocity. */
-  //float *restrict curl_vy __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
-  ///* Particle z velocity. */
-  //float *restrict curl_vz __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-
 };
 
 #ifdef DOPAIR1_AUTO_VEC
@@ -175,6 +157,8 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
+    free(c->max_di);
+    free(c->max_dj);
   }
 
   error += posix_memalign((void **)&c->x, alignment, sizeBytes);
@@ -185,15 +169,9 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, alignment, sizeBytes);
   error += posix_memalign((void **)&c->vz, alignment, sizeBytes);
   error += posix_memalign((void **)&c->h, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->rho, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->rho_dh, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->wcount, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->wcount_dh, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->div_v, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->curl_vx, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->curl_vy, alignment, sizeBytes);
-  //error += posix_memalign((void **)&c->curl_vz, alignment, sizeBytes);
-
+  error += posix_memalign((void **)&c->max_di, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->max_dj, alignment, sizeBytes);
+  
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
   c->count = count;

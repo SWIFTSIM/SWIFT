@@ -972,9 +972,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 #endif /* WITH_VECTORIZATION */
 }
 
-float max_di[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into ci */
-float max_dj[MAX_NO_OF_PARTS] __attribute__((aligned(sizeof(VEC_SIZE * sizeof(float))))); /* max distance into cj */
-
 void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef WITH_VECTORIZATION
@@ -1029,7 +1026,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   }
 
   int first_pi, last_pj;
-  
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->par_cache.max_di;
+  max_dj = r->par_cache.max_dj;
+
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
   populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, max_di, max_dj, &first_pi, &last_pj);
@@ -1408,6 +1410,12 @@ void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci, struct cell
   }
 
   cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
+
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->par_cache.max_di;
+  max_dj = r->par_cache.max_dj;
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
@@ -1832,6 +1840,12 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
   if (cj_cache.count < count_j) {
     cache_init(&cj_cache, count_j);
   }
+
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->par_cache.max_di;
+  max_dj = r->par_cache.max_dj;
 
   int first_pi, last_pj;
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
@@ -2401,6 +2415,12 @@ void runner_dopair1_density_vec_3(struct runner *r, struct cell *ci, struct cell
   cache_read_two_cells(ci, cj, ci_cache, &cj_cache, shift);
   //cache_read_two_cells_sorted(ci, cj, ci_cache, &cj_cache, sort_i, sort_j, shift);
 
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->par_cache.max_di;
+  max_dj = r->par_cache.max_dj;
+
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
   populate_max_d(ci, cj, sort_i, sort_j, ci_cache, &cj_cache, dx_max, rshift, max_di, max_dj);
@@ -2897,6 +2917,12 @@ void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell
   double shift_cj[3] = {0.0,0.0,0.0};
 
   cache_read_cell_sorted(cj, ci_cache, sort_j, loc, shift_cj);
+
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->par_cache.max_di;
+  max_dj = r->par_cache.max_dj;
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* For particles in ci */  
