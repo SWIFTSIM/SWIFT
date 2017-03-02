@@ -480,10 +480,12 @@ int main(int argc, char *argv[]) {
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 #ifdef WITH_VECTORIZATION
-    runner.par_cache.count = 0;
-    cache_init(&runner.par_cache, 512);
-    cj_cache.count = 0;
-    cache_init(&cj_cache, 512);
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    runner.cj_cache.count = 0;
+    cache_init(&runner.cj_cache, 512);
+    //cj_cache.count = 0;
+    //cache_init(&cj_cache, 512);
 #endif
 
     /* Run all the pairs */
