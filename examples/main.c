@@ -305,6 +305,15 @@ int main(int argc, char *argv[]) {
     message("WARNING: Debugging checks activated. Code will be slower !");
 #endif
 
+/* Do we have gravity accuracy checks ? */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (myrank == 0)
+    message(
+        "WARNING: Checking 1/%d of all gpart for gravity accuracy. Code will "
+        "be slower !",
+        SWIFT_GRAVITY_FORCE_CHECKS);
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);

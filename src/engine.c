@@ -55,6 +55,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "parallel_io.h"
@@ -3066,10 +3067,20 @@ void engine_step(struct engine *e) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  gravity_exact_force_compute(e->s, e);
+#endif
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check the accuracy of the gravity calculation */
+  gravity_exact_force_check(e->s, e, 1e-1);
+#endif
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI

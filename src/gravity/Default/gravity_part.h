@@ -63,6 +63,13 @@ struct gpart {
 
 #endif
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /* Brute-force particle acceleration. */
+  float a_grav_exact[3];
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
