@@ -85,11 +85,8 @@ struct cache {
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
   
-  /* Maximum distance of pi particles into cj. */
-  float *restrict max_di __attribute__((aligned(CACHE_ALIGN)));
-
-  /* Maximum distance of pj particles into ci. */
-  float *restrict max_dj __attribute__((aligned(CACHE_ALIGN)));
+  /* Maximum distance of particles into neighbouring cell. */
+  float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
@@ -99,8 +96,6 @@ struct cache {
 
 #ifdef DOPAIR1_AUTO_VEC
 struct cache ci_cache, cj_cache;
-#else
-struct cache cj_cache;
 #endif
 
 /* Secondary cache struct to hold a list of interactions between two
@@ -157,8 +152,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
-    free(c->max_di);
-    free(c->max_dj);
+    free(c->max_d);
   }
 
   error += posix_memalign((void **)&c->x, alignment, sizeBytes);
@@ -169,8 +163,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, alignment, sizeBytes);
   error += posix_memalign((void **)&c->vz, alignment, sizeBytes);
   error += posix_memalign((void **)&c->h, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->max_di, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->max_dj, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->max_d, alignment, sizeBytes);
   
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -424,6 +417,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
 #endif
   }
 }
+
 __attribute__((always_inline)) INLINE static void cache_write_sorted_particles(const struct cache *const ci_cache, const struct cache *const cj_cache, const struct cell *const ci, const struct cell *const cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j) {
 
 #ifdef DOPAIR1_AUTO_VEC
@@ -472,15 +466,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->vy);
     free(c->vz);
     free(c->h);
-    //free(c->rho);
-    //free(c->rho_dh);
-    //free(c->wcount);
-    //free(c->wcount_dh);
-    //free(c->div_v);
-    //free(c->curl_vx);
-    //free(c->curl_vy);
-    //free(c->curl_vz);
-
+    free(c->max_d);
   }
 }
 
