@@ -44,28 +44,34 @@ agrav = np.array(file["/PartType0/GravAcceleration"])
 m = np.array(file["/PartType0/Masses"])
 ids = np.array(file["/PartType0/ParticleIDs"])
 
+# ids_reverse gives the index original particle 0 now has in the particle arrays
+# and so on
+# note that this will only work if the particles do not move away too much from
+# there initial positions
+ids_reverse = np.argsort(ids)
+
 x = np.linspace(0., 1., 1000)
 rho_x = 1000.*np.exp(-0.5*A/np.pi/cs2*np.cos(2.*np.pi*x))
 
 P = cs2*rho
 
-ids_reverse = np.argsort(ids)
-
+n1D = int(np.sqrt(len(P)))
 gradP = np.zeros(P.shape)
 for i in range(len(P)):
-  iself = int(ids[i])
+  iself = int(ids[i]/n1D)
+  jself = int(ids[i]-n1D*iself)
   corr = 0.
   im1 = iself-1
   if im1 < 0:
-    im1 = len(P)-1
+    im1 = n1D-1
     corr = 1.
   ip1 = iself+1
-  if ip1 == len(P):
+  if ip1 == n1D:
     ip1 = 0
     corr = 1.
-  idxp1 = ids_reverse[ip1]
-  idxm1 = ids_reverse[im1]
-  gradP[i] = (P[idxp1]-P[idxm1])/(coords[idxp1,0]-coords[idxm1,0])
+  idxp1 = ids_reverse[ip1*n1D+jself]
+  idxm1 = ids_reverse[im1*n1D+jself]
+  gradP[i] = (P[idxp1]-P[idxm1])/(coords[idxp1,0]-coords[idxm1,0]+corr)
 
 fig, ax = pl.subplots(2, 2)
 
