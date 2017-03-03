@@ -413,11 +413,6 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
 
-  /* Return everything */
-  w->v =
-      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
 #else
 
   /* Load x and get the interval id. */
@@ -440,12 +435,15 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
     dw_dx->v = (dw_dx->v * x.v) + w->v;
     w->v = (x.v * w->v) + c[k].v;
   }
-  /* Return everything */
-  w->v = w->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
-  dw_dx->v =
-      dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
-
+  
 #endif
+
+  /* Return everything */
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+
 }
 
 /**
