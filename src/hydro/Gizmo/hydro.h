@@ -23,6 +23,7 @@
 #include "approx_math.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "riemann.h"
 #include "minmax.h"
 
 /**
@@ -238,6 +239,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->primitives.v[1] = momentum[1] / m;
   p->primitives.v[2] = momentum[2] / m;
 
+#ifdef EOS_ISOTHERMAL_GAS
+  p->primitives.P = const_isothermal_soundspeed*const_isothermal_soundspeed*p->primitives.rho;
+#else
+
   float energy = p->conserved.energy;
 
 #ifdef GIZMO_TOTAL_ENERGY
@@ -247,6 +252,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #endif
 
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
+#endif
 
   /* sanity checks */
   if (p->primitives.rho < 0.0f || p->primitives.P < 0.0f) {
@@ -278,13 +284,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->timestepvars.vmax = 0.0f;
 
   /* Set the actual velocity of the particle */
-  /* This should be v and not v_full. The reason is that v is updated with the
-     acceleration times the full time step, while v_full is updated using a
-     mixture of the half time steps that don't necessarily correspond to the
-     full time step. */
-  p->force.v_full[0] = p->v[0];
-  p->force.v_full[1] = p->v[1];
-  p->force.v_full[2] = p->v[2];
+  p->force.v_full[0] = xp->v_full[0];
+  p->force.v_full[1] = xp->v_full[1];
+  p->force.v_full[2] = xp->v_full[2];
 }
 
 /**
@@ -506,12 +508,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
+    /* Store the gravitational acceleration for later use. */
+    p->gravity.old_a[0] = a_grav[0];
+    p->gravity.old_a[1] = a_grav[1];
+    p->gravity.old_a[2] = a_grav[2];
+
+    /* Make sure the gpart knows the mass has changed. */
+    p->gpart->mass = p->conserved.mass;
+
     /* Kick the momentum for half a time step */
     p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
 
-#if !defined(EOS_ISOTHERMAL_GAS)
+#if !defined(EOS_ISOTHERMAL_GAS) && defined(GIZMO_TOTAL_ENERGY)
     p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
                                  p->conserved.momentum[1] * a_grav[1] +
                                  p->conserved.momentum[2] * a_grav[2]);
@@ -578,7 +588,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p) {
 
   if (p->primitives.rho > 0.) {
+#ifdef EOS_ISOTHERMAL_GAS
     return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+#else
+    return const_isothermal_internal_energy;
+#endif
   } else {
     return 0.;
   }
@@ -608,7 +622,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p) {
 
   if (p->primitives.rho > 0.) {
+#ifdef EOS_ISOTHERMAL_GAS
+    return sqrtf(const_isothermal_internal_energy * hydro_gamma * hydro_gamma_minus_one);
+#else
     return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+#endif
   } else {
     return 0.;
   }

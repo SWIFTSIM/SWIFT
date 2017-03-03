@@ -292,7 +292,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   }
 #endif
 
-  frho = riemann_f(rho, WL, WR, vL, vR);
+  /* we know that the value of riemann_f for rho=0 is negative (it is -inf). */
+  frho = -1.;
   frhoguess = riemann_f(rhoguess, WL, WR, vL, vR);
   /* ok, rhostar is close to 0, better use Brent's method... */
   /* we use Newton-Raphson until we find a suitable interval */
@@ -319,7 +320,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   if (1.e6 * fabs(rho - rhoguess) > 0.5f * (rho + rhoguess) &&
       frhoguess > 0.0f) {
     rho = 0.0f;
-    frho = riemann_f(rho, WL, WR, vL, vR);
+    frho = -1.;
     /* use Brent's method to find the zeropoint */
     rho = riemann_solve_brent(rho, rhoguess, frho, frhoguess, 1.e-6, WL, WR, vL,
                               vR);
