@@ -70,7 +70,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @return Internal energy of the particle
  */
 float convert_u(struct engine* e, struct part* p) {
-  if(p->primitives.rho > 0.){
+  if (p->primitives.rho > 0.) {
 #ifdef EOS_ISOTHERMAL_GAS
     return const_isothermal_internal_energy;
 #else
@@ -89,9 +89,9 @@ float convert_u(struct engine* e, struct part* p) {
  * @return Entropic function of the particle
  */
 float convert_A(struct engine* e, struct part* p) {
-  if(p->primitives.rho > 0.){
-  return p->primitives.P / pow_gamma(p->primitives.rho);
-  } else  {
+  if (p->primitives.rho > 0.) {
+    return p->primitives.P / pow_gamma(p->primitives.rho);
+  } else {
     return 0.;
   }
 }
@@ -158,9 +158,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[12] =
       io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
                                         parts, conserved.energy, convert_Etot);
-  list[13] = io_make_output_field("GravAcceleration", FLOAT, 3, UNIT_CONV_ACCELERATION,
-                                 parts, gravity.old_a);
-
+  list[13] = io_make_output_field("GravAcceleration", FLOAT, 3,
+                                  UNIT_CONV_ACCELERATION, parts, gravity.old_a);
 }
 
 /**

@@ -23,8 +23,8 @@
 #include "approx_math.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
-#include "riemann.h"
 #include "minmax.h"
+#include "riemann.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -240,7 +240,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->primitives.v[2] = momentum[2] / m;
 
 #ifdef EOS_ISOTHERMAL_GAS
-  p->primitives.P = const_isothermal_soundspeed*const_isothermal_soundspeed*p->primitives.rho;
+  p->primitives.P = const_isothermal_soundspeed * const_isothermal_soundspeed *
+                    p->primitives.rho;
 #else
 
   float energy = p->conserved.energy;
@@ -623,7 +624,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
 
   if (p->primitives.rho > 0.) {
 #ifdef EOS_ISOTHERMAL_GAS
-    return sqrtf(const_isothermal_internal_energy * hydro_gamma * hydro_gamma_minus_one);
+    return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+                 hydro_gamma_minus_one);
 #else
     return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
 #endif
