@@ -233,7 +233,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* calculate the maximal signal velocity */
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
 #ifdef EOS_ISOTHERMAL_GAS
-    vmax = 2. * const_isothermal_soundspeed;
+    /* we use a value that is slightly higher than necessary, since the correct
+       value does not always work */
+    vmax = 2.5 * const_isothermal_soundspeed;
 #else
     vmax =
         sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
