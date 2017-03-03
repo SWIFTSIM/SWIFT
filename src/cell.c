@@ -1357,6 +1357,7 @@ void cell_set_super(struct cell *c, struct cell *super) {
  */
 void cell_drift_particles(struct cell *c, const struct engine *e) {
 
+  const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
   const integertime_t ti_old = c->ti_old;
   const integertime_t ti_current = e->ti_current;
@@ -1367,7 +1368,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f, cell_h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
@@ -1381,7 +1382,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
         cell_drift_particles(cp, e);
         dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
+        cell_h_max = max(cell_h_max, cp->h_max);
       }
 
   } else if (ti_current > ti_old) {
@@ -1400,7 +1401,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
     }
 
     /* Loop over all the gas particles in the cell */
@@ -1414,14 +1415,17 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
+      /* Limit h to within the allowed range */
+      p->h = min(p->h, hydro_h_max);
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
 
       /* Maximal smoothing length */
-      h_max = (h_max > p->h) ? h_max : p->h;
+      cell_h_max = max(cell_h_max, p->h);
     }
 
     /* Loop over all the star particles in the cell */
@@ -1442,12 +1446,12 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   } else {
 
-    h_max = c->h_max;
+    cell_h_max = c->h_max;
     dx_max = c->dx_max;
   }
 
   /* Store the values */
-  c->h_max = h_max;
+  c->h_max = cell_h_max;
   c->dx_max = dx_max;
 
   /* Update the time of the last drift */

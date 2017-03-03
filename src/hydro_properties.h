@@ -40,7 +40,10 @@ struct hydro_props {
   float target_neighbours;
   float delta_neighbours;
 
-  /* Kernel properties */
+  /* Maximal smoothing length */
+  float h_max;
+
+  /* Number of iterations to converge h */
   int max_smoothing_iterations;
 
   /* Time integration properties */
