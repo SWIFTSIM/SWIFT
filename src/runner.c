@@ -496,7 +496,8 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   if (!cell_is_active(c, e)) return;
 
   /* Reset the gravity acceleration tensors */
-  if (c->multipole) multipole_init(c->multipole);
+  if (e->policy & engine_policy_self_gravity)
+    multipole_init(c->multipole);
 
   /* Recurse? */
   if (c->split) {

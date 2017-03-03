@@ -46,6 +46,7 @@ enum {
   timer_dopair_gradient,
   timer_dopair_force,
   timer_dopair_grav_pm,
+  timer_dopair_grav_mm,
   timer_dopair_grav_pp,
   timer_dograv_external,
   timer_dosource,

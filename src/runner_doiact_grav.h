@@ -54,6 +54,42 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
 }
 
 /**
+ * @brief Computes the interaction of the field tensor in a cell with the
+ * multipole of another cell.
+ *
+ * @param r The #runner.
+ * @param ci The #cell with field tensor to interact.
+ * @param cj The #cell with the multipole.
+ */
+__attribute__((always_inline)) INLINE static void runner_dopair_grav_mm(
+    const struct runner *r, const struct cell *restrict ci,
+    const struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+  const int periodic = e->s->periodic;
+  const struct multipole *multi_j = &cj->multipole->m_pole;
+  //const float a_smooth = e->gravity_properties->a_smooth;
+  //const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (multi_j->mass == 0.0)
+    error("Multipole does not seem to have been set.");
+#endif
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e)) return;
+
+  multipole_M2L(ci->multipole, multi_j, ci->multipole->CoM, cj->multipole->CoM,
+		periodic);
+
+  
+  TIMER_TOC(timer_dopair_grav_mm);
+}
+
+
+/**
  * @brief Computes the interaction of all the particles in a cell with the
  * multipole of another cell.
  *
@@ -541,7 +577,7 @@ static void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     // if (r2 > max_d2) continue;
 
-    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
+    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_mm(r, ci, cj);
   }
 }
 

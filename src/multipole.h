@@ -289,31 +289,30 @@ INLINE static void multipole_M2M(struct multipole *m_a,
  * @param pos_b The position of the multipole.
  * @param periodic Is the calculation periodic ?
  */
-/* INLINE static void multipole_M2L(struct field_tensors *l_a, */
-/*                                  const struct multipole m_b, */
-/*                                  const double pos_a[3], const double
- * pos_b[3], */
-/*                                  int periodic) { */
+INLINE static void multipole_M2L(struct gravity_tensors *l_a,
+                                 const struct multipole *m_b,
+                                 const double pos_a[3], const double  pos_b[3],
+                                 int periodic) {
 
-/*   /\* double dx, dy, dz; *\/ */
-/*   /\* if (periodic) { *\/ */
-/*   /\*   dx = box_wrap(pos_a[0] - pos_b[0], 0., 1.); *\/ */
-/*   /\*   dy = box_wrap(pos_a[1] - pos_b[1], 0., 1.); *\/ */
-/*   /\*   dz = box_wrap(pos_a[2] - pos_b[2], 0., 1.); *\/ */
-/*   /\* } else { *\/ */
-/*   /\*   dx = pos_a[0] - pos_b[0]; *\/ */
-/*   /\*   dy = pos_a[1] - pos_b[1]; *\/ */
-/*   /\*   dz = pos_a[2] - pos_b[2]; *\/ */
-/*   /\* } *\/ */
-/*   /\* const double r2 = dx * dx + dy * dy + dz * dz; *\/ */
+  double dx, dy, dz;
+  if (periodic) {
+    dx = box_wrap(pos_a[0] - pos_b[0], 0., 1.);
+    dy = box_wrap(pos_a[1] - pos_b[1], 0., 1.);
+    dz = box_wrap(pos_a[2] - pos_b[2], 0., 1.);
+  } else {
+    dx = pos_a[0] - pos_b[0];
+    dy = pos_a[1] - pos_b[1];
+    dz = pos_a[2] - pos_b[2];
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
 
-/*   /\* const double r_inv = 1. / sqrt(r2); *\/ */
+  const double r_inv = 1. / sqrt(r2);
 
-/*   /\* /\\* 1st order multipole term *\\/ *\/ */
-/*   /\* l_a->x.F_000 =  D_100(dx, dy, dz, r_inv); *\/ */
-/*   /\* l_a->y.F_000 =  D_010(dx, dy, dz, r_inv); *\/ */
-/*   /\* l_a->z.F_000 =  D_001(dx, dy, dz, r_inv); *\/ */
-/* } */
+  /* 1st order multipole term */
+  l_a->a_x.F_000 =  D_100(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_y.F_000 =  D_010(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_z.F_000 =  D_001(dx, dy, dz, r_inv) * m_b->mass;
+}
 
 #if 0
 
