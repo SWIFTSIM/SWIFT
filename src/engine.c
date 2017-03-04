@@ -3046,9 +3046,9 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %d %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
-           e->max_active_bin, e->timeStep, e->updates, e->g_updates,
-           e->s_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->s_updates,
+           e->wallclock_time);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
