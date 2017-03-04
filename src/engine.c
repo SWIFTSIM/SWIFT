@@ -2804,6 +2804,18 @@ void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_current);
+
+  /* Be verbose about this */
+  message("Saving statistics at t=%e.", e->time);
+#else
+  if (e->verbose) message("Saving statistics at t=%e.", e->time);
+#endif
+
   e->save_stats = 0;
 
   struct statistics stats;
@@ -3010,7 +3022,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Ready to go */
-  e->step = -1;
+  e->step = 0;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
@@ -3031,20 +3043,12 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  /* Move forward in time */
-  e->ti_old = e->ti_current;
-  e->ti_current = e->ti_end_min;
-  e->step += 1;
-  e->time = e->ti_current * e->timeBase + e->timeBegin;
-  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
-
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time);
+    printf("  %6d %14e %d %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+           e->max_active_bin, e->timeStep, e->updates, e->g_updates,
+           e->s_updates, e->wallclock_time);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
@@ -3052,6 +3056,15 @@ void engine_step(struct engine *e) {
             e->s_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
+
+  /* Move forward in time */
+  e->ti_old = e->ti_current;
+  e->ti_current = e->ti_end_min;
+  e->max_active_bin = get_max_active_bin(e->ti_end_min);
+  e->step += 1;
+  e->time = e->ti_current * e->timeBase + e->timeBegin;
+  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -3566,6 +3579,7 @@ void engine_init(struct engine *e, struct space *s,
   e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->max_active_bin = num_time_bins;
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
