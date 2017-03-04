@@ -359,9 +359,10 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l,
 
     struct gpart *gp = &gparts[i];
 
-    // if(gpart_is_active(gp, e)){
-
+// if(gpart_is_active(gp, e)){
+#ifdef SWIFT_DEBUG_CHECKS
     gp->mass_interacted += l->mass_interacted;
+#endif
     //}
   }
 }
