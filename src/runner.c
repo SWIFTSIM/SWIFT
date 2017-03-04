@@ -496,7 +496,8 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   if (!cell_is_active(c, e)) return;
 
   /* Reset the gravity acceleration tensors */
-  if (e->policy & engine_policy_self_gravity) multipole_init(c->multipole);
+  if (e->policy & engine_policy_self_gravity)
+    gravity_field_tensor_init(c->multipole);
 
   /* Recurse? */
   if (c->split) {
@@ -1808,7 +1809,7 @@ void *runner_main(void *data) {
           // runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_down:
-          // runner_do_grav_down(r, t->ci);
+          runner_do_grav_down(r, t->ci);
           break;
         case task_type_grav_top_level:
           // runner_do_grav_top_level(r);

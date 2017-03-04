@@ -1124,15 +1124,16 @@ void cell_check_multipole(struct cell *c, void *data) {
   if (c->gcount > 0) {
 
     /* Brute-force calculation */
-    multipole_P2M(&ma, c->gparts, c->gcount);
+    gravity_P2M(&ma, c->gparts, c->gcount);
 
     /* Now  compare the multipole expansion */
-    if (!multipole_equal(&ma.m_pole, &c->multipole->m_pole, tolerance)) {
+    if (!gravity_multipole_equal(&ma.m_pole, &c->multipole->m_pole,
+                                 tolerance)) {
       message("Multipoles are not equal at depth=%d!", c->depth);
       message("Correct answer:");
-      multipole_print(&ma.m_pole);
+      gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
-      multipole_print(&c->multipole->m_pole);
+      gravity_multipole_print(&c->multipole->m_pole);
       error("Aborting");
     }
   }
@@ -1486,7 +1487,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   } else if (ti_current > ti_old_multipole) {
 
     /* Drift the multipole */
-    multipole_drift(c->multipole, dt);
+    gravity_multipole_drift(c->multipole, dt);
   }
 
   /* Update the time of the last drift */
@@ -1502,7 +1503,9 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_multipole(struct cell *c, const struct engine *e);
+void cell_drift_multipole(struct cell *c, const struct engine *e) {
+  error("To be implemented");
+}
 
 /**
  * @brief Recursively checks that all particles in a cell have a time-step

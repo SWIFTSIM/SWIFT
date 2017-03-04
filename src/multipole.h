@@ -25,6 +25,7 @@
 #include <string.h>
 
 /* Includes. */
+//#include "active.h"
 #include "align.h"
 #include "const.h"
 #include "error.h"
@@ -82,6 +83,13 @@ struct gravity_tensors {
 
     /*! Field tensor for the potential */
     struct pot_tensor pot;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+    /* Total mass this gpart interacted with */
+    double mass_interacted;
+
+#endif
   };
 } SWIFT_STRUCT_ALIGN;
 
@@ -90,18 +98,22 @@ struct gravity_tensors {
  *
  * @param m The #multipole.
  */
-INLINE static void multipole_reset(struct gravity_tensors *m) {
+INLINE static void gravity_reset(struct gravity_tensors *m) {
 
   /* Just bzero the struct. */
   bzero(m, sizeof(struct gravity_tensors));
 }
 
-INLINE static void multipole_init(struct gravity_tensors *m) {
+INLINE static void gravity_field_tensor_init(struct gravity_tensors *m) {
 
   bzero(&m->a_x, sizeof(struct acc_tensor));
   bzero(&m->a_y, sizeof(struct acc_tensor));
   bzero(&m->a_z, sizeof(struct acc_tensor));
   bzero(&m->pot, sizeof(struct pot_tensor));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  m->mass_interacted = 0.;
+#endif
 }
 
 /**
@@ -111,7 +123,7 @@ INLINE static void multipole_init(struct gravity_tensors *m) {
  *
  * @param m The #multipole to print.
  */
-INLINE static void multipole_print(const struct multipole *m) {
+INLINE static void gravity_multipole_print(const struct multipole *m) {
 
   // printf("CoM= [%12.5e %12.5e %12.5e\n", m->CoM[0], m->CoM[1], m->CoM[2]);
   printf("Mass= %12.5e\n", m->mass);
@@ -124,8 +136,8 @@ INLINE static void multipole_print(const struct multipole *m) {
  * @param ma The multipole to add to.
  * @param mb The multipole to add.
  */
-INLINE static void multipole_add(struct multipole *ma,
-                                 const struct multipole *mb) {
+INLINE static void gravity_multipole_add(struct multipole *ma,
+                                         const struct multipole *mb) {
 
   const float mass = ma->mass + mb->mass;
   const float imass = 1.f / mass;
@@ -147,9 +159,9 @@ INLINE static void multipole_add(struct multipole *ma,
  * @param tolerance The maximal allowed difference for the fields.
  * @return 1 if the multipoles are equal 0 otherwise.
  */
-INLINE static int multipole_equal(const struct multipole *ma,
-                                  const struct multipole *mb,
-                                  double tolerance) {
+INLINE static int gravity_multipole_equal(const struct multipole *ma,
+                                          const struct multipole *mb,
+                                          double tolerance) {
 
   /* Check CoM */
   /* if (fabs(ma->CoM[0] - mb->CoM[0]) / fabs(ma->CoM[0] + mb->CoM[0]) >
@@ -190,7 +202,8 @@ INLINE static int multipole_equal(const struct multipole *ma,
  * @param m The #multipole.
  * @param dt The drift time-step.
  */
-INLINE static void multipole_drift(struct gravity_tensors *m, double dt) {
+INLINE static void gravity_multipole_drift(struct gravity_tensors *m,
+                                           double dt) {
 
   /* Move the whole thing according to bulk motion */
   m->CoM[0] += m->m_pole.vel[0];
@@ -206,8 +219,8 @@ INLINE static void multipole_drift(struct gravity_tensors *m, double dt) {
  * @param gparts_j The #gpart that source the gravity field.
  * @param gcount_j The number of sources.
  */
-INLINE static void multipole_P2P(struct gpart *gparts_i, int gcount_i,
-                                 const struct gpart *gparts_j, int gcount_j) {}
+INLINE static void gravity_P2P(struct gpart *gparts_i, int gcount_i,
+                               const struct gpart *gparts_j, int gcount_j) {}
 
 /**
  * @brief Constructs the #multipole of a bunch of particles around their
@@ -219,8 +232,8 @@ INLINE static void multipole_P2P(struct gpart *gparts_i, int gcount_i,
  * @param gparts The #gpart.
  * @param gcount The number of particles.
  */
-INLINE static void multipole_P2M(struct gravity_tensors *m,
-                                 const struct gpart *gparts, int gcount) {
+INLINE static void gravity_P2M(struct gravity_tensors *m,
+                               const struct gpart *gparts, int gcount) {
 
 #if const_gravity_multipole_order >= 2
 #error "Implementation of P2M kernel missing for this order."
@@ -267,10 +280,10 @@ INLINE static void multipole_P2M(struct gravity_tensors *m,
  * @param pos_b The current postion of the multipole to shift.
  * @param periodic Is the calculation periodic ?
  */
-INLINE static void multipole_M2M(struct multipole *m_a,
-                                 const struct multipole *m_b,
-                                 const double pos_a[3], const double pos_b[3],
-                                 int periodic) {
+INLINE static void gravity_M2M(struct multipole *m_a,
+                               const struct multipole *m_b,
+                               const double pos_a[3], const double pos_b[3],
+                               int periodic) {
 
   m_a->mass = m_b->mass;
 
@@ -289,10 +302,10 @@ INLINE static void multipole_M2M(struct multipole *m_a,
  * @param pos_b The position of the multipole.
  * @param periodic Is the calculation periodic ?
  */
-INLINE static void multipole_M2L(struct gravity_tensors *l_a,
-                                 const struct multipole *m_b,
-                                 const double pos_a[3], const double  pos_b[3],
-                                 int periodic) {
+INLINE static void gravity_M2L(struct gravity_tensors *l_a,
+                               const struct multipole *m_b,
+                               const double pos_a[3], const double pos_b[3],
+                               int periodic) {
 
   double dx, dy, dz;
   if (periodic) {
@@ -309,9 +322,48 @@ INLINE static void multipole_M2L(struct gravity_tensors *l_a,
   const double r_inv = 1. / sqrt(r2);
 
   /* 1st order multipole term */
-  l_a->a_x.F_000 =  D_100(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_y.F_000 =  D_010(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_z.F_000 =  D_001(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_x.F_000 = D_100(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_y.F_000 = D_010(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_z.F_000 = D_001(dx, dy, dz, r_inv) * m_b->mass;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  l_a->mass_interacted += m_b->mass;
+#endif
+}
+
+/**
+ * @brief Creates a copy of #acc_tensor shifted to a new location.
+ *
+ * Corresponds to equation (28e).
+ *
+ * @param l_a The #acc_tensor copy (content will  be overwritten).
+ * @param l_b The #acc_tensor to shift.
+ * @param pos_a The position to which m_b will be shifted.
+ * @param pos_b The current postion of the multipole to shift.
+ * @param periodic Is the calculation periodic ?
+ */
+INLINE static void gravity_L2L(struct gravity_tensors *l_a,
+                               const struct gravity_tensors *l_b,
+                               const double pos_a[3], const double pos_b[3],
+                               int periodic) {}
+
+/**
+ * @brief Applies the  #acc_tensor to a set of #gpart.
+ *
+ * Corresponds to equation (28a).
+ */
+INLINE static void gravity_L2P(const struct gravity_tensors *l,
+                               struct gpart *gparts, int gcount) {
+
+  for (int i = 0; i < gcount; ++i) {
+
+    struct gpart *gp = &gparts[i];
+
+    // if(gpart_is_active(gp, e)){
+
+    gp->mass_interacted += l->mass_interacted;
+    //}
+  }
 }
 
 #if 0

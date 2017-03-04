@@ -53,6 +53,26 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
   /* } */
 }
 
+void runner_do_grav_down(struct runner *r, struct cell *c) {
+
+  if (c->split) {
+
+    for (int k = 0; k < 8; ++k) {
+      struct cell *cp = c->progeny[k];
+      struct gravity_tensors temp;
+
+      if (cp != NULL) {
+        gravity_L2L(&temp, c->multipole, cp->multipole->CoM, c->multipole->CoM,
+                    1);
+      }
+    }
+
+  } else {
+
+    gravity_L2P(c->multipole, c->gparts, c->gcount);
+  }
+}
+
 /**
  * @brief Computes the interaction of the field tensor in a cell with the
  * multipole of another cell.
@@ -68,26 +88,23 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_mm(
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
   const struct multipole *multi_j = &cj->multipole->m_pole;
-  //const float a_smooth = e->gravity_properties->a_smooth;
-  //const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
+  // const float a_smooth = e->gravity_properties->a_smooth;
+  // const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (multi_j->mass == 0.0)
-    error("Multipole does not seem to have been set.");
+  if (multi_j->mass == 0.0) error("Multipole does not seem to have been set.");
 #endif
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
 
-  multipole_M2L(ci->multipole, multi_j, ci->multipole->CoM, cj->multipole->CoM,
-		periodic);
+  gravity_M2L(ci->multipole, multi_j, ci->multipole->CoM, cj->multipole->CoM,
+              periodic);
 
-  
   TIMER_TOC(timer_dopair_grav_mm);
 }
-
 
 /**
  * @brief Computes the interaction of all the particles in a cell with the

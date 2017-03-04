@@ -2091,7 +2091,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->gravity) {
 
       /* Reset everything */
-      multipole_reset(c->multipole);
+      gravity_reset(c->multipole);
 
       /* Compute CoM of all progenies */
       double CoM[3] = {0., 0., 0.};
@@ -2116,9 +2116,9 @@ void space_split_recursive(struct space *s, struct cell *c,
         if (c->progeny[k] != NULL) {
           const struct cell *cp = c->progeny[k];
           const struct multipole *m = &cp->multipole->m_pole;
-          multipole_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
-                        s->periodic);
-          multipole_add(&c->multipole->m_pole, &temp);
+          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
+                      s->periodic);
+          gravity_multipole_add(&c->multipole->m_pole, &temp);
         }
       }
     }
@@ -2174,7 +2174,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Construct the multipole and the centre of mass*/
-    if (s->gravity) multipole_P2M(c->multipole, c->gparts, c->gcount);
+    if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);
   }
 
   /* Set the values for this cell. */
