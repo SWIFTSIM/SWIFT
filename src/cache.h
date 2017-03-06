@@ -136,10 +136,12 @@ struct c2_cache {
 __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
                                                       size_t count) {
 
-  /* Align cache on correct byte boundary and pad cache size to include 2 vector
-   * lengths for remainder operations. */
+  /* Align cache on correct byte boundary and pad cache size to be a multiple of the vector size 
+   * and include 2 vector lengths for remainder operations. */
   unsigned long alignment = sizeof(float) * VEC_SIZE;
-  unsigned int sizeBytes = (count + (2 * VEC_SIZE)) * sizeof(float);
+  unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
+  if (rem > 0) pad += VEC_SIZE - rem;
+  unsigned int sizeBytes = (count + pad) * sizeof(float);
   int error = 0;
 
   /* Free memory if cache has already been allocated. */
@@ -243,7 +245,7 @@ __attribute__((always_inline)) INLINE void cache_read_cell_sorted(
   int idx;
   /* Shift the particles positions to a local frame (ci frame) so single precision can be
    * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
 #endif
   for (int i = 0; i < ci->count; i++) {
@@ -277,8 +279,10 @@ __attribute__((always_inline)) INLINE void cache_read_cell_sorted(
  *
  * @param ci The i #cell.
  * @param cj The j #cell.
- * @param ci_cache The cache for cell ci.
- * @param cj_cache The cache for cell cj.
+ * @param ci_cache The #cache for cell ci.
+ * @param cj_cache The #cache for cell cj.
+ * @param sort_i The array of sorted particle indices for cell ci.
+ * @param sort_j The array of sorted particle indices for cell ci.
  * @param shift The amount to shift the particle positions to account for BCs
  */
 __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
@@ -287,7 +291,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
   int idx;
   /* Shift the particles positions to a local frame (ci frame) so single precision can be
    * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
 #endif
   for (int i = 0; i < ci->count; i++) {
@@ -314,7 +318,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
 #endif
   }
  
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
 #endif
   for (int i = 0; i < cj->count; i++) {
@@ -341,60 +345,68 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
   }
 }
 
+/**
+ * @brief Populate caches by only reading particles that are within range of each other within the adjoining cell.Also read the particles into the cache in sorted order.
+ *
+ * @param ci The i #cell.
+ * @param cj The j #cell.
+ * @param ci_cache The #cache for cell ci.
+ * @param cj_cache The #cache for cell cj.
+ * @param sort_i The array of sorted particle indices for cell ci.
+ * @param sort_j The array of sorted particle indices for cell ci.
+ * @param shift The amount to shift the particle positions to account for BCs
+ * @param first_pi The first particle in cell ci that is in range.
+ * @param last_pj The last particle in cell cj that is in range.
+ * @param num_vec_proc Number of vectors that will be used to process the interaction.
+ */
 __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
-    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, int first_pi, int last_pj, const int num_vec_proc) {
+    const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, int *first_pi, int *last_pj, const int num_vec_proc) {
 
-  int idx;
-  /* Shift the particles positions to a local frame (ci frame) so single precision can be
-   * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
-  /* Pad number of particles read to the vector size. */
-  int rem = (ci->count - first_pi) % (num_vec_proc * VEC_SIZE);
+  int idx, ci_cache_idx;
+    /* Pad number of particles read to the vector size. */
+  int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
     int pad = (num_vec_proc * VEC_SIZE) - rem;
     
-    if (first_pi - pad >= 0)
-      first_pi -= pad;
+    if (*first_pi - pad >= 0)
+      *first_pi -= pad;
   }
 
-  rem = last_pj % (num_vec_proc * VEC_SIZE);
+  rem = *last_pj % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
     int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-    if (last_pj + pad < cj->count)
-      last_pj += pad;
+    if (*last_pj + pad < cj->count)
+      *last_pj += pad;
   }
 
-#ifdef WITH_VECTORIZATION
+  int first_pi_align = *first_pi;
+  int last_pj_align = *last_pj;
+
+  /* Shift the particles positions to a local frame (ci frame) so single precision can be
+   * used instead of double precision. Also shift the cell ci, particles positions due to BCs but leave cell cj. */
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
 #endif
-  for (int i = first_pi; i < ci->count; i++) {
+  for (int i = first_pi_align; i < ci->count; i++) {
+    /* Make sure ci_cache is filled from the first element. */
+    ci_cache_idx = i - first_pi_align;
     idx = sort_i[i].i;
-    ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[i] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[i] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
-    ci_cache->h[i] = ci->parts[idx].h;
+    ci_cache->x[ci_cache_idx] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
+    ci_cache->y[ci_cache_idx] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
+    ci_cache->z[ci_cache_idx] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
+    ci_cache->h[ci_cache_idx] = ci->parts[idx].h;
 
-    ci_cache->m[i] = ci->parts[idx].mass;
-    ci_cache->vx[i] = ci->parts[idx].v[0];
-    ci_cache->vy[i] = ci->parts[idx].v[1];
-    ci_cache->vz[i] = ci->parts[idx].v[2];
-
-#ifdef DOPAIR1_AUTO_VEC
-    ci_cache->rho[i]         = 0.0f; 
-    ci_cache->rho_dh[i]      = 0.0f; 
-    ci_cache->wcount[i]      = 0.0f; 
-    ci_cache->wcount_dh[i]   = 0.0f; 
-    ci_cache->div_v[i]       = 0.0f; 
-    ci_cache->curl_vx[i]     = 0.0f; 
-    ci_cache->curl_vy[i]     = 0.0f; 
-    ci_cache->curl_vz[i]     = 0.0f; 
-#endif
+    ci_cache->m[ci_cache_idx] = ci->parts[idx].mass;
+    ci_cache->vx[ci_cache_idx] = ci->parts[idx].v[0];
+    ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
+    ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
   }
  
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
 #endif
-  for (int i = 0; i <= last_pj; i++) {
+  for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
     cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
     cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
@@ -405,16 +417,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
     cj_cache->vx[i] = cj->parts[idx].v[0];
     cj_cache->vy[i] = cj->parts[idx].v[1];
     cj_cache->vz[i] = cj->parts[idx].v[2];
-#ifdef DOPAIR1_AUTO_VEC
-    cj_cache->rho[i]         = 0.0f; 
-    cj_cache->rho_dh[i]      = 0.0f; 
-    cj_cache->wcount[i]      = 0.0f; 
-    cj_cache->wcount_dh[i]   = 0.0f; 
-    cj_cache->div_v[i]       = 0.0f; 
-    cj_cache->curl_vx[i]     = 0.0f; 
-    cj_cache->curl_vy[i]     = 0.0f; 
-    cj_cache->curl_vz[i]     = 0.0f; 
-#endif
   }
 }
 
