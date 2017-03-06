@@ -127,6 +127,11 @@ INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
   la->a_x.F_000 += lb->a_x.F_000;
   la->a_y.F_000 += lb->a_y.F_000;
   la->a_z.F_000 += lb->a_z.F_000;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (lb->mass_interacted == 0.f) error("Adding tensors that did not interact");
+  la->mass_interacted += lb->mass_interacted;
+#endif
 }
 
 /**
@@ -359,7 +364,16 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
                                const struct gravity_tensors *l_b,
                                const double pos_a[3], const double pos_b[3],
                                int periodic) {
-  error("Not implemented yet");
+
+  l_a->a_x.F_000 = l_b->a_x.F_000;
+  l_a->a_y.F_000 = l_b->a_y.F_000;
+  l_a->a_z.F_000 = l_b->a_z.F_000;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (l_b->mass_interacted == 0.f)
+    error("Shifting tensors that did not interact");
+  l_a->mass_interacted = l_b->mass_interacted;
+#endif
 }
 
 /**
