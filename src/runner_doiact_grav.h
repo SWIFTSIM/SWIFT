@@ -25,34 +25,6 @@
 #include "gravity.h"
 #include "part.h"
 
-/**
- * @brief Compute the recursive upward sweep, i.e. construct the
- *        multipoles in a cell hierarchy.
- *
- * @param r The #runner.
- * @param c The top-level #cell.
- */
-void runner_do_grav_up(struct runner *r, struct cell *c) {
-
-  /* if (c->split) { /\* Regular node *\/ */
-
-  /*   /\* Recurse. *\/ */
-  /*   for (int k = 0; k < 8; k++) */
-  /*     if (c->progeny[k] != NULL) runner_do_grav_up(r, c->progeny[k]); */
-
-  /*   /\* Collect the multipoles from the progeny. *\/ */
-  /*   multipole_reset(&c->multipole); */
-  /*   for (int k = 0; k < 8; k++) { */
-  /*     if (c->progeny[k] != NULL) */
-  /*       multipole_add(&c->multipole, &c->progeny[k]->multipole); */
-  /*   } */
-
-  /* } else { /\* Leaf node. *\/ */
-  /*   /\* Just construct the multipole from the gparts. *\/ */
-  /*   multipole_init(&c->multipole, c->gparts, c->gcount); */
-  /* } */
-}
-
 void runner_do_grav_down(struct runner *r, struct cell *c) {
 
   if (c->split) {
@@ -128,63 +100,64 @@ void runner_dopair_grav_pm(const struct runner *r,
                            const struct cell *restrict ci,
                            const struct cell *restrict cj) {
 
-  const struct engine *e = r->e;
-  const int gcount = ci->gcount;
-  struct gpart *restrict gparts = ci->gparts;
-  const struct gravity_tensors *multi = cj->multipole;
-  const float a_smooth = e->gravity_properties->a_smooth;
-  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
-
-  TIMER_TIC;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (gcount == 0) error("Empty cell!");
-
-  if (multi->m_pole.mass == 0.0)
-    error("Multipole does not seem to have been set.");
-#endif
-
   error("Function should not be called");
+  
+/*   const struct engine *e = r->e; */
+/*   const int gcount = ci->gcount; */
+/*   struct gpart *restrict gparts = ci->gparts; */
+/*   const struct gravity_tensors *multi = cj->multipole; */
+/*   const float a_smooth = e->gravity_properties->a_smooth; */
+/*   const float rlr_inv = 1. / (a_smooth * ci->super->width[0]); */
 
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+/*   TIMER_TIC; */
 
-#if ICHECK > 0
-  for (int pid = 0; pid < gcount; pid++) {
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   if (gcount == 0) error("Empty cell!"); */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &gparts[pid];
+/*   if (multi->m_pole.mass == 0.0) */
+/*     error("Multipole does not seem to have been set."); */
+/* #endif */
 
-    if (gp->id_or_neg_offset == ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
-              gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2],
-              cj->width[0], cj->gcount);
-  }
-#endif
 
-  /* Loop over every particle in leaf. */
-  for (int pid = 0; pid < gcount; pid++) {
+/*   /\* Anything to do here? *\/ */
+/*   if (!cell_is_active(ci, e)) return; */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &gparts[pid];
+/* #if ICHECK > 0 */
+/*   for (int pid = 0; pid < gcount; pid++) { */
 
-    if (!gpart_is_active(gp, e)) continue;
+/*     /\* Get a hold of the ith part in ci. *\/ */
+/*     struct gpart *restrict gp = &gparts[pid]; */
 
-    /* Compute the pairwise distance. */
-    const float dx[3] = {multi->CoM[0] - gp->x[0],   // x
-                         multi->CoM[1] - gp->x[1],   // y
-                         multi->CoM[2] - gp->x[2]};  // z
-    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+/*     if (gp->id_or_neg_offset == ICHECK) */
+/*       message("id=%lld loc=[ %f %f %f ] size= %f count= %d", */
+/*               gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2], */
+/*               cj->width[0], cj->gcount); */
+/*   } */
+/* #endif */
 
-    /* Interact !*/
-    runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi->m_pole);
+/*   /\* Loop over every particle in leaf. *\/ */
+/*   for (int pid = 0; pid < gcount; pid++) { */
 
-#ifdef SWIFT_DEBUG_CHECKS
-    gp->mass_interacted += multi->m_pole.mass;
-#endif
-  }
+/*     /\* Get a hold of the ith part in ci. *\/ */
+/*     struct gpart *restrict gp = &gparts[pid]; */
 
-  TIMER_TOC(timer_dopair_grav_pm);
+/*     if (!gpart_is_active(gp, e)) continue; */
+
+/*     /\* Compute the pairwise distance. *\/ */
+/*     const float dx[3] = {multi->CoM[0] - gp->x[0],   // x */
+/*                          multi->CoM[1] - gp->x[1],   // y */
+/*                          multi->CoM[2] - gp->x[2]};  // z */
+/*     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
+
+/*     /\* Interact !*\/ */
+/*     runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi->m_pole); */
+
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*     gp->mass_interacted += multi->m_pole.mass; */
+/* #endif */
+/*   } */
+
+/*   TIMER_TOC(timer_dopair_grav_pm); */
 }
 
 /**
