@@ -425,10 +425,8 @@ runner_iact_nonsym_intrinsic_vec_density(
     vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
     vector mask, int knlMask) {
 
-  //vector r, ri, r2, xi, wi, wi_dx;
   vector r, ri, xi, wi, wi_dx;
   vector mj;
-  //vector dx, dy, dz, dvx, dvy, dvz;
   vector dvx, dvy, dvz;
   vector vjx, vjy, vjz;
   vector dvdr;
@@ -439,12 +437,8 @@ runner_iact_nonsym_intrinsic_vec_density(
   vjx.v = vec_load(Vjx);
   vjy.v = vec_load(Vjy);
   vjz.v = vec_load(Vjz);
-  //dx.v = vec_load(Dx);
-  //dy.v = vec_load(Dy);
-  //dz.v = vec_load(Dz);
 
   /* Get the radius and inverse radius. */
-  //r2.v = vec_load(R2);
   ri = vec_reciprocal_sqrt(*r2);
   r.v = vec_mul(r2->v, ri.v);
 
