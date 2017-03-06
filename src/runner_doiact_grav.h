@@ -91,7 +91,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c) {
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-__attribute__((always_inline)) INLINE static void runner_dopair_grav_mm(
+void runner_dopair_grav_mm(
     const struct runner *r, const struct cell *restrict ci,
     const struct cell *restrict cj) {
 
@@ -124,7 +124,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_mm(
  * @param ci The #cell with particles to interct.
  * @param cj The #cell with the multipole.
  */
-__attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
+void runner_dopair_grav_pm(
     const struct runner *r, const struct cell *restrict ci,
     const struct cell *restrict cj) {
 
@@ -195,8 +195,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
  *
  * @todo Use a local cache for the particles.
  */
-__attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
-    struct runner *r, struct cell *ci, struct cell *cj) {
+void runner_dopair_grav_pp(
+			   struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
   const int gcount_i = ci->gcount;
@@ -310,8 +310,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
  *
  * @todo Use a local cache for the particles.
  */
-__attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
-    struct runner *r, struct cell *c) {
+void runner_doself_grav_pp(
+			   struct runner *r, struct cell *c) {
 
   const struct engine *e = r->e;
   const int gcount = c->gcount;
@@ -409,7 +409,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
  *
  * @todo Use a local cache for the particles.
  */
-static void runner_dopair_grav(struct runner *r, struct cell *ci,
+void runner_dopair_grav(struct runner *r, struct cell *ci,
                                struct cell *cj, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -510,7 +510,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
  *
  * @todo Use a local cache for the particles.
  */
-static void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
+void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -548,7 +548,7 @@ static void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
   if (gettimer) TIMER_TOC(timer_dosub_self_grav);
 }
 
-static void runner_dosub_grav(struct runner *r, struct cell *ci,
+void runner_dosub_grav(struct runner *r, struct cell *ci,
                               struct cell *cj, int timer) {
 
   /* Is this a single cell? */
@@ -567,7 +567,7 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
   }
 }
 
-static void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                       int timer) {
 
 #if ICHECK > 0
