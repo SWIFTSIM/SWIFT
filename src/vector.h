@@ -125,6 +125,7 @@
 #define VEC_DBL __m256d
 #define VEC_INT __m256i
 #define vec_load(a) _mm256_load_ps(a)
+#define vec_unaligned_load(a) _mm256_loadu_ps(a)
 #define vec_store(a, addr) _mm256_store_ps(addr, a)
 #define vec_unaligned_store(a, addr) _mm256_storeu_ps(addr, a)
 #define vec_setzero() _mm256_setzero_ps()
