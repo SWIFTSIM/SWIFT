@@ -2993,6 +2993,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     error("Failed to all-reduce total mass in the system.");
 #endif
   if (e->nodeID == 0) message("Total mass in the system: %e", e->s->total_mass);
+
+  /* Check that we have the correct total mass in the top-level multipoles */
+  if (e->policy & engine_policy_self_gravity) {
+    double mass = 0.;
+    for (int i = 0; i < e->s->nr_cells; ++i)
+      mass += e->s->cells_top[i].multipole->m_pole.mass;
+    if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
+      error(
+          "Total mass in multipoles does not match particle content. part=%e "
+          "m-poles=%e",
+          e->s->total_mass, mass);
+  }
 #endif
 
   /* Now time to get ready for the first time-step */
@@ -3079,6 +3091,20 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we have the correct total mass in the top-level multipoles */
+  if (e->policy & engine_policy_self_gravity) {
+    double mass = 0.;
+    for (int i = 0; i < e->s->nr_cells; ++i)
+      mass += e->s->cells_top[i].multipole->m_pole.mass;
+    if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
+      error(
+          "Total mass in multipoles does not match particle content. part=%e "
+          "m-poles=%e",
+          e->s->total_mass, mass);
+  }
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run the brute-force gravity calculation for some gparts */
