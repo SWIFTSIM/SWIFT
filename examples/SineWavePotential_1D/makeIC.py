@@ -38,7 +38,7 @@ coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))
 m = np.zeros(numPart) + 1.
 h = np.zeros(numPart) + 2./numPart
-u = np.zeros(numPart)
+u = np.zeros(numPart) + uconst
 ids = np.arange(numPart, dtype = 'L')
 rho = np.zeros(numPart)
 
