@@ -149,9 +149,12 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       /* Check that we are not above tolerance */
       if (fabsf(err_rel[0]) > rel_tol || fabsf(err_rel[1]) > rel_tol ||
           fabsf(err_rel[2]) > rel_tol)
-        error("Error too large ! gp->a_grav=[%e %e %e] gp->a_exact=[%e %e %e]",
-              gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
-              gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2]);
+        error(
+            "Error too large ! gp->a_grav=[%e %e %e] gp->a_exact=[%e %e %e], "
+            "gp->mass_interacted=%e",
+            gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
+            gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
+            gpi->mass_interacted);
 
       /* Construct some statistics */
       for (int k = 0; k < 3; ++k) {

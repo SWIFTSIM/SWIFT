@@ -64,12 +64,22 @@ void runner_do_grav_down(struct runner *r, struct cell *c) {
       if (cp != NULL) {
         gravity_L2L(&temp, c->multipole, cp->multipole->CoM, c->multipole->CoM,
                     1);
+
+        gravity_field_tensors_add(cp->multipole, &temp);
       }
     }
 
   } else {
 
-    gravity_L2P(c->multipole, c->gparts, c->gcount);
+    const struct engine *e = r->e;
+    struct gpart *gparts = c->gparts;
+    const int gcount = c->gcount;
+
+    /* Apply accelerations to the particles */
+    for (int i = 0; i < gcount; ++i) {
+      struct gpart *gp = &gparts[i];
+      if (gpart_is_active(gp, e)) gravity_L2P(c->multipole, gp);
+    }
   }
 }
 
@@ -237,49 +247,55 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gpi = &gparts_i[pid];
 
+    if (!gpart_is_active(gpi, e)) continue;
+
     /* Loop over every particle in the other cell. */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct gpart *restrict gpj = &gparts_j[pjd];
+      const struct gpart *restrict gpj = &gparts_j[pjd];
 
       /* Compute the pairwise distance. */
-      float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                     gpi->x[1] - gpj->x[1],   // y
-                     gpi->x[2] - gpj->x[2]};  // z
+      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                           gpi->x[1] - gpj->x[1],   // y
+                           gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Interact ! */
-      if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
-
-        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
+      runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gpi->mass_interacted += gpj->mass;
-        gpj->mass_interacted += gpi->mass;
+      gpi->mass_interacted += gpj->mass;
 #endif
+    }
+  }
 
-      } else {
+  /* Loop over all particles in cj... */
+  for (int pjd = 0; pjd < gcount_j; pjd++) {
 
-        if (gpart_is_active(gpi, e)) {
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gpj = &gparts_j[pjd];
 
-          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+    if (!gpart_is_active(gpj, e)) continue;
+
+    /* Loop over every particle in the other cell. */
+    for (int pid = 0; pid < gcount_i; pid++) {
+
+      /* Get a hold of the ith part in ci. */
+      const struct gpart *restrict gpi = &gparts_i[pid];
+
+      /* Compute the pairwise distance. */
+      const float dx[3] = {gpj->x[0] - gpi->x[0],   // x
+                           gpj->x[1] - gpi->x[1],   // y
+                           gpj->x[2] - gpi->x[2]};  // z
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      /* Interact ! */
+      runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
 
 #ifdef SWIFT_DEBUG_CHECKS
-          gpi->mass_interacted += gpj->mass;
+      gpj->mass_interacted += gpi->mass;
 #endif
-        } else if (gpart_is_active(gpj, e)) {
-
-          dx[0] = -dx[0];
-          dx[1] = -dx[1];
-          dx[2] = -dx[2];
-          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          gpj->mass_interacted += gpi->mass;
-#endif
-        }
-      }
     }
   }
 
@@ -468,9 +484,9 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
             } else {
 
-              /* Ok, here we can go for particle-multipole interactions */
-              runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
-              runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
+              /* Ok, here we can go for multipole-multipole interactions */
+              runner_dopair_grav_mm(r, ci->progeny[j], cj->progeny[k]);
+              runner_dopair_grav_mm(r, cj->progeny[k], ci->progeny[j]);
             }
           }
         }

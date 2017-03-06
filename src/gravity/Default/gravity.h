@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
 
   gp->time_bin = 0;
-  gp->epsilon = 0.;  // MATTHIEU
+  gp->epsilon = 0.1;  // MATTHIEU
 
   gravity_init_gpart(gp);
 }

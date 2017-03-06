@@ -104,7 +104,7 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
   bzero(m, sizeof(struct gravity_tensors));
 }
 
-INLINE static void gravity_field_tensor_init(struct gravity_tensors *m) {
+INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
 
   bzero(&m->a_x, sizeof(struct acc_tensor));
   bzero(&m->a_y, sizeof(struct acc_tensor));
@@ -114,6 +114,19 @@ INLINE static void gravity_field_tensor_init(struct gravity_tensors *m) {
 #ifdef SWIFT_DEBUG_CHECKS
   m->mass_interacted = 0.;
 #endif
+}
+
+/**
+ * @brief Adds field tensrs to other ones (i.e. does la += lb).
+ *
+ * @param la The gravity tensors to add to.
+ * @param lb The gravity tensors to add.
+ */
+INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
+                                             const struct gravity_tensors *lb) {
+  la->a_x.F_000 += lb->a_x.F_000;
+  la->a_y.F_000 += lb->a_y.F_000;
+  la->a_z.F_000 += lb->a_z.F_000;
 }
 
 /**
@@ -322,9 +335,9 @@ INLINE static void gravity_M2L(struct gravity_tensors *l_a,
   const double r_inv = 1. / sqrt(r2);
 
   /* 1st order multipole term */
-  l_a->a_x.F_000 = D_100(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_y.F_000 = D_010(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_z.F_000 = D_001(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_x.F_000 += D_100(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_y.F_000 += D_010(dx, dy, dz, r_inv) * m_b->mass;
+  l_a->a_z.F_000 += D_001(dx, dy, dz, r_inv) * m_b->mass;
 
 #ifdef SWIFT_DEBUG_CHECKS
   l_a->mass_interacted += m_b->mass;
@@ -345,123 +358,28 @@ INLINE static void gravity_M2L(struct gravity_tensors *l_a,
 INLINE static void gravity_L2L(struct gravity_tensors *l_a,
                                const struct gravity_tensors *l_b,
                                const double pos_a[3], const double pos_b[3],
-                               int periodic) {}
+                               int periodic) {
+  error("Not implemented yet");
+}
 
 /**
- * @brief Applies the  #acc_tensor to a set of #gpart.
+ * @brief Applies the  #acc_tensor to a  #gpart.
  *
  * Corresponds to equation (28a).
  */
 INLINE static void gravity_L2P(const struct gravity_tensors *l,
-                               struct gpart *gparts, int gcount) {
-
-  for (int i = 0; i < gcount; ++i) {
+                               struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-    struct gpart *gp = &gparts[i];
-
-// if(gpart_is_active(gp, e)){
-
-    gp->mass_interacted += l->mass_interacted;
+  gp->mass_interacted += l->mass_interacted;
 #endif
-    //}
-  }
+
+  // message("a=[%e %e %e]", l->a_x.F_000, l->a_y.F_000, l->a_z.F_000);
+
+  /* 0th order interaction */
+  gp->a_grav[0] += l->a_x.F_000;
+  gp->a_grav[1] += l->a_y.F_000;
+  gp->a_grav[2] += l->a_z.F_000;
 }
-
-#if 0
-
-/* Multipole function prototypes. */
-void multipole_add(struct gravity_tensors *m_sum, const struct gravity_tensors *m_term);
-void multipole_init(struct gravity_tensors *m, const struct gpart *gparts,
-                    int gcount);
-void multipole_reset(struct gravity_tensors *m);
-
-/* static void multipole_iact_mm(struct multipole *ma, struct multipole *mb, */
-/*                               double *shift); */
-/* void multipole_addpart(struct multipole *m, struct gpart *p); */
-/* void multipole_addparts(struct multipole *m, struct gpart *p, int N); */
-
-/**
- * @brief Compute the pairwise interaction between two multipoles.
- *
- * @param ma The first #multipole.
- * @param mb The second #multipole.
- * @param shift The periodicity correction.
- */
-__attribute__((always_inline)) INLINE static void multipole_iact_mm(
-    struct gravity_tensors *ma, struct gravity_tensors *mb, double *shift) {
-  /*   float dx[3], ir, r, r2 = 0.0f, acc; */
-  /*   int k; */
-
-  /*   /\* Compute the multipole distance. *\/ */
-  /*   for (k = 0; k < 3; k++) { */
-  /*     dx[k] = ma->x[k] - mb->x[k] - shift[k]; */
-  /*     r2 += dx[k] * dx[k]; */
-  /*   } */
-
-  /*   /\* Compute the normalized distance vector. *\/ */
-  /*   ir = 1.0f / sqrtf(r2); */
-  /*   r = r2 * ir; */
-
-  /*   /\* Evaluate the gravity kernel. *\/ */
-  /*   kernel_grav_eval(r, &acc); */
-
-  /*   /\* Scale the acceleration. *\/ */
-  /*   acc *= const_G * ir * ir * ir; */
-
-  /* /\* Compute the forces on both multipoles. *\/ */
-  /* #if const_gravity_multipole_order == 1 */
-  /*   float mma = ma->coeffs[0], mmb = mb->coeffs[0]; */
-  /*   for (k = 0; k < 3; k++) { */
-  /*     ma->a[k] -= dx[k] * acc * mmb; */
-  /*     mb->a[k] += dx[k] * acc * mma; */
-  /*   } */
-  /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." ,
-   * const_gravity_multipole_order )
-   */
-  /* #endif */
-}
-
-/**
- * @brief Compute the interaction of a multipole on a particle.
- *
- * @param m The #multipole.
- * @param p The #gpart.
- * @param shift The periodicity correction.
- */
-__attribute__((always_inline)) INLINE static void multipole_iact_mp(
-    struct gravity_tensors *m, struct gpart *p, double *shift) {
-
-  /*   float dx[3], ir, r, r2 = 0.0f, acc; */
-  /*   int k; */
-
-  /*   /\* Compute the multipole distance. *\/ */
-  /*   for (k = 0; k < 3; k++) { */
-  /*     dx[k] = m->x[k] - p->x[k] - shift[k]; */
-  /*     r2 += dx[k] * dx[k]; */
-  /*   } */
-
-  /*   /\* Compute the normalized distance vector. *\/ */
-  /*   ir = 1.0f / sqrtf(r2); */
-  /*   r = r2 * ir; */
-
-  /*   /\* Evaluate the gravity kernel. *\/ */
-  /*   kernel_grav_eval(r, &acc); */
-
-  /*   /\* Scale the acceleration. *\/ */
-  /*   acc *= const_G * ir * ir * ir * m->coeffs[0]; */
-
-  /* /\* Compute the forces on both multipoles. *\/ */
-  /* #if const_gravity_multipole_order == 1 */
-  /*   for (k = 0; k < 3; k++) p->a_grav[k] += dx[k] * acc; */
-  /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." ,
-   * const_gravity_multipole_order )
-   */
-  /* #endif */
-}
-
-#endif
 
 #endif /* SWIFT_MULTIPOLE_H */
