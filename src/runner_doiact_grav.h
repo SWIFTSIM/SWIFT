@@ -91,9 +91,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c) {
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-void runner_dopair_grav_mm(
-    const struct runner *r, const struct cell *restrict ci,
-    const struct cell *restrict cj) {
+void runner_dopair_grav_mm(const struct runner *r,
+                           const struct cell *restrict ci,
+                           const struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
@@ -124,9 +124,9 @@ void runner_dopair_grav_mm(
  * @param ci The #cell with particles to interct.
  * @param cj The #cell with the multipole.
  */
-void runner_dopair_grav_pm(
-    const struct runner *r, const struct cell *restrict ci,
-    const struct cell *restrict cj) {
+void runner_dopair_grav_pm(const struct runner *r,
+                           const struct cell *restrict ci,
+                           const struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
@@ -143,6 +143,8 @@ void runner_dopair_grav_pm(
   if (multi->m_pole.mass == 0.0)
     error("Multipole does not seem to have been set.");
 #endif
+
+  error("Function should not be called");
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
@@ -195,8 +197,7 @@ void runner_dopair_grav_pm(
  *
  * @todo Use a local cache for the particles.
  */
-void runner_dopair_grav_pp(
-			   struct runner *r, struct cell *ci, struct cell *cj) {
+void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
   const int gcount_i = ci->gcount;
@@ -310,8 +311,7 @@ void runner_dopair_grav_pp(
  *
  * @todo Use a local cache for the particles.
  */
-void runner_doself_grav_pp(
-			   struct runner *r, struct cell *c) {
+void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   const struct engine *e = r->e;
   const int gcount = c->gcount;
@@ -409,8 +409,8 @@ void runner_doself_grav_pp(
  *
  * @todo Use a local cache for the particles.
  */
-void runner_dopair_grav(struct runner *r, struct cell *ci,
-                               struct cell *cj, int gettimer) {
+void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
+                        int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -548,8 +548,8 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
   if (gettimer) TIMER_TOC(timer_dosub_self_grav);
 }
 
-void runner_dosub_grav(struct runner *r, struct cell *ci,
-                              struct cell *cj, int timer) {
+void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
+                       int timer) {
 
   /* Is this a single cell? */
   if (cj == NULL) {
@@ -567,8 +567,7 @@ void runner_dosub_grav(struct runner *r, struct cell *ci,
   }
 }
 
-void runner_do_grav_long_range(struct runner *r, struct cell *ci,
-                                      int timer) {
+void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
 #if ICHECK > 0
   for (int pid = 0; pid < ci->gcount; pid++) {
