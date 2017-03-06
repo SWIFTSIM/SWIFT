@@ -91,11 +91,9 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
     }
   }
 
-  message("Computed exact gravity for %d gparts.", counter);
+  message("Computed exact gravity for %d gparts (took %.3f %s). ", counter,
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 #else
   error("Gravity checking function called without the corresponding flag.");
 #endif
