@@ -25,7 +25,9 @@
 #include "gravity.h"
 #include "part.h"
 
-void runner_do_grav_down(struct runner *r, struct cell *c) {
+void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
 
   if (c->split) {
 
@@ -38,6 +40,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c) {
                     1);
 
         gravity_field_tensors_add(cp->multipole, &temp);
+
+        runner_do_grav_down(r, cp, 0);
       }
     }
 
@@ -53,6 +57,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c) {
       if (gpart_is_active(gp, e)) gravity_L2P(c->multipole, gp);
     }
   }
+
+  if (timer) TIMER_TOC(timer_dograv_down);
 }
 
 /**
@@ -554,6 +560,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   }
 #endif
 
+  TIMER_TIC;
+
   /* Recover the list of top-level cells */
   const struct engine *e = r->e;
   struct cell *cells = e->s->cells_top;
@@ -583,6 +591,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
     if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_mm(r, ci, cj);
   }
+
+  if (timer) TIMER_TOC(timer_dograv_long_range);
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

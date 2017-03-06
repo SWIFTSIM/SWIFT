@@ -385,6 +385,7 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l,
                                struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (l->mass_interacted == 0.f) error("Interacting with empty field tensor");
   gp->mass_interacted += l->mass_interacted;
 #endif
 

@@ -1829,7 +1829,7 @@ void *runner_main(void *data) {
           // runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_down:
-          runner_do_grav_down(r, t->ci);
+          runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_top_level:
           // runner_do_grav_top_level(r);
