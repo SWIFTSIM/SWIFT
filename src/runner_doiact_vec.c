@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
   const float dj_min = sort_j[0].d;
 
   int first_pi = 0, last_pj = cj->count - 1;
-  int found_pi = 0, found_pj = 0;
+  int found_pi = 0;
 
   /* For particles in ci */  
   max_di[0] = d + h * kernel_gamma + dx_max - rshift;
@@ -344,7 +344,6 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
     
     if(d <= di_max) {
       last_pj = k;
-      found_pj = 1;
       break;
     }
   }
@@ -1034,7 +1033,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
   max_dj = r->cj_cache.max_d;
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
-  /* For particles in ci */  
   populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, max_di, max_dj, &first_pi, &last_pj);
 
   float di, dj;
@@ -1058,8 +1056,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
   last_pj = max(last_pj, max_ind_j); 
   first_pi = min(first_pi, max_ind_i);
- 
-  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, first_pi, last_pj, num_vec_proc);
+
+  int first_pi_align = first_pi;
+  int last_pj_align = last_pj;
+  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi_align, &last_pj_align, num_vec_proc);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1; pid >= first_pi && max_ind_j >= 0; pid--) {
@@ -1076,7 +1076,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     }
     int exit_iteration = max_ind_j;    
 
-    int ci_cache_idx = pid; //sort_i[pid].i;
+    int ci_cache_idx = pid - first_pi_align; //sort_i[pid].i;
 
     const float hi = ci_cache->h[ci_cache_idx];
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -1121,7 +1121,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     if (rem != 0) {
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-      exit_iteration_align += pad;
+      if (exit_iteration_align + pad <= last_pj_align + 1)
+        exit_iteration_align += pad;
     }
 
     vector pjx, pjy, pjz;
@@ -1130,7 +1131,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
 
       /* Get the cache index to the jth particle. */
-      int cj_cache_idx = pjd; //sort_j[pjd].i;
+      int cj_cache_idx = pjd;
 
       vector v_dx, v_dy, v_dz, v_r2;
 
@@ -1138,10 +1139,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
       pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
       pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
-      //pjvx.v = vec_load(&cj_cache.vx[cj_cache_idx]);
-      //pjvy.v = vec_load(&cj_cache.vy[cj_cache_idx]);
-      //pjvz.v = vec_load(&cj_cache.vz[cj_cache_idx]);
-      //mj.v = vec_load(&cj_cache.m[cj_cache_idx]);
 
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pix.v, pjx.v);
@@ -1175,8 +1172,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
             
     } /* loop over the parts in cj. */
 
-    /* Perform horizontal adds on vector sums and store result in particle pi.
-     */
+    /* Perform horizontal adds on vector sums and store result in particle pi. */
     VEC_HADD(rhoSum, pi->rho);
     VEC_HADD(rho_dhSum, pi->density.rho_dh);
     VEC_HADD(wcountSum, pi->density.wcount);
@@ -1245,21 +1241,21 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
     /* Pad cache if there is a serial remainder. */
     int exit_iteration_align = exit_iteration;
-    int rem = exit_iteration % (num_vec_proc * VEC_SIZE);
+    int rem = (count_i - exit_iteration) % (num_vec_proc * VEC_SIZE);
     if (rem != 0) {
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-      exit_iteration_align -= pad;
+      if (exit_iteration_align - pad >= first_pi_align)
+        exit_iteration_align -= pad;
     }
 
     vector pix, piy, piz;
-    //vector pivx, pivy, pivz, mi;
 
     /* Loop over the parts in ci. */
     for (int pid = exit_iteration_align; pid < count_i; pid += VEC_SIZE) {
 
       /* Get the cache index to the ith particle. */
-      int ci_cache_idx = pid; //sort_i[pid].i;
+      int ci_cache_idx = pid - first_pi_align; //sort_i[pid].i;
 
       vector v_dx, v_dy, v_dz, v_r2;
 
@@ -1267,11 +1263,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
       piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
       piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
-      //pivx.v = vec_load(&ci_cache->vx[ci_cache_idx]);
-      //pivy.v = vec_load(&ci_cache->vy[ci_cache_idx]);
-      //pivz.v = vec_load(&ci_cache->vz[ci_cache_idx]);
-      //mi.v = vec_load(&ci_cache->m[ci_cache_idx]);
-
+    
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pjx.v, pix.v);
       v_dy.v = vec_sub(pjy.v, piy.v);
@@ -1305,8 +1297,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
         
     } /* loop over the parts in cj. */
 
-    /* Perform horizontal adds on vector sums and store result in particle pi.
-     */
+    /* Perform horizontal adds on vector sums and store result in particle pi. */
     VEC_HADD(rhoSum, pj->rho);
     VEC_HADD(rho_dhSum, pj->density.rho_dh);
     VEC_HADD(wcountSum, pj->density.wcount);
@@ -1877,7 +1868,7 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
   last_pj = max(last_pj, max_ind_j); 
   first_pi = min(first_pi, max_ind_i);
 
-  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, first_pi, last_pj, num_vec_proc);
+  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi, &last_pj, num_vec_proc);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1; pid >= first_pi && max_ind_j >= 0; pid-=2) {
