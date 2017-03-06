@@ -113,7 +113,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_fft.h"
-//#include "runner_doiact_grav.h"
+#include "runner_doiact_grav.h"
 
 /**
  * @brief Perform source terms
@@ -495,6 +495,10 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
+  /* Reset the gravity acceleration tensors */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_field_tensor_init(c->multipole);
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -592,6 +596,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
+  const float hydro_h_max = e->hydro_properties->h_max;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
       target_wcount + e->hydro_properties->delta_neighbours;
@@ -663,15 +668,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Ok, correct then */
           p->h += h_corr;
 
-          /* Flag for another round of fun */
-          pid[redo] = pid[i];
-          redo += 1;
+          /* If below the absolute maximum, try again */
+          if (p->h < hydro_h_max) {
 
-          /* Re-initialise everything */
-          hydro_init_part(p);
+            /* Flag for another round of fun */
+            pid[redo] = pid[i];
+            redo += 1;
 
-          /* Off we go ! */
-          continue;
+            /* Re-initialise everything */
+            hydro_init_part(p);
+
+            /* Off we go ! */
+            continue;
+          } else {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_max;
+          }
         }
 
         /* We now have a particle whose smoothing length has converged */
@@ -1337,13 +1350,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-
-      if (part_is_active(p, e)) {
-
-        /* First, finish the force loop */
-        hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
-      }
+      if (part_is_active(p, e)) hydro_end_force(p);
     }
 
     /* Loop over the g-particles in this cell. */
@@ -1351,24 +1358,26 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the gpart. */
       struct gpart *restrict gp = &gparts[k];
+      if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
 
-      if (gp->type == swift_type_dark_matter) {
-        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (e->policy & engine_policy_self_gravity) {
+        gp->mass_interacted += gp->mass;
+        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
+          error(
+              "g-particle did not interact gravitationally with all other "
+              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
+              gp->mass_interacted, e->s->total_mass, gp->mass);
       }
+#endif
     }
 
     /* Loop over the star particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
-      /* Get a handle on the part. */
+      /* Get a handle on the spart. */
       struct spart *restrict sp = &sparts[k];
-
-      if (spart_is_active(sp, e)) {
-
-        /* First, finish the force loop */
-        star_end_force(sp);
-        gravity_end_force(sp->gpart, const_G);
-      }
+      if (spart_is_active(sp, e)) star_end_force(sp);
     }
   }
 
@@ -1617,6 +1626,8 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+/* Mark the thread we run on */
 #ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
 #endif
@@ -1688,8 +1699,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            // runner_doself_grav(r, ci, 1);
-            ;
+            runner_doself_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1706,8 +1716,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            // runner_dopair_grav(r, ci, cj, 1);#
-            ;
+            runner_dopair_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1722,8 +1731,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);#
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1740,8 +1748,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1799,17 +1806,17 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_grav_mm:
-            // runner_do_grav_mm(r, t->ci, 1);
-            ;
+          // runner_do_grav_mm(r, t->ci, 1);
           break;
-        /* case task_type_grav_up: */
-        /*     runner_do_grav_up(r, t->ci); */
-        /*     break; */
-        /*   case task_type_grav_gather_m: */
-        /*     break; */
-        /*   case task_type_grav_fft: */
-        /*     runner_do_grav_fft(r); */
-        /*     break; */
+        case task_type_grav_down:
+          runner_do_grav_down(r, t->ci);
+          break;
+        case task_type_grav_top_level:
+          // runner_do_grav_top_level(r);
+          break;
+        case task_type_grav_long_range:
+          runner_do_grav_long_range(r, t->ci, 1);
+          break;
         case task_type_cooling:
           if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
           runner_do_cooling(r, t->ci, 1);
@@ -1820,6 +1827,18 @@ void *runner_main(void *data) {
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
+
+/* Mark that we have run this task on these cells */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci != NULL) {
+        ci->tasks_executed[t->type]++;
+        ci->subtasks_executed[t->subtype]++;
+      }
+      if (cj != NULL) {
+        cj->tasks_executed[t->type]++;
+        cj->subtasks_executed[t->subtype]++;
+      }
+#endif
 
       /* We're done with this task, see if we get a next one. */
       prev = t;

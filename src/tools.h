@@ -23,6 +23,7 @@
 #define SWIFT_TOOL_H
 
 #include "cell.h"
+#include "gravity_properties.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "runner.h"
@@ -45,8 +46,8 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic);
 double random_uniform(double a, double b);
 void shuffle_particles(struct part *parts, const int count);
 void gravity_n2(struct gpart *gparts, const int gcount,
-                const struct phys_const *constants, float rlr);
-
+                const struct phys_const *constants,
+                const struct gravity_props *gravity_properties, float rlr);
 int compare_values(double a, double b, double threshold, double *absDiff,
                    double *absSum, double *relDiff);
 int compare_particles(struct part a, struct part b, double threshold);

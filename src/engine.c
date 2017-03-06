@@ -55,6 +55,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "parallel_io.h"
@@ -132,6 +133,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int is_hydro = (e->policy & engine_policy_hydro);
+  const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
@@ -164,6 +166,27 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                                    c, NULL, 0);
 
       scheduler_addunlock(s, c->drift, c->init);
+
+      if (is_self_gravity) {
+
+        /* Gravity non-neighbouring pm calculations */
+        c->grav_long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL, 0);
+
+        /* Gravity top-level periodic calculation */
+        c->grav_top_level = scheduler_addtask(
+            s, task_type_grav_top_level, task_subtype_none, 0, 0, c, NULL, 0);
+
+        /* Gravity recursive down-pass */
+        c->grav_down = scheduler_addtask(s, task_type_grav_down,
+                                         task_subtype_none, 0, 0, c, NULL, 0);
+
+        scheduler_addunlock(s, c->init, c->grav_long_range);
+        scheduler_addunlock(s, c->init, c->grav_top_level);
+        scheduler_addunlock(s, c->grav_long_range, c->grav_down);
+        scheduler_addunlock(s, c->grav_top_level, c->grav_down);
+        scheduler_addunlock(s, c->grav_down, c->kick2);
+      }
 
       /* Generate the ghost task. */
       if (is_hydro)
@@ -871,7 +894,7 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
                           struct task *down) {
 
   /* Link the tasks to this cell. */
-  c->grav_up = up;
+  // c->grav_up = up;
   c->grav_down = down;
 
   /* Recurse? */
@@ -1550,7 +1573,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
  *
  * @param e The #engine.
  */
-void engine_make_gravity_tasks(struct engine *e) {
+void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -1571,10 +1594,6 @@ void engine_make_gravity_tasks(struct engine *e) {
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
                       0);
-
-    /* Let's also build a task for all the non-neighbouring pm calculations */
-    scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
-                      NULL, 0);
 
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
@@ -1777,25 +1796,20 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
-/*
+/**
  * @brief Creates the dependency network for the gravity tasks of a given cell.
  *
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-/* static inline void engine_make_gravity_dependencies(struct scheduler *sched,
- */
-/*                                                     struct task *gravity, */
-/*                                                     struct cell *c) { */
+static inline void engine_make_self_gravity_dependencies(
+    struct scheduler *sched, struct task *gravity, struct cell *c) {
 
-/*   /\* init --> gravity --> kick *\/ */
-/*   scheduler_addunlock(sched, c->super->init, gravity); */
-/*   scheduler_addunlock(sched, gravity, c->super->kick2); */
-
-/*   /\* grav_up --> gravity ( --> kick) *\/ */
-/*   scheduler_addunlock(sched, c->super->grav_up, gravity); */
-/* } */
+  /* init --> gravity --> grav_down --> kick */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, gravity, c->super->grav_down);
+}
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
@@ -1829,12 +1843,11 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-    /*   /\* Self-interaction for self-gravity? *\/ */
-    /*   if (t->type == task_type_self && t->subtype == task_subtype_grav) { */
+    /* Self-interaction for self-gravity? */
+    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-    /*     engine_make_gravity_dependencies(sched, t, t->ci); */
-
-    /*   } */
+      engine_make_self_gravity_dependencies(sched, t, t->ci);
+    }
 
     /* Self-interaction for external gravity ? */
     if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
@@ -1843,31 +1856,28 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     }
 
-    /*   /\* Otherwise, pair interaction? *\/ */
-    /*   else if (t->type == task_type_pair && t->subtype == task_subtype_grav)
-     * {
-     */
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
+      if (t->ci->nodeID == nodeID) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
 
-    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-    /*     } */
+        engine_make_self_gravity_dependencies(sched, t, t->cj);
+      }
 
-    /*   } */
+    }
 
-    /*   /\* Otherwise, sub-self interaction? *\/ */
-    /*   else if (t->type == task_type_sub_self && t->subtype ==
-     * task_subtype_grav) { */
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
-    /*   } */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
+    }
 
     /* Sub-self-interaction for external gravity ? */
     else if (t->type == task_type_sub_self &&
@@ -1878,19 +1888,18 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
 
-    /*   /\* Otherwise, sub-pair interaction? *\/ */
-    /*   else if (t->type == task_type_sub_pair && t->subtype ==
-     * task_subtype_grav) { */
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
 
-    /*     if (t->ci->nodeID == nodeID) { */
+      if (t->ci->nodeID == nodeID) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->ci); */
-    /*     } */
-    /*     if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) { */
+        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-    /*       engine_make_gravity_dependencies(sched, t, t->cj); */
-    /*     } */
-    /*   } */
+        engine_make_self_gravity_dependencies(sched, t, t->cj);
+      }
+    }
   }
 }
 
@@ -2180,17 +2189,11 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
 
   /*     /\* Create tasks at top level. *\/ */
-  /*     struct task *up = */
-  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0,
-   * 0, */
-  /*                           &cells[k], NULL, 0); */
-
+  /*     struct task *up = NULL; */
   /*     struct task *down = NULL; */
-  /*     /\* struct task *down = *\/ */
-  /*     /\*     scheduler_addtask(sched, task_type_grav_down,
-   * task_subtype_none, 0, */
-  /*      * 0, *\/ */
-  /*     /\*                       &cells[k], NULL, 0); *\/ */
+  /*         /\* scheduler_addtask(sched, task_type_grav_down,
+   * task_subtype_none, 0, 0, *\/ */
+  /*         /\*                   &cells[k], NULL, 0); *\/ */
 
   /*     /\* Push tasks down the cell hierarchy. *\/ */
   /*     engine_addtasks_grav(e, &cells[k], up, down); */
@@ -2217,8 +2220,8 @@ void engine_maketasks(struct engine *e) {
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) engine_make_hydroloop_tasks(e);
 
-  /* Add the gravity mm tasks. */
-  if (e->policy & engine_policy_self_gravity) engine_make_gravity_tasks(e);
+  /* Add the self gravity tasks. */
+  if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
@@ -2461,6 +2464,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* Gravity ? */
+    else if (t->type == task_type_grav_down ||
+             t->type == task_type_grav_long_range ||
+             t->type == task_type_grav_top_level) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
     /* Time-step? */
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
@@ -2531,6 +2541,7 @@ void engine_print_task_counts(struct engine *e) {
   fflush(stdout);
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2839,8 +2850,10 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
-        t->subtype == task_subtype_force || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms)
+        t->subtype == task_subtype_force || t->subtype == task_subtype_grav ||
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
+        t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }
 }
@@ -2873,6 +2886,11 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, int nr_runners) {
 
   const ticks tic = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Re-set all the cell task counters to 0 */
+  space_reset_task_counters(e->s);
+#endif
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -2952,6 +2970,19 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Let's store the total mass in the system for future checks */
+  e->s->total_mass = 0.;
+  for (size_t i = 0; i < s->nr_gparts; ++i)
+    e->s->total_mass += s->gparts[i].mass;
+#ifdef WITH_MPI
+  if (MPI_Allreduce(MPI_IN_PLACE, &e->s->total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to all-reduce total mass in the system.");
+#endif
+  message("Total mass in the system: %e", e->s->total_mass);
+#endif
+
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
@@ -3030,13 +3061,26 @@ void engine_step(struct engine *e) {
   if (e->step % 100 == 2) e->forcerepart = 1;
 #endif
 
+  /* Are we drifting everything (a la Gadget/GIZMO) ? */
+  if (e->policy & engine_policy_drift_all) engine_drift_all(e);
+
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  gravity_exact_force_compute(e->s, e);
+#endif
 
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check the accuracy of the gravity calculation */
+  gravity_exact_force_check(e->s, e, 1e-1);
+#endif
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -3136,7 +3180,8 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       cell_drift_particles(c, e);
 
       /* Drift the multipole */
-      if (e->policy & engine_policy_self_gravity) cell_drift_multipole(c, e);
+      if (e->policy & engine_policy_self_gravity)
+        cell_drift_all_multipoles(c, e);
     }
   }
 }
@@ -3149,6 +3194,11 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 void engine_drift_all(struct engine *e) {
 
   const ticks tic = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->nodeID == 0) message("Drifting all");
+#endif
+
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 

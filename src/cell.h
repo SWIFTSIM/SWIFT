@@ -104,7 +104,7 @@ struct cell {
   double h_max;
 
   /*! This cell's multipole. */
-  struct multipole *multipole;
+  struct gravity_tensors *multipole;
 
   /*! Linking pointer for "memory management". */
   struct cell *next;
@@ -170,7 +170,10 @@ struct cell {
   struct task *timestep;
 
   /*! Task constructing the multipole from the particles */
-  struct task *grav_up;
+  struct task *grav_top_level;
+
+  /*! Task constructing the multipole from the particles */
+  struct task *grav_long_range;
 
   /*! Task propagating the multipole to the particles */
   struct task *grav_down;
@@ -308,6 +311,14 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! The list of tasks that have been executed on this cell */
+  char tasks_executed[64];
+
+  /*! The list of sub-tasks that have been executed on this cell */
+  char subtasks_executed[64];
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
@@ -342,11 +353,13 @@ int cell_are_neighbours(const struct cell *restrict ci,
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 void cell_check_drift_point(struct cell *c, void *data);
+void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_particles(struct cell *c, const struct engine *e);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
+void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

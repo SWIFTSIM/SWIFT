@@ -1057,6 +1057,23 @@ void cell_check_drift_point(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Resets all the individual cell task counters to 0.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param c The #cell to reset.
+ */
+void cell_reset_task_counters(struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
+  for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
@@ -1095,7 +1112,8 @@ int cell_are_neighbours(const struct cell *restrict ci,
  */
 void cell_check_multipole(struct cell *c, void *data) {
 
-  struct multipole ma;
+#ifdef SWIFT_DEBUG_CHECKS
+  struct gravity_tensors ma;
   const double tolerance = 1e-5; /* Relative */
 
   /* First recurse */
@@ -1106,18 +1124,22 @@ void cell_check_multipole(struct cell *c, void *data) {
   if (c->gcount > 0) {
 
     /* Brute-force calculation */
-    multipole_P2M(&ma, c->gparts, c->gcount);
+    gravity_P2M(&ma, c->gparts, c->gcount);
 
     /* Now  compare the multipole expansion */
-    if (!multipole_equal(&ma, c->multipole, tolerance)) {
+    if (!gravity_multipole_equal(&ma.m_pole, &c->multipole->m_pole,
+                                 tolerance)) {
       message("Multipoles are not equal at depth=%d!", c->depth);
       message("Correct answer:");
-      multipole_print(&ma);
+      gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
-      multipole_print(c->multipole);
+      gravity_multipole_print(&c->multipole->m_pole);
       error("Aborting");
     }
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
@@ -1299,6 +1321,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
   if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+  if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
+  if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
+  if (c->grav_top_level != NULL) scheduler_activate(s, c->grav_top_level);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
@@ -1333,6 +1358,7 @@ void cell_set_super(struct cell *c, struct cell *super) {
  */
 void cell_drift_particles(struct cell *c, const struct engine *e) {
 
+  const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
   const integertime_t ti_old = c->ti_old;
   const integertime_t ti_current = e->ti_current;
@@ -1343,7 +1369,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f, cell_h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
@@ -1357,7 +1383,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
         cell_drift_particles(cp, e);
         dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
+        cell_h_max = max(cell_h_max, cp->h_max);
       }
 
   } else if (ti_current > ti_old) {
@@ -1376,7 +1402,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
     }
 
     /* Loop over all the gas particles in the cell */
@@ -1390,14 +1416,17 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
+      /* Limit h to within the allowed range */
+      p->h = min(p->h, hydro_h_max);
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
 
       /* Maximal smoothing length */
-      h_max = (h_max > p->h) ? h_max : p->h;
+      cell_h_max = max(cell_h_max, p->h);
     }
 
     /* Loop over all the star particles in the cell */
@@ -1418,12 +1447,12 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   } else {
 
-    h_max = c->h_max;
+    cell_h_max = c->h_max;
     dx_max = c->dx_max;
   }
 
   /* Store the values */
-  c->h_max = h_max;
+  c->h_max = cell_h_max;
   c->dx_max = dx_max;
 
   /* Update the time of the last drift */
@@ -1436,7 +1465,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_multipole(struct cell *c, const struct engine *e) {
+void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   const double timeBase = e->timeBase;
   const integertime_t ti_old_multipole = c->ti_old_multipole;
@@ -1458,11 +1487,24 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   } else if (ti_current > ti_old_multipole) {
 
     /* Drift the multipole */
-    multipole_drift(c->multipole, dt);
+    gravity_multipole_drift(c->multipole, dt);
   }
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;
+}
+
+/**
+ * @brief Drifts the multipole of a cell to the current time.
+ *
+ * Only drifts the multipole at this level. Multipoles deeper in the
+ * tree are not updated.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_multipole(struct cell *c, const struct engine *e) {
+  error("To be implemented");
 }
 
 /**

@@ -41,9 +41,6 @@
 
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 1
-#define const_gravity_a_smooth 1.25f
-#define const_gravity_r_cut 4.5f
-#define const_gravity_eta 0.025f
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
