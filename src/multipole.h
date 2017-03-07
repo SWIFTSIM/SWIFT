@@ -104,6 +104,22 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
   bzero(m, sizeof(struct gravity_tensors));
 }
 
+/**
+ * @brief Drifts a #multipole forward in time.
+ *
+ * @param m The #multipole.
+ * @param dt The drift time-step.
+ */
+INLINE static void gravity_drift(struct gravity_tensors *m,
+                                           double dt) {
+
+  /* Move the whole thing according to bulk motion */
+  m->CoM[0] += m->m_pole.vel[0];
+  m->CoM[1] += m->m_pole.vel[1];
+  m->CoM[2] += m->m_pole.vel[2];
+}
+
+
 INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
 
   bzero(&m->a_x, sizeof(struct acc_tensor));
@@ -213,32 +229,6 @@ INLINE static int gravity_multipole_equal(const struct multipole *ma,
   /* All is good */
   return 1;
 }
-
-/**
- * @brief Drifts a #multipole forward in time.
- *
- * @param m The #multipole.
- * @param dt The drift time-step.
- */
-INLINE static void gravity_multipole_drift(struct gravity_tensors *m,
-                                           double dt) {
-
-  /* Move the whole thing according to bulk motion */
-  m->CoM[0] += m->m_pole.vel[0];
-  m->CoM[1] += m->m_pole.vel[1];
-  m->CoM[2] += m->m_pole.vel[2];
-}
-
-/**
- * @brief Applies the forces due to particles j onto particles i directly.
- *
- * @param gparts_i The #gpart to update.
- * @param gcount_i The number of particles to update.
- * @param gparts_j The #gpart that source the gravity field.
- * @param gcount_j The number of sources.
- */
-INLINE static void gravity_P2P(struct gpart *gparts_i, int gcount_i,
-                               const struct gpart *gparts_j, int gcount_j) {}
 
 /**
  * @brief Constructs the #multipole of a bunch of particles around their

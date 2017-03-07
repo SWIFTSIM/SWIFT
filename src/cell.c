@@ -1487,7 +1487,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   } else if (ti_current > ti_old_multipole) {
 
     /* Drift the multipole */
-    gravity_multipole_drift(c->multipole, dt);
+    gravity_drift(c->multipole, dt);
   }
 
   /* Update the time of the last drift */
