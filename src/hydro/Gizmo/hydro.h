@@ -383,10 +383,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt;
+  float h_corr;
   if (fabsf(w1) < 0.2f)
-    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+    h_corr = approx_expf(w1); /* 4th order expansion of exp(w) */
   else
-    p->h *= expf(w1);
+    h_corr = expf(w1);
+
+  /* Limit the smoothing length correction. */
+  if (h_corr < 2.0f) {
+    p->h *= h_corr;
+  }
 
 /* we temporarily disabled the primitive variable drift.
    This should be reenabled once gravity works, and we have time to check that
