@@ -230,25 +230,26 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
 /**
  * @brief Verifies whether two #multipole's are equal or not.
  *
- * @param ma The first #multipole.
- * @param mb The second #multipole.
+ * @param ga The first #multipole.
+ * @param gb The second #multipole.
  * @param tolerance The maximal allowed difference for the fields.
  * @return 1 if the multipoles are equal 0 otherwise.
  */
-INLINE static int gravity_multipole_equal(const struct multipole *ma,
-                                          const struct multipole *mb,
+INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
+                                          const struct gravity_tensors *gb,
                                           double tolerance) {
 
   /* Check CoM */
-  /* if (fabs(ma->CoM[0] - mb->CoM[0]) / fabs(ma->CoM[0] + mb->CoM[0]) >
-   * tolerance) */
-  /*   return 0; */
-  /* if (fabs(ma->CoM[1] - mb->CoM[1]) / fabs(ma->CoM[1] + mb->CoM[1]) >
-   * tolerance) */
-  /*   return 0; */
-  /* if (fabs(ma->CoM[2] - mb->CoM[2]) / fabs(ma->CoM[2] + mb->CoM[2]) >
-   * tolerance) */
-  /*   return 0; */
+  if (fabs(ga->CoM[0] - gb->CoM[0]) / fabs(ga->CoM[0] + gb->CoM[0]) > tolerance)
+    return 0;
+  if (fabs(ga->CoM[1] - gb->CoM[1]) / fabs(ga->CoM[1] + gb->CoM[1]) > tolerance)
+    return 0;
+  if (fabs(ga->CoM[2] - gb->CoM[2]) / fabs(ga->CoM[2] + gb->CoM[2]) > tolerance)
+    return 0;
+
+  /* Helper pointers */
+  const struct multipole *ma = &ga->m_pole;
+  const struct multipole *mb = &gb->m_pole;
 
   /* Check bulk velocity (if non-zero)*/
   if (fabsf(ma->vel[0] + mb->vel[0]) > 0.f &&

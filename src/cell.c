@@ -1127,8 +1127,7 @@ void cell_check_multipole(struct cell *c, void *data) {
     gravity_P2M(&ma, c->gparts, c->gcount);
 
     /* Now  compare the multipole expansion */
-    if (!gravity_multipole_equal(&ma.m_pole, &c->multipole->m_pole,
-                                 tolerance)) {
+    if (!gravity_multipole_equal(&ma, c->multipole, tolerance)) {
       message("Multipoles are not equal at depth=%d!", c->depth);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
