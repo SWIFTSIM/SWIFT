@@ -61,8 +61,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
             offset[2] * cellSize + z * cellSize / N + cellSize / (2 * N);
         part->h = h;
         part->id = x * N * N + y * N + z + id_offset;
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
         ++part;
       }
     }
@@ -102,10 +101,6 @@ int main() {
 
   int i, j, k, offset[3];
   struct part *p;
-  struct hydro_props hp;
-  hp.target_neighbours = 48.;
-  hp.delta_neighbours = 1.;
-  hp.max_smoothing_iterations = 30;
 
   int N = 10;
   float dim = 1.;
@@ -146,11 +141,24 @@ int main() {
   /* Create the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = 1.;
+  space.cell_min = 1.;
+
+  struct phys_const prog_const;
+  prog_const.const_newton_G = 1.f;
+
+  struct hydro_props hp;
+  hp.target_neighbours = 48.f;
+  hp.delta_neighbours = 2.;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine e;
-  e.s = &space;
+  bzero(&e, sizeof(struct engine));
   e.hydro_properties = &hp;
+  e.physical_constants = &prog_const;
+  e.s = &space;
+  e.time = 0.1f;
+  e.ti_current = 1;
 
   struct runner r;
   r.e = &e;

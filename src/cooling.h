@@ -27,11 +27,10 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "const.h"
-
 /* Import the right cooling definition */
-#if defined(COOLING_CONST_DU)
+#if defined(COOLING_NONE)
+#include "./cooling/none/cooling.h"
+#elif defined(COOLING_CONST_DU)
 #include "./cooling/const_du/cooling.h"
 #elif defined(COOLING_CONST_LAMBDA)
 #include "./cooling/const_lambda/cooling.h"
@@ -43,10 +42,10 @@
 
 /* Common functions */
 void cooling_init(const struct swift_params* parameter_file,
-                  const struct UnitSystem* us,
+                  const struct unit_system* us,
                   const struct phys_const* phys_const,
-                  struct cooling_data* cooling);
+                  struct cooling_function_data* cooling);
 
-void cooling_print(const struct cooling_data* cooling);
+void cooling_print(const struct cooling_function_data* cooling);
 
 #endif /* SWIFT_COOLING_H */

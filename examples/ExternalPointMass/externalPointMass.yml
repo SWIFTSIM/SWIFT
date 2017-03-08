@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
+  time_end:   8.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
@@ -27,18 +27,17 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
-  max_smoothing_length:  10.      # Maximal smoothing length allowed (in internal units).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  Sphere.hdf5           # The file to read
+  file_name:  PointMass.hdf5        # The file to read
   shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    50.
   shift_z:    50.
 
 # External potential parameters
-PointMass:
+PointMassPotential:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
   position_z:      50.	

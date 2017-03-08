@@ -45,20 +45,21 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+/* Global profiler. */
+struct profiler prof;
+
 /**
  * @brief Help messages for the command line parameters.
  */
 void print_help_message() {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
-  printf("       swift_mpi [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt [OPTION]... PARAMFILE\n");
-  printf("       swift_fixdt_mpi [OPTION]... PARAMFILE\n\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
-  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
-  printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
-  printf("  %2s %8s %s\n", "-C", "", "Run with cooling");
+  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity.");
+  printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration.");
+  printf("  %2s %8s %s\n", "-C", "", "Run with cooling.");
   printf(
       "  %2s %8s %s\n", "-d", "",
       "Dry run. Read the parameter file, allocate memory but does not read ");
@@ -69,35 +70,36 @@ void print_help_message() {
          "Allows user to check validy of parameter and IC files as well as "
          "memory limits.");
   printf("  %2s %8s %s\n", "-D", "",
-         "Always drift all particles even the ones far from active particles.");
+         "Always drift all particles even the ones far from active particles. "
+         "This emulates");
+  printf("  %2s %8s %s\n", "", "",
+         "Gadget-[23] and GIZMO's default behaviours.");
   printf("  %2s %8s %s\n", "-e", "",
-         "Enable floating-point exceptions (debugging mode)");
+         "Enable floating-point exceptions (debugging mode).");
   printf("  %2s %8s %s\n", "-f", "{int}",
-         "Overwrite the CPU frequency (Hz) to be used for time measurements");
+         "Overwrite the CPU frequency (Hz) to be used for time measurements.");
   printf("  %2s %8s %s\n", "-g", "",
-         "Run with an external gravitational potential");
-  printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
+         "Run with an external gravitational potential.");
+  printf("  %2s %8s %s\n", "-F", "", "Run with feedback.");
+  printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity.");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
-  printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
+  printf("  %2s %8s %s\n", "-s", "", "Run with hydrodynamics.");
+  printf("  %2s %8s %s\n", "-S", "", "Run with stars.");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
-  printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity");
+  printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity.");
   printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
   printf("  %2s %8s %s\n", "-y", "{int}",
-         "Time-step frequency at which task graphs are dumped");
-  printf("  %2s %8s %s\n", "-h", "", "Print this help message and exit");
+         "Time-step frequency at which task graphs are dumped.");
+  printf("  %2s %8s %s\n", "-h", "", "Print this help message and exit.");
   printf(
       "\nSee the file parameter_example.yml for an example of "
       "parameter file.\n");
 }
-
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
-#endif
 
 /**
  * @brief Main routine that loads a few particles and generates some output.
@@ -117,23 +119,26 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Init failed with error %i.", res);
   if (prov != MPI_THREAD_MULTIPLE)
     error(
-        "MPI does not provide the level of threading required "
-        "(MPI_THREAD_MULTIPLE).");
+        "MPI does not provide the level of threading"
+        " required (MPI_THREAD_MULTIPLE).");
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
+
+  /* Make sure messages are stamped with the correct rank. */
+  engine_rank = myrank;
+
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
-  if (myrank == 0)
-    printf("[0000][00000.0] MPI is up and running with %i node(s).\n",
-           nr_nodes);
+  if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
   if (nr_nodes == 1) {
     message("WARNING: you are running with one MPI rank.");
     message("WARNING: you should use the non-MPI version of this program.");
   }
   fflush(stdout);
+
 #endif
 
 /* Let's pin the main thread */
@@ -151,9 +156,11 @@ int main(int argc, char *argv[]) {
   int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
+  int with_sourceterms = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+  int with_stars = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int verbose = 0;
@@ -163,7 +170,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:gGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -189,6 +196,9 @@ int main(int argc, char *argv[]) {
           return 1;
         }
         break;
+      case 'F':
+        with_sourceterms = 1;
+        break;
       case 'g':
         with_external_gravity = 1;
         break;
@@ -207,6 +217,9 @@ int main(int argc, char *argv[]) {
         break;
       case 's':
         with_hydro = 1;
+        break;
+      case 'S':
+        with_stars = 1;
         break;
       case 't':
         if (sscanf(optarg, "%d", &nr_threads) != 1) {
@@ -229,6 +242,13 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+#ifndef SWIFT_DEBUG_TASKS
+        if (dump_tasks) {
+          error(
+              "Task dumping is only possible if SWIFT was configured with the "
+              "--enable-task-debugging option.");
+        }
+#endif
         break;
       case '?':
         if (myrank == 0) print_help_message();
@@ -257,33 +277,61 @@ int main(int argc, char *argv[]) {
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
 
+  /* How vocal are we ? */
+  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   if (myrank == 0 && dry_run)
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
 
-  /* Report CPU frequency. */
+  /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
+/* Report host name(s). */
+#ifdef WITH_MPI
+  if (talking) {
+    message("Rank %d running on: %s", myrank, hostname());
+  }
+#else
+  message("Running on: %s", hostname());
+#endif
+
+/* Do we have debugging checks ? */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (myrank == 0)
+    message("WARNING: Debugging checks activated. Code will be slower !");
+#endif
+
+/* Do we have gravity accuracy checks ? */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (myrank == 0)
+    message(
+        "WARNING: Checking 1/%d of all gpart for gravity accuracy. Code will "
+        "be slower !",
+        SWIFT_GRAVITY_FORCE_CHECKS);
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
-    if (myrank == 0) message("Floating point exceptions will be reported.");
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    if (myrank == 0)
+      message("WARNING: Floating point exceptions will be reported.");
   }
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
-    message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
-    message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)       is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)      is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(spart)      is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(gpart)      is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(multipole)  is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(acc_tensor) is %4zi bytes.", sizeof(struct acc_tensor));
+    message("sizeof(task)       is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)       is %4zi bytes.", sizeof(struct cell));
   }
-
-  /* How vocal are we ? */
-  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
   /* Read the parameter file */
   struct swift_params *params = malloc(sizeof(struct swift_params));
@@ -299,10 +347,10 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-/* Prepare the domain decomposition scheme */
+  /* Prepare the domain decomposition scheme */
+  enum repartition_type reparttype = REPART_NONE;
 #ifdef WITH_MPI
   struct partition initial_partition;
-  enum repartition_type reparttype;
   partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
   /* Let's report what we did */
@@ -317,7 +365,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialize unit system and constants */
-  struct UnitSystem us;
+  struct unit_system us;
   struct phys_const prog_const;
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);
@@ -332,7 +380,11 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
-  hydro_props_init(&hydro_properties, params);
+  if (with_hydro) hydro_props_init(&hydro_properties, params);
+
+  /* Initialise the gravity properties */
+  struct gravity_props gravity_properties;
+  if (with_self_gravity) gravity_props_init(&gravity_properties, params);
 
 #if defined(SHADOWSWIFT)
   /* Override the variables governing the density iteration
@@ -344,29 +396,37 @@ int main(int argc, char *argv[]) {
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+  const int replicate =
+      parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
+  /* Get ready to read particles of all kinds */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
-  size_t Ngas = 0, Ngpart = 0;
+  struct spart *sparts = NULL;
+  size_t Ngas = 0, Ngpart = 0, Nspart = 0;
   double dim[3] = {0., 0., 0.};
   int periodic = 0;
   int flag_entropy_ICs = 0;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
-                   &periodic, &flag_entropy_ICs, myrank, nr_nodes,
-                   MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
+                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   (with_external_gravity || with_self_gravity), with_stars,
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
-                 &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
-                 MPI_INFO_NULL, dry_run);
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
+                 &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                 (with_external_gravity || with_self_gravity), with_stars,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
-                 &periodic, &flag_entropy_ICs, dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
+                 &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                 (with_external_gravity || with_self_gravity), with_stars,
+                 dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -375,61 +435,40 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-  /* set the *global* box dimensions */
-  float box_anchor[3], box_side[3];
-  if (periodic) {
-    box_anchor[0] = -0.5f * dim[0];
-    box_anchor[1] = -0.5f * dim[1];
-    box_anchor[2] = -0.5f * dim[2];
-    box_side[0] = 2.0f * dim[0];
-    box_side[1] = 2.0f * dim[1];
-    box_side[2] = 2.0f * dim[2];
-  } else {
-    box_anchor[0] = 0.0f;
-    box_anchor[1] = 0.0f;
-    box_anchor[2] = 0.0f;
-    box_side[0] = dim[0];
-    box_side[1] = dim[1];
-    box_side[2] = dim[2];
-  }
-  voronoi_set_box(box_anchor, box_side);
-#endif
-
-  /* Discard gparts if we don't have gravity
-   * (Better implementation of i/o will come)*/
-  if (!with_external_gravity && !with_self_gravity) {
-    free(gparts);
-    gparts = NULL;
-    for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
-    Ngpart = 0;
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check once and for all that we don't have unwanted links */
+  if (!with_stars) {
+    for (size_t k = 0; k < Ngpart; ++k)
+      if (gparts[k].type == swift_type_star) error("Linking problem");
   }
   if (!with_hydro) {
-    free(parts);
-    parts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
-    Ngas = 0;
+      if (gparts[k].type == swift_type_gas) error("Linking problem");
   }
+#endif
 
   /* Get the total number of particles across all nodes. */
-  long long N_total[2] = {0, 0};
+  long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
-  long long N_long[2] = {Ngas, Ngpart};
-  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  long long N_long[3] = {Ngas, Ngpart, Nspart};
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+             MPI_COMM_WORLD);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
+  N_total[2] = Nspart;
 #endif
   if (myrank == 0)
-    message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
-            N_total[1]);
+    message(
+        "Read %lld gas particles, %lld star particles and %lld gparts from the "
+        "ICs.",
+        N_total[0], N_total[2], N_total[1]);
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
-             with_self_gravity, talking, dry_run);
+  space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
+             periodic, replicate, with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -446,6 +485,7 @@ int main(int argc, char *argv[]) {
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     fflush(stdout);
   }
@@ -467,13 +507,18 @@ int main(int argc, char *argv[]) {
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &potential);
+    potential_init(params, &prog_const, &us, &s, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */
-  struct cooling_data cooling;
-  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
-  if (with_cooling && myrank == 0) cooling_print(&cooling);
+  struct cooling_function_data cooling_func;
+  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+  if (with_cooling && myrank == 0) cooling_print(&cooling_func);
+
+  /* Initialise the feedback properties */
+  struct sourceterms sourceterms;
+  if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
+  if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -483,13 +528,16 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
   if (with_cooling) engine_policies |= engine_policy_cooling;
+  if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
+  if (with_stars) engine_policies |= engine_policy_stars;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-              engine_policies, talking, &us, &prog_const, &hydro_properties,
-              &potential, &cooling);
+              engine_policies, talking, reparttype, &us, &prog_const,
+              &hydro_properties, &gravity_properties, &potential, &cooling_func,
+              &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -502,13 +550,30 @@ int main(int argc, char *argv[]) {
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
 #endif
 
+#if defined(WITH_MPI)
+  N_long[0] = s.nr_parts;
+  N_long[1] = s.nr_gparts;
+  N_long[2] = s.nr_sparts;
+  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+#else
+  N_total[0] = s.nr_parts;
+  N_total[1] = s.nr_gparts;
+  N_total[2] = s.nr_sparts;
+#endif
+
   /* Get some info to the user. */
   if (myrank == 0) {
+    long long N_DM = N_total[1] - N_total[2] - N_total[0];
     message(
-        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
-        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
-        e.sched.nr_queues, e.dt_min, e.dt_max);
+        "Running on %lld gas particles, %lld star particles and %lld DM "
+        "particles (%lld gravity particles)",
+        N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+    message(
+        "from t=%.3e until t=%.3e with %d threads and %d queues (dt_min=%.3e, "
+        "dt_max=%.3e)...",
+        e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
+        e.dt_max);
     fflush(stdout);
   }
 
@@ -539,16 +604,12 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
-           "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+    printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
+           "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+           clocks_getunit());
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
-
-/* Repartition the space amongst the nodes? */
-#ifdef WITH_MPI
-    if (j % 100 == 2) e.forcerepart = reparttype;
-#endif
 
     /* Reset timers */
     timers_reset(timers_mask_all);
@@ -556,13 +617,14 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
       char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j);
+      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j + 1);
       FILE *file_thread;
       if (myrank == 0) {
         file_thread = fopen(dumpfile, "w");
@@ -584,8 +646,8 @@ int main(int argc, char *argv[]) {
           fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
                   e.tic_step, e.toc_step, cpufreq);
           int count = 0;
-          for (int l = 0; l < e.sched.nr_tasks; l++)
-            if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
+          for (int l = 0; l < e.sched.nr_tasks; l++) {
+            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
                   myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -600,11 +662,10 @@ int main(int argc, char *argv[]) {
                   (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
                                                 : 0,
                   e.sched.tasks[l].flags);
-              fflush(stdout);
-              count++;
             }
-          message("rank %d counted %d tasks", myrank, count);
-
+            fflush(stdout);
+            count++;
+          }
           fclose(file_thread);
         }
 
@@ -614,14 +675,14 @@ int main(int argc, char *argv[]) {
 
 #else
       char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info-step%d.dat", j);
+      snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
       fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
               1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
-      for (int l = 0; l < e.sched.nr_tasks; l++)
-        if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
+      for (int l = 0; l < e.sched.nr_tasks; l++) {
+        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
           fprintf(
               file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
               e.sched.tasks[l].rid, e.sched.tasks[l].type,
@@ -631,9 +692,12 @@ int main(int argc, char *argv[]) {
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
+        }
+      }
       fclose(file_thread);
-#endif
+#endif  // WITH_MPI
     }
+#endif  // SWIFT_DEBUG_TASKS
   }
 
 /* Print the values of the runner histogram. */
@@ -648,6 +712,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Write final output. */
+  engine_drift_all(&e);
   engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI

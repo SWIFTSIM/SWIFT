@@ -71,12 +71,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 float convert_S(struct engine* e, struct part* p) {
 
-  return hydro_get_entropy(p, 0);
+  return hydro_get_entropy(p);
 }
 
 float convert_P(struct engine* e, struct part* p) {
 
-  return hydro_get_pressure(p, 0);
+  return hydro_get_pressure(p);
 }
 
 /**
@@ -123,13 +123,13 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Minimal treatment as in Monaghan (1992)");
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  io_write_attribute_s(h_grpsph, "Viscosity Model",
+                       "Minimal treatment as in Monaghan (1992)");
 
   /* Time integration properties */
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
-                   const_max_u_change);
+  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);
 }
 
 /**

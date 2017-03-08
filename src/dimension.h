@@ -29,7 +29,6 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "const.h"
 #include "inline.h"
 #include "vector.h"
 

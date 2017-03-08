@@ -38,12 +38,14 @@
 
 /* Includes. */
 #include "clocks.h"
-#include "cooling.h"
+#include "cooling_struct.h"
+#include "gravity_properties.h"
 #include "parser.h"
 #include "partition.h"
-#include "potentials.h"
+#include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
+#include "sourceterms_struct.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"
@@ -55,16 +57,17 @@ enum engine_policy {
   engine_policy_steal = (1 << 1),
   engine_policy_keep = (1 << 2),
   engine_policy_block = (1 << 3),
-  engine_policy_fixdt = (1 << 4),
-  engine_policy_cputight = (1 << 5),
-  engine_policy_mpi = (1 << 6),
-  engine_policy_setaffinity = (1 << 7),
-  engine_policy_hydro = (1 << 8),
-  engine_policy_self_gravity = (1 << 9),
-  engine_policy_external_gravity = (1 << 10),
-  engine_policy_cosmology = (1 << 11),
-  engine_policy_drift_all = (1 << 12),
-  engine_policy_cooling = (1 << 13),
+  engine_policy_cputight = (1 << 4),
+  engine_policy_mpi = (1 << 5),
+  engine_policy_setaffinity = (1 << 6),
+  engine_policy_hydro = (1 << 7),
+  engine_policy_self_gravity = (1 << 8),
+  engine_policy_external_gravity = (1 << 9),
+  engine_policy_cosmology = (1 << 10),
+  engine_policy_drift_all = (1 << 11),
+  engine_policy_cooling = (1 << 12),
+  engine_policy_sourceterms = (1 << 13),
+  engine_policy_stars = (1 << 14)
 };
 
 extern const char *engine_policy_names[];
@@ -80,9 +83,6 @@ extern const char *engine_policy_names[];
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
-
-/* The maximal number of timesteps in a simulation */
-#define max_nr_timesteps (1 << 28)
 
 /* Data structure for the engine. */
 struct engine {
@@ -116,11 +116,11 @@ struct engine {
 
   /* The previous system time. */
   double timeOld;
-  int ti_old;
+  integertime_t ti_old;
 
   /* The current system time. */
   double time;
-  int ti_current;
+  integertime_t ti_current;
 
   /* Time step */
   double timeStep;
@@ -130,24 +130,27 @@ struct engine {
   double timeBase_inv;
 
   /* Minimal ti_end for the next time-step */
-  int ti_end_min;
+  integertime_t ti_end_min;
 
-  /* Are we drifting all particles now ? */
-  int drift_all;
+  /* Maximal ti_end for the next time-step */
+  integertime_t ti_end_max;
+
+  /* Maximal ti_beg for the next time-step */
+  integertime_t ti_beg_max;
 
   /* Number of particles updated */
-  size_t updates, g_updates;
+  size_t updates, g_updates, s_updates;
 
   /* The internal system of units */
-  const struct UnitSystem *internalUnits;
+  const struct unit_system *internal_units;
 
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
-  int ti_nextSnapshot;
+  integertime_t ti_nextSnapshot;
   char snapshotBaseName[200];
   int snapshotCompression;
-  struct UnitSystem *snapshotUnits;
+  struct unit_system *snapshotUnits;
 
   /* Statistics information */
   FILE *file_stats;
@@ -183,7 +186,16 @@ struct engine {
 
   /* Force the engine to rebuild? */
   int forcerebuild;
-  enum repartition_type forcerepart;
+
+  /* Force the engine to repartition ? */
+  int forcerepart;
+  enum repartition_type reparttype;
+
+  /* Need to dump some statistics ? */
+  int save_stats;
+
+  /* Need to dump a snapshot ? */
+  int dump_snapshot;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -201,11 +213,17 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the self-gravity scheme */
+  const struct gravity_props *gravity_properties;
+
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
   /* Properties of the cooling scheme */
-  const struct cooling_data *cooling_data;
+  const struct cooling_function_data *cooling_func;
+
+  /* Properties of source terms */
+  struct sourceterms *sourceterms;
 
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
@@ -214,26 +232,31 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_unskip(struct engine *e);
+void engine_drift_all(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
-                 const struct UnitSystem *internal_units,
+                 enum repartition_type reparttype,
+                 const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
+                 const struct gravity_props *gravity,
                  const struct external_potential *potential,
-                 const struct cooling_data *cooling);
-void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
-                   unsigned int submask);
+                 const struct cooling_function_data *cooling,
+                 struct sourceterms *sourceterms);
+void engine_launch(struct engine *e, int nr_runners);
 void engine_prepare(struct engine *e);
-void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart);
+                            int *ind_gpart, size_t *Ngpart,
+                            size_t offset_sparts, int *ind_spart,
+                            size_t *Nspart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);

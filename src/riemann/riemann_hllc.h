@@ -20,9 +20,22 @@
 #ifndef SWIFT_RIEMANN_HLLC_H
 #define SWIFT_RIEMANN_HLLC_H
 
+/* Some standard headers. */
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Local headers. */
 #include "adiabatic_index.h"
+#include "error.h"
 #include "minmax.h"
 #include "riemann_vacuum.h"
+
+#ifndef EOS_IDEAL_GAS
+#error \
+    "The HLLC Riemann solver currently only supports and ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
+#endif
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     float *WL, float *WR, float *n, float *vij, float *totflux) {
@@ -145,11 +158,13 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
      we add the extra velocity flux due to the absolute motion of the fluid
      similarly, we need to add the energy fluxes due to the absolute motion */
   v2 = vij[0] * vij[0] + vij[1] * vij[1] + vij[2] * vij[2];
+  // order is important: we first use the momentum fluxes to update the energy
+  // flux and then de-boost the momentum fluxes!
+  totflux[4] += vij[0] * totflux[1] + vij[1] * totflux[2] +
+                vij[2] * totflux[3] + 0.5 * v2 * totflux[0];
   totflux[1] += vij[0] * totflux[0];
   totflux[2] += vij[1] * totflux[0];
   totflux[3] += vij[2] * totflux[0];
-  totflux[4] += vij[0] * totflux[1] + vij[1] * totflux[2] +
-                vij[2] * totflux[3] + 0.5 * v2 * totflux[0];
 }
 
 #endif /* SWIFT_RIEMANN_HLLC_H */

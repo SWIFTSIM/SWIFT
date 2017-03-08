@@ -19,6 +19,20 @@
 #ifndef SWIFT_GADGET2_HYDRO_PART_H
 #define SWIFT_GADGET2_HYDRO_PART_H
 
+/**
+ * @file Gadget2/hydro_part.h
+ * @brief SPH interaction functions following the Gadget-2 version of SPH.
+ *
+ * The interactions computed here are the ones presented in the Gadget-2 paper
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
+ * the Spline-3 kernel, the results should be equivalent to the ones obtained
+ * with Gadget-2 up to the rounding errors and interactions missed by the
+ * Gadget-2 tree-code neighbours search.
+ */
+
+#include "cooling_struct.h"
+
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -28,10 +42,22 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-} __attribute__((aligned(xpart_align)));
+  /* Entropy at the last full step. */
+  float entropy_full;
+
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {
+
+  /* Particle ID. */
+  long long id;
+
+  /* Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
   /* Particle position. */
   double x[3];
@@ -48,12 +74,6 @@ struct part {
   /* Particle mass. */
   float mass;
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
   /* Particle density. */
   float rho;
 
@@ -62,9 +82,6 @@ struct part {
 
   /* Entropy time derivative */
   float entropy_dt;
-
-  /* Derivative of the density with respect to smoothing length. */
-  float rho_dh;
 
   union {
 
@@ -75,6 +92,9 @@ struct part {
 
       /* Number of neighbours spatial derivative. */
       float wcount_dh;
+
+      /* Derivative of the density with respect to h. */
+      float rho_dh;
 
       /* Particle velocity curl. */
       float rot_v[3];
@@ -89,7 +109,10 @@ struct part {
       /* Balsara switch */
       float balsara;
 
-      /* Pressure over density squared (including drho/dh term) */
+      /*! "Grad h" term */
+      float f;
+
+      /* Pressure over density squared  */
       float P_over_rho2;
 
       /* Particle sound speed. */
@@ -104,12 +127,19 @@ struct part {
     } force;
   };
 
-  /* Particle ID. */
-  long long id;
+  /* Time-step length */
+  timebin_t time_bin;
 
-  /* Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+#ifdef SWIFT_DEBUG_CHECKS
 
-} __attribute__((aligned(part_align)));
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */

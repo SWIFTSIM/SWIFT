@@ -68,8 +68,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #else
         part->mass = density * volume / count;
 #endif
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        part->ti_drift = 8;
+        part->ti_kick = 8;
+#endif
+
         ++part;
       }
     }
@@ -87,8 +92,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old = 8;
+  cell->ti_end_min = 8;
+  cell->ti_end_max = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -139,10 +145,10 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
             0.f,
 #else
-            cj->parts[pid].rho_dh,
+            ci->parts[pid].density.rho_dh,
 #endif
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
@@ -163,10 +169,10 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
             0.f,
 #else
-            cj->parts[pjd].rho_dh,
+            cj->parts[pjd].density.rho_dh,
 #endif
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
@@ -255,7 +261,7 @@ int main(int argc, char *argv[]) {
 
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 8;
   runner.e = &engine;
 
   volume = particles * particles * particles;

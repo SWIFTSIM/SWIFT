@@ -19,26 +19,19 @@
 #ifndef SWIFT_RIEMANN_H
 #define SWIFT_RIEMANN_H
 
-/* gives us const_hydro_gamma and tells us which floating point type to use */
-#include "const.h"
-#include "error.h"
-#include "float.h"
-#include "math.h"
-#include "stdio.h"
-#include "stdlib.h"
-
-/* Check that we use an ideal equation of state, since other equations of state
-   are not compatible with these Riemann solvers. */
-#ifndef EOS_IDEAL_GAS
-#error Currently there are no Riemann solvers that can handle the requested \
-       equation of state. Select an ideal gas equation of state if you want to \
-       use this hydro scheme!
-#endif
+/* Config parameters. */
+#include "../config.h"
 
 #if defined(RIEMANN_SOLVER_EXACT)
 
 #define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
+#if defined(EOS_IDEAL_GAS)
 #include "riemann/riemann_exact.h"
+#elif defined(EOS_ISOTHERMAL_GAS)
+#include "riemann/riemann_exact_isothermal.h"
+#else
+#error "The Exact Riemann solver is incompatible with this equation of state!"
+#endif
 
 #elif defined(RIEMANN_SOLVER_TRRS)
 

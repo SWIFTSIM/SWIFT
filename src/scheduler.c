@@ -40,8 +40,8 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "const.h"
 #include "cycle.h"
+#include "engine.h"
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
@@ -51,13 +51,17 @@
 #include "timers.h"
 
 /**
+ * @brief Re-set the list of active tasks.
+ */
+void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
+
+/**
  * @brief Add an unlock_task to the given task.
  *
  * @param s The #scheduler.
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
  */
-
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
   /* Get an index at which to store this unlock. */
@@ -107,7 +111,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
@@ -129,9 +132,14 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
     /* Non-splittable task? */
     if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
-        ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_timestep) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
       t->skip = 1;
       break;
     }
@@ -141,6 +149,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
+      const double hi = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -149,7 +158,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split? */
-      if (ci->split) {
+      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
 
         /* Make a sub? */
         if (scheduler_dosub &&
@@ -176,16 +185,19 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
                                     ci->progeny[k], NULL, 0),
                   s);
 
-          /* Make a task for each pair of progeny. */
-          for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-              for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL)
-                  scheduler_splittask(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        pts[j][k], 0, ci->progeny[j],
-                                        ci->progeny[k], 0),
-                      s);
+          /* Make a task for each pair of progeny unless it's ext. gravity. */
+          if (t->subtype != task_subtype_external_grav) {
+
+            for (int j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                for (int k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL)
+                    scheduler_splittask(
+                        scheduler_addtask(s, task_type_pair, t->subtype,
+                                          pts[j][k], 0, ci->progeny[j],
+                                          ci->progeny[k], 0),
+                        s);
+          }
         }
       }
 
@@ -207,7 +219,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
@@ -642,7 +654,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working in.
  */
-
 void scheduler_splittasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
@@ -656,6 +667,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Splits all the tasks in the scheduler that are too large.
+ *
+ * @param s The #scheduler.
+ */
 void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
@@ -670,15 +686,20 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param type The type of the task.
  * @param subtype The sub-type of the task.
  * @param flags The flags of the task.
- * @param wait
+ * @param wait The number of unsatisfied dependencies of this task.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
  * @param tight
  */
-
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags, int wait,
                                struct cell *ci, struct cell *cj, int tight) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci == NULL && cj != NULL)
+    error("Added a task with ci==NULL and cj!=NULL type=%s/%s",
+          taskID_names[type], subtaskID_names[subtype]);
+#endif
 
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
@@ -696,15 +717,17 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->wait = wait;
   t->ci = ci;
   t->cj = cj;
-  t->skip = 0;
+  t->skip = 1; /* Mark tasks as skip by default. */
   t->tight = tight;
   t->implicit = 0;
   t->weight = 0;
   t->rank = 0;
+  t->nr_unlock_tasks = 0;
+#ifdef SWIFT_DEBUG_TASKS
+  t->rid = -1;
   t->tic = 0;
   t->toc = 0;
-  t->nr_unlock_tasks = 0;
-  t->rid = -1;
+#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -720,7 +743,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  *
  * @param s The #scheduler.
  */
-
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
@@ -771,7 +793,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock!");
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                taskID_names[t->unlock_tasks[i]->type],
+                subtaskID_names[t->unlock_tasks[i]->subtype]);
       }
     }
   }
@@ -787,7 +812,6 @@ void scheduler_set_unlocks(struct scheduler *s) {
  *
  * @param s The #scheduler.
  */
-
 void scheduler_ranktasks(struct scheduler *s) {
 
   struct task *tasks = s->tasks;
@@ -853,7 +877,6 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param s The #scheduler.
  * @param size The maximum number of tasks in the #scheduler.
  */
-
 void scheduler_reset(struct scheduler *s, int size) {
 
   /* Do we need to re-allocate? */
@@ -862,6 +885,7 @@ void scheduler_reset(struct scheduler *s, int size) {
     /* Free existing task lists if necessary. */
     if (s->tasks != NULL) free(s->tasks);
     if (s->tasks_ind != NULL) free(s->tasks_ind);
+    if (s->tid_active != NULL) free(s->tid_active);
 
     /* Allocate the new lists. */
     if (posix_memalign((void *)&s->tasks, task_align,
@@ -870,6 +894,9 @@ void scheduler_reset(struct scheduler *s, int size) {
 
     if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
+
+    if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
+      error("Failed to allocate aactive task lists.");
   }
 
   /* Reset the counters. */
@@ -877,10 +904,9 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_tasks = 0;
   s->tasks_next = 0;
   s->waiting = 0;
-  s->mask = 0;
-  s->submask = 0;
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
+  s->active_count = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -890,9 +916,9 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @brief Compute the task weights
  *
  * @param s The #scheduler.
+ * @param verbose Are we talkative?
  */
-
-void scheduler_reweight(struct scheduler *s) {
+void scheduler_reweight(struct scheduler *s, int verbose) {
 
   const int nr_tasks = s->nr_tasks;
   int *tid = s->tasks_ind;
@@ -902,69 +928,79 @@ void scheduler_reweight(struct scheduler *s) {
                                0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
-  // ticks tic;
+  const ticks tic = getticks();
 
-  /* Run through the tasks backwards and set their waits and
-     weights. */
-  // tic = getticks();
+  /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
     t->weight = 0;
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    if (!t->implicit && t->tic > 0)
-      t->weight += wscale * (t->toc - t->tic);
-    else
-      switch (t->type) {
-        case task_type_sort:
-          t->weight += wscale * intrinsics_popcount(t->flags) * t->ci->count *
-                       (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
-          break;
-        case task_type_self:
-          t->weight += 1 * wscale * t->ci->count * t->ci->count;
-          break;
-        case task_type_pair:
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            t->weight +=
-                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+    int cost = 0;
+    switch (t->type) {
+      case task_type_sort:
+        cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
+        break;
+      case task_type_self:
+        cost = 1 * wscale * t->ci->count * t->ci->count;
+        break;
+      case task_type_pair:
+        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        else
+          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        break;
+      case task_type_sub_pair:
+        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+          if (t->flags < 0)
+            cost = 3 * wscale * t->ci->count * t->cj->count;
           else
-            t->weight +=
+            cost =
+                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        } else {
+          if (t->flags < 0)
+            cost = 2 * wscale * t->ci->count * t->cj->count;
+          else
+            cost =
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
-          break;
-        case task_type_sub_pair:
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-            if (t->flags < 0)
-              t->weight += 3 * wscale * t->ci->count * t->cj->count;
-            else
-              t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                           sid_scale[t->flags];
-          } else {
-            if (t->flags < 0)
-              t->weight += 2 * wscale * t->ci->count * t->cj->count;
-            else
-              t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                           sid_scale[t->flags];
-          }
-          break;
-        case task_type_sub_self:
-          t->weight += 1 * wscale * t->ci->count * t->ci->count;
-          break;
-        case task_type_ghost:
-          if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
-          break;
-        case task_type_kick:
-          t->weight += wscale * t->ci->count;
-          break;
-        case task_type_init:
-          t->weight += wscale * t->ci->count;
-          break;
-        default:
-          break;
-      }
+        }
+        break;
+      case task_type_sub_self:
+        cost = 1 * wscale * t->ci->count * t->ci->count;
+        break;
+      case task_type_ghost:
+        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        break;
+      case task_type_drift:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_kick1:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_kick2:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_timestep:
+        cost = wscale * t->ci->count;
+        break;
+      case task_type_init:
+        cost = wscale * t->ci->count;
+        break;
+      default:
+        cost = 0;
+        break;
+    }
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+    t->cost = cost;
+#endif
+    t->weight += cost;
   }
-  // message( "weighting tasks took %.3f %s." ,
-  // clocks_from_ticks( getticks() - tic ), clocks_getunit());
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* int min = tasks[0].weight, max = tasks[0].weight;
   for ( int k = 1 ; k < nr_tasks ; k++ )
@@ -979,19 +1015,20 @@ void scheduler_reweight(struct scheduler *s) {
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
  */
-
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
   struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *tasks = (struct task *)map_data;
+  const int *tid = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task *t = &s->tasks[tid[ind]];
 
-    if (t->skip || !((1 << t->type) & s->mask) ||
-        !((1 << t->subtype) & s->submask))
-      continue;
+    /* Ignore skipped tasks. */
+    if (t->skip) continue;
+
+    /* Increment the task's own wait counter for the enqueueing. */
+    atomic_inc(&t->wait);
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
@@ -1013,8 +1050,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask)) {
+    if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
     }
   }
@@ -1025,40 +1061,94 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  * @brief Start the scheduler, i.e. fill the queues with ready tasks.
  *
  * @param s The #scheduler.
- * @param mask The task types to enqueue.
- * @param submask The sub-task types to enqueue.
  */
-
-void scheduler_start(struct scheduler *s, unsigned int mask,
-                     unsigned int submask) {
-
-  // ticks tic = getticks();
-
-  /* Store the masks */
-  s->mask = mask;
-  s->submask = submask | (1 << task_subtype_none);
-
-  /* Clear all the waits and rids. */
-  for (int k = 0; k < s->nr_tasks; k++) {
-    s->tasks[k].wait = 1;
-    s->tasks[k].rid = -1;
-  }
+void scheduler_start(struct scheduler *s) {
 
   /* Re-wait the tasks. */
-  threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, s);
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 1000, s);
+  } else {
+    scheduler_rewait_mapper(s->tid_active, s->active_count, s);
+  }
+
+/* Check we have not missed an active task */
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_current = s->space->e->ti_current;
+
+  if (ti_current > 0) {
+
+    for (int k = 0; k < s->nr_tasks; k++) {
+
+      struct task *t = &s->tasks[k];
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      if (t->type == task_type_none) continue;
+
+      /* Don't check MPI stuff */
+      if (t->type == task_type_send || t->type == task_type_recv) continue;
+
+      if (ci == NULL && cj == NULL) {
+
+        error("Task not associated with cells!");
+
+      } else if (cj == NULL) { /* self */
+
+        if (ci->ti_end_min == ti_current && t->skip &&
+            t->type != task_type_sort && t->type)
+          error(
+              "Task (type='%s/%s') should not have been skipped "
+              "ti_current=%lld "
+              "c->ti_end_min=%lld",
+              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+              ci->ti_end_min);
+
+        /* Special treatment for sort tasks */
+        if (ci->ti_end_min == ti_current && t->skip &&
+            t->type == task_type_sort && t->flags == 0)
+          error(
+              "Task (type='%s/%s') should not have been skipped "
+              "ti_current=%lld "
+              "c->ti_end_min=%lld t->flags=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+              ci->ti_end_min, t->flags);
+
+      } else { /* pair */
+
+        if (t->skip) {
+
+          /* Check that the pair is active if the local cell is active */
+          if ((ci->ti_end_min == ti_current && ci->nodeID == engine_rank) ||
+              (cj->ti_end_min == ti_current && cj->nodeID == engine_rank))
+            error(
+                "Task (type='%s/%s') should not have been skipped "
+                "ti_current=%lld "
+                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
+                taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+                ci->ti_end_min, cj->ti_end_min);
+        }
+      }
+    }
+  }
+#endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
-                 s->nr_tasks, sizeof(int), 1000, s);
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 1000, s);
+  } else {
+    scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
+  }
+
+  /* Clear the list of active tasks. */
+  s->active_count = 0;
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
-
-  /* message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
 }
 
 /**
@@ -1067,20 +1157,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
  * @param s The #scheduler.
  * @param t The #task.
  */
-
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
 
-  /* Fail if this task has already been enqueued before. */
-  if (t->rid >= 0) error("Task has already been enqueued.");
-
-  /* Ignore skipped tasks and tasks not in the masks. */
-  if (t->skip || (1 << t->type) & ~(s->mask) ||
-      (1 << t->subtype) & ~(s->submask)) {
-    return;
-  }
+  /* Ignore skipped tasks */
+  if (t->skip) return;
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -1093,7 +1176,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Otherwise, look for a suitable queue. */
   else {
 #ifdef WITH_MPI
-    int err;
+    int err = MPI_SUCCESS;
 #endif
 
     /* Find the previous owner for each task type, and do
@@ -1103,43 +1186,49 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
-      case task_type_kick:
+      case task_type_kick1:
+      case task_type_kick2:
+      case task_type_drift:
+      case task_type_timestep:
       case task_type_init:
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
       case task_type_sub_pair:
-        if (t->subtype == task_subtype_grav) {
-
-          qid = t->ci->gsuper->owner;
-          if (qid < 0 ||
-              s->queues[qid].count > s->queues[t->cj->gsuper->owner].count)
-            qid = t->cj->gsuper->owner;
-
-        } else {
-
-          qid = t->ci->super->owner;
-          if (qid < 0 ||
-              s->queues[qid].count > s->queues[t->cj->super->owner].count)
-            qid = t->cj->super->owner;
-        }
+        qid = t->ci->super->owner;
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+          qid = t->cj->super->owner;
         break;
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
-        } else {
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho) {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          // message( "receiving %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          err = MPI_Irecv(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_spart) {
+          err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          err = MPI_Irecv(t->ci->multipole, 1, multipole_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
-        // message( "receiving %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
-        // fflush(stdout);
         qid = 1 % s->nr_queues;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1148,20 +1237,38 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
           cell_pack_ti_ends(t->ci, t->buff);
-          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
-        } else {
+          err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+                          MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
+                          &t->req);
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho) {
+#ifdef SWIFT_DEBUG_CHECKS
+          for (int k = 0; k < t->ci->count; k++)
+            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
+              error("Sending un-drifted particle !");
+#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          // message( "sending %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_spart) {
+          err = MPI_Isend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          err = MPI_Isend(t->ci->multipole, 1, multipole_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
-        // message( "sending %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
-        // fflush(stdout);
         qid = 0;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1193,7 +1300,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Release whatever locks this task held. */
@@ -1203,6 +1309,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+    if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
@@ -1214,12 +1321,17 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
+#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
+#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
+
+  /* Mark the task as skip. */
+  t->skip = 1;
 
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
@@ -1236,7 +1348,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
  */
-
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Loop through the dependencies and add them to a queue if
@@ -1253,7 +1364,9 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Task definitely done. */
   if (!t->implicit) {
+#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
+#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -1275,7 +1388,6 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
 
@@ -1324,10 +1436,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 1) {
+    if (res == NULL && qid > 1)
 #else
-    if (res == NULL) {
+    if (res == NULL)
 #endif
+    {
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
@@ -1337,11 +1450,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     }
   }
 
+#ifdef SWIFT_DEBUG_TASKS
   /* Start the timer on this task, if we got one. */
   if (res != NULL) {
     res->tic = getticks();
     res->rid = qid;
   }
+#endif
 
   /* No milk today. */
   return res;
@@ -1358,7 +1473,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  * @param nodeID The MPI rank
  * @param tp Parallel processing threadpool.
  */
-
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp) {
@@ -1367,8 +1481,8 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if ((s->queues = (struct queue *)malloc(sizeof(struct queue) * nr_queues)) ==
-      NULL)
+  if (posix_memalign((void **)&s->queues, queue_struct_align,
+                     sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
   /* Initialize each queue. */
@@ -1436,6 +1550,7 @@ void scheduler_clean(struct scheduler *s) {
   free(s->tasks_ind);
   free(s->unlocks);
   free(s->unlock_ind);
+  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
 }

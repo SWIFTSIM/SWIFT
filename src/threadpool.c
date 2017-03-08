@@ -59,14 +59,22 @@ void *threadpool_runner(void *data) {
     pthread_mutex_unlock(&tp->thread_mutex);
 
     /* The index of the mapping task we will work on next. */
-    size_t task_ind;
-    while ((task_ind = atomic_add(&tp->map_data_count, tp->map_data_chunk)) <
-           tp->map_data_size) {
-      const int num_elements = task_ind + tp->map_data_chunk > tp->map_data_size
-                                   ? tp->map_data_size - task_ind
-                                   : tp->map_data_chunk;
+    while (1) {
+      /* Desired chunk size. */
+      size_t chunk_size =
+          (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
+      if (chunk_size < 1) chunk_size = 1;
+
+      /* Get a chunk and check its size. */
+      size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
+      if (task_ind >= tp->map_data_size) break;
+      if (task_ind + chunk_size > tp->map_data_size)
+        chunk_size = tp->map_data_size - task_ind;
+
+      /* Call the mapper function. */
       tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
-                       num_elements, tp->map_extra_data);
+                       chunk_size, tp->map_extra_data);
     }
   }
 }
@@ -82,6 +90,10 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
   tp->num_threads_waiting = 0;
+
+  /* If there is only a single thread, do nothing more as of here as
+     we will just do work in the (blocked) calling thread. */
+  if (num_threads == 1) return;
 
   /* Init the threadpool mutexes. */
   if (pthread_mutex_init(&tp->thread_mutex, NULL) != 0)
@@ -135,6 +147,12 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data) {
+
+  /* If we just have a single thread, call the map function directly. */
+  if (tp->num_threads == 1) {
+    map_function(map_data, N, extra_data);
+    return;
+  }
 
   /* Set the map data and signal the threads. */
   pthread_mutex_lock(&tp->thread_mutex);

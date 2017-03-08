@@ -78,7 +78,7 @@ struct phys_const {
   double const_earth_mass;
 };
 
-void phys_const_init(struct UnitSystem* us, struct phys_const* internal_const);
+void phys_const_init(struct unit_system* us, struct phys_const* internal_const);
 
 void phys_const_print(struct phys_const* internal_const);
 

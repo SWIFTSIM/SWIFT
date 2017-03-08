@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_HYDRO_PART_H
+#define SWIFT_GIZMO_HYDRO_PART_H
+
+#include "cooling_struct.h"
 
 /* Extra particle data not needed during the computation. */
 struct xpart {
@@ -26,10 +30,19 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-} __attribute__((aligned(xpart_align)));
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {
+
+  /* Particle ID. */
+  long long id;
+
+  /* Associated gravitas. */
+  struct gpart *gpart;
 
   /* Particle position. */
   double x[3];
@@ -42,12 +55,6 @@ struct part {
 
   /* Particle smoothing length. */
   float h;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
 
   /* Old internal energy flux */
   float du_dt;
@@ -171,6 +178,9 @@ struct part {
     /* Physical time step of the particle. */
     float dt;
 
+    /* Flag keeping track of whether this is an active or inactive particle. */
+    char active;
+
     /* Actual velocity of the particle. */
     float v_full[3];
 
@@ -190,10 +200,19 @@ struct part {
 
   } gravity;
 
-  /* Particle ID. */
-  long long id;
+  /* Time-step length */
+  timebin_t time_bin;
 
-  /* Associated gravitas. */
-  struct gpart *gpart;
+#ifdef SWIFT_DEBUG_CHECKS
 
-} __attribute__((aligned(part_align)));
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
+} SWIFT_STRUCT_ALIGN;
+
+#endif /* SWIFT_GIZMO_HYDRO_PART_H */

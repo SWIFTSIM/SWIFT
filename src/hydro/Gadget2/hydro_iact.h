@@ -20,20 +20,19 @@
 #ifndef SWIFT_GADGET2_HYDRO_IACT_H
 #define SWIFT_GADGET2_HYDRO_IACT_H
 
-#include "minmax.h"
-
 /**
+ * @file Gadget2/hydro_iact.h
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
  * The interactions computed here are the ones presented in the Gadget-2 paper
- *and use the same
- * numerical coefficients as the Gadget-2 code. When used with the Spline-3
- *kernel, the results
- * should be equivalent to the ones obtained with Gadget-2 up to the rounding
- *errors and interactions
- * missed by the Gadget-2 tree-code neighbours search.
- *
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
+ * the Spline-3 kernel, the results should be equivalent to the ones obtained
+ * with Gadget-2 up to the rounding errors and interactions missed by the
+ * Gadget-2 tree-code neighbours search.
  */
+
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -60,7 +59,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -73,7 +72,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
@@ -156,20 +155,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
-   * added below.*/
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi_inv.v * hi.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   xi.v = r.v * hi_inv.v;
 
   hj.v = vec_load(Hj);
-  hj_inv.v = vec_rcp(hj.v);
-  hj_inv.v = hj_inv.v - hj_inv.v * (hj_inv.v * hj.v - vec_set1(1.0f));
+  hj_inv = vec_reciprocal(hj);
   xj.v = r.v * hj_inv.v;
 
   /* Compute the kernel function. */
@@ -210,13 +204,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   /* Update particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
-    pi[k]->rho_dh -= rhoi_dh.f[k];
+    pi[k]->density.rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
-    pj[k]->rho_dh -= rhoj_dh.f[k];
+    pj[k]->density.rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
     pj[k]->density.div_v -= div_vj.f[k];
@@ -227,7 +221,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   error(
       "The Gadget2 serial version of runner_iact_density was called when the "
-      "vectorised version should have been used.")
+      "vectorised version should have been used.");
 
 #endif
 }
@@ -249,17 +243,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float ri = 1.0f / r;
 
   /* Compute the kernel function */
-  const float h_inv = 1.0f / hi;
-  const float u = r * h_inv;
-  kernel_deval(u, &wi, &wi_dx);
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + u * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= u * wi_dx;
+  pi->density.wcount_dh -= ui * wi_dx;
 
   const float fac = mj * wi_dx * ri;
 
@@ -328,15 +322,11 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
-   * added below.*/
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi_inv.v * hi.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   xi.v = r.v * hi_inv.v;
 
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -367,7 +357,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   /* Update particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
-    pi[k]->rho_dh -= rhoi_dh.f[k];
+    pi[k]->density.rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v -= div_vi.f[k];
@@ -378,10 +368,180 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_density was called "
-      "when the vectorised version should have been used.")
+      "when the vectorised version should have been used.");
 
 #endif
 }
+
+#ifdef WITH_VECTORIZATION
+/**
+ * @brief Density interaction computed using 2 interleaved vectors
+ * (non-symmetric vectorized version).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_2_vec_density(
+    float *R2, float *Dx, float *Dy, float *Dz, vector hi_inv, vector vix,
+    vector viy, vector viz, float *Vjx, float *Vjy, float *Vjz, float *Mj,
+    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector mask, vector mask2, int knlMask, int knlMask2) {
+
+  vector r, ri, r2, xi, wi, wi_dx;
+  vector mj;
+  vector dx, dy, dz, dvx, dvy, dvz;
+  vector vjx, vjy, vjz;
+  vector dvdr;
+  vector curlvrx, curlvry, curlvrz;
+  vector r_2, ri2, r2_2, xi2, wi2, wi_dx2;
+  vector mj2;
+  vector dx2, dy2, dz2, dvx2, dvy2, dvz2;
+  vector vjx2, vjy2, vjz2;
+  vector dvdr2;
+  vector curlvrx2, curlvry2, curlvrz2;
+
+  /* Fill the vectors. */
+  mj.v = vec_load(Mj);
+  mj2.v = vec_load(&Mj[VEC_SIZE]);
+  vjx.v = vec_load(Vjx);
+  vjx2.v = vec_load(&Vjx[VEC_SIZE]);
+  vjy.v = vec_load(Vjy);
+  vjy2.v = vec_load(&Vjy[VEC_SIZE]);
+  vjz.v = vec_load(Vjz);
+  vjz2.v = vec_load(&Vjz[VEC_SIZE]);
+  dx.v = vec_load(Dx);
+  dx2.v = vec_load(&Dx[VEC_SIZE]);
+  dy.v = vec_load(Dy);
+  dy2.v = vec_load(&Dy[VEC_SIZE]);
+  dz.v = vec_load(Dz);
+  dz2.v = vec_load(&Dz[VEC_SIZE]);
+
+  /* Get the radius and inverse radius. */
+  r2.v = vec_load(R2);
+  r2_2.v = vec_load(&R2[VEC_SIZE]);
+  ri = vec_reciprocal_sqrt(r2);
+  ri2 = vec_reciprocal_sqrt(r2_2);
+  r.v = vec_mul(r2.v, ri.v);
+  r_2.v = vec_mul(r2_2.v, ri2.v);
+
+  xi.v = vec_mul(r.v, hi_inv.v);
+  xi2.v = vec_mul(r_2.v, hi_inv.v);
+
+  /* Calculate the kernel for two particles. */
+  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi2, &wi2, &wi_dx2);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvx2.v = vec_sub(vix.v, vjx2.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvy2.v = vec_sub(viy.v, vjy2.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
+  dvz2.v = vec_sub(viz.v, vjz2.v);
+
+  /* Compute dv dot r */
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr2.v =
+      vec_fma(dvx2.v, dx2.v, vec_fma(dvy2.v, dy2.v, vec_mul(dvz2.v, dz2.v)));
+  dvdr.v = vec_mul(dvdr.v, ri.v);
+  dvdr2.v = vec_mul(dvdr2.v, ri2.v);
+
+  /* Compute dv cross r */
+  curlvrx.v =
+      vec_fma(dvy.v, dz.v, vec_mul(vec_set1(-1.0f), vec_mul(dvz.v, dy.v)));
+  curlvrx2.v =
+      vec_fma(dvy2.v, dz2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvz2.v, dy2.v)));
+  curlvry.v =
+      vec_fma(dvz.v, dx.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx.v, dz.v)));
+  curlvry2.v =
+      vec_fma(dvz2.v, dx2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvx2.v, dz2.v)));
+  curlvrz.v =
+      vec_fma(dvx.v, dy.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy.v, dx.v)));
+  curlvrz2.v =
+      vec_fma(dvx2.v, dy2.v, vec_mul(vec_set1(-1.0f), vec_mul(dvy2.v, dx2.v)));
+  curlvrx.v = vec_mul(curlvrx.v, ri.v);
+  curlvrx2.v = vec_mul(curlvrx2.v, ri2.v);
+  curlvry.v = vec_mul(curlvry.v, ri.v);
+  curlvry2.v = vec_mul(curlvry2.v, ri2.v);
+  curlvrz.v = vec_mul(curlvrz.v, ri.v);
+  curlvrz2.v = vec_mul(curlvrz2.v, ri2.v);
+
+/* Mask updates to intermediate vector sums for particle pi. */
+#ifdef HAVE_AVX512_F
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask, vec_mul(mj.v, wi.v), rhoSum->v);
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask2, vec_mul(mj2.v, wi2.v), rhoSum->v);
+
+  rho_dhSum->v =
+      _mm512_mask_sub_ps(rho_dhSum->v, knlMask, rho_dhSum->v,
+                         vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                               vec_mul(xi.v, wi_dx.v))));
+  rho_dhSum->v = _mm512_mask_sub_ps(
+      rho_dhSum->v, knlMask2, rho_dhSum->v,
+      vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
+                             vec_mul(xi2.v, wi_dx2.v))));
+
+  wcountSum->v = _mm512_mask_add_ps(wcountSum->v, knlMask, wi.v, wcountSum->v);
+  wcountSum->v =
+      _mm512_mask_add_ps(wcountSum->v, knlMask2, wi2.v, wcountSum->v);
+
+  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask,
+                                       wcount_dhSum->v, vec_mul(xi.v, wi_dx.v));
+  wcount_dhSum->v = _mm512_mask_sub_ps(
+      wcount_dhSum->v, knlMask2, wcount_dhSum->v, vec_mul(xi2.v, wi_dx2.v));
+
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask, div_vSum->v,
+                                   vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask2, div_vSum->v,
+                                   vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)));
+
+  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
+                                    curlvxSum->v);
+  curlvxSum->v = _mm512_mask_add_ps(
+      curlvxSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)),
+      curlvxSum->v);
+
+  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
+                                    curlvySum->v);
+  curlvySum->v = _mm512_mask_add_ps(
+      curlvySum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)),
+      curlvySum->v);
+
+  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
+                                    curlvzSum->v);
+  curlvzSum->v = _mm512_mask_add_ps(
+      curlvzSum->v, knlMask2, vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)),
+      curlvzSum->v);
+#else
+  rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
+  rhoSum->v += vec_and(vec_mul(mj2.v, wi2.v), mask2.v);
+  rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                                vec_mul(xi.v, wi_dx.v))),
+                          mask.v);
+  rho_dhSum->v -=
+      vec_and(vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
+                                     vec_mul(xi2.v, wi_dx2.v))),
+              mask2.v);
+  wcountSum->v += vec_and(wi.v, mask.v);
+  wcountSum->v += vec_and(wi2.v, mask2.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi2.v, wi_dx2.v), mask2.v);
+  div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
+  div_vSum->v -= vec_and(vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)), mask2.v);
+  curlvxSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)), mask.v);
+  curlvxSum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)), mask2.v);
+  curlvySum->v += vec_and(vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)), mask.v);
+  curlvySum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)), mask2.v);
+  curlvzSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)), mask.v);
+  curlvzSum->v +=
+      vec_and(vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)), mask2.v);
+#endif
+}
+#endif
 
 /**
  * @brief Force loop
@@ -416,7 +576,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute gradient terms */
+  /* Compute h-gradient terms */
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
+
+  /* Compute pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
   const float P_over_rho2_j = pj->force.P_over_rho2;
 
@@ -448,7 +612,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
   const float sph_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -489,9 +653,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   vector hi, hj, hi_inv, hj_inv;
   vector hid_inv, hjd_inv;
   vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
-  vector piPOrho, pjPOrho, pirho, pjrho;
+  vector piPOrho2, pjPOrho2, pirho, pjrho;
   vector mi, mj;
   vector f;
+  vector grad_hi, grad_hj;
   vector dx[3];
   vector vi[3], vj[3];
   vector pia[3], pja[3];
@@ -509,14 +674,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                  pi[4]->mass, pi[5]->mass, pi[6]->mass, pi[7]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
-                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
-  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
-                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f,
+              pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f,
+              pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -548,10 +719,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 #elif VEC_SIZE == 4
   mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
-  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
@@ -574,14 +749,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   /* Get the kernel for hi. */
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi.v * hi_inv.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   hid_inv = pow_dimension_plus_one_vec(hi_inv); /* 1/h^(d+1) */
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -589,8 +762,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
-  hj_inv.v = vec_rcp(hj.v);
-  hj_inv.v = hj_inv.v - hj_inv.v * (hj.v * hj_inv.v - vec_set1(1.0f));
+  hj_inv = vec_reciprocal(hj);
   hjd_inv = pow_dimension_plus_one_vec(hj_inv); /* 1/h^(d+1) */
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
@@ -616,7 +788,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  sph_term.v = (piPOrho.v * wi_dr.v + pjPOrho.v * wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;
@@ -653,7 +827,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_force was called when "
-      "the vectorised version should have been used.")
+      "the vectorised version should have been used.");
 
 #endif
 }
@@ -691,7 +865,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute gradient terms */
+  /* Compute h-gradient terms */
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
+
+  /* Compute pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
   const float P_over_rho2_j = pj->force.P_over_rho2;
 
@@ -723,7 +901,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
   const float sph_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -757,9 +935,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   vector hi, hj, hi_inv, hj_inv;
   vector hid_inv, hjd_inv;
   vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
-  vector piPOrho, pjPOrho, pirho, pjrho;
+  vector piPOrho2, pjPOrho2, pirho, pjrho;
   vector mj;
   vector f;
+  vector grad_hi, grad_hj;
   vector dx[3];
   vector vi[3], vj[3];
   vector pia[3];
@@ -775,14 +954,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #if VEC_SIZE == 8
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
-                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
-  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
-                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f,
+              pi[4]->force.f, pi[5]->force.f, pi[6]->force.f, pi[7]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f,
+              pj[4]->force.f, pj[5]->force.f, pj[6]->force.f, pj[7]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -813,10 +998,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
               pj[6]->force.balsara, pj[7]->force.balsara);
 #elif VEC_SIZE == 4
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
-  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  grad_hi.v =
+      vec_set(pi[0]->force.f, pi[1]->force.f, pi[2]->force.f, pi[3]->force.f);
+  grad_hj.v =
+      vec_set(pj[0]->force.f, pj[1]->force.f, pj[2]->force.f, pj[3]->force.f);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
@@ -839,14 +1028,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
-  ri.v = vec_rsqrt(r2.v);
-  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   /* Get the kernel for hi. */
   hi.v = vec_load(Hi);
-  hi_inv.v = vec_rcp(hi.v);
-  hi_inv.v = hi_inv.v - hi_inv.v * (hi.v * hi_inv.v - vec_set1(1.0f));
+  hi_inv = vec_reciprocal(hi);
   hid_inv = pow_dimension_plus_one_vec(hi_inv);
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
@@ -854,8 +1041,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
-  hj_inv.v = vec_rcp(hj.v);
-  hj_inv.v = hj_inv.v - hj_inv.v * (hj.v * hj_inv.v - vec_set1(1.0f));
+  hj_inv = vec_reciprocal(hj);
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
@@ -881,7 +1067,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  sph_term.v = (piPOrho.v * wi_dr.v + pjPOrho.v * wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;
@@ -910,7 +1098,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   error(
       "The Gadget2 serial version of runner_iact_nonsym_force was called when "
-      "the vectorised version should have been used.")
+      "the vectorised version should have been used.");
 
 #endif
 }

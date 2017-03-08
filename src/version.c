@@ -39,13 +39,34 @@
 
 /* Some standard headers. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* This object's header. */
+#include "error.h"
 #include "version.h"
 
 /* Local headers. */
 #include "version_string.h"
+
+/**
+ * @brief Return the hostname
+ *
+ * Will return the name of the host.
+ *
+ * @result the hostname.
+ */
+const char *hostname(void) {
+  static char buf[256];
+  static int initialised = 0;
+  if (!initialised) {
+    buf[255] = '\0';
+    if (gethostname(buf, 255)) sprintf(buf, "%s", "Unknown host");
+    initialised = 1;
+  }
+  return buf;
+}
 
 /**
  * @brief Return the source code git revision
@@ -85,6 +106,65 @@ const char *git_branch(void) {
       sprintf(buf, "%s", "unknown");
     else
       sprintf(buf, "%s", branch);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the date of the commit in the git repository
+ *
+ * The date of the commit of the code we are running.
+ *
+ * @result git branch
+ */
+const char *git_date(void) {
+  static char buf[256];
+  static int initialised = 0;
+  static const char *date = GIT_DATE;
+  if (!initialised) {
+    if (strlen(date) == 0)
+      sprintf(buf, "%s", "unknown");
+    else
+      sprintf(buf, "%s", date);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the options passed to the 'configure' script
+ *
+ * @result List of configuration options within simple quotes (').
+ */
+const char *configuration_options(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *config = SWIFT_CONFIG_FLAGS;
+  if (!initialised) {
+    if (strlen(config) < 1024 - 2)
+      sprintf(buf, "'%s'", config);
+    else
+      error("SWIFT_CONFIG_FLAGS string longer than buffer");
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the CFLAGS the code was compiled with
+ *
+ * @result List of CFLAGS within simple quotes (').
+ */
+const char *compilation_cflags(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *cflags = SWIFT_CFLAGS;
+  if (!initialised) {
+    if (strlen(cflags) < 1024 - 2)
+      sprintf(buf, "'%s'", cflags);
+    else
+      error("SWIFT_CFLAGS string longer than buffer");
     initialised = 1;
   }
   return buf;
@@ -273,9 +353,13 @@ void greetings(void) {
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
-  printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
-  printf(" Webpage : www.swiftsim.com\n\n");
+  printf(" Revision: %s, Branch: %s, Date: %s\n", git_revision(), git_branch(),
+         git_date());
+  printf(" Webpage : %s\n\n", PACKAGE_URL);
+  printf(" Config. options: %s\n\n", configuration_options());
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
+  printf(" CFLAGS  : %s\n", compilation_cflags());
+  printf("\n");
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());
 #endif

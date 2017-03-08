@@ -32,8 +32,17 @@
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
 
+#define _DOPAIR1_NOSORT(f) PASTE(runner_dopair1_nosort, f)
+#define DOPAIR1_NOSORT _DOPAIR1_NOSORT(FUNCTION)
+
+#define _DOPAIR2_NOSORT(f) PASTE(runner_dopair2_nosort, f)
+#define DOPAIR2_NOSORT _DOPAIR2_NOSORT(FUNCTION)
+
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset, f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
+
+#define _DOPAIR_SUBSET_NOSORT(f) PASTE(runner_dopair_subset_nosort, f)
+#define DOPAIR_SUBSET_NOSORT _DOPAIR_SUBSET_NOSORT(FUNCTION)
 
 #define _DOPAIR_SUBSET_NAIVE(f) PASTE(runner_dopair_subset_naive, f)
 #define DOPAIR_SUBSET_NAIVE _DOPAIR_SUBSET_NAIVE(FUNCTION)
@@ -98,6 +107,8 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
+#include "runner_doiact_nosort.h"
+
 /**
  * @brief Compute the interactions between a cell pair.
  *
@@ -109,11 +120,10 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
                   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
-  const int ti_current = e->ti_current;
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -124,7 +134,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -168,7 +178,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
         IACT(r2, dx, hi, pj->h, pi, pj);
 
@@ -198,7 +208,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -210,11 +220,11 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
 
 void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -226,7 +236,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->ti_end_min > ti_current) return;
+  if (!cell_is_active(c, e)) return;
 
   const int count = c->count;
   struct part *restrict parts = c->parts;
@@ -257,7 +267,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
         IACT(r2, dx, hi, pj->h, pi, pj);
 
@@ -287,7 +297,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
   } /* loop over the parts in ci. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -316,7 +326,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -366,7 +376,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -396,7 +406,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -423,7 +433,14 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   struct engine *e = r->e;
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_MPI
+  if (ci->nodeID != cj->nodeID) {
+    DOPAIR_SUBSET_NOSORT(r, ci, parts_i, ind, count, cj);
+    return;
+  }
+#endif
+
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -498,7 +515,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -563,7 +580,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -594,7 +611,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
     } /* loop over the parts in ci. */
   }
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -617,7 +634,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -657,7 +674,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.0f && r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -687,7 +704,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -706,10 +723,16 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  */
 void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
-  struct engine *restrict e = r->e;
-  const int ti_current = e->ti_current;
+  const struct engine *restrict e = r->e;
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_MPI
+  if (ci->nodeID != cj->nodeID) {
+    DOPAIR1_NOSORT(r, ci, cj);
+    return;
+  }
+#endif
+
+#ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -721,7 +744,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -750,131 +776,155 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max + cj->dx_max);
 
-  /* Loop over the parts in ci. */
-  for (int pid = count_i - 1;
-       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-
-    /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts_i[sort_i[pid].i];
-    if (pi->ti_end > ti_current) continue;
-    const float hi = pi->h;
-    const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
-    if (di < dj_min) continue;
-
-    double pix[3];
-    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
-    const float hig2 = hi * hi * kernel_gamma2;
-
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
-
-      /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
-      for (int k = 0; k < 3; k++) {
-        dx[k] = pix[k] - pj->x[k];
-        r2 += dx[k] * dx[k];
-      }
-
-      /* Hit or miss? */
-      if (r2 < hig2) {
-
-#ifndef WITH_VECTORIZATION
-
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
-      }
-
-    } /* loop over the parts in cj. */
-
-  } /* loop over the parts in ci. */
-
-  /* Loop over the parts in cj. */
-  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
-       pjd++) {
-
-    /* Get a hold of the jth part in cj. */
-    struct part *restrict pj = &parts_j[sort_j[pjd].i];
-    if (pj->ti_end > ti_current) continue;
-    const float hj = pj->h;
-    const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
-    if (dj > di_max) continue;
-
-    double pjx[3];
-    for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
-    const float hjg2 = hj * hj * kernel_gamma2;
+  if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci. */
-    for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+    for (int pid = count_i - 1;
+         pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
-      /* Get a pointer to the jth particle. */
+      /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (!part_is_active(pi, e)) continue;
+      const float hi = pi->h;
+      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+      if (di < dj_min) continue;
 
-      /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
-      for (int k = 0; k < 3; k++) {
-        dx[k] = pjx[k] - pi->x[k];
-        r2 += dx[k] * dx[k];
-      }
+      double pix[3];
+      for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+      const float hig2 = hi * hi * kernel_gamma2;
 
-      /* Hit or miss? */
-      if (r2 < hjg2) {
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
-#ifndef WITH_VECTORIZATION
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
-        IACT_NONSYM(r2, dx, hj, pi->h, pj, pi);
+        /* Compute the pairwise distance. */
+        float r2 = 0.0f;
+        float dx[3];
+        for (int k = 0; k < 3; k++) {
+          dx[k] = pix[k] - pj->x[k];
+          r2 += dx[k] * dx[k];
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+
+#ifndef WITH_OLD_VECTORIZATION
+
+          IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
 #else
 
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hj;
-        hjq[icount] = pi->h;
-        piq[icount] = pj;
-        pjq[icount] = pi;
-        icount += 1;
+          /* Add this interaction to the queue. */
+          r2q[icount] = r2;
+          dxq[3 * icount + 0] = dx[0];
+          dxq[3 * icount + 1] = dx[1];
+          dxq[3 * icount + 2] = dx[2];
+          hiq[icount] = hi;
+          hjq[icount] = pj->h;
+          piq[icount] = pi;
+          pjq[icount] = pj;
+          icount += 1;
 
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
+          /* Flush? */
+          if (icount == VEC_SIZE) {
+            IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+            icount = 0;
+          }
 
 #endif
-      }
+        }
+
+      } /* loop over the parts in cj. */
+
+    } /* loop over the parts in ci. */
+
+  } /* Cell ci is active */
+
+  if (cell_is_active(cj, e)) {
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+         pjd++) {
+
+      /* Get a hold of the jth part in cj. */
+      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      if (!part_is_active(pj, e)) continue;
+      const float hj = pj->h;
+      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+      if (dj > di_max) continue;
+
+      double pjx[3];
+      for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      /* Loop over the parts in ci. */
+      for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
+
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pi = &parts_i[sort_i[pid].i];
+
+        /* Compute the pairwise distance. */
+        float r2 = 0.0f;
+        float dx[3];
+        for (int k = 0; k < 3; k++) {
+          dx[k] = pjx[k] - pi->x[k];
+          r2 += dx[k] * dx[k];
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hjg2) {
+
+#ifndef WITH_OLD_VECTORIZATION
+
+          IACT_NONSYM(r2, dx, hj, pi->h, pj, pi);
+
+#else
+
+          /* Add this interaction to the queue. */
+          r2q[icount] = r2;
+          dxq[3 * icount + 0] = dx[0];
+          dxq[3 * icount + 1] = dx[1];
+          dxq[3 * icount + 2] = dx[2];
+          hiq[icount] = hj;
+          hjq[icount] = pi->h;
+          piq[icount] = pj;
+          pjq[icount] = pi;
+          icount += 1;
+
+          /* Flush? */
+          if (icount == VEC_SIZE) {
+            IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+            icount = 0;
+          }
+
+#endif
+        }
+
+      } /* loop over the parts in ci. */
 
     } /* loop over the parts in cj. */
 
-  } /* loop over the parts in ci. */
+  } /* Cell cj is active */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -894,9 +944,15 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
-  const int ti_current = e->ti_current;
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_MPI
+  if (ci->nodeID != cj->nodeID) {
+    DOPAIR2_NOSORT(r, ci, cj);
+    return;
+  }
+#endif
+
+#ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -914,7 +970,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  if (!cell_is_drifted(ci, e)) error("Cell ci not drifted");
+  if (!cell_is_drifted(cj, e)) error("Cell cj not drifted");
 
   /* Get the shift ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -946,28 +1005,28 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Collect the number of parts left and right below dt. */
   int countdt_i = 0, countdt_j = 0;
   struct entry *restrict sortdt_i = NULL, *restrict sortdt_j = NULL;
-  if (ci->ti_end_max <= ti_current) {
+  if (cell_is_all_active(ci, e)) {
     sortdt_i = sort_i;
     countdt_i = count_i;
-  } else if (ci->ti_end_min <= ti_current) {
+  } else if (cell_is_active(ci, e)) {
     if (posix_memalign((void *)&sortdt_i, VEC_SIZE * sizeof(float),
                        sizeof(struct entry) * count_i) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_i; k++)
-      if (parts_i[sort_i[k].i].ti_end <= ti_current) {
+      if (part_is_active(&parts_i[sort_i[k].i], e)) {
         sortdt_i[countdt_i] = sort_i[k];
         countdt_i += 1;
       }
   }
-  if (cj->ti_end_max <= ti_current) {
+  if (cell_is_all_active(cj, e)) {
     sortdt_j = sort_j;
     countdt_j = count_j;
-  } else if (cj->ti_end_min <= ti_current) {
+  } else if (cell_is_active(cj, e)) {
     if (posix_memalign((void *)&sortdt_j, VEC_SIZE * sizeof(float),
                        sizeof(struct entry) * count_j) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_j; k++)
-      if (parts_j[sort_j[k].i].ti_end <= ti_current) {
+      if (part_is_active(&parts_j[sort_j[k].i], e)) {
         sortdt_j[countdt_j] = sort_j[k];
         countdt_j += 1;
       }
@@ -988,7 +1047,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Look at valid dt parts only? */
-    if (pi->ti_end > ti_current) {
+    if (!part_is_active(pi, e)) {
 
       /* Loop over the parts in cj within dt. */
       for (int pjd = 0; pjd < countdt_j && sortdt_j[pjd].d < di; pjd++) {
@@ -1005,10 +1064,18 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1056,13 +1123,21 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           /* Does pj need to be updated too? */
-          if (pj->ti_end <= ti_current)
+          if (part_is_active(pj, e))
             IACT(r2, dx, hi, hj, pi, pj);
           else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
@@ -1070,7 +1145,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #else
 
           /* Does pj need to be updated too? */
-          if (pj->ti_end <= ti_current) {
+          if (part_is_active(pj, e)) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
@@ -1132,7 +1207,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     const float hjg2 = hj * hj * kernel_gamma2;
 
     /* Is this particle outside the dt? */
-    if (pj->ti_end > ti_current) {
+    if (!part_is_active(pj, e)) {
 
       /* Loop over the parts in ci. */
       for (int pid = countdt_i - 1; pid >= 0 && sortdt_i[pid].d > dj; pid--) {
@@ -1149,10 +1224,18 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
 
@@ -1199,13 +1282,21 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           /* Does pi need to be updated too? */
-          if (pi->ti_end <= ti_current)
+          if (part_is_active(pi, e))
             IACT(r2, dx, hj, hi, pj, pi);
           else
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
@@ -1213,7 +1304,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #else
 
           /* Does pi need to be updated too? */
-          if (pi->ti_end <= ti_current) {
+          if (part_is_active(pi, e)) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
@@ -1260,7 +1351,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)
@@ -1270,10 +1361,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
-  if (ci->ti_end_max > ti_current && ci->ti_end_min <= ti_current)
-    free(sortdt_i);
-  if (cj->ti_end_max > ti_current && cj->ti_end_min <= ti_current)
-    free(sortdt_j);
+  /* Clean-up if necessary */
+  if (cell_is_active(ci, e) && !cell_is_all_active(ci, e)) free(sortdt_i);
+  if (cell_is_active(cj, e) && !cell_is_all_active(cj, e)) free(sortdt_j);
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -1286,9 +1376,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
  */
 void DOSELF1(struct runner *r, struct cell *restrict c) {
 
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1305,8 +1395,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1318,7 +1409,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
-    if (parts[k].ti_end <= ti_current) {
+    if (part_is_active(&parts[k], e)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -1336,7 +1427,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle inactive? */
-    if (pi->ti_end > ti_current) {
+    if (!part_is_active(pi, e)) {
 
       /* Loop over the other particles .*/
       for (int pjd = firstdt; pjd < countdt; pjd++) {
@@ -1344,6 +1435,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -1356,7 +1455,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1407,12 +1506,20 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
         const int doj =
-            (pj->ti_end <= ti_current) && (r2 < hj * hj * kernel_gamma2);
+            (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
         /* Hit or miss? */
         if (r2 < hig2 || doj) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           /* Which parts need to be updated? */
           if (r2 < hig2 && doj)
@@ -1495,7 +1602,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   } /* loop over all particles. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)
@@ -1518,9 +1625,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
  */
 void DOSELF2(struct runner *r, struct cell *restrict c) {
 
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1537,8 +1644,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  if (c->ti_end_min > ti_current) return;
-  if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1550,7 +1658,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
-    if (parts[k].ti_end <= ti_current) {
+    if (part_is_active(&parts[k], e)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -1568,7 +1676,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle not active? */
-    if (pi->ti_end > ti_current) {
+    if (!part_is_active(pi, e)) {
 
       /* Loop over the other particles .*/
       for (int pjd = firstdt; pjd < countdt; pjd++) {
@@ -1585,10 +1693,18 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1639,13 +1755,21 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_VECTORIZATION
+#ifndef WITH_OLD_VECTORIZATION
 
           /* Does pj need to be updated too? */
-          if (pj->ti_end <= ti_current)
+          if (part_is_active(pj, e))
             IACT(r2, dx, hi, hj, pi, pj);
           else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
@@ -1653,7 +1777,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #else
 
           /* Does pj need to be updated too? */
-          if (pj->ti_end <= ti_current) {
+          if (part_is_active(pj, e)) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
@@ -1700,7 +1824,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   } /* loop over all particles. */
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)
@@ -1731,12 +1855,12 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
                  int gettimer) {
 
   struct space *s = r->e->s;
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Get the cell dimensions. */
   const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
@@ -1950,7 +2074,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
+  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
@@ -1972,12 +2096,14 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
  */
 void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
-  const int ti_current = r->e->ti_current;
-
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, r->e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_is_drifted(ci, r->e);
+#endif
 
   /* Recurse? */
   if (ci->split) {
@@ -1993,8 +2119,14 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   }
 
   /* Otherwise, compute self-interaction. */
-  else
+  else {
+#if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
+    defined(GADGET2_SPH)
+    runner_doself1_density_vec(r, ci);
+#else
     DOSELF1(r, ci);
+#endif
+  }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
@@ -2014,13 +2146,13 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
                  int gettimer) {
 
-  struct space *s = r->e->s;
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
+  struct space *s = e->s;
 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Get the cell dimensions. */
   const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
@@ -2234,7 +2366,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
+  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
@@ -2256,12 +2388,10 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
  */
 void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 
-  const int ti_current = r->e->ti_current;
-
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->ti_end_min > ti_current) return;
+  if (!cell_is_active(ci, r->e)) return;
 
   /* Recurse? */
   if (ci->split) {
@@ -2287,8 +2417,8 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                   int *ind, int count, struct cell *cj, int sid, int gettimer) {
 
-  struct space *s = r->e->s;
-  const int ti_current = r->e->ti_current;
+  const struct engine *e = r->e;
+  struct space *s = e->s;
 
   TIMER_TIC;
 
@@ -2850,7 +2980,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
+    else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
       /* Get the relative distance between the pairs, wrapping. */
       double shift[3] = {0.0, 0.0, 0.0};

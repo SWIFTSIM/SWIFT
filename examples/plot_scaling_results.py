@@ -49,7 +49,7 @@ hexcols = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77',
            '#CC6677', '#882255', '#AA4499', '#661100', '#6699CC', '#AA4466',
            '#4477AA']
 linestyle = (hexcols[0],hexcols[1],hexcols[3],hexcols[5],hexcols[6],hexcols[8])
-#cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
+#cmdLine = './swift -s -t 16 cosmoVolume.yml'
 #platform = 'KNL'
 
 # Work out how many data series there are
@@ -131,8 +131,10 @@ def parse_files():
     file_list = [ file_list[j] for j in sorted_indices]
 
     parse_header(file_list[0])
+
+    branch[i] = branch[i].replace("_", "\\_") 
     
-    version.append(branch[i] + " " + revision[i] + "\n" + hydro_scheme[i] + 
+    version.append("$\\textrm{%s}$"%str(branch[i]) + " " + revision[i] + "\n" + hydro_scheme[i] + 
                    "\n" + hydro_kernel[i] + r", $N_{ngb}=%d$"%float(hydro_neighbours[i]) + 
                    r", $\eta=%.3f$"%float(hydro_eta[i]))
     times.append([])
@@ -215,14 +217,21 @@ def plot_results(times,totalTime,speedUp,parallelEff):
     pts = [1, 10**np.floor(np.log10(threadList[i][-1])+1)]
     totalTimePlot.loglog(pts,totalTime[i][0]/pts, 'k--', lw=1., color='0.2')
     totalTimePlot.loglog(threadList[i],totalTime[i],linestyle[i],label=version[i])
-  
+
+  y_min = 10**np.floor(np.log10(np.min(totalTime[:][-1])*0.6))
+  y_max = 1.2*10**np.floor(np.log10(np.max(totalTime[:][0]) * 1.5)+1)
   totalTimePlot.set_xscale('log')
   totalTimePlot.set_xlabel("${\\rm Threads}$", labelpad=0.)
   totalTimePlot.set_ylabel("${\\rm Time~to~solution}~[{\\rm ms}]$", labelpad=0.)
   totalTimePlot.set_xlim([0.9, 10**(np.floor(np.log10(threadList[i][-1]))+0.5)])
-  totalTimePlot.set_ylim([10**np.floor(np.log10(np.min(totalTime)*0.6)), 1.2*10**np.floor(np.log10(np.max(totalTime) * 1.5)+1)])
+  totalTimePlot.set_ylim(y_min, y_max)
+
+  ax2 = totalTimePlot.twinx()
+  ax2.set_yscale('log')
+  ax2.set_ylabel("${\\rm Time~to~solution}~[{\\rm hr}]$", labelpad=0.)
+  ax2.set_ylim(y_min / 3.6e6, y_max / 3.6e6)
   
-  totalTimePlot.legend(bbox_to_anchor=(1.14, 0.97), loc=2, borderaxespad=0.,prop={'size':12}, frameon=False)
+  totalTimePlot.legend(bbox_to_anchor=(1.21, 0.97), loc=2, borderaxespad=0.,prop={'size':12}, frameon=False)
   emptyPlot.axis('off')
   
   for i, txt in enumerate(threadList[0]):

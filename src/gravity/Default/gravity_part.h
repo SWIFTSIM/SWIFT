@@ -19,11 +19,12 @@
 #ifndef SWIFT_DEFAULT_GRAVITY_PART_H
 #define SWIFT_DEFAULT_GRAVITY_PART_H
 
-/* Some standard headers. */
-#include <stdlib.h>
-
 /* Gravity particle. */
 struct gpart {
+
+  /* Particle ID. If negative, it is the negative offset of the #part with
+     which this gpart is linked. */
+  long long id_or_neg_offset;
 
   /* Particle position. */
   double x[3];
@@ -43,16 +44,32 @@ struct gpart {
   /* Softening length */
   float epsilon;
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
+  /* Time-step length */
+  timebin_t time_bin;
 
-  /* Particle time of end of time-step. */
-  int ti_end;
+  /* Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
 
-  /* Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
-  long long id_or_neg_offset;
+#ifdef SWIFT_DEBUG_CHECKS
 
-} __attribute__((aligned(gpart_align)));
+  /* Total mass this gpart interacted with */
+  double mass_interacted;
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /* Brute-force particle acceleration. */
+  float a_grav_exact[3];
+
+#endif
+
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */

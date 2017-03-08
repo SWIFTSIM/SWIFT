@@ -24,6 +24,7 @@
 #define SWIFT_COOLING_CONST_LAMBDA_H
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
@@ -35,64 +36,28 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* Cooling Properties */
-struct cooling_data {
-
-  /*! Cooling rate in cgs units. Defined by 'rho * du/dt = -lambda * n_H^2'*/
-  float lambda;
-
-  /*! Minimum temperature (in Kelvin) for all gas particles*/
-  float min_temperature;
-
-  /*! Fraction of gas mass that is Hydrogen. Used to calculate n_H*/
-  float hydrogen_mass_abundance;
-
-  /* 'mu', used to convert min_temperature to min_internal energy*/
-  float mean_molecular_weight;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-  float min_energy_cgs;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
-
 /**
  * @brief Calculates du/dt in code units for a particle.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data..
  */
 __attribute__((always_inline)) INLINE static float cooling_rate(
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, const struct part* p) {
+    const struct phys_const* const phys_const, const struct unit_system* us,
+    const struct cooling_function_data* cooling, const struct part* p) {
 
-  /* Get particle properties */
-  /* Density */
+  /* Get particle density */
   const float rho = hydro_get_density(p);
+
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
-  /* lambda should always be set in cgs units */
-  const float lambda_cgs = cooling->lambda;
-
-  /*convert from internal code units to cgs*/
-  const float rho_cgs =
-      rho * units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  const float m_p_cgs = phys_const->const_proton_mass *
-                        units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const float n_H_cgs = X_H * rho_cgs / m_p_cgs;
 
   /* Calculate du_dt */
-  const float du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
-
-  /* Convert du/dt back to internal code units */
-  const float du_dt =
-      du_dt_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
-
+  const float du_dt = -cooling->lambda *
+                      (X_H * rho / phys_const->const_proton_mass) *
+                      (X_H * rho / phys_const->const_proton_mass) / rho;
   return du_dt;
 }
 
@@ -101,62 +66,87 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, struct part* p, float dt) {
-
-  /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling,
+    struct part* restrict p, struct xpart* restrict xp, float dt) {
 
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 
-  /* Calculate du_dt */
-  const float du_dt = cooling_rate(phys_const, us, cooling, p);
+  /* Current energy */
+  const float u_old = hydro_get_internal_energy(p);
 
-  /* Intergrate cooling equation, but enforce energy floor */
-  float u_new;
-  if (u_old + du_dt * dt > u_floor) {
-    u_new = u_old + du_dt * dt;
-  } else {
-    u_new = u_floor;
+  /* Current du_dt */
+  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+
+  /* Calculate cooling du_dt */
+  float cooling_du_dt = cooling_rate(phys_const, us, cooling, p);
+
+  /* Integrate cooling equation to enforce energy floor */
+  /* Factor of 1.5 included since timestep could potentially double */
+  if (u_old + (hydro_du_dt + cooling_du_dt) * 1.5f * dt < u_floor) {
+    cooling_du_dt = -(u_old + 1.5f * dt * hydro_du_dt - u_floor) / (1.5f * dt);
   }
 
-  /* Update the internal energy */
-  hydro_set_internal_energy(p, u_new);
+  /* Update the internal energy time derivative */
+  hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
 
-  /* if (-(u_new_test - u_old) / u_old > 1.0e-6) */
-  /*   error( */
-  /*       "Particle has not successfully cooled: u_old = %g , du_dt = %g , dt =
-   * " */
-  /*       "%g, du_dt*dt = %g, u_old + du_dt*dt = %g, u_new = %g\n", */
-  /*       u_old, du_dt, dt, du_dt * dt, u_new, u_new_test); */
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 /**
  * @brief Computes the time-step due to cooling
  *
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
-    const struct cooling_data* cooling,
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct part* const p) {
+    const struct cooling_function_data* restrict cooling,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us, const struct part* restrict p) {
 
-  /* Get du_dt */
+  /* Get current internal energy */
+  const float u = hydro_get_internal_energy(p);
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
 
-  /* Get current internal energy (dt=0) */
-  const float u = hydro_get_internal_energy(p, 0.f);
+  /* If we are close to (or below) the energy floor, we ignore the condition */
+  if (u < 1.01f * cooling->min_energy)
+    return FLT_MAX;
+  else
+    return cooling->cooling_tstep_mult * u / fabsf(du_dt);
+}
 
-  return u / du_dt;
+/**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_part(
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  xp->cooling_data.radiated_energy = 0.f;
+}
+
+/**
+ * @brief Returns the total radiated energy by this particle.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
+    const struct xpart* restrict xp) {
+
+  return xp->cooling_data.radiated_energy;
 }
 
 /**
@@ -168,12 +158,13 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling The cooling properties to initialize
  */
 static INLINE void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const, struct cooling_data* cooling) {
+    const struct swift_params* parameter_file, const struct unit_system* us,
+    const struct phys_const* phys_const,
+    struct cooling_function_data* cooling) {
 
-  cooling->lambda =
-      parser_get_param_double(parameter_file, "LambdaCooling:lambda");
-  cooling->min_temperature = parser_get_param_double(
+  const double lambda_cgs =
+      parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
+  const float min_temperature = parser_get_param_double(
       parameter_file, "LambdaCooling:minimum_temperature");
   cooling->hydrogen_mass_abundance = parser_get_param_double(
       parameter_file, "LambdaCooling:hydrogen_mass_abundance");
@@ -182,16 +173,19 @@ static INLINE void cooling_init_backend(
   cooling->cooling_tstep_mult = parser_get_param_double(
       parameter_file, "LambdaCooling:cooling_tstep_mult");
 
-  /*convert minimum temperature into minimum internal energy*/
+  /* convert minimum temperature into minimum internal energy */
   const float u_floor =
-      phys_const->const_boltzmann_k * cooling->min_temperature /
+      phys_const->const_boltzmann_k * min_temperature /
       (hydro_gamma_minus_one * cooling->mean_molecular_weight *
        phys_const->const_proton_mass);
-  const float u_floor_cgs =
-      u_floor * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   cooling->min_energy = u_floor;
-  cooling->min_energy_cgs = u_floor_cgs;
+
+  /* convert lambda to code units */
+  cooling->lambda = lambda_cgs *
+                    units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+                    (units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) *
+                     units_cgs_conversion_factor(us, UNIT_CONV_VOLUME));
 }
 
 /**
@@ -199,14 +193,15 @@ static INLINE void cooling_init_backend(
  *
  * @param cooling The properties of the cooling function.
  */
-static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
+static INLINE void cooling_print_backend(
+    const struct cooling_function_data* cooling) {
 
   message(
       "Cooling function is 'Constant lambda' with "
-      "(lambda,min_temperature,hydrogen_mass_abundance,mean_molecular_weight) "
+      "(lambda,min_energy,hydrogen_mass_abundance,mean_molecular_weight) "
       "=  (%g,%g,%g,%g)",
-      cooling->lambda, cooling->min_temperature,
-      cooling->hydrogen_mass_abundance, cooling->mean_molecular_weight);
+      cooling->lambda, cooling->min_energy, cooling->hydrogen_mass_abundance,
+      cooling->mean_molecular_weight);
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */

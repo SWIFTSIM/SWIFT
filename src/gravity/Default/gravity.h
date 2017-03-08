@@ -21,48 +21,18 @@
 #define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
+#include "gravity_properties.h"
 #include "minmax.h"
-#include "potentials.h"
-
-/**
- * @brief Computes the gravity time-step of a given particle due to an external
- *potential.
- *
- * This function only branches towards the potential chosen by the user.
- *
- * @param potential The properties of the external potential.
- * @param phys_const The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
- */
-__attribute__((always_inline)) INLINE static float
-gravity_compute_timestep_external(const struct external_potential* potential,
-                                  const struct phys_const* const phys_const,
-                                  const struct gpart* const gp) {
-
-  float dt = FLT_MAX;
-
-#ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dt = min(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
-#endif
-#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  dt = min(dt, external_gravity_isothermalpotential_timestep(potential,
-                                                             phys_const, gp));
-#endif
-#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
-  dt = min(dt, external_gravity_disk_patch_timestep(potential, phys_const, gp));
-#endif
-  return dt;
-}
 
 /**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
- * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
+ * @param grav_props Constants used in the gravity scheme.
  */
 __attribute__((always_inline)) INLINE static float
-gravity_compute_timestep_self(const struct phys_const* const phys_const,
-                              const struct gpart* const gp) {
+gravity_compute_timestep_self(const struct gpart* const gp,
+                              const struct gravity_props* restrict grav_props) {
 
   const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
                     gp->a_grav[1] * gp->a_grav[1] +
@@ -70,25 +40,9 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
 
   const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
 
-  const float dt = sqrtf(2.f * const_gravity_eta * gp->epsilon / ac);
+  const float dt = sqrtf(2.f * grav_props->eta * gp->epsilon / ac);
 
   return dt;
-}
-
-/**
- * @brief Initialises the g-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param gp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {
-
-  gp->ti_begin = 0;
-  gp->ti_end = 0;
-  gp->epsilon = 0.;  // MATTHIEU
 }
 
 /**
@@ -106,6 +60,10 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->mass_interacted = 0.;
+#endif
 }
 
 /**
@@ -126,38 +84,38 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 }
 
 /**
- * @brief Computes the gravitational acceleration induced by external potentials
- *
- * This function only branches towards the potential chosen by the user.
- *
- * @param time The current time in internal units.
- * @param potential The properties of the external potential.
- * @param phys_const The physical constants in internal units.
- * @param gp The particle to act upon.
- */
-__attribute__((always_inline)) INLINE static void external_gravity(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct gpart* gp) {
-
-#ifdef EXTERNAL_POTENTIAL_POINTMASS
-  external_gravity_pointmass(potential, phys_const, gp);
-#endif
-#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  external_gravity_isothermalpotential(potential, phys_const, gp);
-#endif
-#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
-  external_gravity_disk_patch_potential(time, potential, phys_const, gp);
-#endif
-}
-
-/**
  * @brief Kick the additional variables
  *
  * @param gp The particle to act upon
  * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
-    struct gpart* gp, float dt, float half_dt) {}
+    struct gpart* gp, float dt) {}
+
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param gp The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_reset_predicted_values(struct gpart* gp) {}
+
+/**
+ * @brief Initialises the g-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
+    struct gpart* gp) {
+
+  gp->time_bin = 0;
+  gp->epsilon = 0.;  // MATTHIEU
+
+  gravity_init_gpart(gp);
+}
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */
