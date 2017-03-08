@@ -82,7 +82,7 @@ void runner_dopair_grav_mm(const struct runner *r,
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (multi_j->mass == 0.0) error("Multipole does not seem to have been set.");
+  if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
 #endif
 
   /* Anything to do here? */

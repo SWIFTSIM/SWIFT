@@ -2100,10 +2100,10 @@ void space_split_recursive(struct space *s, struct cell *c,
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
-          CoM[0] += m->CoM[0] * m->m_pole.mass;
-          CoM[1] += m->CoM[1] * m->m_pole.mass;
-          CoM[2] += m->CoM[2] * m->m_pole.mass;
-          mass += m->m_pole.mass;
+          CoM[0] += m->CoM[0] * m->m_pole.M_000;
+          CoM[1] += m->CoM[1] * m->m_pole.M_000;
+          CoM[2] += m->CoM[2] * m->m_pole.M_000;
+          mass += m->m_pole.M_000;
         }
       }
       c->multipole->CoM[0] = CoM[0] / mass;

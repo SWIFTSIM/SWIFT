@@ -3005,7 +3005,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   if (e->policy & engine_policy_self_gravity) {
     double mass = 0.;
     for (int i = 0; i < e->s->nr_cells; ++i)
-      mass += e->s->cells_top[i].multipole->m_pole.mass;
+      mass += e->s->cells_top[i].multipole->m_pole.M_000;
     if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
       error(
           "Total mass in multipoles does not match particle content. part=%e "
@@ -3104,7 +3104,7 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
     double mass = 0.;
     for (int i = 0; i < e->s->nr_cells; ++i)
-      mass += e->s->cells_top[i].multipole->m_pole.mass;
+      mass += e->s->cells_top[i].multipole->m_pole.M_000;
     if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
       error(
           "Total mass in multipoles does not match particle content. part=%e "

@@ -49,10 +49,36 @@ struct pot_tensor {
 
 struct multipole {
 
-  float mass;
-
-  /*! Bulk velocity */
+  /* Bulk velocity */
   float vel[3];
+
+  /* 0th order terms */
+  float M_000;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+
+  /* 1st order terms */
+  float M_100, M_010, M_001;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* 2nd order terms */
+  float M_200, M_020, M_002;
+  float M_110, M_101, M_011;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /* 3rd order terms */
+  float M_300, M_030, M_003;
+  float M_210, M_201;
+  float M_120, M_021;
+  float M_102, M_012;
+  float M_111;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 };
 
 /**
@@ -157,9 +183,27 @@ INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
  */
 INLINE static void gravity_multipole_print(const struct multipole *m) {
 
-  // printf("CoM= [%12.5e %12.5e %12.5e\n", m->CoM[0], m->CoM[1], m->CoM[2]);
-  printf("Mass= %12.5e\n", m->mass);
   printf("Vel= [%12.5e %12.5e %12.5e\n", m->vel[0], m->vel[1], m->vel[2]);
+  printf("M_000= %12.5e\n", m->M_000);
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  printf("M_100= %8.5e M_010= %8.5e M_001= %8.5e\n", m->M_100, m->M_010,
+         m->M_001);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  printf("M_200= %8.5e M_020= %8.5e M_002= %8.5e\n", m->M_200, m->M_020,
+         m->M_002);
+  printf("M_110= %8.5e M_101= %8.5e M_011= %8.5e\n", m->M_110, m->M_101,
+         m->M_011);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  printf("M_300= %8.5e M_030= %8.5e M_003= %8.5e\n", m->M_300, m->M_030,
+         m->M_003);
+  printf("M_210= %8.5e M_201= %8.5e M_120= %8.5e\n", m->M_210, m->M_201,
+         m->M_120);
+  printf("M_021= %8.5e M_102= %8.5e M_012= %8.5e\n", m->M_021, m->M_102,
+         m->M_012);
+  printf("M_111= %8.5e\n", m->M_111);
+#endif
 }
 
 /**
@@ -171,16 +215,16 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
 INLINE static void gravity_multipole_add(struct multipole *ma,
                                          const struct multipole *mb) {
 
-  const float mass = ma->mass + mb->mass;
-  const float imass = 1.f / mass;
+  const float M_000 = ma->M_000 + mb->M_000;
+  const float inv_M_000 = 1.f / M_000;
 
   /* Add the bulk velocities */
-  ma->vel[0] = (ma->vel[0] * ma->mass + mb->vel[0] * mb->mass) * imass;
-  ma->vel[1] = (ma->vel[1] * ma->mass + mb->vel[1] * mb->mass) * imass;
-  ma->vel[2] = (ma->vel[2] * ma->mass + mb->vel[2] * mb->mass) * imass;
+  ma->vel[0] = (ma->vel[0] * ma->M_000 + mb->vel[0] * mb->M_000) * inv_M_000;
+  ma->vel[1] = (ma->vel[1] * ma->M_000 + mb->vel[1] * mb->M_000) * inv_M_000;
+  ma->vel[2] = (ma->vel[2] * ma->M_000 + mb->vel[2] * mb->M_000) * inv_M_000;
 
-  /* Add the masses */
-  ma->mass = mass;
+  /* Add 0th order terms */
+  ma->M_000 = M_000;
 }
 
 /**
@@ -220,8 +264,8 @@ INLINE static int gravity_multipole_equal(const struct multipole *ma,
           tolerance)
     return 0;
 
-  /* Check mass */
-  if (fabsf(ma->mass - mb->mass) / fabsf(ma->mass + mb->mass) > tolerance)
+  /* Check 0th order terms */
+  if (fabsf(ma->M_000 - mb->M_000) / fabsf(ma->M_000 + mb->M_000) > tolerance)
     return 0;
 
   /* All is good */
@@ -266,7 +310,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   const double imass = 1.0 / mass;
 
   /* Store the data on the multipole. */
-  m->m_pole.mass = mass;
+  m->m_pole.M_000 = mass;
   m->CoM[0] = com[0] * imass;
   m->CoM[1] = com[1] * imass;
   m->CoM[2] = com[2] * imass;
@@ -290,12 +334,13 @@ INLINE static void gravity_M2M(struct multipole *m_a,
                                const struct multipole *m_b,
                                const double pos_a[3], const double pos_b[3],
                                int periodic) {
-
-  m_a->mass = m_b->mass;
-
+  /* Shift bulk velocity */
   m_a->vel[0] = m_b->vel[0];
   m_a->vel[1] = m_b->vel[1];
   m_a->vel[2] = m_b->vel[2];
+
+  /* Shift 0th order term */
+  m_a->M_000 = m_b->M_000;
 }
 /**
  * @brief Compute the field tensors due to a multipole.
@@ -327,13 +372,13 @@ INLINE static void gravity_M2L(struct gravity_tensors *l_a,
 
   const double r_inv = 1. / sqrt(r2);
 
-  /* 1st order multipole term */
-  l_a->a_x.F_000 += D_100(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_y.F_000 += D_010(dx, dy, dz, r_inv) * m_b->mass;
-  l_a->a_z.F_000 += D_001(dx, dy, dz, r_inv) * m_b->mass;
+  /* 0st order multipole term */
+  l_a->a_x.F_000 += D_100(dx, dy, dz, r_inv) * m_b->M_000;
+  l_a->a_y.F_000 += D_010(dx, dy, dz, r_inv) * m_b->M_000;
+  l_a->a_z.F_000 += D_001(dx, dy, dz, r_inv) * m_b->M_000;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  l_a->mass_interacted += m_b->mass;
+  l_a->mass_interacted += m_b->M_000;
 #endif
 }
 
