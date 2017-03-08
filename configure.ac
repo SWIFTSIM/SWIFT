@@ -765,7 +765,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch default: none@:>@]
+      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch, sine-wave default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -782,6 +782,9 @@ case "$with_potential" in
    ;; 
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
+   ;; 
+   sine-wave)
+      AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
    ;; 
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])

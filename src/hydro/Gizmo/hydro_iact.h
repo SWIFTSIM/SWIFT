@@ -232,8 +232,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* calculate the maximal signal velocity */
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
+#ifdef EOS_ISOTHERMAL_GAS
+    /* we use a value that is slightly higher than necessary, since the correct
+       value does not always work */
+    vmax = 2.5 * const_isothermal_soundspeed;
+#else
     vmax =
         sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
+#endif
   } else {
     vmax = 0.0f;
   }
@@ -274,8 +280,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float wi_dr = hidp1 * wi_dx;
   float wj_dr = hjdp1 * wj_dx;
   dvdr *= ri;
-  pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  if (mode == 1) {
+  if (pj->primitives.rho > 0.) {
+    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
+  }
+  if (mode == 1 && pi->primitives.rho > 0.) {
     pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
   }
 
@@ -391,6 +399,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.momentum[2] -= dti * Anorm * totflux[3];
   pi->conserved.flux.energy -= dti * Anorm * totflux[4];
 
+#ifndef GIZMO_TOTAL_ENERGY
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
@@ -398,6 +407,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
   pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
   pi->conserved.flux.energy -= dti * Anorm * totflux[0] * ekin;
+#endif
 
   /* here is how it works:
      Mode will only be 1 if both particles are ACTIVE and they are in the same
@@ -425,6 +435,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.momentum[2] += dtj * Anorm * totflux[3];
     pj->conserved.flux.energy += dtj * Anorm * totflux[4];
 
+#ifndef GIZMO_TOTAL_ENERGY
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
@@ -432,6 +443,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
     pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
     pj->conserved.flux.energy += dtj * Anorm * totflux[0] * ekin;
+#endif
   }
 }
 

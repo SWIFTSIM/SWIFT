@@ -36,6 +36,8 @@
 #include "./potential/isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_DISC_PATCH)
 #include "./potential/disc_patch/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
+#include "./potential/sine_wave/potential.h"
 #else
 #error "Invalid choice of external potential"
 #endif
