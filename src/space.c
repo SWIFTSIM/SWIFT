@@ -523,7 +523,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-  if (s->e->nodeID == 0 || verbose) message("re)building space");
+  if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
 #endif
 

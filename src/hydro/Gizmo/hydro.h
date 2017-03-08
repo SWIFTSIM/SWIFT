@@ -484,6 +484,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.energy += p->conserved.flux.energy;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->conserved.mass < 0.) {
+    error(
+        "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
+        p->conserved.mass, p->conserved.flux.mass);
+  }
+
+  if (p->conserved.energy < 0.) {
+    error("Negative energy after conserved variables update!");
+  }
+#endif
+
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
     /* Retrieve the current value of the gravitational acceleration from the
