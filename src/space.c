@@ -2132,46 +2132,51 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 0;
     maxdepth = c->depth;
 
-    /* Get dt_min/dt_max. */
+    timebin_t time_bin_min = num_time_bins, time_bin_max = 0;
+
+    /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
-      struct part *p = &parts[k];
-      struct xpart *xp = &xparts[k];
-      const float h = p->h;
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, p->time_bin);
-      const integertime_t ti_beg =
-          get_integer_time_begin(e->ti_current + 1, p->time_bin);
-      xp->x_diff[0] = 0.f;
-      xp->x_diff[1] = 0.f;
-      xp->x_diff[2] = 0.f;
-      if (h > h_max) h_max = h;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, parts[k].time_bin);
+      time_bin_max = max(time_bin_max, parts[k].time_bin);
+      h_max = max(h_max, parts[k].h);
     }
+    /* parts: Reset x_diff */
+    for (int k = 0; k < count; k++) {
+      xparts[k].x_diff[0] = 0.f;
+      xparts[k].x_diff[1] = 0.f;
+      xparts[k].x_diff[2] = 0.f;
+    }
+    /* gparts: Get dt_min/dt_max, reset x_diff. */
     for (int k = 0; k < gcount; k++) {
-      struct gpart *gp = &gparts[k];
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, gp->time_bin);
-      const integertime_t ti_beg =
-          get_integer_time_begin(e->ti_current + 1, gp->time_bin);
-      gp->x_diff[0] = 0.f;
-      gp->x_diff[1] = 0.f;
-      gp->x_diff[2] = 0.f;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited s-particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, gparts[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts[k].time_bin);
+
+      gparts[k].x_diff[0] = 0.f;
+      gparts[k].x_diff[1] = 0.f;
+      gparts[k].x_diff[2] = 0.f;
     }
+    /* sparts: Get dt_min/dt_max */
     for (int k = 0; k < scount; k++) {
-      struct spart *sp = &sparts[k];
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, sp->time_bin);
-      const integertime_t ti_beg =
-          get_integer_time_begin(e->ti_current + 1, sp->time_bin);
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited g-particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, sparts[k].time_bin);
+      time_bin_max = max(time_bin_max, sparts[k].time_bin);
     }
+
+    /* Convert into integer times */
+    ti_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);

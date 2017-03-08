@@ -1427,7 +1427,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      if(parts[k].time_bin == time_bin_inhibited) continue;
+      if (parts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, parts[k].time_bin);
       time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
@@ -1503,7 +1503,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_gparts; k++) {
-      if(gparts[k].time_bin == time_bin_inhibited) continue;
+      if (gparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, gparts[k].time_bin);
       time_bin_max = max(time_bin_max, gparts[k].time_bin);
 
@@ -1576,7 +1576,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
-      if(sparts[k].time_bin == time_bin_inhibited) continue;
+      if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
 
