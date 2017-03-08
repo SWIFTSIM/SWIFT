@@ -1352,9 +1352,9 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
 
       if (part_is_active(p, e)) {
-	
-	/* First, finish the force loop */
-	hydro_end_force(p);
+
+        /* First, finish the force loop */
+        hydro_end_force(p);
         if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
       }
     }
@@ -1367,8 +1367,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       if (gp->type == swift_type_dark_matter) {
 
-	if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
-
+        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1390,8 +1389,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       struct spart *restrict sp = &sparts[k];
       if (spart_is_active(sp, e)) {
 
-	/* First, finish the force loop */
-	star_end_force(sp);
+        /* First, finish the force loop */
+        star_end_force(sp);
         gravity_end_force(sp->gpart, const_G);
       }
     }
