@@ -113,9 +113,20 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
 
   gp->time_bin = 0;
-  gp->epsilon = 0.1;  // MATTHIEU
+  gp->epsilon = 0.f;
 
   gravity_init_gpart(gp);
+}
+
+/**
+ * @brief Initialises the softening of the g-particles
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void gravity_init_softening(
+    struct gpart* gp, const struct gravity_props* grav_props) {
+
+  gp->epsilon = grav_props->epsilon;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

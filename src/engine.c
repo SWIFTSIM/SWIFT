@@ -2951,6 +2951,13 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Computing initial gas densities.");
 
+  /* Initialise the softening lengths */
+  if (e->policy & engine_policy_self_gravity) {
+
+    for (size_t i = 0; i < s->nr_gparts; ++i)
+      gravity_init_softening(&s->gparts[i], e->gravity_properties);
+  }
+
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e);
 
