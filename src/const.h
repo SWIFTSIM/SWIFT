@@ -55,6 +55,7 @@
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
 //#define GIZMO_FIX_PARTICLES
+//#define GIZMO_TOTAL_ENERGY
 
 /* Source terms */
 #define SOURCETERMS_NONE

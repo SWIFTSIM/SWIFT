@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static float riemann_guess_rho(float* WL,
   /* Currently three possibilities and not really an algorithm to decide which
      one to choose: */
   /* just the average */
-  return 0.5f * (WL[0] + WR[0]);
+  //  return 0.5f * (WL[0] + WR[0]);
 
   /* two rarefaction approximation */
   return sqrtf(WL[0] * WR[0] * expf((vL - vR) / const_isothermal_soundspeed));
@@ -276,12 +276,24 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
-  /* VACUUM... */
+  if (WL[0] == 0. || WR[0] == 0.) {
+    error(
+        "One of the states is vacuum, the isothermal solver cannot solve "
+        "this!");
+  }
 
   rho = 0.;
   /* obtain a first guess for p */
   rhoguess = riemann_guess_rho(WL, WR, vL, vR);
-  frho = riemann_f(rho, WL, WR, vL, vR);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (rhoguess <= 0.) {
+    error("Zero or negative initial density guess.");
+  }
+#endif
+
+  /* we know that the value of riemann_f for rho=0 is negative (it is -inf). */
+  frho = -1.;
   frhoguess = riemann_f(rhoguess, WL, WR, vL, vR);
   /* ok, rhostar is close to 0, better use Brent's method... */
   /* we use Newton-Raphson until we find a suitable interval */
@@ -289,14 +301,18 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     /* Newton-Raphson until convergence or until suitable interval is found
        to use Brent's method */
     unsigned int counter = 0;
-    while (fabs(rho - rhoguess) > 1.e-6f * 0.5f * (rho + rhoguess) &&
+    while (fabs(rho - rhoguess) > 5.e-7f * (rho + rhoguess) &&
            frhoguess < 0.0f) {
       rho = rhoguess;
       rhoguess = rhoguess - frhoguess / riemann_fprime(rhoguess, WL, WR);
       frhoguess = riemann_f(rhoguess, WL, WR, vL, vR);
       counter++;
       if (counter > 1000) {
-        error("Stuck in Newton-Raphson!\n");
+        error(
+            "Stuck in Newton-Raphson (rho: %g, rhoguess: %g, frhoguess: %g, "
+            "fprime: %g, rho-rhoguess: %g, WL: %g %g %g, WR: %g %g %g)!\n",
+            rho, rhoguess, frhoguess, riemann_fprime(rhoguess, WL, WR),
+            (rho - rhoguess), WL[0], vL, WL[4], WR[0], vR, WR[4]);
       }
     }
   }
@@ -304,7 +320,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   if (1.e6 * fabs(rho - rhoguess) > 0.5f * (rho + rhoguess) &&
       frhoguess > 0.0f) {
     rho = 0.0f;
-    frho = riemann_f(rho, WL, WR, vL, vR);
+    frho = -1.;
     /* use Brent's method to find the zeropoint */
     rho = riemann_solve_brent(rho, rhoguess, frho, frhoguess, 1.e-6, WL, WR, vL,
                               vR);
