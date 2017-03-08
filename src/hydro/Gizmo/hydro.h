@@ -161,6 +161,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+  p->geometry.Atot = 0.0f;
 
   /* Set the active flag to active. */
   p->force.active = 1;

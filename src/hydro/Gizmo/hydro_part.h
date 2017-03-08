@@ -142,6 +142,9 @@ struct part {
        gradients */
     float matrix_E[3][3];
 
+    /* Total surface area of the particle. */
+    float Atot;
+
   } geometry;
 
   /* Variables used for timestep calculation (currently not used). */
