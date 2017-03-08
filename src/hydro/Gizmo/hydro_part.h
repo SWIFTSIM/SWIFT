@@ -170,6 +170,9 @@ struct part {
     /* Particle number density. */
     float wcount;
 
+    /* Correction factor for wcount. */
+    float wcorr;
+
   } density;
 
   /* Quantities used during the force loop. */

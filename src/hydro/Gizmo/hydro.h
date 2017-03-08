@@ -137,6 +137,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
+
+  /* we cannot initialize wcorr in init_part, as init_part gets called every
+     time the density loop is repeated, and the whole point of storing wcorr
+     is to have a way of remembering that we need more neighbours for this
+     particle */
+  p->density.wcorr = 1.0f;
 }
 
 /**
@@ -218,7 +224,36 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
   p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
 
+  /* Check the condition number to see if we have a stable geometry. */
+  float condition_number_E = 0.0f;
+  int i, j;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      condition_number_E +=
+          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
+    }
+  }
+
   invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
+
+  float condition_number_Einv = 0.0f;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      condition_number_Einv +=
+          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
+    }
+  }
+
+  float condition_number =
+      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
+
+  if (condition_number > 100.0f) {
+    //    error("Condition number larger than 100!");
+    //    message("Condition number too large: %g (p->id: %llu)!",
+    //    condition_number, p->id);
+    /* add a correction to the number of neighbours for this particle */
+    p->density.wcorr *= 0.75;
+  }
 
   hydro_gradients_init(p);
 
@@ -273,6 +308,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->primitives.rho = 0.0f;
     p->primitives.P = 0.0f;
   }
+
+  /* Add a correction factor to wcount (to force a neighbour number increase if
+     the geometry matrix is close to singular) */
+  p->density.wcount *= p->density.wcorr;
+  p->density.wcount_dh *= p->density.wcorr;
 }
 
 /**
@@ -583,6 +623,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gpart->v_full[2] = xp->v_full[2];
   }
 #endif
+
+  /* reset wcorr */
+  p->density.wcorr = 1.0f;
 }
 
 /**
