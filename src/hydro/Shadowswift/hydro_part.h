@@ -19,6 +19,7 @@
  *
  ******************************************************************************/
 
+#include "cooling_struct.h"
 #include "voronoi_cell.h"
 
 /* Extra particle data not needed during the computation. */
@@ -32,6 +33,9 @@ struct xpart {
 
   /* Old density. */
   float omega;
+
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
 
 } __attribute__((aligned(xpart_align)));
 
@@ -174,7 +178,20 @@ struct part {
   /* Variables needed for the code to compile (should be removed/replaced). */
   float rho;
 
+  /* Time-step length */
+  timebin_t time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
   /* Voronoi cell. */
   struct voronoi_cell cell;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;

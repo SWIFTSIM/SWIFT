@@ -58,8 +58,9 @@
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
-#elif defined(SHADOWSWIFT)
+#elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
