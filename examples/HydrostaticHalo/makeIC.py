@@ -227,7 +227,7 @@ ds[()] = u
 u = np.zeros(1)
 
 # Particle IDs
-ids = 1 + np.linspace(0, N, N, endpoint=False, dtype='L')
+ids = 1 + np.linspace(0, N, N, endpoint=False)
 ds = grp.create_dataset('ParticleIDs', (N, ), 'L')
 ds[()] = ids
 
