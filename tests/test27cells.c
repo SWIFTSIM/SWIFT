@@ -216,7 +216,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
             hydro_get_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.rho_dh,
@@ -253,7 +253,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
               cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->parts[pjd].density.rho_dh,
@@ -299,10 +299,6 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 /* And go... */
 int main(int argc, char *argv[]) {
 
@@ -324,12 +320,6 @@ int main(int argc, char *argv[]) {
 
   /* Get some randomness going */
   srand(0);
-
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  float box_side[3] = {6.0f, 6.0f, 6.0f};
-  voronoi_set_box(box_anchor, box_side);
-#endif
 
   char c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {

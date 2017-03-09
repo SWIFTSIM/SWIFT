@@ -49,7 +49,7 @@
 #include "./hydro/Default/hydro_debug.h"
 #elif defined(GIZMO_SPH)
 #include "./hydro/Gizmo/hydro_debug.h"
-#elif defined(SHADOWSWIFT)
+#elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"

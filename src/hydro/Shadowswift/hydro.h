@@ -43,6 +43,23 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 }
 
 /**
+ * @brief Does some extra hydro operations once the actual physical time step
+ * for the particle is known.
+ *
+ * We use this to store the physical time step, since it is used for the flux
+ * exchange during the force loop.
+ *
+ * We also set the active flag of the particle to inactive. It will be set to
+ * active in hydro_init_part, which is called the next time the particle becomes
+ * active.
+ *
+ * @param p The particle to act upon.
+ * @param dt Physical time step of the particle during the next step.
+ */
+__attribute__((always_inline)) INLINE static void hydro_timestep_extra(
+    struct part* p, float dt) {}
+
+/**
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
@@ -99,10 +116,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * This method also initializes the gradient variables (if gradients are used).
  *
  * @param p The particle to act upon.
- * @param The current physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part* restrict p, float time) {
+    struct part* restrict p) {
 
   float volume;
   float m, momentum[3], energy;
@@ -164,11 +180,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase Conversion factor between integer time and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp, int ti_current,
-    double timeBase) {
+    struct part* restrict p, struct xpart* restrict xp) {
 
   /* Set the physical time step */
-  p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
+  //  p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -214,6 +229,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 }
 
 /**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param p The particle.
+ * @param xp The extended data of this particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
+    struct part* restrict p, const struct xpart* restrict xp) {}
+
+/**
  * @brief Converts the hydrodynamic variables from the initial condition file to
  * conserved variables that can be used during the integration
  *
@@ -228,9 +253,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * velocity of the particle.
  *
  * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p) {
+    struct part* p, struct xpart* xp) {
 
   float volume;
   float m;
@@ -258,13 +284,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param dt The drift time-step.
- * @param t0 Integer start time of the drift interval.
- * @param t1 Integer end time of the drift interval.
- * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt, int t0, int t1,
-    double timeBase) {}
+    struct part* p, struct xpart* xp, float dt) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop
@@ -361,20 +383,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p Particle to act upon.
  * @param xp Extended particle data to act upon.
  * @param dt Physical time step.
- * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part* p, struct xpart* xp, float dt) {}
 
 /**
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  * @return Internal energy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 }
@@ -383,11 +403,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
  * @brief Returns the entropy of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  * @return Entropy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P / pow_gamma(p->primitives.rho);
 }
@@ -396,11 +415,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  * @brief Returns the sound speed of a particle
  *
  * @param p The particle of interest.
- * @param dt Time since the last kick.
  * @param Sound speed of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
 }
@@ -409,11 +427,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  * @brief Returns the pressure of a particle
  *
  * @param p The particle of interest
- * @param dt Time since the last kick
  * @param Pressure of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part* restrict p, float dt) {
+    const struct part* restrict p) {
 
   return p->primitives.P;
 }

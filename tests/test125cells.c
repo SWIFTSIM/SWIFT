@@ -101,7 +101,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#elif defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
@@ -198,7 +198,7 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
 
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
     float volume = p->conserved.mass / density;
 #if defined(GIZMO_SPH)
     p->geometry.volume = volume;
@@ -265,7 +265,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
         part->h = size * h / (float)n;
 
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -368,7 +368,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_density(&main_cell->parts[pid]),
-#if defined(MINIMAL_SPH) || defined(SHADOWSWIFT)
+#if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,
@@ -422,10 +422,6 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 /* And go... */
 int main(int argc, char *argv[]) {
 
@@ -445,12 +441,6 @@ int main(int argc, char *argv[]) {
 
   /* Get some randomness going */
   srand(0);
-
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  float box_side[3] = {8.0f, 8.0f, 8.0f};
-  voronoi_set_box(box_anchor, box_side);
-#endif
 
   char c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {

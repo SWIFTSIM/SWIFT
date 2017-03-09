@@ -142,7 +142,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
             ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             ci->parts[pid].density.rho_dh,
@@ -166,7 +166,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
             cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             cj->parts[pjd].density.rho_dh,
@@ -187,10 +187,6 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
   double offset[3] = {0, 0, 0}, h = 1.1255, size = 1., rho = 1.;
@@ -210,12 +206,6 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   srand(0);
-
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
-  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  float box_side[3] = {6.0f, 6.0f, 6.0f};
-  voronoi_set_box(box_anchor, box_side);
-#endif
 
   while ((c = getopt(argc, argv, "h:p:r:t:d:f:")) != -1) {
     switch (c) {
