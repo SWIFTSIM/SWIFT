@@ -386,7 +386,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   if (with_self_gravity) gravity_props_init(&gravity_properties, params);
 
-#if defined(SHADOWSWIFT)
+#if defined(SHADOWFAX_SPH)
   /* Override the variables governing the density iteration
      (see src/hydro/Shadowswift/hydro.h for full explanation) */
   hydro_properties.target_neighbours = 1.0f;

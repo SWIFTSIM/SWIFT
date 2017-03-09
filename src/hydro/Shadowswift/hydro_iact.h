@@ -286,7 +286,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      UPDATE particle j.
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
-  if (mode == 1 || pj->ti_end > pi->ti_end) {
+  if (mode == 1 || pj->force.active == 0) {
     pj->conserved.flux.mass += dtj * A * totflux[0];
     pj->conserved.flux.momentum[0] += dtj * A * totflux[1];
     pj->conserved.flux.momentum[1] += dtj * A * totflux[2];

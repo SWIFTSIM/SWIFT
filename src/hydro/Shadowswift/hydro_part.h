@@ -37,7 +37,7 @@ struct xpart {
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
-} __attribute__((aligned(xpart_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {
@@ -53,12 +53,6 @@ struct part {
 
   /* Particle cutoff radius. */
   float h;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
 
   /* The primitive hydrodynamical variables. */
   struct {
@@ -160,6 +154,9 @@ struct part {
 
     /* Physical time step of the particle. */
     float dt;
+
+    /* Active flag. */
+    char active;
 
     /* Actual velocity of the particle. */
     float v_full[3];

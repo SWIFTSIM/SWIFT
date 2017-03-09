@@ -57,7 +57,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param dt Physical time step of the particle during the next step.
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
-    struct part* p, float dt) {}
+    struct part* p, float dt) {
+
+  p->force.dt = dt;
+  p->force.active = 0;
+}
 
 /**
  * @brief Initialises the particles for the first time
@@ -77,13 +81,27 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  const float mass = p->conserved.mass;
 
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
+
+  p->conserved.momentum[0] = mass * p->primitives.v[0];
+  p->conserved.momentum[1] = mass * p->primitives.v[1];
+  p->conserved.momentum[2] = mass * p->primitives.v[2];
+
+  p->conserved.energy *= mass;
+
+#if defined(SHADOWFAX_FIX_CELLS)
+  p->v[0] = 0.;
+  p->v[1] = 0.;
+  p->v[2] = 0.;
+#endif
+
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
 }
 
 /**
@@ -102,6 +120,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.0f;
 
   voronoi_cell_init(&p->cell, p->x);
+
+  /* Set the active flag to active. */
+  p->force.active = 1;
 }
 
 /**
@@ -256,25 +277,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp) {
-
-  float volume;
-  float m;
-  float momentum[3];
-  volume = p->cell.volume;
-
-  p->mass = m = p->conserved.mass;
-  p->primitives.rho = m / volume;
-
-  p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
-  p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
-  p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
-
-  p->primitives.P =
-      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
-
-  p->conserved.energy *= m;
-}
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -302,8 +305,19 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p Particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part* p) {
+    struct part* p) {}
 
+/**
+ * @brief Extra operations done during the kick
+ *
+ * Not used for Shadowswift.
+ *
+ * @param p Particle to act upon.
+ * @param xp Extended particle data to act upon.
+ * @param dt Physical time step.
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt) {
   float vcell[3];
 
   /* Update the conserved variables. We do this here and not in the kick,
@@ -323,69 +337,58 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
 
-  /* Set the hydro acceleration, based on the new momentum and mass */
-  /* NOTE: the momentum and mass are only correct for active particles, since
-           only active particles have received flux contributions from all their
-           neighbours. Since this method is only called for active particles,
-           this is indeed the case. */
-  if (p->force.dt) {
-    /* We want the cell velocity to be as close as possible to the fluid
-       velocity */
-    vcell[0] = p->conserved.momentum[0] / p->conserved.mass;
-    vcell[1] = p->conserved.momentum[1] / p->conserved.mass;
-    vcell[2] = p->conserved.momentum[2] / p->conserved.mass;
+  /* We want the cell velocity to be as close as possible to the fluid
+     velocity */
+  vcell[0] = p->conserved.momentum[0] / p->conserved.mass;
+  vcell[1] = p->conserved.momentum[1] / p->conserved.mass;
+  vcell[2] = p->conserved.momentum[2] / p->conserved.mass;
 
-    /* To prevent stupid things like cell crossovers or generators that move
-       outside their cell, we steer the motion of the cell somewhat */
-    if (p->primitives.rho) {
-      float centroid[3], d[3];
-      float volume, csnd, R, vfac, fac, dnrm;
-      voronoi_get_centroid(&p->cell, centroid);
-      d[0] = centroid[0] - p->x[0];
-      d[1] = centroid[1] - p->x[1];
-      d[2] = centroid[2] - p->x[2];
-      dnrm = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-      csnd = sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
-      volume = p->cell.volume;
-      R = get_radius_dimension_sphere(volume);
-      fac = 4.0f * dnrm / R;
-      if (fac > 0.9f) {
-        if (fac < 1.1f) {
-          vfac = csnd * (dnrm - 0.225f * R) / dnrm / (0.05f * R);
-        } else {
-          vfac = csnd / dnrm;
-        }
+  /* To prevent stupid things like cell crossovers or generators that move
+     outside their cell, we steer the motion of the cell somewhat */
+  if (p->primitives.rho) {
+    float centroid[3], d[3];
+    float volume, csnd, R, vfac, fac, dnrm;
+    voronoi_get_centroid(&p->cell, centroid);
+    d[0] = centroid[0] - p->x[0];
+    d[1] = centroid[1] - p->x[1];
+    d[2] = centroid[2] - p->x[2];
+    dnrm = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    csnd = sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+    volume = p->cell.volume;
+    R = get_radius_dimension_sphere(volume);
+    fac = 4.0f * dnrm / R;
+    if (fac > 0.9f) {
+      if (fac < 1.1f) {
+        vfac = csnd * (dnrm - 0.225f * R) / dnrm / (0.05f * R);
       } else {
-        vfac = 0.0f;
+        vfac = csnd / dnrm;
       }
-      vcell[0] += vfac * d[0];
-      vcell[1] += vfac * d[1];
-      vcell[2] += vfac * d[2];
+    } else {
+      vfac = 0.0f;
     }
-
-    /* We know the desired velocity; now make sure the particle is accelerated
-       accordingly during the next time step */
-    p->a_hydro[0] = (vcell[0] - p->force.v_full[0]) / p->force.dt;
-    p->a_hydro[1] = (vcell[1] - p->force.v_full[1]) / p->force.dt;
-    p->a_hydro[2] = (vcell[2] - p->force.v_full[2]) / p->force.dt;
-  } else {
-    p->a_hydro[0] = 0.0f;
-    p->a_hydro[1] = 0.0f;
-    p->a_hydro[2] = 0.0f;
+    vcell[0] += vfac * d[0];
+    vcell[1] += vfac * d[1];
+    vcell[2] += vfac * d[2];
   }
-}
 
-/**
- * @brief Extra operations done during the kick
- *
- * Not used for Shadowswift.
- *
- * @param p Particle to act upon.
- * @param xp Extended particle data to act upon.
- * @param dt Physical time step.
- */
-__attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt) {}
+#if defined(SHADOWFAX_FIX_CELLS)
+  xp->v_full[0] = 0.;
+  xp->v_full[1] = 0.;
+  xp->v_full[2] = 0.;
+
+  p->v[0] = 0.;
+  p->v[1] = 0.;
+  p->v[2] = 0.;
+#else
+  xp->v_full[0] = vcell[0];
+  xp->v_full[1] = vcell[1];
+  xp->v_full[2] = vcell[2];
+
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
+#endif
+}
 
 /**
  * @brief Returns the internal energy of a particle

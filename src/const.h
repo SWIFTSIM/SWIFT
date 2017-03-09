@@ -57,6 +57,10 @@
 //#define GIZMO_FIX_PARTICLES
 //#define GIZMO_TOTAL_ENERGY
 
+/* Options to control SHADOWFAX_SPH */
+/* This option disables cell movement */
+//#define SHADOWFAX_FIX_CELLS
+
 /* Source terms */
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK
