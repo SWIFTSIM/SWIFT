@@ -2153,7 +2153,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* gparts: Get dt_min/dt_max, reset x_diff. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].time_bin == time_bin_inhibited)
+      if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited s-particle present in space_split()");
 #endif
       time_bin_min = min(time_bin_min, gparts[k].time_bin);
