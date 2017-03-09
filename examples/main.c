@@ -602,7 +602,7 @@ int main(int argc, char *argv[]) {
            clocks_getunit());
 
   /* Main simulation loop */
-  for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
+  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
 
     /* Reset timers */
     timers_reset(timers_mask_all);
