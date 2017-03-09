@@ -35,8 +35,8 @@ glass = h5py.File("glassCube_64.hdf5", "r")
 
 vol = 8.
 
-pos = glass["/PartType0/Coordinates"][:,:] * cbrt(vol)
-h = glass["/PartType0/SmoothingLength"][:] * cbrt(vol)
+pos = glass["/PartType0/Coordinates"][:,:] * vol**(1./3.)
+h = glass["/PartType0/SmoothingLength"][:] * vol**(1./3.)
 numPart = size(h)
 
 # Generate extra arrays
@@ -65,7 +65,7 @@ file = h5py.File(fileName, 'w')
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [cbrt(vol), cbrt(vol), cbrt(vol)]
+grp.attrs["BoxSize"] = [vol**(1./3.), vol**(1./3.), vol**(1./3.)]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]

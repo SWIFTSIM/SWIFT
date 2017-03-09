@@ -55,7 +55,7 @@ rho_x = 1000.*np.exp(-0.5*A/np.pi/cs2*np.cos(2.*np.pi*x))
 
 P = cs2*rho
 
-n1D = int(np.cbrt(len(P)))
+n1D = np.ceil(len(P)**(1./3.))
 gradP = np.zeros(P.shape)
 for i in range(len(P)):
   iself = int(ids[i]/n1D/n1D)

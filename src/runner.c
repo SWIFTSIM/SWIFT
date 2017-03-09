@@ -1418,6 +1418,8 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
   float h_max = 0.f;
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1425,10 +1427,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, parts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (parts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, parts[k].time_bin);
+      time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1436,6 +1437,10 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
         error("Received un-drifted particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1490,22 +1495,27 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, gparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (gparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, gparts[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts[k].time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].ti_drift != ti_current)
         error("Received un-drifted g-particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1558,17 +1568,27 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, sparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (sparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, sparts[k].time_bin);
+      time_bin_max = max(time_bin_max, sparts[k].time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].ti_drift != ti_current)
+        error("Received un-drifted s-particle !");
+#endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
