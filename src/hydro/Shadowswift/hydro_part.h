@@ -31,9 +31,6 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-  /* Old density. */
-  float omega;
-
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
@@ -41,6 +38,12 @@ struct xpart {
 
 /* Data of a single particle. */
 struct part {
+
+  /* Particle ID. */
+  long long id;
+
+  /* Associated gravitas. */
+  struct gpart *gpart;
 
   /* Particle position. */
   double x[3];
@@ -162,18 +165,6 @@ struct part {
     float v_full[3];
 
   } force;
-
-  /* Particle mass (this field is also part of the conserved quantities...). */
-  float mass;
-
-  /* Particle ID. */
-  long long id;
-
-  /* Associated gravitas. */
-  struct gpart *gpart;
-
-  /* Variables needed for the code to compile (should be removed/replaced). */
-  float rho;
 
   /* Time-step length */
   timebin_t time_bin;

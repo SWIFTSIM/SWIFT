@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "equation_of_state.h"
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
 #include "io_properties.h"
@@ -63,7 +64,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @return Internal energy of the particle
  */
 float convert_u(struct engine* e, struct part* p) {
-  return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+  if (p->primitives.rho > 0.) {
+    return gas_internal_energy_from_pressure(p->primitives.rho,
+                                             p->primitives.P);
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -74,7 +80,11 @@ float convert_u(struct engine* e, struct part* p) {
  * @return Entropic function of the particle
  */
 float convert_A(struct engine* e, struct part* p) {
-  return p->primitives.P / pow_gamma(p->primitives.rho);
+  if (p->primitives.rho > 0.) {
+    return gas_entropy_from_pressure(p->primitives.rho, p->primitives.P);
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -85,13 +95,21 @@ float convert_A(struct engine* e, struct part* p) {
  * @return Total energy of the particle
  */
 float convert_Etot(struct engine* e, struct part* p) {
-  float momentum2;
+#ifdef SHADOWFAX_TOTAL_ENERGY
+  return p->conserved.energy;
+#else
+  if (p->conserved.mass > 0.) {
+    float momentum2;
 
-  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
-              p->conserved.momentum[1] * p->conserved.momentum[1] +
-              p->conserved.momentum[2] * p->conserved.momentum[2];
+    momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
+                p->conserved.momentum[1] * p->conserved.momentum[1] +
+                p->conserved.momentum[2] * p->conserved.momentum[2];
 
-  return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+    return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+  } else {
+    return 0.;
+  }
+#endif
 }
 
 /**
