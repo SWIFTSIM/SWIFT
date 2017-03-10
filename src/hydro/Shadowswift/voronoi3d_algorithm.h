@@ -81,8 +81,8 @@ __attribute__((always_inline)) INLINE int check_counter(int *counter,
 extern float global_voronoi_box_anchor[3];
 extern float global_voronoi_box_side[3];
 
-#define VORONOI3D_DECLARE_GLOBAL_VARIABLES() \
-  float global_voronoi_box_anchor[3];        \
+#define VORONOI_DECLARE_GLOBAL_VARIABLES() \
+  float global_voronoi_box_anchor[3];      \
   float global_voronoi_box_side[3];
 
 /* Bottom front left corner and side lengths of the large box that contains all

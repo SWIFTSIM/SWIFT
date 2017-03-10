@@ -27,6 +27,12 @@
 #include "inline.h"
 #include "voronoi1d_cell.h"
 
+#define VORONOI_DECLARE_GLOBAL_VARIABLES()
+
+__attribute__((always_inline)) INLINE static void voronoi_set_box(float *anchor,
+                                                                  float *side) {
+}
+
 /**
  * @brief Initialize a 1D Voronoi cell
  *

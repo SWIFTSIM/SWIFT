@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#if defined(SHADOWFAX_SPH)
+VORONOI_DECLARE_GLOBAL_VARIABLES()
 #endif
 
 /**

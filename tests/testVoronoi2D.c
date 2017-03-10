@@ -19,4 +19,27 @@
 
 #include "hydro/Shadowswift/voronoi2d_algorithm.h"
 
-int main() { return 0; }
+VORONOI_DECLARE_GLOBAL_VARIABLES()
+
+int main() {
+
+  float anchor[3] = {-0.5f, -0.5f, -0.5f};
+  float side[3] = {2.0f, 2.0f, 2.0f};
+  voronoi_set_box(anchor, side);
+
+  struct voronoi_cell cell;
+  double x[3] = {0.5, 0.5, 0.5};
+
+  voronoi_cell_init(&cell, x);
+
+  float maxradius = voronoi_cell_finalize(&cell);
+
+  assert(maxradius == 2.0f * sqrtf(2.0f));
+
+  assert(cell.volume == 4.0f);
+
+  assert(cell.centroid[0] == 0.5f);
+  assert(cell.centroid[1] == 0.5f);
+
+  return 0;
+}

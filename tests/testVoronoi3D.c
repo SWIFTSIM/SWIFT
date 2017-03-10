@@ -1192,7 +1192,7 @@ void test_degeneracies() {
 #endif
 }
 
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+VORONOI_DECLARE_GLOBAL_VARIABLES()
 
 int main() {
 

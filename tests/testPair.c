@@ -187,8 +187,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 
-#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#if defined(SHADOWFAX_SPH)
+VORONOI_DECLARE_GLOBAL_VARIABLES()
 #endif
 
 int main(int argc, char *argv[]) {

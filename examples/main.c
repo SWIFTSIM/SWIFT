@@ -101,8 +101,8 @@ void print_help_message() {
       "parameter file.\n");
 }
 
-#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#if defined(SHADOWFAX_SPH)
+VORONOI_DECLARE_GLOBAL_VARIABLES()
 #endif
 
 /**
@@ -439,7 +439,7 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
+#if defined(SHADOWFAX_SPH)
   /* set the *global* box dimensions */
   float box_anchor[3], box_side[3];
   if (periodic) {

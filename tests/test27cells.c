@@ -299,8 +299,8 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 
-#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
-VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#if defined(SHADOWFAX_SPH)
+VORONOI_DECLARE_GLOBAL_VARIABLES()
 #endif
 
 /* And go... */

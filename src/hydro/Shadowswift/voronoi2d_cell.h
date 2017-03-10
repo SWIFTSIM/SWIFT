@@ -20,6 +20,10 @@
 #ifndef SWIFT_VORONOIXD_CELL_H
 #define SWIFT_VORONOIXD_CELL_H
 
+/* Maximal number of vertices (and neighbours) that can be stored in a
+   voronoi_cell struct. */
+#define VORONOI2D_MAXNUMVERT 100
+
 /* 2D Voronoi cell */
 struct voronoi_cell {
 
@@ -31,6 +35,24 @@ struct voronoi_cell {
 
   /* The centroid of the cell. */
   float centroid[2];
+
+  /* Number of cell vertices (and neighbours). */
+  int nvert;
+
+  /* We only need to store one of these at the same time. */
+  union {
+    /* The relative positions of the vertices of the cell. */
+    float vertices[VORONOI2D_MAXNUMVERT][2];
+
+    /* The midpoints of the faces. */
+    float face_midpoints[VORONOI2D_MAXNUMVERT][2];
+  };
+
+  /* The ids of the neighbouring cells. */
+  unsigned long long ngbs[VORONOI2D_MAXNUMVERT];
+
+  /* The lengths of the faces. */
+  float face_lengths[VORONOI2D_MAXNUMVERT];
 };
 
 #endif  // SWIFT_VORONOIXD_CELL_H
