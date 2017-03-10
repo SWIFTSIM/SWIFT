@@ -1,4 +1,4 @@
-# Define the system of units to use internally. 
+# Define the system of units to use internally.
 InternalUnitSystem:
   UnitMass_in_cgs:     1   # Grams
   UnitLength_in_cgs:   1   # Centimeters
@@ -38,7 +38,7 @@ Snapshots:
 Statistics:
   delta_time:          1e-2      # Time between statistics output
   energy_file_name:    energy    # (Optional) File name for energy output
-  timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name 
+  timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -50,12 +50,12 @@ SPH:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                   0.025    # Constant dimensionless multiplier for time integration. 
+  eta:                   0.025    # Constant dimensionless multiplier for time integration.
   epsilon:               0.1      # Softening length (in internal units).
   a_smooth:              1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut:                 4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
 
-  
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
@@ -67,15 +67,19 @@ InitialConditions:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:      m      # (Optional) The initial strategy ("g", "m", "w", or "v").
-  initial_grid_x:    10     # (Optional) Grid size if the "g" strategy is chosen.
-  initial_grid_y:    10     # ""
-  initial_grid_z:    10     # ""
-  repartition_type:  b      # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
-  fractionaltime:    0.1    # (Optional) The fractional time difference between MPI ranks required to trigger a new decomposition
- 
+  initial_type:      m       # (Optional) The initial strategy ("g", "m", "w", or "v").
+  initial_grid_x:    10      # (Optional) Grid size if the "g" strategy is chosen.
+  initial_grid_y:    10      # ""
+  initial_grid_z:    10      # ""
+  repartition_type:  b       # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
+  trigger:           0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                             # new decomposition, or number of steps (>1) between decompositions
+  minfrac:           0.9     # (Optional) Fractional of all particles that should be updated in previous step when
+                             # using CPU time trigger
+  cputime_file_name: cputime # (Optional) File name for per node CPU time estimates for each step, requires --enable-task-debugging
+
 # Parameters related to external potentials --------------------------------------------
-  
+
 # Point mass external potentials
 PointMassPotential:
   position_x:      50.      # location of external point mass (internal units)
@@ -92,7 +96,7 @@ IsothermalPotential:
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   epsilon:         0.1      # Softening size (internal units)
-  
+
 # Disk-patch potential parameters
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)

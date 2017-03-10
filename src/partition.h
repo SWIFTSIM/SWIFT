@@ -52,7 +52,8 @@ enum repartition_type {
 /* Repartition preferences. */
 struct repartition {
   enum repartition_type type;
-  float fractionaltime;
+  float trigger;
+  float minfrac;
 };
 
 /* Simple descriptions of types for reports. */

@@ -793,7 +793,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype->type == REPART_METIS_BOTH || 
+  if (reparttype->type == REPART_METIS_BOTH ||
       reparttype->type == REPART_METIS_EDGE ||
       reparttype->type == REPART_METIS_VERTEX_EDGE) {
 
@@ -1074,13 +1074,17 @@ void partition_init(struct partition *partition,
 #endif
   }
 
-  /* Get the fraction time difference between nodes. If larger than
-   * this when a repartition is being considered it will be allowed. */
-  repartition->fractionaltime = parser_get_opt_param_float(
-      params, "DomainDecomposition:fractionaltime", 0.1);
-  if (repartition->fractionaltime < 0 || repartition->fractionaltime > 1)
-    error(
-        "Invalid DomainDecomposition:fractionaltime, must be in range 0 to 1");
+  /* Get the fraction CPU time difference between nodes (<1) or the number
+   * of steps between repartitions (>1). */
+  repartition->trigger = parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
+  if (repartition->trigger <= 0)
+    error("Invalid DomainDecomposition:trigger, must be greater than zero");
+
+  /* Fraction of particles that should be updated before a repartition
+   * based on CPU time is considered. */
+  repartition->minfrac = parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
+  if (repartition->minfrac <= 0 || repartition->minfrac > 1)
+    error("Invalid DomainDecomposition:minfrac, must be greater than 0 and less than equal to 1");
 
 #else
   error("SWIFT was not compiled with MPI support");
