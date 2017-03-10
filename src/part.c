@@ -27,6 +27,7 @@
 
 /* This object's header. */
 #include "error.h"
+#include "multipole.h"
 #include "part.h"
 
 /**
@@ -233,6 +234,7 @@ MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype spart_mpi_type;
+MPI_Datatype multipole_mpi_type;
 
 /**
  * @brief Registers MPI particle types.
@@ -264,6 +266,12 @@ void part_create_mpi_types() {
                           MPI_BYTE, &spart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sparts.");
+  }
+  if (MPI_Type_contiguous(
+          sizeof(struct gravity_tensors) / sizeof(unsigned char), MPI_BYTE,
+          &multipole_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&multipole_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for multipole.");
   }
 }
 #endif

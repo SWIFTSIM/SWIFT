@@ -87,7 +87,7 @@ int main() {
   printf("\nAll values are consistent\n");
 
   /* Now test the long range function */
-  const float a_smooth = const_gravity_a_smooth;
+  const float a_smooth = 4.5f;
 
   for (int k = 1; k < numPoints; ++k) {
 

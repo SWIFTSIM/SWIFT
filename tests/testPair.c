@@ -252,6 +252,7 @@ int main(int argc, char *argv[]) {
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 8;
+  engine.max_active_bin = num_time_bins;
   runner.e = &engine;
 
   volume = particles * particles * particles;

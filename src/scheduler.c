@@ -1092,8 +1092,7 @@ void scheduler_start(struct scheduler *s) {
 
       if (ci == NULL && cj == NULL) {
 
-        if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
-          error("Task not associated with cells!");
+        error("Task not associated with cells!");
 
       } else if (cj == NULL) { /* self */
 
@@ -1221,6 +1220,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_spart) {
           err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          err = MPI_Irecv(t->ci->multipole, 1, multipole_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
           error("Unknown communication sub-type");
         }
@@ -1257,6 +1259,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_spart) {
           err = MPI_Isend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          err = MPI_Isend(t->ci->multipole, 1, multipole_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
           error("Unknown communication sub-type");

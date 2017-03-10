@@ -205,7 +205,7 @@ if (entropy_flag == 1):
 else:
     ds[()] = u    
 
-ids = 1 + numpy.linspace(0, numGas, numGas, endpoint=False, dtype='L')
+ids = 1 + numpy.linspace(0, numGas, numGas, endpoint=False)
 ds = grp0.create_dataset('ParticleIDs', (numGas, ), 'L')
 ds[()] = ids
 

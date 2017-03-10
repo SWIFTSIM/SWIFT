@@ -495,6 +495,10 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
+  /* Reset the gravity acceleration tensors */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_field_tensor_init(c->multipole);
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -592,6 +596,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
+  const float hydro_h_max = e->hydro_properties->h_max;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
       target_wcount + e->hydro_properties->delta_neighbours;
@@ -663,15 +668,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Ok, correct then */
           p->h += h_corr;
 
-          /* Flag for another round of fun */
-          pid[redo] = pid[i];
-          redo += 1;
+          /* If below the absolute maximum, try again */
+          if (p->h < hydro_h_max) {
 
-          /* Re-initialise everything */
-          hydro_init_part(p);
+            /* Flag for another round of fun */
+            pid[redo] = pid[i];
+            redo += 1;
 
-          /* Off we go ! */
-          continue;
+            /* Re-initialise everything */
+            hydro_init_part(p);
+
+            /* Off we go ! */
+            continue;
+          } else {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_max;
+          }
         }
 
         /* We now have a particle whose smoothing length has converged */
@@ -817,25 +830,6 @@ void runner_do_drift_particles(struct runner *r, struct cell *c, int timer) {
   cell_drift_particles(c, r->e);
 
   if (timer) TIMER_TOC(timer_drift);
-}
-
-/**
- * @brief Mapper function to drift ALL particle and g-particles forward in time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void runner_do_drift_mapper(void *map_data, int num_elements,
-                            void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) cell_drift_particles(c, e);
-  }
 }
 
 /**
@@ -1115,6 +1109,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
+  const double timeBase = e->timeBase;
 
   TIMER_TIC;
 
@@ -1149,6 +1144,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Tell the particle what the new physical time step is */
+        float dt = get_timestep(p->time_bin, timeBase);
+        hydro_timestep_extra(p, dt);
 
         /* Number of updated particles */
         updated++;
@@ -1367,16 +1366,27 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       if (gp->type == swift_type_dark_matter) {
+
         if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (e->policy & engine_policy_self_gravity) {
+        gp->mass_interacted += gp->mass;
+        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
+          error(
+              "g-particle did not interact gravitationally with all other "
+              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
+              gp->mass_interacted, e->s->total_mass, gp->mass);
+      }
+#endif
     }
 
     /* Loop over the star particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
-      /* Get a handle on the part. */
+      /* Get a handle on the spart. */
       struct spart *restrict sp = &sparts[k];
-
       if (spart_is_active(sp, e)) {
 
         /* First, finish the force loop */
@@ -1408,6 +1418,8 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
   float h_max = 0.f;
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1415,10 +1427,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, parts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (parts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, parts[k].time_bin);
+      time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1426,6 +1437,10 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
         error("Received un-drifted particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1480,22 +1495,27 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, gparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (gparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, gparts[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts[k].time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].ti_drift != ti_current)
         error("Received un-drifted g-particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1548,17 +1568,27 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, sparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (sparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, sparts[k].time_bin);
+      time_bin_max = max(time_bin_max, sparts[k].time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].ti_drift != ti_current)
+        error("Received un-drifted s-particle !");
+#endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1631,6 +1661,8 @@ void *runner_main(void *data) {
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+/* Mark the thread we run on */
 #ifdef SWIFT_DEBUG_TASKS
       t->rid = r->cpuid;
 #endif
@@ -1641,8 +1673,7 @@ void *runner_main(void *data) {
 #ifndef WITH_MPI
       if (ci == NULL && cj == NULL) {
 
-        if (t->type != task_type_grav_gather_m && t->type != task_type_grav_fft)
-          error("Task not associated with cells!");
+        error("Task not associated with cells!");
 
       } else if (cj == NULL) { /* self */
 
@@ -1802,21 +1833,24 @@ void *runner_main(void *data) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1);
+          } else if (t->subtype == task_subtype_multipole) {
+            ci->ti_old_multipole = e->ti_current;
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
 #endif
         case task_type_grav_mm:
-          runner_do_grav_mm(r, t->ci, 1);
+          // runner_do_grav_mm(r, t->ci, 1);
           break;
-        case task_type_grav_up:
-          runner_do_grav_up(r, t->ci);
+        case task_type_grav_down:
+          runner_do_grav_down(r, t->ci);
           break;
-        case task_type_grav_gather_m:
+        case task_type_grav_top_level:
+          // runner_do_grav_top_level(r);
           break;
-        case task_type_grav_fft:
-          runner_do_grav_fft(r);
+        case task_type_grav_long_range:
+          runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_cooling:
           if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
@@ -1828,6 +1862,18 @@ void *runner_main(void *data) {
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
+
+/* Mark that we have run this task on these cells */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci != NULL) {
+        ci->tasks_executed[t->type]++;
+        ci->subtasks_executed[t->subtype]++;
+      }
+      if (cj != NULL) {
+        cj->tasks_executed[t->type]++;
+        cj->subtasks_executed[t->subtype]++;
+      }
+#endif
 
       /* We're done with this task, see if we get a next one. */
       prev = t;

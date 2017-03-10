@@ -47,6 +47,7 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   max_volume_change:     2.       # (Optional) Maximal allowed change of kernel volume over one time-step
+  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -54,7 +55,6 @@ Gravity:
   epsilon:               0.1      # Softening length (in internal units).
   a_smooth:              1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut:                 4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
-
 
 # Parameters related to the initial conditions
 InitialConditions:

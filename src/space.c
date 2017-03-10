@@ -51,6 +51,7 @@
 #include "lock.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "multipole.h"
 #include "runner.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -175,18 +176,38 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  *
  * @param s The #space.
  * @param c The #cell to recycle.
- * @param rec_begin Pointer to the start of the list of cells to recycle.
- * @param rec_end Pointer to the end of the list of cells to recycle.
+ * @param cell_rec_begin Pointer to the start of the list of cells to recycle.
+ * @param cell_rec_end Pointer to the end of the list of cells to recycle.
+ * @param multipole_rec_begin Pointer to the start of the list of multipoles to
+ * recycle.
+ * @param multipole_rec_end Pointer to the end of the list of multipoles to
+ * recycle.
  */
 void space_rebuild_recycle_rec(struct space *s, struct cell *c,
-                               struct cell **rec_begin, struct cell **rec_end) {
+                               struct cell **cell_rec_begin,
+                               struct cell **cell_rec_end,
+                               struct gravity_tensors **multipole_rec_begin,
+                               struct gravity_tensors **multipole_rec_end) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        space_rebuild_recycle_rec(s, c->progeny[k], rec_begin, rec_end);
-        c->progeny[k]->next = *rec_begin;
-        *rec_begin = c->progeny[k];
-        if (*rec_end == NULL) *rec_end = *rec_begin;
+        space_rebuild_recycle_rec(s, c->progeny[k], cell_rec_begin,
+                                  cell_rec_end, multipole_rec_begin,
+                                  multipole_rec_end);
+
+        c->progeny[k]->next = *cell_rec_begin;
+        *cell_rec_begin = c->progeny[k];
+
+        if (s->gravity) {
+          c->progeny[k]->multipole->next = *multipole_rec_begin;
+          *multipole_rec_begin = c->progeny[k]->multipole;
+        }
+
+        if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
+        if (s->gravity && *multipole_rec_end == NULL)
+          *multipole_rec_end = *multipole_rec_begin;
+
+        c->progeny[k]->multipole = NULL;
         c->progeny[k] = NULL;
       }
 }
@@ -199,9 +220,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
-    struct cell *rec_begin = NULL, *rec_end = NULL;
-    space_rebuild_recycle_rec(s, c, &rec_begin, &rec_end);
-    if (rec_begin != NULL) space_recycle_list(s, rec_begin, rec_end);
+    struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
+    struct gravity_tensors *multipole_rec_begin = NULL,
+                           *multipole_rec_end = NULL;
+    space_rebuild_recycle_rec(s, c, &cell_rec_begin, &cell_rec_end,
+                              &multipole_rec_begin, &multipole_rec_end);
+    if (cell_rec_begin != NULL)
+      space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
+                         multipole_rec_end);
     c->sorts = NULL;
     c->nr_tasks = 0;
     c->density = NULL;
@@ -222,6 +248,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->drift = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
+    c->grav_top_level = NULL;
+    c->grav_long_range = NULL;
+    c->grav_down = NULL;
     c->super = c;
     if (c->sort != NULL) {
       free(c->sort);
@@ -362,6 +391,7 @@ void space_regrid(struct space *s, int verbose) {
       threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
                      s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
       free(s->cells_top);
+      free(s->multipoles_top);
       s->maxdepth = 0;
     }
 
@@ -377,19 +407,35 @@ void space_regrid(struct space *s, int verbose) {
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
     if (posix_memalign((void *)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
-      error("Failed to allocate cells.");
+      error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
+    /* Allocate the multipoles for the top-level cells. */
+    if (s->gravity) {
+      if (posix_memalign((void *)&s->multipoles_top, multipole_align,
+                         s->nr_cells * sizeof(struct gravity_tensors)) != 0)
+        error("Failed to allocate top-level multipoles.");
+      bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
+    }
+
     /* Set the cells' locks */
-    for (int k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].lock) != 0)
-        error("Failed to init spinlock.");
+        error("Failed to init spinlock for hydro.");
+      if (lock_init(&s->cells_top[k].glock) != 0)
+        error("Failed to init spinlock for gravity.");
+      if (lock_init(&s->cells_top[k].mlock) != 0)
+        error("Failed to init spinlock for multipoles.");
+      if (lock_init(&s->cells_top[k].slock) != 0)
+        error("Failed to init spinlock for stars.");
+    }
 
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
-          struct cell *restrict c = &s->cells_top[cell_getid(cdim, i, j, k)];
+          const size_t cid = cell_getid(cdim, i, j, k);
+          struct cell *restrict c = &s->cells_top[cid];
           c->loc[0] = i * s->width[0];
           c->loc[1] = j * s->width[1];
           c->loc[2] = k * s->width[2];
@@ -403,7 +449,8 @@ void space_regrid(struct space *s, int verbose) {
           c->scount = 0;
           c->super = c;
           c->ti_old = ti_old;
-          lock_init(&c->lock);
+          c->ti_old_multipole = ti_old;
+          if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
     /* Be verbose about the change. */
@@ -884,6 +931,7 @@ void space_rebuild(struct space *s, int verbose) {
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->ti_old = ti_old;
+    c->ti_old_multipole = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -899,6 +947,13 @@ void space_rebuild(struct space *s, int verbose) {
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
   space_split(s, cells_top, s->nr_cells, verbose);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the multipole construction went OK */
+  if (s->gravity)
+    for (int k = 0; k < s->nr_cells; k++)
+      cell_check_multipole(&s->cells_top[k], NULL);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1985,6 +2040,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->gcount = 0;
       cp->scount = 0;
       cp->ti_old = c->ti_old;
+      cp->ti_old_multipole = c->ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -2011,7 +2067,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* Remove any progeny with zero parts. */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff;
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
           c->progeny[k]->scount == 0) {
         space_recycle(s, c->progeny[k]);
@@ -2029,7 +2085,43 @@ void space_split_recursive(struct space *s, struct cell *c,
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
+    }
 
+    /* Deal with multipole */
+    if (s->gravity) {
+
+      /* Reset everything */
+      gravity_reset(c->multipole);
+
+      /* Compute CoM of all progenies */
+      double CoM[3] = {0., 0., 0.};
+      double mass = 0.;
+
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct gravity_tensors *m = c->progeny[k]->multipole;
+          CoM[0] += m->CoM[0] * m->m_pole.mass;
+          CoM[1] += m->CoM[1] * m->m_pole.mass;
+          CoM[2] += m->CoM[2] * m->m_pole.mass;
+          mass += m->m_pole.mass;
+        }
+      }
+      c->multipole->CoM[0] = CoM[0] / mass;
+      c->multipole->CoM[1] = CoM[1] / mass;
+      c->multipole->CoM[2] = CoM[2] / mass;
+
+      /* Now shift progeny multipoles and add them up */
+      struct multipole temp;
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct cell *cp = c->progeny[k];
+          const struct multipole *m = &cp->multipole->m_pole;
+          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
+                      s->periodic);
+          gravity_multipole_add(&c->multipole->m_pole, &temp);
+        }
+      }
+    }
   }
 
   /* Otherwise, collect the data for this cell. */
@@ -2040,43 +2132,54 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 0;
     maxdepth = c->depth;
 
-    /* Get dt_min/dt_max. */
+    timebin_t time_bin_min = num_time_bins, time_bin_max = 0;
+
+    /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
-      struct part *p = &parts[k];
-      struct xpart *xp = &xparts[k];
-      const float h = p->h;
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, p->time_bin);
-      const integertime_t ti_beg =
-          get_integer_time_begin(e->ti_current + 1, p->time_bin);
-      xp->x_diff[0] = 0.f;
-      xp->x_diff[1] = 0.f;
-      xp->x_diff[2] = 0.f;
-      if (h > h_max) h_max = h;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, parts[k].time_bin);
+      time_bin_max = max(time_bin_max, parts[k].time_bin);
+      h_max = max(h_max, parts[k].h);
     }
+    /* parts: Reset x_diff */
+    for (int k = 0; k < count; k++) {
+      xparts[k].x_diff[0] = 0.f;
+      xparts[k].x_diff[1] = 0.f;
+      xparts[k].x_diff[2] = 0.f;
+    }
+    /* gparts: Get dt_min/dt_max, reset x_diff. */
     for (int k = 0; k < gcount; k++) {
-      struct gpart *gp = &gparts[k];
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, gp->time_bin);
-      const integertime_t ti_beg =
-          get_integer_time_begin(e->ti_current + 1, gp->time_bin);
-      gp->x_diff[0] = 0.f;
-      gp->x_diff[1] = 0.f;
-      gp->x_diff[2] = 0.f;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-      if (ti_beg > ti_beg_max) ti_beg_max = ti_beg;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited s-particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, gparts[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts[k].time_bin);
+
+      gparts[k].x_diff[0] = 0.f;
+      gparts[k].x_diff[1] = 0.f;
+      gparts[k].x_diff[2] = 0.f;
     }
+    /* sparts: Get dt_min/dt_max */
     for (int k = 0; k < scount; k++) {
-      struct spart *sp = &sparts[k];
-      const integertime_t ti_end =
-          get_integer_time_end(e->ti_current, sp->time_bin);
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited g-particle present in space_split()");
+#endif
+      time_bin_min = min(time_bin_min, sparts[k].time_bin);
+      time_bin_max = max(time_bin_max, sparts[k].time_bin);
     }
+
+    /* Convert into integer times */
+    ti_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
+
+    /* Construct the multipole and the centre of mass*/
+    if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);
   }
 
   /* Set the values for this cell. */
@@ -2145,14 +2248,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
-    error("Failed to destroy spinlock.");
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
+      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+    error("Failed to destroy spinlocks.");
 
   /* Clear this cell's sort arrays. */
   if (c->sort != NULL) free(c->sort);
 
   /* Lock the space. */
   lock_lock(&s->lock);
+
+  /* Hook the multipole back in the buffer */
+  if (s->gravity) {
+    c->multipole->next = s->multipoles_sub;
+    s->multipoles_sub = c->multipole;
+  }
 
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub;
@@ -2167,22 +2277,32 @@ void space_recycle(struct space *s, struct cell *c) {
  * @brief Return a list of used cells to the buffer of unused sub-cells.
  *
  * @param s The #space.
- * @param list_begin Pointer to the first #cell in the linked list of
+ * @param cell_list_begin Pointer to the first #cell in the linked list of
  *        cells joined by their @c next pointers.
- * @param list_end Pointer to the last #cell in the linked list of
+ * @param cell_list_end Pointer to the last #cell in the linked list of
  *        cells joined by their @c next pointers. It is assumed that this
  *        cell's @c next pointer is @c NULL.
+ * @param multipole_list_begin Pointer to the first #multipole in the linked
+ * list of
+ *        multipoles joined by their @c next pointers.
+ * @param multipole_list_end Pointer to the last #multipole in the linked list
+ * of
+ *        multipoles joined by their @c next pointers. It is assumed that this
+ *        multipole's @c next pointer is @c NULL.
  */
-void space_recycle_list(struct space *s, struct cell *list_begin,
-                        struct cell *list_end) {
+void space_recycle_list(struct space *s, struct cell *cell_list_begin,
+                        struct cell *cell_list_end,
+                        struct gravity_tensors *multipole_list_begin,
+                        struct gravity_tensors *multipole_list_end) {
 
   int count = 0;
 
   /* Clean up the list of cells. */
-  for (struct cell *c = list_begin; c != NULL; c = c->next) {
+  for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0)
-      error("Failed to destroy spinlock.");
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
+        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+      error("Failed to destroy spinlocks.");
 
     /* Clear this cell's sort arrays. */
     if (c->sort != NULL) free(c->sort);
@@ -2194,10 +2314,16 @@ void space_recycle_list(struct space *s, struct cell *list_begin,
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  /* Hook this cell into the buffer. */
-  list_end->next = s->cells_sub;
-  s->cells_sub = list_begin;
+  /* Hook the cells into the buffer. */
+  cell_list_end->next = s->cells_sub;
+  s->cells_sub = cell_list_begin;
   s->tot_cells -= count;
+
+  /* Hook the multipoles into the buffer. */
+  if (s->gravity) {
+    multipole_list_end->next = s->multipoles_sub;
+    s->multipoles_sub = multipole_list_begin;
+  }
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
@@ -2222,7 +2348,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
 
-    /* Is the buffer empty? */
+    /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
       if (posix_memalign((void *)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
@@ -2234,10 +2360,29 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       s->cells_sub[space_cellallocchunk - 1].next = NULL;
     }
 
+    /* Is the multipole buffer empty? */
+    if (s->gravity && s->multipoles_sub == NULL) {
+      if (posix_memalign(
+              (void *)&s->multipoles_sub, multipole_align,
+              space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
+        error("Failed to allocate more multipoles.");
+
+      /* Constructed a linked list */
+      for (int k = 0; k < space_cellallocchunk - 1; k++)
+        s->multipoles_sub[k].next = &s->multipoles_sub[k + 1];
+      s->multipoles_sub[space_cellallocchunk - 1].next = NULL;
+    }
+
     /* Pick off the next cell. */
     cells[j] = s->cells_sub;
     s->cells_sub = cells[j]->next;
     s->tot_cells += 1;
+
+    /* Hook the multipole */
+    if (s->gravity) {
+      cells[j]->multipole = s->multipoles_sub;
+      s->multipoles_sub = cells[j]->multipole->next;
+    }
   }
 
   /* Unlock the space. */
@@ -2245,9 +2390,12 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
+    struct gravity_tensors *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
+    cells[j]->multipole = temp;
     cells[j]->nodeID = -1;
-    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0)
+    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
+        lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -2553,7 +2701,7 @@ void space_init(struct space *s, const struct swift_params *params,
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
-  /* Build the cells and the tasks. */
+  /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 }
 
@@ -2694,27 +2842,51 @@ void space_link_cleanup(struct space *s) {
 /**
  * @brief Checks that all cells have been drifted to a given point in time
  *
- * Expensive function. Should only be used for debugging purposes.
+ * Should only be used for debugging purposes.
  *
  * @param s The #space to check.
  * @param ti_drift The (integer) time.
  */
 void space_check_drift_point(struct space *s, integertime_t ti_drift) {
-
+#ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
  * @brief Checks that all particles and local cells have a non-zero time-step.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
  */
 void space_check_timesteps(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
-
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_check_timesteps(&s->cells_top[i]);
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
 
+/**
+ * @brief Resets all the individual cell task counters to 0.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to reset.
+ */
+void space_reset_task_counters(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_reset_task_counters(&s->cells_top[i]);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
 #endif
 }
 
@@ -2725,6 +2897,7 @@ void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   free(s->cells_top);
+  free(s->multipoles_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);

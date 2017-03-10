@@ -123,6 +123,9 @@ struct engine {
   double time;
   integertime_t ti_current;
 
+  /* The highest active bin at this time */
+  timebin_t max_active_bin;
+
   /* Time step */
   double timeStep;
 
@@ -206,6 +209,9 @@ struct engine {
   int forcerepart;
   int lastrepart;
   struct repartition *reparttype;
+
+  /* Need to dump some statistics ? */
+  int save_stats;
 
   /* Need to dump a snapshot ? */
   int dump_snapshot;

@@ -454,6 +454,70 @@ int cell_glocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its #multipole and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_mlocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to lock this cell. */
+  if (c->mhold || lock_trylock(&c->mlock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->mhold) {
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->mlock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+
+    /* Lock this cell. */
+    if (lock_trylock(&finger->mlock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->mhold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->mlock) != 0) error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->mhold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->mlock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Lock a cell for access to its array of #spart and hold its parents.
  *
  * @param c The #cell.
@@ -551,6 +615,25 @@ void cell_gunlocktree(struct cell *c) {
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->ghold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
+ * @brief Unlock a cell's parents for access to its #multipole.
+ *
+ * @param c The #cell.
+ */
+void cell_munlocktree(struct cell *c) {
+
+  TIMER_TIC
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->mlock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->mhold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -974,6 +1057,23 @@ void cell_check_drift_point(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Resets all the individual cell task counters to 0.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param c The #cell to reset.
+ */
+void cell_reset_task_counters(struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
+  for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
@@ -1012,52 +1112,34 @@ int cell_are_neighbours(const struct cell *restrict ci,
  */
 void cell_check_multipole(struct cell *c, void *data) {
 
-  struct multipole ma;
+#ifdef SWIFT_DEBUG_CHECKS
+  struct gravity_tensors ma;
+  const double tolerance = 1e-5; /* Relative */
+
+  /* First recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k], NULL);
 
   if (c->gcount > 0) {
 
     /* Brute-force calculation */
-    multipole_init(&ma, c->gparts, c->gcount);
+    gravity_P2M(&ma, c->gparts, c->gcount);
 
-    /* Compare with recursive one */
-    struct multipole mb = c->multipole;
-
-    if (fabsf(ma.mass - mb.mass) / fabsf(ma.mass + mb.mass) > 1e-5)
-      error("Multipole masses are different (%12.15e vs. %12.15e)", ma.mass,
-            mb.mass);
-
-    for (int k = 0; k < 3; ++k)
-      if (fabs(ma.CoM[k] - mb.CoM[k]) / fabs(ma.CoM[k] + mb.CoM[k]) > 1e-5)
-        error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
-              mb.CoM[k]);
-
-#if const_gravity_multipole_order >= 2
-    if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
-        ma.I_xx > 1e-9)
-      error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
-            mb.I_xx);
-    if (fabsf(ma.I_yy - mb.I_yy) / fabsf(ma.I_yy + mb.I_yy) > 1e-5 &&
-        ma.I_yy > 1e-9)
-      error("Multipole I_yy are different (%12.15e vs. %12.15e)", ma.I_yy,
-            mb.I_yy);
-    if (fabsf(ma.I_zz - mb.I_zz) / fabsf(ma.I_zz + mb.I_zz) > 1e-5 &&
-        ma.I_zz > 1e-9)
-      error("Multipole I_zz are different (%12.15e vs. %12.15e)", ma.I_zz,
-            mb.I_zz);
-    if (fabsf(ma.I_xy - mb.I_xy) / fabsf(ma.I_xy + mb.I_xy) > 1e-5 &&
-        ma.I_xy > 1e-9)
-      error("Multipole I_xy are different (%12.15e vs. %12.15e)", ma.I_xy,
-            mb.I_xy);
-    if (fabsf(ma.I_xz - mb.I_xz) / fabsf(ma.I_xz + mb.I_xz) > 1e-5 &&
-        ma.I_xz > 1e-9)
-      error("Multipole I_xz are different (%12.15e vs. %12.15e)", ma.I_xz,
-            mb.I_xz);
-    if (fabsf(ma.I_yz - mb.I_yz) / fabsf(ma.I_yz + mb.I_yz) > 1e-5 &&
-        ma.I_yz > 1e-9)
-      error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
-            mb.I_yz);
-#endif
+    /* Now  compare the multipole expansion */
+    if (!gravity_multipole_equal(&ma.m_pole, &c->multipole->m_pole,
+                                 tolerance)) {
+      message("Multipoles are not equal at depth=%d!", c->depth);
+      message("Correct answer:");
+      gravity_multipole_print(&ma.m_pole);
+      message("Recursive multipole:");
+      gravity_multipole_print(&c->multipole->m_pole);
+      error("Aborting");
+    }
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
@@ -1239,6 +1321,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
   if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+  if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
+  if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
+  if (c->grav_top_level != NULL) scheduler_activate(s, c->grav_top_level);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
@@ -1266,13 +1351,14 @@ void cell_set_super(struct cell *c, struct cell *super) {
 }
 
 /**
- * @brief Recursively drifts all particles and g-particles in a cell hierarchy.
+ * @brief Recursively drifts particles of all kinds in a cell hierarchy.
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
 void cell_drift_particles(struct cell *c, const struct engine *e) {
 
+  const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
   const integertime_t ti_old = c->ti_old;
   const integertime_t ti_current = e->ti_current;
@@ -1283,7 +1369,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f, cell_h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
@@ -1297,7 +1383,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
         cell_drift_particles(cp, e);
         dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
+        cell_h_max = max(cell_h_max, cp->h_max);
       }
 
   } else if (ti_current > ti_old) {
@@ -1316,7 +1402,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
     }
 
     /* Loop over all the gas particles in the cell */
@@ -1330,14 +1416,17 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
+      /* Limit h to within the allowed range */
+      p->h = min(p->h, hydro_h_max);
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+      dx2_max = max(dx2_max, dx2);
 
       /* Maximal smoothing length */
-      h_max = (h_max > p->h) ? h_max : p->h;
+      cell_h_max = max(cell_h_max, p->h);
     }
 
     /* Loop over all the star particles in the cell */
@@ -1358,16 +1447,64 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   } else {
 
-    h_max = c->h_max;
+    cell_h_max = c->h_max;
     dx_max = c->dx_max;
   }
 
   /* Store the values */
-  c->h_max = h_max;
+  c->h_max = cell_h_max;
   c->dx_max = dx_max;
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
+}
+
+/**
+ * @brief Recursively drifts all multipoles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const integertime_t ti_old_multipole = c->ti_old_multipole;
+  const integertime_t ti_current = e->ti_current;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old_multipole) * timeBase;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+
+  /* Are we not in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and drift the multipoles. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_drift_particles(c->progeny[k], e);
+
+  } else if (ti_current > ti_old_multipole) {
+
+    /* Drift the multipole */
+    gravity_multipole_drift(c->multipole, dt);
+  }
+
+  /* Update the time of the last drift */
+  c->ti_old_multipole = ti_current;
+}
+
+/**
+ * @brief Drifts the multipole of a cell to the current time.
+ *
+ * Only drifts the multipole at this level. Multipoles deeper in the
+ * tree are not updated.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_multipole(struct cell *c, const struct engine *e) {
+  error("To be implemented");
 }
 
 /**
