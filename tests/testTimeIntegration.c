@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
 VORONOI3D_DECLARE_GLOBAL_VARIABLES()
 #endif
 

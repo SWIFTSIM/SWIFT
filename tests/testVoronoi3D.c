@@ -1113,7 +1113,7 @@ void test_paths() {
   }
 }
 
-#ifdef SHADOWSWIFT
+#ifdef SHADOWFAX_SPH
 void set_coordinates(struct part *p, double x, double y, double z,
                      unsigned int id) {
   p->x[0] = x;
@@ -1125,7 +1125,7 @@ void set_coordinates(struct part *p, double x, double y, double z,
 #endif
 
 void test_degeneracies() {
-#ifdef SHADOWSWIFT
+#ifdef SHADOWFAX_SPH
   int idx = 0;
   /* make a small cube */
   struct part particles[100];

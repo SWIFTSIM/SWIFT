@@ -26,7 +26,7 @@
 
 #include "swift.h"
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
 VORONOI3D_DECLARE_GLOBAL_VARIABLES()
 #endif
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   /* Choke if need be */
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
-#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
   /* Initialize the Voronoi simulation box */
   float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
   float box_side[3] = {6.0f, 6.0f, 6.0f};
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   pi.id = 1;
   pj.id = 2;
 
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
   pi.primitives.rho = random_uniform(0.1f, 1.0f);
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   pi.force.dt = 0.001;
   pj.force.dt = 0.001;
 
-#ifdef SHADOWSWIFT
+#ifdef SHADOWFAX_SPH
   voronoi_cell_init(&pi.cell, pi.x);
   voronoi_cell_init(&pj.cell, pj.x);
 #endif

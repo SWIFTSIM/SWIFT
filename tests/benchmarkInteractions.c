@@ -450,6 +450,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 #endif
 }
 
+#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
+
 /* And go... */
 int main(int argc, char *argv[]) {
   size_t runs = 10000;

@@ -117,7 +117,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         part->id = ++(*partId);
 
-#ifdef GIZMO_SPH
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
         voronoi_cell_init(&part->cell, part->x);
 #else
@@ -298,6 +298,10 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
+
+#if defined(SHADOWFAX_SPH) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
 
 /* And go... */
 int main(int argc, char *argv[]) {
