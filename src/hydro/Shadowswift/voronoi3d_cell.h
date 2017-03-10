@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_VORONOI1D_CELL_H
-#define SWIFT_VORONOI1D_CELL_H
+#ifndef SWIFT_VORONOIXD_CELL_H
+#define SWIFT_VORONOIXD_CELL_H
 
 /* Maximal number of neighbours that can be stored in a voronoi_cell struct */
 #define VORONOI3D_MAXNUMNGB 100
@@ -134,4 +134,4 @@ __attribute__((always_inline)) INLINE void voronoi3d_cell_copy(
   }
 }
 
-#endif  // SWIFT_VORONOI1D_CELL_H
+#endif  // SWIFT_VORONOIXD_CELL_H

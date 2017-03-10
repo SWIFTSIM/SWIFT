@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_VORONOI1D_CELL_H
-#define SWIFT_VORONOI1D_CELL_H
+#ifndef SWIFT_VORONOIXD_CELL_H
+#define SWIFT_VORONOIXD_CELL_H
 
 /* 1D Voronoi cell */
 struct voronoi_cell {
@@ -45,4 +45,4 @@ struct voronoi_cell {
   float centroid;
 };
 
-#endif  // SWIFT_VORONOI1D_CELL_H
+#endif  // SWIFT_VORONOIXD_CELL_H

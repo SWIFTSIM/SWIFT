@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_VORONOI1D_ALGORITHM_H
-#define SWIFT_VORONOI1D_ALGORITHM_H
+#ifndef SWIFT_VORONOIXD_ALGORITHM_H
+#define SWIFT_VORONOIXD_ALGORITHM_H
 
 #include <float.h>
 #include <math.h>
@@ -178,4 +178,4 @@ __attribute__((always_inline)) INLINE void voronoi_get_centroid(
   centroid[2] = 0.0f;
 }
 
-#endif  // SWIFT_VORONOI1D_ALGORITHM_H
+#endif  // SWIFT_VORONOIXD_ALGORITHM_H

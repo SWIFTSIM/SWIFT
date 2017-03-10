@@ -23,10 +23,9 @@
 #if defined(HYDRO_DIMENSION_1D)
 #include "voronoi1d_cell.h"
 #elif defined(HYDRO_DIMENSION_2D)
-#warning "2D moving mesh not implemented yet!"
 #include "voronoi2d_cell.h"
 #elif defined(HYDRO_DIMENSION_3D)
-#include "voronoi3d_algorithm.h"
+#include "voronoi3d_cell.h"
 #else
 #error "You have to select a dimension for the hydro!"
 #endif
