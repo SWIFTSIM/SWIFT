@@ -3040,21 +3040,21 @@ void engine_step(struct engine *e) {
            e->wallclock_time);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f %3d %3d\n",
-            e->step, e->time, e->timeStep, e->updates, e->g_updates,
-            e->s_updates, e->wallclock_time, (e->lastrebuild > 0),
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %10zu %10zu %10zu %21.3f %3d %3d\n", e->step,
+            e->time, e->timeStep, e->updates, e->g_updates, e->s_updates,
+            e->wallclock_time, (e->lastrebuild > 0),
             (e->lastrepart != REPART_NONE));
     fflush(e->file_timesteps);
   }
 
-  /* Repartition the space amongst the nodes? */
+/* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
 
   /* Old style if trigger is >1 or this is the second step. */
-  if (e->reparttype->trigger > 1 || e->step == 2 ) {
+  if (e->reparttype->trigger > 1 || e->step == 2) {
     if (e->reparttype->trigger > 1) {
-        if (e->step % (int)e->reparttype->trigger == 2)
-        e->forcerepart = 1;
+      if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
     } else {
       e->forcerepart = 1;
     }
@@ -3107,14 +3107,16 @@ void engine_step(struct engine *e) {
         if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
       }
 
-      if ((e->updates > 1 && e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
-          (e->g_updates > 1 && e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+      if ((e->updates > 1 &&
+           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
+          (e->g_updates > 1 &&
+           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
 
         /* Are we out of balance? */
         if (((maxtime - mintime) / mintime) > e->reparttype->trigger) {
           if (e->verbose)
             message("fractionaltime %.2f > %.2f will repartition",
-              (maxtime - mintime) / mintime, e->reparttype->trigger);
+                    (maxtime - mintime) / mintime, e->reparttype->trigger);
           e->forcerepart = 1;
         }
       }

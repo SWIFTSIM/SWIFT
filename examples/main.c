@@ -514,9 +514,9 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
-              N_total[1], with_aff, engine_policies, talking, &reparttype,
-              &us, &prog_const, &hydro_properties, &gravity_properties, 
-              &potential, &cooling_func, &sourceterms);
+              N_total[1], with_aff, engine_policies, talking, &reparttype, &us,
+              &prog_const, &hydro_properties, &gravity_properties, &potential,
+              &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

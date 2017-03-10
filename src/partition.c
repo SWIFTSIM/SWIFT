@@ -1076,15 +1076,19 @@ void partition_init(struct partition *partition,
 
   /* Get the fraction CPU time difference between nodes (<1) or the number
    * of steps between repartitions (>1). */
-  repartition->trigger = parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
+  repartition->trigger =
+      parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
   if (repartition->trigger <= 0)
     error("Invalid DomainDecomposition:trigger, must be greater than zero");
 
   /* Fraction of particles that should be updated before a repartition
    * based on CPU time is considered. */
-  repartition->minfrac = parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
+  repartition->minfrac =
+      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
   if (repartition->minfrac <= 0 || repartition->minfrac > 1)
-    error("Invalid DomainDecomposition:minfrac, must be greater than 0 and less than equal to 1");
+    error(
+        "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
+        "than equal to 1");
 
 #else
   error("SWIFT was not compiled with MPI support");
