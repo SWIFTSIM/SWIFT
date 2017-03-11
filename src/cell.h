@@ -227,6 +227,9 @@ struct cell {
   /*! Last (integer) time the cell's content was drifted forward in time. */
   integertime_t ti_old;
 
+  /*! Last (integer) time the cell's sort arrays were updated. */
+  integertime_t ti_sort;
+
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 

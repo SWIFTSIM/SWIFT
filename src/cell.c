@@ -1097,7 +1097,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f;
-  float dx_max_sort = c->dx_max_sort, dx2_max_sort = 0.f;
+  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
@@ -1114,6 +1114,10 @@ void cell_drift(struct cell *c, const struct engine *e) {
         dx_max = max(dx_max, cp->dx_max);
         dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         h_max = max(h_max, cp->h_max);
+        if (cp->ti_sort > c->ti_sort)
+          c->sorted = 0;
+        else
+          c->sorted &= cp->sorted;
       }
 
   } else if (ti_current > ti_old) {
@@ -1162,7 +1166,7 @@ void cell_drift(struct cell *c, const struct engine *e) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = max(dx_max_sort, sqrtf(dx2_max_sort));
+    dx_max_sort = sqrtf(dx2_max_sort);
 
   } else {
 
