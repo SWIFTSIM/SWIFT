@@ -614,7 +614,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid))) error("Trying to interact unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
+  // if (!(cj->sorted & (1 << sid))) error("Trying to interact unsorted
+  // cells.");
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
@@ -893,8 +896,12 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
+  // if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+  //   error("Trying to interact unsorted cells.");
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1132,8 +1139,12 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
+  // if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+  //   error("Trying to interact unsorted cells.");
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -2230,8 +2241,12 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+    if (!(ci->sorted & (1 << sid)) ||
+        ci->dx_max_sort > ci->dmin * space_maxreldx)
+      runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid)) ||
+        cj->dx_max_sort > cj->dmin * space_maxreldx)
+      runner_do_sort(r, cj, (1 << sid), 1);
 
     /* Compute the interactions. */
     DOPAIR1(r, ci, cj);
