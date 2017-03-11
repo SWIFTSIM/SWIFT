@@ -64,6 +64,11 @@ void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
  */
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ta == NULL) error("Unlocking task is NULL.");
+  if (tb == NULL) error("Unlocked task is NULL.");
+#endif
+
   /* Get an index at which to store this unlock. */
   const int ind = atomic_inc(&s->nr_unlocks);
 
@@ -168,6 +173,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
 
+          /* Depend on local sorts on this cell. */
+          if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
+
           /* Otherwise, make tasks explicitly. */
         } else {
 
@@ -233,6 +241,10 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
           /* Make this task a sub task. */
           t->type = task_type_sub_pair;
+
+          /* Depend on the sort tasks of both cells. */
+          if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
+          if (cj->sorts != NULL) scheduler_addunlock(s, cj->sorts, t);
 
           /* Otherwise, split it. */
         } else {
