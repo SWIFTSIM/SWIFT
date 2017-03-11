@@ -343,12 +343,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   /* Clean-up the flags, i.e. filter out what's already been sorted, but
      only if the sorts are recent. */
-  if (c->dx_max_sort == 0.0f) {
+  if (c->ti_sort == r->e->ti_current) {
     /* Ignore dimensions that have been sorted. */
     flags &= ~c->sorted;
   } else {
-    /* Re-do all the sorts. */
-    flags |= c->sorted;
+    /* Clean old (stale) sorts. */
     c->sorted = 0;
   }
   if (flags == 0) return;
@@ -370,13 +369,16 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   if (c->split) {
 
     /* Fill in the gaps within the progeny. */
+    float dx_max_sort = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        if (c->progeny[k]->dx_max_sort > c->dmin * space_maxreldx)
+        if (flags & ~c->progeny[k]->sorted ||
+            c->progeny[k]->dx_max_sort > c->dmin * space_maxreldx)
           runner_do_sort(r, c->progeny[k], flags, 0);
-        c->dx_max_sort = max(c->dx_max_sort, c->progeny[k]->dx_max_sort);
+        dx_max_sort = max(dx_max_sort, c->progeny[k]->dx_max_sort);
       }
     }
+    c->dx_max_sort = dx_max_sort;
 
     /* Loop over the 13 different sort arrays. */
     for (int j = 0; j < 13; j++) {
@@ -475,7 +477,16 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
     /* Finally, clear the dx_max_sort field of this cell. */
     c->dx_max_sort = 0.f;
+
+    /* If this was not just an update, invalidate the sorts above this one. */
+    if (c->ti_sort < r->e->ti_current)
+      for (struct cell *finger = c->parent; finger != NULL;
+           finger = finger->parent)
+        finger->sorted = 0;
   }
+
+  /* Update the sort timer. */
+  c->ti_sort = r->e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
@@ -780,6 +791,9 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
   /* Ignore empty cells. */
   if (c->count == 0 && c->gcount == 0) return;
 
+  /* Skip inactive cells. */
+  if (!cell_is_active(c, e)) return;
+
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -791,10 +805,8 @@ static void runner_do_unskip(struct cell *c, struct engine *e) {
   }
 
   /* Unskip any active tasks. */
-  if (cell_is_active(c, e)) {
-    const int forcerebuild = cell_unskip_tasks(c, &e->sched);
-    if (forcerebuild) atomic_inc(&e->forcerebuild);
-  }
+  const int forcerebuild = cell_unskip_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
 /**
