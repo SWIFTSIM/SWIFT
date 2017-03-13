@@ -3054,10 +3054,9 @@ void engine_step(struct engine *e) {
     fflush(stdout);
 
     fprintf(e->file_timesteps,
-            "  %6d %14e %14e %10zu %10zu %10zu %21.3f %3d %3d\n", e->step,
+            "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step,
             e->time, e->timeStep, e->updates, e->g_updates, e->s_updates,
-            e->wallclock_time, (e->lastrebuild > 0),
-            (e->lastrepart != REPART_NONE));
+            e->wallclock_time);
     fflush(e->file_timesteps);
   }
 
@@ -3071,17 +3070,24 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
+#ifdef WITH_MPI
+  int justrepart = (e->forcerepart != REPART_NONE);
+#endif
   engine_prepare(e);
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
 
-  /* Old style if trigger is >1 or this is the second step. */
-  if (e->reparttype->trigger > 1 || e->step == 2) {
-    if (e->reparttype->trigger > 1) {
-      if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
-    } else {
-      e->forcerepart = 1;
+  /* Old style if trigger is >1 or this is the second step, but we never
+   * repartition immediately after a repartition, those timings will not be
+   * representative. */
+  if (e->reparttype->trigger > 1 || e->step == 2 || justrepart) {
+    if (! justrepart) {
+      if (e->reparttype->trigger > 1) {
+        if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
+      } else {
+        e->forcerepart = 1;
+      }
     }
 
 #ifdef SWIFT_DEBUG_TASKS
@@ -3160,7 +3166,6 @@ void engine_step(struct engine *e) {
 
   /* All nodes do this together. */
   MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  e->lastrepart = e->forcerepart;
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -3668,9 +3673,7 @@ void engine_init(struct engine *e, struct space *s,
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
-  e->lastrebuild = 1;
   e->forcerepart = 0;
-  e->lastrepart = 0;
   e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->save_stats = 0;

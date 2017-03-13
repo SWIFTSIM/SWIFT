@@ -203,11 +203,9 @@ struct engine {
 
   /* Force the engine to rebuild? */
   int forcerebuild;
-  int lastrebuild;
 
   /* Force the engine to repartition ? */
   int forcerepart;
-  int lastrepart;
   struct repartition *reparttype;
 
   /* Need to dump some statistics ? */
