@@ -105,7 +105,21 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
  * @param id ID of the interacting neighbour.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_interact(
-    struct voronoi_cell *cell, float *dx, unsigned long long id) {}
+    struct voronoi_cell *cell, float *dx, unsigned long long id) {
+
+  float half_dx[2];
+  float r2;
+
+  /* we need a vector with half the size of the vector joining generator and
+     neighbour, pointing to the neighbour */
+  half_dx[0] = -0.5f * dx[0];
+  half_dx[1] = -0.5f * dx[1];
+
+  /* we need the squared length of this vector */
+  r2 = half_dx[0] * half_dx[0] + half_dx[1] * half_dx[1];
+
+  (void)r2;
+}
 
 /**
  * @brief Finalize a 2D Voronoi cell
