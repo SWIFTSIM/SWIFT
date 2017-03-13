@@ -359,25 +359,23 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
  * @param last_pj The last particle in cell cj that is in range.
  * @param num_vec_proc Number of vectors that will be used to process the interaction.
  */
-__attribute__((always_inline)) INLINE void cache_read_two_cells_sorted_2(
+__attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const struct cell *const ci, const struct cell *const cj, struct cache *const ci_cache, struct cache *const cj_cache, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const double *const shift, int *first_pi, int *last_pj, const int num_vec_proc) {
 
   int idx, ci_cache_idx;
-    /* Pad number of particles read to the vector size. */
+  /* Pad number of particles read to the vector size. */
   int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
     int pad = (num_vec_proc * VEC_SIZE) - rem;
     
-    if (*first_pi - pad >= 0)
-      *first_pi -= pad;
+    if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
   rem = *last_pj % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
     int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-    if (*last_pj + pad < cj->count)
-      *last_pj += pad;
+    if (*last_pj + pad < cj->count) *last_pj += pad;
   }
 
   int first_pi_align = *first_pi;
