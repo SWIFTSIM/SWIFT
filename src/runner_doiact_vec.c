@@ -299,7 +299,21 @@ __attribute__((always_inline)) INLINE static void populate_max_d(const struct ce
   }
 }
 
-__attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const struct cell *ci, const struct cell *cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const float dx_max, const float rshift, float *max_di, float *max_dj, int *init_ci, int *init_cj) {
+/* @brief Populates the arrays max_di and max_dj with the maximum distances of particles into their neighbouring cells. Also finds the first pi that interacts with any particle in cj and the last pj that interacts with any particle in ci.
+ * @param ci #cell pointer to ci
+ * @param cj #cell pointer to cj
+ * @param sort_i #entry array for particle distance in ci
+ * @param sort_j #entry array for particle distance in cj
+ * @param ci_cache #cache for cell ci
+ * @param cj_cache #cache for cell cj
+ * @param dx_max maximum particle movement allowed in cell
+ * @param rshift cutoff shift
+ * @param max_di array to hold the maximum distances of pi particles into cell cj 
+ * @param max_dj array to hold the maximum distances of pj particles into cell cj
+ * @param init_pi first pi to interact with a pj particle
+ * @param init_pj last pj to interact with a pi particle
+ */
+__attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const struct cell *ci, const struct cell *cj, const struct entry *restrict sort_i, const struct entry *restrict sort_j, const float dx_max, const float rshift, float *max_di, float *max_dj, int *init_pi, int *init_pj) {
 
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
@@ -307,7 +321,8 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
 
   float h = p->h;
   float d = sort_i[0].d;
-  
+
+  /* Get the distance of the last pi and the first pj on the sorted axis.*/  
   const float di_max = sort_i[ci->count - 1].d - rshift;
   const float dj_min = sort_j[0].d;
 
@@ -319,6 +334,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
 
   if(max_di[0] >= dj_min) found_pi = 1;
 
+  /* Find the maximum distance of pi particles into cj.*/
   for (int k = 1; k < ci->count; k++) {
     p = &parts_i[sort_i[k].i];
     h = p->h;
@@ -340,6 +356,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
   h = p->h;
   max_dj[0] = sort_j[0].d - h * kernel_gamma - dx_max - rshift;
   
+  /* Find the maximum distance of pj particles into ci.*/
   for (int k = 1; k < cj->count; k++) {
     p = &parts_j[sort_j[k].i];
     h = p->h;
@@ -360,8 +377,8 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(const 
     }
   }
 
-  *init_ci = first_pi;
-  *init_cj = last_pj;
+  *init_pi = first_pi;
+  *init_pj = last_pj;
 }
 #endif /* WITH_VECTORIZATION */ 
 
