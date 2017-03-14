@@ -20,6 +20,9 @@
 #ifndef SWIFT_MULTIPOLE_H
 #define SWIFT_MULTIPOLE_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <math.h>
 #include <string.h>
@@ -34,6 +37,7 @@
 #include "kernel_gravity.h"
 #include "minmax.h"
 #include "part.h"
+#include "vector_power.h"
 
 #define multipole_align 128
 
@@ -186,23 +190,23 @@ INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
  */
 INLINE static void gravity_multipole_print(const struct multipole *m) {
 
-  printf("Vel= [%12.5e %12.5e %12.5e\n", m->vel[0], m->vel[1], m->vel[2]);
-  printf("-------------------------");
+  printf("Vel= [%12.5e %12.5e %12.5e]\n", m->vel[0], m->vel[1], m->vel[2]);
+  printf("-------------------------\n");
   printf("M_000= %12.5e\n", m->M_000);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  printf("-------------------------");
+  printf("-------------------------\n");
   printf("M_100= %12.5e M_010= %12.5e M_001= %12.5e\n", m->M_100, m->M_010,
          m->M_001);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  printf("-------------------------");
+  printf("-------------------------\n");
   printf("M_200= %12.5e M_020= %12.5e M_002= %12.5e\n", m->M_200, m->M_020,
          m->M_002);
   printf("M_110= %12.5e M_101= %12.5e M_011= %12.5e\n", m->M_110, m->M_101,
          m->M_011);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  printf("-------------------------");
+  printf("-------------------------\n");
   printf("M_300= %12.5e M_030= %12.5e M_003= %12.5e\n", m->M_300, m->M_030,
          m->M_003);
   printf("M_210= %12.5e M_201= %12.5e M_120= %12.5e\n", m->M_210, m->M_201,
@@ -211,7 +215,7 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
          m->M_012);
   printf("M_111= %12.5e\n", m->M_111);
 #endif
-  printf("-------------------------");
+  printf("-------------------------\n");
 }
 
 /**
@@ -276,101 +280,101 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
 
   /* Check CoM */
   if (fabs(ga->CoM[0] - gb->CoM[0]) / fabs(ga->CoM[0] + gb->CoM[0]) > tolerance)
-    return 0;
+    {message("CoM[0] different"); return 0;}
   if (fabs(ga->CoM[1] - gb->CoM[1]) / fabs(ga->CoM[1] + gb->CoM[1]) > tolerance)
-    return 0;
+    {message("CoM[1] different"); return 0;}
   if (fabs(ga->CoM[2] - gb->CoM[2]) / fabs(ga->CoM[2] + gb->CoM[2]) > tolerance)
-    return 0;
+    {message("CoM[2] different"); return 0;}
 
   /* Helper pointers */
   const struct multipole *ma = &ga->m_pole;
   const struct multipole *mb = &gb->m_pole;
 
   /* Check bulk velocity (if non-zero)*/
-  if (fabsf(ma->vel[0] + mb->vel[0]) > 0.f &&
+  if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 &&
       fabsf(ma->vel[0] - mb->vel[0]) / fabsf(ma->vel[0] + mb->vel[0]) >
           tolerance)
-    return 0;
-  if (fabsf(ma->vel[1] + mb->vel[1]) > 0.f &&
+    {message("v[0] different"); return 0;}
+  if (fabsf(ma->vel[1] + mb->vel[1]) > 1e-10 &&
       fabsf(ma->vel[1] - mb->vel[1]) / fabsf(ma->vel[1] + mb->vel[1]) >
           tolerance)
-    return 0;
-  if (fabsf(ma->vel[2] + mb->vel[2]) > 0.f &&
+    {message("v[1] different"); return 0;}
+  if (fabsf(ma->vel[2] + mb->vel[2]) > 1e-10 &&
       fabsf(ma->vel[2] - mb->vel[2]) / fabsf(ma->vel[2] + mb->vel[2]) >
           tolerance)
-    return 0;
+    {message("v[2] different"); return 0;}
 
   /* Check 0th order terms */
   if (fabsf(ma->M_000 - mb->M_000) / fabsf(ma->M_000 + mb->M_000) > tolerance)
-    return 0;
+    {message("M_000 term different"); return 0;}
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Check 1st order terms */
   if (fabsf(ma->M_100 + mb->M_100) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_100 - mb->M_100) / fabsf(ma->M_100 + mb->M_100) > tolerance)
-    return 0;
+        {message("M_100 term different"); return 0;}
   if (fabsf(ma->M_010 + mb->M_010) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_010 - mb->M_010) / fabsf(ma->M_010 + mb->M_010) > tolerance)
-    return 0;
+        {message("M_010 term different"); return 0;}
   if (fabsf(ma->M_001 + mb->M_001) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_001 - mb->M_001) / fabsf(ma->M_001 + mb->M_001) > tolerance)
-    return 0;
+        {message("M_001 term different"); return 0;}
 #endif
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* Check 2nd order terms */
   if (fabsf(ma->M_200 + mb->M_200) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_200 - mb->M_200) / fabsf(ma->M_200 + mb->M_200) > tolerance)
-    return 0;
+        {message("M_200 term different"); return 0;}
   if (fabsf(ma->M_020 + mb->M_020) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_020 - mb->M_020) / fabsf(ma->M_020 + mb->M_020) > tolerance)
-    return 0;
+        {message("M_020 term different"); return 0;}
   if (fabsf(ma->M_002 + mb->M_002) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_002 - mb->M_002) / fabsf(ma->M_002 + mb->M_002) > tolerance)
-    return 0;
+        {message("M_002 term different"); return 0;}
   if (fabsf(ma->M_110 + mb->M_110) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_110 - mb->M_110) / fabsf(ma->M_110 + mb->M_110) > tolerance)
-    return 0;
+        {message("M_110 term different"); return 0;}
   if (fabsf(ma->M_101 + mb->M_101) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_101 - mb->M_101) / fabsf(ma->M_101 + mb->M_101) > tolerance)
-    return 0;
+        {message("M_101 term different"); return 0;}
   if (fabsf(ma->M_011 + mb->M_011) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_011 - mb->M_011) / fabsf(ma->M_011 + mb->M_011) > tolerance)
-    return 0;
+        {message("M_011 term different"); return 0;}
 #endif
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
   /* Check 3rd order terms */
   if (fabsf(ma->M_300 + mb->M_300) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_300 - mb->M_300) / fabsf(ma->M_300 + mb->M_300) > tolerance)
-    return 0;
+        {message("M_300 term different"); return 0;}
   if (fabsf(ma->M_030 + mb->M_030) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_030 - mb->M_030) / fabsf(ma->M_030 + mb->M_030) > tolerance)
-    return 0;
+        {message("M_030 term different"); return 0;}
   if (fabsf(ma->M_003 + mb->M_003) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_003 - mb->M_003) / fabsf(ma->M_003 + mb->M_003) > tolerance)
-    return 0;
+        {message("M_003 term different"); return 0;}
   if (fabsf(ma->M_210 + mb->M_210) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_210 - mb->M_210) / fabsf(ma->M_210 + mb->M_210) > tolerance)
-    return 0;
+        {message("M_210 term different"); return 0;}
   if (fabsf(ma->M_201 + mb->M_201) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_201 - mb->M_201) / fabsf(ma->M_201 + mb->M_201) > tolerance)
-    return 0;
+        {message("M_201 term different"); return 0;}
   if (fabsf(ma->M_120 + mb->M_120) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_120 - mb->M_120) / fabsf(ma->M_120 + mb->M_120) > tolerance)
-    return 0;
+        {message("M_120 term different"); return 0;}
   if (fabsf(ma->M_021 + mb->M_021) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_021 - mb->M_021) / fabsf(ma->M_021 + mb->M_021) > tolerance)
-    return 0;
+        {message("M_021 term different"); return 0;}
   if (fabsf(ma->M_102 + mb->M_102) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_102 - mb->M_102) / fabsf(ma->M_102 + mb->M_102) > tolerance)
-    return 0;
+        {message("M_102 term different"); return 0;}
   if (fabsf(ma->M_012 + mb->M_012) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_012 - mb->M_012) / fabsf(ma->M_012 + mb->M_012) > tolerance)
-    return 0;
+        {message("M_012 term different"); return 0;}
   if (fabsf(ma->M_111 + mb->M_111) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_111 - mb->M_111) / fabsf(ma->M_111 + mb->M_111) > tolerance)
-    return 0;
+        {message("M_111 term different"); return 0;}
 #endif
 
   /* All is good */
@@ -417,7 +421,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   vel[1] *= imass;
   vel[2] *= imass;
 
-  /* Prepare some local counters */
+/* Prepare some local counters */
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   float M_100 = 0.f, M_010 = 0.f, M_001 = 0.f;
 #endif
@@ -439,29 +443,29 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     const double dx[3] = {gparts[k].x[0] - com[0], gparts[k].x[1] - com[1],
                           gparts[k].x[2] - com[2]};
 
-    M_100 += -m * dx[0];
-    M_010 += -m * dx[1];
-    M_001 += -m * dx[2];
+    M_100 += -m * X_100(dx);
+    M_010 += -m * X_010(dx);
+    M_001 += -m * X_001(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    M_200 += 0.5f * m * dx[0] * dx[0];
-    M_020 += 0.5f * m * dx[1] * dx[1];
-    M_002 += 0.5f * m * dx[2] * dx[2];
-    M_110 += m * dx[0] * dx[1];
-    M_101 += m * dx[0] * dx[2];
-    M_011 += m * dx[1] * dx[2];
+    M_200 += m * X_200(dx);
+    M_020 += m * X_020(dx);
+    M_002 += m * X_002(dx);
+    M_110 += m * X_110(dx);
+    M_101 += m * X_101(dx);
+    M_011 += m * X_011(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    M_300 += -0.16666667f * m * dx[0] * dx[0] * dx[0];
-    M_030 += -0.16666667f * m * dx[1] * dx[1] * dx[1];
-    M_003 += -0.16666667f * m * dx[2] * dx[2] * dx[2];
-    M_210 += -0.5f * m * dx[0] * dx[0] * dx[1];
-    M_201 += -0.5f * m * dx[0] * dx[0] * dx[2];
-    M_120 += -0.5f * m * dx[0] * dx[1] * dx[1];
-    M_021 += -0.5f * m * dx[1] * dx[1] * dx[2];
-    M_102 += -0.5f * m * dx[0] * dx[2] * dx[2];
-    M_012 += -0.5f * m * dx[1] * dx[2] * dx[2];
-    M_111 += -m * dx[0] * dx[1] * dx[2];
+    M_300 += -m * X_300(dx);
+    M_030 += -m * X_030(dx);
+    M_003 += -m * X_003(dx);
+    M_210 += -m * X_210(dx);
+    M_201 += -m * X_201(dx);
+    M_120 += -m * X_120(dx);
+    M_021 += -m * X_021(dx);
+    M_102 += -m * X_102(dx);
+    M_012 += -m * X_012(dx);
+    M_111 += -m * X_111(dx);
 #endif
   }
 
@@ -528,56 +532,64 @@ INLINE static void gravity_M2M(struct multipole *m_a,
                         pos_a[2] - pos_b[2]};
 
   /* Shift 1st order term */
-  m_a->M_100 = m_b->M_100 + dx[0] * m_b->M_000;
-  m_a->M_010 = m_b->M_010 + dx[1] * m_b->M_000;
-  m_a->M_001 = m_b->M_001 + dx[2] * m_b->M_000;
+  m_a->M_100 = m_b->M_100 + X_100(dx) * m_b->M_000;
+  m_a->M_010 = m_b->M_010 + X_010(dx) * m_b->M_000;
+  m_a->M_001 = m_b->M_001 + X_001(dx) * m_b->M_000;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  m_a->M_200 =
-      m_b->M_200 + dx[0] * m_b->M_100 + 0.5f * dx[0] * dx[0] * m_b->M_000;
-  m_a->M_020 =
-      m_b->M_020 + dx[1] * m_b->M_010 + 0.5f * dx[1] * dx[1] * m_b->M_000;
-  m_a->M_002 =
-      m_b->M_002 + dx[2] * m_b->M_001 + 0.5f * dx[2] * dx[2] * m_b->M_000;
-  m_a->M_110 = m_b->M_110 + dx[0] * m_b->M_010 + dx[1] * m_b->M_100 +
-               dx[0] * dx[1] * m_b->M_000;
-  m_a->M_101 = m_b->M_101 + dx[0] * m_b->M_001 + dx[2] * m_b->M_100 +
-               dx[0] * dx[2] * m_b->M_000;
-  m_a->M_011 = m_b->M_011 + dx[1] * m_b->M_001 + dx[2] * m_b->M_010 +
-               dx[1] * dx[2] * m_b->M_000;
+  m_a->M_200 = m_b->M_200 + X_100(dx) * m_b->M_100 + X_200(dx) * m_b->M_000;
+
+  m_a->M_020 = m_b->M_020 + X_010(dx) * m_b->M_010 + X_020(dx) * m_b->M_000;
+
+  m_a->M_002 = m_b->M_002 + X_001(dx) * m_b->M_001 + X_002(dx) * m_b->M_000;
+
+  m_a->M_110 = m_b->M_110 + X_100(dx) * m_b->M_010 + X_010(dx) * m_b->M_100 +
+               X_110(dx) * m_b->M_000;
+
+  m_a->M_101 = m_b->M_101 + X_100(dx) * m_b->M_001 + X_001(dx) * m_b->M_100 +
+               X_101(dx) * m_b->M_000;
+
+  m_a->M_011 = m_b->M_011 + X_010(dx) * m_b->M_001 + X_001(dx) * m_b->M_010 +
+               X_011(dx) * m_b->M_000;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  m_a->M_300 = m_b->M_300 + dx[0] * m_b->M_200 +
-               0.5f * dx[0] * dx[0] * m_b->M_100 +
-               0.1666667f * dx[0] * dx[0] * dx[0] * m_b->M_000;
-  m_a->M_030 = m_b->M_030 + dx[1] * m_b->M_020 +
-               0.5f * dx[1] * dx[1] * m_b->M_010 +
-               0.1666667f * dx[1] * dx[1] * dx[1] * m_b->M_000;
-  m_a->M_003 = m_b->M_003 + dx[2] * m_b->M_002 +
-               0.5f * dx[2] * dx[2] * m_b->M_001 +
-               0.1666667f * dx[2] * dx[2] * dx[2] * m_b->M_000;
-  m_a->M_210 = m_b->M_210 + dx[0] * m_b->M_110 + dx[1] * m_b->M_200 +
-               0.5f * dx[0] * dx[0] * m_b->M_010 + dx[0] * dx[1] * m_b->M_100 +
-               0.5f * dx[0] * dx[0] * dx[1] * m_b->M_000;
-  m_a->M_201 = m_b->M_201 + dx[0] * m_b->M_101 + dx[2] * m_b->M_200 +
-               0.5f * dx[0] * dx[0] * m_b->M_001 + dx[0] * dx[2] * m_b->M_100 +
-               0.5f * dx[0] * dx[0] * dx[2] * m_b->M_000;
-  m_a->M_120 = m_b->M_120 + dx[1] * m_b->M_110 + dx[0] * m_b->M_020 +
-               0.5f * dx[1] * dx[1] * m_b->M_100 + dx[0] * dx[1] * m_b->M_010 +
-               0.5f * dx[0] * dx[1] * dx[1] * m_b->M_000;
-  m_a->M_021 = m_b->M_021 + dx[1] * m_b->M_011 + dx[2] * m_b->M_020 +
-               0.5f * dx[1] * dx[1] * m_b->M_001 + dx[1] * dx[2] * m_b->M_010 +
-               0.5f * dx[1] * dx[1] * dx[2] * m_b->M_000;
-  m_a->M_102 = m_b->M_102 + dx[2] * m_b->M_101 + dx[0] * m_b->M_002 +
-               0.5f * dx[2] * dx[2] * m_b->M_100 + dx[0] * dx[2] * m_b->M_001 +
-               0.5f * dx[0] * dx[2] * dx[2] * m_b->M_000;
-  m_a->M_012 = m_b->M_012 + dx[2] * m_b->M_011 + dx[1] * m_b->M_002 +
-               0.5f * dx[2] * dx[2] * m_b->M_010 + dx[1] * dx[2] * m_b->M_001 +
-               0.5f * dx[1] * dx[2] * dx[2] * m_b->M_000;
-  m_a->M_111 = m_b->M_111 + dx[0] * m_b->M_011 + dx[1] * m_b->M_101 +
-               dx[2] * m_b->M_110 + dx[0] * dx[1] * m_b->M_001 +
-               dx[0] * dx[2] * m_b->M_010 + dx[1] * dx[2] * m_b->M_100 +
-               dx[0] * dx[1] * dx[2] * m_b->M_000;
+  m_a->M_300 = m_b->M_300 + X_100(dx) * m_b->M_200 + X_200(dx) * m_b->M_100 +
+               X_300(dx) * m_b->M_000;
+
+  m_a->M_030 = m_b->M_030 + X_010(dx) * m_b->M_020 + X_020(dx) * m_b->M_010 +
+               X_030(dx) * m_b->M_000;
+
+  m_a->M_003 = m_b->M_003 + X_001(dx) * m_b->M_002 + X_002(dx) * m_b->M_001 +
+               X_003(dx) * m_b->M_000;
+
+  m_a->M_210 = m_b->M_210 + X_100(dx) * m_b->M_110 + X_010(dx) * m_b->M_200 +
+               X_200(dx) * m_b->M_010 + X_110(dx) * m_b->M_100 +
+               X_210(dx) * m_b->M_000;
+
+  m_a->M_201 = m_b->M_201 + X_100(dx) * m_b->M_101 + X_010(dx) * m_b->M_200 +
+               X_200(dx) * m_b->M_001 + X_101(dx) * m_b->M_100 +
+               X_201(dx) * m_b->M_000;
+
+  m_a->M_120 = m_b->M_120 + X_010(dx) * m_b->M_110 + X_100(dx) * m_b->M_020 +
+               X_020(dx) * m_b->M_100 + X_110(dx) * m_b->M_010 +
+               X_120(dx) * m_b->M_000;
+
+  m_a->M_021 = m_b->M_021 + X_010(dx) * m_b->M_011 + X_001(dx) * m_b->M_020 +
+               X_020(dx) * m_b->M_001 + X_011(dx) * m_b->M_010 +
+               X_021(dx) * m_b->M_000;
+
+  m_a->M_102 = m_b->M_102 + X_001(dx) * m_b->M_101 + X_100(dx) * m_b->M_002 +
+               X_002(dx) * m_b->M_100 + X_101(dx) * m_b->M_001 +
+               X_102(dx) * m_b->M_000;
+
+  m_a->M_012 = m_b->M_012 + X_001(dx) * m_b->M_011 + X_010(dx) * m_b->M_002 +
+               X_002(dx) * m_b->M_010 + X_011(dx) * m_b->M_001 +
+               X_012(dx) * m_b->M_000;
+
+  m_a->M_111 = m_b->M_111 + X_100(dx) * m_b->M_011 + X_010(dx) * m_b->M_101 +
+               X_001(dx) * m_b->M_110 + X_110(dx) * m_b->M_001 +
+               X_101(dx) * m_b->M_010 + X_011(dx) * m_b->M_100 +
+               X_111(dx) * m_b->M_000;
 #endif
 }
 
@@ -634,12 +646,12 @@ INLINE static void gravity_M2L(struct gravity_tensors *l_b,
 }
 
 /**
- * @brief Creates a copy of #acc_tensor shifted to a new location.
+ * @brief Creates a copy of #grav_tensor shifted to a new location.
  *
  * Corresponds to equation (28e).
  *
- * @param l_a The #acc_tensor copy (content will  be overwritten).
- * @param l_b The #acc_tensor to shift.
+ * @param l_a The #grav_tensor copy (content will  be overwritten).
+ * @param l_b The #grav_tensor to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  * @param periodic Is the calculation periodic ?
@@ -676,7 +688,7 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
 }
 
 /**
- * @brief Applies the  #acc_tensor to a  #gpart.
+ * @brief Applies the  #grav_tensor to a  #gpart.
  *
  * Corresponds to equation (28a).
  */

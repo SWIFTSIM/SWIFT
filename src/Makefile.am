@@ -45,7 +45,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
     sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
+    vector_power.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
