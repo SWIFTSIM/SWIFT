@@ -49,7 +49,7 @@ int main() {
     assert(cell.centroid[1] == 0.5f);
   }
 
-  /* test interaction algorithm */
+  /* test interaction algorithm: normal case */
   {
     /* create 100 cells with random positions in [0,1]x[0,1] */
     struct voronoi_cell cells[TESTVORONOI2D_NUMCELL];
@@ -102,6 +102,65 @@ int main() {
 
     /* print the cells to the stdout */
     for (i = 0; i < TESTVORONOI2D_NUMCELL; ++i) {
+      voronoi_print_cell(&cells[i]);
+      voronoi_cell_finalize(&cells[i]);
+      Atot += cells[i].volume;
+    }
+
+    assert(fabs(Atot - 1.0f) < 1.e-6);
+  }
+
+  /* test interaction algorithm */
+  {
+    struct voronoi_cell cells[100];
+    double x[2];
+    float dx[2];
+    int i, j;
+    float Atot;
+    struct voronoi_cell *cell_i, *cell_j;
+
+    for (i = 0; i < 10; ++i) {
+      for (j = 0; j < 10; ++j) {
+        x[0] = (i + 0.5f) * 0.1;
+        x[1] = (j + 0.5f) * 0.1;
+        voronoi_cell_init(&cells[10 * i + j], x);
+      }
+    }
+
+    /* interact the cells (with periodic boundaries) */
+    for (i = 0; i < 100; ++i) {
+      cell_i = &cells[i];
+      for (j = 0; j < 100; ++j) {
+        if (i != j) {
+          cell_j = &cells[j];
+          dx[0] = cell_i->x[0] - cell_j->x[0];
+          dx[1] = cell_i->x[1] - cell_j->x[1];
+          /* periodic boundaries */
+          if (dx[0] >= 0.5f) {
+            dx[0] -= 1.0f;
+          }
+          if (dx[0] < -0.5f) {
+            dx[0] += 1.0f;
+          }
+          if (dx[1] >= 0.5f) {
+            dx[1] -= 1.0f;
+          }
+          if (dx[1] < -0.5f) {
+            dx[1] += 1.0f;
+          }
+#ifdef VORONOI_VERBOSE
+          message("Cell %i before:", i);
+          voronoi_print_cell(&cells[i]);
+          message("Interacting cell %i with cell %i (%g %g, %g %g", i, j,
+                  cells[i].x[0], cells[i].x[1], cells[j].x[0], cells[j].x[1]);
+#endif
+          voronoi_cell_interact(cell_i, dx, j);
+        }
+      }
+    }
+
+    /* print the cells to the stdout */
+    for (i = 0; i < 100; ++i) {
       voronoi_print_cell(&cells[i]);
       voronoi_cell_finalize(&cells[i]);
       Atot += cells[i].volume;

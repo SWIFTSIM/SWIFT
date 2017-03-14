@@ -28,11 +28,10 @@
 #include "minmax.h"
 #include "voronoi2d_cell.h"
 
-/* Check if the test variable contains a value that is small enough to be
-   affected by round off error */
-#define VORONOI_CHECK_TEST()     \
-  if (fabs(test) < 1.e-10) {     \
-    error("Too close to call!"); \
+/* Check if the number of vertices exceeds the maximal allowed number */
+#define VORONOI_CHECK_SIZE()          \
+  if (nvert > VORONOI2D_MAXNUMVERT) { \
+    error("Too many vertices!");      \
   }
 
 /* IDs used to keep track of cells neighbouring walls of the simulation box
@@ -187,7 +186,6 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   /* start testing a random vertex: the first one */
   test = cell->vertices[0][0] * half_dx[0] + cell->vertices[0][1] * half_dx[1] -
          r2;
-  VORONOI_CHECK_TEST();
   if (test < 0.) {
 /* vertex is below midline */
 #ifdef VORONOI_VERBOSE
@@ -200,18 +198,16 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
        coordinates */
     b1 = test;
 
-    /* move on until we find a vertex that is above the midline */
+    /* move on until we find a vertex that is above or on the midline */
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
-    VORONOI_CHECK_TEST();
     while (i < cell->nvert && test < 0.) {
       /* make sure we always store the latest test result */
       b1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
-      VORONOI_CHECK_TEST();
     }
 
     /* loop finished, there are two possibilities:
@@ -236,7 +232,10 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     a1 = test;
     increment = 1;
   } else {
-/* vertex is above midline */
+/* vertex is above or on midline
+   in the case where it is on the midline, we count that as above as well:
+   the vertex will be removed, and a new vertex will be created at the same
+   position */
 #ifdef VORONOI_VERBOSE
     message("First vertex is above midline (%g %g --> %g)!",
             cell->vertices[0][0] + cell->x[0],
@@ -250,14 +249,12 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
-    VORONOI_CHECK_TEST();
-    while (i < cell->nvert && test > 0.) {
+    while (i < cell->nvert && test >= 0.) {
       /* make sure we always store the most recent test result */
       a1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
-      VORONOI_CHECK_TEST();
     }
 
     /* loop finished, there are two possibilities:
@@ -290,9 +287,9 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
 #endif
 
   /* now we need to find the second intersected edge
-     we start from the vertex above the midline and search in the direction
-     opposite to the intersected edge direction until we find a vertex below the
-     midline */
+     we start from the vertex above (or on) the midline and search in the
+     direction opposite to the intersected edge direction until we find a vertex
+     below the midline */
 
   /* we make sure we store the test result for the second vertex above the
      midline as well, since we need this for intersection point computations
@@ -307,10 +304,9 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   }
   test = cell->vertices[i][0] * half_dx[0] + cell->vertices[i][1] * half_dx[1] -
          r2;
-  VORONOI_CHECK_TEST();
   /* this loop can never deadlock, as we know there is at least 1 vertex below
      the midline */
-  while (test > 0.) {
+  while (test >= 0.) {
     /* make sure we always store the most recent test result */
     a2 = test;
     i += increment;
@@ -322,7 +318,6 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     }
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
-    VORONOI_CHECK_TEST();
   }
 
   index_below2 = i;
@@ -341,6 +336,15 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
        intersected edges, so if the vertices above the midline are the same, the
        ones below need to be different and vice versa */
     error("Only 1 intersected edge found!");
+  }
+
+  /* there is exactly one degenerate case we have not addressed yet: the case
+     where index_above1 and index_above2 are the same and are on the midline.
+     In this case we don't want to create 2 new vertices. Instead, we just keep
+     index_above1, which basically means nothing happens at all and we can just
+     return */
+  if (index_above1 == index_above2 && a1 == 0.) {
+    return;
   }
 
   /* to make the code below more clear, we make sure index_above1 always holds
@@ -378,6 +382,10 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
           cell->vertices[index_above2][1] + cell->x[1], index_above2, a2);
 #endif
 
+  if (b1 == 0. || b2 == 0.) {
+    error("Vertex below midline is on midline!");
+  }
+
   /* convert the test results (which correspond to the projected distance
      between the vertex and the midline) to the fractions of the intersected
      edges above and below the midline */
@@ -400,6 +408,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     vertices[nvert][0] = cell->vertices[i][0];
     vertices[nvert][1] = cell->vertices[i][1];
     ++nvert;
+    VORONOI_CHECK_SIZE();
     ++i;
     if (i == cell->nvert) {
       i = 0;
@@ -411,11 +420,13 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   vertices[nvert][1] = a1 * cell->vertices[index_below1][1] +
                        b1 * cell->vertices[index_above1][1];
   ++nvert;
+  VORONOI_CHECK_SIZE();
   vertices[nvert][0] = a2 * cell->vertices[index_below2][0] +
                        b2 * cell->vertices[index_above2][0];
   vertices[nvert][1] = a2 * cell->vertices[index_below2][1] +
                        b2 * cell->vertices[index_above2][1];
   ++nvert;
+  VORONOI_CHECK_SIZE();
 
   /* overwrite the original vertices */
   cell->nvert = nvert;
