@@ -138,7 +138,7 @@ ds = grp1.create_dataset('Masses', (numPart,), 'f')
 ds[()] = m
 m = numpy.zeros(1)
 
-ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False, dtype='L')
+ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False)
 ds = grp1.create_dataset('ParticleIDs', (numPart, ), 'L')
 ds[()] = ids
 

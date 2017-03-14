@@ -107,7 +107,7 @@ if n_copy > 1:
     for i in range(n_copy):
         for j in range(n_copy):
             for k in range(n_copy):
-                coords = np.append(coords, coords_tile + np.array([ i * boxSize, j * boxSize, k * boxSize ]), axis=0)
+                coords = np.append(coords, coords_tile + np.array([ i * boxSize[0], j * boxSize[1], k * boxSize[2] ]), axis=0)
                 v = np.append(v, v_tile, axis=0)
                 m = np.append(m, m_tile)
                 h = np.append(h, h_tile)
