@@ -28,6 +28,13 @@
 #include "minmax.h"
 #include "voronoi2d_cell.h"
 
+/* Check if the test variable contains a value that is small enough to be
+   affected by round off error */
+#define VORONOI_CHECK_TEST()     \
+  if (fabs(test) < 1.e-10) {     \
+    error("Too close to call!"); \
+  }
+
 /* IDs used to keep track of cells neighbouring walls of the simulation box
    This will only work if these IDs are never used for actual particles (which
    in practice means you want to have less than 2^63-4 (~9e18) particles in your
@@ -180,8 +187,14 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   /* start testing a random vertex: the first one */
   test = cell->vertices[0][0] * half_dx[0] + cell->vertices[0][1] * half_dx[1] -
          r2;
+  VORONOI_CHECK_TEST();
   if (test < 0.) {
-    /* vertex is below midline */
+/* vertex is below midline */
+#ifdef VORONOI_VERBOSE
+    message("First vertex is below midline (%g %g --> %g)!",
+            cell->vertices[0][0] + cell->x[0],
+            cell->vertices[0][1] + cell->x[1], test);
+#endif
 
     /* store the test result; we might need it to compute the intersection
        coordinates */
@@ -191,12 +204,14 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
+    VORONOI_CHECK_TEST();
     while (i < cell->nvert && test < 0.) {
       /* make sure we always store the latest test result */
       b1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
+      VORONOI_CHECK_TEST();
     }
 
     /* loop finished, there are two possibilities:
@@ -204,7 +219,10 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
           neighbour is not an actual neighbour of this cell
         - test >= 0., we found a vertex above (or on) the midline */
     if (i == cell->nvert) {
-      /* the given neighbour is not an actual neighbour: exit the routine */
+/* the given neighbour is not an actual neighbour: exit the routine */
+#ifdef VORONOI_VERBOSE
+      message("Not a neighbour!");
+#endif
       return;
     }
 
@@ -218,7 +236,12 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     a1 = test;
     increment = 1;
   } else {
-    /* vertex is above midline */
+/* vertex is above midline */
+#ifdef VORONOI_VERBOSE
+    message("First vertex is above midline (%g %g --> %g)!",
+            cell->vertices[0][0] + cell->x[0],
+            cell->vertices[0][1] + cell->x[1], test);
+#endif
 
     /* store the test result */
     a1 = test;
@@ -227,12 +250,14 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
+    VORONOI_CHECK_TEST();
     while (i < cell->nvert && test > 0.) {
       /* make sure we always store the most recent test result */
       a1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
+      VORONOI_CHECK_TEST();
     }
 
     /* loop finished, there are two possibilities:
@@ -255,6 +280,15 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     b1 = test;
   }
 
+#ifdef VORONOI_VERBOSE
+  message("First intersected edge: %g %g --> %g %g (%i --> %i)",
+          cell->vertices[index_below1][0] + cell->x[0],
+          cell->vertices[index_below1][1] + cell->x[1],
+          cell->vertices[index_above1][0] + cell->x[0],
+          cell->vertices[index_above1][1] + cell->x[1], index_below1,
+          index_above1);
+#endif
+
   /* now we need to find the second intersected edge
      we start from the vertex above the midline and search in the direction
      opposite to the intersected edge direction until we find a vertex below the
@@ -273,6 +307,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   }
   test = cell->vertices[i][0] * half_dx[0] + cell->vertices[i][1] * half_dx[1] -
          r2;
+  VORONOI_CHECK_TEST();
   /* this loop can never deadlock, as we know there is at least 1 vertex below
      the midline */
   while (test > 0.) {
@@ -287,11 +322,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     }
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
-  }
-
-  if (i == index_below1) {
-    /* we only found 1 intersected edge. This is impossible. */
-    error("Only 1 intersected edge found!");
+    VORONOI_CHECK_TEST();
   }
 
   index_below2 = i;
@@ -304,6 +335,13 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   }
   /* we also store the test result for the second vertex below the midline */
   b2 = test;
+
+  if (index_above1 == index_above2 && index_below1 == index_below2) {
+    /* There can be only 1 vertex above or below the midline, but we need 2
+       intersected edges, so if the vertices above the midline are the same, the
+       ones below need to be different and vice versa */
+    error("Only 1 intersected edge found!");
+  }
 
   /* to make the code below more clear, we make sure index_above1 always holds
      the first vertex to remove, and index_above2 the last one, in clockwise
@@ -324,6 +362,21 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     a1 = a2;
     a2 = test;
   }
+
+#ifdef VORONOI_VERBOSE
+  message("First vertex below: %g %g (%i, %g)",
+          cell->vertices[index_below1][0] + cell->x[0],
+          cell->vertices[index_below1][1] + cell->x[1], index_below1, b1);
+  message("First vertex above: %g %g (%i, %g)",
+          cell->vertices[index_above1][0] + cell->x[0],
+          cell->vertices[index_above1][1] + cell->x[1], index_above1, a1);
+  message("Second vertex below: %g %g (%i, %g)",
+          cell->vertices[index_below2][0] + cell->x[0],
+          cell->vertices[index_below2][1] + cell->x[1], index_below2, b2);
+  message("Second vertex above: %g %g (%i, %g)",
+          cell->vertices[index_above2][0] + cell->x[0],
+          cell->vertices[index_above2][1] + cell->x[1], index_above2, a2);
+#endif
 
   /* convert the test results (which correspond to the projected distance
      between the vertex and the midline) to the fractions of the intersected
@@ -484,6 +537,11 @@ __attribute__((always_inline)) INLINE void voronoi_print_cell(
     struct voronoi_cell *cell) {
 
   int i, ip1;
+
+  /* print cell generator */
+  printf("%g %g\n\n", cell->x[0], cell->x[1]);
+
+  /* print cell vertices */
   for (i = 0; i < cell->nvert; ++i) {
     ip1 = i + 1;
     if (ip1 == cell->nvert) {
