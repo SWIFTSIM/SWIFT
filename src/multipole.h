@@ -525,6 +525,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 #endif
   }
 
+  M_100 = M_010 = M_001 = 0.f;
+
   /* Store the data on the multipole. */
   m->m_pole.M_000 = mass;
   m->CoM[0] = com[0];
@@ -935,7 +937,41 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l_b,
   gp->mass_interacted += l_b->pot.mass_interacted;
 #endif
 
+  const struct grav_tensor *lb = &l_b->pot;
+
+  /* Distance to the multipole */
+  const double dx[3] = {gp->x[0] - l_b->CoM[0], gp->x[1] - l_b->CoM[1],
+                        gp->x[2] - l_b->CoM[2]};
+
   /* 0th order interaction */
+  gp->a_grav[0] += X_000(dx) * lb->F_100;
+  gp->a_grav[1] += X_000(dx) * lb->F_010;
+  gp->a_grav[2] += X_000(dx) * lb->F_001;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  gp->a_grav[0] +=
+      X_100(dx) * lb->F_200 + X_010(dx) * lb->F_110 + X_001(dx) * lb->F_101;
+  gp->a_grav[1] +=
+      X_100(dx) * lb->F_110 + X_010(dx) * lb->F_020 + X_001(dx) * lb->F_011;
+  gp->a_grav[2] +=
+      X_100(dx) * lb->F_101 + X_010(dx) * lb->F_011 + X_001(dx) * lb->F_002;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  gp->a_grav[0] +=
+      X_200(dx) * lb->F_300 + X_020(dx) * lb->F_120 + X_002(dx) * lb->F_102;
+  gp->a_grav[0] +=
+      X_110(dx) * lb->F_210 + X_101(dx) * lb->F_201 + X_011(dx) * lb->F_111;
+  gp->a_grav[1] +=
+      X_200(dx) * lb->F_210 + X_020(dx) * lb->F_030 + X_002(dx) * lb->F_012;
+  gp->a_grav[1] +=
+      X_110(dx) * lb->F_120 + X_101(dx) * lb->F_111 + X_011(dx) * lb->F_021;
+  gp->a_grav[2] +=
+      X_200(dx) * lb->F_201 + X_020(dx) * lb->F_021 + X_002(dx) * lb->F_003;
+  gp->a_grav[2] +=
+      X_110(dx) * lb->F_111 + X_101(dx) * lb->F_102 + X_011(dx) * lb->F_012;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#endif
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
