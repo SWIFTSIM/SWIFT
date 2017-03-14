@@ -29,7 +29,6 @@
 #include "vector.h"
 #include "sort.h"
 
-#define MAX_NO_OF_PARTS 1000
 #define NUM_VEC_PROC 2
 #define CACHE_ALIGN sizeof(float) * VEC_SIZE
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
