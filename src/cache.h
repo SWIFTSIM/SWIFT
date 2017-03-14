@@ -340,6 +340,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
     ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
   }
+  float fake_pix = 2.0f * ci_cache->x[ci->count - 1];
+  for(int i=ci->count - first_pi_align; i<ci->count - first_pi_align + VEC_SIZE; i++)
+    ci_cache->x[i] = fake_pix;
  
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
@@ -356,6 +359,10 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     cj_cache->vy[i] = cj->parts[idx].v[1];
     cj_cache->vz[i] = cj->parts[idx].v[2];
   }
+
+  float fake_pjx = 2.0f * cj_cache->x[last_pj_align];
+  for(int i=last_pj_align + 1; i<last_pj_align + 1 + VEC_SIZE; i++)
+    cj_cache->x[i] = fake_pjx;
 }
 
 /* @brief Clean the memory allocated by a #cache object.

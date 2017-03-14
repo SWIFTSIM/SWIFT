@@ -1137,16 +1137,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
 
-      if (exit_iteration_align + pad <= last_pj_align + 1) {
-        exit_iteration_align += pad;
-      }
-      //else {
-      //  exit_iteration_align += pad;
-      //  for(int i=last_pj_align + 1; i<exit_iteration_align; i++) {
-      //    cj_cache->x[i] = pix.f[0] + 2.0f * hi * kernel_gamma;
-      //  }
-
-      //}
+      if (exit_iteration_align + pad <= last_pj_align + 1) exit_iteration_align += pad;
+   
     }
 
     vector pjx, pjy, pjz;
@@ -1272,14 +1264,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
 
-      if (exit_iteration_align - pad >= first_pi_align) {
-        exit_iteration_align -= pad;
-      }
-      //else {
-      //  for(int i=count_i - first_pi_align; i<count_i - first_pi_align + pad; i++) {
-      //      ci_cache->x[i] = pjx.f[0] + 2.0f * hj * kernel_gamma;
-      //  }
-      //}
+      if (exit_iteration_align - pad >= first_pi_align) exit_iteration_align -= pad;     
     }
 
     vector pix, piy, piz;
