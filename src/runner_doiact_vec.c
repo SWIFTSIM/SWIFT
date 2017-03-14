@@ -1128,8 +1128,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
         exit_iteration_align += pad;
         for(int i=last_pj_align + 1; i<exit_iteration_align; i++) {
           cj_cache->x[i] = pix.f[0] + 2.0f * hi * kernel_gamma;
-          cj_cache->y[i] = 0.f;
-          cj_cache->z[i] = 0.f;
         }
 
       }
@@ -1261,8 +1259,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       else {
         for(int i=count_i - first_pi_align; i<count_i - first_pi_align + pad; i++) {
             ci_cache->x[i] = pjx.f[0] + 2.0f * hj * kernel_gamma;
-            ci_cache->y[i] = 0.f;
-            ci_cache->z[i] = 0.f;
         }
       }
     }
