@@ -55,6 +55,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "parallel_io.h"
@@ -167,6 +168,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->drift, c->init);
 
       if (is_self_gravity) {
+
         /* Gravity non-neighbouring pm calculations */
         c->grav_long_range = scheduler_addtask(
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL, 0);
@@ -175,8 +177,15 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_top_level = scheduler_addtask(
             s, task_type_grav_top_level, task_subtype_none, 0, 0, c, NULL, 0);
 
+        /* Gravity recursive down-pass */
+        c->grav_down = scheduler_addtask(s, task_type_grav_down,
+                                         task_subtype_none, 0, 0, c, NULL, 0);
+
         scheduler_addunlock(s, c->init, c->grav_long_range);
         scheduler_addunlock(s, c->init, c->grav_top_level);
+        scheduler_addunlock(s, c->grav_long_range, c->grav_down);
+        scheduler_addunlock(s, c->grav_top_level, c->grav_down);
+        scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
       /* Generate the ghost task. */
@@ -1799,8 +1808,7 @@ static inline void engine_make_self_gravity_dependencies(
 
   /* init --> gravity --> grav_down --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
-  // scheduler_addunlock(sched, gravity, c->super->grav_down);
-  scheduler_addunlock(sched, gravity, c->super->kick2);
+  scheduler_addunlock(sched, gravity, c->super->grav_down);
 }
 
 /**
@@ -2169,27 +2177,28 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
  */
 void engine_make_gravityrecursive_tasks(struct engine *e) {
 
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells_top;
+  /* struct space *s = e->s; */
+  /* struct scheduler *sched = &e->sched; */
+  /* const int nodeID = e->nodeID; */
+  /* const int nr_cells = s->nr_cells; */
+  /* struct cell *cells = s->cells_top; */
 
-  for (int k = 0; k < nr_cells; k++) {
+  /* for (int k = 0; k < nr_cells; k++) { */
 
-    /* Only do this for local cells containing gravity particles */
-    if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
+  /*   /\* Only do this for local cells containing gravity particles *\/ */
+  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
 
-      /* Create tasks at top level. */
-      struct task *up = NULL;
-      struct task *down =
-          scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0,
-                            &cells[k], NULL, 0);
+  /*     /\* Create tasks at top level. *\/ */
+  /*     struct task *up = NULL; */
+  /*     struct task *down = NULL; */
+  /*         /\* scheduler_addtask(sched, task_type_grav_down,
+   * task_subtype_none, 0, 0, *\/ */
+  /*         /\*                   &cells[k], NULL, 0); *\/ */
 
-      /* Push tasks down the cell hierarchy. */
-      engine_addtasks_grav(e, &cells[k], up, down);
-    }
-  }
+  /*     /\* Push tasks down the cell hierarchy. *\/ */
+  /*     engine_addtasks_grav(e, &cells[k], up, down); */
+  /*   } */
+  /* } */
 }
 
 /**
@@ -2795,6 +2804,18 @@ void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time.
+   * That can include cells that have not
+   * previously been active on this rank. */
+  space_check_drift_point(e->s, e->ti_current);
+
+  /* Be verbose about this */
+  message("Saving statistics at t=%e.", e->time);
+#else
+  if (e->verbose) message("Saving statistics at t=%e.", e->time);
+#endif
+
   e->save_stats = 0;
 
   struct statistics stats;
@@ -2842,6 +2863,8 @@ void engine_skip_force_and_kick(struct engine *e) {
     if (t->type == task_type_drift || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->subtype == task_subtype_force || t->subtype == task_subtype_grav ||
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }
@@ -2999,7 +3022,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Ready to go */
-  e->step = -1;
+  e->step = 0;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
@@ -3020,14 +3043,6 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  /* Move forward in time */
-  e->ti_old = e->ti_current;
-  e->ti_current = e->ti_end_min;
-  e->step += 1;
-  e->time = e->ti_current * e->timeBase + e->timeBegin;
-  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
-
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
@@ -3041,6 +3056,15 @@ void engine_step(struct engine *e) {
             e->s_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
+
+  /* Move forward in time */
+  e->ti_old = e->ti_current;
+  e->ti_current = e->ti_end_min;
+  e->max_active_bin = get_max_active_bin(e->ti_end_min);
+  e->step += 1;
+  e->time = e->ti_current * e->timeBase + e->timeBegin;
+  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -3056,10 +3080,20 @@ void engine_step(struct engine *e) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  gravity_exact_force_compute(e->s, e);
+#endif
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
   TIMER_TOC(timer_runners);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check the accuracy of the gravity calculation */
+  gravity_exact_force_check(e->s, e, 1e-1);
+#endif
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -3545,6 +3579,7 @@ void engine_init(struct engine *e, struct space *s,
   e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->max_active_bin = num_time_bins;
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;

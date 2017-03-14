@@ -305,6 +305,15 @@ int main(int argc, char *argv[]) {
     message("WARNING: Debugging checks activated. Code will be slower !");
 #endif
 
+/* Do we have gravity accuracy checks ? */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (myrank == 0)
+    message(
+        "WARNING: Checking 1/%d of all gpart for gravity accuracy. Code will "
+        "be slower !",
+        SWIFT_GRAVITY_FORCE_CHECKS);
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
@@ -314,13 +323,14 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(part)      is %4zi bytes.", sizeof(struct part));
-    message("sizeof(xpart)     is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(spart)     is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(gpart)     is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(multipole) is %4zi bytes.", sizeof(struct multipole));
-    message("sizeof(task)      is %4zi bytes.", sizeof(struct task));
-    message("sizeof(cell)      is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)       is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)      is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(spart)      is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(gpart)      is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(multipole)  is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(acc_tensor) is %4zi bytes.", sizeof(struct acc_tensor));
+    message("sizeof(task)       is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)       is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file */
@@ -592,7 +602,7 @@ int main(int argc, char *argv[]) {
            clocks_getunit());
 
   /* Main simulation loop */
-  for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
+  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
 
     /* Reset timers */
     timers_reset(timers_mask_all);

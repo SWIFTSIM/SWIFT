@@ -143,6 +143,8 @@ before you can build it.
  - DOXYGEN: the doxygen library is required to create the SWIFT API
             documentation.
 
+ - python:  Examples and solution script use python and rely on the
+   	    numpy library version 1.8.2 or higher.
 
 
                              SWIFT Coding style

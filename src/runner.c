@@ -101,7 +101,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_fft.h"
-//#include "runner_doiact_grav.h"
+#include "runner_doiact_grav.h"
 
 /**
  * @brief Perform source terms
@@ -483,6 +483,10 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
+  /* Reset the gravity acceleration tensors */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_field_tensor_init(c->multipole);
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -580,6 +584,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
+  const float hydro_h_max = e->hydro_properties->h_max;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
       target_wcount + e->hydro_properties->delta_neighbours;
@@ -651,15 +656,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Ok, correct then */
           p->h += h_corr;
 
-          /* Flag for another round of fun */
-          pid[redo] = pid[i];
-          redo += 1;
+          /* If below the absolute maximum, try again */
+          if (p->h < hydro_h_max) {
 
-          /* Re-initialise everything */
-          hydro_init_part(p);
+            /* Flag for another round of fun */
+            pid[redo] = pid[i];
+            redo += 1;
 
-          /* Off we go ! */
-          continue;
+            /* Re-initialise everything */
+            hydro_init_part(p);
+
+            /* Off we go ! */
+            continue;
+          } else {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_max;
+          }
         }
 
         /* We now have a particle whose smoothing length has converged */
@@ -1325,7 +1338,13 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-      if (part_is_active(p, e)) hydro_end_force(p);
+
+      if (part_is_active(p, e)) {
+
+        /* First, finish the force loop */
+        hydro_end_force(p);
+        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
+      }
     }
 
     /* Loop over the g-particles in this cell. */
@@ -1333,16 +1352,20 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the gpart. */
       struct gpart *restrict gp = &gparts[k];
-      if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
+
+      if (gp->type == swift_type_dark_matter) {
+
+        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
+      }
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (e->policy & engine_policy_self_gravity) {
         gp->mass_interacted += gp->mass;
-        if (gp->mass_interacted != e->s->total_mass)
+        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
           error(
               "g-particle did not interact gravitationally with all other "
-              "particles gp->mass_interacted=%e, total_mass=%e",
-              gp->mass_interacted, e->s->total_mass);
+              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
+              gp->mass_interacted, e->s->total_mass, gp->mass);
       }
 #endif
     }
@@ -1352,7 +1375,12 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the spart. */
       struct spart *restrict sp = &sparts[k];
-      if (spart_is_active(sp, e)) star_end_force(sp);
+      if (spart_is_active(sp, e)) {
+
+        /* First, finish the force loop */
+        star_end_force(sp);
+        gravity_end_force(sp->gpart, const_G);
+      }
     }
   }
 
@@ -1378,6 +1406,8 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
   float h_max = 0.f;
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1385,10 +1415,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_parts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, parts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (parts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, parts[k].time_bin);
+      time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1396,6 +1425,10 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
         error("Received un-drifted particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1450,22 +1483,27 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_gparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, gparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (gparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, gparts[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts[k].time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].ti_drift != ti_current)
         error("Received un-drifted g-particle !");
 #endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1518,17 +1556,27 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
   integertime_t ti_end_min = max_nr_timesteps;
   integertime_t ti_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
-      const integertime_t ti_end =
-          get_integer_time_end(ti_current, sparts[k].time_bin);
-      ti_end_min = min(ti_end_min, ti_end);
-      ti_end_max = max(ti_end_max, ti_end);
+      if (sparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, sparts[k].time_bin);
+      time_bin_max = max(time_bin_max, sparts[k].time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].ti_drift != ti_current)
+        error("Received un-drifted s-particle !");
+#endif
     }
+
+    /* Convert into a time */
+    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -1674,8 +1722,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            // runner_doself_grav(r, ci, 1);
-            ;
+            runner_doself_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1697,8 +1744,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            // runner_dopair_grav(r, ci, cj, 1);#
-            ;
+            runner_dopair_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1713,8 +1759,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);#
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -1731,8 +1776,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
-            // runner_dosub_grav(r, ci, cj, 1);
-            ;
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1793,13 +1837,13 @@ void *runner_main(void *data) {
           // runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_down:
-          // runner_do_grav_down(r, t->ci);
+          runner_do_grav_down(r, t->ci);
           break;
         case task_type_grav_top_level:
           // runner_do_grav_top_level(r);
           break;
         case task_type_grav_long_range:
-          // runner_do_grav_fft(r);
+          runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_cooling:
           if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);

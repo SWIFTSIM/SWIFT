@@ -78,7 +78,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
                                               e->physical_constants, gp));
 
   if (e->policy & engine_policy_self_gravity)
-    new_dt = min(new_dt, gravity_compute_timestep_self(gp));
+    new_dt =
+        min(new_dt, gravity_compute_timestep_self(gp, e->gravity_properties));
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
@@ -121,7 +122,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
                                          e->physical_constants, p->gpart));
 
     if (e->policy & engine_policy_self_gravity)
-      new_dt_grav = min(new_dt_grav, gravity_compute_timestep_self(p->gpart));
+      new_dt_grav = min(new_dt_grav, gravity_compute_timestep_self(
+                                         p->gpart, e->gravity_properties));
   }
 
   /* Final time-step is minimum of hydro and gravity */
@@ -163,7 +165,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
                                            e->physical_constants, sp->gpart));
 
   if (e->policy & engine_policy_self_gravity)
-    new_dt = min(new_dt, gravity_compute_timestep_self(sp->gpart));
+    new_dt = min(new_dt, gravity_compute_timestep_self(sp->gpart,
+                                                       e->gravity_properties));
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);

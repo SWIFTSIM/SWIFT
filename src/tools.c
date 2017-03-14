@@ -732,19 +732,24 @@ int compare_particles(struct part a, struct part b, double threshold) {
 #endif
 }
 
-/** @brief Computes the forces between all g-particles using the N^2 algorithm
+/**
+ * @brief Computes the forces between all g-particles using the N^2 algorithm
  *
  * Overwrites the accelerations of the gparts with the values.
  * Do not use for actual runs.
  *
  * @brief gparts The array of particles.
  * @brief gcount The number of particles.
+ * @brief constants Physical constants in internal units.
+ * @brief gravity_properties Constants governing the gravity scheme.
  */
 void gravity_n2(struct gpart *gparts, const int gcount,
-                const struct phys_const *constants, float rlr) {
+                const struct phys_const *constants,
+                const struct gravity_props *gravity_properties, float rlr) {
 
   const float rlr_inv = 1. / rlr;
-  const float max_d = const_gravity_r_cut * rlr;
+  const float r_cut = gravity_properties->r_cut;
+  const float max_d = r_cut * rlr;
   const float max_d2 = max_d * max_d;
 
   message("rlr_inv= %f", rlr_inv);
