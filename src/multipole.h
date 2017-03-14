@@ -715,23 +715,106 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
                                const double pos_a[3], const double pos_b[3],
                                int periodic) {
 
-  /* Shift 0th order term */
-  l_a->pot.F_000 = l_b->pot.F_000;
+  /* Simplify notation */
+  struct grav_tensor *la = &l_a->pot;
+  const struct grav_tensor *lb = &l_b->pot;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* Initialise everything to zero */
+  gravity_field_tensors_init(l_a);
+
+  /* Distance to shift by */
   const double dx[3] = {pos_a[0] - pos_b[0], pos_a[1] - pos_b[1],
                         pos_a[2] - pos_b[2]};
 
-  /* Shift 1st order multipole term (addition to 000)*/
-  l_a->pot.F_000 += dx[0] * l_b->pot.F_100;
-  l_a->pot.F_000 += dx[1] * l_b->pot.F_010;
-  l_a->pot.F_000 += dx[2] * l_b->pot.F_001;
+  /* Shift 0th order term */
+  la->F_000 += X_000(dx) * lb->F_000;
 
-  /* Shift 1st order multipole term */
-  l_a->pot.F_100 = l_b->pot.F_100;
-  l_a->pot.F_010 = l_b->pot.F_010;
-  l_a->pot.F_001 = l_b->pot.F_001;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* Shift 1st order multipole term (addition to rank 0)*/
+  la->F_000 +=
+      X_100(dx) * lb->F_100 + X_010(dx) * lb->F_010 + X_001(dx) * lb->F_001;
 
+  /* Shift 1st order multipole term (addition to rank 1)*/
+  la->F_100 += X_000(dx) * lb->F_100;
+  la->F_010 += X_000(dx) * lb->F_010;
+  la->F_001 += X_000(dx) * lb->F_001;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* Shift 2nd order multipole term (addition to rank 0)*/
+  la->F_000 +=
+      X_200(dx) * lb->F_200 + X_020(dx) * lb->F_020 + X_002(dx) * lb->F_002;
+  la->F_000 +=
+      X_110(dx) * lb->F_110 + X_101(dx) * lb->F_101 + X_011(dx) * lb->F_011;
+
+  /* Shift 2nd order multipole term (addition to rank 1)*/
+  la->F_100 +=
+      X_100(dx) * lb->F_200 + X_010(dx) * lb->F_110 + X_001(dx) * lb->F_101;
+  la->F_010 +=
+      X_100(dx) * lb->F_110 + X_010(dx) * lb->F_020 + X_001(dx) * lb->F_011;
+  la->F_001 +=
+      X_100(dx) * lb->F_101 + X_010(dx) * lb->F_011 + X_001(dx) * lb->F_002;
+
+  /* Shift 2nd order multipole term (addition to rank 2)*/
+  la->F_200 += X_000(dx) * lb->F_200;
+  la->F_020 += X_000(dx) * lb->F_020;
+  la->F_002 += X_000(dx) * lb->F_002;
+  la->F_110 += X_000(dx) * lb->F_110;
+  la->F_101 += X_000(dx) * lb->F_101;
+  la->F_011 += X_000(dx) * lb->F_011;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /* Shift 3rd order multipole term (addition to rank 0)*/
+  la->F_000 +=
+      X_300(dx) * lb->F_300 + X_030(dx) * lb->F_030 + X_003(dx) * lb->F_003;
+  la->F_000 +=
+      X_210(dx) * lb->F_210 + X_201(dx) * lb->F_201 + X_120(dx) * lb->F_120;
+  la->F_000 +=
+      X_021(dx) * lb->F_021 + X_102(dx) * lb->F_102 + X_012(dx) * lb->F_012;
+  la->F_000 += X_111(dx) * lb->F_111;
+
+  /* Shift 3rd order multipole term (addition to rank 1)*/
+  la->F_100 +=
+      X_200(dx) * lb->F_300 + X_020(dx) * lb->F_120 + X_002(dx) * lb->F_102;
+  la->F_100 +=
+      X_110(dx) * lb->F_210 + X_101(dx) * lb->F_201 + X_011(dx) * lb->F_111;
+  la->F_010 +=
+      X_200(dx) * lb->F_210 + X_020(dx) * lb->F_030 + X_002(dx) * lb->F_012;
+  la->F_010 +=
+      X_110(dx) * lb->F_120 + X_101(dx) * lb->F_111 + X_011(dx) * lb->F_021;
+  la->F_001 +=
+      X_200(dx) * lb->F_201 + X_020(dx) * lb->F_021 + X_002(dx) * lb->F_003;
+  la->F_001 +=
+      X_110(dx) * lb->F_111 + X_101(dx) * lb->F_102 + X_011(dx) * lb->F_012;
+
+  /* Shift 3rd order multipole term (addition to rank 2)*/
+  la->F_200 +=
+      X_100(dx) * lb->F_300 + X_010(dx) * lb->F_210 + X_001(dx) * lb->F_201;
+  la->F_020 +=
+      X_100(dx) * lb->F_120 + X_010(dx) * lb->F_030 + X_001(dx) * lb->F_021;
+  la->F_002 +=
+      X_100(dx) * lb->F_102 + X_010(dx) * lb->F_012 + X_001(dx) * lb->F_003;
+  la->F_110 +=
+      X_100(dx) * lb->F_210 + X_010(dx) * lb->F_120 + X_001(dx) * lb->F_111;
+  la->F_101 +=
+      X_100(dx) * lb->F_201 + X_010(dx) * lb->F_111 + X_001(dx) * lb->F_102;
+  la->F_011 +=
+      X_100(dx) * lb->F_111 + X_010(dx) * lb->F_021 + X_001(dx) * lb->F_012;
+
+  /* Shift 3rd order multipole term (addition to rank 2)*/
+  la->F_300 += X_000(dx) * lb->F_300;
+  la->F_030 += X_000(dx) * lb->F_030;
+  la->F_003 += X_000(dx) * lb->F_003;
+  la->F_210 += X_000(dx) * lb->F_210;
+  la->F_201 += X_000(dx) * lb->F_201;
+  la->F_120 += X_000(dx) * lb->F_120;
+  la->F_021 += X_000(dx) * lb->F_021;
+  la->F_102 += X_000(dx) * lb->F_102;
+  la->F_012 += X_000(dx) * lb->F_012;
+  la->F_111 += X_000(dx) * lb->F_111;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
