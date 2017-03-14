@@ -883,6 +883,81 @@ void engine_repartition(struct engine *e) {
 }
 
 /**
+ * @brief Decide whether trigger a repartition the cells amongst the nodes.
+ *
+ * @param e The #engine.
+ */
+void engine_repartition_trigger(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  /* Do nothing if there have not been enough steps since the last
+   * repartition, don't want to repeat this too often or immediately after
+   * a repartition step. */
+  if (e->step - e->last_repartition > 2) {
+
+    /* Old style if trigger is >1 or this is the second step (want an early
+     * repartition following the initial repartition). */
+    if (e->reparttype->trigger > 1 || e->step == 2) {
+      if (e->reparttype->trigger > 1) {
+        if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
+      } else {
+        e->forcerepart = 1;
+      }
+
+    } else {
+
+      /* Use cputimes from ranks to estimate the imbalance. */
+      /* First check if we are going to skip this stage anyway, if so do that
+       * now. If is only worth checking the CPU loads when we have processed a
+       * significant number of all particles. */
+      if ((e->updates > 1 &&
+           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
+          (e->g_updates > 1 &&
+           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+
+        /* Get CPU time used since the last call to this function. */
+        double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
+
+        /* Gather the elapsed CPU times from all ranks for the last step. */
+        double elapsed_cputimes[e->nr_nodes];
+        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1, MPI_DOUBLE,
+                   0, MPI_COMM_WORLD);
+        if (e->nodeID == 0) {
+
+          /* Get the range of cputimes. */
+          double mintime = elapsed_cputimes[0];
+          double maxtime = elapsed_cputimes[0];
+          for (int k = 1; k < e->nr_nodes; k++) {
+            if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
+            if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
+          }
+
+          /* Are we out of balance? */
+          if (((maxtime - mintime) / mintime) > e->reparttype->trigger) {
+            if (e->verbose)
+              message("trigger fraction %.3f exceeds %.3f will repartition",
+                      (maxtime - mintime) / mintime, e->reparttype->trigger);
+            e->forcerepart = 1;
+          }
+        }
+
+        /* All nodes do this together. */
+        MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      }
+    }
+
+    /* Remember we did this. */
+    if (e->forcerepart)
+      e->last_repartition = e->step;
+  }
+
+  /* We always reset CPU time for next check. */
+  e->cputime_last_step = clocks_get_cputime_used();
+#endif
+}
+
+/**
  * @brief Add up/down gravity tasks to a cell hierarchy.
  *
  * @param e The #engine.
@@ -3070,102 +3145,11 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
-#ifdef WITH_MPI
-  int justrepart = (e->forcerepart != REPART_NONE);
-#endif
   engine_prepare(e);
 
-/* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
-
-  /* Old style if trigger is >1 or this is the second step, but we never
-   * repartition immediately after a repartition, those timings will not be
-   * representative. */
-  if (e->reparttype->trigger > 1 || e->step == 2 || justrepart) {
-    if (! justrepart) {
-      if (e->reparttype->trigger > 1) {
-        if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
-      } else {
-        e->forcerepart = 1;
-      }
-    }
-
-#ifdef SWIFT_DEBUG_TASKS
-    /* Capture CPU times for comparisons with other methods. */
-    double elapsed_cputime = e->cputoc_step - e->cputic_step;
-    e->cputic_step = clocks_get_cputime_used();
-    double elapsed_cputimes[e->nr_nodes];
-    MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1, MPI_DOUBLE,
-               0, MPI_COMM_WORLD);
-    if (e->nodeID == 0) {
-      double mintime = elapsed_cputimes[0];
-      double maxtime = elapsed_cputimes[0];
-      for (int k = 1; k < e->nr_nodes; k++) {
-        if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
-        if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
-      }
-      fprintf(e->file_cputimes, "%6d ", e->step);
-      for (int k = 0; k < e->nr_nodes; k++) {
-        fprintf(e->file_cputimes, " %14.7g", elapsed_cputimes[k]);
-      }
-      fprintf(e->file_cputimes, "\n");
-      fflush(e->file_cputimes);
-    }
-#endif
-
-  } else {
-
-    /* Use cputimes from ranks to estimate the imbalance. */
-    double elapsed_cputime = e->cputoc_step - e->cputic_step;
-    e->cputic_step = clocks_get_cputime_used();
-
-    /* Gather the elapsed CPU times from all ranks for the last step. */
-    double elapsed_cputimes[e->nr_nodes];
-    MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1, MPI_DOUBLE,
-               0, MPI_COMM_WORLD);
-
-    /* If all available particles of any type have been updated then consider
-     * if a repartition might be needed. Only worth checking when there is
-     * load on all ranks, so require that some fraction of all particles have
-     * been processed. */
-    if (e->nodeID == 0) {
-
-      /* Get the range of cputimes. */
-      double mintime = elapsed_cputimes[0];
-      double maxtime = elapsed_cputimes[0];
-      for (int k = 1; k < e->nr_nodes; k++) {
-        if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
-        if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
-      }
-
-      if ((e->updates > 1 &&
-           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
-          (e->g_updates > 1 &&
-           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
-
-        /* Are we out of balance? */
-        if (((maxtime - mintime) / mintime) > e->reparttype->trigger) {
-          if (e->verbose)
-            message("fractionaltime %.2f > %.2f will repartition",
-                    (maxtime - mintime) / mintime, e->reparttype->trigger);
-          e->forcerepart = 1;
-        }
-      }
-
-#ifdef SWIFT_DEBUG_TASKS
-      /* Save the cputimes for analysis. */
-      fprintf(e->file_cputimes, "%6d ", e->step);
-      for (int k = 0; k < e->nr_nodes; k++) {
-        fprintf(e->file_cputimes, " %14.7g", elapsed_cputimes[k]);
-      }
-      fprintf(e->file_cputimes, "\n");
-      fflush(e->file_cputimes);
-#endif
-    }
-  }
-
-  /* All nodes do this together. */
-  MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  /* Repartition the space amongst the nodes? */
+  engine_repartition_trigger(e);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -3243,11 +3227,6 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
-#endif
-
-#ifdef WITH_MPI
-  /* CPU time used at the end of this step. */
-  e->cputoc_step = clocks_get_cputime_used();
 #endif
 }
 
@@ -3704,9 +3683,6 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
   e->file_timesteps = NULL;
-#if WITH_MPI
-  e->file_cputimes = NULL;
-#endif
   e->deltaTimeStatistics =
       parser_get_param_double(params, "Statistics:delta_time");
   e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
@@ -3720,6 +3696,10 @@ void engine_init(struct engine *e, struct space *s,
   e->cooling_func = cooling_func;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
+#ifdef WITH_MPI
+  e->cputime_last_step = 0;
+  e->last_repartition = -1;
+#endif
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -3903,15 +3883,6 @@ void engine_init(struct engine *e, struct space *s,
             "Step", "Time", "Time-step", "Updates", "g-Updates", "s-Updates",
             "Wall-clock time", clocks_getunit());
     fflush(e->file_timesteps);
-
-#if defined(SWIFT_DEBUG_TASKS) && defined(WITH_MPI)
-    char cputimefileName[200] = "";
-    parser_get_opt_param_string(params, "DomainDecomposition:cputime_file_name",
-                                cputimefileName,
-                                engine_default_cputime_file_name);
-    sprintf(cputimefileName + strlen(cputimefileName), ".txt");
-    e->file_cputimes = fopen(cputimefileName, "w");
-#endif
   }
 
   /* Print policy */

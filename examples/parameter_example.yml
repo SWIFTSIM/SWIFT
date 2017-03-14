@@ -76,7 +76,6 @@ DomainDecomposition:
                              # new decomposition, or number of steps (>1) between decompositions
   minfrac:           0.9     # (Optional) Fractional of all particles that should be updated in previous step when
                              # using CPU time trigger
-  cputime_file_name: cputime # (Optional) File name for per node CPU time estimates for each step, requires --enable-task-debugging
 
 # Parameters related to external potentials --------------------------------------------
 

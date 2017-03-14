@@ -80,7 +80,6 @@ extern const char *engine_policy_names[];
 #define engine_redistribute_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
-#define engine_default_cputime_file_name "cputime"
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -191,11 +190,11 @@ struct engine {
 #endif
 
 #ifdef WITH_MPI
-  /* CPU times at the start/end of a step. */
-  double cputic_step, cputoc_step;
+  /* CPU time of the last step. */
+  double cputime_last_step;
 
-  /* Record of these. */
-  FILE *file_cputimes;
+  /* Step of last repartition. */
+  int last_repartition;
 #endif
 
   /* Wallclock time of the last time-step */
@@ -276,6 +275,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             size_t *Nspart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
+void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
