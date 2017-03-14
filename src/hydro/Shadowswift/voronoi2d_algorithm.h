@@ -152,6 +152,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   /* new number of vertices and new vertex coordinates */
   int nvert;
   float vertices[VORONOI2D_MAXNUMVERT][2];
+  unsigned long long ngbs[VORONOI2D_MAXNUMVERT];
 
   /* The process of cutting the current cell with the midline of the generator
      and the given relative neighbour position proceeds in two steps:
@@ -407,6 +408,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   while (i != index_above1) {
     vertices[nvert][0] = cell->vertices[i][0];
     vertices[nvert][1] = cell->vertices[i][1];
+    ngbs[nvert] = cell->ngbs[i];
     ++nvert;
     VORONOI_CHECK_SIZE();
     ++i;
@@ -419,12 +421,14 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
                        b1 * cell->vertices[index_above1][0];
   vertices[nvert][1] = a1 * cell->vertices[index_below1][1] +
                        b1 * cell->vertices[index_above1][1];
+  ngbs[nvert] = id;
   ++nvert;
   VORONOI_CHECK_SIZE();
   vertices[nvert][0] = a2 * cell->vertices[index_below2][0] +
                        b2 * cell->vertices[index_above2][0];
   vertices[nvert][1] = a2 * cell->vertices[index_below2][1] +
                        b2 * cell->vertices[index_above2][1];
+  ngbs[nvert] = cell->ngbs[index_above1];
   ++nvert;
   VORONOI_CHECK_SIZE();
 
@@ -433,6 +437,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   for (i = 0; i < cell->nvert; ++i) {
     cell->vertices[i][0] = vertices[i][0];
     cell->vertices[i][1] = vertices[i][1];
+    cell->ngbs[i] = ngbs[i];
   }
 }
 
