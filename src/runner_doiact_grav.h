@@ -27,6 +27,10 @@
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
+
+  const struct engine *e = r->e;
+  const int periodic = e->s->periodic;
+
   TIMER_TIC;
 
   if (c->split) {
@@ -37,7 +41,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
       if (cp != NULL) {
         gravity_L2L(&temp, c->multipole, cp->multipole->CoM, c->multipole->CoM,
-                    1);
+                    0 * periodic);
 
         gravity_field_tensors_add(cp->multipole, &temp);
 
@@ -89,7 +93,7 @@ void runner_dopair_grav_mm(const struct runner *r,
   if (!cell_is_active(ci, e)) return;
 
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, periodic);
+              cj->multipole->CoM, periodic * 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
