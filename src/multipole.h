@@ -67,6 +67,12 @@ struct grav_tensor {
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
 #endif
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Total mass this gpart interacted with */
+  double mass_interacted;
+
+#endif
 };
 
 struct multipole {
@@ -121,13 +127,6 @@ struct gravity_tensors {
 
     /*! Field tensor for the potential */
     struct grav_tensor pot;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-    /* Total mass this gpart interacted with */
-    double mass_interacted;
-
-#endif
   };
 } SWIFT_STRUCT_ALIGN;
 
@@ -159,10 +158,6 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
 
   bzero(&m->pot, sizeof(struct grav_tensor));
-
-#ifdef SWIFT_DEBUG_CHECKS
-  m->mass_interacted = 0.;
-#endif
 }
 
 /**
@@ -176,8 +171,9 @@ INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
   la->pot.F_000 += lb->pot.F_000;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->mass_interacted == 0.f) error("Adding tensors that did not interact");
-  la->mass_interacted += lb->mass_interacted;
+  if (lb->pot.mass_interacted == 0.f)
+    error("Adding tensors that did not interact");
+  la->pot.mass_interacted += lb->pot.mass_interacted;
 #endif
 }
 
@@ -299,20 +295,26 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
   const struct multipole *ma = &ga->m_pole;
   const struct multipole *mb = &gb->m_pole;
 
-  /* Check bulk velocity (if non-zero)*/
+  const double v2 = ma->vel[0] * ma->vel[0] + ma->vel[1] * ma->vel[1] +
+                    ma->vel[2] * ma->vel[2];
+
+  /* Check bulk velocity (if non-zero and component > 1% of norm)*/
   if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 &&
+      (ma->vel[0] * ma->vel[0]) > 0.0001 * v2 &&
       fabsf(ma->vel[0] - mb->vel[0]) / fabsf(ma->vel[0] + mb->vel[0]) >
           tolerance) {
     message("v[0] different");
     return 0;
   }
   if (fabsf(ma->vel[1] + mb->vel[1]) > 1e-10 &&
+      (ma->vel[1] * ma->vel[1]) > 0.0001 * v2 &&
       fabsf(ma->vel[1] - mb->vel[1]) / fabsf(ma->vel[1] + mb->vel[1]) >
           tolerance) {
     message("v[1] different");
     return 0;
   }
   if (fabsf(ma->vel[2] + mb->vel[2]) > 1e-10 &&
+      (ma->vel[2] * ma->vel[2]) > 0.0001 * v2 &&
       fabsf(ma->vel[2] - mb->vel[2]) / fabsf(ma->vel[2] + mb->vel[2]) >
           tolerance) {
     message("v[2] different");
@@ -658,7 +660,7 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param pos_a The position of the multipole.
  * @param periodic Is the calculation periodic ?
  */
-INLINE static void gravity_M2L(struct gravity_tensors *l_b,
+INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
                                int periodic) {
@@ -677,21 +679,116 @@ INLINE static void gravity_M2L(struct gravity_tensors *l_b,
 
   const double r_inv = 1. / sqrt(r2);
 
-  /* 0th order multipole term */
-  l_b->pot.F_000 += m_a->M_000 * D_000(dx, dy, dz, r_inv);
+  /*  0th order term */
+  l_b->F_000 += m_a->M_000 * D_000(dx, dy, dz, r_inv);
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /*  1st order multipole term (addition to rank 0)*/
+  l_b->F_000 += m_a->M_100 * D_100(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_010(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_001(dx, dy, dz, r_inv);
 
-  /* 1st order multipole term (addition to 000)*/
-  l_b->pot.F_000 += m_a->M_100 * D_100(dx, dy, dz, r_inv);
-  l_b->pot.F_000 += m_a->M_010 * D_010(dx, dy, dz, r_inv);
-  l_b->pot.F_000 += m_a->M_001 * D_001(dx, dy, dz, r_inv);
+  /*  1st order multipole term (addition to rank 1)*/
+  l_b->F_100 += m_a->M_000 * D_100(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_000 * D_010(dx, dy, dz, r_inv);
+  l_b->F_001 += m_a->M_000 * D_001(dx, dy, dz, r_inv);
+#endif
 
-  /* 1st order multipole term */
-  l_b->pot.F_100 += m_a->M_000 * D_100(dx, dy, dz, r_inv);
-  l_b->pot.F_010 += m_a->M_000 * D_010(dx, dy, dz, r_inv);
-  l_b->pot.F_001 += m_a->M_000 * D_001(dx, dy, dz, r_inv);
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
+  /*  2nd order multipole term (addition to rank 0)*/
+  l_b->F_000 += m_a->M_200 * D_200(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_020(dx, dy, dz, r_inv) +
+                m_a->M_002 * D_002(dx, dy, dz, r_inv);
+  l_b->F_000 += m_a->M_110 * D_110(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_101(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_011(dx, dy, dz, r_inv);
+
+  /*  2nd order multipole term (addition to rank 1)*/
+  l_b->F_100 += m_a->M_100 * D_200(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_110(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_101(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_100 * D_110(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_020(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_011(dx, dy, dz, r_inv);
+  l_b->F_001 += m_a->M_100 * D_101(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_011(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_002(dx, dy, dz, r_inv);
+
+  /*  2nd order multipole term (addition to rank 2)*/
+  l_b->F_200 += m_a->M_000 * D_200(dx, dy, dz, r_inv);
+  l_b->F_020 += m_a->M_000 * D_020(dx, dy, dz, r_inv);
+  l_b->F_002 += m_a->M_000 * D_002(dx, dy, dz, r_inv);
+  l_b->F_110 += m_a->M_000 * D_110(dx, dy, dz, r_inv);
+  l_b->F_101 += m_a->M_000 * D_101(dx, dy, dz, r_inv);
+  l_b->F_011 += m_a->M_000 * D_011(dx, dy, dz, r_inv);
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /*  3rd order multipole term (addition to rank 0)*/
+  l_b->F_000 += m_a->M_300 * D_300(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_030(dx, dy, dz, r_inv) +
+                m_a->M_003 * D_003(dx, dy, dz, r_inv);
+  l_b->F_000 += m_a->M_210 * D_210(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_201(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_120(dx, dy, dz, r_inv);
+  l_b->F_000 += m_a->M_021 * D_021(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_102(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_012(dx, dy, dz, r_inv);
+  l_b->F_000 += m_a->M_111 * D_111(dx, dy, dz, r_inv);
+
+  /*  3rd order multipole term (addition to rank 1)*/
+  l_b->F_100 += m_a->M_200 * D_300(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_120(dx, dy, dz, r_inv) +
+                m_a->M_002 * D_102(dx, dy, dz, r_inv);
+  l_b->F_100 += m_a->M_110 * D_210(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_201(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_111(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_200 * D_210(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_030(dx, dy, dz, r_inv) +
+                m_a->M_002 * D_012(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_110 * D_120(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_111(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_021(dx, dy, dz, r_inv);
+  l_b->F_001 += m_a->M_200 * D_201(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_021(dx, dy, dz, r_inv) +
+                m_a->M_002 * D_003(dx, dy, dz, r_inv);
+  l_b->F_001 += m_a->M_110 * D_111(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_102(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_012(dx, dy, dz, r_inv);
+
+  /*  3rd order multipole term (addition to rank 2)*/
+  l_b->F_200 += m_a->M_100 * D_300(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_210(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_201(dx, dy, dz, r_inv);
+  l_b->F_020 += m_a->M_100 * D_120(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_030(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_021(dx, dy, dz, r_inv);
+  l_b->F_002 += m_a->M_100 * D_102(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_012(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_003(dx, dy, dz, r_inv);
+  l_b->F_110 += m_a->M_100 * D_210(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_120(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_111(dx, dy, dz, r_inv);
+  l_b->F_101 += m_a->M_100 * D_201(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_111(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_102(dx, dy, dz, r_inv);
+  l_b->F_011 += m_a->M_100 * D_111(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_021(dx, dy, dz, r_inv) +
+                m_a->M_001 * D_012(dx, dy, dz, r_inv);
+
+  /*  3rd order multipole term (addition to rank 2)*/
+  l_b->F_300 += m_a->M_000 * D_300(dx, dy, dz, r_inv);
+  l_b->F_030 += m_a->M_000 * D_030(dx, dy, dz, r_inv);
+  l_b->F_003 += m_a->M_000 * D_003(dx, dy, dz, r_inv);
+  l_b->F_210 += m_a->M_000 * D_210(dx, dy, dz, r_inv);
+  l_b->F_201 += m_a->M_000 * D_201(dx, dy, dz, r_inv);
+  l_b->F_120 += m_a->M_000 * D_120(dx, dy, dz, r_inv);
+  l_b->F_021 += m_a->M_000 * D_021(dx, dy, dz, r_inv);
+  l_b->F_102 += m_a->M_000 * D_102(dx, dy, dz, r_inv);
+  l_b->F_012 += m_a->M_000 * D_012(dx, dy, dz, r_inv);
+  l_b->F_111 += m_a->M_000 * D_111(dx, dy, dz, r_inv);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -818,9 +915,9 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l_b->mass_interacted == 0.f)
+  if (l_b->pot.mass_interacted == 0.f)
     error("Shifting tensors that did not interact");
-  l_a->mass_interacted = l_b->mass_interacted;
+  l_a->pot.mass_interacted = l_b->pot.mass_interacted;
 #endif
 }
 
@@ -833,8 +930,9 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l_b,
                                struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l_b->mass_interacted == 0.f) error("Interacting with empty field tensor");
-  gp->mass_interacted += l_b->mass_interacted;
+  if (l_b->pot.mass_interacted == 0.f)
+    error("Interacting with empty field tensor");
+  gp->mass_interacted += l_b->pot.mass_interacted;
 #endif
 
   /* 0th order interaction */

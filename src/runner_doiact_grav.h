@@ -88,8 +88,8 @@ void runner_dopair_grav_mm(const struct runner *r,
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
 
-  gravity_M2L(ci->multipole, multi_j, ci->multipole->CoM, cj->multipole->CoM,
-              periodic);
+  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+              cj->multipole->CoM, periodic);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
