@@ -131,13 +131,21 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
 __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     struct voronoi_cell *cell, float *dx, unsigned long long id) {
 
+  /* variables used for geometrical tests */
   float half_dx[2];
   float r2;
-  float test;
+  /* variables used to store test results */
+  float test, b1, b2, a1, a2;
+  /* general loop index */
   int i;
+  /* variables used to store indices of intersected edges */
   int index_above1, index_above2;
   int index_below1, index_below2;
+  /* variable used to store directionality in edge traversal */
   int increment;
+  /* new number of vertices and new vertex coordinates */
+  int nvert;
+  float vertices[VORONOI2D_MAXNUMVERT][2];
 
   /* The process of cutting the current cell with the midline of the generator
      and the given relative neighbour position proceeds in two steps:
@@ -175,11 +183,17 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   if (test < 0.) {
     /* vertex is below midline */
 
+    /* store the test result; we might need it to compute the intersection
+       coordinates */
+    b1 = test;
+
     /* move on until we find a vertex that is above the midline */
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
     while (i < cell->nvert && test < 0.) {
+      /* make sure we always store the latest test result */
+      b1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
@@ -195,19 +209,27 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     }
 
     /* we have found an intersected edge: i-1 -> i
-       we store the index of the vertex above the midline, and set the increment
-       for the consecutive vertex search to +1 */
+       we store the index of the vertices above and below the midline, make sure
+       we store the test result for later intersection computation, and set the
+       increment to positive, so that we look for the other intersected edge in
+       clockwise direction */
     index_below1 = i - 1;
     index_above1 = i;
+    a1 = test;
     increment = 1;
   } else {
     /* vertex is above midline */
+
+    /* store the test result */
+    a1 = test;
 
     /* move on until we find a vertex that is below the midline */
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
     while (i < cell->nvert && test > 0.) {
+      /* make sure we always store the most recent test result */
+      a1 = test;
       ++i;
       test = cell->vertices[i][0] * half_dx[0] +
              cell->vertices[i][1] * half_dx[1] - r2;
@@ -223,17 +245,25 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     }
 
     /* we have found an intersected edge: i-1 -> i
-       we store the index of the vertex above the midline, and set the increment
-       for the consecutive vertex search to -1 */
+       we store the index of the vertices above and below the midline, make sure
+       we store the test result for later intersection computation, and set the
+       increment to negative, so that we look for the other intersected edge in
+       counterclockwise direction */
     index_below1 = i;
     index_above1 = i - 1;
     increment = -1;
+    b1 = test;
   }
 
   /* now we need to find the second intersected edge
      we start from the vertex above the midline and search in the direction
      opposite to the intersected edge direction until we find a vertex below the
      midline */
+
+  /* we make sure we store the test result for the second vertex above the
+     midline as well, since we need this for intersection point computations
+     the second vertex can be equal to the first */
+  a2 = a1;
   i = index_above1 + increment;
   if (i < 0) {
     i = cell->nvert - 1;
@@ -246,6 +276,8 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   /* this loop can never deadlock, as we know there is at least 1 vertex below
      the midline */
   while (test > 0.) {
+    /* make sure we always store the most recent test result */
+    a2 = test;
     i += increment;
     if (i < 0) {
       i = cell->nvert - 1;
@@ -270,20 +302,74 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   if (index_above2 == cell->nvert) {
     index_above2 = 0;
   }
+  /* we also store the test result for the second vertex below the midline */
+  b2 = test;
 
+  /* to make the code below more clear, we make sure index_above1 always holds
+     the first vertex to remove, and index_above2 the last one, in clockwise
+     order
+     This means we need to interchange 1 and 2 if we were searching in counter-
+     clockwise direction above */
   if (increment < 0) {
-    /* interchange index_below and above 1 and 2 */
     i = index_below1;
     index_below1 = index_below2;
     index_below2 = i;
     i = index_above1;
     index_above1 = index_above2;
     index_above2 = i;
+    test = b1;
+    b1 = b2;
+    b2 = test;
+    test = a1;
+    a1 = a2;
+    a2 = test;
   }
 
-  /* index_above1 now holds the first vertex to remove, and index_above2 the
-     last, in clockwise order
-     they can be the same */
+  /* convert the test results (which correspond to the projected distance
+     between the vertex and the midline) to the fractions of the intersected
+     edges above and below the midline */
+  test = a1 / (a1 - b1);
+  a1 = test;
+  b1 = 1.0f - test;
+
+  test = a2 / (a2 - b2);
+  a2 = test;
+  b2 = 1.0f - test;
+
+  /* remove the vertices above the midline, and insert two new vertices,
+     corresponding to the intersection points of the intersected edges and the
+     midline
+     In practice, we just copy all remaining vertices, starting from the first
+     vertex below the midline (in clockwise order) */
+  nvert = 0;
+  i = index_below2;
+  while (i != index_above1) {
+    vertices[nvert][0] = cell->vertices[i][0];
+    vertices[nvert][1] = cell->vertices[i][1];
+    ++nvert;
+    ++i;
+    if (i == cell->nvert) {
+      i = 0;
+    }
+  }
+  /* now add the new vertices, they are always last */
+  vertices[nvert][0] = a1 * cell->vertices[index_below1][0] +
+                       b1 * cell->vertices[index_above1][0];
+  vertices[nvert][1] = a1 * cell->vertices[index_below1][1] +
+                       b1 * cell->vertices[index_above1][1];
+  ++nvert;
+  vertices[nvert][0] = a2 * cell->vertices[index_below2][0] +
+                       b2 * cell->vertices[index_above2][0];
+  vertices[nvert][1] = a2 * cell->vertices[index_below2][1] +
+                       b2 * cell->vertices[index_above2][1];
+  ++nvert;
+
+  /* overwrite the original vertices */
+  cell->nvert = nvert;
+  for (i = 0; i < cell->nvert; ++i) {
+    cell->vertices[i][0] = vertices[i][0];
+    cell->vertices[i][1] = vertices[i][1];
+  }
 }
 
 /**
@@ -382,6 +468,32 @@ __attribute__((always_inline)) INLINE void voronoi_get_centroid(
 
   centroid[0] = cell->centroid[0];
   centroid[1] = cell->centroid[1];
+}
+
+/*******************************************************************************
+ ** EXTRA FUNCTIONS USED FOR DEBUGGING *****************************************
+ ******************************************************************************/
+
+/**
+ * @brief Print the given cell to the stdout in a format that can be plotted
+ * using gnuplot.
+ *
+ * @param cell voronoi_cell to print.
+ */
+__attribute__((always_inline)) INLINE void voronoi_print_cell(
+    struct voronoi_cell *cell) {
+
+  int i, ip1;
+  for (i = 0; i < cell->nvert; ++i) {
+    ip1 = i + 1;
+    if (ip1 == cell->nvert) {
+      ip1 = 0;
+    }
+    printf("%g %g\n%g %g\n\n", cell->vertices[i][0] + cell->x[0],
+           cell->vertices[i][1] + cell->x[1],
+           cell->vertices[ip1][0] + cell->x[0],
+           cell->vertices[ip1][1] + cell->x[1]);
+  }
 }
 
 #endif  // SWIFT_VORONOIXD_ALGORITHM_H

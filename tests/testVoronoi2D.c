@@ -41,5 +41,13 @@ int main() {
   assert(cell.centroid[0] == 0.5f);
   assert(cell.centroid[1] == 0.5f);
 
+  /* reinitialize cell */
+  voronoi_cell_init(&cell, x);
+
+  float dx[2] = {0.25, 0.25};
+  voronoi_cell_interact(&cell, dx, 0);
+
+  voronoi_print_cell(&cell);
+
   return 0;
 }
