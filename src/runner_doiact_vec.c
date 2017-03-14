@@ -1059,7 +1059,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
   int first_pi_align = first_pi;
   int last_pj_align = last_pj;
-  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi_align, &last_pj_align, num_vec_proc);
+  cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi_align, &last_pj_align, num_vec_proc);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1; pid >= first_pi && max_ind_j >= 0; pid--) {
@@ -1074,7 +1074,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
       dj = sort_j[max_ind_j].d;
     }
-    int exit_iteration = max_ind_j;    
+    int exit_iteration = max_ind_j + 1;    
 
     int ci_cache_idx = pid - first_pi_align; //sort_i[pid].i;
 
@@ -1121,8 +1121,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     if (rem != 0) {
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-      if (exit_iteration_align + pad <= last_pj_align + 1)
+      if (exit_iteration_align + pad <= last_pj_align + 1) {
         exit_iteration_align += pad;
+      }
+      else {
+        exit_iteration_align += pad;
+        for(int i=last_pj_align + 1; i<exit_iteration_align; i++) {
+          cj_cache->x[i] = pix.f[0] + 2.0f * hi * kernel_gamma;
+          cj_cache->y[i] = 0.f;
+          cj_cache->z[i] = 0.f;
+        }
+
+      }
     }
 
     vector pjx, pjy, pjz;
@@ -1136,9 +1146,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       vector v_dx, v_dy, v_dz, v_r2;
 
       /* Load 2 sets of vectors from the particle cache. */
-      pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
-      pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
-      pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
+      pjx.v = vec_unaligned_load(&cj_cache->x[cj_cache_idx]);
+      pjy.v = vec_unaligned_load(&cj_cache->y[cj_cache_idx]);
+      pjz.v = vec_unaligned_load(&cj_cache->z[cj_cache_idx]);
 
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pix.v, pjx.v);
@@ -1197,7 +1207,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
 
       di = sort_i[max_ind_i].d;
     }
-    int exit_iteration = max_ind_i;
+    int exit_iteration = max_ind_i - 1;
     
     int cj_cache_idx = pjd;
 
@@ -1245,8 +1255,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
     if (rem != 0) {
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
-      if (exit_iteration_align - pad >= first_pi_align)
+      if (exit_iteration_align - pad >= first_pi_align) {
         exit_iteration_align -= pad;
+      }
+      else {
+        for(int i=count_i - first_pi_align; i<count_i - first_pi_align + pad; i++) {
+            ci_cache->x[i] = pjx.f[0] + 2.0f * hj * kernel_gamma;
+            ci_cache->y[i] = 0.f;
+            ci_cache->z[i] = 0.f;
+        }
+      }
     }
 
     vector pix, piy, piz;
@@ -1260,9 +1278,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *
       vector v_dx, v_dy, v_dz, v_r2;
 
       /* Load 2 sets of vectors from the particle cache. */
-      pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
-      piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
-      piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
+      pix.v = vec_unaligned_load(&ci_cache->x[ci_cache_idx]);
+      piy.v = vec_unaligned_load(&ci_cache->y[ci_cache_idx]);
+      piz.v = vec_unaligned_load(&ci_cache->z[ci_cache_idx]);
     
       /* Compute the pairwise distance. */
       v_dx.v = vec_sub(pjx.v, pix.v);
@@ -1431,7 +1449,7 @@ void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci, struct cell
 
       dj = sort_j[max_ind_j].d;
     }
-    int exit_iteration = max_ind_j;    
+    int exit_iteration = max_ind_j + 1;    
 
     int ci_cache_idx = pid; //sort_i[pid].i;
 
@@ -1622,7 +1640,7 @@ void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci, struct cell
 
       di = sort_i[max_ind_i].d;
     }
-    int exit_iteration = max_ind_i;
+    int exit_iteration = max_ind_i - 1;
     
     int cj_cache_idx = pjd;
 
@@ -1772,6 +1790,18 @@ void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci, struct cell
 
   } /* loop over the parts in ci. */
 
+  if(face) {
+    faceCtr++;
+    message("Total number of face interactions: %d, average per particle: %f, number tested: %d.", faceIntCount, ((float)faceIntCount) / ((float)numFaceTested), numFaceTested);
+  }
+  else if(edge) {
+    edgeCtr++;
+    message("Total number of edge interactions: %d, average per particle: %f, number tested: %d", edgeIntCount, ((float)edgeIntCount) / ((float)numEdgeTested), numEdgeTested);
+  }
+  else if(corner) {
+    cornerCtr++;
+    message("Total number of corner interactions: %d, average per particle: %f, number tested: %d", cornerIntCount, ((float)cornerIntCount) / ((float)numCornerTested), numCornerTested);
+  }
   TIMER_TOC(timer_dopair_density);
 
 #endif /* WITH_VECTORIZATION */
@@ -1868,7 +1898,7 @@ void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell
   last_pj = max(last_pj, max_ind_j); 
   first_pi = min(first_pi, max_ind_i);
 
-  cache_read_two_cells_sorted_2(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi, &last_pj, num_vec_proc);
+  cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i, sort_j, shift, &first_pi, &last_pj, num_vec_proc);
 
   /* Loop over the parts in ci. */
   for (int pid = count_i - 1; pid >= first_pi && max_ind_j >= 0; pid-=2) {
