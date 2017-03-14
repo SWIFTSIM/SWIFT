@@ -143,7 +143,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float n_unit[3];
 
   A = voronoi_get_face(&pi->cell, pj->id, xij_i);
-  if (!A) {
+  if (A == 0.0f) {
     /* this neighbour does not share a face with the cell, return */
     return;
   }

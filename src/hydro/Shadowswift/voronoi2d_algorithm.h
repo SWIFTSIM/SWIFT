@@ -479,6 +479,10 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
 
     r2 = x[0] * x[0] + y[0] * y[0];
     r2max = max(r2max, r2);
+
+    x[0] -= x[1];
+    y[0] -= y[1];
+    cell->face_lengths[i] = sqrtf(x[0] * x[0] + y[0] * y[0]);
   }
 
   cell->volume *= 0.5f;
@@ -517,6 +521,7 @@ __attribute__((always_inline)) INLINE float voronoi_get_face(
 
   midpoint[0] = cell->face_midpoints[i][0];
   midpoint[1] = cell->face_midpoints[i][1];
+  midpoint[2] = 0.0f;
 
   return cell->face_lengths[i];
 }
