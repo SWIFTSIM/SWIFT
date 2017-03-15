@@ -67,7 +67,10 @@
 
 /* Options to control SHADOWFAX_SPH */
 /* This option disables cell movement */
-#define SHADOWFAX_FIX_CELLS
+//#define SHADOWFAX_FIX_CELLS
+/* This option enables cell steering, i.e. trying to keep the cells regular by
+   adding a correction to the cell velocities.*/
+#define SHADOWFAX_STEER_CELL_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWFAX_TOTAL_ENERGY
 

@@ -543,6 +543,7 @@ __attribute__((always_inline)) INLINE void voronoi_get_centroid(
 
   centroid[0] = cell->centroid[0];
   centroid[1] = cell->centroid[1];
+  centroid[2] = 0.0f;
 }
 
 /*******************************************************************************

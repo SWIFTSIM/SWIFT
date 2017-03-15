@@ -401,6 +401,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     vcell[2] = 0.;
   }
 
+#ifdef SHADOWFAX_STEER_CELL_MOTION
   /* To prevent stupid things like cell crossovers or generators that move
      outside their cell, we steer the motion of the cell somewhat */
   if (p->primitives.rho) {
@@ -428,6 +429,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     vcell[1] += vfac * d[1];
     vcell[2] += vfac * d[2];
   }
+#endif
 
 #if defined(SHADOWFAX_FIX_CELLS)
   xp->v_full[0] = 0.;
