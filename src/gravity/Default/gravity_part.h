@@ -47,13 +47,26 @@ struct gpart {
   /* Time-step length */
   timebin_t time_bin;
 
+  /* Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* Total mass this gpart interacted with */
+  double mass_interacted;
 
   /* Time of the last drift */
   integertime_t ti_drift;
 
   /* Time of the last kick */
   integertime_t ti_kick;
+
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /* Brute-force particle acceleration. */
+  float a_grav_exact[3];
 
 #endif
 

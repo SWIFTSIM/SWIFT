@@ -91,21 +91,25 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
 void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "Price (2008) without switch");
-  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha",
-                   const_conductivity_alpha);
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
-                   "Piran (2000) with additional Balsara (1995) switch");
-  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);
-  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);
-  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",
+                       "Price (2008) without switch");
+  io_write_attribute_f(h_grpsph, "Thermal Conductivity alpha",
+                       const_conductivity_alpha);
+  io_write_attribute_s(
+      h_grpsph, "Viscosity Model",
+      "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
+      "Piran (2000) with additional Balsara (1995) switch");
+  io_write_attribute_f(h_grpsph, "Viscosity alpha_min",
+                       const_viscosity_alpha_min);
+  io_write_attribute_f(h_grpsph, "Viscosity alpha_max",
+                       const_viscosity_alpha_max);
+  io_write_attribute_f(h_grpsph, "Viscosity beta", 2.f);
+  io_write_attribute_f(h_grpsph, "Viscosity decay length",
+                       const_viscosity_length);
 
   /* Time integration properties */
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
-                   const_max_u_change);
+  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);
 }
 
 /**

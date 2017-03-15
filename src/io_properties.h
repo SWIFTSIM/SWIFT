@@ -38,7 +38,7 @@ struct io_props {
   char name[FIELD_BUFFER_SIZE];
 
   /* Type of the field */
-  enum DATA_TYPE type;
+  enum IO_DATA_TYPE type;
 
   /* Dimension (1D, 3D, ...) */
   int dimension;
@@ -47,7 +47,7 @@ struct io_props {
   enum DATA_IMPORTANCE importance;
 
   /* Units of the quantity */
-  enum UnitConversionFactor units;
+  enum unit_conversion_factor units;
 
   /* Pointer to the field of the first particle in the array */
   char* field;
@@ -87,9 +87,9 @@ struct io_props {
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
-                                     enum DATA_TYPE type, int dimension,
+                                     enum IO_DATA_TYPE type, int dimension,
                                      enum DATA_IMPORTANCE importance,
-                                     enum UnitConversionFactor units,
+                                     enum unit_conversion_factor units,
                                      char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
@@ -127,8 +127,8 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
-                                      enum DATA_TYPE type, int dimension,
-                                      enum UnitConversionFactor units,
+                                      enum IO_DATA_TYPE type, int dimension,
+                                      enum unit_conversion_factor units,
                                       char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
@@ -170,8 +170,8 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_convert_part_(
-    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
-    enum UnitConversionFactor units, char* field, size_t partSize,
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, char* field, size_t partSize,
     struct part* parts, float (*functionPtr)(struct engine*, struct part*)) {
 
   struct io_props r;
@@ -214,8 +214,8 @@ struct io_props io_make_output_field_convert_part_(
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_convert_gpart_(
-    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
-    enum UnitConversionFactor units, char* field, size_t partSize,
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, char* field, size_t partSize,
     struct gpart* gparts, float (*functionPtr)(struct engine*, struct gpart*)) {
 
   struct io_props r;

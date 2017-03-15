@@ -23,6 +23,13 @@
 #include "io_properties.h"
 #include "riemann.h"
 
+/* Set the description of the particle movement. */
+#if defined(GIZMO_FIX_PARTICLES)
+#define GIZMO_PARTICLE_MOVEMENT "Fixed particles."
+#else
+#define GIZMO_PARTICLE_MOVEMENT "Particles move with flow velocity."
+#endif
+
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
@@ -63,7 +70,15 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @return Internal energy of the particle
  */
 float convert_u(struct engine* e, struct part* p) {
-  return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+  if (p->primitives.rho > 0.) {
+#ifdef EOS_ISOTHERMAL_GAS
+    return const_isothermal_internal_energy;
+#else
+    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+#endif
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -74,7 +89,11 @@ float convert_u(struct engine* e, struct part* p) {
  * @return Entropic function of the particle
  */
 float convert_A(struct engine* e, struct part* p) {
-  return p->primitives.P / pow_gamma(p->primitives.rho);
+  if (p->primitives.rho > 0.) {
+    return p->primitives.P / pow_gamma(p->primitives.rho);
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -85,6 +104,9 @@ float convert_A(struct engine* e, struct part* p) {
  * @return Total energy of the particle
  */
 float convert_Etot(struct engine* e, struct part* p) {
+#ifdef GIZMO_TOTAL_ENERGY
+  return p->conserved.energy;
+#else
   float momentum2;
 
   momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
@@ -92,6 +114,7 @@ float convert_Etot(struct engine* e, struct part* p) {
               p->conserved.momentum[2] * p->conserved.momentum[2];
 
   return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+#endif
 }
 
 /**
@@ -104,7 +127,7 @@ float convert_Etot(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -135,6 +158,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[12] =
       io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
                                         parts, conserved.energy, convert_Etot);
+  list[13] = io_make_output_field("GravAcceleration", FLOAT, 3,
+                                  UNIT_CONV_ACCELERATION, parts, gravity.old_a);
 }
 
 /**
@@ -143,18 +168,21 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  */
 void writeSPHflavour(hid_t h_grpsph) {
   /* Gradient information */
-  writeAttribute_s(h_grpsph, "Gradient reconstruction model",
-                   HYDRO_GRADIENT_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
+                       HYDRO_GRADIENT_IMPLEMENTATION);
 
   /* Slope limiter information */
-  writeAttribute_s(h_grpsph, "Cell wide slope limiter model",
-                   HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
-  writeAttribute_s(h_grpsph, "Piecewise slope limiter model",
-                   HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Cell wide slope limiter model",
+                       HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Piecewise slope limiter model",
+                       HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
 
   /* Riemann solver information */
-  writeAttribute_s(h_grpsph, "Riemann solver type",
-                   RIEMANN_SOLVER_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Riemann solver type",
+                       RIEMANN_SOLVER_IMPLEMENTATION);
+
+  /* Particle movement information */
+  io_write_attribute_s(h_grpsph, "Particle movement", GIZMO_PARTICLE_MOVEMENT);
 }
 
 /**

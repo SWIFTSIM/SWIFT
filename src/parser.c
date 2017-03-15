@@ -722,6 +722,6 @@ void parser_write_params_to_file(const struct swift_params *params,
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
 
   for (int i = 0; i < params->paramCount; i++)
-    writeAttribute_s(grp, params->data[i].name, params->data[i].value);
+    io_write_attribute_s(grp, params->data[i].name, params->data[i].value);
 }
 #endif

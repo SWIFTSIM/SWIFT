@@ -45,7 +45,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
     sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
-    dump.h logger.h active.h timeline.h
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -54,13 +54,14 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
-    statistics.c runner_doiact_vec.c profiler.c dump.c logger.c
+    statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
+    part_type.c xmf.c gravity_properties.c gravity.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h \
+		 dimension.h equation_of_state.h part_type.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -78,8 +79,12 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+	 	 stars.h stars_io.h \
+		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
+		 stars/Default/star_debug.h stars/Default/star_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
+                 potential/sine_wave/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
@@ -106,15 +111,18 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	if test "X$(GIT_CMD)" != "X"; then \
 	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
+            GIT_DATE=`$(GIT_CMD) log -1 --format=%ci`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
 	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
+	        -e "s|@GIT_DATE\@|$${GIT_DATE}|" \
 	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
 		    -e "s,@GIT_BRANCH\@,unknown," \
+		    -e "s,@GIT_DATE\@,unknown," \
 	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi

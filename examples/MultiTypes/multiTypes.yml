@@ -32,6 +32,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./multiTypes.hdf5     # The file to read
+  replicate:  2                     # Replicate all particles twice along each axis
 
 # External potential parameters
 PointMassPotential:

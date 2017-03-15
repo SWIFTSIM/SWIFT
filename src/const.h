@@ -41,9 +41,6 @@
 
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 1
-#define const_gravity_a_smooth 1.25f
-#define const_gravity_r_cut 4.5f
-#define const_gravity_eta 0.025f
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
@@ -54,6 +51,11 @@
 /* Different slope limiters can be combined */
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
+
+/* Options to control the movement of particles for GIZMO_SPH. */
+/* This option disables particle movement */
+//#define GIZMO_FIX_PARTICLES
+//#define GIZMO_TOTAL_ENERGY
 
 /* Source terms */
 #define SOURCETERMS_NONE

@@ -42,7 +42,7 @@ struct sourceterms {
 #endif
 
 void sourceterms_init(const struct swift_params* parameter_file,
-                      struct UnitSystem* us, struct sourceterms* source);
+                      struct unit_system* us, struct sourceterms* source);
 void sourceterms_print(struct sourceterms* source);
 
 /**

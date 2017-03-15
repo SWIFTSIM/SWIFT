@@ -72,6 +72,9 @@ struct space {
   /*! Are we doing gravity? */
   int gravity;
 
+  /*! Total mass in the system */
+  double total_mass;
+
   /*! Width of the top-level cells. */
   double width[3];
 
@@ -102,11 +105,20 @@ struct space {
   /*! Buffer of unused cells for the sub-cells. */
   struct cell *cells_sub;
 
+  /*! The multipoles associated with the top-level (level 0) cells */
+  struct gravity_tensors *multipoles_top;
+
+  /*! Buffer of unused multipoles for the sub-cells. */
+  struct gravity_tensors *multipoles_sub;
+
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
 
   /*! The total number of g-parts in the space. */
   size_t nr_gparts, size_gparts;
+
+  /*! The total number of g-parts in the space. */
+  size_t nr_sparts, size_sparts;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
@@ -116,6 +128,9 @@ struct space {
 
   /*! The g-particle data (cells have pointers to this). */
   struct gpart *gparts;
+
+  /*! The s-particle data (cells have pointers to this). */
+  struct spart *sparts;
 
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
@@ -139,6 +154,10 @@ struct space {
   struct gpart *gparts_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
 
+  /*! Buffers for g-parts that we will receive from foreign cells. */
+  struct spart *sparts_foreign;
+  size_t nr_sparts_foreign, size_sparts_foreign;
+
 #endif
 };
 
@@ -147,12 +166,15 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
 void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
+void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
+                       int verbose);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int gravity,
+                struct spart *sparts, size_t Npart, size_t Ngpart,
+                size_t Nspart, int periodic, int replicate, int gravity,
                 int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
@@ -169,10 +191,14 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
                              void *extra_data);
 void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
+void space_sparts_sort_mapper(void *map_data, int num_elements,
+                              void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
-void space_recycle_list(struct space *s, struct cell *list_begin,
-                        struct cell *list_end);
+void space_recycle_list(struct space *s, struct cell *cell_list_begin,
+                        struct cell *cell_list_end,
+                        struct gravity_tensors *multipole_list_begin,
+                        struct gravity_tensors *multipole_list_end);
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
@@ -180,13 +206,19 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
                                 int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
                                  int verbose);
+void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
+                                 int verbose);
 void space_do_parts_sort();
 void space_do_gparts_sort();
+void space_do_sparts_sort();
 void space_init_parts(struct space *s);
 void space_init_gparts(struct space *s);
+void space_init_sparts(struct space *s);
 void space_link_cleanup(struct space *s);
-void space_check_drift_point(struct space *s, integertime_t ti_current);
+void space_check_drift_point(struct space *s, integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
+void space_replicate(struct space *s, int replicate, int verbose);
+void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 
 #endif /* SWIFT_SPACE_H */

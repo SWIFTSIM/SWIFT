@@ -28,7 +28,6 @@
 #endif
 
 /* Local includes. */
-#include "const.h"
 #include "parser.h"
 
 /**
@@ -41,17 +40,15 @@ struct hydro_props {
   float target_neighbours;
   float delta_neighbours;
 
-  /* Kernel properties */
+  /* Maximal smoothing length */
+  float h_max;
+
+  /* Number of iterations to converge h */
   int max_smoothing_iterations;
 
   /* Time integration properties */
   float CFL_condition;
   float log_max_h_change;
-
-/* Viscosity parameters */
-#ifdef GADGET_SPH
-  float const_viscosity_alpha;
-#endif
 };
 
 void hydro_props_print(const struct hydro_props *p);

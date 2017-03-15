@@ -32,7 +32,7 @@
  * internal units. It is used everytime a conversion is performed or an i/o
  * function is called.
  **/
-struct UnitSystem {
+struct unit_system {
 
   /*! Conversion factor from grams to internal mass units */
   double UnitMass_in_cgs;
@@ -54,7 +54,7 @@ struct UnitSystem {
  * @brief The base units used in the cgs (and internal) system. All units are
  * derived from those.
  */
-enum BaseUnits {
+enum base_units {
   UNIT_MASS = 0,
   UNIT_LENGTH = 1,
   UNIT_TIME = 2,
@@ -65,7 +65,7 @@ enum BaseUnits {
 /**
  * @brief  The different conversion factors supported by default
  */
-enum UnitConversionFactor {
+enum unit_conversion_factor {
   UNIT_CONV_NO_UNITS,
   UNIT_CONV_MASS,
   UNIT_CONV_LENGTH,
@@ -94,47 +94,47 @@ enum UnitConversionFactor {
   UNIT_CONV_INV_VOLUME
 };
 
-void units_init_cgs(struct UnitSystem*);
-void units_init(struct UnitSystem*, const struct swift_params*,
+void units_init_cgs(struct unit_system*);
+void units_init(struct unit_system*, const struct swift_params*,
                 const char* category);
-void units_init_default(struct UnitSystem* us,
+void units_init_default(struct unit_system* us,
                         const struct swift_params* params, const char* category,
-                        const struct UnitSystem* def);
+                        const struct unit_system* def);
 
-int units_are_equal(const struct UnitSystem* a, const struct UnitSystem* b);
+int units_are_equal(const struct unit_system* a, const struct unit_system* b);
 
 /* Base units */
-double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
-const char* units_get_base_unit_internal_symbol(enum BaseUnits);
-const char* units_get_base_unit_cgs_symbol(enum BaseUnits);
+double units_get_base_unit(const struct unit_system*, enum base_units);
+const char* units_get_base_unit_internal_symbol(enum base_units);
+const char* units_get_base_unit_cgs_symbol(enum base_units);
 
 /* Cosmology factors */
-float units_general_h_factor(const struct UnitSystem* us,
+float units_general_h_factor(const struct unit_system* us,
                              const float baseUnitsExponants[5]);
-float units_h_factor(const struct UnitSystem* us,
-                     enum UnitConversionFactor unit);
-float units_general_a_factor(const struct UnitSystem* us,
+float units_h_factor(const struct unit_system* us,
+                     enum unit_conversion_factor unit);
+float units_general_a_factor(const struct unit_system* us,
                              const float baseUnitsExponants[5]);
-float units_a_factor(const struct UnitSystem* us,
-                     enum UnitConversionFactor unit);
+float units_a_factor(const struct unit_system* us,
+                     enum unit_conversion_factor unit);
 
 /* Conversion to CGS */
-double units_general_cgs_conversion_factor(const struct UnitSystem* us,
+double units_general_cgs_conversion_factor(const struct unit_system* us,
                                            const float baseUnitsExponants[5]);
-double units_cgs_conversion_factor(const struct UnitSystem* us,
-                                   enum UnitConversionFactor unit);
+double units_cgs_conversion_factor(const struct unit_system* us,
+                                   enum unit_conversion_factor unit);
 void units_general_cgs_conversion_string(char* buffer,
-                                         const struct UnitSystem* us,
+                                         const struct unit_system* us,
                                          const float baseUnitsExponants[5]);
-void units_cgs_conversion_string(char* buffer, const struct UnitSystem* us,
-                                 enum UnitConversionFactor unit);
+void units_cgs_conversion_string(char* buffer, const struct unit_system* us,
+                                 enum unit_conversion_factor unit);
 
 /* Conversion between systems */
-double units_general_conversion_factor(const struct UnitSystem* from,
-                                       const struct UnitSystem* to,
+double units_general_conversion_factor(const struct unit_system* from,
+                                       const struct unit_system* to,
                                        const float baseUnitsExponants[5]);
-double units_conversion_factor(const struct UnitSystem* from,
-                               const struct UnitSystem* to,
-                               enum UnitConversionFactor unit);
+double units_conversion_factor(const struct unit_system* from,
+                               const struct unit_system* to,
+                               enum unit_conversion_factor unit);
 
 #endif /* SWIFT_UNITS_H */
