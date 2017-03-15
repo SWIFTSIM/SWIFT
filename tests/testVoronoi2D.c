@@ -34,6 +34,8 @@ int main() {
 
   /* test initialization and finalization algorithms */
   {
+    message("Testing initialization and finalization algorithm...");
+
     struct voronoi_cell cell;
     double x[3] = {0.5, 0.5, 0.5};
 
@@ -47,10 +49,15 @@ int main() {
 
     assert(cell.centroid[0] == 0.5f);
     assert(cell.centroid[1] == 0.5f);
+
+    message("Done.");
   }
 
   /* test interaction algorithm: normal case */
   {
+    message("Testing %i cell grid with random positions...",
+            TESTVORONOI2D_NUMCELL);
+
     /* create 100 cells with random positions in [0,1]x[0,1] */
     struct voronoi_cell cells[TESTVORONOI2D_NUMCELL];
     double x[2];
@@ -102,16 +109,34 @@ int main() {
 
     /* print the cells to the stdout */
     for (i = 0; i < TESTVORONOI2D_NUMCELL; ++i) {
+      printf("Cell %i:\n", i);
       voronoi_print_cell(&cells[i]);
       voronoi_cell_finalize(&cells[i]);
       Atot += cells[i].volume;
     }
 
+    /* Check the total surface area */
     assert(fabs(Atot - 1.0f) < 1.e-6);
+
+    /* Check the neighbour relations for an arbitrary cell: cell 44
+       We plotted the grid and manually found the correct neighbours and their
+       order. */
+    assert(cells[44].nvert == 7);
+    assert(cells[44].ngbs[0] == 26);
+    assert(cells[44].ngbs[1] == 38);
+    assert(cells[44].ngbs[2] == 3);
+    assert(cells[44].ngbs[3] == 33);
+    assert(cells[44].ngbs[4] == 5);
+    assert(cells[44].ngbs[5] == 90);
+    assert(cells[44].ngbs[6] == 4);
+
+    message("Done.");
   }
 
   /* test interaction algorithm */
   {
+    message("Testing 100 cell grid with Cartesian mesh positions...");
+
     struct voronoi_cell cells[100];
     double x[2];
     float dx[2];
@@ -161,12 +186,26 @@ int main() {
 
     /* print the cells to the stdout */
     for (i = 0; i < 100; ++i) {
+      printf("Cell %i:\n", i);
       voronoi_print_cell(&cells[i]);
       voronoi_cell_finalize(&cells[i]);
       Atot += cells[i].volume;
     }
 
+    /* Check the total surface area */
     assert(fabs(Atot - 1.0f) < 1.e-6);
+
+    /* Check the neighbour relations for an arbitrary cell: cell 44
+       We plotted the grid and manually found the correct neighbours and their
+       order. */
+    assert(cells[44].nvert == 5);
+    assert(cells[44].ngbs[0] == 34);
+    assert(cells[44].ngbs[1] == 35);
+    assert(cells[44].ngbs[2] == 45);
+    assert(cells[44].ngbs[3] == 54);
+    assert(cells[44].ngbs[4] == 43);
+
+    message("Done.");
   }
 
   return 0;

@@ -428,7 +428,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
                        b2 * cell->vertices[index_above2][0];
   vertices[nvert][1] = a2 * cell->vertices[index_below2][1] +
                        b2 * cell->vertices[index_above2][1];
-  ngbs[nvert] = cell->ngbs[index_above1];
+  ngbs[nvert] = cell->ngbs[index_above2];
   ++nvert;
   VORONOI_CHECK_SIZE();
 
