@@ -1000,6 +1000,13 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
 #endif /* WITH_VECTORIZATION */
 }
 
+/**
+ * @brief Compute the density interactions between a cell pair (non-symmetric) using vector intrinsics.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
 void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef WITH_VECTORIZATION
