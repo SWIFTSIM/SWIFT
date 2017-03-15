@@ -20,8 +20,6 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-#define SHADOWFAX_GRADIENTS
-
 #include "hydro_slope_limiters.h"
 
 #if defined(SHADOWFAX_GRADIENTS)

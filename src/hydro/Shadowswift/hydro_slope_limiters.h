@@ -20,13 +20,10 @@
 #ifndef SWIFT_HYDRO_SLOPE_LIMITERS_H
 #define SWIFT_HYDRO_SLOPE_LIMITERS_H
 
-#define PER_FACE_LIMITER
-#define CELL_WIDE_LIMITER
-
 #include "dimension.h"
 #include "kernel_hydro.h"
 
-#ifdef PER_FACE_LIMITER
+#ifdef SHADOWFAX_SLOPE_LIMITER_PER_FACE
 
 #define HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION \
   "GIZMO piecewise slope limiter (Hopkins 2015)"
@@ -55,7 +52,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 
 #endif
 
-#ifdef CELL_WIDE_LIMITER
+#ifdef SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
 
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION \
   "Cell wide slope limiter (Springel 2010)"

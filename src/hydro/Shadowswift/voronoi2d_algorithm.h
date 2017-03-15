@@ -479,8 +479,9 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
     cell->centroid[0] += (x[0] + x[1]) * A;
     cell->centroid[1] += (y[0] + y[1]) * A;
 
-    cell->face_midpoints[i][0] = 0.5f * (x[0] + x[1]) + cell->x[0];
-    cell->face_midpoints[i][1] = 0.5f * (y[0] + y[1]) + cell->x[1];
+    /* Note that we only need the RELATIVE positions of the midpoints */
+    cell->face_midpoints[i][0] = 0.5f * (x[0] + x[1]);
+    cell->face_midpoints[i][1] = 0.5f * (y[0] + y[1]);
 
     r2 = x[0] * x[0] + y[0] * y[0];
     r2max = max(r2max, r2);
