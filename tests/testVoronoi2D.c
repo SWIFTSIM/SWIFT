@@ -107,6 +107,7 @@ int main() {
       }
     }
 
+    Atot = 0.0f;
     /* print the cells to the stdout */
     for (i = 0; i < TESTVORONOI2D_NUMCELL; ++i) {
       printf("Cell %i:\n", i);
@@ -184,6 +185,7 @@ int main() {
       }
     }
 
+    Atot = 0.0f;
     /* print the cells to the stdout */
     for (i = 0; i < 100; ++i) {
       printf("Cell %i:\n", i);
