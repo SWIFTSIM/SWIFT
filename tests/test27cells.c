@@ -335,13 +335,20 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_nosort_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec_3(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_nosort_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
+void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+                                struct cell *cj);
+void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci,
+                                  struct cell *cj);
+void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci,
+                                  struct cell *cj);
+void runner_dopair1_density_vec_3(struct runner *r, struct cell *ci,
+                                  struct cell *cj);
+void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci,
+                                  struct cell *cj);
+void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci,
+                                     struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 
@@ -485,8 +492,8 @@ int main(int argc, char *argv[]) {
     cache_init(&runner.ci_cache, 512);
     runner.cj_cache.count = 0;
     cache_init(&runner.cj_cache, 512);
-    //cj_cache.count = 0;
-    //cache_init(&cj_cache, 512);
+// cj_cache.count = 0;
+// cache_init(&cj_cache, 512);
 #endif
 
     /* Run all the pairs */
@@ -501,7 +508,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-/* And now the self-interaction */
+    /* And now the self-interaction */
     const ticks self_tic = getticks();
 
     DOSELF1(&runner, main_cell);
@@ -575,7 +582,8 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Check serial results against the vectorised results. */
-  //if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
+  // if (check_results(main_cell->parts, vec_parts, main_cell->count,
+  // threshold))
   //  message("Differences found...");
 
   /* Output timing */

@@ -110,7 +110,8 @@
 /* Performs a horizontal add on the vector and adds the result to a float. */
 #define VEC_HADD(a, b) b += _mm512_reduce_add_ps(a.v)
 
-/* Calculates the number of set bits in the mask and adds the result to an int. */
+/* Calculates the number of set bits in the mask and adds the result to an int.
+ */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \
   pack += __builtin_popcount(mask);
 
@@ -190,8 +191,8 @@
 #define VEC_HAVE_GATHER
 #define vec_gather(base, offsets) _mm256_i32gather_ps(base, offsets.m, 1)
 
-/* Takes an integer mask and forms a left-packed integer vector 
- * containing indices of the set bits in the integer mask. 
+/* Takes an integer mask and forms a left-packed integer vector
+ * containing indices of the set bits in the integer mask.
  * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack)                               \
   {                                                                            \
@@ -216,8 +217,8 @@
 /* Form a packed mask without intrinsics if AVX2 is not present. */
 #ifndef VEC_FORM_PACKED_MASK
 
-/* Takes an integer mask and forms a left-packed integer vector 
- * containing indices of the set bits in the integer mask. 
+/* Takes an integer mask and forms a left-packed integer vector
+ * containing indices of the set bits in the integer mask.
  * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack)   \
   {                                                \
@@ -225,8 +226,8 @@
       if ((mask & (1 << i))) v_mask.i[pack++] = i; \
   }
 
-/* Takes two integer masks and forms two left-packed integer vectors 
- * containing indices of the set bits in each corresponding integer mask. 
+/* Takes two integer masks and forms two left-packed integer vectors
+ * containing indices of the set bits in each corresponding integer mask.
  * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK_2(mask, v_mask, pack, mask2, v_mask2, pack2) \
   {                                                                       \
@@ -238,7 +239,7 @@
 #endif
 
 /* Performs a left-pack on a vector based upon a mask and returns the result. */
-/* This uses AVX intrinsics, but this is slower than performing the left-pack 
+/* This uses AVX intrinsics, but this is slower than performing the left-pack
  * manually by looping over the vectors. */
 #ifndef VEC_LEFT_PACK
 #define VEC_LEFT_PACK(a, mask, result)                                     \

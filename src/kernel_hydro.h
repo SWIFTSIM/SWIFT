@@ -435,7 +435,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
     dw_dx->v = (dw_dx->v * x.v) + w->v;
     w->v = (x.v * w->v) + c[k].v;
   }
-  
+
 #endif
 
   /* Return everything */
@@ -443,7 +443,6 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
       vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
   dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
                                        kernel_gamma_inv_dim_plus_one_vec.v));
-
 }
 
 /**

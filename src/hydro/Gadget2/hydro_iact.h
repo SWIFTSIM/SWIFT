@@ -32,8 +32,8 @@
  * Gadget-2 tree-code neighbours search.
  */
 
-#include "minmax.h"
 #include "cache.h"
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -275,8 +275,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[2] += fac * curlvr[2];
 }
 
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_density_jsw(
-    const float r2, const float hig2, const float dx, const float dy, const float dz, const float h_inv, const float hj, const float vi_x, const float vi_y, const float vi_z, const float vj_x, const float vj_y, const float vj_z, const float mj, float *const restrict rho, float *const restrict rho_dh, float *const restrict wcount, float *const restrict wcount_dh, float *const restrict div_v, float *const restrict curl_vx, float *const restrict curl_vy, float *const restrict curl_vz) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_density_jsw(
+    const float r2, const float hig2, const float dx, const float dy,
+    const float dz, const float h_inv, const float hj, const float vi_x,
+    const float vi_y, const float vi_z, const float vj_x, const float vj_y,
+    const float vj_z, const float mj, float *const restrict rho,
+    float *const restrict rho_dh, float *const restrict wcount,
+    float *const restrict wcount_dh, float *const restrict div_v,
+    float *const restrict curl_vx, float *const restrict curl_vy,
+    float *const restrict curl_vz) {
 
   if (r2 < hig2) {
 
@@ -291,7 +299,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density_jsw
     kernel_deval(u, &wi, &wi_dx);
 
     const float fac = mj * wi_dx * ri;
-    
+
     /* Compute dv dot r */
     const float dv_x = vi_x - vj_x;
     const float dv_y = vi_y - vj_y;
@@ -431,7 +439,7 @@ runner_iact_nonsym_intrinsic_vec_density(
   vector vjx, vjy, vjz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
-  
+
   /* Fill the vectors. */
   mj.v = vec_unaligned_load(Mj);
   vjx.v = vec_unaligned_load(Vjx);
@@ -488,18 +496,19 @@ runner_iact_nonsym_intrinsic_vec_density(
   curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
                                     curlvxSum->v);
-  
+
   curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
                                     curlvySum->v);
-  
+
   curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
                                     curlvzSum->v);
-  #else
+#else
   rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
   rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                                vec_mul(xi.v, wi_dx.v))), mask.v);
+                                                vec_mul(xi.v, wi_dx.v))),
+                          mask.v);
   wcountSum->v += vec_and(wi.v, mask.v);
   wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
   div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
@@ -511,36 +520,44 @@ runner_iact_nonsym_intrinsic_vec_density(
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_intrinsic_vec_2_density(
-    const struct cache *const cj_cache, const int *const indices, vector *r2, vector *dx, vector *dy, vector *dz, vector hi_inv, vector vix,
-    vector viy, vector viz,
-    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
-    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
-    vector mask, int knlMask) {
+    const struct cache *const cj_cache, const int *const indices, vector *r2,
+    vector *dx, vector *dy, vector *dz, vector hi_inv, vector vix, vector viy,
+    vector viz, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
+    vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
+    vector *curlvySum, vector *curlvzSum, vector mask, int knlMask) {
 
-  //vector r, ri, r2, xi, wi, wi_dx;
+  // vector r, ri, r2, xi, wi, wi_dx;
   vector r, ri, xi, wi, wi_dx;
   vector mj;
-  //vector dx, dy, dz, dvx, dvy, dvz;
+  // vector dx, dy, dz, dvx, dvy, dvz;
   vector dvx, dvy, dvz;
   vector vjx, vjy, vjz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
-  
+
   /* Fill the vectors. */
-  mj.v = vec_set(cj_cache->m[indices[0]], cj_cache->m[indices[1]], cj_cache->m[indices[2]], cj_cache->m[indices[3]],
-                 cj_cache->m[indices[4]], cj_cache->m[indices[5]], cj_cache->m[indices[6]], cj_cache->m[indices[7]]);
-  vjx.v = vec_set(cj_cache->vx[indices[0]], cj_cache->vx[indices[1]], cj_cache->vx[indices[2]], cj_cache->vx[indices[3]],
-                 cj_cache->vx[indices[4]], cj_cache->vx[indices[5]], cj_cache->vx[indices[6]], cj_cache->vx[indices[7]]);                
-  vjy.v = vec_set(cj_cache->vy[indices[0]], cj_cache->vy[indices[1]], cj_cache->vy[indices[2]], cj_cache->vy[indices[3]],
-                 cj_cache->vy[indices[4]], cj_cache->vy[indices[5]], cj_cache->vy[indices[6]], cj_cache->vy[indices[7]]);                
-  vjz.v = vec_set(cj_cache->vz[indices[0]], cj_cache->vz[indices[1]], cj_cache->vz[indices[2]], cj_cache->vz[indices[3]],
-                 cj_cache->vz[indices[4]], cj_cache->vz[indices[5]], cj_cache->vz[indices[6]], cj_cache->vz[indices[7]]);                
-  //dx.v = vec_load(Dx);
-  //dy.v = vec_load(Dy);
-  //dz.v = vec_load(Dz);
+  mj.v = vec_set(cj_cache->m[indices[0]], cj_cache->m[indices[1]],
+                 cj_cache->m[indices[2]], cj_cache->m[indices[3]],
+                 cj_cache->m[indices[4]], cj_cache->m[indices[5]],
+                 cj_cache->m[indices[6]], cj_cache->m[indices[7]]);
+  vjx.v = vec_set(cj_cache->vx[indices[0]], cj_cache->vx[indices[1]],
+                  cj_cache->vx[indices[2]], cj_cache->vx[indices[3]],
+                  cj_cache->vx[indices[4]], cj_cache->vx[indices[5]],
+                  cj_cache->vx[indices[6]], cj_cache->vx[indices[7]]);
+  vjy.v = vec_set(cj_cache->vy[indices[0]], cj_cache->vy[indices[1]],
+                  cj_cache->vy[indices[2]], cj_cache->vy[indices[3]],
+                  cj_cache->vy[indices[4]], cj_cache->vy[indices[5]],
+                  cj_cache->vy[indices[6]], cj_cache->vy[indices[7]]);
+  vjz.v = vec_set(cj_cache->vz[indices[0]], cj_cache->vz[indices[1]],
+                  cj_cache->vz[indices[2]], cj_cache->vz[indices[3]],
+                  cj_cache->vz[indices[4]], cj_cache->vz[indices[5]],
+                  cj_cache->vz[indices[6]], cj_cache->vz[indices[7]]);
+  // dx.v = vec_load(Dx);
+  // dy.v = vec_load(Dy);
+  // dz.v = vec_load(Dz);
 
   /* Get the radius and inverse radius. */
-  //r2.v = vec_load(R2);
+  // r2.v = vec_load(R2);
   ri = vec_reciprocal_sqrt(*r2);
   r.v = vec_mul(r2->v, ri.v);
 
@@ -590,18 +607,19 @@ runner_iact_nonsym_intrinsic_vec_2_density(
   curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
                                     curlvxSum->v);
-  
+
   curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
                                     curlvySum->v);
-  
+
   curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
                                     curlvzSum->v);
-  #else
+#else
   rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
   rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                                vec_mul(xi.v, wi_dx.v))), mask.v);
+                                                vec_mul(xi.v, wi_dx.v))),
+                          mask.v);
   wcountSum->v += vec_and(wi.v, mask.v);
   wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
   div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
@@ -629,7 +647,7 @@ runner_iact_nonsym_1_vec_density(
   vector vjx, vjy, vjz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
-  
+
   /* Fill the vectors. */
   mj.v = vec_load(Mj);
   vjx.v = vec_load(Vjx);
@@ -690,15 +708,15 @@ runner_iact_nonsym_1_vec_density(
   curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
                                     curlvxSum->v);
-  
+
   curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
                                     curlvySum->v);
-  
+
   curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
                                     vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
                                     curlvzSum->v);
-  #else
+#else
   rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
   rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
                                                 vec_mul(xi.v, wi_dx.v))),

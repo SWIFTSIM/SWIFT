@@ -2080,12 +2080,12 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
     if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
-    /* Compute the interactions. */
+/* Compute the interactions. */
 #if (DOPAIR1 == runner_dopair1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
     runner_dopair1_density_vec(r, ci, cj);
 #else
-  DOPAIR1(r, ci, cj);
+    DOPAIR1(r, ci, cj);
 #endif
   }
 
