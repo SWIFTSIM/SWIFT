@@ -172,11 +172,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     ci_cache->vz[i] = ci->parts[i].v[2];
   }
 
-  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
-  float fake_pix = 2.0f * ci->width[0] * ci->parts[ci->count - 1].x[0];
-  for (int i = ci->count; i < ci->count + (2 * VEC_SIZE); i++)
-    ci_cache->x[i] = fake_pix;
-
 #endif
 }
 

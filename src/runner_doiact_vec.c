@@ -445,6 +445,14 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       int pad = (num_vec_proc * VEC_SIZE) - rem;
 
       count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = pix.f[0];
+        cell_cache->y[i] = piy.f[0];
+        cell_cache->z[i] = piz.f[0];
+      }
     }
 
     vector pjx, pjy, pjz;
