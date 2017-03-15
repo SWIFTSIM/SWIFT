@@ -105,8 +105,9 @@ if test "$enable_mpi" = "yes"; then
        AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
     fi
     if test "$MPIRUN" = "notfound"; then
+       # This may not be fatal (some systems do not allow mpirun on
+       # development nodes)., so push on.
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
-       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
