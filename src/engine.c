@@ -917,12 +917,13 @@ void engine_repartition_trigger(struct engine *e) {
            e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
 
         /* Get CPU time used since the last call to this function. */
-        double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
+        double elapsed_cputime =
+            clocks_get_cputime_used() - e->cputime_last_step;
 
         /* Gather the elapsed CPU times from all ranks for the last step. */
         double elapsed_cputimes[e->nr_nodes];
-        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1, MPI_DOUBLE,
-                   0, MPI_COMM_WORLD);
+        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
         if (e->nodeID == 0) {
 
           /* Get the range of cputimes. */
@@ -948,8 +949,7 @@ void engine_repartition_trigger(struct engine *e) {
     }
 
     /* Remember we did this. */
-    if (e->forcerepart)
-      e->last_repartition = e->step;
+    if (e->forcerepart) e->last_repartition = e->step;
   }
 
   /* We always reset CPU time for next check. */
@@ -3128,10 +3128,9 @@ void engine_step(struct engine *e) {
            e->wallclock_time);
     fflush(stdout);
 
-    fprintf(e->file_timesteps,
-            "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step,
-            e->time, e->timeStep, e->updates, e->g_updates, e->s_updates,
-            e->wallclock_time);
+    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
+            e->step, e->time, e->timeStep, e->updates, e->g_updates,
+            e->s_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
 
