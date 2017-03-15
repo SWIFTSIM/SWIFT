@@ -23,8 +23,6 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
-/*TODO: Tidy this file up with comments.*/
-
 #include "../config.h"
 
 #ifdef WITH_VECTORIZATION

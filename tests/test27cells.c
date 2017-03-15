@@ -34,47 +34,14 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
+#define DOPAIR1 runner_dopair1_density_vec
 #define DOSELF1_NAME "runner_doself1_density_vec"
+#define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
 #define DOSELF1_NAME "runner_doself1_density"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC)
-#define DOPAIR1 runner_dopair1_density_vec
-#define DOPAIR1_NAME "runner_dopair1_density_vec"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC_1)
-#define DOPAIR1 runner_dopair1_density_vec_1
-#define DOPAIR1_NAME "runner_dopair1_density_vec_1"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC_2)
-#define DOPAIR1 runner_dopair1_density_vec_2
-#define DOPAIR1_NAME "runner_dopair1_density_vec_2"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC_3)
-#define DOPAIR1 runner_dopair1_density_vec_3
-#define DOPAIR1_NAME "runner_dopair1_density_vec_3"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_VEC_4)
-#define DOPAIR1 runner_dopair1_density_vec_4
-#define DOPAIR1_NAME "runner_dopair1_density_vec_4"
-#endif
-
-#if defined(WITH_VECTORIZATION) && defined(DOPAIR1_AUTO_VEC)
-#define DOPAIR1 runner_dopair1_density_auto_vec
-#define DOPAIR1_NAME "runner_dopair1_density_auto_vec"
-#endif
-
-#if defined(DOPAIR1_NOSORT_JSW)
-#define DOPAIR1 runner_dopair1_nosort_density
-#define DOPAIR1_NAME "runner_dopair1_nosort_density"
 #endif
 
 #ifndef DOPAIR1
@@ -334,23 +301,11 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_nosort_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj);
-void runner_dopair1_density_vec_1(struct runner *r, struct cell *ci,
-                                  struct cell *cj);
-void runner_dopair1_density_vec_2(struct runner *r, struct cell *ci,
-                                  struct cell *cj);
-void runner_dopair1_density_vec_3(struct runner *r, struct cell *ci,
-                                  struct cell *cj);
-void runner_dopair1_density_vec_4(struct runner *r, struct cell *ci,
-                                  struct cell *cj);
-void runner_dopair1_density_auto_vec(struct runner *r, struct cell *ci,
-                                     struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
+void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+                                struct cell *cj);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -492,8 +447,6 @@ int main(int argc, char *argv[]) {
     cache_init(&runner.ci_cache, 512);
     runner.cj_cache.count = 0;
     cache_init(&runner.cj_cache, 512);
-// cj_cache.count = 0;
-// cache_init(&cj_cache, 512);
 #endif
 
     /* Run all the pairs */
@@ -582,9 +535,9 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Check serial results against the vectorised results. */
-  // if (check_results(main_cell->parts, vec_parts, main_cell->count,
-  // threshold))
-  //  message("Differences found...");
+   if (check_results(main_cell->parts, vec_parts, main_cell->count,
+   threshold))
+    message("Differences found...");
 
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
