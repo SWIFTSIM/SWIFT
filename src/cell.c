@@ -1245,7 +1245,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
          cell neighbour conditions were violated. */
       if (t->tight &&
           max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
-        return 1;
+        rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv flags. */
