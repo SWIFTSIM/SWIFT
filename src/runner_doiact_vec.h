@@ -30,7 +30,6 @@
 #include "hydro.h"
 #include "part.h"
 #include "runner.h"
-#include "runner.h"
 #include "timers.h"
 #include "vector.h"
 

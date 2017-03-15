@@ -369,8 +369,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   int count_align;
   int num_vec_proc = NUM_VEC_PROC;
 
-  int intCount = 0;
-
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
@@ -594,14 +592,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     VEC_HADD(curlvySum, pi->density.rot_v[1]);
     VEC_HADD(curlvzSum, pi->density.rot_v[2]);
 
-    intCount += icount;
-
     /* Reset interaction count. */
     icount = 0;
   } /* loop over all particles. */
-
-  // message("Total number of self interactions: %d, average per particle: %f.",
-  // intCount, ((float)intCount) / ((float)count));
 
   TIMER_TOC(timer_doself_density);
 #endif /* WITH_VECTORIZATION */
