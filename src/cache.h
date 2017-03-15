@@ -157,6 +157,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
+#pragma simd
+#endif
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
     ci_cache->y[i] = ci->parts[i].x[1] - ci->loc[1];
@@ -168,6 +171,11 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     ci_cache->vy[i] = ci->parts[i].v[1];
     ci_cache->vz[i] = ci->parts[i].v[2];
   }
+
+  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
+  float fake_pix = 2.0f * ci->width[0] * ci->parts[ci->count - 1].x[0];
+  for (int i = ci->count; i < ci->count + (2 * VEC_SIZE); i++)
+    ci_cache->x[i] = fake_pix;
 
 #endif
 }
@@ -364,6 +372,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
     ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
   }
+
+  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
   float fake_pix = 2.0f * ci_cache->x[ci->count - 1];
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++)
@@ -385,6 +395,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     cj_cache->vz[i] = cj->parts[idx].v[2];
   }
 
+  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
   float fake_pjx = 2.0f * cj_cache->x[last_pj_align];
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++)
     cj_cache->x[i] = fake_pjx;
