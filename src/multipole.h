@@ -43,7 +43,9 @@
 
 struct grav_tensor {
 
-  double F_000;
+  /* 0th order terms */
+  float F_000;
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order terms */
