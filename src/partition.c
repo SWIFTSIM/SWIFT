@@ -816,6 +816,10 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
     repart_vertex_metis(s, nodeID, nr_nodes);
 
+  } else if (reparttype->type == REPART_NONE) {
+
+    /* Doing nothing. */
+
   } else {
     error("Unknown repartition type");
   }
@@ -991,11 +995,11 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  char default_repart = 'b';
-  char default_part = 'm';
+  const char *default_repart = "both";
+  const char *default_part = "simple_metis";
 #else
-  char default_repart = 'n';
-  char default_part = 'g';
+  const char *default_repart = "none";
+  const char *default_part = "grid";
 #endif
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -1006,10 +1010,11 @@ void partition_init(struct partition *partition,
          &partition->grid[0]);
 
   /* Now let's check what the user wants as an initial domain. */
-  const char part_type = parser_get_opt_param_char(
-      params, "DomainDecomposition:initial_type", default_part);
-
-  switch (part_type) {
+  char part_type[20];
+  parser_get_opt_param_string(params,
+                              "DomainDecomposition:initial_type",
+                              part_type, default_part);
+  switch (part_type[0]) {
     case 'g':
       partition->type = INITPART_GRID;
       break;
@@ -1017,24 +1022,26 @@ void partition_init(struct partition *partition,
       partition->type = INITPART_VECTORIZE;
       break;
 #ifdef HAVE_METIS
-    case 'm':
+    case 's':
       partition->type = INITPART_METIS_NOWEIGHT;
       break;
     case 'w':
       partition->type = INITPART_METIS_WEIGHT;
       break;
     default:
-      message("Invalid choice of initial partition type '%c'.", part_type);
-      error("Permitted values are: 'g','m','v' or 'w'.");
+      message("Invalid choice of initial partition type '%s'.", part_type);
+      error("Permitted values are: 'grid', 'simple_metis', 'weighted_metis'"
+            " or 'vectorized'");
 #else
     default:
-      message("Invalid choice of initial partition type '%c'.", part_type);
-      error("Permitted values are: 'g' or 'v' when compiled without metis.");
+      message("Invalid choice of initial partition type '%s'.", part_type);
+      error("Permitted values are: 'grid' or 'vectorized' when compiled "
+            "without METIS.");
 #endif
   }
 
   /* In case of grid, read more parameters */
-  if (part_type == 'g') {
+  if (part_type[0] == 'g') {
     partition->grid[0] = parser_get_opt_param_int(
         params, "DomainDecomposition:initial_grid_x", partition->grid[0]);
     partition->grid[1] = parser_get_opt_param_int(
@@ -1044,33 +1051,35 @@ void partition_init(struct partition *partition,
   }
 
   /* Now let's check what the user wants as a repartition strategy */
-  const char repart_type = parser_get_opt_param_char(
-      params, "DomainDecomposition:repartition_type", default_repart);
+  parser_get_opt_param_string(params,
+                              "DomainDecomposition:repartition_type",
+                              part_type, default_repart);
 
-  switch (repart_type) {
+  switch (part_type[0]) {
     case 'n':
       repartition->type = REPART_NONE;
       break;
 #ifdef HAVE_METIS
-    case 'b':
+    case 't':
       repartition->type = REPART_METIS_BOTH;
       break;
     case 'e':
       repartition->type = REPART_METIS_EDGE;
       break;
-    case 'v':
+    case 'p':
       repartition->type = REPART_METIS_VERTEX;
       break;
-    case 'x':
+    case 'h':
       repartition->type = REPART_METIS_VERTEX_EDGE;
       break;
     default:
-      message("Invalid choice of re-partition type '%c'.", repart_type);
-      error("Permitted values are: 'b','e','n', 'v' or 'x'.");
+      message("Invalid choice of re-partition type '%s'.", part_type);
+      error("Permitted values are: 'none', 'task_weights', 'particle_weights',"
+            "'edge_task_weights' or 'hybrid_weights'");
 #else
     default:
-      message("Invalid choice of re-partition type '%c'.", repart_type);
-      error("Permitted values are: 'n' when compiled without metis.");
+      message("Invalid choice of re-partition type '%s'.", part_type);
+      error("Permitted values are: 'none' when compiled without METIS.");
 #endif
   }
 
