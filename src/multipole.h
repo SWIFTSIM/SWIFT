@@ -205,6 +205,9 @@ INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
   la->pot.F_012 += lb->pot.F_012;
   la->pot.F_111 += lb->pot.F_111;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 }
 
 /**
@@ -241,6 +244,10 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
   printf("F_111= %12.5e\n", l->F_111);
 #endif
   printf("-------------------------\n");
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
+
 }
 
 /**
@@ -278,6 +285,9 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
   printf("M_111= %12.5e\n", m->M_111);
 #endif
   printf("-------------------------\n");
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 }
 
 /**
@@ -500,6 +510,9 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
     return 0;
   }
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 
   /* All is good */
   return 1;
@@ -628,6 +641,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_012 = M_012;
   m->m_pole.M_111 = M_111;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 }
 
 /**
@@ -717,6 +733,10 @@ INLINE static void gravity_M2M(struct multipole *m_a,
                X_101(dx) * m_b->M_010 + X_011(dx) * m_b->M_100 +
                X_111(dx) * m_b->M_000;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
+
 }
 
 /**
@@ -860,6 +880,9 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   l_b->F_012 += m_a->M_000 * D_012(dx, dy, dz, r_inv);
   l_b->F_111 += m_a->M_000 * D_111(dx, dy, dz, r_inv);
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   l_b->mass_interacted += m_a->M_000;
@@ -983,6 +1006,9 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
   la->F_012 += X_000(dx) * lb->F_012;
   la->F_111 += X_000(dx) * lb->F_111;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (l_b->pot.mass_interacted == 0.f)
@@ -1040,6 +1066,10 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l_b,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
+
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
