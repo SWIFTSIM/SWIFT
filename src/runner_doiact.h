@@ -26,6 +26,9 @@
 
 #define PASTE(x, y) x##_##y
 
+#define _DOPAIR1_BRANCH(f) PASTE(runner_dopair1_branch, f)
+#define DOPAIR1_BRANCH _DOPAIR1_BRANCH(FUNCTION)
+
 #define _DOPAIR1(f) PASTE(runner_dopair1, f)
 #define DOPAIR1 _DOPAIR1(FUNCTION)
 
@@ -3016,4 +3019,48 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   } /* otherwise, pair interaction. */
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
+}
+
+/**
+ * @brief Determine which version of DOPAIR1 needs to be called depending on MPI, vectorisation and orientation of the cells or whether DOPAIR1 needs to be called at all.
+ *
+ * @param r #runner
+ * @param ci #cell ci
+ * @param cj #cell cj
+ *
+ */
+void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  const struct engine *restrict e = r->e;
+
+#ifdef WITH_MPI
+  if (ci->nodeID != cj->nodeID) {
+    DOPAIR1_NOSORT(r, ci, cj);
+    return;
+  }
+#endif
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  /* Drift cells that are not drifted. */
+  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+    error("Trying to interact unsorted cells.");
+
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && (DOPAIR1_BRANCH == runner_dopair1_density_branch)
+ if(!space_iscorner(sid))
+   runner_dopair1_density_vec(r, ci, cj);
+ else
+  DOPAIR1(r, ci, cj);
+#else 
+ DOPAIR1(r, ci, cj);
+#endif
 }
