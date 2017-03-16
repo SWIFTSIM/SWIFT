@@ -253,4 +253,161 @@ __attribute__((always_inline)) INLINE static double X_111(const double v[3]) {
   return v[0] * v[1] * v[2];
 }
 
+/***************************/
+/* 4th order vector powers */
+/***************************/
+
+/**
+ * @brief \f$ \frac{1}{(4,0,0)!}\vec{v}^{(4,0,0)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_400(const double v[3]) {
+
+  const double vv = v[0] * v[0];
+  return 0.041666666666666667 * vv * vv;
+}
+
+/**
+ * @brief \f$ \frac{1}{(0,4,0)!}\vec{v}^{(0,4,0)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_040(const double v[3]) {
+
+  const double vv = v[1] * v[1];
+  return 0.041666666666666667 * vv * vv;
+}
+
+/**
+ * @brief \f$ \frac{1}{(0,0,4)!}\vec{v}^{(0,0,4)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_004(const double v[3]) {
+
+  const double vv = v[2] * v[2];
+  return 0.041666666666666667 * vv * vv;
+}
+
+/**
+ * @brief \f$ \frac{1}{(3,1,0)!}\vec{v}^{(3,1,0)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_310(const double v[3]) {
+
+  return 0.1666666666666667 * v[0] * v[0] * v[0] * v[1];
+}
+
+/**
+ * @brief \f$ \frac{1}{(3,0,1)!}\vec{v}^{(3,0,1)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_301(const double v[3]) {
+
+  return 0.1666666666666667 * v[0] * v[0] * v[0] * v[1];
+}
+
+/**
+ * @brief \f$ \frac{1}{(1,3,0)!}\vec{v}^{(1,3,0)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_130(const double v[3]) {
+
+  return 0.1666666666666667 * v[0] * v[1] * v[1] * v[1];
+}
+
+/**
+ * @brief \f$ \frac{1}{(0,3,1)!}\vec{v}^{(0,3,1)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_031(const double v[3]) {
+
+  return 0.1666666666666667 * v[1] * v[1] * v[1] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(1,0,3)!}\vec{v}^{(1,0,3)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_103(const double v[3]) {
+
+  return 0.1666666666666667 * v[0] * v[2] * v[2] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(0,1,3)!}\vec{v}^{(0,1,3)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_013(const double v[3]) {
+
+  return 0.1666666666666667 * v[1] * v[2] * v[2] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(2,2,0)!}\vec{v}^{(2,2,0)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_220(const double v[3]) {
+
+  return 0.25 * v[0] * v[0] * v[1] * v[1];
+}
+
+/**
+ * @brief \f$ \frac{1}{(2,0,2)!}\vec{v}^{(2,0,2)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_202(const double v[3]) {
+
+  return 0.25 * v[0] * v[0] * v[2] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(0,2,2)!}\vec{v}^{(0,2,2)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_022(const double v[3]) {
+
+  return 0.25 * v[1] * v[1] * v[2] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(2,1,1)!}\vec{v}^{(2,1,1)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_211(const double v[3]) {
+
+  return 0.5 * v[0] * v[0] * v[1] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(1,2,1)!}\vec{v}^{(1,2,1)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_121(const double v[3]) {
+
+  return 0.5 * v[0] * v[1] * v[1] * v[2];
+}
+
+/**
+ * @brief \f$ \frac{1}{(1,1,2)!}\vec{v}^{(1,1,2)} \f$.
+ *
+ * @param v vector (\f$ v \f$).
+ */
+__attribute__((always_inline)) INLINE static double X_112(const double v[3]) {
+
+  return 0.5 * v[0] * v[1] * v[2] * v[2];
+}
+
 #endif /* SWIFT_VECTOR_POWER_H */
