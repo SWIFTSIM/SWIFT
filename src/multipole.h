@@ -168,13 +168,79 @@ INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
  */
 INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
                                              const struct gravity_tensors *lb) {
-  la->pot.F_000 += lb->pot.F_000;
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->pot.mass_interacted == 0.f)
     error("Adding tensors that did not interact");
   la->pot.mass_interacted += lb->pot.mass_interacted;
 #endif
+
+  /* Add 0th order terms */
+  la->pot.F_000 += lb->pot.F_000;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* Add 1st order terms */
+  la->pot.F_100 += lb->pot.F_100;
+  la->pot.F_010 += lb->pot.F_010;
+  la->pot.F_001 += lb->pot.F_001;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  /* Add 2nd order terms */
+  la->pot.F_200 += lb->pot.F_200;
+  la->pot.F_020 += lb->pot.F_020;
+  la->pot.F_002 += lb->pot.F_002;
+  la->pot.F_110 += lb->pot.F_110;
+  la->pot.F_101 += lb->pot.F_101;
+  la->pot.F_011 += lb->pot.F_011;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* Add 3rd order terms */
+  la->pot.F_300 += lb->pot.F_300;
+  la->pot.F_030 += lb->pot.F_030;
+  la->pot.F_003 += lb->pot.F_003;
+  la->pot.F_210 += lb->pot.F_210;
+  la->pot.F_201 += lb->pot.F_201;
+  la->pot.F_120 += lb->pot.F_120;
+  la->pot.F_021 += lb->pot.F_021;
+  la->pot.F_102 += lb->pot.F_102;
+  la->pot.F_012 += lb->pot.F_012;
+  la->pot.F_111 += lb->pot.F_111;
+#endif
+}
+
+/**
+ * @brief Prints the content of a #grav_tensor to stdout.
+ *
+ * Note: Uses directly printf(), not a call to message().
+ *
+ * @param l The #grav_tensor to print.
+ */
+INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
+
+  printf("-------------------------\n");
+  printf("F_000= %12.5e\n", l->F_000);
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  printf("-------------------------\n");
+  printf("F_100= %12.5e F_010= %12.5e F_001= %12.5e\n", l->F_100, l->F_010,
+         l->F_001);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  printf("-------------------------\n");
+  printf("F_200= %12.5e F_020= %12.5e F_002= %12.5e\n", l->F_200, l->F_020,
+         l->F_002);
+  printf("F_110= %12.5e F_101= %12.5e F_011= %12.5e\n", l->F_110, l->F_101,
+         l->F_011);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  printf("-------------------------\n");
+  printf("F_300= %12.5e F_030= %12.5e F_003= %12.5e\n", l->F_300, l->F_030,
+         l->F_003);
+  printf("F_210= %12.5e F_201= %12.5e F_120= %12.5e\n", l->F_210, l->F_201,
+         l->F_120);
+  printf("F_021= %12.5e F_102= %12.5e F_012= %12.5e\n", l->F_021, l->F_102,
+         l->F_012);
+  printf("F_111= %12.5e\n", l->F_111);
+#endif
+  printf("-------------------------\n");
 }
 
 /**
@@ -241,6 +307,7 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
   ma->M_001 += mb->M_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  /* Add 2nd order terms */
   ma->M_200 += mb->M_200;
   ma->M_020 += mb->M_020;
   ma->M_002 += mb->M_002;
@@ -249,6 +316,7 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
   ma->M_011 += mb->M_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* Add 3rd order terms */
   ma->M_300 += mb->M_300;
   ma->M_030 += mb->M_030;
   ma->M_003 += mb->M_003;
