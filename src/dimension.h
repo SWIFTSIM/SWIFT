@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static float get_radius_dimension_sphere(
 
   error("The dimension is not defined !");
   return 0.f;
-  
+
 #endif
 }
 
