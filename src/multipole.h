@@ -67,7 +67,17 @@ struct grav_tensor {
   float F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+
+  /* 4th order terms */
+  float F_400, F_040, F_004;
+  float F_310, F_301;
+  float F_130, F_031;
+  float F_103, F_013;
+  float F_220, F_202, F_022;
+  float F_211, F_121, F_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -106,7 +116,17 @@ struct multipole {
   float M_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+
+  /* 4th order terms */
+  float M_400, M_040, M_004;
+  float M_310, M_301;
+  float M_130, M_031;
+  float M_103, M_013;
+  float M_220, M_202, M_022;
+  float M_211, M_121, M_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -214,7 +234,25 @@ INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
   la->F_111 += lb->F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  /* Add 4th order terms */
+  la->F_400 += lb->F_400;
+  la->F_040 += lb->F_040;
+  la->F_004 += lb->F_004;
+  la->F_310 += lb->F_310;
+  la->F_301 += lb->F_301;
+  la->F_130 += lb->F_130;
+  la->F_031 += lb->F_031;
+  la->F_103 += lb->F_103;
+  la->F_013 += lb->F_013;
+  la->F_220 += lb->F_220;
+  la->F_202 += lb->F_202;
+  la->F_022 += lb->F_022;
+  la->F_211 += lb->F_211;
+  la->F_121 += lb->F_121;
+  la->F_112 += lb->F_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 }
 
@@ -251,9 +289,22 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
          l->F_012);
   printf("F_111= %12.5e\n", l->F_111);
 #endif
-  printf("-------------------------\n");
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  printf("-------------------------\n");
+  printf("F_400= %12.5e F_040= %12.5e F_004= %12.5e\n", l->F_400, l->F_040,
+         l->F_004);
+  printf("F_310= %12.5e F_301= %12.5e F_130= %12.5e\n", l->F_310, l->F_301,
+         l->F_130);
+  printf("F_031= %12.5e F_103= %12.5e F_013= %12.5e\n", l->F_031, l->F_103,
+         l->F_013);
+  printf("F_220= %12.5e F_202= %12.5e F_022= %12.5e\n", l->F_220, l->F_202,
+         l->F_022);
+  printf("F_211= %12.5e F_121= %12.5e F_112= %12.5e\n", l->F_211, l->F_121,
+         l->F_112);
+#endif
+  printf("-------------------------\n");
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 }
 
@@ -291,9 +342,22 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
          m->M_012);
   printf("M_111= %12.5e\n", m->M_111);
 #endif
-  printf("-------------------------\n");
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  printf("-------------------------\n");
+  printf("M_400= %12.5e M_040= %12.5e M_004= %12.5e\n", m->M_400, m->M_040,
+         m->M_004);
+  printf("M_310= %12.5e M_301= %12.5e M_130= %12.5e\n", m->M_310, m->M_301,
+         m->M_130);
+  printf("M_031= %12.5e M_103= %12.5e M_013= %12.5e\n", m->M_031, m->M_103,
+         m->M_013);
+  printf("M_220= %12.5e M_202= %12.5e M_022= %12.5e\n", m->M_220, m->M_202,
+         m->M_022);
+  printf("M_211= %12.5e M_121= %12.5e M_112= %12.5e\n", m->M_211, m->M_121,
+         m->M_112);
+#endif
+  printf("-------------------------\n");
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 }
 
@@ -344,6 +408,27 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
   ma->M_102 += mb->M_102;
   ma->M_012 += mb->M_012;
   ma->M_111 += mb->M_111;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  /* Add 4th order terms */
+  ma->M_400 += mb->M_400;
+  ma->M_040 += mb->M_040;
+  ma->M_004 += mb->M_004;
+  ma->M_310 += mb->M_310;
+  ma->M_301 += mb->M_301;
+  ma->M_130 += mb->M_130;
+  ma->M_031 += mb->M_031;
+  ma->M_103 += mb->M_103;
+  ma->M_013 += mb->M_013;
+  ma->M_220 += mb->M_220;
+  ma->M_202 += mb->M_202;
+  ma->M_022 += mb->M_022;
+  ma->M_211 += mb->M_211;
+  ma->M_121 += mb->M_121;
+  ma->M_112 += mb->M_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -521,8 +606,86 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
     return 0;
   }
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* Check 4th order terms */
+  if (fabsf(ma->M_400 + mb->M_400) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_400 - mb->M_400) / fabsf(ma->M_400 + mb->M_400) > tolerance) {
+    message("M_400 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_040 + mb->M_040) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_040 - mb->M_040) / fabsf(ma->M_040 + mb->M_040) > tolerance) {
+    message("M_040 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_004 + mb->M_004) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_004 - mb->M_004) / fabsf(ma->M_004 + mb->M_004) > tolerance) {
+    message("M_003 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_310 + mb->M_310) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_310 - mb->M_310) / fabsf(ma->M_310 + mb->M_310) > tolerance) {
+    message("M_310 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_301 + mb->M_301) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_301 - mb->M_301) / fabsf(ma->M_301 + mb->M_301) > tolerance) {
+    message("M_301 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_130 + mb->M_130) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_130 - mb->M_130) / fabsf(ma->M_130 + mb->M_130) > tolerance) {
+    message("M_130 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_031 + mb->M_031) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_031 - mb->M_031) / fabsf(ma->M_031 + mb->M_031) > tolerance) {
+    message("M_031 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_103 + mb->M_103) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_103 - mb->M_103) / fabsf(ma->M_103 + mb->M_103) > tolerance) {
+    message("M_103 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_013 + mb->M_013) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_013 - mb->M_013) / fabsf(ma->M_013 + mb->M_013) > tolerance) {
+    message("M_013 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_220 + mb->M_220) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_220 - mb->M_220) / fabsf(ma->M_220 + mb->M_220) > tolerance) {
+    message("M_220 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_202 + mb->M_202) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_202 - mb->M_202) / fabsf(ma->M_202 + mb->M_202) > tolerance) {
+    message("M_202 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_022 + mb->M_022) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_022 - mb->M_022) / fabsf(ma->M_022 + mb->M_022) > tolerance) {
+    message("M_022 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_211 + mb->M_211) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_211 - mb->M_211) / fabsf(ma->M_211 + mb->M_211) > tolerance) {
+    message("M_211 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_121 + mb->M_121) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_121 - mb->M_121) / fabsf(ma->M_121 + mb->M_121) > tolerance) {
+    message("M_121 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_112 + mb->M_112) > 1e-6 * ma->M_000 &&
+      fabsf(ma->M_112 - mb->M_112) / fabsf(ma->M_112 + mb->M_112) > tolerance) {
+    message("M_112 term different");
+    return 0;
+  }
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 
   /* All is good */
