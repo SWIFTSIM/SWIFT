@@ -747,7 +747,14 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   float M_111 = 0.f;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  float M_400 = 0.f, M_040 = 0.f, M_004 = 0.f;
+  float M_310 = 0.f, M_301 = 0.f, M_130 = 0.f;
+  float M_031 = 0.f, M_103 = 0.f, M_013 = 0.f;
+  float M_220 = 0.f, M_202 = 0.f, M_022 = 0.f;
+  float M_211 = 0.f, M_121 = 0.f, M_112 = 0.f;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 
   /* Construce the higher order terms */
@@ -782,7 +789,24 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_111 += -m * X_111(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+    M_400 += m * X_400(dx);
+    M_040 += m * X_040(dx);
+    M_004 += m * X_004(dx);
+    M_310 += m * X_310(dx);
+    M_301 += m * X_301(dx);
+    M_130 += m * X_130(dx);
+    M_031 += m * X_031(dx);
+    M_103 += m * X_103(dx);
+    M_013 += m * X_013(dx);
+    M_220 += m * X_220(dx);
+    M_202 += m * X_202(dx);
+    M_022 += m * X_022(dx);
+    M_211 += m * X_211(dx);
+    M_121 += m * X_121(dx);
+    M_112 += m * X_112(dx);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
   }
 
@@ -822,7 +846,24 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_111 = M_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  m->m_pole.M_400 = M_400;
+  m->m_pole.M_040 = M_040;
+  m->m_pole.M_004 = M_004;
+  m->m_pole.M_310 = M_310;
+  m->m_pole.M_301 = M_301;
+  m->m_pole.M_130 = M_130;
+  m->m_pole.M_031 = M_031;
+  m->m_pole.M_103 = M_103;
+  m->m_pole.M_013 = M_013;
+  m->m_pole.M_220 = M_220;
+  m->m_pole.M_202 = M_202;
+  m->m_pole.M_022 = M_022;
+  m->m_pole.M_211 = M_211;
+  m->m_pole.M_121 = M_121;
+  m->m_pole.M_112 = M_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
