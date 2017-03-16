@@ -30,7 +30,7 @@
 #include "voronoi3d_cell.h"
 
 /* For debugging purposes */
-#define LOOP_CHECK 1000
+//#define LOOP_CHECK 1000
 
 #ifdef LOOP_CHECK
 /* We need to do the trickery below to get a unique counter for each call to the
@@ -40,7 +40,7 @@
 #define LOOPCOUNTER_NAME(line) MERGE(loopcount, line)
 
 /**
- * @brief Increase the given counter variable and check if it is still valid
+ * @brief Increase the given counter variable and check if it is still valid.
  *
  * @param counter Counter to increase.
  * @param line_number Line number where the while is called.
@@ -65,12 +65,16 @@ __attribute__((always_inline)) INLINE int check_counter(int *counter,
   int LOOPCOUNTER_NAME(__LINE__) = 0; \
   while (check_counter(&LOOPCOUNTER_NAME(__LINE__), __LINE__) && (condition))
 
-#else  // LOOP_CHECK
+#else /* LOOP_CHECK */
 
 /* If LOOP_CHECK is not defined, safewhile and while are EXACTLY the same */
 #define safewhile(condition) while (condition)
 
-#endif  // LOOP_CHECK
+#endif /* LOOP_CHECK */
+
+/* This flag activates a number of expensive geometrical checks that help
+   finding bugs. */
+//#define VORONOI3D_EXPENSIVE_CHECKS
 
 /* Tolerance parameter used to decide when to use more precise geometric
    criteria */
@@ -426,7 +430,9 @@ __attribute__((always_inline)) INLINE void voronoi_set_ngb(
  * A cell is consistent if its edges are consistent, i.e. if edge e of vertex v1
  * points to vertex v2, then v2 should have an edge that points to v1 as well,
  * and then the edge index of vertex v1 should contain the index of that edge
- * in the edge list of v2.
+ * in the edge list of v2. We also check if all vertices have orders of at least
+ * 3, and if all vertices are actually part of the vertex list.
+ * Oh, and we check if the cell actually has vertices.
  *
  * @param cell 3D Voronoi cell to check
  */
@@ -435,16 +441,28 @@ __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
 
   int i, j, e, l, m;
 
+  if (c->nvert < 4) {
+    error("Found cell with only %i vertices!", c->nvert);
+  }
+
   for (i = 0; i < c->nvert; i++) {
+    if (c->orders[i] < 3) {
+      voronoi_print_cell(c);
+      error("Found cell with vertex of order %i!", c->orders[i]);
+    }
     for (j = 0; j < c->orders[i]; j++) {
       e = voronoi_get_edge(c, i, j);
+      if (e >= c->nvert) {
+        voronoi_print_cell(c);
+        error("Found cell with edges that lead to non-existing vertices!");
+      }
       if (e < 0) {
         continue;
       }
       l = voronoi_get_edgeindex(c, i, j);
       m = voronoi_get_edge(c, e, l);
       if (m != i) {
-        //        voronoi_print_gnuplot_c(c);
+        /* voronoi_print_gnuplot_c(c); */
         voronoi_print_cell(c);
         fprintf(stderr, "i: %i, j: %i, e: %i, l: %i, m: %i\n", i, j, e, l, m);
         error("Cell inconsistency!");
@@ -681,39 +699,47 @@ __attribute__((always_inline)) INLINE void voronoi_initialize(
 /**
  * @brief Find an edge of the voronoi_cell that intersects the cutting plane.
  *
+ * There is a large number of possible paths through this method, each of which
+ * is covered by a separate unit test in testVoronoi3D. Paths have been numbered
+ * in the inline comments to help identify them.
+ *
  * @param c 3D Voronoi cell.
- * @param dx vector pointing from the midpoint of the line segment between pi
- * and pj to pj
- * @param r2 Squared norm of dx
- * @param u Distance between the plane and the closest vertex above the plane
- * @param up Index of the closest vertex above the plane
- * @param us Index of the edge of vertex up that intersects the plane
- * @param uw Result of the last test_vertex call for vertex up
- * @param l Distance between the plane and the closest vertex below the plane
- * @param lp Index of the closest vertex below the plane
- * @param ls Index of the edge of vertex lp that intersects the plane
- * @param lw Result of the last test_vertex call for vertex lp
- * @param q Distance between the plane and a testing vertex
- * @param qp Index of the testing vertex
- * @param qs Index of the edge of the testing vertex that is connected to up
- * @param qw Result of the last test_vertex call involving qp
+ * @param dx Vector pointing from pj to the midpoint of the line segment between
+ * pi and pj.
+ * @param r2 Squared length of dx.
+ * @param u Projected distance between the plane and the closest vertex above
+ * the plane, along dx.
+ * @param up Index of the closest vertex above the plane.
+ * @param us Index of the edge of vertex up that intersects the plane.
+ * @param uw Result of the last test_vertex call for vertex up.
+ * @param l Projected distance between the plane and the closest vertex below
+ * the plane, along dx.
+ * @param lp Index of the closest vertex below the plane.
+ * @param ls Index of the edge of vertex lp that intersects the plane.
+ * @param lw Result of the last test_vertex call for vertex lp.
+ * @param q Projected distance between the plane and a test vertex, along dx.
+ * @param qp Index of the test vertex.
+ * @param qs Index of the edge of the test vertex that is connected to up.
+ * @param qw Result of the last test_vertex call involving qp.
  * @return A negative value if an error occurred, 0 if the plane does not
  * intersect the cell, 1 if nothing special happened and 2 if we have a
- * complicated setup
+ * complicated setup.
  */
 __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
     struct voronoi_cell *c, float *dx, float r2, float *u, int *up, int *us,
     int *uw, float *l, int *lp, int *ls, int *lw, float *q, int *qp, int *qs,
     int *qw) {
 
-  // stack to store all vertices that have already been tested (debugging only)
+  /* stack to store all vertices that have already been tested (debugging
+     only) */
   float teststack[2 * VORONOI3D_MAXNUMVERT];
-  // size of the used part of the stack
+  /* size of the used part of the stack */
   int teststack_size = 0;
+  /* flag signalling a complicated setup */
   int complicated;
 
-  // test the first vertex: uw = -1 if it is below the plane, 1 if it is above
-  // 0 if it is very close to the plane, and things become complicated...
+  /* test the first vertex: uw = -1 if it is below the plane, 1 if it is above
+     0 if it is very close to the plane, and things become complicated... */
   *uw = voronoi_test_vertex(&c->vertices[0], dx, r2, u, teststack,
                             &teststack_size);
   *up = 0;
@@ -725,15 +751,15 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
 
   } else {
 
-    // two options: either the vertex is above or below the plane
+    /* two options: either the vertex is above or below the plane */
 
     if ((*uw) == 1) {
 
       /* PATH 1 */
 
-      // above: try to find a vertex below
-      // we test all edges of the current vertex stored in up (vertex 0) until
-      // we either find one below the plane or closer to the plane
+      /* above: try to find a vertex below
+         we test all edges of the current vertex stored in up (vertex 0) until
+         we either find one below the plane or closer to the plane */
       *lp = voronoi_get_edge(c, (*up), 0);
       *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
                                 &teststack_size);
@@ -747,27 +773,27 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
                                   &teststack_size);
         (*us)++;
       }
-      // we increased us too much, correct this
+      /* we increased us too much, correct this */
       (*us)--;
       if ((*l) >= (*u)) {
         /* PATH 1.3 */
-        // up is the closest vertex to the plane, but is above the plane
-        // since the entire cell is convex, up is the closest vertex of all
-        // vertices of the cell
-        // this means the entire cell is supposedly above the plane, which is
-        // impossible
+        /* up is the closest vertex to the plane, but is above the plane
+           since the entire cell is convex, up is the closest vertex of all
+           vertices of the cell
+           this means the entire cell is supposedly above the plane, which is
+           impossible */
         message(
             "Cell completely gone! This should not happen. (l >= u, l = %g, u "
             "= %g)",
             (*l), (*u));
         return -1;
       }
-      // we know that lp is closer to the plane or below the plane
-      // now find the index of the edge up-lp in the edge list of lp
+      /* we know that lp is closer to the plane or below the plane
+         now find the index of the edge up-lp in the edge list of lp */
       *ls = voronoi_get_edgeindex(c, (*up), (*us));
 
-      // if lp is also above the plane, replace up by lp and repeat the process
-      // until lp is below the plane
+      /* if lp is also above the plane, replace up by lp and repeat the process
+         until lp is below the plane */
       safewhile((*lw) == 1) {
         /* PATH 1.4 */
         *u = (*l);
@@ -805,8 +831,8 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         (*us)--;
         *ls = voronoi_get_edgeindex(c, (*up), (*us));
       }
-      // if lp is too close to the plane, replace up by lp and proceed to
-      // complicated setup
+      /* if lp is too close to the plane, replace up by lp and proceed to
+         complicated setup */
       if ((*lw) == 0) {
         /* PATH 1.5 */
         *up = (*lp);
@@ -816,9 +842,9 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
 
       /* PATH 2 */
 
-      // below: try to find a vertex above
-      // we test all edges of the current vertex stored in up (vertex 0) until
-      // we either find one above the plane or closer to the plane
+      /* below: try to find a vertex above
+         we test all edges of the current vertex stored in up (vertex 0) until
+         we either find one above the plane or closer to the plane */
 
       *qp = voronoi_get_edge(c, (*up), 0);
       *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
@@ -835,18 +861,18 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       }
       if ((*u) >= (*q)) {
         /* PATH 2.3 */
-        // up is the closest vertex to the plane and is below the plane
-        // since the cell is convex, up is the closest vertex of all vertices of
-        // the cell
-        // this means that the entire cell is below the plane
-        /* cell unaltered */
+        /* up is the closest vertex to the plane and is below the plane
+           since the cell is convex, up is the closest vertex of all vertices of
+           the cell
+           this means that the entire cell is below the plane
+           The cell is unaltered. */
         return 0;
       } else {
-        // the last increase in the loop pushed us too far, correct this
+        /* the last increase in the loop pushed us too far, correct this */
         (*us)--;
       }
 
-      // repeat the above process until qp is closer or above the plane
+      /* repeat the above process until qp is closer or above the plane */
       safewhile((*qw) == -1) {
         /* PATH 2.4 */
         *qs = voronoi_get_edgeindex(c, (*up), (*us));
@@ -882,7 +908,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         (*us)--;
       }
       if ((*qw) == 1) {
-        // qp is above the plane: initialize lp to up and replace up by qp
+        /* qp is above the plane: initialize lp to up and replace up by qp */
         *lp = (*up);
         *ls = (*us);
         *l = (*u);
@@ -891,7 +917,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         *u = (*q);
       } else {
         /* PATH 2.5 */
-        // too close to call: go to complicated setup
+        /* too close to call: go to complicated setup */
         *up = (*qp);
         complicated = 1;
       }
@@ -908,49 +934,69 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
 }
 
 /**
- * @brief Intersect particle pi with particle pj and adapt its Voronoi cell
- *  structure
+ * @brief Intersect the given cell with the midplane between the cell generator
+ * and a neighbouring cell at the given relative position and with the given ID.
  *
- * odx = x_i - x_j!!!
+ * This method is the core of the Voronoi algorithm. If anything goes wrong
+ * geometrically, it most likely goes wrong somewhere within this method.
+ *
+ * @param odx The original relative distance vector between the cell generator
+ * and the intersecting neighbour, as it is passed on to runner_iact_density
+ * (remember: odx = pi->x - pj->x).
+ * @param c 3D Voronoi cell.
+ * @param ngb ID of the intersecting neighbour (pj->id in runner_iact_density).
  */
 __attribute__((always_inline)) INLINE void voronoi_intersect(
     float *odx, struct voronoi_cell *c, unsigned long long ngb) {
 
-  // vector pointing from the midpoint of the line segment between pi and pj to
-  // pj.
+  /* vector pointing from pi to the midpoint of the line segment between pi and
+     pj. This corresponds to -0.5*odx */
   float dx[3];
-  // squared norm of dx
+  /* squared norm of dx */
   float r2;
-  // u: distance between the plane and the closest vertex above the plane (up)
-  // l: distance between the plane and the closest vertex below the plane (low)
-  // q: distance between the plane and the vertex that is currently being tested
+  /* u: distance between the plane and the closest vertex above the plane (up)
+     l: distance between the plane and the closest vertex below the plane (lp)
+     q: distance between the plane and the vertex that is currently being
+     tested (qp) */
   float u = 0.0f, l = 0.0f, q = 0.0f;
-  // up: index of the closest vertex above the plane
-  // us: index of the edge of vertex up that intersects the plane
-  // uw: result of the last orientation test involving vertex u
-  // same naming used for vertex l and vertex q
+  /* up: index of the closest vertex above the plane
+     us: index of the edge of vertex up that intersects the plane
+     uw: result of the last orientation test involving vertex u
+     same naming used for vertex l and vertex q */
   int up = -1, us = -1, uw = -1, lp = -1, ls = -1, lw = -1, qp = -1, qs = -1,
       qw = -1;
-  // auxiliary flag used to capture degeneracies
+  /* auxiliary flag used to capture degeneracies */
   int complicated = -1;
 
-  // stack to store all vertices that have already been tested (debugging only)
+  /* stack to store all vertices that have already been tested (debugging
+     only) */
   float teststack[2 * VORONOI3D_MAXNUMVERT];
-  // size of the used part of the stack
+  /* size of the used part of the stack */
   int teststack_size = 0;
 
+#ifdef VORONOI3D_EXPENSIVE_CHECKS
+  voronoi_check_cell_consistency(c);
+#endif
+
+  /* initialize dx and r2 */
   dx[0] = -0.5f * odx[0];
   dx[1] = -0.5f * odx[1];
   dx[2] = -0.5f * odx[2];
   r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+  /* find an intersected edge of the cell */
   int result = voronoi_intersect_find_closest_vertex(
       c, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
   if (result < 0) {
+    /* the closest_vertex test only found vertices above the intersecting plane
+       this would mean that the entire cell lies above the midplane of the line
+       segment connecting a point inside the cell (the generator) and a point
+       that could be inside or outside the cell (the neighbour). This is
+       geometrically absurd and should NEVER happen. */
     voronoi_print_gnuplot_c(c);
     error("Error while searching intersected edge!");
   }
-  if (!result) {
+  if (result == 0) {
     /* no intersection */
     return;
   }
@@ -959,6 +1005,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   } else {
     complicated = 0;
   }
+
+  /* At this point:
+      up contains a vertex above the plane
+      lp contains a vertex below the plane
+      us and ls contain the index of the edge that connects up and lp, this edge
+      is intersected by the midplane
+      u and l contain the projected distances of up and lp to the midplane,
+      along dx
+     IF complicated is 1, up contains a vertex that is considered to be on the
+     plane. All other variables can be considered to be uninitialized in this
+     case. */
 
   int vindex = -1;
   int visitflags[VORONOI3D_MAXNUMVERT];
@@ -976,61 +1033,67 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   if (complicated) {
 
-    // first of all, make sure we have a vertex that has edges which are below
-    // the plane
+    /* We've entered the complicated setup, which means that somewhere along the
+       way we found a vertex that is on or very close to the midplane. The index
+       of that vertex is stored in up, all other variables are meaningless at
+       this point. */
+
+    /* first of all, we need to find a vertex which has edges that extend below
+       the plane (since the remainder of our algorithm depends on that)
+       we create a stack of vertices to test (we use dstack for this), and add
+       vertex up. For each vertex on the stack, we then traverse its edges. If
+       the edge extends above the plane, we ignore it. If it extends below, we
+       stop. If the edge lies in the plane, we add the vertex on the other end
+       to the stack.
+       We make sure that up contains the index of a vertex extending beyond the
+       plane on exit. */
     dstack[dstack_size] = up;
     ++dstack_size;
-    j = 0;
     lw = 0;
+    j = 0;
     safewhile(j < dstack_size && lw != -1) {
       up = dstack[j];
       for (i = 0; i < c->orders[up]; ++i) {
         lp = voronoi_get_edge(c, up, i);
         lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                  &teststack_size);
-        if (!lw) {
+        if (lw == -1) {
+          /* jump out of the for loop */
+          break;
+        } else {
+          /* only add each vertex to the stack once */
           k = 0;
-          // make sure we don't add duplicates, since then we might get stuck in
-          // the outer loop...
           safewhile(k < dstack_size && dstack[k] != lp) { ++k; }
           if (k == dstack_size) {
             dstack[dstack_size] = lp;
             ++dstack_size;
           }
         }
-        if (lw == -1) {
-          break;
-        }
       }
       ++j;
     }
-    if (lw != -1) {
-      message("j: %i, dstack_size: %i", j, dstack_size);
-      message("dx: %g %g %g", dx[0], dx[1], dx[2]);
-      message("up: %i", up);
-      message("orders[up] = %i", c->orders[up]);
-      for (i = 0; i < c->orders[up]; ++i) {
-        lp = voronoi_get_edge(c, up, i);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-        message("edge[%i]: %i (%g %g %g - %i)", i, lp, c->vertices[3 * lp],
-                c->vertices[3 * lp + 1], c->vertices[3 * lp + 2], lw);
-      }
-      error("Cell completely gone! This should not happen.");
-    }
 
-    // the search routine detected a vertex very close to the plane
-    // the index of this vertex is stored in up
-    // we proceed by checking the edges of this vertex
+    /* we increased j after lw was calculated, so only the value of lw should be
+       used to determine whether or not the loop was succesfull */
+    if (lw != -1) {
+      voronoi_print_cell(c);
+      error("Unable to find a vertex below the plane!");
+    }
+    /* reset the delete stack, we need it later on */
+    dstack_size = 0;
+
+    /* the search routine detected a vertex very close to the plane
+       the index of this vertex is stored in up
+       we proceed by checking the edges of this vertex */
 
     lp = voronoi_get_edge(c, up, 0);
     lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                              &teststack_size);
 
-    // the first edge can be below, above or on the plane
+    /* the first edge can be below, above or on the plane */
     if (lw != -1) {
 
-      // above or on the plane: we try to find one below the plane
+      /* above or on the plane: we try to find one below the plane */
 
       rp = lw;
       i = 1;
@@ -1040,9 +1103,9 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       safewhile(lw != -1) {
         i++;
         if (i == c->orders[up]) {
-          // none of the edges of up is below the plane. Since the cell is
-          // supposed to be convex, this means the entire cell is above or on
-          // the plane. This should not happen...
+          /* none of the edges of up is below the plane. Since the cell is
+             supposed to be convex, this means the entire cell is above or on
+             the plane. This should not happen... */
           voronoi_print_gnuplot_c(c);
           error(
               "Cell completely gone! This should not happen. (i == "
@@ -1225,6 +1288,15 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       error("Upper and lower vertex are the same!");
     }
 
+    /* the line joining up and lp has general (vector) equation
+         x = lp + (up-lp)*t,
+       with t a parameter ranging from 0 to 1
+       we can rewrite this as
+         x = lp*(1-t) + up*t
+       the value for t corresponding to the intersection of the line and the
+       midplane can be found as the ratio of the projected distance between one
+       of the vertices and the midplane, and the total projected distance
+       between the two vertices: u-l (remember that u > 0 and l < 0) */
     r = u / (u - l);
     l = 1.0f - r;
 
@@ -1232,7 +1304,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       error("Value overflow (r: %g, l: %g)", r, l);
     }
 
-    /* create new order 3 vertex */
+    /* create a new order 3 vertex */
     vindex = c->nvert;
     c->nvert++;
     if (c->nvert == VORONOI3D_MAXNUMVERT) {
@@ -1252,17 +1324,33 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     c->vertices[3 * vindex + 2] =
         c->vertices[3 * lp + 2] * r + c->vertices[3 * up + 2] * l;
 
+#ifdef VORONOI3D_EXPENSIVE_CHECKS
     voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
+#endif
 
+    /* add vertex up to the delete stack */
     dstack[dstack_size] = up;
     ++dstack_size;
 
+    /* connect the new vertex to lp (and update lp as well) */
     voronoi_set_edge(c, vindex, 1, lp);
     voronoi_set_edgeindex(c, vindex, 1, ls);
     voronoi_set_edge(c, lp, ls, vindex);
     voronoi_set_edgeindex(c, lp, ls, 1);
+    /* disconnect vertex up, it will be deleted */
     voronoi_set_edge(c, up, us, -1);
+    /* note that we do not connect edges 0 and 2: edge 2 will be connected to
+       the next new vertex that we created, while edge 0 will be connected to
+       the last new vertex */
 
+    /* set neighbour relations for the new vertex:
+        - edge 0 will be connected to the next intersection point (below), and
+          hence has pj as ngb
+        - edge 1 is connected to lp and has the original neighbour of the
+          intersected edge corresponding to up as neighbour
+        - edge 2 has the neighbour on the other side of the original intersected
+          edge as neighbour, which is the same as the neighbour of the edge
+          corresponding to lp */
     voronoi_set_ngb(c, vindex, 0, ngb);
     voronoi_set_ngb(c, vindex, 1, voronoi_get_ngb(c, up, us));
     voronoi_set_ngb(c, vindex, 2, voronoi_get_ngb(c, lp, ls));
@@ -1277,6 +1365,15 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     cs = 2;
 
   } /* if(complicated) */
+
+  /* at this point:
+      qp and up have the same value, and correspond to a vertex above the plane
+      that has been deleted
+      qs contains the index of the edge of qp that is next in line to be tested;
+      the edge that comes after the intersected edge that was deleted above
+      q contains the projected distance between qp and the midplane, along dx
+      cs contains the index of the last dangling edge of the last vertex that
+      was created above; we still need to connect this edge to a vertex below */
 
   int cp = -1;
   int iqs = -1;
@@ -1739,7 +1836,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   /* remove deleted vertices from all arrays */
   struct voronoi_cell new_cell;
-  // make sure the contents of the new cell are the same as for the old cell
+  /* make sure the contents of the new cell are the same as for the old cell */
   memcpy(&new_cell, c, sizeof(struct voronoi_cell));
   int m, n;
   for (vindex = 0; vindex < c->nvert; vindex++) {
@@ -1809,7 +1906,9 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     voronoi_box_test_inside(&c->vertices[3 * i], c->x);
   }
 
+#ifdef VORONOI3D_EXPENSIVE_CHECKS
   voronoi_check_cell_consistency(c);
+#endif
 }
 
 /**

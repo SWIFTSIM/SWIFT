@@ -22,7 +22,19 @@
 #include "hydro/Shadowswift/voronoi3d_algorithm.h"
 #include "part.h"
 
-#define TESTVORONOI3D_NUMCELL 100
+/* Number of random generators to use in the first grid build test */
+#define TESTVORONOI3D_NUMCELL_RANDOM 100
+
+/* Number of cartesian generators to use (in one coordinate direction) for the
+   second grid build test. The total number of generators is the third power of
+   this number (so be careful with large numbers) */
+#define TESTVORONOI3D_NUMCELL_CARTESIAN_1D 5
+
+/* Total number of generators in the second grid build test. Do not change this
+   value, but change the 1D value above instead. */
+#define TESTVORONOI3D_NUMCELL_CARTESIAN_3D                                   \
+  (TESTVORONOI3D_NUMCELL_CARTESIAN_1D * TESTVORONOI3D_NUMCELL_CARTESIAN_1D * \
+   TESTVORONOI3D_NUMCELL_CARTESIAN_1D)
 
 /**
  * @brief Check if voronoi_volume_tetrahedron() works
@@ -1303,15 +1315,17 @@ int main() {
 
   /* Construct a small random grid */
   {
+    message("Constructing a small random grid...");
+
     int i, j;
     double x[3];
     float dx[3];
     float Vtot;
-    struct voronoi_cell cells[TESTVORONOI3D_NUMCELL];
+    struct voronoi_cell cells[TESTVORONOI3D_NUMCELL_RANDOM];
     struct voronoi_cell *cell_i, *cell_j;
 
     /* initialize cells with random generator locations */
-    for (i = 0; i < TESTVORONOI3D_NUMCELL; ++i) {
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_RANDOM; ++i) {
       x[0] = ((double)rand()) / ((double)RAND_MAX);
       x[1] = ((double)rand()) / ((double)RAND_MAX);
       x[2] = ((double)rand()) / ((double)RAND_MAX);
@@ -1319,9 +1333,9 @@ int main() {
     }
 
     /* interact the cells */
-    for (i = 0; i < TESTVORONOI3D_NUMCELL; ++i) {
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_RANDOM; ++i) {
       cell_i = &cells[i];
-      for (j = 0; j < TESTVORONOI3D_NUMCELL; ++j) {
+      for (j = 0; j < TESTVORONOI3D_NUMCELL_RANDOM; ++j) {
         if (i != j) {
           cell_j = &cells[j];
           dx[0] = cell_i->x[0] - cell_j->x[0];
@@ -1334,40 +1348,47 @@ int main() {
 
     Vtot = 0.0f;
     /* print the cells to the stdout */
-    for (i = 0; i < TESTVORONOI3D_NUMCELL; ++i) {
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_RANDOM; ++i) {
       /*      voronoi_print_gnuplot_c(&cells[i]);*/
       voronoi_cell_finalize(&cells[i]);
       Vtot += cells[i].volume;
     }
 
     assert(fabs(Vtot - 1.0f) < 1.e-6);
+
+    message("Done.");
   }
 
   /* Construct a small Cartesian grid full of degeneracies */
   {
+    message("Constructing a Cartesian grid...");
+
     int i, j, k;
     double x[3];
     float dx[3];
     float Vtot;
-    struct voronoi_cell cells[1000];
+    struct voronoi_cell cells[TESTVORONOI3D_NUMCELL_CARTESIAN_3D];
     struct voronoi_cell *cell_i, *cell_j;
 
     /* initialize cells with random generator locations */
-    for (i = 0; i < 10; ++i) {
-      for (j = 0; j < 10; ++j) {
-        for (k = 0; k < 10; ++k) {
-          x[0] = (i + 0.5f) * 0.1;
-          x[1] = (j + 0.5f) * 0.1;
-          x[2] = (k + 0.5f) * 0.1;
-          voronoi_cell_init(&cells[i], x);
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++i) {
+      for (j = 0; j < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++j) {
+        for (k = 0; k < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++k) {
+          x[0] = (i + 0.5f) * 1.0 / TESTVORONOI3D_NUMCELL_CARTESIAN_1D;
+          x[1] = (j + 0.5f) * 1.0 / TESTVORONOI3D_NUMCELL_CARTESIAN_1D;
+          x[2] = (k + 0.5f) * 1.0 / TESTVORONOI3D_NUMCELL_CARTESIAN_1D;
+          voronoi_cell_init(&cells[TESTVORONOI3D_NUMCELL_CARTESIAN_1D *
+                                       TESTVORONOI3D_NUMCELL_CARTESIAN_1D * i +
+                                   TESTVORONOI3D_NUMCELL_CARTESIAN_1D * j + k],
+                            x);
         }
       }
     }
 
     /* interact the cells */
-    for (i = 0; i < TESTVORONOI3D_NUMCELL; ++i) {
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_CARTESIAN_3D; ++i) {
       cell_i = &cells[i];
-      for (j = 0; j < TESTVORONOI3D_NUMCELL; ++j) {
+      for (j = 0; j < TESTVORONOI3D_NUMCELL_CARTESIAN_3D; ++j) {
         if (i != j) {
           cell_j = &cells[j];
           dx[0] = cell_i->x[0] - cell_j->x[0];
@@ -1380,13 +1401,16 @@ int main() {
 
     Vtot = 0.0f;
     /* print the cells to the stdout */
-    for (i = 0; i < TESTVORONOI3D_NUMCELL; ++i) {
-      voronoi_print_gnuplot_c(&cells[i]);
+    for (i = 0; i < TESTVORONOI3D_NUMCELL_CARTESIAN_3D; ++i) {
+      /*      voronoi_print_gnuplot_c(&cells[i]);*/
       voronoi_cell_finalize(&cells[i]);
       Vtot += cells[i].volume;
     }
 
-    assert(fabs(Vtot - 1.0f) < 1.e-6);
+    message("Vtot: %g (Vtot-1.0f: %g)", Vtot, (Vtot - 1.0f));
+    assert(fabs(Vtot - 1.0f) < 2.e-6);
+
+    message("Done.");
   }
 
   return 0;
