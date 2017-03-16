@@ -917,8 +917,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
  *
  * Corresponds to equation (28e).
  *
- * @param l_a The #grav_tensor copy (content will  be overwritten).
- * @param l_b The #grav_tensor to shift.
+ * @param la The #grav_tensor copy (content will  be overwritten).
+ * @param lb The #grav_tensor to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  * @param periodic Is the calculation periodic ?

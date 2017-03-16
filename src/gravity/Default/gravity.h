@@ -121,7 +121,8 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 /**
  * @brief Initialises the softening of the g-particles
  *
- * @param gp The particle to act upon
+ * @param gp The particle to act upon.
+ * @param grav_props The properties of the gravity scheme.
  */
 __attribute__((always_inline)) INLINE static void gravity_init_softening(
     struct gpart* gp, const struct gravity_props* grav_props) {
