@@ -119,8 +119,8 @@ extern float global_voronoi_box_side[3];
  * @param anchor Corner of the simulation box with the lowest coordinate values.
  * @param side Side lengths of the simulation box.
  */
-__attribute__((always_inline)) INLINE static void voronoi_set_box(float *anchor,
-                                                                  float *side) {
+__attribute__((always_inline)) INLINE static void voronoi_set_box(
+    const float *anchor, const float *side) {
   global_voronoi_box_anchor[0] = anchor[0];
   global_voronoi_box_anchor[1] = anchor[1];
   global_voronoi_box_anchor[2] = anchor[2];
@@ -169,8 +169,8 @@ __attribute__((always_inline)) INLINE static void voronoi_get_box_centroid(
  * generator.
  * @param x Position of the cell generator.
  */
-__attribute__((always_inline)) INLINE void voronoi_box_test_inside(float *v,
-                                                                   double *x) {
+__attribute__((always_inline)) INLINE void voronoi_box_test_inside(
+    const float *v, const double *x) {
   float vpos[3];
   vpos[0] = x[0] + v[0];
   vpos[1] = x[1] + v[1];
@@ -264,10 +264,10 @@ __attribute__((always_inline)) INLINE static float voronoi_get_box_face(
  * @param c Voronoi cell to print.
  */
 __attribute__((always_inline)) INLINE void voronoi_print_gnuplot_c(
-    struct voronoi_cell *c) {
+    const struct voronoi_cell *c) {
 
   int i, j, v;
-  double *x = c->x;
+  const double *x = c->x;
 
   fprintf(stderr, "%g\t%g\t%g\n\n", x[0], x[1], x[2]);
 
@@ -292,7 +292,7 @@ __attribute__((always_inline)) INLINE void voronoi_print_gnuplot_c(
  * @param cell 3D Voronoi cell
  */
 __attribute__((always_inline)) INLINE void voronoi_print_cell(
-    struct voronoi_cell *cell) {
+    const struct voronoi_cell *cell) {
 
   int i, j;
 
@@ -321,7 +321,7 @@ __attribute__((always_inline)) INLINE void voronoi_print_cell(
  * @return Index of the vertex on the other side of the edge.
  */
 __attribute__((always_inline)) INLINE int voronoi_get_edge(
-    struct voronoi_cell *c, int vertex, int edge) {
+    const struct voronoi_cell *c, int vertex, int edge) {
   return c->edges[c->offsets[vertex] + edge];
 }
 
@@ -340,7 +340,7 @@ __attribute__((always_inline)) INLINE int voronoi_get_edge(
  * of the edge.
  */
 __attribute__((always_inline)) INLINE int voronoi_get_edgeindex(
-    struct voronoi_cell *c, int vertex, int edge) {
+    const struct voronoi_cell *c, int vertex, int edge) {
   return c->edgeindices[c->offsets[vertex] + edge];
 }
 
@@ -397,7 +397,7 @@ __attribute__((always_inline)) INLINE void voronoi_set_edgeindex(
  * @return Index of the neighbour corresponding to that edge and vertex.
  */
 __attribute__((always_inline)) INLINE int voronoi_get_ngb(
-    struct voronoi_cell *c, int vertex, int edge) {
+    const struct voronoi_cell *c, int vertex, int edge) {
   return c->ngbs[c->offsets[vertex] + edge];
 }
 
@@ -437,7 +437,7 @@ __attribute__((always_inline)) INLINE void voronoi_set_ngb(
  * @param cell 3D Voronoi cell to check
  */
 __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
-    struct voronoi_cell *c) {
+    const struct voronoi_cell *c) {
 
   int i, j, e, l, m;
 
@@ -494,7 +494,7 @@ __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
  * if it is above, and 0 if it is on the cutting plane.
  */
 __attribute__((always_inline)) INLINE int voronoi_test_vertex(
-    float *v, float *dx, float r2, float *test, float *teststack,
+    const float *v, const float *dx, float r2, float *test, float *teststack,
     int *teststack_size) {
 
   *test = v[0] * dx[0] + v[1] * dx[1] + v[2] * dx[2] - r2;
@@ -726,9 +726,9 @@ __attribute__((always_inline)) INLINE void voronoi_initialize(
  * complicated setup.
  */
 __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
-    struct voronoi_cell *c, float *dx, float r2, float *u, int *up, int *us,
-    int *uw, float *l, int *lp, int *ls, int *lw, float *q, int *qp, int *qs,
-    int *qw) {
+    struct voronoi_cell *c, const float *dx, float r2, float *u, int *up,
+    int *us, int *uw, float *l, int *lp, int *ls, int *lw, float *q, int *qp,
+    int *qs, int *qw) {
 
   /* stack to store all vertices that have already been tested (debugging
      only) */
@@ -940,14 +940,14 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
  * This method is the core of the Voronoi algorithm. If anything goes wrong
  * geometrically, it most likely goes wrong somewhere within this method.
  *
+ * @param c 3D Voronoi cell.
  * @param odx The original relative distance vector between the cell generator
  * and the intersecting neighbour, as it is passed on to runner_iact_density
  * (remember: odx = pi->x - pj->x).
- * @param c 3D Voronoi cell.
  * @param ngb ID of the intersecting neighbour (pj->id in runner_iact_density).
  */
 __attribute__((always_inline)) INLINE void voronoi_intersect(
-    float *odx, struct voronoi_cell *c, unsigned long long ngb) {
+    struct voronoi_cell *c, const float *odx, unsigned long long ngb) {
 
   /* vector pointing from pi to the midpoint of the line segment between pi and
      pj. This corresponds to -0.5*odx */
@@ -1044,7 +1044,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
        vertex up. For each vertex on the stack, we then traverse its edges. If
        the edge extends above the plane, we ignore it. If it extends below, we
        stop. If the edge lies in the plane, we add the vertex on the other end
-       to the stack.
+       to the stack (we also add vertices above the plane, although that should
+       not be strictly necessary)
        We make sure that up contains the index of a vertex extending beyond the
        plane on exit. */
     dstack[dstack_size] = up;
@@ -1912,9 +1913,10 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 }
 
 /**
- * @brief Get the volume of the tetrahedron made up by the four given vertices
+ * @brief Get the volume of the tetrahedron made up by the four given vertices.
  *
- * The vertices are expected to be oriented. No idea how though...
+ * The vertices are not expected to be oriented in a specific way. If the input
+ * happens to be coplanar or colinear, the returned volume will just be zero.
  *
  * @param v1 First vertex.
  * @param v2 Second vertex.
@@ -1923,7 +1925,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
  * @return Volume of the tetrahedron.
  */
 __attribute__((always_inline)) INLINE float voronoi_volume_tetrahedron(
-    float *v1, float *v2, float *v3, float *v4) {
+    const float *v1, const float *v2, const float *v3, const float *v4) {
 
   float V;
   float r1[3], r2[3], r3[3];
@@ -1945,9 +1947,10 @@ __attribute__((always_inline)) INLINE float voronoi_volume_tetrahedron(
 }
 
 /**
- * @brief Get the centroid of the tetrahedron made up by the four given vertices
+ * @brief Get the centroid of the tetrahedron made up by the four given
+ * vertices.
  *
- * This time, there is no need to orient the vertices.
+ * The centroid is just the average of four vertex coordinates.
  *
  * @param centroid Array to store the centroid in.
  * @param v1 First vertex.
@@ -1956,7 +1959,8 @@ __attribute__((always_inline)) INLINE float voronoi_volume_tetrahedron(
  * @param v4 Fourth vertex.
  */
 __attribute__((always_inline)) INLINE void voronoi_centroid_tetrahedron(
-    float *centroid, float *v1, float *v2, float *v3, float *v4) {
+    float *centroid, const float *v1, const float *v2, const float *v3,
+    const float *v4) {
 
   centroid[0] = 0.25f * (v1[0] + v2[0] + v3[0] + v4[0]);
   centroid[1] = 0.25f * (v1[1] + v2[1] + v3[1] + v4[1]);
@@ -1964,7 +1968,7 @@ __attribute__((always_inline)) INLINE void voronoi_centroid_tetrahedron(
 }
 
 /**
- * @brief Calculate the volume and centroid of a 3D Voronoi cell
+ * @brief Calculate the volume and centroid of a 3D Voronoi cell.
  *
  * @param cell 3D Voronoi cell.
  */
@@ -2178,13 +2182,13 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
  ******************************************************************************/
 
 /**
- * @brief Initialize a 3D Voronoi cell
+ * @brief Initialize a 3D Voronoi cell.
  *
  * @param cell 3D Voronoi cell to initialize.
- * @param x Position of the generator of the cell->
+ * @param x Position of the generator of the cell.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_init(
-    struct voronoi_cell *cell, double *x) {
+    struct voronoi_cell *cell, const double *x) {
 
   cell->x[0] = x[0];
   cell->x[1] = x[1];
@@ -2200,8 +2204,8 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
 }
 
 /**
- * @brief Interact a #D Voronoi cell with a particle with given relative
- * position and ID
+ * @brief Interact a 3D Voronoi cell with a particle with given relative
+ * position and ID.
  *
  * @param cell 3D Voronoi cell.
  * @param dx Relative position of the interacting generator w.r.t. the cell
@@ -2209,16 +2213,16 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
  * @param id ID of the interacting neighbour.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_interact(
-    struct voronoi_cell *cell, float *dx, unsigned long long id) {
+    struct voronoi_cell *cell, const float *dx, unsigned long long id) {
 
-  voronoi_intersect(dx, cell, id);
+  voronoi_intersect(cell, dx, id);
 }
 
 /**
- * @brief Finalize a 3D Voronoi cell
+ * @brief Finalize a 3D Voronoi cell.
  *
  * @param cell 3D Voronoi cell.
- * @return Maximal radius that could still change the structure of the cell->
+ * @return Maximal radius that could still change the structure of the cell.
  */
 __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
     struct voronoi_cell *cell) {
@@ -2247,16 +2251,16 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
 
 /**
  * @brief Get the surface area and midpoint of the face between a 3D Voronoi
- * cell and the given neighbour
+ * cell and the given neighbour.
  *
  * @param cell 3D Voronoi cell.
- * @param ngb ID of a particle that is possibly a neighbour of this cell->
+ * @param ngb ID of a particle that is possibly a neighbour of this cell.
  * @param midpoint Array to store the relative position of the face in.
  * @return 0 if the given neighbour is not a neighbour, the surface area of
  * the face otherwise.
  */
 __attribute__((always_inline)) INLINE float voronoi_get_face(
-    struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
+    const struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
 
   int i = 0;
   while (i < cell->nface && cell->ngbs[i] != ngb) {
@@ -2275,13 +2279,13 @@ __attribute__((always_inline)) INLINE float voronoi_get_face(
 }
 
 /**
- * @brief Get the centroid of a 3D Voronoi cell
+ * @brief Get the centroid of a 3D Voronoi cell.
  *
  * @param cell 3D Voronoi cell.
  * @param centroid Array to store the centroid in.
  */
 __attribute__((always_inline)) INLINE void voronoi_get_centroid(
-    struct voronoi_cell *cell, float *centroid) {
+    const struct voronoi_cell *cell, float *centroid) {
 
   centroid[0] = cell->centroid[0];
   centroid[1] = cell->centroid[1];

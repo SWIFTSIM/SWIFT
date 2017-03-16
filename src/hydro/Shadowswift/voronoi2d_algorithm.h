@@ -67,8 +67,8 @@ extern float global_voronoi_box_side[2];
  * @param anchor Corner of the box with the lowest coordinate values.
  * @param side Side lengths of the box.
  */
-__attribute__((always_inline)) INLINE static void voronoi_set_box(float *anchor,
-                                                                  float *side) {
+__attribute__((always_inline)) INLINE static void voronoi_set_box(
+    const float *anchor, const float *side) {
 
   global_voronoi_box_anchor[0] = anchor[0];
   global_voronoi_box_anchor[1] = anchor[1];
@@ -78,13 +78,13 @@ __attribute__((always_inline)) INLINE static void voronoi_set_box(float *anchor,
 }
 
 /**
- * @brief Initialize a 2D Voronoi cell
+ * @brief Initialize a 2D Voronoi cell.
  *
  * @param cell 2D Voronoi cell to initialize.
  * @param x Position of the generator of the cell.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_init(
-    struct voronoi_cell *cell, double *x) {
+    struct voronoi_cell *cell, const double *x) {
 
   /* Set the position of the generator of the cell (for reference) */
   cell->x[0] = x[0];
@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
 
 /**
  * @brief Interact a 2D Voronoi cell with a particle with given relative
- * position and ID
+ * position and ID.
  *
  * @param cell 2D Voronoi cell.
  * @param dx Relative position of the interacting generator w.r.t. the cell
@@ -135,7 +135,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
  * @param id ID of the interacting neighbour.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_interact(
-    struct voronoi_cell *cell, float *dx, unsigned long long id) {
+    struct voronoi_cell *cell, const float *dx, unsigned long long id) {
 
   /* variables used for geometrical tests */
   float half_dx[2];
@@ -442,7 +442,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
 }
 
 /**
- * @brief Finalize a 2D Voronoi cell
+ * @brief Finalize a 2D Voronoi cell.
  *
  * @param cell 2D Voronoi cell.
  * @return Maximal radius that could still change the structure of the cell.
@@ -504,7 +504,7 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
 
 /**
  * @brief Get the oriented surface area and midpoint of the face between a
- * 2D Voronoi cell and the given neighbour
+ * 2D Voronoi cell and the given neighbour.
  *
  * @param cell 2D Voronoi cell.
  * @param ngb ID of a particle that is possibly a neighbour of this cell.
@@ -512,7 +512,7 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
  * @return 0 if the given neighbour is not a neighbour, surface area otherwise.
  */
 __attribute__((always_inline)) INLINE float voronoi_get_face(
-    struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
+    const struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
 
   /* look up the neighbour */
   int i = 0;
@@ -533,13 +533,13 @@ __attribute__((always_inline)) INLINE float voronoi_get_face(
 }
 
 /**
- * @brief Get the centroid of a 2D Voronoi cell
+ * @brief Get the centroid of a 2D Voronoi cell.
  *
  * @param cell 2D Voronoi cell.
  * @param centroid Array to store the centroid in.
  */
 __attribute__((always_inline)) INLINE void voronoi_get_centroid(
-    struct voronoi_cell *cell, float *centroid) {
+    const struct voronoi_cell *cell, float *centroid) {
 
   centroid[0] = cell->centroid[0];
   centroid[1] = cell->centroid[1];
@@ -557,7 +557,7 @@ __attribute__((always_inline)) INLINE void voronoi_get_centroid(
  * @param cell voronoi_cell to print.
  */
 __attribute__((always_inline)) INLINE void voronoi_print_cell(
-    struct voronoi_cell *cell) {
+    const struct voronoi_cell *cell) {
 
   int i, ip1;
 
