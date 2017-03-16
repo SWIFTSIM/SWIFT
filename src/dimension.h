@@ -40,22 +40,25 @@
 #define hydro_dimension 3.f
 #define hydro_dimension_inv 0.3333333333f
 #define hydro_dimension_unit_sphere ((float)(4. * M_PI / 3.))
+#define hydro_dimension_unit_sphere_inv ((float)(3. * M_1_PI / 4.))
 
 #elif defined(HYDRO_DIMENSION_2D)
 
 #define hydro_dimension 2.f
 #define hydro_dimension_inv 0.5f
 #define hydro_dimension_unit_sphere ((float)M_PI)
+#define hydro_dimension_unit_sphere_inv ((float)M_1_PI)
 
 #elif defined(HYDRO_DIMENSION_1D)
 
 #define hydro_dimension 1.f
 #define hydro_dimension_inv 1.f
 #define hydro_dimension_unit_sphere 2.f
+#define hydro_dimension_unit_sphere_inv 0.5f
 
 #else
 
-#error "A problem dimensionality must be chosen in const.h !"
+#error "A problem dimensionality must be chosen in config.h !"
 
 #endif
 
@@ -212,19 +215,20 @@ __attribute__((always_inline)) INLINE static float get_radius_dimension_sphere(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  return cbrtf(volume / hydro_dimension_unit_sphere);
+  return cbrtf(volume * hydro_dimension_unit_sphere_inv);
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  return sqrtf(volume / hydro_dimension_unit_sphere);
+  return sqrtf(volume * hydro_dimension_unit_sphere_inv);
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  return volume / hydro_dimension_unit_sphere;
+  return volume * hydro_dimension_unit_sphere_inv;
 
 #else
 
   error("The dimension is not defined !");
+  return 0.f;
 
 #endif
 }
