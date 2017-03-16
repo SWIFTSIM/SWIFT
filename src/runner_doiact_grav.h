@@ -27,7 +27,6 @@
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
-
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
 
@@ -37,19 +36,22 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
-      struct gravity_tensors temp;
+      struct grav_tensor temp;
 
       if (cp != NULL) {
-        gravity_L2L(&temp, c->multipole, cp->multipole->CoM, c->multipole->CoM,
-                    0 * periodic);
 
-        gravity_field_tensors_add(cp->multipole, &temp);
+        /* Shift the field tensor */
+        gravity_L2L(&temp, &c->multipole->pot, cp->multipole->CoM,
+                    c->multipole->CoM, 0 * periodic);
+        /* Add it to this level's tensor */
+        gravity_field_tensors_add(&cp->multipole->pot, &temp);
 
+        /* Recurse */
         runner_do_grav_down(r, cp, 0);
       }
     }
 
-  } else {
+  } else { /* Leaf case */
 
     const struct engine *e = r->e;
     struct gpart *gparts = c->gparts;
@@ -585,6 +587,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     struct cell *cj = &cells[i];
 
     if (ci == cj) continue;
+    if (cj->gcount == 0) continue;
 
     /* const double dx[3] = {cj->loc[0] - pos_i[0],   // x */
     /*                       cj->loc[1] - pos_i[1],   // y */

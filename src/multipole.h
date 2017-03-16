@@ -155,9 +155,9 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
   m->CoM[2] += m->m_pole.vel[2];
 }
 
-INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
+INLINE static void gravity_field_tensors_init(struct grav_tensor *l) {
 
-  bzero(&m->pot, sizeof(struct grav_tensor));
+  bzero(l, sizeof(struct grav_tensor));
 }
 
 /**
@@ -166,44 +166,43 @@ INLINE static void gravity_field_tensors_init(struct gravity_tensors *m) {
  * @param la The gravity tensors to add to.
  * @param lb The gravity tensors to add.
  */
-INLINE static void gravity_field_tensors_add(struct gravity_tensors *la,
-                                             const struct gravity_tensors *lb) {
+INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
+                                             const struct grav_tensor *lb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->pot.mass_interacted == 0.f)
-    error("Adding tensors that did not interact");
-  la->pot.mass_interacted += lb->pot.mass_interacted;
+  if (lb->mass_interacted == 0.f) error("Adding tensors that did not interact");
+  la->mass_interacted += lb->mass_interacted;
 #endif
 
   /* Add 0th order terms */
-  la->pot.F_000 += lb->pot.F_000;
+  la->F_000 += lb->F_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Add 1st order terms */
-  la->pot.F_100 += lb->pot.F_100;
-  la->pot.F_010 += lb->pot.F_010;
-  la->pot.F_001 += lb->pot.F_001;
+  la->F_100 += lb->F_100;
+  la->F_010 += lb->F_010;
+  la->F_001 += lb->F_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* Add 2nd order terms */
-  la->pot.F_200 += lb->pot.F_200;
-  la->pot.F_020 += lb->pot.F_020;
-  la->pot.F_002 += lb->pot.F_002;
-  la->pot.F_110 += lb->pot.F_110;
-  la->pot.F_101 += lb->pot.F_101;
-  la->pot.F_011 += lb->pot.F_011;
+  la->F_200 += lb->F_200;
+  la->F_020 += lb->F_020;
+  la->F_002 += lb->F_002;
+  la->F_110 += lb->F_110;
+  la->F_101 += lb->F_101;
+  la->F_011 += lb->F_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
   /* Add 3rd order terms */
-  la->pot.F_300 += lb->pot.F_300;
-  la->pot.F_030 += lb->pot.F_030;
-  la->pot.F_003 += lb->pot.F_003;
-  la->pot.F_210 += lb->pot.F_210;
-  la->pot.F_201 += lb->pot.F_201;
-  la->pot.F_120 += lb->pot.F_120;
-  la->pot.F_021 += lb->pot.F_021;
-  la->pot.F_102 += lb->pot.F_102;
-  la->pot.F_012 += lb->pot.F_012;
-  la->pot.F_111 += lb->pot.F_111;
+  la->F_300 += lb->F_300;
+  la->F_030 += lb->F_030;
+  la->F_003 += lb->F_003;
+  la->F_210 += lb->F_210;
+  la->F_201 += lb->F_201;
+  la->F_120 += lb->F_120;
+  la->F_021 += lb->F_021;
+  la->F_102 += lb->F_102;
+  la->F_012 += lb->F_012;
+  la->F_111 += lb->F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
@@ -247,7 +246,6 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
 #endif
-
 }
 
 /**
@@ -572,6 +570,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   float M_021 = 0.f, M_102 = 0.f, M_012 = 0.f;
   float M_111 = 0.f;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
+#endif
 
   /* Construce the higher order terms */
   for (int k = 0; k < gcount; k++) {
@@ -603,6 +604,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_102 += -m * X_102(dx);
     M_012 += -m * X_012(dx);
     M_111 += -m * X_111(dx);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#error "Missing implementation for order >3"
 #endif
   }
 
@@ -736,7 +740,6 @@ INLINE static void gravity_M2M(struct multipole *m_a,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
 #endif
-
 }
 
 /**
@@ -900,17 +903,13 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
  * @param pos_b The current postion of the multipole to shift.
  * @param periodic Is the calculation periodic ?
  */
-INLINE static void gravity_L2L(struct gravity_tensors *l_a,
-                               const struct gravity_tensors *l_b,
+INLINE static void gravity_L2L(struct grav_tensor *la,
+                               const struct grav_tensor *lb,
                                const double pos_a[3], const double pos_b[3],
                                int periodic) {
 
-  /* Simplify notation */
-  struct grav_tensor *la = &l_a->pot;
-  const struct grav_tensor *lb = &l_b->pot;
-
   /* Initialise everything to zero */
-  gravity_field_tensors_init(l_a);
+  gravity_field_tensors_init(la);
 
   /* Distance to shift by */
   const double dx[3] = {pos_a[0] - pos_b[0], pos_a[1] - pos_b[1],
@@ -1011,9 +1010,9 @@ INLINE static void gravity_L2L(struct gravity_tensors *l_a,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l_b->pot.mass_interacted == 0.f)
+  if (lb->mass_interacted == 0.f)
     error("Shifting tensors that did not interact");
-  l_a->pot.mass_interacted = l_b->pot.mass_interacted;
+  la->mass_interacted = lb->mass_interacted;
 #endif
 }
 
@@ -1069,7 +1068,6 @@ INLINE static void gravity_L2P(const struct gravity_tensors *l_b,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
 #endif
-
 }
 
 #endif /* SWIFT_MULTIPOLE_H */

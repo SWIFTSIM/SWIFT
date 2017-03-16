@@ -497,7 +497,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   /* Reset the gravity acceleration tensors */
   if (e->policy & engine_policy_self_gravity)
-    gravity_field_tensors_init(c->multipole);
+    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Recurse? */
   if (c->split) {
