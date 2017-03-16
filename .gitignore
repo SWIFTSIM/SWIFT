@@ -29,11 +29,9 @@ examples/*/*.txt
 examples/*/used_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.hdf5
+examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/used_parameters.yml
-examples/*/*.png
-examples/*/*/*.hdf5
-examples/*/*/*.png
 
 tests/testPair
 tests/brute_force_standard.dat
