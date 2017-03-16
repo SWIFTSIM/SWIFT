@@ -172,6 +172,17 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 }
 
 /**
+ * @brief Determines whether a pair of cells are corner to corner.
+ *
+ * @param sort ID
+ *
+ * @return True if corner to corner
+ */
+int space_iscorner(int sid) {
+  return (sid == 0 || sid == 2 || sid == 6 || sid == 8);
+}
+
+/**
  * @brief Recursively dismantle a cell tree.
  *
  * @param s The #space.
