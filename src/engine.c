@@ -2990,27 +2990,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Let's store the total mass in the system for future checks */
-  e->s->total_mass = 0.;
-  for (size_t i = 0; i < s->nr_gparts; ++i)
-    e->s->total_mass += s->gparts[i].mass;
-#ifdef WITH_MPI
-  if (MPI_Allreduce(MPI_IN_PLACE, &e->s->total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to all-reduce total mass in the system.");
-#endif
-  if (e->nodeID == 0) message("Total mass in the system: %e", e->s->total_mass);
-
   /* Check that we have the correct total mass in the top-level multipoles */
+  size_t num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    double mass = 0.;
     for (int i = 0; i < e->s->nr_cells; ++i)
-      mass += e->s->cells_top[i].multipole->m_pole.M_000;
-    if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
+      num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
+    if (num_gpart_mpole != e->s->nr_gparts)
       error(
-          "Total mass in multipoles does not match particle content. part=%e "
-          "m-poles=%e",
-          e->s->total_mass, mass);
+          "Multipoles don't contain the total number of gpart s->nr_gpart=%zd, "
+          "m_poles=%zd",
+          e->s->nr_gparts, num_gpart_mpole);
   }
 #endif
 
@@ -3101,15 +3090,12 @@ void engine_step(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
+  size_t num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    double mass = 0.;
     for (int i = 0; i < e->s->nr_cells; ++i)
-      mass += e->s->cells_top[i].multipole->m_pole.M_000;
-    if (fabs(mass - e->s->total_mass) > e->s->total_mass / e->s->nr_gparts)
-      error(
-          "Total mass in multipoles does not match particle content. part=%e "
-          "m-poles=%e",
-          e->s->total_mass, mass);
+      num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
+    if (num_gpart_mpole != e->s->nr_gparts)
+      error("Multipoles don't contain the total number of gpart");
   }
 #endif
 

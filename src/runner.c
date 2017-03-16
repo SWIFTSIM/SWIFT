@@ -1372,12 +1372,12 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (e->policy & engine_policy_self_gravity) {
-        gp->mass_interacted += gp->mass;
-        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
+        gp->num_interacted++;
+        if (gp->num_interacted - e->s->nr_gparts)
           error(
               "g-particle did not interact gravitationally with all other "
-              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
-              gp->mass_interacted, e->s->total_mass, gp->mass);
+              "particles gp->num_interacted=%lld, total_gparts=%zd",
+              gp->num_interacted, e->s->nr_gparts);
       }
 #endif
     }

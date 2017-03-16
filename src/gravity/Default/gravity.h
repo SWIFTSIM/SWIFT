@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[2] = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  gp->mass_interacted = 0.;
+  gp->num_interacted = 0;
 #endif
 }
 

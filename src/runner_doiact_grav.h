@@ -60,7 +60,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     /* Apply accelerations to the particles */
     for (int i = 0; i < gcount; ++i) {
       struct gpart *gp = &gparts[i];
-      if (gpart_is_active(gp, e)) gravity_L2P(c->multipole, gp);
+      if (gpart_is_active(gp, e))
+        gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
     }
   }
 
@@ -250,7 +251,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
       runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      gpi->mass_interacted += gpj->mass;
+      gpi->num_interacted++;
 #endif
     }
   }
@@ -279,7 +280,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
       runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      gpj->mass_interacted += gpi->mass;
+      gpj->num_interacted++;
 #endif
     }
   }
@@ -350,8 +351,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
         runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gpi->mass_interacted += gpj->mass;
-        gpj->mass_interacted += gpi->mass;
+        gpi->num_interacted++;
+        gpj->num_interacted++;
 #endif
 
       } else {
@@ -361,7 +362,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-          gpi->mass_interacted += gpj->mass;
+          gpi->num_interacted++;
 #endif
 
         } else if (gpart_is_active(gpj, e)) {
@@ -372,7 +373,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
           runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
 
 #ifdef SWIFT_DEBUG_CHECKS
-          gpj->mass_interacted += gpi->mass;
+          gpj->num_interacted++;
 #endif
         }
       }

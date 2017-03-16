@@ -72,9 +72,6 @@ struct space {
   /*! Are we doing gravity? */
   int gravity;
 
-  /*! Total mass in the system */
-  double total_mass;
-
   /*! Width of the top-level cells. */
   double width[3];
 

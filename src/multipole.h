@@ -69,8 +69,8 @@ struct grav_tensor {
 #endif
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Total mass this gpart interacted with */
-  double mass_interacted;
+  /* Total number of gpart this field tensor interacted with */
+  long long num_interacted;
 
 #endif
 };
@@ -105,6 +105,13 @@ struct multipole {
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Total number of gpart in this multipole */
+  long long num_gpart;
+
 #endif
 };
 
@@ -169,8 +176,8 @@ INLINE static void gravity_field_tensors_init(struct grav_tensor *l) {
 INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
                                              const struct grav_tensor *lb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->mass_interacted == 0.f) error("Adding tensors that did not interact");
-  la->mass_interacted += lb->mass_interacted;
+  if (lb->num_interacted == 0) error("Adding tensors that did not interact");
+  la->num_interacted += lb->num_interacted;
 #endif
 
   /* Add 0th order terms */
@@ -335,6 +342,10 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
   ma->M_102 += mb->M_102;
   ma->M_012 += mb->M_012;
   ma->M_111 += mb->M_111;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  ma->num_gpart += mb->num_gpart;
 #endif
 }
 
@@ -648,6 +659,10 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
 #endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  m->m_pole.num_gpart = gcount;
+#endif
 }
 
 /**
@@ -739,6 +754,10 @@ INLINE static void gravity_M2M(struct multipole *m_a,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  m_a->num_gpart = m_b->num_gpart;
 #endif
 }
 
@@ -888,7 +907,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  l_b->mass_interacted += m_a->M_000;
+
+  l_b->num_interacted += m_a->num_gpart;
 #endif
 }
 
@@ -1010,9 +1030,8 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->mass_interacted == 0.f)
-    error("Shifting tensors that did not interact");
-  la->mass_interacted = lb->mass_interacted;
+  if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
+  la->num_interacted = lb->num_interacted;
 #endif
 }
 
@@ -1020,21 +1039,22 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
  * @brief Applies the  #grav_tensor to a  #gpart.
  *
  * Corresponds to equation (28a).
+ *
+ * @param lb The gravity field tensor to apply.
+ * @param loc The position of the gravity field tensor.
+ * @param gp The #gpart to update.
  */
-INLINE static void gravity_L2P(const struct gravity_tensors *l_b,
-                               struct gpart *gp) {
+INLINE static void gravity_L2P(const struct grav_tensor *lb,
+                               const double loc[3], struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l_b->pot.mass_interacted == 0.f)
-    error("Interacting with empty field tensor");
-  gp->mass_interacted += l_b->pot.mass_interacted;
+  if (lb->num_interacted == 0) error("Interacting with empty field tensor");
+  gp->num_interacted += lb->num_interacted;
 #endif
 
-  const struct grav_tensor *lb = &l_b->pot;
-
   /* Distance to the multipole */
-  const double dx[3] = {gp->x[0] - l_b->CoM[0], gp->x[1] - l_b->CoM[1],
-                        gp->x[2] - l_b->CoM[2]};
+  const double dx[3] = {gp->x[0] - loc[0], gp->x[1] - loc[1],
+                        gp->x[2] - loc[2]};
 
   /* 0th order interaction */
   gp->a_grav[0] += X_000(dx) * lb->F_100;
