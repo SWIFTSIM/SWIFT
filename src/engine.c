@@ -926,16 +926,19 @@ void engine_repartition_trigger(struct engine *e) {
                    MPI_DOUBLE, 0, MPI_COMM_WORLD);
         if (e->nodeID == 0) {
 
-          /* Get the range of cputimes. */
+          /* Get the range and mean of cputimes. */
           double mintime = elapsed_cputimes[0];
           double maxtime = elapsed_cputimes[0];
+          double sum = elapsed_cputimes[0];
           for (int k = 1; k < e->nr_nodes; k++) {
             if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
             if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
+            sum += elapsed_cputimes[k];
           }
+          double mean = sum / (double)e->nr_nodes;
 
           /* Are we out of balance? */
-          if (((maxtime - mintime) / mintime) > e->reparttype->trigger) {
+          if (((maxtime - mintime) / mean) > e->reparttype->trigger) {
             if (e->verbose)
               message("trigger fraction %.3f exceeds %.3f will repartition",
                       (maxtime - mintime) / mintime, e->reparttype->trigger);
