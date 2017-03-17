@@ -441,9 +441,16 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     N_total[ptype] =
         (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
+  /* Get the box size if not cubic */
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
+
+  /* Change box size in the 1D and 2D case */
+  if (hydro_dimension == 2)
+    dim[2] = min(dim[0], dim[1]);
+  else if (hydro_dimension == 1)
+    dim[2] = dim[1] = dim[0];
 
   /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
   /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */

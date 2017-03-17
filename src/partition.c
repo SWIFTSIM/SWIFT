@@ -780,31 +780,31 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
  * Note that at the end of this process all the cells will be re-distributed
  * across the nodes, but the particles themselves will not be.
  *
- * @param reparttype the type of repartition to attempt, see the repart_type
- *enum.
+ * @param reparttype #repartition struct
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-void partition_repartition(enum repartition_type reparttype, int nodeID,
+void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
-      reparttype == REPART_METIS_VERTEX_EDGE) {
+  if (reparttype->type == REPART_METIS_BOTH ||
+      reparttype->type == REPART_METIS_EDGE ||
+      reparttype->type == REPART_METIS_VERTEX_EDGE) {
 
     int partweights;
     int bothweights;
-    if (reparttype == REPART_METIS_VERTEX_EDGE)
+    if (reparttype->type == REPART_METIS_VERTEX_EDGE)
       partweights = 1;
     else
       partweights = 0;
 
-    if (reparttype == REPART_METIS_BOTH)
+    if (reparttype->type == REPART_METIS_BOTH)
       bothweights = 1;
     else
       bothweights = 0;
@@ -812,9 +812,13 @@ void partition_repartition(enum repartition_type reparttype, int nodeID,
     repart_edge_metis(partweights, bothweights, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
-  } else if (reparttype == REPART_METIS_VERTEX) {
+  } else if (reparttype->type == REPART_METIS_VERTEX) {
 
     repart_vertex_metis(s, nodeID, nr_nodes);
+
+  } else if (reparttype->type == REPART_NONE) {
+
+    /* Doing nothing. */
 
   } else {
     error("Unknown repartition type");
@@ -976,27 +980,26 @@ void partition_initial_partition(struct partition *initial_partition,
 
 /**
  * @brief Initialises the partition and re-partition scheme from the parameter
- *file
+ *        file
  *
  * @param partition The #partition scheme to initialise.
- * @param reparttype The repartition scheme to initialise.
+ * @param repartition The #repartition scheme to initialise.
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI nodes we are running on.
  */
 void partition_init(struct partition *partition,
-                    enum repartition_type *reparttype,
+                    struct repartition *repartition,
                     const struct swift_params *params, int nr_nodes) {
 
 #ifdef WITH_MPI
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  char default_repart = 'b';
-  ;
-  char default_part = 'm';
+  const char *default_repart = "task_weights";
+  const char *default_part = "simple_metis";
 #else
-  char default_repart = 'n';
-  char default_part = 'g';
+  const char *default_repart = "none";
+  const char *default_part = "grid";
 #endif
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -1007,10 +1010,10 @@ void partition_init(struct partition *partition,
          &partition->grid[0]);
 
   /* Now let's check what the user wants as an initial domain. */
-  const char part_type = parser_get_opt_param_char(
-      params, "DomainDecomposition:initial_type", default_part);
-
-  switch (part_type) {
+  char part_type[20];
+  parser_get_opt_param_string(params, "DomainDecomposition:initial_type",
+                              part_type, default_part);
+  switch (part_type[0]) {
     case 'g':
       partition->type = INITPART_GRID;
       break;
@@ -1018,24 +1021,28 @@ void partition_init(struct partition *partition,
       partition->type = INITPART_VECTORIZE;
       break;
 #ifdef HAVE_METIS
-    case 'm':
+    case 's':
       partition->type = INITPART_METIS_NOWEIGHT;
       break;
     case 'w':
       partition->type = INITPART_METIS_WEIGHT;
       break;
     default:
-      message("Invalid choice of initial partition type '%c'.", part_type);
-      error("Permitted values are: 'g','m','v' or 'w'.");
+      message("Invalid choice of initial partition type '%s'.", part_type);
+      error(
+          "Permitted values are: 'grid', 'simple_metis', 'weighted_metis'"
+          " or 'vectorized'");
 #else
     default:
-      message("Invalid choice of initial partition type '%c'.", part_type);
-      error("Permitted values are: 'g' or 'v' when compiled without metis.");
+      message("Invalid choice of initial partition type '%s'.", part_type);
+      error(
+          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "without METIS.");
 #endif
   }
 
   /* In case of grid, read more parameters */
-  if (part_type == 'g') {
+  if (part_type[0] == 'g') {
     partition->grid[0] = parser_get_opt_param_int(
         params, "DomainDecomposition:initial_grid_x", partition->grid[0]);
     partition->grid[1] = parser_get_opt_param_int(
@@ -1045,35 +1052,53 @@ void partition_init(struct partition *partition,
   }
 
   /* Now let's check what the user wants as a repartition strategy */
-  const char repart_type = parser_get_opt_param_char(
-      params, "DomainDecomposition:repartition_type", default_repart);
+  parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
+                              part_type, default_repart);
 
-  switch (repart_type) {
+  switch (part_type[0]) {
     case 'n':
-      *reparttype = REPART_NONE;
+      repartition->type = REPART_NONE;
       break;
 #ifdef HAVE_METIS
-    case 'b':
-      *reparttype = REPART_METIS_BOTH;
+    case 't':
+      repartition->type = REPART_METIS_BOTH;
       break;
     case 'e':
-      *reparttype = REPART_METIS_EDGE;
+      repartition->type = REPART_METIS_EDGE;
       break;
-    case 'v':
-      *reparttype = REPART_METIS_VERTEX;
+    case 'p':
+      repartition->type = REPART_METIS_VERTEX;
       break;
-    case 'x':
-      *reparttype = REPART_METIS_VERTEX_EDGE;
+    case 'h':
+      repartition->type = REPART_METIS_VERTEX_EDGE;
       break;
     default:
-      message("Invalid choice of re-partition type '%c'.", repart_type);
-      error("Permitted values are: 'b','e','n', 'v' or 'x'.");
+      message("Invalid choice of re-partition type '%s'.", part_type);
+      error(
+          "Permitted values are: 'none', 'task_weights', 'particle_weights',"
+          "'edge_task_weights' or 'hybrid_weights'");
 #else
     default:
-      message("Invalid choice of re-partition type '%c'.", repart_type);
-      error("Permitted values are: 'n' when compiled without metis.");
+      message("Invalid choice of re-partition type '%s'.", part_type);
+      error("Permitted values are: 'none' when compiled without METIS.");
 #endif
   }
+
+  /* Get the fraction CPU time difference between nodes (<1) or the number
+   * of steps between repartitions (>1). */
+  repartition->trigger =
+      parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
+  if (repartition->trigger <= 0)
+    error("Invalid DomainDecomposition:trigger, must be greater than zero");
+
+  /* Fraction of particles that should be updated before a repartition
+   * based on CPU time is considered. */
+  repartition->minfrac =
+      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
+  if (repartition->minfrac <= 0 || repartition->minfrac > 1)
+    error(
+        "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
+        "than equal to 1");
 
 #else
   error("SWIFT was not compiled with MPI support");

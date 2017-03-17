@@ -230,7 +230,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
    kernel_gamma_inv_dim)
 
 /* Kernel normalisation constant (volume term) */
-#define kernel_norm ((float)(hydro_dimention_unit_sphere * kernel_gamma_dim))
+#define kernel_norm ((float)(hydro_dimension_unit_sphere * kernel_gamma_dim))
 
 /* ------------------------------------------------------------------------- */
 

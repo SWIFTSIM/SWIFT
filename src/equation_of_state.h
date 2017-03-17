@@ -70,6 +70,21 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 }
 
 /**
+ * @brief Returns the entropy given density and pressure.
+ *
+ * Computes \f$A = \frac{P}{\rho^\gamma}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param pressure The pressure \f$P\f$.
+ * @return The entropy \f$A\f$.
+ */
+__attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
+    float density, float pressure) {
+
+  return pressure * pow_minus_gamma(density);
+}
+
+/**
  * @brief Returns the sound speed given density and entropy
  *
  * Computes \f$c = \sqrt{\gamma S \rho^{\gamma-1}}\f$.
@@ -109,6 +124,20 @@ __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * u * density;
+}
+
+/**
+ * @brief Returns the internal energy given density and pressure.
+ *
+ * Computes \f$u = \frac{1}{\gamma - 1}\frac{P}{\rho}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param pressure The pressure \f$P\f$.
+ * @return The internal energy \f$u\f$.
+ */
+__attribute__((always_inline)) INLINE static float
+gas_internal_energy_from_pressure(float density, float pressure) {
+  return hydro_one_over_gamma_minus_one * pressure / density;
 }
 
 /**
@@ -173,6 +202,22 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 }
 
 /**
+ * @brief Returns the entropy given density and pressure.
+ *
+ * Computes \f$A = \frac{P}{\rho^\gamma}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param pressure The pressure \f$P\f$ (ignored).
+ * @return The entropy \f$A\f$.
+ */
+__attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
+    float density, float pressure) {
+
+  return hydro_gamma_minus_one * const_isothermal_internal_energy *
+         pow_minus_gamma_minus_one(density);
+}
+
+/**
  * @brief Returns the sound speed given density and entropy
  *
  * Since we are using an isothermal EoS, the entropy value is ignored
@@ -217,6 +262,20 @@ __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * const_isothermal_internal_energy * density;
+}
+
+/**
+ * @brief Returns the internal energy given density and pressure.
+ *
+ * Just returns the constant internal energy.
+ *
+ * @param density The density \f$\rho\f$ (ignored).
+ * @param pressure The pressure \f$P\f$ (ignored).
+ * @return The internal energy \f$u\f$ (which is constant).
+ */
+__attribute__((always_inline)) INLINE static float
+gas_internal_energy_from_pressure(float density, float pressure) {
+  return const_isothermal_energy;
 }
 
 /**
