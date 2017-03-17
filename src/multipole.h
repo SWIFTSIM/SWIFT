@@ -810,7 +810,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 #endif
   }
 
-  M_100 = M_010 = M_001 = 0.f;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  M_100 = M_010 = M_001 = 0.f; /* Matthieu */
+#endif
 
   /* Store the data on the multipole. */
   m->m_pole.M_000 = mass;
@@ -1258,11 +1260,11 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->num_interacted += lb->num_interacted;
 #endif
 
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Distance to the multipole */
   const double dx[3] = {gp->x[0] - loc[0], gp->x[1] - loc[1],
                         gp->x[2] - loc[2]};
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* 0th order interaction */
   gp->a_grav[0] += X_000(dx) * lb->F_100;
   gp->a_grav[1] += X_000(dx) * lb->F_010;
