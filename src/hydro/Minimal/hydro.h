@@ -38,6 +38,7 @@
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
+#include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 
@@ -183,9 +184,10 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * density sub-structure of a particle get zeroed in here.
  *
  * @param p The particle to act upon
+ * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part *restrict p) {
+    struct part *restrict p, const struct hydro_space *hs) {
 
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
@@ -429,7 +431,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->u_full = p->u;
 
   hydro_reset_acceleration(p);
-  hydro_init_part(p);
+  hydro_init_part(p, NULL);
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

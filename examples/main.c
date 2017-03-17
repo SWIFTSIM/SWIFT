@@ -101,10 +101,6 @@ void print_help_message() {
       "parameter file.\n");
 }
 
-#if defined(SHADOWFAX_SPH)
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -390,13 +386,6 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   if (with_self_gravity) gravity_props_init(&gravity_properties, params);
 
-#if defined(SHADOWFAX_SPH)
-  /* Override the variables governing the density iteration
-     (see src/hydro/Shadowswift/hydro.h for full explanation) */
-  hydro_properties.target_neighbours = 1.0f;
-  hydro_properties.delta_neighbours = 0.0f;
-#endif
-
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -438,27 +427,6 @@ int main(int argc, char *argv[]) {
             clocks_getunit());
     fflush(stdout);
   }
-
-#if defined(SHADOWFAX_SPH)
-  /* set the *global* box dimensions */
-  float box_anchor[3], box_side[3];
-  if (periodic) {
-    box_anchor[0] = -0.5f * dim[0];
-    box_anchor[1] = -0.5f * dim[1];
-    box_anchor[2] = -0.5f * dim[2];
-    box_side[0] = 2.0f * dim[0];
-    box_side[1] = 2.0f * dim[1];
-    box_side[2] = 2.0f * dim[2];
-  } else {
-    box_anchor[0] = 0.0f;
-    box_anchor[1] = 0.0f;
-    box_anchor[2] = 0.0f;
-    box_side[0] = dim[0];
-    box_side[1] = dim[1];
-    box_side[2] = dim[2];
-  }
-  voronoi_set_box(box_anchor, box_side);
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check once and for all that we don't have unwanted links */

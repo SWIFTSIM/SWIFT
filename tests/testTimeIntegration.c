@@ -22,10 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(SHADOWFAX_SPH)
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 /**
  * @brief Test the kick-drift-kick leapfrog integration
  * via a Sun-Earth simulation

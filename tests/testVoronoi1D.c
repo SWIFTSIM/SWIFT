@@ -21,10 +21,13 @@
 
 int main() {
 
+  double box_anchor[1] = {-0.5};
+  double box_side[1] = {2.};
+
   /* Create a Voronoi cell */
   double x[1] = {0.5f};
   struct voronoi_cell cell;
-  voronoi_cell_init(&cell, x);
+  voronoi_cell_init(&cell, x, box_anchor, box_side);
 
   /* Interact with a left and right neighbour */
   float xL[1] = {0.5f};

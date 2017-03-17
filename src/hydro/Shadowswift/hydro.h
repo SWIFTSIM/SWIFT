@@ -22,6 +22,7 @@
 #include "approx_math.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "hydro_space.h"
 #include "voronoi_algorithm.h"
 
 /**
@@ -128,14 +129,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * Initializes the Voronoi cell.
  *
  * @param p The particle to act upon
+ * @param hs #hydro_space containing extra information about the space.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part* p) {
+    struct part* p, const struct hydro_space* hs) {
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
 
-  voronoi_cell_init(&p->cell, p->x);
+  voronoi_cell_init(&p->cell, p->x, hs->anchor, hs->side);
 
   /* Set the active flag to active. */
   p->force.active = 1;

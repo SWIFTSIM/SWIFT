@@ -116,7 +116,7 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid]);
+    hydro_init_part(&c->parts[pid], NULL);
   }
 }
 
@@ -186,10 +186,6 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-
-#if defined(SHADOWFAX_SPH)
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-#endif
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;

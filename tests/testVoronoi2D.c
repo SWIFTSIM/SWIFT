@@ -18,19 +18,16 @@
  ******************************************************************************/
 
 #include "hydro/Shadowswift/voronoi2d_algorithm.h"
+#include "tools.h"
 
 /* Number of cells used to test the 2D interaction algorithm */
 #define TESTVORONOI2D_NUMCELL 100
 
-/* declare the global variables needed to store the simulation box size */
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-
 int main() {
 
   /* initialize simulation box */
-  float anchor[3] = {-0.5f, -0.5f, -0.5f};
-  float side[3] = {2.0f, 2.0f, 2.0f};
-  voronoi_set_box(anchor, side);
+  double anchor[3] = {-0.5f, -0.5f, -0.5f};
+  double side[3] = {2.0f, 2.0f, 2.0f};
 
   /* test initialization and finalization algorithms */
   {
@@ -39,7 +36,7 @@ int main() {
     struct voronoi_cell cell;
     double x[3] = {0.5, 0.5, 0.5};
 
-    voronoi_cell_init(&cell, x);
+    voronoi_cell_init(&cell, x, anchor, side);
 
     float maxradius = voronoi_cell_finalize(&cell);
 
@@ -67,9 +64,9 @@ int main() {
     struct voronoi_cell *cell_i, *cell_j;
 
     for (i = 0; i < TESTVORONOI2D_NUMCELL; ++i) {
-      x[0] = ((double)rand()) / ((double)RAND_MAX);
-      x[1] = ((double)rand()) / ((double)RAND_MAX);
-      voronoi_cell_init(&cells[i], x);
+      x[0] = random_uniform(0., 1.);
+      x[1] = random_uniform(0., 1.);
+      voronoi_cell_init(&cells[i], x, anchor, side);
 #ifdef VORONOI_VERBOSE
       message("cell[%i]: %g %g", i, x[0], x[1]);
 #endif
@@ -149,7 +146,7 @@ int main() {
       for (j = 0; j < 10; ++j) {
         x[0] = (i + 0.5f) * 0.1;
         x[1] = (j + 0.5f) * 0.1;
-        voronoi_cell_init(&cells[10 * i + j], x);
+        voronoi_cell_init(&cells[10 * i + j], x, anchor, side);
       }
     }
 

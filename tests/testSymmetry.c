@@ -26,10 +26,6 @@
 
 #include "swift.h"
 
-#if defined(SHADOWFAX_SPH)
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-#endif
-
 int main(int argc, char *argv[]) {
 
   /* Choke if need be */
@@ -37,9 +33,9 @@ int main(int argc, char *argv[]) {
 
 #if defined(SHADOWFAX_SPH)
   /* Initialize the Voronoi simulation box */
-  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  float box_side[3] = {6.0f, 6.0f, 6.0f};
-  voronoi_set_box(box_anchor, box_side);
+  double box_anchor[3] = {-2.0f, -2.0f, -2.0f};
+  double box_side[3] = {6.0f, 6.0f, 6.0f};
+/*  voronoi_set_box(box_anchor, box_side);*/
 #endif
 
   /* Create two random particles (don't do this at home !) */
@@ -106,8 +102,8 @@ int main(int argc, char *argv[]) {
   pj.force.dt = 0.001;
 
 #ifdef SHADOWFAX_SPH
-  voronoi_cell_init(&pi.cell, pi.x);
-  voronoi_cell_init(&pj.cell, pj.x);
+  voronoi_cell_init(&pi.cell, pi.x, box_anchor, box_side);
+  voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
 #endif
 
 #endif

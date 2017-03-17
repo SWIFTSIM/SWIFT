@@ -21,6 +21,7 @@
 #include "error.h"
 #include "hydro/Shadowswift/voronoi3d_algorithm.h"
 #include "part.h"
+#include "tools.h"
 
 /* Number of random generators to use in the first grid build test */
 #define TESTVORONOI3D_NUMCELL_RANDOM 100
@@ -35,6 +36,95 @@
 #define TESTVORONOI3D_NUMCELL_CARTESIAN_3D                                   \
   (TESTVORONOI3D_NUMCELL_CARTESIAN_1D * TESTVORONOI3D_NUMCELL_CARTESIAN_1D * \
    TESTVORONOI3D_NUMCELL_CARTESIAN_1D)
+
+/* Bottom front left corner and side lengths of the large box that contains all
+   particles and is used as initial cell at the start of the construction */
+#define VORONOI3D_BOX_ANCHOR_X 0.0f
+#define VORONOI3D_BOX_ANCHOR_Y 0.0f
+#define VORONOI3D_BOX_ANCHOR_Z 0.0f
+#define VORONOI3D_BOX_SIDE_X 1.0f
+#define VORONOI3D_BOX_SIDE_Y 1.0f
+#define VORONOI3D_BOX_SIDE_Z 1.0f
+
+/**
+ * @brief Get the volume of the simulation box stored in the global variables.
+ *
+ * This method is only used for debugging purposes.
+ *
+ * @return Volume of the simulation box as it is stored in the global variables.
+ */
+float voronoi_get_box_volume() {
+  return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y * VORONOI3D_BOX_SIDE_Z;
+}
+
+/**
+ * @brief Get the centroid of the simulation box stored in the global variables.
+ *
+ * This method is only used for debugging purposes.
+ *
+ * @param box_centroid Array to store the resulting coordinates in.
+ */
+void voronoi_get_box_centroid(float *box_centroid) {
+  box_centroid[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+  box_centroid[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+  box_centroid[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+}
+
+/**
+ * @brief Get the surface area and coordinates of the face midpoint for the
+ * face of the simulation box with the given unique ID.
+ *
+ * This method is only used for debugging purposes.
+ *
+ * @param id Unique ID of one of the 6 faces of the simulation box.
+ * @param face_midpoint Array to store the coordinates of the requested
+ * midpoint in.
+ * @return Surface area of the face, or 0 if the given ID does not correspond to
+ * a known face of the simulation box.
+ */
+float voronoi_get_box_face(unsigned long long id, float *face_midpoint) {
+
+  if (id == VORONOI3D_BOX_FRONT) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Z;
+  }
+  if (id == VORONOI3D_BOX_BACK) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = VORONOI3D_BOX_ANCHOR_Y + VORONOI3D_BOX_SIDE_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Z;
+  }
+
+  if (id == VORONOI3D_BOX_BOTTOM) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+  if (id == VORONOI3D_BOX_TOP) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = VORONOI3D_BOX_ANCHOR_Z + VORONOI3D_BOX_SIDE_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+
+  if (id == VORONOI3D_BOX_LEFT) {
+    face_midpoint[0] = VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+  if (id == VORONOI3D_BOX_RIGHT) {
+    face_midpoint[0] = VORONOI3D_BOX_ANCHOR_X + VORONOI3D_BOX_SIDE_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+
+  return 0.0f;
+}
 
 /**
  * @brief Check if voronoi_volume_tetrahedron() works
@@ -69,6 +159,12 @@ void test_voronoi_centroid_tetrahedron() {
  * @brief Check if voronoi_calculate_cell() works
  */
 void test_calculate_cell() {
+
+  double box_anchor[3] = {VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,
+                          VORONOI3D_BOX_ANCHOR_Z};
+  double box_side[3] = {VORONOI3D_BOX_SIDE_X, VORONOI3D_BOX_SIDE_Y,
+                        VORONOI3D_BOX_SIDE_Z};
+
   struct voronoi_cell cell;
 
   cell.x[0] = 0.5f;
@@ -76,7 +172,7 @@ void test_calculate_cell() {
   cell.x[2] = 0.5f;
 
   /* Initialize the cell to a large cube. */
-  voronoi_initialize(&cell);
+  voronoi_initialize(&cell, box_anchor, box_side);
   /* Calculate the volume and centroid of the large cube. */
   voronoi_calculate_cell(&cell);
   /* Calculate the faces. */
@@ -1130,11 +1226,17 @@ void test_paths() {
 #ifdef SHADOWFAX_SPH
 void set_coordinates(struct part *p, double x, double y, double z,
                      unsigned int id) {
+
+  double box_anchor[3] = {VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,
+                          VORONOI3D_BOX_ANCHOR_Z};
+  double box_side[3] = {VORONOI3D_BOX_SIDE_X, VORONOI3D_BOX_SIDE_Y,
+                        VORONOI3D_BOX_SIDE_Z};
+
   p->x[0] = x;
   p->x[1] = y;
   p->x[2] = z;
   p->id = id;
-  voronoi_cell_init(&p->cell, p->x);
+  voronoi_cell_init(&p->cell, p->x, box_anchor, box_side);
 }
 #endif
 
@@ -1206,14 +1308,13 @@ void test_degeneracies() {
 #endif
 }
 
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-
 int main() {
 
   /* Set the all enclosing simulation box dimensions */
-  float box_anchor[3] = {0.0f, 0.0f, 0.0f};
-  float box_side[3] = {1.0f, 1.0f, 1.0f};
-  voronoi_set_box(box_anchor, box_side);
+  double box_anchor[3] = {VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,
+                          VORONOI3D_BOX_ANCHOR_Z};
+  double box_side[3] = {VORONOI3D_BOX_SIDE_X, VORONOI3D_BOX_SIDE_Y,
+                        VORONOI3D_BOX_SIDE_Z};
 
   /* Check basic Voronoi cell functions */
   test_voronoi_volume_tetrahedron();
@@ -1228,7 +1329,7 @@ int main() {
     /* Create a Voronoi cell */
     double x[3] = {0.5f, 0.5f, 0.5f};
     struct voronoi_cell cell;
-    voronoi_cell_init(&cell, x);
+    voronoi_cell_init(&cell, x, box_anchor, box_side);
 
     /* Interact with neighbours */
     float x0[3] = {0.5f, 0.0f, 0.0f};
@@ -1326,10 +1427,10 @@ int main() {
 
     /* initialize cells with random generator locations */
     for (i = 0; i < TESTVORONOI3D_NUMCELL_RANDOM; ++i) {
-      x[0] = ((double)rand()) / ((double)RAND_MAX);
-      x[1] = ((double)rand()) / ((double)RAND_MAX);
-      x[2] = ((double)rand()) / ((double)RAND_MAX);
-      voronoi_cell_init(&cells[i], x);
+      x[0] = random_uniform(0., 1.);
+      x[1] = random_uniform(0., 1.);
+      x[2] = random_uniform(0., 1.);
+      voronoi_cell_init(&cells[i], x, box_anchor, box_side);
     }
 
     /* interact the cells */
@@ -1370,7 +1471,7 @@ int main() {
     struct voronoi_cell cells[TESTVORONOI3D_NUMCELL_CARTESIAN_3D];
     struct voronoi_cell *cell_i, *cell_j;
 
-    /* initialize cells with random generator locations */
+    /* initialize cells with Cartesian generator locations */
     for (i = 0; i < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++i) {
       for (j = 0; j < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++j) {
         for (k = 0; k < TESTVORONOI3D_NUMCELL_CARTESIAN_1D; ++k) {
@@ -1380,7 +1481,7 @@ int main() {
           voronoi_cell_init(&cells[TESTVORONOI3D_NUMCELL_CARTESIAN_1D *
                                        TESTVORONOI3D_NUMCELL_CARTESIAN_1D * i +
                                    TESTVORONOI3D_NUMCELL_CARTESIAN_1D * j + k],
-                            x);
+                            x, box_anchor, box_side);
         }
       }
     }

@@ -48,23 +48,29 @@ struct voronoi_cell {
   float vertices[3 * VORONOI3D_MAXNUMVERT];
 
   /* Number of edges for every vertex. */
-  int orders[VORONOI3D_MAXNUMVERT];
+  char orders[VORONOI3D_MAXNUMVERT];
 
   /* Offsets of the edges, edgeindices and neighbours corresponding to a
      particular vertex in the internal arrays */
   int offsets[VORONOI3D_MAXNUMVERT];
 
-  /* Edge information. */
+  /* Edge information. Edges are ordered counterclockwise w.r.t. a vector
+     pointing from the cell generator to the vertex. */
   int edges[VORONOI3D_MAXNUMEDGE];
 
   /* Additional edge information. */
-  int edgeindices[VORONOI3D_MAXNUMEDGE];
+  char edgeindices[VORONOI3D_MAXNUMEDGE];
 
-  /* Neighbour information. */
+  /* Neighbour information. This field is used differently depending on where we
+     are in the algorithm. During cell construction, it contains, for every edge
+     of every vertex, the index of the neighbour that generates the face
+     counterclockwise of the edge w.r.t. a vector pointing from the vertex along
+     the edge. After cell finalization, it contains a neighbour for every face,
+     in the same order as the face_areas and face_midpoints arrays. */
   unsigned long long ngbs[VORONOI3D_MAXNUMEDGE];
 
   /* Number of faces of the cell. */
-  int nface;
+  unsigned char nface;
 
   /* Surface areas of the cell faces. */
   float face_areas[VORONOI3D_MAXFACE];

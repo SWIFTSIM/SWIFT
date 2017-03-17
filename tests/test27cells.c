@@ -119,7 +119,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
-        voronoi_cell_init(&part->cell, part->x);
+
+#ifdef SHADOWFAX_SPH
+        double anchor[3] = {0., 0., 0.};
+        double side[3] = {1., 1., 1.};
+        voronoi_cell_init(&part->cell, part->x, anchor, side);
+#endif
+
 #else
         part->mass = density * volume / count;
 #endif
@@ -177,7 +183,7 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid]);
+    hydro_init_part(&c->parts[pid], NULL);
   }
 }
 
@@ -298,10 +304,6 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-
-#if defined(SHADOWFAX_SPH)
-VORONOI_DECLARE_GLOBAL_VARIABLES()
-#endif
 
 /* And go... */
 int main(int argc, char *argv[]) {

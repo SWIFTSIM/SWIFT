@@ -20,14 +20,11 @@
 #ifndef SWIFT_VORONOIXD_ALGORITHM_H
 #define SWIFT_VORONOIXD_ALGORITHM_H
 
-#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include "error.h"
 #include "inline.h"
 #include "voronoi1d_cell.h"
-
-#define VORONOI_DECLARE_GLOBAL_VARIABLES()
 
 /**
  * @brief Store the extents of the simulation box in the global variables.
@@ -47,12 +44,15 @@ __attribute__((always_inline)) INLINE static void voronoi_set_box(
  *
  * @param cell 1D Voronoi cell to initialize.
  * @param x Position of the generator of the cell.
+ * @param anchor Anchor of the simulation box.
+ * @param side Side lengths of the simulation box.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_init(
-    struct voronoi_cell *cell, const double *x) {
+    struct voronoi_cell *cell, const double *x, const double *anchor,
+    const double *side) {
   cell->x = x[0];
-  cell->xL = -DBL_MAX;
-  cell->xR = DBL_MAX;
+  cell->xL = anchor[0] - cell->x;
+  cell->xR = anchor[0] + side[0] - cell->x;
   cell->idL = 0;
   cell->idR = 0;
   cell->volume = 0.0f;

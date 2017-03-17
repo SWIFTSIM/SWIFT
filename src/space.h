@@ -31,6 +31,7 @@
 
 /* Includes. */
 #include "cell.h"
+#include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
@@ -68,6 +69,9 @@ struct space {
 
   /*! Is the space periodic? */
   int periodic;
+
+  /*! Extra space information needed for some hydro schemes. */
+  struct hydro_space hs;
 
   /*! Are we doing gravity? */
   int gravity;

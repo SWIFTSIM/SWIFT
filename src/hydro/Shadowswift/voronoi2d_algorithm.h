@@ -43,48 +43,17 @@
 #define VORONOI2D_BOX_TOP 18446744073709551604llu
 #define VORONOI2D_BOX_BOTTOM 18446744073709551605llu
 
-/* Global variables used to store the extent of the simulation box */
-extern float global_voronoi_box_anchor[2];
-extern float global_voronoi_box_side[2];
-
-/* Macro used to declare the global variables in any piece of code that uses
-   this header file */
-#define VORONOI_DECLARE_GLOBAL_VARIABLES() \
-  float global_voronoi_box_anchor[2];      \
-  float global_voronoi_box_side[2];
-
-/* Macros that make it easier to change the box extents that are used throughout
-   the code */
-#define VORONOI2D_BOX_ANCHOR_X global_voronoi_box_anchor[0]
-#define VORONOI2D_BOX_ANCHOR_Y global_voronoi_box_anchor[1]
-#define VORONOI2D_BOX_SIDE_X global_voronoi_box_side[0]
-#define VORONOI2D_BOX_SIDE_Y global_voronoi_box_side[1]
-
-/**
- * @brief Set the values of the global variables that store the simulation box
- * extents.
- *
- * @param anchor Corner of the box with the lowest coordinate values.
- * @param side Side lengths of the box.
- */
-__attribute__((always_inline)) INLINE static void voronoi_set_box(
-    const float *anchor, const float *side) {
-
-  global_voronoi_box_anchor[0] = anchor[0];
-  global_voronoi_box_anchor[1] = anchor[1];
-
-  global_voronoi_box_side[0] = side[0];
-  global_voronoi_box_side[1] = side[1];
-}
-
 /**
  * @brief Initialize a 2D Voronoi cell.
  *
  * @param cell 2D Voronoi cell to initialize.
  * @param x Position of the generator of the cell.
+ * @param anchor Anchor of the simulation box containing all particles.
+ * @param side Side lengths of the simulation box containing all particles.
  */
 __attribute__((always_inline)) INLINE void voronoi_cell_init(
-    struct voronoi_cell *cell, const double *x) {
+    struct voronoi_cell *cell, const double *x, const double *anchor,
+    const double *side) {
 
   /* Set the position of the generator of the cell (for reference) */
   cell->x[0] = x[0];
@@ -94,21 +63,17 @@ __attribute__((always_inline)) INLINE void voronoi_cell_init(
      (note: all vertex coordinates are relative w.r.t. the cell generator) */
   cell->nvert = 4;
 
-  cell->vertices[0][0] = VORONOI2D_BOX_ANCHOR_X - cell->x[0];
-  cell->vertices[0][1] = VORONOI2D_BOX_ANCHOR_Y - cell->x[1];
+  cell->vertices[0][0] = anchor[0] - cell->x[0];
+  cell->vertices[0][1] = anchor[1] - cell->x[1];
 
-  cell->vertices[1][0] = VORONOI2D_BOX_ANCHOR_X - cell->x[0];
-  cell->vertices[1][1] =
-      VORONOI2D_BOX_ANCHOR_Y + VORONOI2D_BOX_SIDE_Y - cell->x[1];
+  cell->vertices[1][0] = anchor[0] - cell->x[0];
+  cell->vertices[1][1] = anchor[1] + side[1] - cell->x[1];
 
-  cell->vertices[2][0] =
-      VORONOI2D_BOX_ANCHOR_X + VORONOI2D_BOX_SIDE_X - cell->x[0];
-  cell->vertices[2][1] =
-      VORONOI2D_BOX_ANCHOR_Y + VORONOI2D_BOX_SIDE_Y - cell->x[1];
+  cell->vertices[2][0] = anchor[0] + side[0] - cell->x[0];
+  cell->vertices[2][1] = anchor[1] + side[1] - cell->x[1];
 
-  cell->vertices[3][0] =
-      VORONOI2D_BOX_ANCHOR_X + VORONOI2D_BOX_SIDE_X - cell->x[0];
-  cell->vertices[3][1] = VORONOI2D_BOX_ANCHOR_Y - cell->x[1];
+  cell->vertices[3][0] = anchor[0] + side[0] - cell->x[0];
+  cell->vertices[3][1] = anchor[1] - cell->x[1];
 
   /* The neighbours are ordered such that neighbour i shares the face in between
      vertices i and i+1 (with last vertex + 1 = first vertex)
