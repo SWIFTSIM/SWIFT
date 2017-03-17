@@ -1011,8 +1011,7 @@ void partition_init(struct partition *partition,
 
   /* Now let's check what the user wants as an initial domain. */
   char part_type[20];
-  parser_get_opt_param_string(params,
-                              "DomainDecomposition:initial_type",
+  parser_get_opt_param_string(params, "DomainDecomposition:initial_type",
                               part_type, default_part);
   switch (part_type[0]) {
     case 'g':
@@ -1030,13 +1029,15 @@ void partition_init(struct partition *partition,
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error("Permitted values are: 'grid', 'simple_metis', 'weighted_metis'"
-            " or 'vectorized'");
+      error(
+          "Permitted values are: 'grid', 'simple_metis', 'weighted_metis'"
+          " or 'vectorized'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error("Permitted values are: 'grid' or 'vectorized' when compiled "
-            "without METIS.");
+      error(
+          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "without METIS.");
 #endif
   }
 
@@ -1051,8 +1052,7 @@ void partition_init(struct partition *partition,
   }
 
   /* Now let's check what the user wants as a repartition strategy */
-  parser_get_opt_param_string(params,
-                              "DomainDecomposition:repartition_type",
+  parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
   switch (part_type[0]) {
@@ -1074,8 +1074,9 @@ void partition_init(struct partition *partition,
       break;
     default:
       message("Invalid choice of re-partition type '%s'.", part_type);
-      error("Permitted values are: 'none', 'task_weights', 'particle_weights',"
-            "'edge_task_weights' or 'hybrid_weights'");
+      error(
+          "Permitted values are: 'none', 'task_weights', 'particle_weights',"
+          "'edge_task_weights' or 'hybrid_weights'");
 #else
     default:
       message("Invalid choice of re-partition type '%s'.", part_type);
