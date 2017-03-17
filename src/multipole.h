@@ -606,7 +606,7 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
     return 0;
   }
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
   /* Check 4th order terms */
   if (fabsf(ma->M_400 + mb->M_400) > 1e-6 * ma->M_000 &&
       fabsf(ma->M_400 - mb->M_400) / fabsf(ma->M_400 + mb->M_400) > tolerance) {
