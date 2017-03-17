@@ -1262,12 +1262,14 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   const double dx[3] = {gp->x[0] - loc[0], gp->x[1] - loc[1],
                         gp->x[2] - loc[2]};
 
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* 0th order interaction */
   gp->a_grav[0] += X_000(dx) * lb->F_100;
   gp->a_grav[1] += X_000(dx) * lb->F_010;
   gp->a_grav[2] += X_000(dx) * lb->F_001;
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  /* 1st order interaction */
   gp->a_grav[0] +=
       X_100(dx) * lb->F_200 + X_010(dx) * lb->F_110 + X_001(dx) * lb->F_101;
   gp->a_grav[1] +=
@@ -1275,7 +1277,8 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[2] +=
       X_100(dx) * lb->F_101 + X_010(dx) * lb->F_011 + X_001(dx) * lb->F_002;
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* 2nd order interaction */
   gp->a_grav[0] +=
       X_200(dx) * lb->F_300 + X_020(dx) * lb->F_120 + X_002(dx) * lb->F_102;
   gp->a_grav[0] +=
@@ -1289,10 +1292,11 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[2] +=
       X_110(dx) * lb->F_111 + X_101(dx) * lb->F_102 + X_011(dx) * lb->F_012;
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-#endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#error "Missing implementation for order >4"
 #endif
 }
 
