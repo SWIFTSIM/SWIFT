@@ -116,17 +116,16 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  const double const_G = e->physical_constants->const_newton_G;
+  //const double const_G = e->physical_constants->const_newton_G;
 
   int counter = 0;
 
   /* Some accumulators */
-  float err_rel[3];
-  float err_rel_max[3] = {0.f, 0.f, 0.f};
-  float err_rel_min[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
-  float err_rel_mean[3] = {0.f, 0.f, 0.f};
-  float err_rel_mean2[3] = {0.f, 0.f, 0.f};
-  float err_rel_std[3] = {0.f, 0.f, 0.f};
+  float err_rel_max = 0.f;
+  float err_rel_min = FLT_MAX;
+  float err_rel_mean = 0.f;
+  float err_rel_mean2 = 0.f;
+  float err_rel_std = 0.f;
 
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
@@ -136,51 +135,51 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_starting(gpi, e)) {
 
-      /* Compute relative error */
-      for (int k = 0; k < 3; ++k)
-        if (fabsf(gpi->a_grav_exact[k]) > FLT_EPSILON * const_G)
-          err_rel[k] = (gpi->a_grav[k] - gpi->a_grav_exact[k]) /
-                       fabsf(gpi->a_grav_exact[k]);
-        else
-          err_rel[k] = 0.f;
+      const float diff[3] = {gpi->a_grav[0] - gpi->a_grav_exact[0],
+			     gpi->a_grav[1] - gpi->a_grav_exact[1],
+			     gpi->a_grav[2] - gpi->a_grav_exact[2]};
 
+      const float diff_norm = sqrtf(diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]);
+      const float a_norm = sqrtf( gpi->a_grav_exact[0] * gpi->a_grav_exact[0] +
+				  gpi->a_grav_exact[1] * gpi->a_grav_exact[1] +
+				  gpi->a_grav_exact[2] * gpi->a_grav_exact[2]);
+	
+      /* Compute relative error */
+      const float err_rel = diff_norm / a_norm;
+      
+      
       /* Check that we are not above tolerance */
-      if (fabsf(err_rel[0]) > rel_tol || fabsf(err_rel[1]) > rel_tol ||
-          fabsf(err_rel[2]) > rel_tol)
-        error(
-            "Error too large ! gp->a_grav=[%e %e %e] gp->a_exact=[%e %e %e], "
-            "gp->num_interacted=%lld",
+      if (err_rel > rel_tol) {
+        message(
+            "Error too large ! gp->a_grav=[%3.6e %3.6e %3.6e] gp->a_exact=[%3.6e %3.6e %3.6e], "
+            "gp->num_interacted=%lld, err=%f",
             gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
             gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-            gpi->num_interacted);
+            gpi->num_interacted, err_rel);
 
-      /* Construct some statistics */
-      for (int k = 0; k < 3; ++k) {
-        err_rel_max[k] = max(err_rel_max[k], fabsf(err_rel[k]));
-        err_rel_min[k] = min(err_rel_min[k], fabsf(err_rel[k]));
-        err_rel_mean[k] += err_rel[k];
-        err_rel_mean2[k] += err_rel[k] * err_rel[k];
+	continue;
       }
 
+      /* Construct some statistics */
+      err_rel_max = max(err_rel_max, fabsf(err_rel));
+      err_rel_min = min(err_rel_min, fabsf(err_rel));
+      err_rel_mean += err_rel;
+      err_rel_mean2 += err_rel * err_rel;
       counter++;
     }
   }
 
   /* Final operation on the stats */
   if (counter > 0) {
-    for (int k = 0; k < 3; ++k) {
-      err_rel_mean[k] /= counter;
-      err_rel_mean2[k] /= counter;
-      err_rel_std[k] =
-          sqrtf(err_rel_mean2[k] - err_rel_mean[k] * err_rel_mean[k]);
-    }
+    err_rel_mean /= counter;
+    err_rel_mean2 /= counter;
+    err_rel_std = sqrtf(err_rel_mean2 - err_rel_mean * err_rel_mean);
   }
 
   /* Report on the findings */
   message("Checked gravity for %d gparts.", counter);
-  for (int k = 0; k < 3; ++k)
-    message("Error on a_grav[%d]: min=%e max=%e mean=%e std=%e", k,
-            err_rel_min[k], err_rel_max[k], err_rel_mean[k], err_rel_std[k]);
+  message("Error on |a_grav|: min=%e max=%e mean=%e std=%e",
+	  err_rel_min, err_rel_max, err_rel_mean, err_rel_std);
 
 #else
   error("Gravity checking function called without the corresponding flag.");

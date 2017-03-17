@@ -3191,7 +3191,7 @@ void engine_step(struct engine *e) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
-  gravity_exact_force_check(e->s, e, 1e1);
+  gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
 /* Collect the values of rebuild from all nodes. */
