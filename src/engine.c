@@ -883,6 +883,84 @@ void engine_repartition(struct engine *e) {
 }
 
 /**
+ * @brief Decide whether trigger a repartition the cells amongst the nodes.
+ *
+ * @param e The #engine.
+ */
+void engine_repartition_trigger(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  /* Do nothing if there have not been enough steps since the last
+   * repartition, don't want to repeat this too often or immediately after
+   * a repartition step. */
+  if (e->step - e->last_repartition > 2) {
+
+    /* Old style if trigger is >1 or this is the second step (want an early
+     * repartition following the initial repartition). */
+    if (e->reparttype->trigger > 1 || e->step == 2) {
+      if (e->reparttype->trigger > 1) {
+        if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
+      } else {
+        e->forcerepart = 1;
+      }
+
+    } else {
+
+      /* Use cputimes from ranks to estimate the imbalance. */
+      /* First check if we are going to skip this stage anyway, if so do that
+       * now. If is only worth checking the CPU loads when we have processed a
+       * significant number of all particles. */
+      if ((e->updates > 1 &&
+           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
+          (e->g_updates > 1 &&
+           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+
+        /* Get CPU time used since the last call to this function. */
+        double elapsed_cputime =
+            clocks_get_cputime_used() - e->cputime_last_step;
+
+        /* Gather the elapsed CPU times from all ranks for the last step. */
+        double elapsed_cputimes[e->nr_nodes];
+        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if (e->nodeID == 0) {
+
+          /* Get the range and mean of cputimes. */
+          double mintime = elapsed_cputimes[0];
+          double maxtime = elapsed_cputimes[0];
+          double sum = elapsed_cputimes[0];
+          for (int k = 1; k < e->nr_nodes; k++) {
+            if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
+            if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
+            sum += elapsed_cputimes[k];
+          }
+          double mean = sum / (double)e->nr_nodes;
+
+          /* Are we out of balance? */
+          if (((maxtime - mintime) / mean) > e->reparttype->trigger) {
+            if (e->verbose)
+              message("trigger fraction %.3f exceeds %.3f will repartition",
+                      (maxtime - mintime) / mintime, e->reparttype->trigger);
+            e->forcerepart = 1;
+          }
+        }
+
+        /* All nodes do this together. */
+        MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      }
+    }
+
+    /* Remember we did this. */
+    if (e->forcerepart) e->last_repartition = e->step;
+  }
+
+  /* We always reset CPU time for next check. */
+  e->cputime_last_step = clocks_get_cputime_used();
+#endif
+}
+
+/**
  * @brief Add up/down gravity tasks to a cell hierarchy.
  *
  * @param e The #engine.
@@ -3041,7 +3119,9 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+#ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
+#endif
 
   if (e->nodeID == 0) {
 
@@ -3069,9 +3149,9 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-/* Repartition the space amongst the nodes? */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-  if (e->step % 100 == 2) e->forcerepart = 1;
+#ifdef WITH_MPI
+  /* Repartition the space amongst the nodes? */
+  engine_repartition_trigger(e);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -3144,9 +3224,12 @@ void engine_step(struct engine *e) {
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
-
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
+#endif
 }
 
 /**
@@ -3530,6 +3613,8 @@ void engine_unpin() {
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
+ * @param Ngas total number of gas particles in the simulation.
+ * @param Ndm total number of gravity particles in the simulation.
  * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
@@ -3544,8 +3629,8 @@ void engine_unpin() {
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int with_aff, int policy, int verbose,
-                 enum repartition_type reparttype,
+                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
@@ -3564,6 +3649,8 @@ void engine_init(struct engine *e, struct space *s,
   e->step = 0;
   e->nr_nodes = nr_nodes;
   e->nodeID = nodeID;
+  e->total_nr_parts = Ngas;
+  e->total_nr_gparts = Ndm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
@@ -3611,6 +3698,10 @@ void engine_init(struct engine *e, struct space *s,
   e->cooling_func = cooling_func;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
+#ifdef WITH_MPI
+  e->cputime_last_step = 0;
+  e->last_repartition = -1;
+#endif
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
