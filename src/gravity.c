@@ -20,6 +20,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Some standard headers. */
+#include <stdio.h>
+
 /* This object's header. */
 #include "gravity.h"
 
@@ -116,7 +119,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  //const double const_G = e->physical_constants->const_newton_G;
+  // const double const_G = e->physical_constants->const_newton_G;
 
   int counter = 0;
 
@@ -127,6 +130,14 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   float err_rel_mean2 = 0.f;
   float err_rel_std = 0.f;
 
+  char file_name[100];
+  sprintf(file_name, "gravity_checks_step%d_order%d.dat", e->step,
+          SELF_GRAVITY_MULTIPOLE_ORDER);
+  FILE *file = fopen(file_name, "w");
+  fprintf(
+      file,
+      "# id a_exact[0] a_exact[1] a_exact[2] a_grav[0] a_grav[1] a_grav[2]\n");
+
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
     struct gpart *gpi = &s->gparts[i];
@@ -135,29 +146,35 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_starting(gpi, e)) {
 
-      const float diff[3] = {gpi->a_grav[0] - gpi->a_grav_exact[0],
-			     gpi->a_grav[1] - gpi->a_grav_exact[1],
-			     gpi->a_grav[2] - gpi->a_grav_exact[2]};
+      fprintf(file, "%16lld %12.5e %12.5e %12.5e %12.5e %12.5e %12.5e \n",
+              gpi->id_or_neg_offset, gpi->a_grav_exact[0], gpi->a_grav_exact[1],
+              gpi->a_grav_exact[2], gpi->a_grav[0], gpi->a_grav[1],
+              gpi->a_grav[2]);
 
-      const float diff_norm = sqrtf(diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]);
-      const float a_norm = sqrtf( gpi->a_grav_exact[0] * gpi->a_grav_exact[0] +
-				  gpi->a_grav_exact[1] * gpi->a_grav_exact[1] +
-				  gpi->a_grav_exact[2] * gpi->a_grav_exact[2]);
-	
+      const float diff[3] = {gpi->a_grav[0] - gpi->a_grav_exact[0],
+                             gpi->a_grav[1] - gpi->a_grav_exact[1],
+                             gpi->a_grav[2] - gpi->a_grav_exact[2]};
+
+      const float diff_norm =
+          sqrtf(diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]);
+      const float a_norm = sqrtf(gpi->a_grav_exact[0] * gpi->a_grav_exact[0] +
+                                 gpi->a_grav_exact[1] * gpi->a_grav_exact[1] +
+                                 gpi->a_grav_exact[2] * gpi->a_grav_exact[2]);
+
       /* Compute relative error */
       const float err_rel = diff_norm / a_norm;
-      
-      
+
       /* Check that we are not above tolerance */
       if (err_rel > rel_tol) {
         message(
-            "Error too large ! gp->a_grav=[%3.6e %3.6e %3.6e] gp->a_exact=[%3.6e %3.6e %3.6e], "
+            "Error too large ! gp->a_grav=[%3.6e %3.6e %3.6e] "
+            "gp->a_exact=[%3.6e %3.6e %3.6e], "
             "gp->num_interacted=%lld, err=%f",
             gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
             gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
             gpi->num_interacted, err_rel);
 
-	continue;
+        continue;
       }
 
       /* Construct some statistics */
@@ -169,6 +186,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     }
   }
 
+  /* Be nice */
+  fclose(file);
+
   /* Final operation on the stats */
   if (counter > 0) {
     err_rel_mean /= counter;
@@ -178,8 +198,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   /* Report on the findings */
   message("Checked gravity for %d gparts.", counter);
-  message("Error on |a_grav|: min=%e max=%e mean=%e std=%e",
-	  err_rel_min, err_rel_max, err_rel_mean, err_rel_std);
+  message("Error on |a_grav|: min=%e max=%e mean=%e std=%e", err_rel_min,
+          err_rel_max, err_rel_mean, err_rel_std);
 
 #else
   error("Gravity checking function called without the corresponding flag.");
