@@ -995,7 +995,7 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  const char *default_repart = "both";
+  const char *default_repart = "task_weights";
   const char *default_part = "simple_metis";
 #else
   const char *default_repart = "none";
