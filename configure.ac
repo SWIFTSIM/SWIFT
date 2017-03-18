@@ -460,7 +460,6 @@ fi
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
-
 if test "$with_hdf5" != "yes"; then
     AC_MSG_ERROR([Could not find a working HDF5 library])
 fi
@@ -468,8 +467,6 @@ fi
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
-# To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
@@ -482,7 +479,14 @@ if test "$with_hdf5" = "yes"; then
 
     if test "$enable_parallel_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
-        parallel=`$H5CC -showconfig | grep "Parallel HDF5:" | awk '{print $3}'`
+# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
+
+        AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+        #include "hdf5.h"
+        #ifndef H5_HAVE_PARALLEL
+        # error macro not defined
+        #endif
+        ]])], [parallel="yes"], [parallel="no"])
         if test "$parallel" = "yes"; then
             have_parallel_hdf5="yes"
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
