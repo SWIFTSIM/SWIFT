@@ -2839,25 +2839,69 @@ void engine_collect_timestep(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
+    /* Use one MPI call, so a little local effort required. */
+    long long out[4];
+    long long *in = (long long *)malloc((sizeof(long long) * 4 * e->nr_nodes));
+
+    out[0] = ti_end_min;
+    out[1] = updates;
+    out[2] = g_updates;
+    out[3] = s_updates;
+
+    if (MPI_Allgather(out, 4, MPI_LONG_LONG_INT, in, 4, MPI_LONG_LONG_INT,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate t_end_min and particle counts.");
+
+    /* Minimum of the ti_end_mins. */
+    long long minti = in[0];
+    for (int k = 1; k < e->nr_nodes; k++) {
+      minti = min( minti, in[k * e->nr_nodes]);
+    }
+
+    /* Sums of all the updates. */
+    long long sumu = 0, sumg = 0, sums = 0;
+    for (int k = 0; k < e->nr_nodes; k++) {
+      sumu += in[1 + k * e->nr_nodes];
+      sumg += in[2 + k * e->nr_nodes];
+      sums += in[3 + k * e->nr_nodes];
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check the above using the original MPI calls. */
     integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
     if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate t_end_min.");
-    ti_end_min = in_i[0];
-  }
-  {
+      error("Failed to aggregate ti_end_min.");
+    if (in_i[0] != minti)
+      error("Failed to get same ti_end_min, is %lld, should be %lld",
+            in_i[0], minti);
+
     long long in_ll[3], out_ll[3];
     out_ll[0] = updates;
     out_ll[1] = g_updates;
     out_ll[2] = s_updates;
     if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate energies.");
-    updates = in_ll[0];
-    g_updates = in_ll[1];
-    s_updates = in_ll[2];
+      error("Failed to aggregate particle counts.");
+    if (in_ll[0] != sumu)
+      error("Failed to get same updates, is %lld, should be %lld",
+            in_ll[0], sumu);
+    if (in_ll[1] != sumg)
+      error("Failed to get same g_updates, is %lld, should be %lld",
+            in_ll[1], sumg);
+    if (in_ll[2] != sums)
+      error("Failed to get same s_updates, is %lld, should be %lld",
+            in_ll[2], sums);
+
+#endif
+
+    /* Record our updates. */
+    ti_end_min = minti;
+    updates = sumu;
+    g_updates = sumg;
+    s_updates = sums;
   }
 #endif
 
@@ -3218,7 +3262,7 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Recover the (integer) end of the next time-step */
+  /* Recover the (integer) end of the next time-step. */
   engine_collect_timestep(e);
 
   TIMER_TOC2(timer_step);
