@@ -158,7 +158,7 @@ for i in range(order+1):
     for j in range(order+1):
         for k in range(order+1):
             if i + j + k == order:
-                print "m_a->.M_%d%d%d = m_b->M_%d%d%d"%(i,j,k,i,j,k),
+                print "m_a->M_%d%d%d = m_b->M_%d%d%d"%(i,j,k,i,j,k),
 
                 for ii in range(order+1):
                     for jj in range(order+1):
