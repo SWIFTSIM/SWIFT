@@ -107,13 +107,14 @@ void profiler_write_timing_info_header(const struct engine *e,
           "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
           "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
           "+/- %.2f\n# Eta: %f\n"
-          "# %6s %14s %14s %10s %10s %16s [%s]\n",
+          "# %6s %14s %14s %10s %10s %10s %16s [%s]\n",
           hostname(), functionName, git_revision(), compiler_name(),
           compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
           kernel_name, e->hydro_properties->target_neighbours,
           e->hydro_properties->delta_neighbours,
           e->hydro_properties->eta_neighbours, "Step", "Time", "Time-step",
-          "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+          "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+          clocks_getunit());
 
   fflush(*file);
 }
@@ -145,8 +146,9 @@ void profiler_write_all_timing_info_headers(const struct engine *e,
 void profiler_write_timing_info(const struct engine *e, ticks time,
                                 FILE *file) {
 
-  fprintf(file, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-          e->timeStep, e->updates, e->g_updates, clocks_from_ticks(time));
+  fprintf(file, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+          e->timeStep, e->updates, e->g_updates, e->s_updates,
+          clocks_from_ticks(time));
   fflush(file);
 }
 
