@@ -2801,12 +2801,14 @@ void engine_collect_kick(struct cell *c) {
 }
 
 /**
- * @brief Collects the next time-step by making each super-cell recurse
- * to collect the minimal of ti_end and the number of updated particles.
+ * @brief Collects the next time-step by making each super-cell recurse to
+ * collect the minimal of ti_end and the number of updated particles.  Also
+ * (when in MPI) collects the forcerebuild flag across all nodes (this is so
+ * that we only use a single collective MPI calls per step).
  *
  * @param e The #engine.
  */
-void engine_collect_timestep(struct engine *e) {
+void engine_collect_timestep_and_rebuild(struct engine *e) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0, s_updates = 0;
@@ -2836,34 +2838,41 @@ void engine_collect_timestep(struct engine *e) {
     }
   }
 
-/* Aggregate the data from the different nodes. */
+/* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
   {
     /* Use one MPI call, so a little local effort required. */
-    long long out[4];
-    long long *in = (long long *)malloc((sizeof(long long) * 4 * e->nr_nodes));
+    long long out[5];
+    long long *in = (long long *)malloc((sizeof(long long) * 5 * e->nr_nodes));
 
     out[0] = ti_end_min;
     out[1] = updates;
     out[2] = g_updates;
     out[3] = s_updates;
+    out[4] = e->forcerebuild;
 
-    if (MPI_Allgather(out, 4, MPI_LONG_LONG_INT, in, 4, MPI_LONG_LONG_INT,
+    if (MPI_Allgather(out, 5, MPI_LONG_LONG_INT, in, 5, MPI_LONG_LONG_INT,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate t_end_min and particle counts.");
 
     /* Minimum of the ti_end_mins. */
     long long minti = in[0];
     for (int k = 1; k < e->nr_nodes; k++) {
-      minti = min( minti, in[k * e->nr_nodes]);
+      minti = min( minti, in[k * 5]);
     }
 
     /* Sums of all the updates. */
     long long sumu = 0, sumg = 0, sums = 0;
     for (int k = 0; k < e->nr_nodes; k++) {
-      sumu += in[1 + k * e->nr_nodes];
-      sumg += in[2 + k * e->nr_nodes];
-      sums += in[3 + k * e->nr_nodes];
+      sumu += in[1 + k * 5];
+      sumg += in[2 + k * 5];
+      sums += in[3 + k * 5];
+    }
+
+    /* Maximum of the rebuilds. */
+    long long maxrebuild = in[4];
+    for (int k = 1; k < e->nr_nodes; k++) {
+      maxrebuild = max(maxrebuild, in[4 + k * 5]);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2895,6 +2904,13 @@ void engine_collect_timestep(struct engine *e) {
       error("Failed to get same s_updates, is %lld, should be %lld",
             in_ll[2], sums);
 
+    int buff = 0;
+    if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    if (buff != maxrebuild)
+      error("Failed to get same rebuild flag from all nodes, is %d,"
+            "should be %lld", buff, maxrebuild);
 #endif
 
     /* Record our updates. */
@@ -2902,7 +2918,9 @@ void engine_collect_timestep(struct engine *e) {
     updates = sumu;
     g_updates = sumg;
     s_updates = sums;
+    e->forcerebuild = maxrebuild;
   }
+
 #endif
 
   e->ti_end_min = ti_end_min;
@@ -3133,7 +3151,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   engine_launch(e, e->nr_threads);
 
   /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
+  engine_collect_timestep_and_rebuild(e);
 
   clocks_gettime(&time2);
 
@@ -3219,14 +3237,45 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-/* Collect the values of rebuild from all nodes. */
-#ifdef WITH_MPI
-  int buff = 0;
-  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to aggregate the rebuild flag across nodes.");
-  e->forcerebuild = buff;
-#endif
+  /* Collect the values of rebuild from all nodes and recover the (integer)
+   * end of the next time-step. Do these together to reduce the collective MPI
+   * calls per step, but some of the gathered information is not applied just
+   * yet (in case we save a snapshot or drift). */
+  integertime_t ti_end_min = e->ti_end_min;
+  integertime_t ti_end_max = e->ti_end_max;
+  integertime_t ti_beg_max = e->ti_beg_max;
+  size_t updates = e->updates;
+  size_t g_updates = e->g_updates;
+  size_t s_updates = e->s_updates;
+  engine_collect_timestep_and_rebuild(e);
+
+  /* Restore state not to be applied until later. */
+  integertime_t ttmp;
+  size_t stmp;
+
+  ttmp = e->ti_end_min;
+  e->ti_end_min = ti_end_min;
+  ti_end_min = ttmp;
+
+  ttmp = e->ti_end_max;
+  e->ti_end_max = ti_end_max;
+  ti_end_max = ttmp;
+
+  ttmp = e->ti_beg_max;
+  e->ti_beg_max = ti_beg_max;
+  ti_beg_max = ttmp;
+
+  stmp = e->updates;
+  e->updates = updates;
+  updates = stmp;
+
+  stmp = e->g_updates;
+  e->g_updates = g_updates;
+  g_updates = stmp;
+
+  stmp = e->s_updates;
+  e->s_updates = s_updates;
+  s_updates = stmp;
 
   /* Save some statistics ? */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
@@ -3262,8 +3311,13 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Recover the (integer) end of the next time-step. */
-  engine_collect_timestep(e);
+  /* Now apply all the collected time step updates and particle counts. */
+  e->ti_end_min = ti_end_min;
+  e->ti_end_max = ti_end_max;
+  e->ti_beg_max = ti_beg_max;
+  e->updates = updates;
+  e->g_updates = g_updates;
+  e->s_updates = s_updates;
 
   TIMER_TOC2(timer_step);
 
