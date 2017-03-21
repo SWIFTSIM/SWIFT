@@ -115,8 +115,8 @@ __attribute__((always_inline)) INLINE void voronoi_print_gnuplot_c(
 
   fprintf(stderr, "%g\t%g\t%g\n\n", x[0], x[1], x[2]);
 
-  for (i = 0; i < c->nvert; i++) {
-    for (j = 0; j < c->orders[i]; j++) {
+  for (i = 0; i < c->nvert; ++i) {
+    for (j = 0; j < c->orders[i]; ++j) {
       v = c->edges[c->offsets[i] + j];
       if (v < 0) {
         v = -v - 1;
@@ -143,11 +143,11 @@ __attribute__((always_inline)) INLINE void voronoi_print_cell(
   fprintf(stderr, "x: %g %g %g\n", cell->x[0], cell->x[1], cell->x[2]);
   fprintf(stderr, "nvert: %i\n", cell->nvert);
 
-  for (i = 0; i < cell->nvert; i++) {
+  for (i = 0; i < cell->nvert; ++i) {
     fprintf(stderr, "%i: %g %g %g (%i)\n", i, cell->vertices[3 * i],
             cell->vertices[3 * i + 1], cell->vertices[3 * i + 2],
             cell->orders[i]);
-    for (j = 0; j < cell->orders[i]; j++) {
+    for (j = 0; j < cell->orders[i]; ++j) {
       fprintf(stderr, "%i (%i)\n", cell->edges[cell->offsets[i] + j],
               cell->edgeindices[cell->offsets[i] + j]);
     }
@@ -289,12 +289,12 @@ __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
     error("Found cell with only %i vertices!", c->nvert);
   }
 
-  for (i = 0; i < c->nvert; i++) {
+  for (i = 0; i < c->nvert; ++i) {
     if (c->orders[i] < 3) {
       voronoi_print_cell(c);
       error("Found cell with vertex of order %i!", c->orders[i]);
     }
-    for (j = 0; j < c->orders[i]; j++) {
+    for (j = 0; j < c->orders[i]; ++j) {
       e = voronoi_get_edge(c, i, j);
       if (e >= c->nvert) {
         voronoi_print_cell(c);
@@ -605,10 +605,10 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         *lp = voronoi_get_edge(c, (*up), (*us));
         *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
                                   &teststack_size);
-        (*us)++;
+        ++(*us);
       }
       /* we increased us too much, correct this */
-      (*us)--;
+      --(*us);
       if ((*l) >= (*u)) {
         /* PATH 1.3 */
         /* up is the closest vertex to the plane, but is above the plane
@@ -640,10 +640,10 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
           *lp = voronoi_get_edge(c, (*up), (*us));
           *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
                                     teststack, &teststack_size);
-          (*us)++;
+          ++(*us);
         }
         if ((*l) >= (*u)) {
-          (*us)++;
+          ++(*us);
           /* no while: PATH 1.4.3 */
           /* somewhere in while: PATH 1.4.4 */
           /* last valid option of while: PATH 1.4.5 */
@@ -651,7 +651,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             *lp = voronoi_get_edge(c, (*up), (*us));
             *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
                                       teststack, &teststack_size);
-            (*us)++;
+            ++(*us);
           }
           if ((*l) >= (*u)) {
             /* PATH 1.4.6 */
@@ -662,7 +662,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             return -1;
           }
         }
-        (*us)--;
+        --(*us);
         *ls = voronoi_get_edgeindex(c, (*up), (*us));
       }
       /* if lp is too close to the plane, replace up by lp and proceed to
@@ -691,7 +691,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         *qp = voronoi_get_edge(c, (*up), (*us));
         *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
                                   &teststack_size);
-        (*us)++;
+        ++(*us);
       }
       if ((*u) >= (*q)) {
         /* PATH 2.3 */
@@ -703,7 +703,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         return 0;
       } else {
         /* the last increase in the loop pushed us too far, correct this */
-        (*us)--;
+        --(*us);
       }
 
       /* repeat the above process until qp is closer or above the plane */
@@ -720,10 +720,10 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
           *qp = voronoi_get_edge(c, (*up), (*us));
           *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
                                     teststack, &teststack_size);
-          (*us)++;
+          ++(*us);
         }
         if ((*u) >= (*q)) {
-          (*us)++;
+          ++(*us);
           /* no while: PATH 2.4.3 */
           /* somewhere in while: PATH 2.4.4 */
           /* last valid option of while: PATH 2.4.5 */
@@ -731,7 +731,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             *qp = voronoi_get_edge(c, (*up), (*us));
             *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
                                       teststack, &teststack_size);
-            (*us)++;
+            ++(*us);
           }
           if ((*u) >= (*q)) {
             /* PATH 2.4.6 */
@@ -739,7 +739,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             return 0;
           }
         }
-        (*us)--;
+        --(*us);
       }
       if ((*qw) == 1) {
         /* qp is above the plane: initialize lp to up and replace up by qp */
@@ -861,7 +861,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   int i = -1, j = -1, k = -1;
 
   /* initialize visitflags */
-  for (i = 0; i < VORONOI3D_MAXNUMVERT; i++) {
+  for (i = 0; i < VORONOI3D_MAXNUMVERT; ++i) {
     visitflags[i] = 0;
   }
 
@@ -981,7 +981,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         lp = voronoi_get_edge(c, up, j);
         lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                  &teststack_size);
-        j++;
+        ++j;
       }
 
       if (lw != -1) {
@@ -1008,7 +1008,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
       /* create new order k vertex */
       vindex = c->nvert;
-      c->nvert++;
+      ++c->nvert;
       if (c->nvert == VORONOI3D_MAXNUMVERT) {
         error("Too many vertices!");
       }
@@ -1018,7 +1018,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         error("Too many edges!");
       }
 
-      visitflags[vindex] = 0;
+      visitflags[vindex] = -vindex;
       /* the new vertex adopts the coordinates of the old vertex */
       c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
       c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
@@ -1062,7 +1062,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                &teststack_size);
       safewhile(lw == -1) {
-        i--;
+        --i;
         if (i == 0) {
           /* No edge above or in the plane found: the cell is unaltered */
           return;
@@ -1078,7 +1078,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
                                &teststack_size);
       safewhile(qw == -1) {
-        j++;
+        ++j;
         qp = voronoi_get_edge(c, up, j);
         qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &l, teststack,
                                  &teststack_size);
@@ -1103,7 +1103,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
       /* create new order k vertex */
       vindex = c->nvert;
-      c->nvert++;
+      ++c->nvert;
       if (c->nvert == VORONOI3D_MAXNUMVERT) {
         error("Too many vertices!");
       }
@@ -1113,13 +1113,13 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         error("Too many edges!");
       }
 
-      visitflags[vindex] = 0;
+      visitflags[vindex] = -vindex;
       /* the new vertex is just a copy of vertex up */
       c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
       c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
       c->vertices[3 * vindex + 2] = c->vertices[3 * up + 2];
 
-      /* as above, us stores the index of the last edge below the plane */
+      /* as above, us stores the index of the last edge NOT below the plane */
       us = i;
 
       /* copy all edges below the plane into the new vertex, starting from edge
@@ -1159,7 +1159,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       qs = j;
     }
 
-    /* at this point, we have created a new vertex that contains all edge of up
+    /* at this point, we have created a new vertex that contains all edges of up
        below the plane, and two dangling edges: 0 and k
        Furthermore, us stores the index of the last edge not below the plane,
        qs the index of the first edge not below the plane */
@@ -1197,7 +1197,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     up = i;
     /* we store the index of the newly created vertex in the visitflags of the
        last deleted vertex */
-    visitflags[qp] = -vindex;
+    visitflags[qp] = vindex;
   } else { /* if(complicated) */
 
     if (u == l) {
@@ -1222,7 +1222,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
     /* create a new order 3 vertex */
     vindex = c->nvert;
-    c->nvert++;
+    ++c->nvert;
     if (c->nvert == VORONOI3D_MAXNUMVERT) {
       error("Too many vertices!");
     }
@@ -1232,7 +1232,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       error("Too many edges!");
     }
 
-    visitflags[vindex] = 0;
+    visitflags[vindex] = -vindex;
     c->vertices[3 * vindex + 0] =
         c->vertices[3 * lp + 0] * r + c->vertices[3 * up + 0] * l;
     c->vertices[3 * vindex + 1] =
@@ -1333,6 +1333,9 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       if (qs == c->orders[qp]) {
         qs = 0;
       }
+
+      /* test the next edges, and try to find one that does NOT lie below the
+         plane */
       lp = voronoi_get_edge(c, qp, qs);
       lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                &teststack_size);
@@ -1347,7 +1350,16 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
                                  &teststack_size);
       }
 
+      /* qs now contains the next edge NOT below the plane
+         k contains the order of the new vertex to create: the number of edges
+         below the plane + 2 (+1 if we have a double edge) */
+
+      /* if qp (the vertex in the plane) was already visited before, visitflags
+         will contain the index of the newly created vertex that replaces it */
       j = visitflags[qp];
+
+      /* we need to find out what the order of the new vertex will be, and if we
+         are dealing with a new double edge or not */
       if (qp == up && qs == us) {
         new_double_edge = 0;
         if (j > 0) {
@@ -1361,14 +1373,14 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             if (i > 0) {
               if (voronoi_get_edge(c, i, c->orders[i] - 1) == j) {
                 new_double_edge = 1;
-                k--;
+                --k;
               } else {
                 new_double_edge = 0;
               }
             } else {
               if (j == rp && lp == up && voronoi_get_edge(c, qp, qs) == us) {
                 new_double_edge = 1;
-                k--;
+                --k;
               } else {
                 new_double_edge = 0;
               }
@@ -1381,7 +1393,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             i = -visitflags[lp];
             if (i == cp) {
               new_double_edge = 1;
-              k--;
+              --k;
             } else {
               new_double_edge = 0;
             }
@@ -1391,39 +1403,14 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         }
       }
 
-      if (j > 0) {
-        error("Case not handled!");
-      }
+      //      if (j > 0) {
+      //        error("Case not handled!");
+      //      }
 
       /* create new order k vertex */
       vindex = c->nvert;
-      c->nvert++;
+      ++c->nvert;
       if (c->nvert == VORONOI3D_MAXNUMVERT) {
-        fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
-        fprintf(stderr, "r2: %g\n", r2);
-        fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
-        fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
-        fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
-        fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
-        fprintf(stderr, "complicated: %i\n", complicated);
-        fprintf(stderr, "vindex: %i\n", vindex);
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
-        }
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
-        }
-        fprintf(stderr, "dstack_size: %i\n", dstack_size);
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
-        }
-        fprintf(stderr, "teststack_size: %i\n", teststack_size);
-        fprintf(stderr, "r: %g\n", r);
-        fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
-        fprintf(stderr, "double_edge: %i\n", double_edge);
-        fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
-        fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
-        fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
         error("Too many vertices!");
       }
       c->orders[vindex] = k;
@@ -1432,14 +1419,14 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         error("Too many edges!");
       }
 
-      visitflags[vindex] = 0;
+      visitflags[vindex] = -vindex;
       c->vertices[3 * vindex + 0] = c->vertices[3 * qp + 0];
       c->vertices[3 * vindex + 1] = c->vertices[3 * qp + 1];
       c->vertices[3 * vindex + 2] = c->vertices[3 * qp + 2];
 
-      visitflags[qp] = -vindex;
+      visitflags[qp] = vindex;
       dstack[dstack_size] = qp;
-      dstack_size++;
+      ++dstack_size;
       j = vindex;
       i = 0;
 
@@ -1449,7 +1436,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         voronoi_set_edgeindex(c, j, i, cs);
         voronoi_set_edge(c, cp, cs, j);
         voronoi_set_edgeindex(c, cp, cs, i);
-        i++;
+        ++i;
       }
 
       qs = iqs;
@@ -1458,7 +1445,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         iqs = k;
       }
       safewhile(i < iqs) {
-        qs++;
+        ++qs;
         if (qs == c->orders[qp]) {
           qs = 0;
         }
@@ -1470,9 +1457,9 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         voronoi_set_edge(c, lp, ls, j);
         voronoi_set_edgeindex(c, lp, ls, i);
         voronoi_set_edge(c, qp, qs, -1);
-        i++;
+        ++i;
       }
-      qs++;
+      ++qs;
       if (qs == c->orders[qp]) {
         qs = 0;
       }
@@ -1504,7 +1491,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         qp = lp;
         q = l;
         dstack[dstack_size] = qp;
-        dstack_size++;
+        ++dstack_size;
       } else {
 
         /* vertex lies below the plane */
@@ -1525,35 +1512,11 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
         /* create new order 3 vertex */
         vindex = c->nvert;
-        c->nvert++;
+        ++c->nvert;
         if (c->nvert == VORONOI3D_MAXNUMVERT) {
-          fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
-          fprintf(stderr, "r2: %g\n", r2);
-          fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
-          fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
-          fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
-          fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
-          fprintf(stderr, "complicated: %i\n", complicated);
-          fprintf(stderr, "vindex: %i\n", vindex);
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
-          }
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
-          }
-          fprintf(stderr, "dstack_size: %i\n", dstack_size);
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
-          }
-          fprintf(stderr, "teststack_size: %i\n", teststack_size);
-          fprintf(stderr, "r: %g\n", r);
-          fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
-          fprintf(stderr, "double_edge: %i\n", double_edge);
-          fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
-          fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
-          fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
           error("Too many vertices!");
         }
+        visitflags[vindex] = -vindex;
         c->orders[vindex] = 3;
         c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
         if (c->offsets[vindex] + 3 >= VORONOI3D_MAXNUMEDGE) {
@@ -1617,11 +1580,11 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
      removed and add them to the delete stack if necessary
      this only works because we made sure that all deleted vertices no longer
      have edges that connect them to vertices that need to stay */
-  for (i = 0; i < dstack_size; i++) {
-    for (j = 0; j < c->orders[dstack[i]]; j++) {
+  for (i = 0; i < dstack_size; ++i) {
+    for (j = 0; j < c->orders[dstack[i]]; ++j) {
       if (voronoi_get_edge(c, dstack[i], j) >= 0) {
         dstack[dstack_size] = voronoi_get_edge(c, dstack[i], j);
-        dstack_size++;
+        ++dstack_size;
         voronoi_set_edge(c, dstack[i], j, -1);
         voronoi_set_edgeindex(c, dstack[i], j, -1);
       }
@@ -1799,10 +1762,10 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   /* make sure the contents of the new cell are the same as for the old cell */
   memcpy(&new_cell, c, sizeof(struct voronoi_cell));
   int m, n;
-  for (vindex = 0; vindex < c->nvert; vindex++) {
+  for (vindex = 0; vindex < c->nvert; ++vindex) {
     j = vindex;
     /* find next edge that is not deleted */
-    safewhile(j < c->nvert && voronoi_get_edge(c, j, 0) < 0) { j++; }
+    safewhile(j < c->nvert && voronoi_get_edge(c, j, 0) < 0) { ++j; }
 
     if (j == c->nvert) {
       /* ready */
@@ -1826,7 +1789,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     }
 
     /* copy edges, edgeindices and ngbs */
-    for (k = 0; k < c->orders[j]; k++) {
+    for (k = 0; k < c->orders[j]; ++k) {
       voronoi_set_edge(&new_cell, vindex, k, voronoi_get_edge(c, j, k));
       voronoi_set_edgeindex(&new_cell, vindex, k,
                             voronoi_get_edgeindex(c, j, k));
@@ -1834,7 +1797,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     }
 
     /* update other edges */
-    for (k = 0; k < c->orders[j]; k++) {
+    for (k = 0; k < c->orders[j]; ++k) {
       m = voronoi_get_edge(c, j, k);
       n = voronoi_get_edgeindex(c, j, k);
       if (m < vindex) {
@@ -1951,14 +1914,14 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
   cell->centroid[2] = 0.0f;
 
   /* loop over all vertices (except the first one) */
-  for (i = 1; i < cell->nvert; i++) {
+  for (i = 1; i < cell->nvert; ++i) {
 
     v2[0] = cell->vertices[3 * i + 0];
     v2[1] = cell->vertices[3 * i + 1];
     v2[2] = cell->vertices[3 * i + 2];
 
     /*  loop over the edges of the vertex*/
-    for (j = 0; j < cell->orders[i]; j++) {
+    for (j = 0; j < cell->orders[i]; ++j) {
 
       k = voronoi_get_edge(cell, i, j);
 
@@ -2106,7 +2069,7 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
         cell->face_midpoints[cell->nface][0] = midpoint[0] / area / 3.0f;
         cell->face_midpoints[cell->nface][1] = midpoint[1] / area / 3.0f;
         cell->face_midpoints[cell->nface][2] = midpoint[2] / area / 3.0f;
-        cell->nface++;
+        ++cell->nface;
 
         if (cell->nface == VORONOI3D_MAXFACE) {
           error("Too many faces!");
@@ -2217,7 +2180,7 @@ __attribute__((always_inline)) INLINE float voronoi_get_face(
 
   int i = 0;
   while (i < cell->nface && cell->ngbs[i] != ngb) {
-    i++;
+    ++i;
   }
   if (i == cell->nface) {
     /* Ngb not found */
