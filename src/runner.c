@@ -340,7 +340,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   const int count = c->count;
   float buff[8];
 
-  TIMER_TIC
+  TIMER_TIC;
+
+  /* Check that the particles have been moved to the current time */
+  if (!cell_is_drifted(c, r->e)) error("Sorting un-drifted cell");
 
   /* Clean-up the flags, i.e. filter out what's already been sorted, but
      only if the sorts are recent. */
