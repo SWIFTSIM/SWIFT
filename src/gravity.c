@@ -134,9 +134,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   sprintf(file_name, "gravity_checks_step%d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
   FILE *file = fopen(file_name, "w");
-  fprintf(
-      file,
-      "# id a_exact[0] a_exact[1] a_exact[2] a_grav[0] a_grav[1] a_grav[2]\n");
+  fprintf(file,
+          "# id pos[0] pos[1] pos[2] a_exact[0] a_exact[1] a_exact[2] "
+          "a_grav[0] a_grav[1] a_grav[2]\n");
 
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
@@ -146,10 +146,12 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_starting(gpi, e)) {
 
-      fprintf(file, "%16lld %12.5e %12.5e %12.5e %12.5e %12.5e %12.5e \n",
-              gpi->id_or_neg_offset, gpi->a_grav_exact[0], gpi->a_grav_exact[1],
-              gpi->a_grav_exact[2], gpi->a_grav[0], gpi->a_grav[1],
-              gpi->a_grav[2]);
+      fprintf(file,
+              "%16lld %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e "
+              "%14.8e \n",
+              gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
+              gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
+              gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2]);
 
       const float diff[3] = {gpi->a_grav[0] - gpi->a_grav_exact[0],
                              gpi->a_grav[1] - gpi->a_grav_exact[1],

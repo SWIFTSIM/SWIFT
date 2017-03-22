@@ -3093,8 +3093,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  gravity_exact_force_compute(e->s, e);
+#endif
+
   /* Run the 0th time-step */
   engine_launch(e, e->nr_threads);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check the accuracy of the gravity calculation */
+  gravity_exact_force_check(e->s, e, 1e-1);
+#endif
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
