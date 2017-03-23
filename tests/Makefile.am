@@ -25,8 +25,9 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh testKernelGrav testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
-        testMatrixInversion testThreadpool testDump testLogger \
-        testVoronoi1D testVoronoi2D testVoronoi3D
+        testMatrixInversion testThreadpool testDump testLogger 
+
+#testVoronoi1D testVoronoi2D testVoronoi3D
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -34,8 +35,9 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testKernel testKernelGrav testFFT testInteractions testMaths \
                  testSymmetry testThreadpool benchmarkInteractions \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
-                 testRiemannHLLC testMatrixInversion testDump testLogger \
-                 testVoronoi1D testVoronoi2D testVoronoi3D
+                 testRiemannHLLC testMatrixInversion testDump testLogger 
+
+#testVoronoi1D testVoronoi2D testVoronoi3D
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -80,11 +82,11 @@ testRiemannHLLC_SOURCES = testRiemannHLLC.c
 
 testMatrixInversion_SOURCES = testMatrixInversion.c
 
-testVoronoi1D_SOURCES = testVoronoi1D.c
+#testVoronoi1D_SOURCES = testVoronoi1D.c
 
-testVoronoi2D_SOURCES = testVoronoi2D.c
+#testVoronoi2D_SOURCES = testVoronoi2D.c
 
-testVoronoi3D_SOURCES = testVoronoi3D.c
+#testVoronoi3D_SOURCES = testVoronoi3D.c
 
 testThreadpool_SOURCES = testThreadpool.c
 
