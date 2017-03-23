@@ -441,6 +441,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     N_total[ptype] =
         (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
+  /* Get the box size if not cubic */
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];

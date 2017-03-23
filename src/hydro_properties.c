@@ -44,6 +44,12 @@ void hydro_props_init(struct hydro_props *p,
   p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
   p->delta_neighbours = parser_get_param_float(params, "SPH:delta_neighbours");
 
+#ifdef SHADOWFAX_SPH
+  /* change the meaning of target_neighbours and delta_neighbours */
+  p->target_neighbours = 1.0f;
+  p->delta_neighbours = 0.0f;
+#endif
+
   /* Maximal smoothing length */
   p->h_max = parser_get_opt_param_float(params, "SPH:h_max",
                                         hydro_props_default_h_max);
