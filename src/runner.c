@@ -489,6 +489,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   const int count = c->count;
   const int gcount = c->gcount;
   const struct engine *e = r->e;
+  const struct space *s = e->s;
 
   TIMER_TIC;
 
@@ -514,7 +515,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Get ready for a density calculation */
-        hydro_init_part(p);
+        hydro_init_part(p, &s->hs);
       }
     }
 
@@ -596,6 +597,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
+  const struct space *s = e->s;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
@@ -676,7 +678,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            hydro_init_part(p);
+            hydro_init_part(p, &s->hs);
 
             /* Off we go ! */
             continue;

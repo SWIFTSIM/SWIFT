@@ -2692,6 +2692,8 @@ void space_init(struct space *s, const struct swift_params *params,
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
 
+  hydro_space_init(&s->hs, s);
+
   /* Set the particles in a state where they are ready for a run */
   space_init_parts(s);
   space_init_xparts(s);

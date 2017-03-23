@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
+#ifndef SWIFT_HYDRO_SPACE_H
+#define SWIFT_HYDRO_SPACE_H
 
-#include "./const.h"
+#include "../config.h"
 
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(HOPKINS_PE_SPH)
-#include "./hydro/PressureEntropy/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
-#elif defined(SHADOWFAX_SPH)
-#include "./hydro/Shadowswift/hydro_io.h"
+struct space;
+
+/**
+ * @brief Extra space information that is needed for some hydro schemes.
+ */
+#ifdef SHADOWFAX_SPH
+struct hydro_space {
+  /*! Anchor of the simulation space. */
+  double anchor[3];
+
+  /*! Side lengths of the simulation space. */
+  double side[3];
+};
 #else
-#error "Invalid choice of SPH variant"
+struct hydro_space {};
 #endif
 
-#endif /* SWIFT_HYDRO_IO_H */
+void hydro_space_init(struct hydro_space *hs, const struct space *s);
+
+#endif /* SWIFT_HYDRO_SPACE_H */

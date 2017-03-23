@@ -31,6 +31,13 @@ int main(int argc, char *argv[]) {
   /* Choke if need be */
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
+#if defined(SHADOWFAX_SPH)
+  /* Initialize the Voronoi simulation box */
+  double box_anchor[3] = {-2.0f, -2.0f, -2.0f};
+  double box_side[3] = {6.0f, 6.0f, 6.0f};
+/*  voronoi_set_box(box_anchor, box_side);*/
+#endif
+
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
@@ -46,7 +53,7 @@ int main(int argc, char *argv[]) {
   pi.id = 1;
   pj.id = 2;
 
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
   pi.primitives.rho = random_uniform(0.1f, 1.0f);
@@ -93,6 +100,12 @@ int main(int argc, char *argv[]) {
   /* set time step to reasonable value */
   pi.force.dt = 0.001;
   pj.force.dt = 0.001;
+
+#ifdef SHADOWFAX_SPH
+  voronoi_cell_init(&pi.cell, pi.x, box_anchor, box_side);
+  voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
+#endif
+
 #endif
 
   /* Make an xpart companion */
