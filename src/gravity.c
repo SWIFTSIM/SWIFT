@@ -56,9 +56,7 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
         gpart_is_active(gpi, e)) {
 
       /* Be ready for the calculation */
-      gpi->a_grav[0] = 0.f;
-      gpi->a_grav[1] = 0.f;
-      gpi->a_grav[2] = 0.f;
+      double a_grav[3] = {0., 0., 0.};
 
       /* Interact it with all other particles in the space.*/
       for (size_t j = 0; j < s->nr_gparts; ++j) {
@@ -69,26 +67,47 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
         struct gpart *gpj = &s->gparts[j];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                       gpi->x[1] - gpj->x[1],   // y
-                       gpi->x[2] - gpj->x[2]};  // z
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        const double dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                              gpi->x[1] - gpj->x[1],   // y
+                              gpi->x[2] - gpj->x[2]};  // z
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-        runner_iact_grav_pp_nonsym(0.f, r2, dx, gpi, gpj);
+        const double r = sqrtf(r2);
+        const double ir = 1.f / r;
+        const double mj = gpj->mass;
+        const double hi = gpi->epsilon;
+        double f;
+        const double f_lr = 1.;
+
+        if (r >= hi) {
+
+          /* Get Newtonian gravity */
+          f = mj * ir * ir * ir * f_lr;
+
+        } else {
+
+          const double hi_inv = 1.f / hi;
+          const double hi_inv3 = hi_inv * hi_inv * hi_inv;
+          const double ui = r * hi_inv;
+          float W;
+
+          kernel_grav_eval(ui, &W);
+
+          /* Get softened gravity */
+          f = mj * hi_inv3 * W * f_lr;
+        }
+
+        const double fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
+
+        a_grav[0] -= fdx[0];
+        a_grav[1] -= fdx[1];
+        a_grav[2] -= fdx[2];
       }
 
-      /* Finish the calculation */
-      gravity_end_force(gpi, const_G);
-
       /* Store the exact answer */
-      gpi->a_grav_exact[0] = gpi->a_grav[0];
-      gpi->a_grav_exact[1] = gpi->a_grav[1];
-      gpi->a_grav_exact[2] = gpi->a_grav[2];
-
-      /* Restore everything */
-      gpi->a_grav[0] = 0.f;
-      gpi->a_grav[1] = 0.f;
-      gpi->a_grav[2] = 0.f;
+      gpi->a_grav_exact[0] = a_grav[0] * const_G;
+      gpi->a_grav_exact[1] = a_grav[1] * const_G;
+      gpi->a_grav_exact[2] = a_grav[2] * const_G;
 
       counter++;
     }
@@ -119,8 +138,6 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  // const double const_G = e->physical_constants->const_newton_G;
-
   int counter = 0;
 
   /* Some accumulators */
@@ -134,9 +151,11 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   sprintf(file_name, "gravity_checks_step%d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
   FILE *file = fopen(file_name, "w");
-  fprintf(file,
-          "# id pos[0] pos[1] pos[2] a_exact[0] a_exact[1] a_exact[2] "
-          "a_grav[0] a_grav[1] a_grav[2]\n");
+  fprintf(file, "# Gravity accuracy test G = %16.8e\n",
+          e->physical_constants->const_newton_G);
+  fprintf(file, "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
+          "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
+          "a_exact[2]", "a_grav[0]", "a_grav[1]", "a_grav[2]");
 
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
@@ -147,8 +166,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
         gpart_is_starting(gpi, e)) {
 
       fprintf(file,
-              "%16lld %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e %14.8e "
-              "%14.8e \n",
+              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+              "%16.8e \n",
               gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
               gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
               gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2]);
