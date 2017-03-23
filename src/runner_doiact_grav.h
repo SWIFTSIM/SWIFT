@@ -25,6 +25,14 @@
 #include "gravity.h"
 #include "part.h"
 
+/**
+ * @brief Recursively propagate the multipoles down the tree by applying the
+ * L2L and L2P kernels.
+ *
+ * @param r The #runner.
+ * @param c The #cell we are working on.
+ * @param timer Are we timing this ?
+ */
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
@@ -114,62 +122,6 @@ void runner_dopair_grav_pm(const struct runner *r,
                            const struct cell *restrict cj) {
 
   error("Function should not be called");
-
-  /*   const struct engine *e = r->e; */
-  /*   const int gcount = ci->gcount; */
-  /*   struct gpart *restrict gparts = ci->gparts; */
-  /*   const struct gravity_tensors *multi = cj->multipole; */
-  /*   const float a_smooth = e->gravity_properties->a_smooth; */
-  /*   const float rlr_inv = 1. / (a_smooth * ci->super->width[0]); */
-
-  /*   TIMER_TIC; */
-
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   if (gcount == 0) error("Empty cell!"); */
-
-  /*   if (multi->m_pole.mass == 0.0) */
-  /*     error("Multipole does not seem to have been set."); */
-  /* #endif */
-
-  /*   /\* Anything to do here? *\/ */
-  /*   if (!cell_is_active(ci, e)) return; */
-
-  /* #if ICHECK > 0 */
-  /*   for (int pid = 0; pid < gcount; pid++) { */
-
-  /*     /\* Get a hold of the ith part in ci. *\/ */
-  /*     struct gpart *restrict gp = &gparts[pid]; */
-
-  /*     if (gp->id_or_neg_offset == ICHECK) */
-  /*       message("id=%lld loc=[ %f %f %f ] size= %f count= %d", */
-  /*               gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2], */
-  /*               cj->width[0], cj->gcount); */
-  /*   } */
-  /* #endif */
-
-  /*   /\* Loop over every particle in leaf. *\/ */
-  /*   for (int pid = 0; pid < gcount; pid++) { */
-
-  /*     /\* Get a hold of the ith part in ci. *\/ */
-  /*     struct gpart *restrict gp = &gparts[pid]; */
-
-  /*     if (!gpart_is_active(gp, e)) continue; */
-
-  /*     /\* Compute the pairwise distance. *\/ */
-  /*     const float dx[3] = {multi->CoM[0] - gp->x[0],   // x */
-  /*                          multi->CoM[1] - gp->x[1],   // y */
-  /*                          multi->CoM[2] - gp->x[2]};  // z */
-  /*     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
-
-  /*     /\* Interact !*\/ */
-  /*     runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi->m_pole); */
-
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*     gp->mass_interacted += multi->m_pole.mass; */
-  /* #endif */
-  /*   } */
-
-  /*   TIMER_TOC(timer_dopair_grav_pm); */
 }
 
 /**
@@ -307,8 +259,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->gcount == 0)  // MATTHIEU sanity check
-    error("Empty cell !");
+  if (c->gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   /* Anything to do here? */
@@ -403,7 +354,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   const int gcount_j = cj->gcount;
 
   /* Early abort? */
-  if (gcount_i == 0 || gcount_j == 0) error("Empty cell !");
+  if (gcount_i == 0 || gcount_j == 0)
+    error("Doing pair gravity on an empty cell !");
 
   /* Bad stuff will happen if cell sizes are different */
   if (ci->width[0] != cj->width[0])
@@ -500,7 +452,7 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Early abort? */
-  if (c->gcount == 0) error("Empty cell !");
+  if (c->gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   TIMER_TIC;
@@ -594,8 +546,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     /*                       cj->loc[1] - pos_i[1],   // y */
     /*                       cj->loc[2] - pos_i[2]};  // z */
     /* const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
-
-    // if (r2 > max_d2) continue;
+    /* if (r2 > max_d2) continue; */
 
     if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_mm(r, ci, cj);
   }

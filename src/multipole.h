@@ -906,55 +906,45 @@ INLINE static void gravity_M2M(struct multipole *m_a,
   m_a->M_001 = m_b->M_001 + X_001(dx) * m_b->M_000;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* Shift 2nd order term */
   m_a->M_200 = m_b->M_200 + X_100(dx) * m_b->M_100 + X_200(dx) * m_b->M_000;
-
   m_a->M_020 = m_b->M_020 + X_010(dx) * m_b->M_010 + X_020(dx) * m_b->M_000;
-
   m_a->M_002 = m_b->M_002 + X_001(dx) * m_b->M_001 + X_002(dx) * m_b->M_000;
-
   m_a->M_110 = m_b->M_110 + X_100(dx) * m_b->M_010 + X_010(dx) * m_b->M_100 +
                X_110(dx) * m_b->M_000;
-
   m_a->M_101 = m_b->M_101 + X_100(dx) * m_b->M_001 + X_001(dx) * m_b->M_100 +
                X_101(dx) * m_b->M_000;
-
   m_a->M_011 = m_b->M_011 + X_010(dx) * m_b->M_001 + X_001(dx) * m_b->M_010 +
                X_011(dx) * m_b->M_000;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /* Shift 3rd order term */
   m_a->M_300 = m_b->M_300 + X_100(dx) * m_b->M_200 + X_200(dx) * m_b->M_100 +
                X_300(dx) * m_b->M_000;
-
   m_a->M_030 = m_b->M_030 + X_010(dx) * m_b->M_020 + X_020(dx) * m_b->M_010 +
                X_030(dx) * m_b->M_000;
-
   m_a->M_003 = m_b->M_003 + X_001(dx) * m_b->M_002 + X_002(dx) * m_b->M_001 +
                X_003(dx) * m_b->M_000;
-
   m_a->M_210 = m_b->M_210 + X_100(dx) * m_b->M_110 + X_010(dx) * m_b->M_200 +
                X_200(dx) * m_b->M_010 + X_110(dx) * m_b->M_100 +
                X_210(dx) * m_b->M_000;
-
   m_a->M_201 = m_b->M_201 + X_100(dx) * m_b->M_101 + X_001(dx) * m_b->M_200 +
                X_200(dx) * m_b->M_001 + X_101(dx) * m_b->M_100 +
                X_201(dx) * m_b->M_000;
-
   m_a->M_120 = m_b->M_120 + X_010(dx) * m_b->M_110 + X_100(dx) * m_b->M_020 +
                X_020(dx) * m_b->M_100 + X_110(dx) * m_b->M_010 +
                X_120(dx) * m_b->M_000;
-
   m_a->M_021 = m_b->M_021 + X_010(dx) * m_b->M_011 + X_001(dx) * m_b->M_020 +
                X_020(dx) * m_b->M_001 + X_011(dx) * m_b->M_010 +
                X_021(dx) * m_b->M_000;
-
   m_a->M_102 = m_b->M_102 + X_001(dx) * m_b->M_101 + X_100(dx) * m_b->M_002 +
                X_002(dx) * m_b->M_100 + X_101(dx) * m_b->M_001 +
                X_102(dx) * m_b->M_000;
-
   m_a->M_012 = m_b->M_012 + X_001(dx) * m_b->M_011 + X_010(dx) * m_b->M_002 +
                X_002(dx) * m_b->M_010 + X_011(dx) * m_b->M_001 +
                X_012(dx) * m_b->M_000;
-
   m_a->M_111 = m_b->M_111 + X_100(dx) * m_b->M_011 + X_010(dx) * m_b->M_101 +
                X_001(dx) * m_b->M_110 + X_110(dx) * m_b->M_001 +
                X_101(dx) * m_b->M_010 + X_011(dx) * m_b->M_100 +
@@ -1013,7 +1003,6 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   l_b->F_010 += m_a->M_000 * D_010(dx, dy, dz, r_inv);
   l_b->F_001 += m_a->M_000 * D_001(dx, dy, dz, r_inv);
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /*  2nd order multipole term (addition to rank 0)*/
@@ -1043,7 +1032,6 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   l_b->F_101 += m_a->M_000 * D_101(dx, dy, dz, r_inv);
   l_b->F_011 += m_a->M_000 * D_011(dx, dy, dz, r_inv);
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /*  3rd order multipole term (addition to rank 0)*/
@@ -1156,7 +1144,6 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
   la->F_010 += X_000(dx) * lb->F_010;
   la->F_001 += X_000(dx) * lb->F_001;
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* Shift 2nd order multipole term (addition to rank 0)*/
@@ -1181,7 +1168,6 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
   la->F_101 += X_000(dx) * lb->F_101;
   la->F_011 += X_000(dx) * lb->F_011;
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* Shift 3rd order multipole term (addition to rank 0)*/
@@ -1271,6 +1257,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[2] += X_000(dx) * lb->F_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
   /* 1st order interaction */
   gp->a_grav[0] +=
       X_100(dx) * lb->F_200 + X_010(dx) * lb->F_110 + X_001(dx) * lb->F_101;
@@ -1280,6 +1267,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
       X_100(dx) * lb->F_101 + X_010(dx) * lb->F_011 + X_001(dx) * lb->F_002;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
   /* 2nd order interaction */
   gp->a_grav[0] +=
       X_200(dx) * lb->F_300 + X_020(dx) * lb->F_120 + X_002(dx) * lb->F_102;
