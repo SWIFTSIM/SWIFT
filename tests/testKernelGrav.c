@@ -34,7 +34,7 @@
  * Taken from Gadget-2.0.7's forcetree.c lines 2755-2800
  *
  * @param r The distance between particles
- * @param h The cut-off distance of the kernel
+ * @param epsilon The cut-off distance of the kernel
  */
 float gadget(float r, float epsilon) {
 
