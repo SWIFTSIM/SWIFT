@@ -1503,7 +1503,21 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
  * @param e The #engine (to get ti_current).
  */
 void cell_drift_multipole(struct cell *c, const struct engine *e) {
-  error("To be implemented");
+
+  const double timeBase = e->timeBase;
+  const integertime_t ti_old_multipole = c->ti_old_multipole;
+  const integertime_t ti_current = e->ti_current;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old_multipole) * timeBase;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
+
+  /* Update the time of the last drift */
+  c->ti_old_multipole = ti_current;
 }
 
 /**

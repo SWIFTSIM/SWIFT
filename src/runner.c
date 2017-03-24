@@ -1375,8 +1375,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (e->policy & engine_policy_self_gravity) {
         gp->num_interacted++;
-        if (gp->num_interacted - e->s->nr_gparts)
-          error(
+        if (gp->num_interacted != (long long)e->s->nr_gparts)
+          message(
               "g-particle did not interact gravitationally with all other "
               "particles gp->num_interacted=%lld, total_gparts=%zd",
               gp->num_interacted, e->s->nr_gparts);

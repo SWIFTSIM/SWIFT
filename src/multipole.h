@@ -1127,6 +1127,11 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
   /* Initialise everything to zero */
   gravity_field_tensors_init(la);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
+  la->num_interacted = lb->num_interacted;
+#endif
+
   /* Distance to shift by */
   const double dx[3] = {pos_a[0] - pos_b[0], pos_a[1] - pos_b[1],
                         pos_a[2] - pos_b[2]};
@@ -1221,11 +1226,6 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 #error "Missing implementation for order >3"
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
-  la->num_interacted = lb->num_interacted;
 #endif
 }
 

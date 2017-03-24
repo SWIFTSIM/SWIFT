@@ -84,9 +84,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-void runner_dopair_grav_mm(const struct runner *r,
-                           const struct cell *restrict ci,
-                           const struct cell *restrict cj) {
+void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
@@ -97,12 +96,18 @@ void runner_dopair_grav_mm(const struct runner *r,
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (ci == cj) error("Interacting a cell with itself using M2L");
+
   if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
 #endif
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
 
+  /* Do we need to drift the multipole ? */
+  if (cj->ti_old_multipole != e->ti_current) cell_drift_multipole(cj, e);
+
+  /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
               cj->multipole->CoM, periodic * 0);
 
@@ -147,7 +152,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0])  // MATTHIEU sanity check
+  if (ci->width[0] != cj->width[0])
     error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
           cj->width[0]);
 #endif
@@ -532,6 +537,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
+
+  /* Drift our own multipole if need be */
+  if (ci->ti_old_multipole != e->ti_current) cell_drift_multipole(ci, e);
 
   /* Loop over all the cells and go for a p-m interaction if far enough but not
    * too far */
