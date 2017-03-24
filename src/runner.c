@@ -1373,13 +1373,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (e->policy & engine_policy_self_gravity) {
+      if (e->policy & engine_policy_self_gravity && gpart_is_active(gp, e)) {
+
+        /* Check that this gpart has interacted with all the other particles
+         * (via direct or multipoles) in the box */
         gp->num_interacted++;
         if (gp->num_interacted != (long long)e->s->nr_gparts)
-          message(
-              "g-particle did not interact gravitationally with all other "
-              "particles gp->num_interacted=%lld, total_gparts=%zd",
-              gp->num_interacted, e->s->nr_gparts);
+          error(
+              "g-particle (id=%lld, type=%d) did not interact gravitationally "
+              "with all other gparts gp->num_interacted=%lld, total_gparts=%zd",
+              gp->id_or_neg_offset, gp->type, gp->num_interacted,
+              e->s->nr_gparts);
       }
 #endif
     }
