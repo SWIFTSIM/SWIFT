@@ -1726,23 +1726,19 @@ void engine_count_and_link_tasks(struct engine *e) {
     struct task *const t = &sched->tasks[ind];
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
-    
+
     /* Link sort tasks to the next-higher sort task. */
     if (t->type == task_type_sort) {
       struct cell *finger = t->ci->parent;
-      while (finger != NULL && finger->sorts == NULL)
-        finger = finger->parent;
-      if (finger != NULL)
-        scheduler_addunlock(sched, t, finger->sorts);
+      while (finger != NULL && finger->sorts == NULL) finger = finger->parent;
+      if (finger != NULL) scheduler_addunlock(sched, t, finger->sorts);
     }
 
     /* Link drift tasks to the next-higher drift task. */
     else if (t->type == task_type_drift) {
       struct cell *finger = t->ci->parent;
-      while (finger != NULL && finger->drift == NULL)
-        finger = finger->parent;
-      if (finger != NULL)
-        scheduler_addunlock(sched, t, finger->drift);
+      while (finger != NULL && finger->drift == NULL) finger = finger->parent;
+      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift);
     }
 
     /* Link self tasks to cells. */
