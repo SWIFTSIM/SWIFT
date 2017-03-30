@@ -164,7 +164,6 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       /* Add the drift task and its dependencies. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-
       scheduler_addunlock(s, c->drift, c->init);
 
       if (is_self_gravity) {
@@ -1727,16 +1726,27 @@ void engine_count_and_link_tasks(struct engine *e) {
     struct task *const t = &sched->tasks[ind];
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
+    
+    /* Link sort tasks to the next-higher sort task. */
+    if (t->type == task_type_sort) {
+      struct cell *finger = t->ci->parent;
+      while (finger != NULL && finger->sorts == NULL)
+        finger = finger->parent;
+      if (finger != NULL)
+        scheduler_addunlock(sched, t, finger->sorts);
+    }
 
-    /* Link sort tasks together. */
-    if (t->type == task_type_sort && ci->split)
-      for (int j = 0; j < 8; j++)
-        if (ci->progeny[j] != NULL && ci->progeny[j]->sorts != NULL) {
-          scheduler_addunlock(sched, ci->progeny[j]->sorts, t);
-        }
+    /* Link drift tasks to the next-higher drift task. */
+    else if (t->type == task_type_drift) {
+      struct cell *finger = t->ci->parent;
+      while (finger != NULL && finger->drift == NULL)
+        finger = finger->parent;
+      if (finger != NULL)
+        scheduler_addunlock(sched, t, finger->drift);
+    }
 
     /* Link self tasks to cells. */
-    if (t->type == task_type_self) {
+    else if (t->type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
@@ -1989,16 +1999,16 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
 
-    /* Sort tasks depend on the drift of the super-cell. */
+    /* Sort tasks depend on the drift of the cell. */
     if (t->type == task_type_sort) {
-      scheduler_addunlock(sched, t->ci->super->drift, t);
+      scheduler_addunlock(sched, t->ci->drift, t);
     }
 
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->super->drift, t);
+      scheduler_addunlock(sched, t->ci->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -2033,9 +2043,8 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->super->drift, t);
-      if (t->ci->super != t->cj->super)
-        scheduler_addunlock(sched, t->cj->super->drift, t);
+      scheduler_addunlock(sched, t->ci->drift, t);
+      scheduler_addunlock(sched, t->cj->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2089,7 +2098,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
              t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->super->drift, t);
+      scheduler_addunlock(sched, t->ci->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2134,9 +2143,8 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
              t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->super->drift, t);
-      if (t->ci->super != t->cj->super)
-        scheduler_addunlock(sched, t->cj->super->drift, t);
+      scheduler_addunlock(sched, t->ci->drift, t);
+      scheduler_addunlock(sched, t->cj->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2404,7 +2412,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, ci->sorts);
-          scheduler_activate(s, ci->super->drift);
+          scheduler_activate(s, ci->drift);
         }
         if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2412,7 +2420,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, cj->sorts);
-          scheduler_activate(s, cj->super->drift);
+          scheduler_activate(s, cj->drift);
         }
       }
 
@@ -2491,12 +2499,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
       } else {
-        scheduler_activate(s, ci->super->drift);
-        scheduler_activate(s, cj->super->drift);
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
       }
 #else
-      scheduler_activate(s, ci->super->drift);
-      scheduler_activate(s, cj->super->drift);
+      scheduler_activate(s, ci->drift);
+      scheduler_activate(s, cj->drift);
 #endif
     }
 

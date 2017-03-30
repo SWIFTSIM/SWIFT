@@ -1226,7 +1226,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, ci->sorts);
-        scheduler_activate(s, ci->super->drift);
+        scheduler_activate(s, ci->drift);
       }
       if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1234,7 +1234,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, cj->sorts);
-        scheduler_activate(s, cj->super->drift);
+        scheduler_activate(s, cj->drift);
       }
     }
 
@@ -1321,12 +1321,12 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, l->t);
         }
       } else {
-        scheduler_activate(s, ci->super->drift);
-        scheduler_activate(s, cj->super->drift);
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
       }
 #else
-      scheduler_activate(s, ci->super->drift);
-      scheduler_activate(s, cj->super->drift);
+      scheduler_activate(s, ci->drift);
+      scheduler_activate(s, cj->drift);
 #endif
     }
   }
