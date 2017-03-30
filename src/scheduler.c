@@ -175,6 +175,13 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
           /* Depend on local sorts on this cell. */
           if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
+          
+          /* Add a drift task to this cell. */
+          lock_lock(&ci->lock);
+          if (ci->drift == NULL)
+            ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                          0, ci, NULL, 0);
+          lock_unlock_blind(&ci->lock);
 
           /* Otherwise, make tasks explicitly. */
         } else {
@@ -245,6 +252,19 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           /* Depend on the sort tasks of both cells. */
           if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
           if (cj->sorts != NULL) scheduler_addunlock(s, cj->sorts, t);
+          
+          /* Add a drift task to the cells, if needed. */
+          lock_lock(&ci->lock);
+          if (ci->drift == NULL)
+            ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                          0, ci, NULL, 0);
+          lock_unlock_blind(&ci->lock);
+          lock_lock(&cj->lock);
+          if (cj->drift == NULL)
+            cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                          0, cj, NULL, 0);
+          lock_unlock_blind(&cj->lock);
+
 
           /* Otherwise, split it. */
         } else {
@@ -623,8 +643,11 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         /* Otherwise, if not spilt, stitch-up the sorting. */
       } else {
 
-        /* Create the sort for ci. */
+        /* Create the drift and sort for ci. */
         lock_lock(&ci->lock);
+        if (ci->drift == NULL)
+          ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+            0, ci, NULL, 0);
         if (ci->sorts == NULL)
           ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
                                         1 << sid, 0, ci, NULL, 0);
@@ -635,6 +658,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the sort for cj. */
         lock_lock(&cj->lock);
+        if (cj->drift == NULL)
+          cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+            0, cj, NULL, 0);
         if (cj->sorts == NULL)
           cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
                                         1 << sid, 0, cj, NULL, 0);
@@ -1109,7 +1135,7 @@ void scheduler_start(struct scheduler *s) {
       } else if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort && t->type)
+            t->type != task_type_sort && t->type != task_type_drift && t->type)
           error(
               "Task (type='%s/%s') should not have been skipped "
               "ti_current=%lld "
