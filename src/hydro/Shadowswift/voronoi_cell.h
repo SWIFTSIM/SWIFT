@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
 
-#include "./const.h"
+#ifndef SWIFT_VORONOI_CELL_H
+#define SWIFT_VORONOI_CELL_H
 
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(HOPKINS_PE_SPH)
-#include "./hydro/PressureEntropy/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
-#elif defined(SHADOWFAX_SPH)
-#include "./hydro/Shadowswift/hydro_io.h"
+#if defined(HYDRO_DIMENSION_1D)
+#include "voronoi1d_cell.h"
+#elif defined(HYDRO_DIMENSION_2D)
+#include "voronoi2d_cell.h"
+#elif defined(HYDRO_DIMENSION_3D)
+#include "voronoi3d_cell.h"
 #else
-#error "Invalid choice of SPH variant"
+#error "You have to select a dimension for the hydro!"
 #endif
 
-#endif /* SWIFT_HYDRO_IO_H */
+#endif  // SWIFT_VORONOI_CELL_H
