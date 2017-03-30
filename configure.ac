@@ -802,7 +802,7 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravtiational field expansion @<:@ default: 3@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 3@:>@]
    )],
    [with_multipole_order="$withval"],
    [with_multipole_order="3"]
