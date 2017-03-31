@@ -206,7 +206,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   float fa, fb, fc, fs;
   float tmp, tmp2;
   int mflag;
-  int i;
 
   a = lower_limit;
   b = upper_limit;
@@ -243,7 +242,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   c = a;
   fc = fa;
   mflag = 1;
-  i = 0;
 
   while (!(fb == 0.0f) && (fabs(a - b) > error_tol * 0.5f * (a + b))) {
     if ((fa != fc) && (fb != fc)) /* Inverse quadratic interpolation */
@@ -286,7 +284,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
       fa = fb;
       fb = tmp;
     }
-    i++;
   }
   return b;
 }
