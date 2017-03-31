@@ -13,6 +13,9 @@ TimeIntegration:
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
+Scheduler:
+  cell_split_size:     50
+  
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
@@ -23,6 +26,13 @@ Snapshots:
 Statistics:
   delta_time:          1e-2 # Time between statistics output
 
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                   0.025    # Constant dimensionless multiplier for time integration. 
+  epsilon:               0.0001   # Softening length (in internal units).
+  a_smooth:              1000.
+  r_cut:                 4.
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).

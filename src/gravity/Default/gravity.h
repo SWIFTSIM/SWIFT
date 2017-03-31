@@ -27,6 +27,8 @@
 /**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
+ * We use Gadget-2's type 0 time-step criterion.
+ *
  * @param gp Pointer to the g-particle data.
  * @param grav_props Constants used in the gravity scheme.
  */
@@ -38,9 +40,10 @@ gravity_compute_timestep_self(const struct gpart* const gp,
                     gp->a_grav[1] * gp->a_grav[1] +
                     gp->a_grav[2] * gp->a_grav[2];
 
-  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
+  const float ac_inv = (ac2 > 0.f) ? 1.f/sqrtf(ac2) : FLT_MAX;
 
-  const float dt = sqrtf(2.f * grav_props->eta * gp->epsilon / ac);
+  /* Note that 0.714285714 = 2. (from Gadget) / 2.8 (Plummer softening) */
+  const float dt = sqrtf(0.714285714f * grav_props->eta * gp->epsilon * ac_inv);
 
   return dt;
 }
@@ -62,7 +65,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[2] = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  gp->mass_interacted = 0.;
+  gp->num_interacted = 0;
 #endif
 }
 
@@ -113,9 +116,22 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
 
   gp->time_bin = 0;
-  gp->epsilon = 0.;  // MATTHIEU
+  gp->epsilon = 0.f;
 
   gravity_init_gpart(gp);
+}
+
+/**
+ * @brief Initialises the softening of the g-particles
+ *
+ * @param gp The particle to act upon.
+ * @param grav_props The properties of the gravity scheme.
+ */
+__attribute__((always_inline)) INLINE static void gravity_init_softening(
+    struct gpart* gp, const struct gravity_props* grav_props) {
+
+  /* Note 2.8 is the Plummer-equivalent correction */
+  gp->epsilon = 2.8f * grav_props->epsilon;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */
