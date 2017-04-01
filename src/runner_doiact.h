@@ -3056,7 +3056,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Trying to interact unsorted cells.");
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && (DOPAIR1_BRANCH == runner_dopair1_density_branch)
- if(!space_iscorner(sid))
+ if(!sort_is_corner(sid))
    runner_dopair1_density_vec(r, ci, cj);
  else
   DOPAIR1(r, ci, cj);
