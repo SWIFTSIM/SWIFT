@@ -172,17 +172,6 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 }
 
 /**
- * @brief Determines whether a pair of cells are corner to corner.
- *
- * @param sort ID
- *
- * @return True if corner to corner
- */
-int space_iscorner(int sid) {
-  return (sid == 0 || sid == 2 || sid == 6 || sid == 8);
-}
-
-/**
  * @brief Recursively dismantle a cell tree.
  *
  * @param s The #space.
@@ -2111,10 +2100,10 @@ void space_split_recursive(struct space *s, struct cell *c,
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
-          CoM[0] += m->CoM[0] * m->m_pole.mass;
-          CoM[1] += m->CoM[1] * m->m_pole.mass;
-          CoM[2] += m->CoM[2] * m->m_pole.mass;
-          mass += m->m_pole.mass;
+          CoM[0] += m->CoM[0] * m->m_pole.M_000;
+          CoM[1] += m->CoM[1] * m->m_pole.M_000;
+          CoM[2] += m->CoM[2] * m->m_pole.M_000;
+          mass += m->m_pole.M_000;
         }
       }
       c->multipole->CoM[0] = CoM[0] / mass;
@@ -2702,6 +2691,8 @@ void space_init(struct space *s, const struct swift_params *params,
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
+
+  hydro_space_init(&s->hs, s);
 
   /* Set the particles in a state where they are ready for a run */
   space_init_parts(s);

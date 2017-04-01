@@ -26,7 +26,7 @@
 #include "cell.h"
 #include "error.h"
 #include "part.h"
-#include "sort.h"
+#include "sort_part.h"
 #include "vector.h"
 
 #define NUM_VEC_PROC 2

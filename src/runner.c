@@ -55,6 +55,7 @@
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
+#include "sort_part.h"
 #include "sourceterms.h"
 #include "space.h"
 #include "stars.h"

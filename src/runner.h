@@ -24,7 +24,6 @@
 #define SWIFT_RUNNER_H
 
 #include "cache.h"
-#include "sort.h"
 
 extern const double runner_shift[13][3];
 extern const char runner_flip[27];
