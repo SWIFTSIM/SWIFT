@@ -40,7 +40,7 @@ gravity_compute_timestep_self(const struct gpart* const gp,
                     gp->a_grav[1] * gp->a_grav[1] +
                     gp->a_grav[2] * gp->a_grav[2];
 
-  const float ac_inv = (ac2 > 0.f) ? 1.f/sqrtf(ac2) : FLT_MAX;
+  const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
 
   /* Note that 0.714285714 = 2. (from Gadget) / 2.8 (Plummer softening) */
   const float dt = sqrtf(0.714285714f * grav_props->eta * gp->epsilon * ac_inv);
