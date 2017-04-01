@@ -53,6 +53,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "runner.h"
+#include "sort_part.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -62,36 +63,6 @@ int space_splitsize = space_splitsize_default;
 int space_subsize = space_subsize_default;
 int space_maxsize = space_maxsize_default;
 int space_maxcount = space_maxcount_default;
-
-/* Map shift vector to sortlist. */
-const int sortlistID[27] = {
-    /* ( -1 , -1 , -1 ) */ 0,
-    /* ( -1 , -1 ,  0 ) */ 1,
-    /* ( -1 , -1 ,  1 ) */ 2,
-    /* ( -1 ,  0 , -1 ) */ 3,
-    /* ( -1 ,  0 ,  0 ) */ 4,
-    /* ( -1 ,  0 ,  1 ) */ 5,
-    /* ( -1 ,  1 , -1 ) */ 6,
-    /* ( -1 ,  1 ,  0 ) */ 7,
-    /* ( -1 ,  1 ,  1 ) */ 8,
-    /* (  0 , -1 , -1 ) */ 9,
-    /* (  0 , -1 ,  0 ) */ 10,
-    /* (  0 , -1 ,  1 ) */ 11,
-    /* (  0 ,  0 , -1 ) */ 12,
-    /* (  0 ,  0 ,  0 ) */ 0,
-    /* (  0 ,  0 ,  1 ) */ 12,
-    /* (  0 ,  1 , -1 ) */ 11,
-    /* (  0 ,  1 ,  0 ) */ 10,
-    /* (  0 ,  1 ,  1 ) */ 9,
-    /* (  1 , -1 , -1 ) */ 8,
-    /* (  1 , -1 ,  0 ) */ 7,
-    /* (  1 , -1 ,  1 ) */ 6,
-    /* (  1 ,  0 , -1 ) */ 5,
-    /* (  1 ,  0 ,  0 ) */ 4,
-    /* (  1 ,  0 ,  1 ) */ 3,
-    /* (  1 ,  1 , -1 ) */ 2,
-    /* (  1 ,  1 ,  0 ) */ 1,
-    /* (  1 ,  1 ,  1 ) */ 0};
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.

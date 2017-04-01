@@ -66,6 +66,7 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "sort_part.h"
 #include "statistics.h"
 #include "timers.h"
 #include "tools.h"
