@@ -43,6 +43,8 @@
 #define VORONOI2D_BOX_TOP 18446744073709551604llu
 #define VORONOI2D_BOX_BOTTOM 18446744073709551605llu
 
+#define VORONOI2D_TOLERANCE 1.e-6f
+
 /**
  * @brief Initialize a 2D Voronoi cell.
  *
@@ -152,7 +154,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
   /* start testing a random vertex: the first one */
   test = cell->vertices[0][0] * half_dx[0] + cell->vertices[0][1] * half_dx[1] -
          r2;
-  if (test < 0.) {
+  if (test < -VORONOI2D_TOLERANCE) {
 /* vertex is below midline */
 #ifdef VORONOI_VERBOSE
     message("First vertex is below midline (%g %g --> %g)!",
@@ -215,7 +217,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
     i = 1;
     test = cell->vertices[i][0] * half_dx[0] +
            cell->vertices[i][1] * half_dx[1] - r2;
-    while (i < cell->nvert && test >= 0.) {
+    while (i < cell->nvert && test > -VORONOI2D_TOLERANCE) {
       /* make sure we always store the most recent test result */
       a1 = test;
       ++i;
@@ -272,7 +274,7 @@ __attribute__((always_inline)) INLINE void voronoi_cell_interact(
          r2;
   /* this loop can never deadlock, as we know there is at least 1 vertex below
      the midline */
-  while (test >= 0.) {
+  while (test > -VORONOI2D_TOLERANCE) {
     /* make sure we always store the most recent test result */
     a2 = test;
     i += increment;

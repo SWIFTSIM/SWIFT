@@ -77,8 +77,31 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
-                 hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
+		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
+                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
+                 hydro/Gizmo/hydro_part.h \
+                 hydro/Gizmo/hydro_gradients_gizmo.h \
+                 hydro/Gizmo/hydro_gradients.h \
+                 hydro/Gizmo/hydro_gradients_sph.h \
+                 hydro/Gizmo/hydro_slope_limiters_cell.h \
+                 hydro/Gizmo/hydro_slope_limiters_face.h \
+                 hydro/Gizmo/hydro_slope_limiters.h \
+                 hydro/Shadowswift/hydro_debug.h \
+                 hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
+                 hydro/Shadowswift/hydro_iact.h \
+                 hydro/Shadowswift/hydro_io.h \
+                 hydro/Shadowswift/hydro_part.h \
+                 hydro/Shadowswift/hydro_slope_limiters_cell.h \
+                 hydro/Shadowswift/hydro_slope_limiters_face.h \
+                 hydro/Shadowswift/hydro_slope_limiters.h \
+                 hydro/Shadowswift/voronoi1d_algorithm.h \
+                 hydro/Shadowswift/voronoi1d_cell.h \
+                 hydro/Shadowswift/voronoi2d_algorithm.h \
+                 hydro/Shadowswift/voronoi2d_cell.h \
+                 hydro/Shadowswift/voronoi3d_algorithm.h \
+                 hydro/Shadowswift/voronoi3d_cell.h \
+                 hydro/Shadowswift/voronoi_algorithm.h \
+                 hydro/Shadowswift/voronoi_cell.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
 	 	 stars.h stars_io.h \
