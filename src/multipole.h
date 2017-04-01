@@ -179,9 +179,9 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
 INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 
   /* Move the whole thing according to bulk motion */
-  m->CoM[0] += m->m_pole.vel[0];
-  m->CoM[1] += m->m_pole.vel[1];
-  m->CoM[2] += m->m_pole.vel[2];
+  m->CoM[0] += m->m_pole.vel[0] * dt;
+  m->CoM[1] += m->m_pole.vel[1] * dt;
+  m->CoM[2] += m->m_pole.vel[2] * dt;
 }
 
 INLINE static void gravity_field_tensors_init(struct grav_tensor *l) {
