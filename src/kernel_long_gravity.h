@@ -37,14 +37,15 @@
 __attribute__((always_inline)) INLINE static void kernel_long_grav_eval(
     float u, float *const W) {
 
-  const float arg1 = u * 0.5f;
-  const float arg2 = u * one_over_sqrt_pi;
-  const float arg3 = -arg1 * arg1;
+  /* const float arg1 = u * 0.5f; */
+  /* const float arg2 = u * one_over_sqrt_pi; */
+  /* const float arg3 = -arg1 * arg1; */
 
-  const float term1 = erfcf(arg1);
-  const float term2 = arg2 * expf(arg3);
+  /* const float term1 = erfcf(arg1); */
+  /* const float term2 = arg2 * expf(arg3); */
 
-  *W = term1 + term2;
+  /* *W = term1 + term2; */
+  *W = 1.f;
 }
 
 #endif  // SWIFT_KERNEL_LONG_GRAVITY_H

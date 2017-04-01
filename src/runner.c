@@ -478,6 +478,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   const int count = c->count;
   const int gcount = c->gcount;
   const struct engine *e = r->e;
+  const struct space *s = e->s;
 
   TIMER_TIC;
 
@@ -486,7 +487,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   /* Reset the gravity acceleration tensors */
   if (e->policy & engine_policy_self_gravity)
-    gravity_field_tensor_init(c->multipole);
+    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Recurse? */
   if (c->split) {
@@ -503,7 +504,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Get ready for a density calculation */
-        hydro_init_part(p);
+        hydro_init_part(p, &s->hs);
       }
     }
 
@@ -585,6 +586,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
+  const struct space *s = e->s;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float target_wcount = e->hydro_properties->target_neighbours;
   const float max_wcount =
@@ -665,7 +667,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            hydro_init_part(p);
+            hydro_init_part(p, &s->hs);
 
             /* Off we go ! */
             continue;
@@ -1360,13 +1362,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (e->policy & engine_policy_self_gravity) {
-        gp->mass_interacted += gp->mass;
-        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
+      if (e->policy & engine_policy_self_gravity && gpart_is_active(gp, e)) {
+
+        /* Check that this gpart has interacted with all the other particles
+         * (via direct or multipoles) in the box */
+        gp->num_interacted++;
+        if (gp->num_interacted != (long long)e->s->nr_gparts)
           error(
-              "g-particle did not interact gravitationally with all other "
-              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
-              gp->mass_interacted, e->s->total_mass, gp->mass);
+              "g-particle (id=%lld, type=%d) did not interact gravitationally "
+              "with all other gparts gp->num_interacted=%lld, total_gparts=%zd",
+              gp->id_or_neg_offset, gp->type, gp->num_interacted,
+              e->s->nr_gparts);
       }
 #endif
     }
@@ -1838,7 +1844,7 @@ void *runner_main(void *data) {
           // runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_down:
-          runner_do_grav_down(r, t->ci);
+          runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_top_level:
           // runner_do_grav_top_level(r);
