@@ -33,7 +33,7 @@ struct entry {
 };
 
 /* Orientation of the cell pairs */
-const double runner_shift[13][3] = {
+static const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
     {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
     {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
@@ -50,8 +50,38 @@ const double runner_shift[13][3] = {
 };
 
 /* Does the axis need flipping ? */
-const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+/* Map shift vector to sortlist. */
+static const int sortlistID[27] = {
+    /* ( -1 , -1 , -1 ) */ 0,
+    /* ( -1 , -1 ,  0 ) */ 1,
+    /* ( -1 , -1 ,  1 ) */ 2,
+    /* ( -1 ,  0 , -1 ) */ 3,
+    /* ( -1 ,  0 ,  0 ) */ 4,
+    /* ( -1 ,  0 ,  1 ) */ 5,
+    /* ( -1 ,  1 , -1 ) */ 6,
+    /* ( -1 ,  1 ,  0 ) */ 7,
+    /* ( -1 ,  1 ,  1 ) */ 8,
+    /* (  0 , -1 , -1 ) */ 9,
+    /* (  0 , -1 ,  0 ) */ 10,
+    /* (  0 , -1 ,  1 ) */ 11,
+    /* (  0 ,  0 , -1 ) */ 12,
+    /* (  0 ,  0 ,  0 ) */ 0,
+    /* (  0 ,  0 ,  1 ) */ 12,
+    /* (  0 ,  1 , -1 ) */ 11,
+    /* (  0 ,  1 ,  0 ) */ 10,
+    /* (  0 ,  1 ,  1 ) */ 9,
+    /* (  1 , -1 , -1 ) */ 8,
+    /* (  1 , -1 ,  0 ) */ 7,
+    /* (  1 , -1 ,  1 ) */ 6,
+    /* (  1 ,  0 , -1 ) */ 5,
+    /* (  1 ,  0 ,  0 ) */ 4,
+    /* (  1 ,  0 ,  1 ) */ 3,
+    /* (  1 ,  1 , -1 ) */ 2,
+    /* (  1 ,  1 ,  0 ) */ 1,
+    /* (  1 ,  1 ,  1 ) */ 0};
 
 /**
  * @brief Determines whether a pair of cells are corner to corner.
@@ -72,7 +102,8 @@ __attribute__((always_inline)) INLINE static int sort_is_corner(int sid) {
  * @return 1 if edge to edge, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int sort_is_edge(int sid) {
-  return (sid == 1 || sid == 3 || sid == 5 || sid == 7 || sid == 9 || sid == 11);
+  return (sid == 1 || sid == 3 || sid == 5 || sid == 7 || sid == 9 ||
+          sid == 11);
 }
 
 /**
@@ -85,6 +116,5 @@ __attribute__((always_inline)) INLINE static int sort_is_edge(int sid) {
 __attribute__((always_inline)) INLINE static int sort_is_face(int sid) {
   return (sid == 4 || sid == 10 || sid == 12);
 }
-
 
 #endif /* SWIFT_SORT_PART_H */
