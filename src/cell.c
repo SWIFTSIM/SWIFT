@@ -1017,14 +1017,15 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
- * @brief Checks that a cell is at the current point in time
+ * @brief Checks that the particles in a cell are at the
+ * current point in time
  *
  * Calls error() if the cell is not at the current time.
  *
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_drift_point(struct cell *c, void *data) {
+void cell_check_particle_drift_point(struct cell *c, void *data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1051,6 +1052,34 @@ void cell_check_drift_point(struct cell *c, void *data) {
     if (c->sparts[i].ti_drift != ti_drift)
       error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
             c->sparts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the multipole of a cell is at the current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_multipole_drift_point(struct cell *c, void *data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  if (c->ti_old_multipole != ti_drift)
+    error(
+        "Cell multipole in an incorrect time-zone! c->ti_old_multipole=%lld "
+        "ti_drift=%lld",
+        c->ti_old_multipole, ti_drift);
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

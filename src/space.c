@@ -2819,11 +2819,26 @@ void space_link_cleanup(struct space *s) {
  *
  * @param s The #space to check.
  * @param ti_drift The (integer) time.
+ * @param multipole Are we also checking the multipoles ?
  */
-void space_check_drift_point(struct space *s, integertime_t ti_drift) {
+void space_check_drift_point(struct space *s, integertime_t ti_drift,
+                             int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_particle_drift_point, &ti_drift);
+  if (multipole)
+    space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+void space_check_top_multipoles_drift_point(struct space *s,
+                                            integertime_t ti_drift) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_check_multipole_drift_point(&s->cells_top[i], &ti_drift);
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
