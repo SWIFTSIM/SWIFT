@@ -76,6 +76,9 @@ enum {
 /* The timers. */
 extern ticks timers[timer_count];
 
+/* The timer names. */
+extern char *timers_names[];
+
 /* Mask for all timers. */
 #define timers_mask_all ((1ull << timer_count) - 1)
 

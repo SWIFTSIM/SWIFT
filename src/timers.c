@@ -29,6 +29,23 @@
 /* The timers. */
 ticks timers[timer_count];
 
+/* Timer names. */
+char *timers_names[timer_count] = {
+    "none",               "prepare",             "init",
+    "drift",              "kick1",               "kick2",
+    "timestep",           "endforce",            "dosort",
+    "doself_density",     "doself_gradient",     "doself_force",
+    "doself_grav_pp",     "dopair_density",      "dopair_gradient",
+    "dopair_force",       "dopair_grav_pm",      "dopair_grav_mm",
+    "dopair_grav_pp",     "dograv_external",     "dosource",
+    "dosub_self_density", "dosub_self_gradient", "dosub_self_force",
+    "dosub_self_grav",    "dosub_pair_density",  "dosub_pair_gradient",
+    "dosub_pair_force",   "dosub_pair_grav",     "dopair_subset",
+    "do_ghost",           "do_extra_ghost",      "dorecv_part",
+    "dorecv_gpart",       "dorecv_spart",        "gettask",
+    "qget",               "qsteal",              "runners",
+    "step",               "do_cooling", };
+
 /**
  * @brief Re-set the timers.
  *
