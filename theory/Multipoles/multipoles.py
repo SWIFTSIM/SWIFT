@@ -227,7 +227,7 @@ if order > 0:
 
 # Loop over LHS order
 for l in range(order + 1):
-    print "/*  %s order multipole term (addition to rank %d)*/"%(ordinal(order), l)
+    print "/* Compute %s order field tensor terms (addition to rank %d) */"%(ordinal(order), l)
 
     for i in range(l+1):
         for j in range(l+1):
@@ -245,7 +245,7 @@ for l in range(order + 1):
                                     else:
                                         print "+",
                                     print "m_a->M_%d%d%d * D_%d%d%d(dx, dy, dz, r_inv)"%(ii,jj,kk,i+ii,j+jj,k+kk),
-                    print ""
+                    print ";"
     print ""
     
 if order > 0:
@@ -254,3 +254,40 @@ if order > 0:
 
 print ""
 print "-------------------------------------------------"
+
+print "gravity_L2L():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+
+# Loop over LHS order
+for l in range(order + 1):
+    print "/* Shift %s order field tensor terms (addition to rank %d) */"%(ordinal(order), l)
+
+    for i in range(l+1):
+        for j in range(l+1):
+            for k in range(l+1):
+                if i + j + k == l:
+                    print "la->F_%d%d%d +="%(i,j,k),
+
+                    first = True
+                    for ii in range(order+1):
+                        for jj in range(order+1):
+                            for kk in range(order+1):
+                                if ii + jj + kk  == order - l:
+                                    if first:
+                                        first = False
+                                    else:
+                                        print "+",
+                                    print "X_%d%d%d(dx) * lb->F_%d%d%d"%(ii,jj,kk,i+ii,j+jj,k+kk),
+                    print ";"
+    print ""
+    
+if order > 0:
+    print "#endif"
+
+
+print ""
+print "-------------------------------------------------"
+
