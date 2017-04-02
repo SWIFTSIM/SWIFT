@@ -596,10 +596,15 @@ int main(int argc, char *argv[]) {
   engine_dump_snapshot(&e);
 
   /* Legend */
-  if (myrank == 0)
+  if (myrank == 0) {
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
+    printf("timers: ");
+    for (int k = 0; k < timer_count; k++)
+      printf("%s\t", timers_names[k]);
+    printf("\n");
+  }
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
@@ -609,6 +614,12 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
+    
+    /* Print the timers. */
+    printf("timers: ");
+    for (int k = 0; k < timer_count; k++)
+      printf("%.3f\t", clocks_from_ticks(timers[k]));
+    printf("\n");
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
