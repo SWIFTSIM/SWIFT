@@ -287,6 +287,47 @@ for l in range(order + 1):
 if order > 0:
     print "#endif"
 
+print ""
+print "-------------------------------------------------"
+
+print "gravity_L2P():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+
+    print "/* %s order contributions */"%(ordinal(order-1))
+
+    for r in range(3):
+        print "gp->a_grav[%d] +="%(r),
+
+        first = True
+        for i in range(order + 1):
+            for j in range(order + 1):
+                for k in range(order + 1):
+                    if i + j + k == order-1:
+                        if first:
+                            first = False
+                        else:
+                            print "+",
+                        if r == 0:
+                            ii = i+1
+                            jj = j
+                            kk = k
+                        if r == 1:
+                            ii = i
+                            jj = j+1
+                            kk = k
+                        if r == 2:
+                            ii = i
+                            jj = j
+                            kk = k+1
+                        print "X_%d%d%d(dx) * lb->F_%d%d%d"%(i,j,k,ii,jj,kk),
+        print ";"
+
+    print ""
+if order > 0:
+    print "#endif"
 
 print ""
 print "-------------------------------------------------"
