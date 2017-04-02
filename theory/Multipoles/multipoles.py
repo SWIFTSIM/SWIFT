@@ -101,6 +101,45 @@ if order > 0:
 print ""
 print "-------------------------------------------------"
 
+print "gravity_multipole_equal():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d"%(order-1)
+
+# Create all the terms relevent for this order
+print "/* Manhattan Norm of %s order terms */"%ordinal(order)
+print "const float order%d_norm = "%order,
+first = True
+for i in range(order+1):
+    for j in range(order+1):
+        for k in range(order+1):
+            if i + j + k == order:
+                if first:
+                    first = False
+                else:
+                    print "+",
+                print "fabsf(ma->M_%d%d%d)"%(i,j,k),
+                print "+ fabsf(mb->M_%d%d%d)"%(i,j,k),
+print ";\n"
+print "/* Compare %s order terms above 1%% of norm */"%ordinal(order)
+for i in range(order+1):
+    for j in range(order+1):
+        for k in range(order+1):
+            if i + j + k == order:
+                print "if (fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > order%d_norm &&"%(i,j,k,i,j,k,order)
+                print "    fabsf(ma->M_%d%d%d - mb->M_%d%d%d) / fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > tolerance) {"%(i,j,k,i,j,k,i,j,k,i,j,k)
+                print "  message(\"M_%d%d%d term different\");"%(i,j,k)
+                print "  return 0;"
+                print "}"
+
+if order > 0:
+    print "#endif"
+
+
+print ""
+print "-------------------------------------------------"
+
 print "gravity_P2M(): (loop)"
 print "-------------------------------------------------\n"
 
