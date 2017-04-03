@@ -539,6 +539,11 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_init(r, c->progeny[k], 0);
   } else {
+  
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!cell_is_drifted(c, e))
+      error("Trying to init undrifted cell.");
+#endif
 
     /* Loop over the parts in this cell. */
     for (int i = 0; i < count; i++) {
