@@ -1320,13 +1320,15 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-      } else {
+      } else if (t->type == task_type_pair) {
         scheduler_activate(s, ci->drift);
         scheduler_activate(s, cj->drift);
       }
 #else
-      scheduler_activate(s, ci->drift);
-      scheduler_activate(s, cj->drift);
+      if (t->type == task_type_pair) {
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
+      }
 #endif
     }
   }
