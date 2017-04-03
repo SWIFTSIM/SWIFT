@@ -1730,10 +1730,9 @@ void engine_count_and_link_tasks(struct engine *e) {
 
     /* Link drift tasks to the next-higher drift task. */
     else if (t->type == task_type_drift) {
-      struct cell *finger = t->ci->parent;
+      struct cell *finger = ci->parent;
       while (finger != NULL && finger->drift == NULL) finger = finger->parent;
       if (finger != NULL) scheduler_addunlock(sched, t, finger->drift);
-      scheduler_addunlock(sched, t, ci->super->init);
     }
 
     /* Link self tasks to cells. */
@@ -2088,9 +2087,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift, t);
-
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -2132,10 +2128,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair &&
              t->subtype == task_subtype_density) {
-
-      /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift, t);
-      scheduler_addunlock(sched, t->cj->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2489,13 +2481,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, l->t);
         }
 
-      } else {
+      } else if (t->type == task_type_pair) {
         scheduler_activate(s, ci->drift);
         scheduler_activate(s, cj->drift);
       }
 #else
-      scheduler_activate(s, ci->drift);
-      scheduler_activate(s, cj->drift);
+      if (t->type == task_type_pair) {
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
+      }
 #endif
     }
 
