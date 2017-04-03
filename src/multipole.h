@@ -572,6 +572,7 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
     return 0;
   }
 #endif
+  tolerance *= 10.;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
   /* Manhattan Norm of 3rd order terms */
   const float order3_norm =
