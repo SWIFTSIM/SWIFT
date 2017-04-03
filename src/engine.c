@@ -935,9 +935,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      if (ci->super->drift == NULL)
-        ci->super->drift = scheduler_addtask(
-            s, task_type_drift, task_subtype_none, 0, 0, ci->super, NULL, 0);
+      if (ci->drift == NULL)
+        ci->drift = scheduler_addtask(
+            s, task_type_drift, task_subtype_none, 0, 0, ci, NULL, 0);
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
                                0, ci, cj, 0);
@@ -978,7 +978,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->super->drift, t_xv);
+      scheduler_addunlock(s, ci->drift, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -2439,8 +2439,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (cj->super->drift)
-          scheduler_activate(s, cj->super->drift);
+        if (cj->drift)
+          scheduler_activate(s, cj->drift);
         else
           error("Drift task missing !");
 
@@ -2475,8 +2475,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (ci->super->drift)
-          scheduler_activate(s, ci->super->drift);
+        if (ci->drift)
+          scheduler_activate(s, ci->drift);
         else
           error("Drift task missing !");
 
