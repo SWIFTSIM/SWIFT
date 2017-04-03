@@ -49,6 +49,8 @@ enum {
   timer_dopair_grav_mm,
   timer_dopair_grav_pp,
   timer_dograv_external,
+  timer_dograv_down,
+  timer_dograv_long_range,
   timer_dosource,
   timer_dosub_self_density,
   timer_dosub_self_gradient,

@@ -52,8 +52,8 @@ struct gpart {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Total mass this gpart interacted with */
-  double mass_interacted;
+  /* Numer of gparts this gpart interacted with */
+  long long num_interacted;
 
   /* Time of the last drift */
   integertime_t ti_drift;
@@ -66,7 +66,7 @@ struct gpart {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
   /* Brute-force particle acceleration. */
-  float a_grav_exact[3];
+  double a_grav_exact[3];
 
 #endif
 

@@ -56,9 +56,6 @@ extern int space_maxsize;
 extern int space_subsize;
 extern int space_maxcount;
 
-/* Map shift vector to sortlist. */
-extern const int sortlistID[27];
-
 /**
  * @brief The space in which the cells and particles reside.
  */
@@ -75,9 +72,6 @@ struct space {
 
   /*! Are we doing gravity? */
   int gravity;
-
-  /*! Total mass in the system */
-  double total_mass;
 
   /*! Width of the top-level cells. */
   double width[3];
