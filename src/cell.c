@@ -1266,8 +1266,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (cj->super->drift)
-          scheduler_activate(s, cj->super->drift);
+        if (cj->drift)
+          scheduler_activate(s, cj->drift);
         else
           error("Drift task missing !");
 
@@ -1302,8 +1302,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (ci->super->drift)
-          scheduler_activate(s, ci->super->drift);
+        if (ci->drift)
+          scheduler_activate(s, ci->drift);
         else
           error("Drift task missing !");
 
