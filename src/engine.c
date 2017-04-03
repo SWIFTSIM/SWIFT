@@ -3312,7 +3312,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       /* Drift all the particles */
       cell_drift_particles(c, e);
 
-      /* Drift the multipole */
+      /* Drift the multipoles */
       if (e->policy & engine_policy_self_gravity)
         cell_drift_all_multipoles(c, e);
     }

@@ -1077,8 +1077,8 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
   if (c->ti_old_multipole != ti_drift)
     error(
         "Cell multipole in an incorrect time-zone! c->ti_old_multipole=%lld "
-        "ti_drift=%lld",
-        c->ti_old_multipole, ti_drift);
+        "ti_drift=%lld (depth=%d)",
+        c->ti_old_multipole, ti_drift, c->depth);
 
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -1504,18 +1504,17 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+  
+  /* Drift the multipole */
+  if (ti_current > ti_old_multipole)
+    gravity_drift(c->multipole, dt);
 
   /* Are we not in a leaf ? */
   if (c->split) {
 
-    /* Loop over the progeny and drift the multipoles. */
+    /* Loop over the progeny and recurse. */
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_drift_particles(c->progeny[k], e);
-
-  } else if (ti_current > ti_old_multipole) {
-
-    /* Drift the multipole */
-    gravity_drift(c->multipole, dt);
+      if (c->progeny[k] != NULL) cell_drift_all_multipoles(c->progeny[k], e);
   }
 
   /* Update the time of the last drift */
