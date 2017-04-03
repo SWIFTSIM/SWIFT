@@ -500,197 +500,143 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
     return 0;
   }
 
-  /* Check 0th order terms */
-  if (fabsf(ma->M_000 - mb->M_000) / fabsf(ma->M_000 + mb->M_000) > tolerance) {
+  /* Manhattan Norm of 0th order terms */
+  const float order0_norm = fabsf(ma->M_000) + fabsf(mb->M_000);
+
+  /* Compare 0th order terms above 1% of norm */
+  if (fabsf(ma->M_000 + mb->M_000) > 0.01f * order0_norm &&
+      fabsf(ma->M_000 - mb->M_000) / fabsf(ma->M_000 + mb->M_000) > tolerance) {
     message("M_000 term different");
     return 0;
   }
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  /* Check 1st order terms */
-  if (fabsf(ma->M_100 + mb->M_100) > 1e-6 * ma->M_000 &&
-      fabsf(ma->M_100 - mb->M_100) / fabsf(ma->M_100 + mb->M_100) > tolerance) {
-    message("M_100 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_010 + mb->M_010) > 1e-6 * ma->M_000 &&
-      fabsf(ma->M_010 - mb->M_010) / fabsf(ma->M_010 + mb->M_010) > tolerance) {
-    message("M_010 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_001 + mb->M_001) > 1e-6 * ma->M_000 &&
+  /* Manhattan Norm of 1st order terms */
+  const float order1_norm = fabsf(ma->M_001) + fabsf(mb->M_001) +
+                            fabsf(ma->M_010) + fabsf(mb->M_010) +
+                            fabsf(ma->M_100) + fabsf(mb->M_100);
+
+  /* Compare 1st order terms above 1% of norm */
+  if (fabsf(ma->M_001 + mb->M_001) > 0.01f * order1_norm &&
       fabsf(ma->M_001 - mb->M_001) / fabsf(ma->M_001 + mb->M_001) > tolerance) {
     message("M_001 term different");
     return 0;
   }
+  if (fabsf(ma->M_010 + mb->M_010) > 0.01f * order1_norm &&
+      fabsf(ma->M_010 - mb->M_010) / fabsf(ma->M_010 + mb->M_010) > tolerance) {
+    message("M_010 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_100 + mb->M_100) > 0.01f * order1_norm &&
+      fabsf(ma->M_100 - mb->M_100) / fabsf(ma->M_100 + mb->M_100) > tolerance) {
+    message("M_100 term different");
+    return 0;
+  }
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  /* Check 2nd order terms */
-  if (fabsf(ma->M_200 + mb->M_200) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_200 - mb->M_200) / fabsf(ma->M_200 + mb->M_200) > tolerance) {
-    message("M_200 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_020 + mb->M_020) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_020 - mb->M_020) / fabsf(ma->M_020 + mb->M_020) > tolerance) {
-    message("M_020 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_002 + mb->M_002) > 1e-5 * ma->M_000 &&
+  /* Manhattan Norm of 2nd order terms */
+  const float order2_norm =
+      fabsf(ma->M_002) + fabsf(mb->M_002) + fabsf(ma->M_011) +
+      fabsf(mb->M_011) + fabsf(ma->M_020) + fabsf(mb->M_020) +
+      fabsf(ma->M_101) + fabsf(mb->M_101) + fabsf(ma->M_110) +
+      fabsf(mb->M_110) + fabsf(ma->M_200) + fabsf(mb->M_200);
+
+  /* Compare 2nd order terms above 1% of norm */
+  if (fabsf(ma->M_002 + mb->M_002) > 0.01f * order2_norm &&
       fabsf(ma->M_002 - mb->M_002) / fabsf(ma->M_002 + mb->M_002) > tolerance) {
     message("M_002 term different");
     return 0;
   }
-  if (fabsf(ma->M_110 + mb->M_110) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_110 - mb->M_110) / fabsf(ma->M_110 + mb->M_110) > tolerance) {
-    message("M_110 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_101 + mb->M_101) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_101 - mb->M_101) / fabsf(ma->M_101 + mb->M_101) > tolerance) {
-    message("M_101 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_011 + mb->M_011) > 1e-5 * ma->M_000 &&
+  if (fabsf(ma->M_011 + mb->M_011) > 0.01f * order2_norm &&
       fabsf(ma->M_011 - mb->M_011) / fabsf(ma->M_011 + mb->M_011) > tolerance) {
     message("M_011 term different");
     return 0;
   }
+  if (fabsf(ma->M_020 + mb->M_020) > 0.01f * order2_norm &&
+      fabsf(ma->M_020 - mb->M_020) / fabsf(ma->M_020 + mb->M_020) > tolerance) {
+    message("M_020 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_101 + mb->M_101) > 0.01f * order2_norm &&
+      fabsf(ma->M_101 - mb->M_101) / fabsf(ma->M_101 + mb->M_101) > tolerance) {
+    message("M_101 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_110 + mb->M_110) > 0.01f * order2_norm &&
+      fabsf(ma->M_110 - mb->M_110) / fabsf(ma->M_110 + mb->M_110) > tolerance) {
+    message("M_110 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_200 + mb->M_200) > 0.01f * order2_norm &&
+      fabsf(ma->M_200 - mb->M_200) / fabsf(ma->M_200 + mb->M_200) > tolerance) {
+    message("M_200 term different");
+    return 0;
+  }
 #endif
-
-  tolerance *= 10.;
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  /* Check 3rd order terms */
-  if (fabsf(ma->M_300 + mb->M_300) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_300 - mb->M_300) / fabsf(ma->M_300 + mb->M_300) > tolerance) {
-    message("M_300 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_030 + mb->M_030) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_030 - mb->M_030) / fabsf(ma->M_030 + mb->M_030) > tolerance) {
-    message("M_030 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_003 + mb->M_003) > 1e-5 * ma->M_000 &&
+  /* Manhattan Norm of 3rd order terms */
+  const float order3_norm =
+      fabsf(ma->M_003) + fabsf(mb->M_003) + fabsf(ma->M_012) +
+      fabsf(mb->M_012) + fabsf(ma->M_021) + fabsf(mb->M_021) +
+      fabsf(ma->M_030) + fabsf(mb->M_030) + fabsf(ma->M_102) +
+      fabsf(mb->M_102) + fabsf(ma->M_111) + fabsf(mb->M_111) +
+      fabsf(ma->M_120) + fabsf(mb->M_120) + fabsf(ma->M_201) +
+      fabsf(mb->M_201) + fabsf(ma->M_210) + fabsf(mb->M_210) +
+      fabsf(ma->M_300) + fabsf(mb->M_300);
+
+  /* Compare 3rd order terms above 1% of norm */
+  if (fabsf(ma->M_003 + mb->M_003) > 0.01f * order3_norm &&
       fabsf(ma->M_003 - mb->M_003) / fabsf(ma->M_003 + mb->M_003) > tolerance) {
     message("M_003 term different");
     return 0;
   }
-  if (fabsf(ma->M_210 + mb->M_210) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_210 - mb->M_210) / fabsf(ma->M_210 + mb->M_210) > tolerance) {
-    message("M_210 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_201 + mb->M_201) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_201 - mb->M_201) / fabsf(ma->M_201 + mb->M_201) > tolerance) {
-    message("M_201 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_120 + mb->M_120) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_120 - mb->M_120) / fabsf(ma->M_120 + mb->M_120) > tolerance) {
-    message("M_120 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_021 + mb->M_021) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_021 - mb->M_021) / fabsf(ma->M_021 + mb->M_021) > tolerance) {
-    message("M_021 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_102 + mb->M_102) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_102 - mb->M_102) / fabsf(ma->M_102 + mb->M_102) > tolerance) {
-    message("M_102 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_012 + mb->M_012) > 1e-5 * ma->M_000 &&
+  if (fabsf(ma->M_012 + mb->M_012) > 0.01f * order3_norm &&
       fabsf(ma->M_012 - mb->M_012) / fabsf(ma->M_012 + mb->M_012) > tolerance) {
     message("M_012 term different");
     return 0;
   }
-  if (fabsf(ma->M_111 + mb->M_111) > 1e-5 * ma->M_000 &&
+  if (fabsf(ma->M_021 + mb->M_021) > 0.01f * order3_norm &&
+      fabsf(ma->M_021 - mb->M_021) / fabsf(ma->M_021 + mb->M_021) > tolerance) {
+    message("M_021 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_030 + mb->M_030) > 0.01f * order3_norm &&
+      fabsf(ma->M_030 - mb->M_030) / fabsf(ma->M_030 + mb->M_030) > tolerance) {
+    message("M_030 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_102 + mb->M_102) > 0.01f * order3_norm &&
+      fabsf(ma->M_102 - mb->M_102) / fabsf(ma->M_102 + mb->M_102) > tolerance) {
+    message("M_102 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_111 + mb->M_111) > 0.01f * order3_norm &&
       fabsf(ma->M_111 - mb->M_111) / fabsf(ma->M_111 + mb->M_111) > tolerance) {
     message("M_111 term different");
     return 0;
   }
+  if (fabsf(ma->M_120 + mb->M_120) > 0.01f * order3_norm &&
+      fabsf(ma->M_120 - mb->M_120) / fabsf(ma->M_120 + mb->M_120) > tolerance) {
+    message("M_120 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_201 + mb->M_201) > 0.01f * order3_norm &&
+      fabsf(ma->M_201 - mb->M_201) / fabsf(ma->M_201 + mb->M_201) > tolerance) {
+    message("M_201 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_210 + mb->M_210) > 0.01f * order3_norm &&
+      fabsf(ma->M_210 - mb->M_210) / fabsf(ma->M_210 + mb->M_210) > tolerance) {
+    message("M_210 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_300 + mb->M_300) > 0.01f * order3_norm &&
+      fabsf(ma->M_300 - mb->M_300) / fabsf(ma->M_300 + mb->M_300) > tolerance) {
+    message("M_300 term different");
+    return 0;
+  }
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  /* Check 4th order terms */
-  if (fabsf(ma->M_400 + mb->M_400) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_400 - mb->M_400) / fabsf(ma->M_400 + mb->M_400) > tolerance) {
-    message("M_400 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_040 + mb->M_040) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_040 - mb->M_040) / fabsf(ma->M_040 + mb->M_040) > tolerance) {
-    message("M_040 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_004 + mb->M_004) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_004 - mb->M_004) / fabsf(ma->M_004 + mb->M_004) > tolerance) {
-    message("M_003 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_310 + mb->M_310) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_310 - mb->M_310) / fabsf(ma->M_310 + mb->M_310) > tolerance) {
-    message("M_310 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_301 + mb->M_301) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_301 - mb->M_301) / fabsf(ma->M_301 + mb->M_301) > tolerance) {
-    message("M_301 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_130 + mb->M_130) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_130 - mb->M_130) / fabsf(ma->M_130 + mb->M_130) > tolerance) {
-    message("M_130 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_031 + mb->M_031) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_031 - mb->M_031) / fabsf(ma->M_031 + mb->M_031) > tolerance) {
-    message("M_031 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_103 + mb->M_103) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_103 - mb->M_103) / fabsf(ma->M_103 + mb->M_103) > tolerance) {
-    message("M_103 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_013 + mb->M_013) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_013 - mb->M_013) / fabsf(ma->M_013 + mb->M_013) > tolerance) {
-    message("M_013 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_220 + mb->M_220) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_220 - mb->M_220) / fabsf(ma->M_220 + mb->M_220) > tolerance) {
-    message("M_220 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_202 + mb->M_202) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_202 - mb->M_202) / fabsf(ma->M_202 + mb->M_202) > tolerance) {
-    message("M_202 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_022 + mb->M_022) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_022 - mb->M_022) / fabsf(ma->M_022 + mb->M_022) > tolerance) {
-    message("M_022 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_211 + mb->M_211) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_211 - mb->M_211) / fabsf(ma->M_211 + mb->M_211) > tolerance) {
-    message("M_211 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_121 + mb->M_121) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_121 - mb->M_121) / fabsf(ma->M_121 + mb->M_121) > tolerance) {
-    message("M_121 term different");
-    return 0;
-  }
-  if (fabsf(ma->M_112 + mb->M_112) > 1e-5 * ma->M_000 &&
-      fabsf(ma->M_112 - mb->M_112) / fabsf(ma->M_112 + mb->M_112) > tolerance) {
-    message("M_112 term different");
-    return 0;
-  }
+#error "Missing implementation for order >3"
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 #error "Missing implementation for order >4"
