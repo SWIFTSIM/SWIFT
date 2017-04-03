@@ -637,7 +637,95 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
   }
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  /* Manhattan Norm of 4th order terms */
+  const float order4_norm =
+      fabsf(ma->M_004) + fabsf(mb->M_004) + fabsf(ma->M_013) +
+      fabsf(mb->M_013) + fabsf(ma->M_022) + fabsf(mb->M_022) +
+      fabsf(ma->M_031) + fabsf(mb->M_031) + fabsf(ma->M_040) +
+      fabsf(mb->M_040) + fabsf(ma->M_103) + fabsf(mb->M_103) +
+      fabsf(ma->M_112) + fabsf(mb->M_112) + fabsf(ma->M_121) +
+      fabsf(mb->M_121) + fabsf(ma->M_130) + fabsf(mb->M_130) +
+      fabsf(ma->M_202) + fabsf(mb->M_202) + fabsf(ma->M_211) +
+      fabsf(mb->M_211) + fabsf(ma->M_220) + fabsf(mb->M_220) +
+      fabsf(ma->M_301) + fabsf(mb->M_301) + fabsf(ma->M_310) +
+      fabsf(mb->M_310) + fabsf(ma->M_400) + fabsf(mb->M_400);
+
+  /* Compare 4th order terms above 1% of norm */
+  if (fabsf(ma->M_004 + mb->M_004) > 0.01f * order4_norm &&
+      fabsf(ma->M_004 - mb->M_004) / fabsf(ma->M_004 + mb->M_004) > tolerance) {
+    message("M_004 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_013 + mb->M_013) > 0.01f * order4_norm &&
+      fabsf(ma->M_013 - mb->M_013) / fabsf(ma->M_013 + mb->M_013) > tolerance) {
+    message("M_013 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_022 + mb->M_022) > 0.01f * order4_norm &&
+      fabsf(ma->M_022 - mb->M_022) / fabsf(ma->M_022 + mb->M_022) > tolerance) {
+    message("M_022 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_031 + mb->M_031) > 0.01f * order4_norm &&
+      fabsf(ma->M_031 - mb->M_031) / fabsf(ma->M_031 + mb->M_031) > tolerance) {
+    message("M_031 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_040 + mb->M_040) > 0.01f * order4_norm &&
+      fabsf(ma->M_040 - mb->M_040) / fabsf(ma->M_040 + mb->M_040) > tolerance) {
+    message("M_040 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_103 + mb->M_103) > 0.01f * order4_norm &&
+      fabsf(ma->M_103 - mb->M_103) / fabsf(ma->M_103 + mb->M_103) > tolerance) {
+    message("M_103 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_112 + mb->M_112) > 0.01f * order4_norm &&
+      fabsf(ma->M_112 - mb->M_112) / fabsf(ma->M_112 + mb->M_112) > tolerance) {
+    message("M_112 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_121 + mb->M_121) > 0.01f * order4_norm &&
+      fabsf(ma->M_121 - mb->M_121) / fabsf(ma->M_121 + mb->M_121) > tolerance) {
+    message("M_121 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_130 + mb->M_130) > 0.01f * order4_norm &&
+      fabsf(ma->M_130 - mb->M_130) / fabsf(ma->M_130 + mb->M_130) > tolerance) {
+    message("M_130 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_202 + mb->M_202) > 0.01f * order4_norm &&
+      fabsf(ma->M_202 - mb->M_202) / fabsf(ma->M_202 + mb->M_202) > tolerance) {
+    message("M_202 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_211 + mb->M_211) > 0.01f * order4_norm &&
+      fabsf(ma->M_211 - mb->M_211) / fabsf(ma->M_211 + mb->M_211) > tolerance) {
+    message("M_211 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_220 + mb->M_220) > 0.01f * order4_norm &&
+      fabsf(ma->M_220 - mb->M_220) / fabsf(ma->M_220 + mb->M_220) > tolerance) {
+    message("M_220 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_301 + mb->M_301) > 0.01f * order4_norm &&
+      fabsf(ma->M_301 - mb->M_301) / fabsf(ma->M_301 + mb->M_301) > tolerance) {
+    message("M_301 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_310 + mb->M_310) > 0.01f * order4_norm &&
+      fabsf(ma->M_310 - mb->M_310) / fabsf(ma->M_310 + mb->M_310) > tolerance) {
+    message("M_310 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_400 + mb->M_400) > 0.01f * order4_norm &&
+      fabsf(ma->M_400 - mb->M_400) / fabsf(ma->M_400 + mb->M_400) > tolerance) {
+    message("M_400 term different");
+    return 0;
+  }
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 #error "Missing implementation for order >4"
