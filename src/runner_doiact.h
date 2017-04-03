@@ -2241,6 +2241,10 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+  
+    /* Make sure both cells are drifted to the current timestep. */
+    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
@@ -2271,10 +2275,6 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   /* Should we even bother? */
   if (!cell_is_active(ci, r->e)) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!cell_is_drifted(ci, r->e)) error("Interacting undrifted cell.");
-#endif
-
   /* Recurse? */
   if (ci->split) {
 
@@ -2290,6 +2290,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Otherwise, compute self-interaction. */
   else {
+  
+    /* Drift the cell to the current timestep if needed. */
+    if (!cell_is_drifted(ci, r->e)) cell_drift_particles(ci, r->e);
+    
 #if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
     runner_doself1_density_vec(r, ci);
