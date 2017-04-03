@@ -1157,7 +1157,8 @@ void cell_check_multipole(struct cell *c, void *data) {
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d! tol=%f", c->depth, tolerance);
+      message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
+              tolerance);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
@@ -1504,10 +1505,9 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
-  
+
   /* Drift the multipole */
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
 
   /* Are we not in a leaf ? */
   if (c->split) {
