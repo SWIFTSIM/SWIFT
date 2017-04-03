@@ -159,10 +159,10 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split? */
-      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
+      if (ci->split && 2.f * kernel_gamma * ci->h_max * space_stretch < hi) {
 
         /* Make a sub? */
-        if (scheduler_dosub &&
+        if (scheduler_dosub && /* Note division here to avoid overflow */
             ((ci->count > 0 && ci->count < space_subsize / ci->count) ||
              (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount))) {
 
@@ -224,8 +224,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
-          ci->h_max * kernel_gamma * space_stretch < hi / 2 &&
-          cj->h_max * kernel_gamma * space_stretch < hj / 2) {
+          2.f * kernel_gamma * space_stretch * ci->h_max < hi &&
+          2.f * kernel_gamma * space_stretch * cj->h_max < hj) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
