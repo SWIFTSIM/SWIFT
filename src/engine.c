@@ -161,11 +161,6 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
-      /* Add the drift task and its dependencies. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
-      scheduler_addunlock(s, c->drift, c->init);
-
       if (is_self_gravity) {
 
         /* Gravity non-neighbouring pm calculations */
@@ -935,10 +930,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      if (ci->drift == NULL)
-        ci->drift = scheduler_addtask(
-            s, task_type_drift, task_subtype_none, 0, 0, ci, NULL, 0);
-
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
                                0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
@@ -978,6 +969,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* Drift before you send */
+      if (ci->drift == NULL)
+        ci->drift = scheduler_addtask(
+            s, task_type_drift, task_subtype_none, 0, 0, ci, NULL, 0);
       scheduler_addunlock(s, ci->drift, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
@@ -1739,6 +1733,7 @@ void engine_count_and_link_tasks(struct engine *e) {
       struct cell *finger = t->ci->parent;
       while (finger != NULL && finger->drift == NULL) finger = finger->parent;
       if (finger != NULL) scheduler_addunlock(sched, t, finger->drift);
+      scheduler_addunlock(sched, t, ci->super->init);
     }
 
     /* Link self tasks to cells. */
