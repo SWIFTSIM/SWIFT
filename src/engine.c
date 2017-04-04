@@ -230,27 +230,28 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   }
 }
 
-
 /**
  * Do the exchange of one type of particles.
  */
 #ifdef WITH_MPI
 static void *engine_do_redistribute(int *counts, void *parts,
-                                    size_t new_nr_parts,
-                                    size_t sizeofparts, size_t alignsize,
-                                    MPI_Datatype mpi_type,
+                                    size_t new_nr_parts, size_t sizeofparts,
+                                    size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID) {
   /* Need a pointer with a type. */
   char *lparts = parts;
 
   /* Allocate a new array with some extra margin */
   char *parts_new = NULL;
-  if (posix_memalign((void **)&parts_new, alignsize, sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
+  if (posix_memalign(
+          (void **)&parts_new, alignsize,
+          sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
   /* Prepare MPI requests for the asynchronous communications */
   MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) == NULL)
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) ==
+      NULL)
     error("Failed to allocate MPI request list.");
   for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
 
@@ -269,13 +270,16 @@ static void *engine_do_redistribute(int *counts, void *parts,
 
       /* If the send is local, just copy */
       if (k == nodeID) {
-        memcpy(&parts_new[offset_recv*sizeofparts], &lparts[offset_send*sizeofparts], sizeofparts * counts[ind_recv]);
+        memcpy(&parts_new[offset_recv * sizeofparts],
+               &lparts[offset_send * sizeofparts],
+               sizeofparts * counts[ind_recv]);
         offset_send += counts[ind_send];
         offset_recv += counts[ind_recv];
 
         /* Else, emit some communications */
       } else {
-        if (MPI_Isend(&lparts[offset_send*sizeofparts], counts[ind_send], mpi_type, k, ind_send + 0, MPI_COMM_WORLD,
+        if (MPI_Isend(&lparts[offset_send * sizeofparts], counts[ind_send],
+                      mpi_type, k, ind_send + 0, MPI_COMM_WORLD,
                       &reqs[2 * k + 0]) != MPI_SUCCESS)
           error("Failed to isend parts to node %i.", k);
         offset_send += counts[ind_send];
@@ -286,9 +290,9 @@ static void *engine_do_redistribute(int *counts, void *parts,
 
     /* Are we receiving any data from this node ? */
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv*sizeofparts], counts[ind_recv], part_mpi_type, k,
-                    ind_recv + 0, MPI_COMM_WORLD,
-                    &reqs[2 * k + 4]) != MPI_SUCCESS)
+      if (MPI_Irecv(&parts_new[offset_recv * sizeofparts], counts[ind_recv],
+                    part_mpi_type, k, ind_recv + 0, MPI_COMM_WORLD,
+                    &reqs[2 * k + 1]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       offset_recv += counts[ind_recv];
     }
@@ -648,7 +652,7 @@ void engine_redistribute(struct engine *e) {
                                            sizeof(struct part), part_align,
                                            part_mpi_type, nr_nodes, nodeID);
   free(s->parts);
-  s->parts = (struct part *) new_parts;
+  s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts;
   s->size_parts = engine_redistribute_alloc_margin * nr_parts;
 
@@ -656,13 +660,13 @@ void engine_redistribute(struct engine *e) {
                                      sizeof(struct xpart), xpart_align,
                                      xpart_mpi_type, nr_nodes, nodeID);
   free(s->xparts);
-  s->xparts = (struct xpart *) new_parts;
+  s->xparts = (struct xpart *)new_parts;
 
   new_parts = engine_do_redistribute(g_counts, (void *)s->gparts, nr_gparts,
                                      sizeof(struct gpart), gpart_align,
                                      gpart_mpi_type, nr_nodes, nodeID);
   free(s->gparts);
-  s->gparts = (struct gpart *) new_parts;
+  s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts;
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
 
@@ -670,7 +674,7 @@ void engine_redistribute(struct engine *e) {
                                      sizeof(struct spart), spart_align,
                                      spart_mpi_type, nr_nodes, nodeID);
   free(s->sparts);
-  s->sparts = (struct spart *) new_parts;
+  s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts;
   s->size_sparts = engine_redistribute_alloc_margin * nr_sparts;
 
