@@ -228,14 +228,10 @@ for i in range(n+1):
                                 temp += part[c]
                         part2 = sorted(part2)
 
-                        #if terms == [] or terms[-1] != part2:
                         terms.append(part2)
                         norm_pi2.append(norm_pi[p])
-                        #print p, part, part2
-                        #else:
-                        #    count_terms[-1] += 1
 
-                # Sort list of terms
+                # Sort list of blocks
                 index = argsort(terms)
                 terms = [ terms[u] for u in index]
                 norm_pi2 = [ norm_pi2[u] for u in index]
@@ -269,9 +265,7 @@ for i in range(n+1):
                 for b in range(len(terms2)):
 
                     part2 = terms2[b]
-                    #print part2, count_terms[b]
                     #print "/* %18s*/" %(part2),
-
                     
                     # Write the derivative of phi
                     print derivative_phi(norm_pi3[b]), "* ",
@@ -293,4 +287,3 @@ for i in range(n+1):
                 print ";"
                 print "/* %d zero-valued terms not written out */"%(count)
                 print "}\n"
-                #exit(-1)
