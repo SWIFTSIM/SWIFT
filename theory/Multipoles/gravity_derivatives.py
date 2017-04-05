@@ -12,23 +12,23 @@ n = int(sys.argv[1])
 
 def pochhammer(x):
     if x == 1:
-        return "-0.5"
+        return "-(1. / 2.)"
     if x == 2:
-        return "0.75"
+        return "(3. / 4.)"
     if x == 3:
-        return "-1.875"
+        return "-(15. / 8.)"
     if x == 4:
-        return "5.5625"
+        return "(105. /16.)"
     if x == 5:
-        return "-29.53125"
+        return "-(945. /32.)"
     if x == 6:
-        return "162.421875"
+        return "(10395. / 64.)"
     if x == 7:
-        return "-1055.7421875"
+        return "-(135135. / 128.)"
     if x == 8:
-        return "7918.06640625"
+        return "(2027025. / 256.)"
     if x == 9:
-        return "-67303.564453125"
+        return "-(34459425. / 512.)"
     else:
         print "Invalid x"
         exit(-1)
