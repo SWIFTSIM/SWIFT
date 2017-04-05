@@ -8,27 +8,31 @@ def ordinal(num):
 
 # Get the order
 n = int(sys.argv[1])
-#verbose = bool(sys.argv[2])
+verbose = int(sys.argv[2])
+
+# Get the sorting indexes
+def argsort(seq):
+    return sorted(range(len(seq)), key=seq.__getitem__)
 
 def pochhammer(x):
     if x == 1:
-        return "-(1. / 2.)"
+        return "- (1. / 2.)"
     if x == 2:
-        return "(3. / 4.)"
+        return "+ (3. / 4.)"
     if x == 3:
-        return "-(15. / 8.)"
+        return "- (15. / 8.)"
     if x == 4:
-        return "(105. /16.)"
+        return "+ (105. / 16.)"
     if x == 5:
-        return "-(945. /32.)"
+        return "- (945. / 32.)"
     if x == 6:
-        return "(10395. / 64.)"
+        return "+ (10395. / 64.)"
     if x == 7:
-        return "-(135135. / 128.)"
+        return "- (135135. / 128.)"
     if x == 8:
-        return "(2027025. / 256.)"
+        return "+ (2027025. / 256.)"
     if x == 9:
-        return "-(34459425. / 512.)"
+        return "- (34459425. / 512.)"
     else:
         print "Invalid x"
         exit(-1)
@@ -37,10 +41,10 @@ def pochhammer(x):
 def derivative_phi(n):
     power = 2 * n + 1
     string = str(pochhammer(n))
-    #string += " * r_inv^%d"%power
-    string += " * r_inv"
-    for i in range(power - 1):
-        string += " * r_inv"
+    string += " * r_inv^%d"%power
+    #string += " * r_inv"
+    #for i in range(power - 1):
+    #    string += " * r_inv"
     return string
 
 def u_derivative_is_non_zero(deriv):
@@ -120,12 +124,9 @@ while temp != range(1,n+1):
 # Print the partitions and compute cardinality of each partition and block
 num_terms = len(permutations)
 partitions = []
-print "Paritions of {1...%d}"%n
-print "Number of partitions:", num_terms
 norm_pi = []
 norm_b = []
 for i in range(num_terms):
-    print "%3d)"%(i+1), permutations[i], "  ---> pi =",
     cardinality = 0
     this_norm_b = []
     my_str = ""
@@ -137,21 +138,32 @@ for i in range(num_terms):
         if count > 0:
             this_norm_b.append(count)
             my_str += "["
-            print "[",
             cardinality += 1
             for j in range(n):
                 if permutations[i][j] == current:
-                    print range(n)[j]+1,
                     my_str += str(range(n)[j]+1)
-            print "]",
             my_str += "]"
     partitions.append(my_str)
-    for j in range(n-cardinality):
-        print "   ",
-    print "  ---> |pi| =", cardinality,
-    print "  ---> [|B|] =", this_norm_b 
     norm_pi.append(cardinality)
     norm_b.extend([this_norm_b])
+
+# Sort partitions in order of |pi|
+index = argsort(norm_pi)
+norm_pi = [ norm_pi[i] for i in index]
+norm_b = [ norm_b[i] for i in index]
+partitions = [ partitions[i] for i in index]
+permutations = [ permutations[i] for i in index]
+
+if verbose:
+    print "Paritions of {1...%d}"%n
+    print "Number of partitions:", num_terms
+    for i in range(num_terms):
+        print "%3d)"%(i+1), permutations[i], "  ---> pi =",
+        print partitions[i],
+        for j in range(n-norm_pi[i]):
+            print " ",
+        print "  ---> |pi| =", norm_pi[i],
+        print "  ---> [|B|] =", norm_b[i]
 
 # Now we can start generating functions
 print "----------------------------------------------------------"
@@ -162,28 +174,22 @@ print "/*********************************/"
 print "/* %s order gravity derivatives */"%ordinal(n)
 print "/*********************************/\n"
 
-# Create all the terms relevent for this order
+# Write out the functions
 for i in range(n+1):
     for j in range(n+1):
         for k in range(n+1):
             if i + j + k == n:
 
-                # Wrtie the documentation and prototype
-                print "/**"
-                print " * @brief Compute \\f$ \\frac{\\partial^%d}{"%n,
-                if i > 0: print "\\partial_x^%d"%i,
-                if j > 0: print "\\partial_y^%d"%j,
-                if k > 0: print "\\partial_z^%d"%k,
-                print "}\\phi(x, y, z} \\f$."
-                print " *"
-                print " * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)"
-                print " */"
-                print "__attribute__((always_inline)) INLINE static double D_%d%d%d(double r_x, double r_y, double r_z, double r_inv) {"%(i,j,k)
-                print "return",
-
-                derivatives = map_derivatives(i, j, k)
+                #if i != 4 or j != 2 or k != 0:
+                #    continue
                 
-                first_term = True
+                derivatives = map_derivatives(i, j, k)
+
+                terms = []
+                count_terms = []
+                norm_pi2 = []
+                count = 0
+                
                 for p in range(num_terms):
                     # Get the partition
                     part = ""
@@ -192,7 +198,8 @@ for i in range(n+1):
                     # Replace the numbers by derivatives
                     for b in range(len(derivatives)):
                         part = part.replace(str(b+1), derivatives[b])
-                       
+
+                
                     # Check whether the derivatives are non-zero
                     non_zero = True
                     for b in part:
@@ -203,39 +210,87 @@ for i in range(n+1):
                         elif b==']':
                             if not u_derivative_is_non_zero(deriv):
                                 non_zero = False
+                                count += 1
                                 break
-                    # Print the derivative of phi(u)
-                    if non_zero:
-
-                        #print "/* %18s */"%part,
-                        
-                        # Get the first symbol
-                        if first_term:
-                            first_term = False
-                        else:
-                            print "+",
-
-                        #Write the derivative of phi
-                        #print "\\phi^(%d)(u) * ("%norm_pi[p],
-                        print derivative_phi(norm_pi[p]), "* (",
                             
-                        # Write out the derivatives of u
-                        first = True
-                        for b in part:
-                            if b=='[':
-                                deriv = ""
-                                if first:
-                                    first = False
-                                else:
-                                    print "*",
-                            elif b.isalnum():
-                                deriv += b
-                            elif b==']':
-                                print u_derivative(deriv),
+                    # Print the whole thing
+                    if non_zero:
+                        
+                        # Sort the blocks in lexicographic order
+                        part2 = []
+                        temp = ""
+                        for c in range(len(part)):
+                            if part[c] == '[':
+                                temp = ""
+                            elif part[c] == ']':
+                                part2.append(temp)
+                            else:
+                                temp += part[c]
+                        part2 = sorted(part2)
+
+                        #if terms == [] or terms[-1] != part2:
+                        terms.append(part2)
+                        norm_pi2.append(norm_pi[p])
+                        #print p, part, part2
+                        #else:
+                        #    count_terms[-1] += 1
+
+                # Sort list of terms
+                index = argsort(terms)
+                terms = [ terms[u] for u in index]
+                norm_pi2 = [ norm_pi2[u] for u in index]
+
+                # Make the list unique
+                terms2 = []
+                norm_pi3 = []
+                for b in range(len(terms)):
+                    if terms2 == [] or terms2[-1] != terms[b]:
+                        terms2.append(terms[b])
+                        count_terms.append(1)
+                        norm_pi3.append(norm_pi2[b])
+                    else:
+                        count_terms[-1] += 1
                     
-                        print ")",
+                            
+                # Write the documentation and prototype
+                print "/**"
+                print " * @brief Compute \\f$ \\frac{\\partial^%d}{"%n,
+                if i > 0: print "\\partial_x^%d"%i,
+                if j > 0: print "\\partial_y^%d"%j,
+                if k > 0: print "\\partial_z^%d"%k,
+                print "}\\phi(x, y, z} \\f$."
+                print " *"
+                print " * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)"
+                print " */"
+                print "__attribute__((always_inline)) INLINE static double D_%d%d%d(double r_x, double r_y, double r_z, double r_inv) {"%(i,j,k)
+                print "return"
+
+
+                for b in range(len(terms2)):
+
+                    part2 = terms2[b]
+                    #print part2, count_terms[b]
+                    #print "/* %18s*/" %(part2),
+
+                    
+                    # Write the derivative of phi
+                    print derivative_phi(norm_pi3[b]), "* ",
+
+                    # Write out multiplicity
+                    print "%.1f * ("%count_terms[b],
+                    
+                    # Write out the derivatives of u
+                    first = True
+                    for c in part2:
+                        if first:
+                            first = False
+                        else:
+                            print "*",
+                        print u_derivative(c),
+                    print ")"
                     
                 # Finish the code fo the function
                 print ";"
+                print "/* %d zero-valued terms not written out */"%(count)
                 print "}\n"
                 #exit(-1)
