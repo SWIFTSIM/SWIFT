@@ -16,23 +16,23 @@ def argsort(seq):
 
 def pochhammer(x):
     if x == 1:
-        return "- (1. / 2.)"
+        return "- 1."
     if x == 2:
-        return "+ (3. / 4.)"
+        return "+ 3."
     if x == 3:
-        return "- (15. / 8.)"
+        return "- 15."
     if x == 4:
-        return "+ (105. / 16.)"
+        return "+ 105."
     if x == 5:
-        return "- (945. / 32.)"
+        return "- 945."
     if x == 6:
-        return "+ (10395. / 64.)"
+        return "+ 10395."
     if x == 7:
-        return "- (135135. / 128.)"
+        return "- 135135."
     if x == 8:
-        return "+ (2027025. / 256.)"
+        return "+ 2027025."
     if x == 9:
-        return "- (34459425. / 512.)"
+        return "- 34459425."
     else:
         print "Invalid x"
         exit(-1)
@@ -41,10 +41,10 @@ def pochhammer(x):
 def derivative_phi(n):
     power = 2 * n + 1
     string = str(pochhammer(n))
-    string += " * r_inv^%d"%power
-    #string += " * r_inv"
-    #for i in range(power - 1):
-    #    string += " * r_inv"
+    #string += " * r_inv^%d"%power
+    string += " * r_inv"
+    for i in range(power - 1):
+        string += " * r_inv"
     return string
 
 def u_derivative_is_non_zero(deriv):
@@ -58,22 +58,16 @@ def u_derivative_is_non_zero(deriv):
     elif len(deriv) == 1:
         return True
 
-# All non-zero derivatives of u(r_x,r_y,r_z) = r_x^2 + r_y^2 + r_z^2
+# All non-zero derivatives of u(r_x,r_y,r_z) = r_x^2 + r_y^2 + r_z^2 divided by two
 def u_derivative(deriv):
     if len(deriv) > 2:
         return ""
     elif deriv == "x":
-        return "2. * r_x"
+        return "r_x"
     elif deriv == "y":
-        return "2. * r_y"
+        return "r_y"
     elif deriv == "z":
-        return "2. * r_z"
-    elif deriv == "xx":
-        return "2."
-    elif deriv == "yy":
-        return "2."
-    elif deriv == "zz":
-        return "2."
+        return "r_z"
     else:
         return ""
     
@@ -213,7 +207,6 @@ for i in range(n+1):
                                 count += 1
                                 break
                             
-                    # Print the whole thing
                     if non_zero:
                         
                         # Sort the blocks in lexicographic order
@@ -259,29 +252,35 @@ for i in range(n+1):
                 print " * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)"
                 print " */"
                 print "__attribute__((always_inline)) INLINE static double D_%d%d%d(double r_x, double r_y, double r_z, double r_inv) {"%(i,j,k)
-                print "return"
+                print "return",
 
 
+                # Print the whole thing
                 for b in range(len(terms2)):
 
                     part2 = terms2[b]
                     #print "/* %18s*/" %(part2),
                     
                     # Write the derivative of phi
-                    print derivative_phi(norm_pi3[b]), "* ",
+                    print derivative_phi(norm_pi3[b]),
 
                     # Write out multiplicity
-                    print "%.1f * ("%count_terms[b],
-                    
+                    if count_terms[b] > 1:
+                        print "* %.1f "%count_terms[b],
+                        
                     # Write out the derivatives of u
                     first = True
                     for c in part2:
-                        if first:
-                            first = False
-                        else:
-                            print "*",
-                        print u_derivative(c),
-                    print ")"
+                        deriv = u_derivative(c)
+                        if deriv != "":
+                            if first :
+                                print " * (",
+                                first = False
+                            else:
+                                print "*",
+                            print deriv,
+                    if not first:
+                        print ")",
                     
                 # Finish the code fo the function
                 print ";"
