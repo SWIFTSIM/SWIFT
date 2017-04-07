@@ -45,7 +45,7 @@ for i in range(order+1):
                 print ""
                 print "  return",
                 if fact != 1:
-                    print "%14.18e"%(1./fact),
+                    print "%12.15e"%(1./fact),
                 else:
                     print "1.",
                 for ii in range(i):
