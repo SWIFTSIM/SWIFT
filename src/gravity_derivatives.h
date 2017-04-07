@@ -1092,59 +1092,131 @@ __attribute__((always_inline)) INLINE static double D_500(double r_x,
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_006(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_z * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0  ;
-/* 127 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_006(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 45.0 * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0;
+  /* 127 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_y^1 \partial_z^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_y^1 \partial_z^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_015(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_z ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_015(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_y * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y * r_z);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_y^2 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_y^2 \partial_z^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_024(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_024(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_y * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_y^3 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_y^3 \partial_z^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_033(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_y * r_z ) ;
-/* 187 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_033(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_y * r_z);
+  /* 187 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_y^4 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_y^4 \partial_z^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_042(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_042(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_y * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_y^5 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_y^5 \partial_z^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_051(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_z ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_051(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_y * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y * r_z);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
@@ -1152,209 +1224,464 @@ return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv 
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_060(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_y * r_y ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0  ;
-/* 127 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_060(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_y * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 45.0 * (r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0;
+  /* 127 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_z^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_z^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_105(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_z ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_105(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x * r_z);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^1 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^1 \partial_z^4
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_114(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y ) ;
-/* 193 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_114(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y);
+  /* 193 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^2 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^2 \partial_z^3
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_123(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_123(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_z);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^3 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^3 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_132(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_132(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^4 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^4 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_141(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z ) ;
-/* 193 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_141(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_z);
+  /* 193 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^1 \partial_y^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_150(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_150(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x * r_y);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_z^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_204(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_204(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^1 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^1 \partial_z^3
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_213(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_213(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_z);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^2 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^2 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_222(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_222(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv;
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^3 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^3 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_231(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_231(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_z);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^2 \partial_y^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_240(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_240(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_z^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_303(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x * r_z ) ;
-/* 187 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_303(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_x * r_z);
+  /* 187 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^1 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^1 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_312(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_312(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^2 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^2 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_321(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z ) ;
-/* 195 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_321(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_z);
+  /* 195 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^3 \partial_y^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_330(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x * r_y ) ;
-/* 187 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_330(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_x * r_y);
+  /* 187 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_z^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_402(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z * r_z ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_402(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_y^1 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_y^1 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_411(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z ) ;
-/* 193 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_411(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_z);
+  /* 193 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_y^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^4 \partial_y^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_420(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0  ;
-/* 183 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_420(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 183 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^5 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^5 \partial_z^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_501(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_z ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_501(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_x * r_x * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x * r_z);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^6}{ \partial_x^5 \partial_y^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^6}{ \partial_x^5 \partial_y^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_510(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y ) ;
-/* 177 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_510(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_x * r_x * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x * r_y);
+  /* 177 zero-valued terms not written out */
 }
 
 /**
@@ -1362,9 +1689,19 @@ return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv 
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_600(double r_x, double r_y, double r_z, double r_inv) {
-return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_x * r_x * r_x ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_x * r_x ) - 15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0  ;
-/* 127 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_600(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_x * r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 45.0 * (r_x * r_x) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0;
+  /* 127 zero-valued terms not written out */
 }
 
 /*********************************/
@@ -1376,69 +1713,179 @@ return + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv 
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_007(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0   * ( r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_z ) ;
-/* 645 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_007(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0 *
+             (r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 105.0 * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 105.0 * (r_z);
+  /* 645 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^1 \partial_z^6 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^1 \partial_z^6 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_016(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_z * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_016(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_z * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_y * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^2 \partial_z^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^2 \partial_z^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_025(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_z ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_025(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_y * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_z);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^3 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^3 \partial_z^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_034(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_y ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_034(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_y * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_y);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^4 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^4 \partial_z^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_043(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_z ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_043(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_y * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_z);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^5 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^5 \partial_z^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_052(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_052(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_y * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_y^6 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_y^6 \partial_z^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_061(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_z ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_061(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_y * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_z);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
@@ -1446,279 +1893,739 @@ return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_070(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0   * ( r_y * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_y ) ;
-/* 645 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_070(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0 *
+             (r_y * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 105.0 * (r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 105.0 * (r_y);
+  /* 645 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_z^6 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_z^6 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_106(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_z * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_106(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_z * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_x * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^1 \partial_z^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^1 \partial_z^5
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_115(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y * r_z ) ;
-/* 851 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_115(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_y * r_z);
+  /* 851 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^2 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^2 \partial_z^4
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_124(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_124(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^3 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^3 \partial_z^3
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_133(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x * r_y * r_z ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_133(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 9.0 * (r_x * r_y * r_z);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^4 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^4 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_142(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_142(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^5 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^5 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_151(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y * r_z ) ;
-/* 851 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_151(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_y * r_z);
+  /* 851 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^6 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^1 \partial_y^6 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_160(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_y * r_y * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_x * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_160(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y * r_y * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_x * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_z^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_z^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_205(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_z * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_z ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_205(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_z * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_x * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_z);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^1 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^1 \partial_z^4
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_214(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_214(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^2 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^2 \partial_z^3
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_223(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_223(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_z);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^3 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^3 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_232(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_232(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^4 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^4 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_241(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_241(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_z);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^5 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^2 \partial_y^5 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_250(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_y * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_y * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_250(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_y * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_x * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_z^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_z^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_304(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_z * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_x * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_304(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_z * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_x * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_z * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_x);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^1 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^1 \partial_z^3
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_313(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x * r_y * r_z ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_313(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_x * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 9.0 * (r_x * r_y * r_z);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^2 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^2 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_322(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_322(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^3 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^3 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_331(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x * r_y * r_z ) ;
-/* 861 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_331(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_x * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 9.0 * (r_x * r_y * r_z);
+  /* 861 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^4 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^3 \partial_y^4 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_340(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_y * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_y * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_x * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_x ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_340(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_y * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_x);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_z^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_z^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_403(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_z * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_z * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_z ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_403(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_z * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_z * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_z);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^1 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^1 \partial_z^2
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_412(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_412(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_y * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^2 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^2 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_421(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_z ) ;
-/* 857 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_421(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_y * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 6.0 * (r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_z);
+  /* 857 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^3 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^4 \partial_y^3 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_430(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_y * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_x * r_x * r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0   * ( r_x * r_x * r_y * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 18.0   * ( r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0   * ( r_y * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 9.0   * ( r_y ) ;
-/* 837 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_430(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_y * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_x * r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x * r_y * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 18.0 * (r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 3.0 * (r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 9.0 * (r_y);
+  /* 837 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_z^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_z^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_502(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_z * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x * r_z * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_z * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_502(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_z * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_x * r_x * r_z * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_y^1 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_y^1 \partial_z^1
+ * }\phi(x, y, z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_511(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_y * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x * r_y * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y * r_z ) ;
-/* 851 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_511(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_y * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_x * r_x * r_y * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_y * r_z);
+  /* 851 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_y^2 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^5 \partial_y^2 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_520(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_y * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x * r_y * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0   * ( r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_y * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x ) ;
-/* 825 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_520(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_y * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 10.0 *
+             (r_x * r_x * r_x * r_y * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 10.0 * (r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 15.0 * (r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_x);
+  /* 825 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^6 \partial_z^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^6 \partial_z^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_601(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_x * r_z ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_x * r_x * r_x * r_z ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_x * r_x * r_z ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_z ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_601(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_x * r_z) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_x * r_x * r_x * r_x * r_z) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_x * r_x * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_z);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
- * @brief Compute \f$ \frac{\partial^7}{ \partial_x^6 \partial_y^1 }\phi(x, y, z} \f$.
+ * @brief Compute \f$ \frac{\partial^7}{ \partial_x^6 \partial_y^1 }\phi(x, y,
+ * z} \f$.
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_610(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_x * r_y ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_x * r_x * r_x * r_x * r_y ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 45.0   * ( r_x * r_x * r_y ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0   * ( r_y ) ;
-/* 801 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_610(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_x * r_y) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_x * r_x * r_x * r_x * r_y) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 45.0 * (r_x * r_x * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 15.0 * (r_y);
+  /* 801 zero-valued terms not written out */
 }
 
 /**
@@ -1726,9 +2633,21 @@ return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-__attribute__((always_inline)) INLINE static double D_700(double r_x, double r_y, double r_z, double r_inv) {
-return - 135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv  * ( r_x * r_x * r_x * r_x * r_x * r_x * r_x ) + 10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0   * ( r_x * r_x * r_x * r_x * r_x ) - 945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_x * r_x * r_x ) + 105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 105.0   * ( r_x ) ;
-/* 645 zero-valued terms not written out */
+__attribute__((always_inline)) INLINE static double D_700(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -135135. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x * r_x * r_x * r_x * r_x * r_x) +
+         10395. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 21.0 *
+             (r_x * r_x * r_x * r_x * r_x) -
+         945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * 105.0 * (r_x * r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 105.0 * (r_x);
+  /* 645 zero-valued terms not written out */
 }
 
 #endif /* SWIFT_GRAVITY_DERIVATIVE_H */

@@ -77,7 +77,32 @@ struct grav_tensor {
   float F_211, F_121, F_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+
+  /* 5th order terms */
+  float F_005;
+  float F_014;
+  float F_023;
+  float F_032;
+  float F_041;
+  float F_050;
+  float F_104;
+  float F_113;
+  float F_122;
+  float F_131;
+  float F_140;
+  float F_203;
+  float F_212;
+  float F_221;
+  float F_230;
+  float F_302;
+  float F_311;
+  float F_320;
+  float F_401;
+  float F_410;
+  float F_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -126,7 +151,32 @@ struct multipole {
   float M_211, M_121, M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+
+  /* 5th order terms */
+  float M_005;
+  float M_014;
+  float M_023;
+  float M_032;
+  float M_041;
+  float M_050;
+  float M_104;
+  float M_113;
+  float M_122;
+  float M_131;
+  float M_140;
+  float M_203;
+  float M_212;
+  float M_221;
+  float M_230;
+  float M_302;
+  float M_311;
+  float M_320;
+  float M_401;
+  float M_410;
+  float M_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -252,7 +302,31 @@ INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
   la->F_112 += lb->F_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+  /* 5th order terms */
+  la->F_005 += lb->F_005;
+  la->F_014 += lb->F_014;
+  la->F_023 += lb->F_023;
+  la->F_032 += lb->F_032;
+  la->F_041 += lb->F_041;
+  la->F_050 += lb->F_050;
+  la->F_104 += lb->F_104;
+  la->F_113 += lb->F_113;
+  la->F_122 += lb->F_122;
+  la->F_131 += lb->F_131;
+  la->F_140 += lb->F_140;
+  la->F_203 += lb->F_203;
+  la->F_212 += lb->F_212;
+  la->F_221 += lb->F_221;
+  la->F_230 += lb->F_230;
+  la->F_302 += lb->F_302;
+  la->F_311 += lb->F_311;
+  la->F_320 += lb->F_320;
+  la->F_401 += lb->F_401;
+  la->F_410 += lb->F_410;
+  la->F_500 += lb->F_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 }
 
@@ -303,8 +377,8 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
          l->F_112);
 #endif
   printf("-------------------------\n");
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 }
 
@@ -356,8 +430,8 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
          m->M_112);
 #endif
   printf("-------------------------\n");
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 }
 
@@ -428,7 +502,31 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
   ma->M_112 += mb->M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+  /* 5th order terms */
+  ma->M_005 += mb->M_005;
+  ma->M_014 += mb->M_014;
+  ma->M_023 += mb->M_023;
+  ma->M_032 += mb->M_032;
+  ma->M_041 += mb->M_041;
+  ma->M_050 += mb->M_050;
+  ma->M_104 += mb->M_104;
+  ma->M_113 += mb->M_113;
+  ma->M_122 += mb->M_122;
+  ma->M_131 += mb->M_131;
+  ma->M_140 += mb->M_140;
+  ma->M_203 += mb->M_203;
+  ma->M_212 += mb->M_212;
+  ma->M_221 += mb->M_221;
+  ma->M_230 += mb->M_230;
+  ma->M_302 += mb->M_302;
+  ma->M_311 += mb->M_311;
+  ma->M_320 += mb->M_320;
+  ma->M_401 += mb->M_401;
+  ma->M_410 += mb->M_410;
+  ma->M_500 += mb->M_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
   // MATTHIEU
@@ -728,7 +826,132 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
   }
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+  /* Manhattan Norm of 5th order terms */
+  const float order5_norm =
+      fabsf(ma->M_005) + fabsf(mb->M_005) + fabsf(ma->M_014) +
+      fabsf(mb->M_014) + fabsf(ma->M_023) + fabsf(mb->M_023) +
+      fabsf(ma->M_032) + fabsf(mb->M_032) + fabsf(ma->M_041) +
+      fabsf(mb->M_041) + fabsf(ma->M_050) + fabsf(mb->M_050) +
+      fabsf(ma->M_104) + fabsf(mb->M_104) + fabsf(ma->M_113) +
+      fabsf(mb->M_113) + fabsf(ma->M_122) + fabsf(mb->M_122) +
+      fabsf(ma->M_131) + fabsf(mb->M_131) + fabsf(ma->M_140) +
+      fabsf(mb->M_140) + fabsf(ma->M_203) + fabsf(mb->M_203) +
+      fabsf(ma->M_212) + fabsf(mb->M_212) + fabsf(ma->M_221) +
+      fabsf(mb->M_221) + fabsf(ma->M_230) + fabsf(mb->M_230) +
+      fabsf(ma->M_302) + fabsf(mb->M_302) + fabsf(ma->M_311) +
+      fabsf(mb->M_311) + fabsf(ma->M_320) + fabsf(mb->M_320) +
+      fabsf(ma->M_401) + fabsf(mb->M_401) + fabsf(ma->M_410) +
+      fabsf(mb->M_410) + fabsf(ma->M_500) + fabsf(mb->M_500);
+
+  /* Compare 5th order terms above 1% of norm */
+  if (fabsf(ma->M_005 + mb->M_005) > 0.01f * order5_norm &&
+      fabsf(ma->M_005 - mb->M_005) / fabsf(ma->M_005 + mb->M_005) > tolerance) {
+    message("M_005 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_014 + mb->M_014) > 0.01f * order5_norm &&
+      fabsf(ma->M_014 - mb->M_014) / fabsf(ma->M_014 + mb->M_014) > tolerance) {
+    message("M_014 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_023 + mb->M_023) > 0.01f * order5_norm &&
+      fabsf(ma->M_023 - mb->M_023) / fabsf(ma->M_023 + mb->M_023) > tolerance) {
+    message("M_023 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_032 + mb->M_032) > 0.01f * order5_norm &&
+      fabsf(ma->M_032 - mb->M_032) / fabsf(ma->M_032 + mb->M_032) > tolerance) {
+    message("M_032 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_041 + mb->M_041) > 0.01f * order5_norm &&
+      fabsf(ma->M_041 - mb->M_041) / fabsf(ma->M_041 + mb->M_041) > tolerance) {
+    message("M_041 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_050 + mb->M_050) > 0.01f * order5_norm &&
+      fabsf(ma->M_050 - mb->M_050) / fabsf(ma->M_050 + mb->M_050) > tolerance) {
+    message("M_050 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_104 + mb->M_104) > 0.01f * order5_norm &&
+      fabsf(ma->M_104 - mb->M_104) / fabsf(ma->M_104 + mb->M_104) > tolerance) {
+    message("M_104 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_113 + mb->M_113) > 0.01f * order5_norm &&
+      fabsf(ma->M_113 - mb->M_113) / fabsf(ma->M_113 + mb->M_113) > tolerance) {
+    message("M_113 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_122 + mb->M_122) > 0.01f * order5_norm &&
+      fabsf(ma->M_122 - mb->M_122) / fabsf(ma->M_122 + mb->M_122) > tolerance) {
+    message("M_122 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_131 + mb->M_131) > 0.01f * order5_norm &&
+      fabsf(ma->M_131 - mb->M_131) / fabsf(ma->M_131 + mb->M_131) > tolerance) {
+    message("M_131 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_140 + mb->M_140) > 0.01f * order5_norm &&
+      fabsf(ma->M_140 - mb->M_140) / fabsf(ma->M_140 + mb->M_140) > tolerance) {
+    message("M_140 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_203 + mb->M_203) > 0.01f * order5_norm &&
+      fabsf(ma->M_203 - mb->M_203) / fabsf(ma->M_203 + mb->M_203) > tolerance) {
+    message("M_203 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_212 + mb->M_212) > 0.01f * order5_norm &&
+      fabsf(ma->M_212 - mb->M_212) / fabsf(ma->M_212 + mb->M_212) > tolerance) {
+    message("M_212 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_221 + mb->M_221) > 0.01f * order5_norm &&
+      fabsf(ma->M_221 - mb->M_221) / fabsf(ma->M_221 + mb->M_221) > tolerance) {
+    message("M_221 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_230 + mb->M_230) > 0.01f * order5_norm &&
+      fabsf(ma->M_230 - mb->M_230) / fabsf(ma->M_230 + mb->M_230) > tolerance) {
+    message("M_230 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_302 + mb->M_302) > 0.01f * order5_norm &&
+      fabsf(ma->M_302 - mb->M_302) / fabsf(ma->M_302 + mb->M_302) > tolerance) {
+    message("M_302 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_311 + mb->M_311) > 0.01f * order5_norm &&
+      fabsf(ma->M_311 - mb->M_311) / fabsf(ma->M_311 + mb->M_311) > tolerance) {
+    message("M_311 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_320 + mb->M_320) > 0.01f * order5_norm &&
+      fabsf(ma->M_320 - mb->M_320) / fabsf(ma->M_320 + mb->M_320) > tolerance) {
+    message("M_320 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_401 + mb->M_401) > 0.01f * order5_norm &&
+      fabsf(ma->M_401 - mb->M_401) / fabsf(ma->M_401 + mb->M_401) > tolerance) {
+    message("M_401 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_410 + mb->M_410) > 0.01f * order5_norm &&
+      fabsf(ma->M_410 - mb->M_410) / fabsf(ma->M_410 + mb->M_410) > tolerance) {
+    message("M_410 term different");
+    return 0;
+  }
+  if (fabsf(ma->M_500 + mb->M_500) > 0.01f * order5_norm &&
+      fabsf(ma->M_500 - mb->M_500) / fabsf(ma->M_500 + mb->M_500) > tolerance) {
+    message("M_500 term different");
+    return 0;
+  }
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
   /* All is good */
@@ -797,7 +1020,30 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   float M_211 = 0.f, M_121 = 0.f, M_112 = 0.f;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+  float M_005 = 0.f;
+  float M_014 = 0.f;
+  float M_023 = 0.f;
+  float M_032 = 0.f;
+  float M_041 = 0.f;
+  float M_050 = 0.f;
+  float M_104 = 0.f;
+  float M_113 = 0.f;
+  float M_122 = 0.f;
+  float M_131 = 0.f;
+  float M_140 = 0.f;
+  float M_203 = 0.f;
+  float M_212 = 0.f;
+  float M_221 = 0.f;
+  float M_230 = 0.f;
+  float M_302 = 0.f;
+  float M_311 = 0.f;
+  float M_320 = 0.f;
+  float M_401 = 0.f;
+  float M_410 = 0.f;
+  float M_500 = 0.f;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
   /* Construce the higher order terms */
@@ -849,7 +1095,31 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_112 += m * X_112(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+    /* 5th order terms */
+    M_005 += -m * X_005(dx);
+    M_014 += -m * X_014(dx);
+    M_023 += -m * X_023(dx);
+    M_032 += -m * X_032(dx);
+    M_041 += -m * X_041(dx);
+    M_050 += -m * X_050(dx);
+    M_104 += -m * X_104(dx);
+    M_113 += -m * X_113(dx);
+    M_122 += -m * X_122(dx);
+    M_131 += -m * X_131(dx);
+    M_140 += -m * X_140(dx);
+    M_203 += -m * X_203(dx);
+    M_212 += -m * X_212(dx);
+    M_221 += -m * X_221(dx);
+    M_230 += -m * X_230(dx);
+    M_302 += -m * X_302(dx);
+    M_311 += -m * X_311(dx);
+    M_320 += -m * X_320(dx);
+    M_401 += -m * X_401(dx);
+    M_410 += -m * X_410(dx);
+    M_500 += -m * X_500(dx);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
   }
 
@@ -908,7 +1178,31 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_112 = M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+  /* 5th order terms */
+  m->m_pole.M_005 = M_005;
+  m->m_pole.M_014 = M_014;
+  m->m_pole.M_023 = M_023;
+  m->m_pole.M_032 = M_032;
+  m->m_pole.M_041 = M_041;
+  m->m_pole.M_050 = M_050;
+  m->m_pole.M_104 = M_104;
+  m->m_pole.M_113 = M_113;
+  m->m_pole.M_122 = M_122;
+  m->m_pole.M_131 = M_131;
+  m->m_pole.M_140 = M_140;
+  m->m_pole.M_203 = M_203;
+  m->m_pole.M_212 = M_212;
+  m->m_pole.M_221 = M_221;
+  m->m_pole.M_230 = M_230;
+  m->m_pole.M_302 = M_302;
+  m->m_pole.M_311 = M_311;
+  m->m_pole.M_320 = M_320;
+  m->m_pole.M_401 = M_401;
+  m->m_pole.M_410 = M_410;
+  m->m_pole.M_500 = M_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -994,7 +1288,181 @@ INLINE static void gravity_M2M(struct multipole *m_a,
                X_111(dx) * m_b->M_000;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  /* Shift 4th order terms */
+  m_a->M_004 = m_b->M_004 + X_001(dx) * m_b->M_003 + X_002(dx) * m_b->M_002 +
+               X_003(dx) * m_b->M_001 + X_004(dx) * m_b->M_000;
+  m_a->M_013 = m_b->M_013 + X_001(dx) * m_b->M_012 + X_002(dx) * m_b->M_011 +
+               X_003(dx) * m_b->M_010 + X_010(dx) * m_b->M_003 +
+               X_011(dx) * m_b->M_002 + X_012(dx) * m_b->M_001 +
+               X_013(dx) * m_b->M_000;
+  m_a->M_022 = m_b->M_022 + X_001(dx) * m_b->M_021 + X_002(dx) * m_b->M_020 +
+               X_010(dx) * m_b->M_012 + X_011(dx) * m_b->M_011 +
+               X_012(dx) * m_b->M_010 + X_020(dx) * m_b->M_002 +
+               X_021(dx) * m_b->M_001 + X_022(dx) * m_b->M_000;
+  m_a->M_031 = m_b->M_031 + X_001(dx) * m_b->M_030 + X_010(dx) * m_b->M_021 +
+               X_011(dx) * m_b->M_020 + X_020(dx) * m_b->M_011 +
+               X_021(dx) * m_b->M_010 + X_030(dx) * m_b->M_001 +
+               X_031(dx) * m_b->M_000;
+  m_a->M_040 = m_b->M_040 + X_010(dx) * m_b->M_030 + X_020(dx) * m_b->M_020 +
+               X_030(dx) * m_b->M_010 + X_040(dx) * m_b->M_000;
+  m_a->M_103 = m_b->M_103 + X_001(dx) * m_b->M_102 + X_002(dx) * m_b->M_101 +
+               X_003(dx) * m_b->M_100 + X_100(dx) * m_b->M_003 +
+               X_101(dx) * m_b->M_002 + X_102(dx) * m_b->M_001 +
+               X_103(dx) * m_b->M_000;
+  m_a->M_112 =
+      m_b->M_112 + X_001(dx) * m_b->M_111 + X_002(dx) * m_b->M_110 +
+      X_010(dx) * m_b->M_102 + X_011(dx) * m_b->M_101 + X_012(dx) * m_b->M_100 +
+      X_100(dx) * m_b->M_012 + X_101(dx) * m_b->M_011 + X_102(dx) * m_b->M_010 +
+      X_110(dx) * m_b->M_002 + X_111(dx) * m_b->M_001 + X_112(dx) * m_b->M_000;
+  m_a->M_121 =
+      m_b->M_121 + X_001(dx) * m_b->M_120 + X_010(dx) * m_b->M_111 +
+      X_011(dx) * m_b->M_110 + X_020(dx) * m_b->M_101 + X_021(dx) * m_b->M_100 +
+      X_100(dx) * m_b->M_021 + X_101(dx) * m_b->M_020 + X_110(dx) * m_b->M_011 +
+      X_111(dx) * m_b->M_010 + X_120(dx) * m_b->M_001 + X_121(dx) * m_b->M_000;
+  m_a->M_130 = m_b->M_130 + X_010(dx) * m_b->M_120 + X_020(dx) * m_b->M_110 +
+               X_030(dx) * m_b->M_100 + X_100(dx) * m_b->M_030 +
+               X_110(dx) * m_b->M_020 + X_120(dx) * m_b->M_010 +
+               X_130(dx) * m_b->M_000;
+  m_a->M_202 = m_b->M_202 + X_001(dx) * m_b->M_201 + X_002(dx) * m_b->M_200 +
+               X_100(dx) * m_b->M_102 + X_101(dx) * m_b->M_101 +
+               X_102(dx) * m_b->M_100 + X_200(dx) * m_b->M_002 +
+               X_201(dx) * m_b->M_001 + X_202(dx) * m_b->M_000;
+  m_a->M_211 =
+      m_b->M_211 + X_001(dx) * m_b->M_210 + X_010(dx) * m_b->M_201 +
+      X_011(dx) * m_b->M_200 + X_100(dx) * m_b->M_111 + X_101(dx) * m_b->M_110 +
+      X_110(dx) * m_b->M_101 + X_111(dx) * m_b->M_100 + X_200(dx) * m_b->M_011 +
+      X_201(dx) * m_b->M_010 + X_210(dx) * m_b->M_001 + X_211(dx) * m_b->M_000;
+  m_a->M_220 = m_b->M_220 + X_010(dx) * m_b->M_210 + X_020(dx) * m_b->M_200 +
+               X_100(dx) * m_b->M_120 + X_110(dx) * m_b->M_110 +
+               X_120(dx) * m_b->M_100 + X_200(dx) * m_b->M_020 +
+               X_210(dx) * m_b->M_010 + X_220(dx) * m_b->M_000;
+  m_a->M_301 = m_b->M_301 + X_001(dx) * m_b->M_300 + X_100(dx) * m_b->M_201 +
+               X_101(dx) * m_b->M_200 + X_200(dx) * m_b->M_101 +
+               X_201(dx) * m_b->M_100 + X_300(dx) * m_b->M_001 +
+               X_301(dx) * m_b->M_000;
+  m_a->M_310 = m_b->M_310 + X_010(dx) * m_b->M_300 + X_100(dx) * m_b->M_210 +
+               X_110(dx) * m_b->M_200 + X_200(dx) * m_b->M_110 +
+               X_210(dx) * m_b->M_100 + X_300(dx) * m_b->M_010 +
+               X_310(dx) * m_b->M_000;
+  m_a->M_400 = m_b->M_400 + X_100(dx) * m_b->M_300 + X_200(dx) * m_b->M_200 +
+               X_300(dx) * m_b->M_100 + X_400(dx) * m_b->M_000;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+  /* Shift 5th order terms */
+  m_a->M_005 = m_b->M_005 + X_001(dx) * m_b->M_004 + X_002(dx) * m_b->M_003 +
+               X_003(dx) * m_b->M_002 + X_004(dx) * m_b->M_001 +
+               X_005(dx) * m_b->M_000;
+  m_a->M_014 = m_b->M_014 + X_001(dx) * m_b->M_013 + X_002(dx) * m_b->M_012 +
+               X_003(dx) * m_b->M_011 + X_004(dx) * m_b->M_010 +
+               X_010(dx) * m_b->M_004 + X_011(dx) * m_b->M_003 +
+               X_012(dx) * m_b->M_002 + X_013(dx) * m_b->M_001 +
+               X_014(dx) * m_b->M_000;
+  m_a->M_023 =
+      m_b->M_023 + X_001(dx) * m_b->M_022 + X_002(dx) * m_b->M_021 +
+      X_003(dx) * m_b->M_020 + X_010(dx) * m_b->M_013 + X_011(dx) * m_b->M_012 +
+      X_012(dx) * m_b->M_011 + X_013(dx) * m_b->M_010 + X_020(dx) * m_b->M_003 +
+      X_021(dx) * m_b->M_002 + X_022(dx) * m_b->M_001 + X_023(dx) * m_b->M_000;
+  m_a->M_032 =
+      m_b->M_032 + X_001(dx) * m_b->M_031 + X_002(dx) * m_b->M_030 +
+      X_010(dx) * m_b->M_022 + X_011(dx) * m_b->M_021 + X_012(dx) * m_b->M_020 +
+      X_020(dx) * m_b->M_012 + X_021(dx) * m_b->M_011 + X_022(dx) * m_b->M_010 +
+      X_030(dx) * m_b->M_002 + X_031(dx) * m_b->M_001 + X_032(dx) * m_b->M_000;
+  m_a->M_041 = m_b->M_041 + X_001(dx) * m_b->M_040 + X_010(dx) * m_b->M_031 +
+               X_011(dx) * m_b->M_030 + X_020(dx) * m_b->M_021 +
+               X_021(dx) * m_b->M_020 + X_030(dx) * m_b->M_011 +
+               X_031(dx) * m_b->M_010 + X_040(dx) * m_b->M_001 +
+               X_041(dx) * m_b->M_000;
+  m_a->M_050 = m_b->M_050 + X_010(dx) * m_b->M_040 + X_020(dx) * m_b->M_030 +
+               X_030(dx) * m_b->M_020 + X_040(dx) * m_b->M_010 +
+               X_050(dx) * m_b->M_000;
+  m_a->M_104 = m_b->M_104 + X_001(dx) * m_b->M_103 + X_002(dx) * m_b->M_102 +
+               X_003(dx) * m_b->M_101 + X_004(dx) * m_b->M_100 +
+               X_100(dx) * m_b->M_004 + X_101(dx) * m_b->M_003 +
+               X_102(dx) * m_b->M_002 + X_103(dx) * m_b->M_001 +
+               X_104(dx) * m_b->M_000;
+  m_a->M_113 =
+      m_b->M_113 + X_001(dx) * m_b->M_112 + X_002(dx) * m_b->M_111 +
+      X_003(dx) * m_b->M_110 + X_010(dx) * m_b->M_103 + X_011(dx) * m_b->M_102 +
+      X_012(dx) * m_b->M_101 + X_013(dx) * m_b->M_100 + X_100(dx) * m_b->M_013 +
+      X_101(dx) * m_b->M_012 + X_102(dx) * m_b->M_011 + X_103(dx) * m_b->M_010 +
+      X_110(dx) * m_b->M_003 + X_111(dx) * m_b->M_002 + X_112(dx) * m_b->M_001 +
+      X_113(dx) * m_b->M_000;
+  m_a->M_122 =
+      m_b->M_122 + X_001(dx) * m_b->M_121 + X_002(dx) * m_b->M_120 +
+      X_010(dx) * m_b->M_112 + X_011(dx) * m_b->M_111 + X_012(dx) * m_b->M_110 +
+      X_020(dx) * m_b->M_102 + X_021(dx) * m_b->M_101 + X_022(dx) * m_b->M_100 +
+      X_100(dx) * m_b->M_022 + X_101(dx) * m_b->M_021 + X_102(dx) * m_b->M_020 +
+      X_110(dx) * m_b->M_012 + X_111(dx) * m_b->M_011 + X_112(dx) * m_b->M_010 +
+      X_120(dx) * m_b->M_002 + X_121(dx) * m_b->M_001 + X_122(dx) * m_b->M_000;
+  m_a->M_131 =
+      m_b->M_131 + X_001(dx) * m_b->M_130 + X_010(dx) * m_b->M_121 +
+      X_011(dx) * m_b->M_120 + X_020(dx) * m_b->M_111 + X_021(dx) * m_b->M_110 +
+      X_030(dx) * m_b->M_101 + X_031(dx) * m_b->M_100 + X_100(dx) * m_b->M_031 +
+      X_101(dx) * m_b->M_030 + X_110(dx) * m_b->M_021 + X_111(dx) * m_b->M_020 +
+      X_120(dx) * m_b->M_011 + X_121(dx) * m_b->M_010 + X_130(dx) * m_b->M_001 +
+      X_131(dx) * m_b->M_000;
+  m_a->M_140 = m_b->M_140 + X_010(dx) * m_b->M_130 + X_020(dx) * m_b->M_120 +
+               X_030(dx) * m_b->M_110 + X_040(dx) * m_b->M_100 +
+               X_100(dx) * m_b->M_040 + X_110(dx) * m_b->M_030 +
+               X_120(dx) * m_b->M_020 + X_130(dx) * m_b->M_010 +
+               X_140(dx) * m_b->M_000;
+  m_a->M_203 =
+      m_b->M_203 + X_001(dx) * m_b->M_202 + X_002(dx) * m_b->M_201 +
+      X_003(dx) * m_b->M_200 + X_100(dx) * m_b->M_103 + X_101(dx) * m_b->M_102 +
+      X_102(dx) * m_b->M_101 + X_103(dx) * m_b->M_100 + X_200(dx) * m_b->M_003 +
+      X_201(dx) * m_b->M_002 + X_202(dx) * m_b->M_001 + X_203(dx) * m_b->M_000;
+  m_a->M_212 =
+      m_b->M_212 + X_001(dx) * m_b->M_211 + X_002(dx) * m_b->M_210 +
+      X_010(dx) * m_b->M_202 + X_011(dx) * m_b->M_201 + X_012(dx) * m_b->M_200 +
+      X_100(dx) * m_b->M_112 + X_101(dx) * m_b->M_111 + X_102(dx) * m_b->M_110 +
+      X_110(dx) * m_b->M_102 + X_111(dx) * m_b->M_101 + X_112(dx) * m_b->M_100 +
+      X_200(dx) * m_b->M_012 + X_201(dx) * m_b->M_011 + X_202(dx) * m_b->M_010 +
+      X_210(dx) * m_b->M_002 + X_211(dx) * m_b->M_001 + X_212(dx) * m_b->M_000;
+  m_a->M_221 =
+      m_b->M_221 + X_001(dx) * m_b->M_220 + X_010(dx) * m_b->M_211 +
+      X_011(dx) * m_b->M_210 + X_020(dx) * m_b->M_201 + X_021(dx) * m_b->M_200 +
+      X_100(dx) * m_b->M_121 + X_101(dx) * m_b->M_120 + X_110(dx) * m_b->M_111 +
+      X_111(dx) * m_b->M_110 + X_120(dx) * m_b->M_101 + X_121(dx) * m_b->M_100 +
+      X_200(dx) * m_b->M_021 + X_201(dx) * m_b->M_020 + X_210(dx) * m_b->M_011 +
+      X_211(dx) * m_b->M_010 + X_220(dx) * m_b->M_001 + X_221(dx) * m_b->M_000;
+  m_a->M_230 =
+      m_b->M_230 + X_010(dx) * m_b->M_220 + X_020(dx) * m_b->M_210 +
+      X_030(dx) * m_b->M_200 + X_100(dx) * m_b->M_130 + X_110(dx) * m_b->M_120 +
+      X_120(dx) * m_b->M_110 + X_130(dx) * m_b->M_100 + X_200(dx) * m_b->M_030 +
+      X_210(dx) * m_b->M_020 + X_220(dx) * m_b->M_010 + X_230(dx) * m_b->M_000;
+  m_a->M_302 =
+      m_b->M_302 + X_001(dx) * m_b->M_301 + X_002(dx) * m_b->M_300 +
+      X_100(dx) * m_b->M_202 + X_101(dx) * m_b->M_201 + X_102(dx) * m_b->M_200 +
+      X_200(dx) * m_b->M_102 + X_201(dx) * m_b->M_101 + X_202(dx) * m_b->M_100 +
+      X_300(dx) * m_b->M_002 + X_301(dx) * m_b->M_001 + X_302(dx) * m_b->M_000;
+  m_a->M_311 =
+      m_b->M_311 + X_001(dx) * m_b->M_310 + X_010(dx) * m_b->M_301 +
+      X_011(dx) * m_b->M_300 + X_100(dx) * m_b->M_211 + X_101(dx) * m_b->M_210 +
+      X_110(dx) * m_b->M_201 + X_111(dx) * m_b->M_200 + X_200(dx) * m_b->M_111 +
+      X_201(dx) * m_b->M_110 + X_210(dx) * m_b->M_101 + X_211(dx) * m_b->M_100 +
+      X_300(dx) * m_b->M_011 + X_301(dx) * m_b->M_010 + X_310(dx) * m_b->M_001 +
+      X_311(dx) * m_b->M_000;
+  m_a->M_320 =
+      m_b->M_320 + X_010(dx) * m_b->M_310 + X_020(dx) * m_b->M_300 +
+      X_100(dx) * m_b->M_220 + X_110(dx) * m_b->M_210 + X_120(dx) * m_b->M_200 +
+      X_200(dx) * m_b->M_120 + X_210(dx) * m_b->M_110 + X_220(dx) * m_b->M_100 +
+      X_300(dx) * m_b->M_020 + X_310(dx) * m_b->M_010 + X_320(dx) * m_b->M_000;
+  m_a->M_401 = m_b->M_401 + X_001(dx) * m_b->M_400 + X_100(dx) * m_b->M_301 +
+               X_101(dx) * m_b->M_300 + X_200(dx) * m_b->M_201 +
+               X_201(dx) * m_b->M_200 + X_300(dx) * m_b->M_101 +
+               X_301(dx) * m_b->M_100 + X_400(dx) * m_b->M_001 +
+               X_401(dx) * m_b->M_000;
+  m_a->M_410 = m_b->M_410 + X_010(dx) * m_b->M_400 + X_100(dx) * m_b->M_310 +
+               X_110(dx) * m_b->M_300 + X_200(dx) * m_b->M_210 +
+               X_210(dx) * m_b->M_200 + X_300(dx) * m_b->M_110 +
+               X_310(dx) * m_b->M_100 + X_400(dx) * m_b->M_010 +
+               X_410(dx) * m_b->M_000;
+  m_a->M_500 = m_b->M_500 + X_100(dx) * m_b->M_400 + X_200(dx) * m_b->M_300 +
+               X_300(dx) * m_b->M_200 + X_400(dx) * m_b->M_100 +
+               X_500(dx) * m_b->M_000;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1142,7 +1610,412 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   l_b->F_111 += m_a->M_000 * D_111(dx, dy, dz, r_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+  /* Compute 4th order field tensor terms (addition to rank 0) */
+  l_b->F_000 += m_a->M_004 * D_004(dx, dy, dz, r_inv) +
+                m_a->M_013 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_022 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_031 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_040 * D_040(dx, dy, dz, r_inv) +
+                m_a->M_103 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_112 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_121 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_130 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_202 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_211 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_220 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_301 * D_301(dx, dy, dz, r_inv) +
+                m_a->M_310 * D_310(dx, dy, dz, r_inv) +
+                m_a->M_400 * D_400(dx, dy, dz, r_inv);
+
+  /* Compute 4th order field tensor terms (addition to rank 1) */
+  l_b->F_001 += m_a->M_003 * D_004(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_301(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_003 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_040(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_310(dx, dy, dz, r_inv);
+  l_b->F_100 += m_a->M_003 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_301(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_310(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_400(dx, dy, dz, r_inv);
+
+  /* Compute 4th order field tensor terms (addition to rank 2) */
+  l_b->F_002 += m_a->M_002 * D_004(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_202(dx, dy, dz, r_inv);
+  l_b->F_011 += m_a->M_002 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_211(dx, dy, dz, r_inv);
+  l_b->F_020 += m_a->M_002 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_040(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_220(dx, dy, dz, r_inv);
+  l_b->F_101 += m_a->M_002 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_301(dx, dy, dz, r_inv);
+  l_b->F_110 += m_a->M_002 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_310(dx, dy, dz, r_inv);
+  l_b->F_200 += m_a->M_002 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_301(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_310(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_400(dx, dy, dz, r_inv);
+
+  /* Compute 4th order field tensor terms (addition to rank 3) */
+  l_b->F_003 += m_a->M_001 * D_004(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_103(dx, dy, dz, r_inv);
+  l_b->F_012 += m_a->M_001 * D_013(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_112(dx, dy, dz, r_inv);
+  l_b->F_021 += m_a->M_001 * D_022(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_121(dx, dy, dz, r_inv);
+  l_b->F_030 += m_a->M_001 * D_031(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_040(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_130(dx, dy, dz, r_inv);
+  l_b->F_102 += m_a->M_001 * D_103(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_202(dx, dy, dz, r_inv);
+  l_b->F_111 += m_a->M_001 * D_112(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_211(dx, dy, dz, r_inv);
+  l_b->F_120 += m_a->M_001 * D_121(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_130(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_220(dx, dy, dz, r_inv);
+  l_b->F_201 += m_a->M_001 * D_202(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_301(dx, dy, dz, r_inv);
+  l_b->F_210 += m_a->M_001 * D_211(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_220(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_310(dx, dy, dz, r_inv);
+  l_b->F_300 += m_a->M_001 * D_301(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_310(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_400(dx, dy, dz, r_inv);
+
+  /* Compute 4th order field tensor terms (addition to rank 4) */
+  l_b->F_004 += m_a->M_000 * D_004(dx, dy, dz, r_inv);
+  l_b->F_013 += m_a->M_000 * D_013(dx, dy, dz, r_inv);
+  l_b->F_022 += m_a->M_000 * D_022(dx, dy, dz, r_inv);
+  l_b->F_031 += m_a->M_000 * D_031(dx, dy, dz, r_inv);
+  l_b->F_040 += m_a->M_000 * D_040(dx, dy, dz, r_inv);
+  l_b->F_103 += m_a->M_000 * D_103(dx, dy, dz, r_inv);
+  l_b->F_112 += m_a->M_000 * D_112(dx, dy, dz, r_inv);
+  l_b->F_121 += m_a->M_000 * D_121(dx, dy, dz, r_inv);
+  l_b->F_130 += m_a->M_000 * D_130(dx, dy, dz, r_inv);
+  l_b->F_202 += m_a->M_000 * D_202(dx, dy, dz, r_inv);
+  l_b->F_211 += m_a->M_000 * D_211(dx, dy, dz, r_inv);
+  l_b->F_220 += m_a->M_000 * D_220(dx, dy, dz, r_inv);
+  l_b->F_301 += m_a->M_000 * D_301(dx, dy, dz, r_inv);
+  l_b->F_310 += m_a->M_000 * D_310(dx, dy, dz, r_inv);
+  l_b->F_400 += m_a->M_000 * D_400(dx, dy, dz, r_inv);
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+  /* Compute 5th order field tensor terms (addition to rank 0) */
+  l_b->F_000 += m_a->M_005 * D_005(dx, dy, dz, r_inv) +
+                m_a->M_014 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_023 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_032 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_041 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_050 * D_050(dx, dy, dz, r_inv) +
+                m_a->M_104 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_113 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_122 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_131 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_140 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_203 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_212 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_221 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_230 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_302 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_311 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_320 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_401 * D_401(dx, dy, dz, r_inv) +
+                m_a->M_410 * D_410(dx, dy, dz, r_inv) +
+                m_a->M_500 * D_500(dx, dy, dz, r_inv);
+
+  /* Compute 5th order field tensor terms (addition to rank 1) */
+  l_b->F_001 += m_a->M_004 * D_005(dx, dy, dz, r_inv) +
+                m_a->M_013 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_022 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_031 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_040 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_103 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_112 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_121 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_130 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_202 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_211 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_220 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_301 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_310 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_400 * D_401(dx, dy, dz, r_inv);
+  l_b->F_010 += m_a->M_004 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_013 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_022 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_031 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_040 * D_050(dx, dy, dz, r_inv) +
+                m_a->M_103 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_112 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_121 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_130 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_202 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_211 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_220 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_301 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_310 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_400 * D_410(dx, dy, dz, r_inv);
+  l_b->F_100 += m_a->M_004 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_013 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_022 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_031 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_040 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_103 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_112 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_121 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_130 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_202 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_211 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_220 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_301 * D_401(dx, dy, dz, r_inv) +
+                m_a->M_310 * D_410(dx, dy, dz, r_inv) +
+                m_a->M_400 * D_500(dx, dy, dz, r_inv);
+
+  /* Compute 5th order field tensor terms (addition to rank 2) */
+  l_b->F_002 += m_a->M_003 * D_005(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_302(dx, dy, dz, r_inv);
+  l_b->F_011 += m_a->M_003 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_311(dx, dy, dz, r_inv);
+  l_b->F_020 += m_a->M_003 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_050(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_320(dx, dy, dz, r_inv);
+  l_b->F_101 += m_a->M_003 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_401(dx, dy, dz, r_inv);
+  l_b->F_110 += m_a->M_003 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_410(dx, dy, dz, r_inv);
+  l_b->F_200 += m_a->M_003 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_012 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_021 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_030 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_102 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_111 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_120 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_201 * D_401(dx, dy, dz, r_inv) +
+                m_a->M_210 * D_410(dx, dy, dz, r_inv) +
+                m_a->M_300 * D_500(dx, dy, dz, r_inv);
+
+  /* Compute 5th order field tensor terms (addition to rank 3) */
+  l_b->F_003 += m_a->M_002 * D_005(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_203(dx, dy, dz, r_inv);
+  l_b->F_012 += m_a->M_002 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_212(dx, dy, dz, r_inv);
+  l_b->F_021 += m_a->M_002 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_221(dx, dy, dz, r_inv);
+  l_b->F_030 += m_a->M_002 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_050(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_230(dx, dy, dz, r_inv);
+  l_b->F_102 += m_a->M_002 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_302(dx, dy, dz, r_inv);
+  l_b->F_111 += m_a->M_002 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_311(dx, dy, dz, r_inv);
+  l_b->F_120 += m_a->M_002 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_320(dx, dy, dz, r_inv);
+  l_b->F_201 += m_a->M_002 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_401(dx, dy, dz, r_inv);
+  l_b->F_210 += m_a->M_002 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_410(dx, dy, dz, r_inv);
+  l_b->F_300 += m_a->M_002 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_011 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_020 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_101 * D_401(dx, dy, dz, r_inv) +
+                m_a->M_110 * D_410(dx, dy, dz, r_inv) +
+                m_a->M_200 * D_500(dx, dy, dz, r_inv);
+
+  /* Compute 5th order field tensor terms (addition to rank 4) */
+  l_b->F_004 += m_a->M_001 * D_005(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_104(dx, dy, dz, r_inv);
+  l_b->F_013 += m_a->M_001 * D_014(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_113(dx, dy, dz, r_inv);
+  l_b->F_022 += m_a->M_001 * D_023(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_122(dx, dy, dz, r_inv);
+  l_b->F_031 += m_a->M_001 * D_032(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_131(dx, dy, dz, r_inv);
+  l_b->F_040 += m_a->M_001 * D_041(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_050(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_140(dx, dy, dz, r_inv);
+  l_b->F_103 += m_a->M_001 * D_104(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_203(dx, dy, dz, r_inv);
+  l_b->F_112 += m_a->M_001 * D_113(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_212(dx, dy, dz, r_inv);
+  l_b->F_121 += m_a->M_001 * D_122(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_221(dx, dy, dz, r_inv);
+  l_b->F_130 += m_a->M_001 * D_131(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_140(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_230(dx, dy, dz, r_inv);
+  l_b->F_202 += m_a->M_001 * D_203(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_302(dx, dy, dz, r_inv);
+  l_b->F_211 += m_a->M_001 * D_212(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_311(dx, dy, dz, r_inv);
+  l_b->F_220 += m_a->M_001 * D_221(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_230(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_320(dx, dy, dz, r_inv);
+  l_b->F_301 += m_a->M_001 * D_302(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_401(dx, dy, dz, r_inv);
+  l_b->F_310 += m_a->M_001 * D_311(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_320(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_410(dx, dy, dz, r_inv);
+  l_b->F_400 += m_a->M_001 * D_401(dx, dy, dz, r_inv) +
+                m_a->M_010 * D_410(dx, dy, dz, r_inv) +
+                m_a->M_100 * D_500(dx, dy, dz, r_inv);
+
+  /* Compute 5th order field tensor terms (addition to rank 5) */
+  l_b->F_005 += m_a->M_000 * D_005(dx, dy, dz, r_inv);
+  l_b->F_014 += m_a->M_000 * D_014(dx, dy, dz, r_inv);
+  l_b->F_023 += m_a->M_000 * D_023(dx, dy, dz, r_inv);
+  l_b->F_032 += m_a->M_000 * D_032(dx, dy, dz, r_inv);
+  l_b->F_041 += m_a->M_000 * D_041(dx, dy, dz, r_inv);
+  l_b->F_050 += m_a->M_000 * D_050(dx, dy, dz, r_inv);
+  l_b->F_104 += m_a->M_000 * D_104(dx, dy, dz, r_inv);
+  l_b->F_113 += m_a->M_000 * D_113(dx, dy, dz, r_inv);
+  l_b->F_122 += m_a->M_000 * D_122(dx, dy, dz, r_inv);
+  l_b->F_131 += m_a->M_000 * D_131(dx, dy, dz, r_inv);
+  l_b->F_140 += m_a->M_000 * D_140(dx, dy, dz, r_inv);
+  l_b->F_203 += m_a->M_000 * D_203(dx, dy, dz, r_inv);
+  l_b->F_212 += m_a->M_000 * D_212(dx, dy, dz, r_inv);
+  l_b->F_221 += m_a->M_000 * D_221(dx, dy, dz, r_inv);
+  l_b->F_230 += m_a->M_000 * D_230(dx, dy, dz, r_inv);
+  l_b->F_302 += m_a->M_000 * D_302(dx, dy, dz, r_inv);
+  l_b->F_311 += m_a->M_000 * D_311(dx, dy, dz, r_inv);
+  l_b->F_320 += m_a->M_000 * D_320(dx, dy, dz, r_inv);
+  l_b->F_401 += m_a->M_000 * D_401(dx, dy, dz, r_inv);
+  l_b->F_410 += m_a->M_000 * D_410(dx, dy, dz, r_inv);
+  l_b->F_500 += m_a->M_000 * D_500(dx, dy, dz, r_inv);
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1268,7 +2141,246 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
   la->F_111 += X_000(dx) * lb->F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+
+  /* Shift 4th order field tensor terms (addition to rank 0) */
+  la->F_000 +=
+      X_004(dx) * lb->F_004 + X_013(dx) * lb->F_013 + X_022(dx) * lb->F_022 +
+      X_031(dx) * lb->F_031 + X_040(dx) * lb->F_040 + X_103(dx) * lb->F_103 +
+      X_112(dx) * lb->F_112 + X_121(dx) * lb->F_121 + X_130(dx) * lb->F_130 +
+      X_202(dx) * lb->F_202 + X_211(dx) * lb->F_211 + X_220(dx) * lb->F_220 +
+      X_301(dx) * lb->F_301 + X_310(dx) * lb->F_310 + X_400(dx) * lb->F_400;
+
+  /* Shift 4th order field tensor terms (addition to rank 1) */
+  la->F_001 += X_003(dx) * lb->F_004 + X_012(dx) * lb->F_013 +
+               X_021(dx) * lb->F_022 + X_030(dx) * lb->F_031 +
+               X_102(dx) * lb->F_103 + X_111(dx) * lb->F_112 +
+               X_120(dx) * lb->F_121 + X_201(dx) * lb->F_202 +
+               X_210(dx) * lb->F_211 + X_300(dx) * lb->F_301;
+  la->F_010 += X_003(dx) * lb->F_013 + X_012(dx) * lb->F_022 +
+               X_021(dx) * lb->F_031 + X_030(dx) * lb->F_040 +
+               X_102(dx) * lb->F_112 + X_111(dx) * lb->F_121 +
+               X_120(dx) * lb->F_130 + X_201(dx) * lb->F_211 +
+               X_210(dx) * lb->F_220 + X_300(dx) * lb->F_310;
+  la->F_100 += X_003(dx) * lb->F_103 + X_012(dx) * lb->F_112 +
+               X_021(dx) * lb->F_121 + X_030(dx) * lb->F_130 +
+               X_102(dx) * lb->F_202 + X_111(dx) * lb->F_211 +
+               X_120(dx) * lb->F_220 + X_201(dx) * lb->F_301 +
+               X_210(dx) * lb->F_310 + X_300(dx) * lb->F_400;
+
+  /* Shift 4th order field tensor terms (addition to rank 2) */
+  la->F_002 += X_002(dx) * lb->F_004 + X_011(dx) * lb->F_013 +
+               X_020(dx) * lb->F_022 + X_101(dx) * lb->F_103 +
+               X_110(dx) * lb->F_112 + X_200(dx) * lb->F_202;
+  la->F_011 += X_002(dx) * lb->F_013 + X_011(dx) * lb->F_022 +
+               X_020(dx) * lb->F_031 + X_101(dx) * lb->F_112 +
+               X_110(dx) * lb->F_121 + X_200(dx) * lb->F_211;
+  la->F_020 += X_002(dx) * lb->F_022 + X_011(dx) * lb->F_031 +
+               X_020(dx) * lb->F_040 + X_101(dx) * lb->F_121 +
+               X_110(dx) * lb->F_130 + X_200(dx) * lb->F_220;
+  la->F_101 += X_002(dx) * lb->F_103 + X_011(dx) * lb->F_112 +
+               X_020(dx) * lb->F_121 + X_101(dx) * lb->F_202 +
+               X_110(dx) * lb->F_211 + X_200(dx) * lb->F_301;
+  la->F_110 += X_002(dx) * lb->F_112 + X_011(dx) * lb->F_121 +
+               X_020(dx) * lb->F_130 + X_101(dx) * lb->F_211 +
+               X_110(dx) * lb->F_220 + X_200(dx) * lb->F_310;
+  la->F_200 += X_002(dx) * lb->F_202 + X_011(dx) * lb->F_211 +
+               X_020(dx) * lb->F_220 + X_101(dx) * lb->F_301 +
+               X_110(dx) * lb->F_310 + X_200(dx) * lb->F_400;
+
+  /* Shift 4th order field tensor terms (addition to rank 3) */
+  la->F_003 +=
+      X_001(dx) * lb->F_004 + X_010(dx) * lb->F_013 + X_100(dx) * lb->F_103;
+  la->F_012 +=
+      X_001(dx) * lb->F_013 + X_010(dx) * lb->F_022 + X_100(dx) * lb->F_112;
+  la->F_021 +=
+      X_001(dx) * lb->F_022 + X_010(dx) * lb->F_031 + X_100(dx) * lb->F_121;
+  la->F_030 +=
+      X_001(dx) * lb->F_031 + X_010(dx) * lb->F_040 + X_100(dx) * lb->F_130;
+  la->F_102 +=
+      X_001(dx) * lb->F_103 + X_010(dx) * lb->F_112 + X_100(dx) * lb->F_202;
+  la->F_111 +=
+      X_001(dx) * lb->F_112 + X_010(dx) * lb->F_121 + X_100(dx) * lb->F_211;
+  la->F_120 +=
+      X_001(dx) * lb->F_121 + X_010(dx) * lb->F_130 + X_100(dx) * lb->F_220;
+  la->F_201 +=
+      X_001(dx) * lb->F_202 + X_010(dx) * lb->F_211 + X_100(dx) * lb->F_301;
+  la->F_210 +=
+      X_001(dx) * lb->F_211 + X_010(dx) * lb->F_220 + X_100(dx) * lb->F_310;
+  la->F_300 +=
+      X_001(dx) * lb->F_301 + X_010(dx) * lb->F_310 + X_100(dx) * lb->F_400;
+
+  /* Shift 4th order field tensor terms (addition to rank 4) */
+  la->F_004 += X_000(dx) * lb->F_004;
+  la->F_013 += X_000(dx) * lb->F_013;
+  la->F_022 += X_000(dx) * lb->F_022;
+  la->F_031 += X_000(dx) * lb->F_031;
+  la->F_040 += X_000(dx) * lb->F_040;
+  la->F_103 += X_000(dx) * lb->F_103;
+  la->F_112 += X_000(dx) * lb->F_112;
+  la->F_121 += X_000(dx) * lb->F_121;
+  la->F_130 += X_000(dx) * lb->F_130;
+  la->F_202 += X_000(dx) * lb->F_202;
+  la->F_211 += X_000(dx) * lb->F_211;
+  la->F_220 += X_000(dx) * lb->F_220;
+  la->F_301 += X_000(dx) * lb->F_301;
+  la->F_310 += X_000(dx) * lb->F_310;
+  la->F_400 += X_000(dx) * lb->F_400;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+  /* Shift 5th order field tensor terms (addition to rank 0) */
+  la->F_000 +=
+      X_005(dx) * lb->F_005 + X_014(dx) * lb->F_014 + X_023(dx) * lb->F_023 +
+      X_032(dx) * lb->F_032 + X_041(dx) * lb->F_041 + X_050(dx) * lb->F_050 +
+      X_104(dx) * lb->F_104 + X_113(dx) * lb->F_113 + X_122(dx) * lb->F_122 +
+      X_131(dx) * lb->F_131 + X_140(dx) * lb->F_140 + X_203(dx) * lb->F_203 +
+      X_212(dx) * lb->F_212 + X_221(dx) * lb->F_221 + X_230(dx) * lb->F_230 +
+      X_302(dx) * lb->F_302 + X_311(dx) * lb->F_311 + X_320(dx) * lb->F_320 +
+      X_401(dx) * lb->F_401 + X_410(dx) * lb->F_410 + X_500(dx) * lb->F_500;
+
+  /* Shift 5th order field tensor terms (addition to rank 1) */
+  la->F_001 +=
+      X_004(dx) * lb->F_005 + X_013(dx) * lb->F_014 + X_022(dx) * lb->F_023 +
+      X_031(dx) * lb->F_032 + X_040(dx) * lb->F_041 + X_103(dx) * lb->F_104 +
+      X_112(dx) * lb->F_113 + X_121(dx) * lb->F_122 + X_130(dx) * lb->F_131 +
+      X_202(dx) * lb->F_203 + X_211(dx) * lb->F_212 + X_220(dx) * lb->F_221 +
+      X_301(dx) * lb->F_302 + X_310(dx) * lb->F_311 + X_400(dx) * lb->F_401;
+  la->F_010 +=
+      X_004(dx) * lb->F_014 + X_013(dx) * lb->F_023 + X_022(dx) * lb->F_032 +
+      X_031(dx) * lb->F_041 + X_040(dx) * lb->F_050 + X_103(dx) * lb->F_113 +
+      X_112(dx) * lb->F_122 + X_121(dx) * lb->F_131 + X_130(dx) * lb->F_140 +
+      X_202(dx) * lb->F_212 + X_211(dx) * lb->F_221 + X_220(dx) * lb->F_230 +
+      X_301(dx) * lb->F_311 + X_310(dx) * lb->F_320 + X_400(dx) * lb->F_410;
+  la->F_100 +=
+      X_004(dx) * lb->F_104 + X_013(dx) * lb->F_113 + X_022(dx) * lb->F_122 +
+      X_031(dx) * lb->F_131 + X_040(dx) * lb->F_140 + X_103(dx) * lb->F_203 +
+      X_112(dx) * lb->F_212 + X_121(dx) * lb->F_221 + X_130(dx) * lb->F_230 +
+      X_202(dx) * lb->F_302 + X_211(dx) * lb->F_311 + X_220(dx) * lb->F_320 +
+      X_301(dx) * lb->F_401 + X_310(dx) * lb->F_410 + X_400(dx) * lb->F_500;
+
+  /* Shift 5th order field tensor terms (addition to rank 2) */
+  la->F_002 += X_003(dx) * lb->F_005 + X_012(dx) * lb->F_014 +
+               X_021(dx) * lb->F_023 + X_030(dx) * lb->F_032 +
+               X_102(dx) * lb->F_104 + X_111(dx) * lb->F_113 +
+               X_120(dx) * lb->F_122 + X_201(dx) * lb->F_203 +
+               X_210(dx) * lb->F_212 + X_300(dx) * lb->F_302;
+  la->F_011 += X_003(dx) * lb->F_014 + X_012(dx) * lb->F_023 +
+               X_021(dx) * lb->F_032 + X_030(dx) * lb->F_041 +
+               X_102(dx) * lb->F_113 + X_111(dx) * lb->F_122 +
+               X_120(dx) * lb->F_131 + X_201(dx) * lb->F_212 +
+               X_210(dx) * lb->F_221 + X_300(dx) * lb->F_311;
+  la->F_020 += X_003(dx) * lb->F_023 + X_012(dx) * lb->F_032 +
+               X_021(dx) * lb->F_041 + X_030(dx) * lb->F_050 +
+               X_102(dx) * lb->F_122 + X_111(dx) * lb->F_131 +
+               X_120(dx) * lb->F_140 + X_201(dx) * lb->F_221 +
+               X_210(dx) * lb->F_230 + X_300(dx) * lb->F_320;
+  la->F_101 += X_003(dx) * lb->F_104 + X_012(dx) * lb->F_113 +
+               X_021(dx) * lb->F_122 + X_030(dx) * lb->F_131 +
+               X_102(dx) * lb->F_203 + X_111(dx) * lb->F_212 +
+               X_120(dx) * lb->F_221 + X_201(dx) * lb->F_302 +
+               X_210(dx) * lb->F_311 + X_300(dx) * lb->F_401;
+  la->F_110 += X_003(dx) * lb->F_113 + X_012(dx) * lb->F_122 +
+               X_021(dx) * lb->F_131 + X_030(dx) * lb->F_140 +
+               X_102(dx) * lb->F_212 + X_111(dx) * lb->F_221 +
+               X_120(dx) * lb->F_230 + X_201(dx) * lb->F_311 +
+               X_210(dx) * lb->F_320 + X_300(dx) * lb->F_410;
+  la->F_200 += X_003(dx) * lb->F_203 + X_012(dx) * lb->F_212 +
+               X_021(dx) * lb->F_221 + X_030(dx) * lb->F_230 +
+               X_102(dx) * lb->F_302 + X_111(dx) * lb->F_311 +
+               X_120(dx) * lb->F_320 + X_201(dx) * lb->F_401 +
+               X_210(dx) * lb->F_410 + X_300(dx) * lb->F_500;
+
+  /* Shift 5th order field tensor terms (addition to rank 3) */
+  la->F_003 += X_002(dx) * lb->F_005 + X_011(dx) * lb->F_014 +
+               X_020(dx) * lb->F_023 + X_101(dx) * lb->F_104 +
+               X_110(dx) * lb->F_113 + X_200(dx) * lb->F_203;
+  la->F_012 += X_002(dx) * lb->F_014 + X_011(dx) * lb->F_023 +
+               X_020(dx) * lb->F_032 + X_101(dx) * lb->F_113 +
+               X_110(dx) * lb->F_122 + X_200(dx) * lb->F_212;
+  la->F_021 += X_002(dx) * lb->F_023 + X_011(dx) * lb->F_032 +
+               X_020(dx) * lb->F_041 + X_101(dx) * lb->F_122 +
+               X_110(dx) * lb->F_131 + X_200(dx) * lb->F_221;
+  la->F_030 += X_002(dx) * lb->F_032 + X_011(dx) * lb->F_041 +
+               X_020(dx) * lb->F_050 + X_101(dx) * lb->F_131 +
+               X_110(dx) * lb->F_140 + X_200(dx) * lb->F_230;
+  la->F_102 += X_002(dx) * lb->F_104 + X_011(dx) * lb->F_113 +
+               X_020(dx) * lb->F_122 + X_101(dx) * lb->F_203 +
+               X_110(dx) * lb->F_212 + X_200(dx) * lb->F_302;
+  la->F_111 += X_002(dx) * lb->F_113 + X_011(dx) * lb->F_122 +
+               X_020(dx) * lb->F_131 + X_101(dx) * lb->F_212 +
+               X_110(dx) * lb->F_221 + X_200(dx) * lb->F_311;
+  la->F_120 += X_002(dx) * lb->F_122 + X_011(dx) * lb->F_131 +
+               X_020(dx) * lb->F_140 + X_101(dx) * lb->F_221 +
+               X_110(dx) * lb->F_230 + X_200(dx) * lb->F_320;
+  la->F_201 += X_002(dx) * lb->F_203 + X_011(dx) * lb->F_212 +
+               X_020(dx) * lb->F_221 + X_101(dx) * lb->F_302 +
+               X_110(dx) * lb->F_311 + X_200(dx) * lb->F_401;
+  la->F_210 += X_002(dx) * lb->F_212 + X_011(dx) * lb->F_221 +
+               X_020(dx) * lb->F_230 + X_101(dx) * lb->F_311 +
+               X_110(dx) * lb->F_320 + X_200(dx) * lb->F_410;
+  la->F_300 += X_002(dx) * lb->F_302 + X_011(dx) * lb->F_311 +
+               X_020(dx) * lb->F_320 + X_101(dx) * lb->F_401 +
+               X_110(dx) * lb->F_410 + X_200(dx) * lb->F_500;
+
+  /* Shift 5th order field tensor terms (addition to rank 4) */
+  la->F_004 +=
+      X_001(dx) * lb->F_005 + X_010(dx) * lb->F_014 + X_100(dx) * lb->F_104;
+  la->F_013 +=
+      X_001(dx) * lb->F_014 + X_010(dx) * lb->F_023 + X_100(dx) * lb->F_113;
+  la->F_022 +=
+      X_001(dx) * lb->F_023 + X_010(dx) * lb->F_032 + X_100(dx) * lb->F_122;
+  la->F_031 +=
+      X_001(dx) * lb->F_032 + X_010(dx) * lb->F_041 + X_100(dx) * lb->F_131;
+  la->F_040 +=
+      X_001(dx) * lb->F_041 + X_010(dx) * lb->F_050 + X_100(dx) * lb->F_140;
+  la->F_103 +=
+      X_001(dx) * lb->F_104 + X_010(dx) * lb->F_113 + X_100(dx) * lb->F_203;
+  la->F_112 +=
+      X_001(dx) * lb->F_113 + X_010(dx) * lb->F_122 + X_100(dx) * lb->F_212;
+  la->F_121 +=
+      X_001(dx) * lb->F_122 + X_010(dx) * lb->F_131 + X_100(dx) * lb->F_221;
+  la->F_130 +=
+      X_001(dx) * lb->F_131 + X_010(dx) * lb->F_140 + X_100(dx) * lb->F_230;
+  la->F_202 +=
+      X_001(dx) * lb->F_203 + X_010(dx) * lb->F_212 + X_100(dx) * lb->F_302;
+  la->F_211 +=
+      X_001(dx) * lb->F_212 + X_010(dx) * lb->F_221 + X_100(dx) * lb->F_311;
+  la->F_220 +=
+      X_001(dx) * lb->F_221 + X_010(dx) * lb->F_230 + X_100(dx) * lb->F_320;
+  la->F_301 +=
+      X_001(dx) * lb->F_302 + X_010(dx) * lb->F_311 + X_100(dx) * lb->F_401;
+  la->F_310 +=
+      X_001(dx) * lb->F_311 + X_010(dx) * lb->F_320 + X_100(dx) * lb->F_410;
+  la->F_400 +=
+      X_001(dx) * lb->F_401 + X_010(dx) * lb->F_410 + X_100(dx) * lb->F_500;
+
+  /* Shift 5th order field tensor terms (addition to rank 5) */
+  la->F_005 += X_000(dx) * lb->F_005;
+  la->F_014 += X_000(dx) * lb->F_014;
+  la->F_023 += X_000(dx) * lb->F_023;
+  la->F_032 += X_000(dx) * lb->F_032;
+  la->F_041 += X_000(dx) * lb->F_041;
+  la->F_050 += X_000(dx) * lb->F_050;
+  la->F_104 += X_000(dx) * lb->F_104;
+  la->F_113 += X_000(dx) * lb->F_113;
+  la->F_122 += X_000(dx) * lb->F_122;
+  la->F_131 += X_000(dx) * lb->F_131;
+  la->F_140 += X_000(dx) * lb->F_140;
+  la->F_203 += X_000(dx) * lb->F_203;
+  la->F_212 += X_000(dx) * lb->F_212;
+  la->F_221 += X_000(dx) * lb->F_221;
+  la->F_230 += X_000(dx) * lb->F_230;
+  la->F_302 += X_000(dx) * lb->F_302;
+  la->F_311 += X_000(dx) * lb->F_311;
+  la->F_320 += X_000(dx) * lb->F_320;
+  la->F_401 += X_000(dx) * lb->F_401;
+  la->F_410 += X_000(dx) * lb->F_410;
+  la->F_500 += X_000(dx) * lb->F_500;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 }
 
@@ -1326,10 +2438,50 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
       X_110(dx) * lb->F_111 + X_101(dx) * lb->F_102 + X_011(dx) * lb->F_012;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-#error "Missing implementation for order >3"
+
+  /* 3rd order contributions */
+  gp->a_grav[0] += X_003(dx) * lb->F_103 + X_012(dx) * lb->F_112 +
+                   X_021(dx) * lb->F_121 + X_030(dx) * lb->F_130 +
+                   X_102(dx) * lb->F_202 + X_111(dx) * lb->F_211 +
+                   X_120(dx) * lb->F_220 + X_201(dx) * lb->F_301 +
+                   X_210(dx) * lb->F_310 + X_300(dx) * lb->F_400;
+  gp->a_grav[1] += X_003(dx) * lb->F_013 + X_012(dx) * lb->F_022 +
+                   X_021(dx) * lb->F_031 + X_030(dx) * lb->F_040 +
+                   X_102(dx) * lb->F_112 + X_111(dx) * lb->F_121 +
+                   X_120(dx) * lb->F_130 + X_201(dx) * lb->F_211 +
+                   X_210(dx) * lb->F_220 + X_300(dx) * lb->F_310;
+  gp->a_grav[2] += X_003(dx) * lb->F_004 + X_012(dx) * lb->F_013 +
+                   X_021(dx) * lb->F_022 + X_030(dx) * lb->F_031 +
+                   X_102(dx) * lb->F_103 + X_111(dx) * lb->F_112 +
+                   X_120(dx) * lb->F_121 + X_201(dx) * lb->F_202 +
+                   X_210(dx) * lb->F_211 + X_300(dx) * lb->F_301;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+
+  /* 4th order contributions */
+  gp->a_grav[0] +=
+      X_004(dx) * lb->F_104 + X_013(dx) * lb->F_113 + X_022(dx) * lb->F_122 +
+      X_031(dx) * lb->F_131 + X_040(dx) * lb->F_140 + X_103(dx) * lb->F_203 +
+      X_112(dx) * lb->F_212 + X_121(dx) * lb->F_221 + X_130(dx) * lb->F_230 +
+      X_202(dx) * lb->F_302 + X_211(dx) * lb->F_311 + X_220(dx) * lb->F_320 +
+      X_301(dx) * lb->F_401 + X_310(dx) * lb->F_410 + X_400(dx) * lb->F_500;
+  gp->a_grav[1] +=
+      X_004(dx) * lb->F_014 + X_013(dx) * lb->F_023 + X_022(dx) * lb->F_032 +
+      X_031(dx) * lb->F_041 + X_040(dx) * lb->F_050 + X_103(dx) * lb->F_113 +
+      X_112(dx) * lb->F_122 + X_121(dx) * lb->F_131 + X_130(dx) * lb->F_140 +
+      X_202(dx) * lb->F_212 + X_211(dx) * lb->F_221 + X_220(dx) * lb->F_230 +
+      X_301(dx) * lb->F_311 + X_310(dx) * lb->F_320 + X_400(dx) * lb->F_410;
+  gp->a_grav[2] +=
+      X_004(dx) * lb->F_005 + X_013(dx) * lb->F_014 + X_022(dx) * lb->F_023 +
+      X_031(dx) * lb->F_032 + X_040(dx) * lb->F_041 + X_103(dx) * lb->F_104 +
+      X_112(dx) * lb->F_113 + X_121(dx) * lb->F_122 + X_130(dx) * lb->F_131 +
+      X_202(dx) * lb->F_203 + X_211(dx) * lb->F_212 + X_220(dx) * lb->F_221 +
+      X_301(dx) * lb->F_302 + X_310(dx) * lb->F_311 + X_400(dx) * lb->F_401;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 }
 
