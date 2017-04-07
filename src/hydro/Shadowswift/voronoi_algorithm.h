@@ -1,10 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,19 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SORT_H
-#define SWIFT_SORT_H
 
-/**
- * @brief  Entry in a list of sorted indices.
- */
-struct entry {
+#ifndef SWIFT_VORONOI_ALGORITHM_H
+#define SWIFT_VORONOI_ALGORITHM_H
 
-  /*! Distance on the axis */
-  float d;
-
-  /*! Particle index */
-  int i;
-};
-
+#if defined(HYDRO_DIMENSION_1D)
+#include "voronoi1d_algorithm.h"
+#elif defined(HYDRO_DIMENSION_2D)
+#include "voronoi2d_algorithm.h"
+#elif defined(HYDRO_DIMENSION_3D)
+#include "voronoi3d_algorithm.h"
+#else
+#error "You have to select a dimension for the hydro!"
 #endif
+
+#endif  // SWIFT_VORONOI_ALGORITHM_H

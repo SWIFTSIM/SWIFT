@@ -124,8 +124,15 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         part->id = ++(*partId);
 
-#ifdef GIZMO_SPH
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
+
+#ifdef SHADOWFAX_SPH
+        double anchor[3] = {0., 0., 0.};
+        double side[3] = {1., 1., 1.};
+        voronoi_cell_init(&part->cell, part->x, anchor, side);
+#endif
+
 #else
         part->mass = density * volume / count;
 #endif
@@ -183,7 +190,7 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid]);
+    hydro_init_part(&c->parts[pid], NULL);
   }
 }
 
@@ -222,7 +229,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
             hydro_get_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.rho_dh,
@@ -259,7 +266,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
               cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->parts[pjd].density.rho_dh,

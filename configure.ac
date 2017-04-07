@@ -587,7 +587,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -607,6 +607,9 @@ case "$with_hydro" in
    ;; 
    gizmo)
       AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   ;; 
+   shadowfax)
+      AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
    ;; 
 
    *)
@@ -796,6 +799,15 @@ case "$with_potential" in
    ;;
 esac
 
+#  Gravity multipole order
+AC_ARG_WITH([multipole-order],
+   [AS_HELP_STRING([--with-multipole-order=<order>],
+      [order of the multipole and gravitational field expansion @<:@ default: 3@:>@]
+   )],
+   [with_multipole_order="$withval"],
+   [with_multipole_order="3"]
+)
+AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
 
 # Check for git, needed for revision stamps.
@@ -843,6 +855,7 @@ AC_MSG_RESULT([
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
    External potential : $with_potential
+   Multipole order    : $with_multipole_order
 
    Task debugging     : $enable_task_debugging
    Debugging checks   : $enable_debugging_checks

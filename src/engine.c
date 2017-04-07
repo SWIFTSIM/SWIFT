@@ -66,6 +66,7 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "sort_part.h"
 #include "statistics.h"
 #include "timers.h"
 #include "tools.h"
@@ -3029,6 +3030,13 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Computing initial gas densities.");
 
+  /* Initialise the softening lengths */
+  if (e->policy & engine_policy_self_gravity) {
+
+    for (size_t i = 0; i < s->nr_gparts; ++i)
+      gravity_init_softening(&s->gparts[i], e->gravity_properties);
+  }
+
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e);
 
@@ -3061,16 +3069,17 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Let's store the total mass in the system for future checks */
-  e->s->total_mass = 0.;
-  for (size_t i = 0; i < s->nr_gparts; ++i)
-    e->s->total_mass += s->gparts[i].mass;
-#ifdef WITH_MPI
-  if (MPI_Allreduce(MPI_IN_PLACE, &e->s->total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to all-reduce total mass in the system.");
-#endif
-  message("Total mass in the system: %e", e->s->total_mass);
+  /* Check that we have the correct total mass in the top-level multipoles */
+  size_t num_gpart_mpole = 0;
+  if (e->policy & engine_policy_self_gravity) {
+    for (int i = 0; i < e->s->nr_cells; ++i)
+      num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
+    if (num_gpart_mpole != e->s->nr_gparts)
+      error(
+          "Multipoles don't contain the total number of gpart s->nr_gpart=%zd, "
+          "m_poles=%zd",
+          e->s->nr_gparts, num_gpart_mpole);
+  }
 #endif
 
   /* Now time to get ready for the first time-step */
@@ -3085,8 +3094,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  gravity_exact_force_compute(e->s, e);
+#endif
+
   /* Run the 0th time-step */
   engine_launch(e, e->nr_threads);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check the accuracy of the gravity calculation */
+  gravity_exact_force_check(e->s, e, 1e-1);
+#endif
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
@@ -3159,6 +3178,17 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we have the correct total mass in the top-level multipoles */
+  size_t num_gpart_mpole = 0;
+  if (e->policy & engine_policy_self_gravity) {
+    for (int i = 0; i < e->s->nr_cells; ++i)
+      num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
+    if (num_gpart_mpole != e->s->nr_gparts)
+      error("Multipoles don't contain the total number of gpart");
+  }
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run the brute-force gravity calculation for some gparts */
