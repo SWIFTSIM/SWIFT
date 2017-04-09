@@ -34,6 +34,8 @@
 
 /**
  * @brief The different task types.
+ *
+ * Be sure to update the taskID_names array in tasks.c if you modify this list!
  */
 enum task_types {
   task_type_none = 0,
@@ -42,7 +44,6 @@ enum task_types {
   task_type_pair,
   task_type_sub_self,
   task_type_sub_pair,
-  task_type_init,
   task_type_ghost,
   task_type_extra_ghost,
   task_type_drift,

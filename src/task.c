@@ -53,7 +53,6 @@ const char *taskID_names[task_type_count] = {"none",
                                              "pair",
                                              "sub_self",
                                              "sub_pair",
-                                             "init",
                                              "ghost",
                                              "extra_ghost",
                                              "drift",
@@ -164,7 +163,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       }
       break;
 
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -283,7 +281,6 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -359,7 +356,6 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
