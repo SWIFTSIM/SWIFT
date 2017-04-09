@@ -511,71 +511,6 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 }
 
 /**
- * @brief Initialize the particles before the density calculation
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_init(struct runner *r, struct cell *c, int timer) {
-
-  struct part *restrict parts = c->parts;
-  struct gpart *restrict gparts = c->gparts;
-  const int count = c->count;
-  const int gcount = c->gcount;
-  const struct engine *e = r->e;
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
-
-  /* Reset the gravity acceleration tensors */
-  if (e->policy & engine_policy_self_gravity)
-    gravity_field_tensor_init(c->multipole);
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_init(r, c->progeny[k], 0);
-  } else {
-  
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!cell_is_drifted(c, e))
-      error("Trying to init undrifted cell.");
-#endif
-
-    /* Loop over the parts in this cell. */
-    for (int i = 0; i < count; i++) {
-
-      /* Get a direct pointer on the part. */
-      struct part *restrict p = &parts[i];
-
-      if (part_is_active(p, e)) {
-
-        /* Get ready for a density calculation */
-        hydro_init_part(p);
-      }
-    }
-
-    /* Loop over the gparts in this cell. */
-    for (int i = 0; i < gcount; i++) {
-
-      /* Get a direct pointer on the part. */
-      struct gpart *restrict gp = &gparts[i];
-
-      if (gpart_is_active(gp, e)) {
-
-        /* Get ready for a density calculation */
-        gravity_init_gpart(gp);
-      }
-    }
-  }
-
-  if (timer) TIMER_TOC(timer_init);
-}
-
-/**
  * @brief Intermediate task after the gradient loop that does final operations
  * on the gradient quantities and optionally slope limits the gradients
  *
@@ -1829,9 +1764,6 @@ void *runner_main(void *data) {
 
         case task_type_sort:
           runner_do_sort(r, ci, t->flags, 1);
-          break;
-        case task_type_init:
-          runner_do_init(r, ci, 1);
           break;
         case task_type_ghost:
           runner_do_ghost(r, ci, 1);
