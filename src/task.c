@@ -47,26 +47,12 @@
 #include "lock.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = {"none",
-                                             "sort",
-                                             "self",
-                                             "pair",
-                                             "sub_self",
-                                             "sub_pair",
-                                             "ghost",
-                                             "extra_ghost",
-                                             "drift",
-                                             "kick1",
-                                             "kick2",
-                                             "timestep",
-                                             "send",
-                                             "recv",
-                                             "grav_top_level",
-                                             "grav_long_range",
-                                             "grav_mm",
-                                             "grav_down",
-                                             "cooling",
-                                             "sourceterms"};
+const char *taskID_names[task_type_count] = {
+    "none",     "sort",      "self",           "pair",
+    "sub_self", "sub_pair",  "ghost",          "extra_ghost",
+    "drift",    "kick1",     "kick2",          "timestep",
+    "send",     "recv",      "grav_top_level", "grav_long_range",
+    "grav_mm",  "grav_down", "cooling",        "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
