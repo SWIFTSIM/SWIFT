@@ -2505,9 +2505,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
     }
 
-    /* Kick/Drift/Init? */
+    /* Kick/Drift? */
     else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-             t->type == task_type_drift || t->type == task_type_init) {
+             t->type == task_type_drift) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
