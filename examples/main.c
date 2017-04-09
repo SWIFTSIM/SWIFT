@@ -165,12 +165,13 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int verbose = 0;
   int nr_threads = 1;
+  int with_verbose_timers = 0;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:Tv:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -228,6 +229,9 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'T':
+        with_verbose_timers = 1;
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
@@ -600,10 +604,11 @@ int main(int argc, char *argv[]) {
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
-    printf("timers: ");
-    for (int k = 0; k < timer_count; k++)
-      printf("%s\t", timers_names[k]);
-    printf("\n");
+    if (with_verbose_timers) {
+      printf("timers: ");
+      for (int k = 0; k < timer_count; k++) printf("%s\t", timers_names[k]);
+      printf("\n");
+    }
   }
 
   /* Main simulation loop */
@@ -614,12 +619,14 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
-    
+
     /* Print the timers. */
-    printf("timers: ");
-    for (int k = 0; k < timer_count; k++)
-      printf("%.3f\t", clocks_from_ticks(timers[k]));
-    printf("\n");
+    if (with_verbose_timers) {
+      printf("timers: ");
+      for (int k = 0; k < timer_count; k++)
+        printf("%.3f\t", clocks_from_ticks(timers[k]));
+      printf("\n");
+    }
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
