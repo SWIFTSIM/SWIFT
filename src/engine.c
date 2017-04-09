@@ -143,10 +143,6 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
-      /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
-
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL, 0);
@@ -175,8 +171,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL, 0);
 
-        scheduler_addunlock(s, c->init, c->grav_long_range);
-        scheduler_addunlock(s, c->init, c->grav_top_level);
+        scheduler_addunlock(s, c->ghost, c->grav_long_range);
+        scheduler_addunlock(s, c->ghost, c->grav_top_level);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_top_level, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -970,8 +966,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* Drift before you send */
       if (ci->drift == NULL)
-        ci->drift = scheduler_addtask(
-            s, task_type_drift, task_subtype_none, 0, 0, ci, NULL, 0);
+        ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                      0, ci, NULL, 0);
       scheduler_addunlock(s, ci->drift, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
@@ -1807,7 +1803,7 @@ static inline void engine_make_self_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> gravity --> grav_down --> kick */
-  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, c->ghost, gravity);
   scheduler_addunlock(sched, gravity, c->super->grav_down);
 }
 
@@ -1823,7 +1819,7 @@ static inline void engine_make_external_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> external gravity --> kick */
-  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, c->ghost, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick2);
 }
 
@@ -1919,9 +1915,8 @@ static inline void engine_make_hydro_loops_dependencies(
     struct scheduler *sched, struct task *density, struct task *gradient,
     struct task *force, struct cell *c, int with_cooling) {
 
-  /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
+  /* density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop  */
-  scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, gradient);
   scheduler_addunlock(sched, gradient, c->super->extra_ghost);
@@ -1952,8 +1947,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *force,
                                                         struct cell *c,
                                                         int with_cooling) {
-  /* init --> density loop --> ghost --> force loop */
-  scheduler_addunlock(sched, c->super->init, density);
+  /* density loop --> ghost --> force loop */
   scheduler_addunlock(sched, density, c->super->ghost);
   scheduler_addunlock(sched, c->super->ghost, force);
 
@@ -2213,6 +2207,21 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   /* } */
 }
 
+void engine_check_sort_tasks(struct engine *e, struct cell *c) {
+
+  /* Find the parent sort task, if any, and copy its flags. */
+  if (c->sorts != NULL) {
+    struct cell *parent = c->parent;
+    while (parent != NULL && parent->sorts == NULL) parent = parent->parent;
+    if (parent != NULL) c->sorts->flags |= parent->sorts->flags;
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) engine_check_sort_tasks(e, c->progeny[k]);
+}
+
 /**
  * @brief Fill the #space's task list.
  *
@@ -2273,9 +2282,12 @@ void engine_maketasks(struct engine *e) {
    * pointers. */
   for (int k = 0; k < nr_cells; k++) cell_set_super(&cells[k], NULL);
 
-  /* Append hierarchical tasks to each cells */
+  /* Append hierarchical tasks to each cell. */
   for (int k = 0; k < nr_cells; k++)
     engine_make_hierarchical_tasks(e, &cells[k]);
+
+  /* Append hierarchical tasks to each cell. */
+  for (int k = 0; k < nr_cells; k++) engine_check_sort_tasks(e, &cells[k]);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -2995,6 +3007,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
+  /* Init the particle hydro data (by hand). */
+  for (size_t k = 0; k < s->nr_parts; k++) hydro_init_part(&s->parts[k]);
+  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads);
@@ -3038,6 +3054,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* No drift this time */
   engine_skip_drift(e);
+
+  /* Init the particle hydro data (by hand). */
+  for (size_t k = 0; k < s->nr_parts; k++) hydro_init_part(&s->parts[k]);
+  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
