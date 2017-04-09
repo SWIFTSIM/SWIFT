@@ -2241,7 +2241,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
-  
+
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
     if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
@@ -2290,10 +2290,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Otherwise, compute self-interaction. */
   else {
-  
+
     /* Drift the cell to the current timestep if needed. */
     if (!cell_is_drifted(ci, r->e)) cell_drift_particles(ci, r->e);
-    
+
 #if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
     runner_doself1_density_vec(r, ci);
@@ -2543,9 +2543,17 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
+    /* Make sure both cells are drifted to the current timestep. */
+    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+    if (!(ci->sorted & (1 << sid)) ||
+        ci->dx_max_sort > ci->dmin * space_maxreldx)
+      runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid)) ||
+        cj->dx_max_sort > cj->dmin * space_maxreldx)
+      runner_do_sort(r, cj, (1 << sid), 1);
 
     /* Compute the interactions. */
     DOPAIR2(r, ci, cj);
@@ -3176,7 +3184,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                        : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
       new_sid = sortlistID[new_sid];
 
-      /* Do any of the cells need to be sorted first? */
+      /* Do any of the cells need to be drifted or sorted first? */
+      if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
       if (!(cj->sorted & (1 << new_sid)))
         runner_do_sort(r, cj, (1 << new_sid), 1);
 
