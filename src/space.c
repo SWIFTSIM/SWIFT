@@ -240,7 +240,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->count = 0;
     c->gcount = 0;
     c->scount = 0;
-    c->init = NULL;
     c->extra_ghost = NULL;
     c->ghost = NULL;
     c->kick1 = NULL;
