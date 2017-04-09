@@ -1342,7 +1342,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, l->t);
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
-  if (c->init != NULL) scheduler_activate(s, c->init);
   if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
@@ -1402,6 +1401,10 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
 
+  /* Reset the gravity acceleration tensors */
+  if (cell_is_active(c, e) && e->policy & engine_policy_self_gravity)
+    gravity_field_tensor_init(c->multipole);
+
   /* Are we not in a leaf ? */
   if (c->split) {
 
@@ -1436,6 +1439,11 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+
+      /* Init gravity force fields. */
+      if (gpart_is_active(gp, e)) {
+        gravity_init_gpart(gp);
+      }
     }
 
     /* Loop over all the gas particles in the cell */
@@ -1464,6 +1472,11 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, p->h);
+
+      /* Get ready for a density calculation */
+      if (part_is_active(p, e)) {
+        hydro_init_part(p);
+      }
     }
 
     /* Loop over all the star particles in the cell */
