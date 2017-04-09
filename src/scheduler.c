@@ -209,6 +209,15 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         }
       }
 
+      /* Otherwise, make sure the self task has a drift task. */
+      else {
+        lock_lock(&ci->lock);
+        if (ci->drift == NULL)
+          ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
+                                        0, 0, ci, NULL, 0);
+        lock_unlock_blind(&ci->lock);
+      }
+
       /* Pair interaction? */
     } else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
 
@@ -855,13 +864,13 @@ void scheduler_ranktasks(struct scheduler *s) {
     }
 
   /* Main loop. */
-  for (int j = 0, rank = 0; left < nr_tasks; rank++) {
+  for (int j = 0, rank = 0; j < nr_tasks; rank++) {
 
     /* Did we get anything? */
     if (j == left) error("Unsatisfiable task dependencies detected.");
-    const int left_old = left;
 
     /* Unlock the next layer of tasks. */
+    const int left_old = left;
     for (; j < left_old; j++) {
       struct task *t = &tasks[tid[j]];
       t->rank = rank;
@@ -877,14 +886,14 @@ void scheduler_ranktasks(struct scheduler *s) {
       }
     }
 
-    /* Move back to the old left (like Sanders). */
+    /* Move back to the old left (like Sanders!). */
     j = left_old;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
   for (int k = 1; k < s->nr_tasks; k++)
-    if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
+    if (tasks[tid[k - 1]].rank > tasks[tid[k]].rank)
       error("Task ranking failed.");
 #endif
 }
