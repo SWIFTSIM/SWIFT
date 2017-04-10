@@ -50,6 +50,7 @@
 #include "debug.h"
 #include "error.h"
 #include "partition.h"
+#include "genetic_partitioning.h"
 #include "space.h"
 #include "tools.h"
 
@@ -393,6 +394,8 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
   for (int k = 0; k < ncells; k++)
     if (regionid[k] < 0 || regionid[k] >= nregions)
       error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+
+  genetic_algorithm(s,s->e->sched.tasks, s->e->sched.nr_tasks, regionid, nregions);
 
   /* We want a solution in which the current regions of the space are
    * preserved when possible, to avoid unneccesary particle movement.
