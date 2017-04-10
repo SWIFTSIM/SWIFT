@@ -44,62 +44,48 @@
 struct grav_tensor {
 
   /* 0th order terms */
-  float F_000;
+  double F_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order terms */
-  float F_100, F_010, F_001;
+  double F_100, F_010, F_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order terms */
-  float F_200, F_020, F_002;
-  float F_110, F_101, F_011;
+  double F_200, F_020, F_002;
+  double F_110, F_101, F_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order terms */
-  float F_300, F_030, F_003;
-  float F_210, F_201;
-  float F_120, F_021;
-  float F_102, F_012;
-  float F_111;
+  double F_300, F_030, F_003;
+  double F_210, F_201;
+  double F_120, F_021;
+  double F_102, F_012;
+  double F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 4th order terms */
-  float F_400, F_040, F_004;
-  float F_310, F_301;
-  float F_130, F_031;
-  float F_103, F_013;
-  float F_220, F_202, F_022;
-  float F_211, F_121, F_112;
+  double F_400, F_040, F_004;
+  double F_310, F_301;
+  double F_130, F_031;
+  double F_103, F_013;
+  double F_220, F_202, F_022;
+  double F_211, F_121, F_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 5th order terms */
-  float F_005;
-  float F_014;
-  float F_023;
-  float F_032;
-  float F_041;
-  float F_050;
-  float F_104;
-  float F_113;
-  float F_122;
-  float F_131;
-  float F_140;
-  float F_203;
-  float F_212;
-  float F_221;
-  float F_230;
-  float F_302;
-  float F_311;
-  float F_320;
-  float F_401;
-  float F_410;
-  float F_500;
+  double F_005, F_014, F_023;
+  double F_032, F_041, F_050;
+  double F_104, F_113, F_122;
+  double F_131, F_140, F_203;
+  double F_212, F_221, F_230;
+  double F_302, F_311, F_320;
+  double F_401, F_410, F_500;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -2401,78 +2387,81 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->num_interacted += lb->num_interacted;
 #endif
 
+  /* Local accumulator */
+  double a_grav[3] = {0., 0., 0.};
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Distance to the multipole */
   const double dx[3] = {gp->x[0] - loc[0], gp->x[1] - loc[1],
                         gp->x[2] - loc[2]};
 
   /* 0th order interaction */
-  gp->a_grav[0] += X_000(dx) * lb->F_100;
-  gp->a_grav[1] += X_000(dx) * lb->F_010;
-  gp->a_grav[2] += X_000(dx) * lb->F_001;
+  a_grav[0] += X_000(dx) * lb->F_100;
+  a_grav[1] += X_000(dx) * lb->F_010;
+  a_grav[2] += X_000(dx) * lb->F_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 1st order interaction */
-  gp->a_grav[0] +=
+  a_grav[0] +=
       X_100(dx) * lb->F_200 + X_010(dx) * lb->F_110 + X_001(dx) * lb->F_101;
-  gp->a_grav[1] +=
+  a_grav[1] +=
       X_100(dx) * lb->F_110 + X_010(dx) * lb->F_020 + X_001(dx) * lb->F_011;
-  gp->a_grav[2] +=
+  a_grav[2] +=
       X_100(dx) * lb->F_101 + X_010(dx) * lb->F_011 + X_001(dx) * lb->F_002;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 2nd order interaction */
-  gp->a_grav[0] +=
+  a_grav[0] +=
       X_200(dx) * lb->F_300 + X_020(dx) * lb->F_120 + X_002(dx) * lb->F_102;
-  gp->a_grav[0] +=
+  a_grav[0] +=
       X_110(dx) * lb->F_210 + X_101(dx) * lb->F_201 + X_011(dx) * lb->F_111;
-  gp->a_grav[1] +=
+  a_grav[1] +=
       X_200(dx) * lb->F_210 + X_020(dx) * lb->F_030 + X_002(dx) * lb->F_012;
-  gp->a_grav[1] +=
+  a_grav[1] +=
       X_110(dx) * lb->F_120 + X_101(dx) * lb->F_111 + X_011(dx) * lb->F_021;
-  gp->a_grav[2] +=
+  a_grav[2] +=
       X_200(dx) * lb->F_201 + X_020(dx) * lb->F_021 + X_002(dx) * lb->F_003;
-  gp->a_grav[2] +=
+  a_grav[2] +=
       X_110(dx) * lb->F_111 + X_101(dx) * lb->F_102 + X_011(dx) * lb->F_012;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 3rd order contributions */
-  gp->a_grav[0] += X_003(dx) * lb->F_103 + X_012(dx) * lb->F_112 +
-                   X_021(dx) * lb->F_121 + X_030(dx) * lb->F_130 +
-                   X_102(dx) * lb->F_202 + X_111(dx) * lb->F_211 +
-                   X_120(dx) * lb->F_220 + X_201(dx) * lb->F_301 +
-                   X_210(dx) * lb->F_310 + X_300(dx) * lb->F_400;
-  gp->a_grav[1] += X_003(dx) * lb->F_013 + X_012(dx) * lb->F_022 +
-                   X_021(dx) * lb->F_031 + X_030(dx) * lb->F_040 +
-                   X_102(dx) * lb->F_112 + X_111(dx) * lb->F_121 +
-                   X_120(dx) * lb->F_130 + X_201(dx) * lb->F_211 +
-                   X_210(dx) * lb->F_220 + X_300(dx) * lb->F_310;
-  gp->a_grav[2] += X_003(dx) * lb->F_004 + X_012(dx) * lb->F_013 +
-                   X_021(dx) * lb->F_022 + X_030(dx) * lb->F_031 +
-                   X_102(dx) * lb->F_103 + X_111(dx) * lb->F_112 +
-                   X_120(dx) * lb->F_121 + X_201(dx) * lb->F_202 +
-                   X_210(dx) * lb->F_211 + X_300(dx) * lb->F_301;
+  a_grav[0] += X_003(dx) * lb->F_103 + X_012(dx) * lb->F_112 +
+               X_021(dx) * lb->F_121 + X_030(dx) * lb->F_130 +
+               X_102(dx) * lb->F_202 + X_111(dx) * lb->F_211 +
+               X_120(dx) * lb->F_220 + X_201(dx) * lb->F_301 +
+               X_210(dx) * lb->F_310 + X_300(dx) * lb->F_400;
+  a_grav[1] += X_003(dx) * lb->F_013 + X_012(dx) * lb->F_022 +
+               X_021(dx) * lb->F_031 + X_030(dx) * lb->F_040 +
+               X_102(dx) * lb->F_112 + X_111(dx) * lb->F_121 +
+               X_120(dx) * lb->F_130 + X_201(dx) * lb->F_211 +
+               X_210(dx) * lb->F_220 + X_300(dx) * lb->F_310;
+  a_grav[2] += X_003(dx) * lb->F_004 + X_012(dx) * lb->F_013 +
+               X_021(dx) * lb->F_022 + X_030(dx) * lb->F_031 +
+               X_102(dx) * lb->F_103 + X_111(dx) * lb->F_112 +
+               X_120(dx) * lb->F_121 + X_201(dx) * lb->F_202 +
+               X_210(dx) * lb->F_211 + X_300(dx) * lb->F_301;
 
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 4th order contributions */
-  gp->a_grav[0] +=
+  a_grav[0] +=
       X_004(dx) * lb->F_104 + X_013(dx) * lb->F_113 + X_022(dx) * lb->F_122 +
       X_031(dx) * lb->F_131 + X_040(dx) * lb->F_140 + X_103(dx) * lb->F_203 +
       X_112(dx) * lb->F_212 + X_121(dx) * lb->F_221 + X_130(dx) * lb->F_230 +
       X_202(dx) * lb->F_302 + X_211(dx) * lb->F_311 + X_220(dx) * lb->F_320 +
       X_301(dx) * lb->F_401 + X_310(dx) * lb->F_410 + X_400(dx) * lb->F_500;
-  gp->a_grav[1] +=
+  a_grav[1] +=
       X_004(dx) * lb->F_014 + X_013(dx) * lb->F_023 + X_022(dx) * lb->F_032 +
       X_031(dx) * lb->F_041 + X_040(dx) * lb->F_050 + X_103(dx) * lb->F_113 +
       X_112(dx) * lb->F_122 + X_121(dx) * lb->F_131 + X_130(dx) * lb->F_140 +
       X_202(dx) * lb->F_212 + X_211(dx) * lb->F_221 + X_220(dx) * lb->F_230 +
       X_301(dx) * lb->F_311 + X_310(dx) * lb->F_320 + X_400(dx) * lb->F_410;
-  gp->a_grav[2] +=
+  a_grav[2] +=
       X_004(dx) * lb->F_005 + X_013(dx) * lb->F_014 + X_022(dx) * lb->F_023 +
       X_031(dx) * lb->F_032 + X_040(dx) * lb->F_041 + X_103(dx) * lb->F_104 +
       X_112(dx) * lb->F_113 + X_121(dx) * lb->F_122 + X_130(dx) * lb->F_131 +
@@ -2483,6 +2472,11 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
+
+  /* Update the particle */
+  gp->a_grav[0] += a_grav[0];
+  gp->a_grav[1] += a_grav[1];
+  gp->a_grav[2] += a_grav[2];
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
