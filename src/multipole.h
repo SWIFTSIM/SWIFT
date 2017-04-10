@@ -139,27 +139,13 @@ struct multipole {
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 5th order terms */
-  float M_005;
-  float M_014;
-  float M_023;
-  float M_032;
-  float M_041;
-  float M_050;
-  float M_104;
-  float M_113;
-  float M_122;
-  float M_131;
-  float M_140;
-  float M_203;
-  float M_212;
-  float M_221;
-  float M_230;
-  float M_302;
-  float M_311;
-  float M_320;
-  float M_401;
-  float M_410;
-  float M_500;
+  float M_005, M_014, M_023;
+  float M_032, M_041, M_050;
+  float M_104, M_113, M_122;
+  float M_131, M_140, M_203;
+  float M_212, M_221, M_230;
+  float M_302, M_311, M_320;
+  float M_401, M_410, M_500;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -960,7 +946,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   /* Temporary variables */
   double mass = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
-  float vel[3] = {0.f, 0.f, 0.f};
+  double vel[3] = {0.f, 0.f, 0.f};
 
   /* Collect the particle data. */
   for (int k = 0; k < gcount; k++) {
@@ -986,47 +972,33 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 
 /* Prepare some local counters */
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float M_100 = 0.f, M_010 = 0.f, M_001 = 0.f;
+  double M_100 = 0., M_010 = 0., M_001 = 0.;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float M_200 = 0.f, M_020 = 0.f, M_002 = 0.f;
-  float M_110 = 0.f, M_101 = 0.f, M_011 = 0.f;
+  double M_200 = 0., M_020 = 0., M_002 = 0.;
+  double M_110 = 0., M_101 = 0., M_011 = 0.;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float M_300 = 0.f, M_030 = 0.f, M_003 = 0.f;
-  float M_210 = 0.f, M_201 = 0.f, M_120 = 0.f;
-  float M_021 = 0.f, M_102 = 0.f, M_012 = 0.f;
-  float M_111 = 0.f;
+  double M_300 = 0., M_030 = 0., M_003 = 0.;
+  double M_210 = 0., M_201 = 0., M_120 = 0.;
+  double M_021 = 0., M_102 = 0., M_012 = 0.;
+  double M_111 = 0.;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float M_400 = 0.f, M_040 = 0.f, M_004 = 0.f;
-  float M_310 = 0.f, M_301 = 0.f, M_130 = 0.f;
-  float M_031 = 0.f, M_103 = 0.f, M_013 = 0.f;
-  float M_220 = 0.f, M_202 = 0.f, M_022 = 0.f;
-  float M_211 = 0.f, M_121 = 0.f, M_112 = 0.f;
+  double M_400 = 0., M_040 = 0., M_004 = 0.;
+  double M_310 = 0., M_301 = 0., M_130 = 0.;
+  double M_031 = 0., M_103 = 0., M_013 = 0.;
+  double M_220 = 0., M_202 = 0., M_022 = 0.;
+  double M_211 = 0., M_121 = 0., M_112 = 0.;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-  float M_005 = 0.f;
-  float M_014 = 0.f;
-  float M_023 = 0.f;
-  float M_032 = 0.f;
-  float M_041 = 0.f;
-  float M_050 = 0.f;
-  float M_104 = 0.f;
-  float M_113 = 0.f;
-  float M_122 = 0.f;
-  float M_131 = 0.f;
-  float M_140 = 0.f;
-  float M_203 = 0.f;
-  float M_212 = 0.f;
-  float M_221 = 0.f;
-  float M_230 = 0.f;
-  float M_302 = 0.f;
-  float M_311 = 0.f;
-  float M_320 = 0.f;
-  float M_401 = 0.f;
-  float M_410 = 0.f;
-  float M_500 = 0.f;
+  double M_005 = 0., M_014 = 0., M_023 = 0.;
+  double M_032 = 0., M_041 = 0., M_050 = 0.;
+  double M_104 = 0., M_113 = 0., M_122 = 0.;
+  double M_131 = 0., M_140 = 0., M_203 = 0.;
+  double M_212 = 0., M_221 = 0., M_230 = 0.;
+  double M_302 = 0., M_311 = 0., M_320 = 0.;
+  double M_401 = 0., M_410 = 0., M_500 = 0.;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -1034,16 +1006,20 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 
   /* Construce the higher order terms */
   for (int k = 0; k < gcount; k++) {
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float m = gparts[k].mass;
+    const double m = gparts[k].mass;
     const double dx[3] = {gparts[k].x[0] - com[0], gparts[k].x[1] - com[1],
                           gparts[k].x[2] - com[2]};
 
+    /* 1st order terms */
     M_100 += -m * X_100(dx);
     M_010 += -m * X_010(dx);
     M_001 += -m * X_001(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+    /* 2nd order terms */
     M_200 += m * X_200(dx);
     M_020 += m * X_020(dx);
     M_002 += m * X_002(dx);
@@ -1052,6 +1028,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_011 += m * X_011(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+    /* 3rd order terms */
     M_300 += -m * X_300(dx);
     M_030 += -m * X_030(dx);
     M_003 += -m * X_003(dx);
@@ -1064,6 +1042,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_111 += -m * X_111(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+    /* 4th order terms */
     M_400 += m * X_400(dx);
     M_040 += m * X_040(dx);
     M_004 += m * X_004(dx);
@@ -1081,6 +1061,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
     M_112 += m * X_112(dx);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
     /* 5th order terms */
     M_005 += -m * X_005(dx);
     M_014 += -m * X_014(dx);
@@ -1121,12 +1102,17 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.vel[0] = vel[0];
   m->m_pole.vel[1] = vel[1];
   m->m_pole.vel[2] = vel[2];
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+
+  /* 1st order terms */
   m->m_pole.M_100 = M_100;
   m->m_pole.M_010 = M_010;
   m->m_pole.M_001 = M_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* 2nd order terms */
   m->m_pole.M_200 = M_200;
   m->m_pole.M_020 = M_020;
   m->m_pole.M_002 = M_002;
@@ -1135,6 +1121,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_011 = M_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /* 3rd order terms */
   m->m_pole.M_300 = M_300;
   m->m_pole.M_030 = M_030;
   m->m_pole.M_003 = M_003;
@@ -1147,6 +1135,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_111 = M_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 4th order terms */
   m->m_pole.M_400 = M_400;
   m->m_pole.M_040 = M_040;
   m->m_pole.M_004 = M_004;
@@ -1164,6 +1154,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   m->m_pole.M_112 = M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
   /* 5th order terms */
   m->m_pole.M_005 = M_005;
   m->m_pole.M_014 = M_014;
