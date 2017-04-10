@@ -23,10 +23,11 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
-#include "cache.h"
+/* Config parameters. */
+#include "../config.h"
 
-extern const double runner_shift[13][3];
-extern const char runner_flip[27];
+/* Includes. */
+#include "cache.h"
 
 struct cell;
 struct engine;

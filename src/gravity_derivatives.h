@@ -19,14 +19,31 @@
 #ifndef SWIFT_GRAVITY_DERIVATIVE_H
 #define SWIFT_GRAVITY_DERIVATIVE_H
 
+/**
+ * @file gravity_derivatives.h
+ * @brief Derivatives (up to 3rd order) of the gravitational potential.
+ *
+ * We use the notation of Dehnen, Computational Astrophysics and Cosmology,
+ * 1, 1, pp. 24 (2014), arXiv:1405.2255
+ */
+
 /* Some standard headers. */
 #include <math.h>
 
 /* Local headers. */
 #include "inline.h"
 
+/*************************/
+/* 0th order derivatives */
+/*************************/
+
 /**
  * @brief \f$ \phi(r_x, r_y, r_z) \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
 __attribute__((always_inline)) INLINE static double D_000(double r_x,
                                                           double r_y,
@@ -36,8 +53,17 @@ __attribute__((always_inline)) INLINE static double D_000(double r_x,
   return r_inv;
 }
 
+/*************************/
+/* 1st order derivatives */
+/*************************/
+
 /**
  * @brief \f$ \frac{\partial\phi(r_x, r_y, r_z)}{\partial r_x} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
 __attribute__((always_inline)) INLINE static double D_100(double r_x,
                                                           double r_y,
@@ -49,6 +75,11 @@ __attribute__((always_inline)) INLINE static double D_100(double r_x,
 
 /**
  * @brief \f$ \frac{\partial\phi(r_x, r_y, r_z)}{\partial r_x} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
 __attribute__((always_inline)) INLINE static double D_010(double r_x,
                                                           double r_y,
@@ -60,6 +91,11 @@ __attribute__((always_inline)) INLINE static double D_010(double r_x,
 
 /**
  * @brief \f$ \frac{\partial\phi(r_x, r_y, r_z)}{\partial r_x} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
 __attribute__((always_inline)) INLINE static double D_001(double r_x,
                                                           double r_y,
@@ -67,6 +103,308 @@ __attribute__((always_inline)) INLINE static double D_001(double r_x,
                                                           double r_inv) {
 
   return -r_z * r_inv * r_inv * r_inv;
+}
+
+/*************************/
+/* 2nd order derivatives */
+/*************************/
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_x^2} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_200(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv3 = r_inv * r_inv2;
+  const double r_inv5 = r_inv3 * r_inv2;
+  return 3. * r_x * r_x * r_inv5 - r_inv3;
+}
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_y^2} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_020(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv3 = r_inv * r_inv2;
+  const double r_inv5 = r_inv3 * r_inv2;
+  return 3. * r_y * r_y * r_inv5 - r_inv3;
+}
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_z^2} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_002(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv3 = r_inv * r_inv2;
+  const double r_inv5 = r_inv3 * r_inv2;
+  return 3. * r_z * r_z * r_inv5 - r_inv3;
+}
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_x\partial r_y}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_110(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  return 3. * r_x * r_y * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_x\partial r_z}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_101(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  return 3. * r_x * r_z * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^2\phi(r_x, r_y, r_z)}{\partial r_y\partial r_z}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_011(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  return 3. * r_y * r_z * r_inv5;
+}
+
+/*************************/
+/* 3rd order derivatives */
+/*************************/
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_x^3} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_300(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_x * r_x * r_x * r_inv7 + 9. * r_x * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_y^3} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_030(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_y * r_y * r_y * r_inv7 + 9. * r_y * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_z^3} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_003(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_z * r_z * r_z * r_inv7 + 9. * r_z * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_x^2\partial r_y}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_210(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_x * r_x * r_y * r_inv7 + 3. * r_y * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_x^2\partial r_z}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_201(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_x * r_x * r_z * r_inv7 + 3. * r_z * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_x\partial r_y^2}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_120(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_x * r_y * r_y * r_inv7 + 3. * r_x * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_y^2\partial r_z}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_021(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_z * r_y * r_y * r_inv7 + 3. * r_z * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_x\partial r_z^2}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_102(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_x * r_z * r_z * r_inv7 + 3. * r_x * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_y\partial r_z^2}
+ * \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_012(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv2 = r_inv * r_inv;
+  const double r_inv5 = r_inv2 * r_inv2 * r_inv;
+  const double r_inv7 = r_inv5 * r_inv2;
+  return -15. * r_y * r_z * r_z * r_inv7 + 3. * r_y * r_inv5;
+}
+
+/**
+ * @brief \f$ \frac{\partial^3\phi(r_x, r_y, r_z)}{\partial r_z\partial
+ * r_y\partial r_z} \f$.
+ *
+ * @param r_x x-coordinate of the distance vector (\f$ r_x \f$).
+ * @param r_y y-coordinate of the distance vector (\f$ r_y \f$).
+ * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
+ * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
+ */
+__attribute__((always_inline)) INLINE static double D_111(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  const double r_inv3 = r_inv * r_inv * r_inv;
+  const double r_inv7 = r_inv3 * r_inv3 * r_inv;
+  return -15. * r_x * r_y * r_z * r_inv7;
 }
 
 #endif /* SWIFT_GRAVITY_DERIVATIVE_H */

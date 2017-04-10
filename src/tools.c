@@ -144,7 +144,7 @@ void pairs_single_density(double *dim, long long int pid,
   p = parts[k];
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
-  hydro_init_part(&p);
+  hydro_init_part(&p, NULL);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -459,7 +459,7 @@ void engine_single_density(double *dim, long long int pid,
   p = parts[k];
 
   /* Clear accumulators. */
-  hydro_init_part(&p);
+  hydro_init_part(&p, NULL);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {

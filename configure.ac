@@ -105,8 +105,9 @@ if test "$enable_mpi" = "yes"; then
        AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
     fi
     if test "$MPIRUN" = "notfound"; then
+       # This may not be fatal (some systems do not allow mpirun on
+       # development nodes)., so push on.
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
-       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -459,7 +460,6 @@ fi
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
-
 if test "$with_hdf5" != "yes"; then
     AC_MSG_ERROR([Could not find a working HDF5 library])
 fi
@@ -467,8 +467,6 @@ fi
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
-# To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
@@ -481,7 +479,14 @@ if test "$with_hdf5" = "yes"; then
 
     if test "$enable_parallel_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
-        parallel=`$H5CC -showconfig | grep "Parallel HDF5:" | awk '{print $3}'`
+# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
+
+        AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+        #include "hdf5.h"
+        #ifndef H5_HAVE_PARALLEL
+        # error macro not defined
+        #endif
+        ]])], [parallel="yes"], [parallel="no"])
         if test "$parallel" = "yes"; then
             have_parallel_hdf5="yes"
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
@@ -582,7 +587,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -602,6 +607,9 @@ case "$with_hydro" in
    ;; 
    gizmo)
       AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   ;; 
+   shadowfax)
+      AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
    ;; 
 
    *)
@@ -791,6 +799,15 @@ case "$with_potential" in
    ;;
 esac
 
+#  Gravity multipole order
+AC_ARG_WITH([multipole-order],
+   [AS_HELP_STRING([--with-multipole-order=<order>],
+      [order of the multipole and gravitational field expansion @<:@ default: 3@:>@]
+   )],
+   [with_multipole_order="$withval"],
+   [with_multipole_order="3"]
+)
+AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
 
 # Check for git, needed for revision stamps.
@@ -838,6 +855,7 @@ AC_MSG_RESULT([
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
    External potential : $with_potential
+   Multipole order    : $with_multipole_order
 
    Task debugging     : $enable_task_debugging
    Debugging checks   : $enable_debugging_checks
