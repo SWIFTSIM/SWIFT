@@ -53,6 +53,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "runner.h"
+#include "sort_part.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -62,36 +63,6 @@ int space_splitsize = space_splitsize_default;
 int space_subsize = space_subsize_default;
 int space_maxsize = space_maxsize_default;
 int space_maxcount = space_maxcount_default;
-
-/* Map shift vector to sortlist. */
-const int sortlistID[27] = {
-    /* ( -1 , -1 , -1 ) */ 0,
-    /* ( -1 , -1 ,  0 ) */ 1,
-    /* ( -1 , -1 ,  1 ) */ 2,
-    /* ( -1 ,  0 , -1 ) */ 3,
-    /* ( -1 ,  0 ,  0 ) */ 4,
-    /* ( -1 ,  0 ,  1 ) */ 5,
-    /* ( -1 ,  1 , -1 ) */ 6,
-    /* ( -1 ,  1 ,  0 ) */ 7,
-    /* ( -1 ,  1 ,  1 ) */ 8,
-    /* (  0 , -1 , -1 ) */ 9,
-    /* (  0 , -1 ,  0 ) */ 10,
-    /* (  0 , -1 ,  1 ) */ 11,
-    /* (  0 ,  0 , -1 ) */ 12,
-    /* (  0 ,  0 ,  0 ) */ 0,
-    /* (  0 ,  0 ,  1 ) */ 12,
-    /* (  0 ,  1 , -1 ) */ 11,
-    /* (  0 ,  1 ,  0 ) */ 10,
-    /* (  0 ,  1 ,  1 ) */ 9,
-    /* (  1 , -1 , -1 ) */ 8,
-    /* (  1 , -1 ,  0 ) */ 7,
-    /* (  1 , -1 ,  1 ) */ 6,
-    /* (  1 ,  0 , -1 ) */ 5,
-    /* (  1 ,  0 ,  0 ) */ 4,
-    /* (  1 ,  0 ,  1 ) */ 3,
-    /* (  1 ,  1 , -1 ) */ 2,
-    /* (  1 ,  1 ,  0 ) */ 1,
-    /* (  1 ,  1 ,  1 ) */ 0};
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.
@@ -2100,10 +2071,10 @@ void space_split_recursive(struct space *s, struct cell *c,
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
-          CoM[0] += m->CoM[0] * m->m_pole.mass;
-          CoM[1] += m->CoM[1] * m->m_pole.mass;
-          CoM[2] += m->CoM[2] * m->m_pole.mass;
-          mass += m->m_pole.mass;
+          CoM[0] += m->CoM[0] * m->m_pole.M_000;
+          CoM[1] += m->CoM[1] * m->m_pole.M_000;
+          CoM[2] += m->CoM[2] * m->m_pole.M_000;
+          mass += m->m_pole.M_000;
         }
       }
       c->multipole->CoM[0] = CoM[0] / mass;

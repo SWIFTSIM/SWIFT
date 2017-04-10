@@ -55,45 +55,13 @@
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
+#include "sort_part.h"
 #include "sourceterms.h"
 #include "space.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
-
-/**
- * @brief  Entry in a list of sorted indices.
- */
-struct entry {
-
-  /*! Distance on the axis */
-  float d;
-
-  /*! Particle index */
-  int i;
-};
-
-/* Orientation of the cell pairs */
-const double runner_shift[13][3] = {
-    {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
-    {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
-    {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
-    {7.071067811865475e-01, 0.0, 7.071067811865475e-01},
-    {1.0, 0.0, 0.0},
-    {7.071067811865475e-01, 0.0, -7.071067811865475e-01},
-    {5.773502691896258e-01, -5.773502691896258e-01, 5.773502691896258e-01},
-    {7.071067811865475e-01, -7.071067811865475e-01, 0.0},
-    {5.773502691896258e-01, -5.773502691896258e-01, -5.773502691896258e-01},
-    {0.0, 7.071067811865475e-01, 7.071067811865475e-01},
-    {0.0, 1.0, 0.0},
-    {0.0, 7.071067811865475e-01, -7.071067811865475e-01},
-    {0.0, 0.0, 1.0},
-};
-
-/* Does the axis need flipping ? */
-const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -498,7 +466,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   /* Reset the gravity acceleration tensors */
   if (e->policy & engine_policy_self_gravity)
-    gravity_field_tensor_init(c->multipole);
+    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Recurse? */
   if (c->split) {
@@ -1373,13 +1341,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (e->policy & engine_policy_self_gravity) {
-        gp->mass_interacted += gp->mass;
-        if (fabs(gp->mass_interacted - e->s->total_mass) > gp->mass)
+      if (e->policy & engine_policy_self_gravity && gpart_is_active(gp, e)) {
+
+        /* Check that this gpart has interacted with all the other particles
+         * (via direct or multipoles) in the box */
+        gp->num_interacted++;
+        if (gp->num_interacted != (long long)e->s->nr_gparts)
           error(
-              "g-particle did not interact gravitationally with all other "
-              "particles gp->mass_interacted=%e, total_mass=%e, gp->mass=%e",
-              gp->mass_interacted, e->s->total_mass, gp->mass);
+              "g-particle (id=%lld, type=%d) did not interact gravitationally "
+              "with all other gparts gp->num_interacted=%lld, total_gparts=%zd",
+              gp->id_or_neg_offset, gp->type, gp->num_interacted,
+              e->s->nr_gparts);
       }
 #endif
     }
@@ -1846,7 +1818,7 @@ void *runner_main(void *data) {
           // runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_down:
-          runner_do_grav_down(r, t->ci);
+          runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_top_level:
           // runner_do_grav_top_level(r);

@@ -197,12 +197,11 @@ int main() {
     /* Check the neighbour relations for an arbitrary cell: cell 44
        We plotted the grid and manually found the correct neighbours and their
        order. */
-    assert(cells[44].nvert == 5);
+    assert(cells[44].nvert == 4);
     assert(cells[44].ngbs[0] == 34);
-    assert(cells[44].ngbs[1] == 35);
-    assert(cells[44].ngbs[2] == 45);
-    assert(cells[44].ngbs[3] == 54);
-    assert(cells[44].ngbs[4] == 43);
+    assert(cells[44].ngbs[1] == 45);
+    assert(cells[44].ngbs[2] == 54);
+    assert(cells[44].ngbs[3] == 43);
 
     message("Done.");
   }
