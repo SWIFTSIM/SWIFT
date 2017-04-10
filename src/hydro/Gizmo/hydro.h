@@ -138,6 +138,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
+
+  /* we cannot initialize wcorr in init_part, as init_part gets called every
+     time the density loop is repeated, and the whole point of storing wcorr
+     is to have a way of remembering that we need more neighbours for this
+     particle */
+  p->density.wcorr = 1.0f;
 }
 
 /**
@@ -163,6 +169,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+  p->geometry.Atot = 0.0f;
 
   /* Set the active flag to active. */
   p->force.active = 1;
@@ -219,7 +226,36 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
   p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
 
+  /* Check the condition number to see if we have a stable geometry. */
+  float condition_number_E = 0.0f;
+  int i, j;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      condition_number_E +=
+          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
+    }
+  }
+
   invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
+
+  float condition_number_Einv = 0.0f;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      condition_number_Einv +=
+          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
+    }
+  }
+
+  float condition_number =
+      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
+
+  if (condition_number > 100.0f) {
+    //    error("Condition number larger than 100!");
+    //    message("Condition number too large: %g (p->id: %llu)!",
+    //    condition_number, p->id);
+    /* add a correction to the number of neighbours for this particle */
+    p->density.wcorr *= 0.75;
+  }
 
   hydro_gradients_init(p);
 
@@ -274,6 +310,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->primitives.rho = 0.0f;
     p->primitives.P = 0.0f;
   }
+
+  /* Add a correction factor to wcount (to force a neighbour number increase if
+     the geometry matrix is close to singular) */
+  p->density.wcount *= p->density.wcorr;
+  p->density.wcount_dh *= p->density.wcorr;
 }
 
 /**
@@ -385,10 +426,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt;
+  float h_corr;
   if (fabsf(w1) < 0.2f)
-    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+    h_corr = approx_expf(w1); /* 4th order expansion of exp(w) */
   else
-    p->h *= expf(w1);
+    h_corr = expf(w1);
+
+  /* Limit the smoothing length correction. */
+  if (h_corr < 2.0f) {
+    p->h *= h_corr;
+  }
 
 /* we temporarily disabled the primitive variable drift.
    This should be reenabled once gravity works, and we have time to check that
@@ -480,6 +527,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.energy += p->conserved.flux.energy;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->conserved.mass < 0.) {
+    error(
+        "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
+        p->conserved.mass, p->conserved.flux.mass);
+  }
+
+  if (p->conserved.energy < 0.) {
+    error("Negative energy after conserved variables update!");
+  }
+#endif
+
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
     /* Retrieve the current value of the gravitational acceleration from the
@@ -566,6 +625,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gpart->v_full[2] = xp->v_full[2];
   }
 #endif
+
+  /* reset wcorr */
+  p->density.wcorr = 1.0f;
 }
 
 /**
