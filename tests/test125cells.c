@@ -101,7 +101,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_SPH)
+#elif defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
@@ -198,8 +198,13 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
 
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+    float volume = p->conserved.mass / density;
 #if defined(GIZMO_SPH)
-    p->geometry.volume = p->conserved.mass / density;
+    p->geometry.volume = volume;
+#else
+    p->cell.volume = volume;
+#endif
     p->primitives.rho = density;
     p->primitives.v[0] = p->v[0];
     p->primitives.v[1] = p->v[1];
@@ -208,7 +213,7 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     p->conserved.momentum[1] = p->conserved.mass * p->v[1];
     p->conserved.momentum[2] = p->conserved.mass * p->v[2];
     p->conserved.energy =
-        p->primitives.P / hydro_gamma_minus_one * p->geometry.volume +
+        p->primitives.P / hydro_gamma_minus_one * volume +
         0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
                 p->conserved.momentum[1] * p->conserved.momentum[1] +
                 p->conserved.momentum[2] * p->conserved.momentum[2]) /
@@ -260,7 +265,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
         part->h = size * h / (float)n;
 
-#ifdef GIZMO_SPH
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -284,7 +289,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.momentum[1] = part->conserved.mass * part->v[1];
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
         part->conserved.energy =
-            part->primitives.P / hydro_gamma_minus_one * part->geometry.volume +
+            part->primitives.P / hydro_gamma_minus_one * volume +
             0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
                     part->conserved.momentum[1] * part->conserved.momentum[1] +
                     part->conserved.momentum[2] * part->conserved.momentum[2]) /
@@ -363,7 +368,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_density(&main_cell->parts[pid]),
-#ifdef MINIMAL_SPH
+#if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,

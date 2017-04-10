@@ -46,6 +46,7 @@
 #include "intrinsics.h"
 #include "kernel_hydro.h"
 #include "queue.h"
+#include "sort_part.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"
@@ -245,7 +246,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
             ci->count * sid_scale[sid] < space_subsize / cj->count &&
-            sid != 0 && sid != 2 && sid != 6 && sid != 8) {
+            !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
           t->type = task_type_sub_pair;

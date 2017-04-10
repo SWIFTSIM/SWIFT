@@ -40,6 +40,8 @@
   __attribute__((vector_size((elcount) * sizeof(type)))) type
 
 /* So what will the vector size be? */
+
+/* AVX-512 intrinsics*/
 #ifdef HAVE_AVX512_F
 #define VEC_HAVE_GATHER
 #define VEC_SIZE 16
@@ -94,23 +96,35 @@
                             _mm512_set1_epi64(ptrs[0])),                    \
       1)
 #define vec_gather(base, offsets) _mm512_i32gather_ps(offsets.m, base, 1)
+
+/* Initialises a vector struct with a default value. */
 #define FILL_VEC(a)                                                     \
   {                                                                     \
     .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a, .f[4] = a, .f[5] = a,   \
     .f[6] = a, .f[7] = a, .f[8] = a, .f[9] = a, .f[10] = a, .f[11] = a, \
     .f[12] = a, .f[13] = a, .f[14] = a, .f[15] = a                      \
   }
+
+/* Performs a horizontal add on the vector and adds the result to a float. */
 #define VEC_HADD(a, b) b += _mm512_reduce_add_ps(a.v)
+
+/* Calculates the number of set bits in the mask and adds the result to an int.
+ */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \
   pack += __builtin_popcount(mask);
+
+/* Performs a left-pack on a vector based upon a mask and returns the result. */
 #define VEC_LEFT_PACK(a, mask, result) \
   _mm512_mask_compressstoreu_ps(result, mask, a)
+
+/* AVX intrinsics */
 #elif defined(HAVE_AVX)
 #define VEC_SIZE 8
 #define VEC_FLOAT __m256
 #define VEC_DBL __m256d
 #define VEC_INT __m256i
 #define vec_load(a) _mm256_load_ps(a)
+#define vec_unaligned_load(a) _mm256_loadu_ps(a)
 #define vec_store(a, addr) _mm256_store_ps(addr, a)
 #define vec_unaligned_store(a, addr) _mm256_storeu_ps(addr, a)
 #define vec_setzero() _mm256_setzero_ps()
@@ -146,22 +160,38 @@
 #define vec_dbl_ftoi(a) _mm256_cvttpd_epi32(a)
 #define vec_dbl_fmin(a, b) _mm256_min_pd(a, b)
 #define vec_dbl_fmax(a, b) _mm256_max_pd(a, b)
+
+/* Initialises a vector struct with a default value. */
 #define FILL_VEC(a)                                                   \
   {                                                                   \
     .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a, .f[4] = a, .f[5] = a, \
     .f[6] = a, .f[7] = a                                              \
   }
+
+/* Performs a horizontal add on the vector and adds the result to a float. */
 #define VEC_HADD(a, b)            \
   a.v = _mm256_hadd_ps(a.v, a.v); \
   a.v = _mm256_hadd_ps(a.v, a.v); \
   b += a.f[0] + a.f[4];
+
+/* Returns the lower 128-bits of the 256-bit vector. */
 #define VEC_GET_LOW(a) _mm256_castps256_ps128(a)
+
+/* Returns the higher 128-bits of the 256-bit vector. */
 #define VEC_GET_HIGH(a) _mm256_extractf128_ps(a, 1)
+
+/* Check if we have AVX2 intrinsics alongside AVX */
 #ifdef HAVE_AVX2
 #define vec_fma(a, b, c) _mm256_fmadd_ps(a, b, c)
+
+/* Used in VEC_FORM_PACKED_MASK */
 #define identity_indices 0x0706050403020100
 #define VEC_HAVE_GATHER
 #define vec_gather(base, offsets) _mm256_i32gather_ps(base, offsets.m, 1)
+
+/* Takes an integer mask and forms a left-packed integer vector
+ * containing indices of the set bits in the integer mask.
+ * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack)                               \
   {                                                                            \
     unsigned long expanded_mask = _pdep_u64(mask, 0x0101010101010101);         \
@@ -171,18 +201,32 @@
     v_mask = _mm256_cvtepu8_epi32(bytevec);                                    \
     pack += __builtin_popcount(mask);                                          \
   }
+
+/* Performs a left-pack on a vector based upon a mask and returns the result. */
 #define VEC_LEFT_PACK(a, mask, result) \
   vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask), result)
-#endif
+#endif /* HAVE_AVX2 */
+
+/* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
 #endif
+
+/* Form a packed mask without intrinsics if AVX2 is not present. */
 #ifndef VEC_FORM_PACKED_MASK
+
+/* Takes an integer mask and forms a left-packed integer vector
+ * containing indices of the set bits in the integer mask.
+ * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack)   \
   {                                                \
     for (int i = 0; i < VEC_SIZE; i++)             \
       if ((mask & (1 << i))) v_mask.i[pack++] = i; \
   }
+
+/* Takes two integer masks and forms two left-packed integer vectors
+ * containing indices of the set bits in each corresponding integer mask.
+ * Also returns the total number of bits set in the mask. */
 #define VEC_FORM_PACKED_MASK_2(mask, v_mask, pack, mask2, v_mask2, pack2) \
   {                                                                       \
     for (int i = 0; i < VEC_SIZE; i++) {                                  \
@@ -191,6 +235,10 @@
     }                                                                     \
   }
 #endif
+
+/* Performs a left-pack on a vector based upon a mask and returns the result. */
+/* This uses AVX intrinsics, but this is slower than performing the left-pack
+ * manually by looping over the vectors. */
 #ifndef VEC_LEFT_PACK
 #define VEC_LEFT_PACK(a, mask, result)                                     \
   {                                                                        \
@@ -208,7 +256,9 @@
                              _mm_castsi128_ps(k1), 1);                     \
     *((__m256 *)(result)) = _mm256_blendv_ps(r0, r1, kk);                  \
   }
-#endif
+#endif /* HAVE_AVX2 */
+
+/* SSE intrinsics*/
 #elif defined(HAVE_SSE2)
 #define VEC_SIZE 4
 #define VEC_FLOAT __m128
@@ -249,17 +299,23 @@
 #define vec_dbl_ftoi(a) _mm_cvttpd_epi32(a)
 #define vec_dbl_fmin(a, b) _mm_min_pd(a, b)
 #define vec_dbl_fmax(a, b) _mm_max_pd(a, b)
+
+/* Initialises a vector struct with a default value. */
 #define FILL_VEC(a) \
   { .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a }
+
+/* Performs a horizontal add on the vector and adds the result to a float. */
 #define VEC_HADD(a, b)         \
   a.v = _mm_hadd_ps(a.v, a.v); \
   b += a.f[0] + a.f[1];
+
+/* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
 #endif
 #else
 #define VEC_SIZE 4
-#endif
+#endif /* HAVE_SSE2 */
 
 /* Define the composite types for element access. */
 typedef union {

@@ -22,6 +22,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "equation_of_state.h"
+#include "hydro_space.h"
 #include "minmax.h"
 
 #include <float.h>
@@ -165,9 +166,10 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * the variaous density tasks
  *
  * @param p The particle to act upon
+ * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part *restrict p) {
+    struct part *restrict p, const struct hydro_space *hs) {
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -400,7 +402,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->u_full = p->u;
 
   hydro_reset_acceleration(p);
-  hydro_init_part(p);
+  hydro_init_part(p, NULL);
 }
 
 #endif /* SWIFT_DEFAULT_HYDRO_H */

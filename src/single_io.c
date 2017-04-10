@@ -400,9 +400,16 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
     N[ptype] = ((long long)numParticles[ptype]) +
                ((long long)numParticles_highWord[ptype] << 32);
 
+  /* Get the box size if not cubic */
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
+
+  /* Change box size in the 1D and 2D case */
+  if (hydro_dimension == 2)
+    dim[2] = min(dim[0], dim[1]);
+  else if (hydro_dimension == 1)
+    dim[2] = dim[1] = dim[0];
 
   /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	  *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);  */

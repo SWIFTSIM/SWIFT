@@ -327,14 +327,14 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(part)       is %4zi bytes.", sizeof(struct part));
-    message("sizeof(xpart)      is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(spart)      is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(gpart)      is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(multipole)  is %4zi bytes.", sizeof(struct multipole));
-    message("sizeof(acc_tensor) is %4zi bytes.", sizeof(struct acc_tensor));
-    message("sizeof(task)       is %4zi bytes.", sizeof(struct task));
-    message("sizeof(cell)       is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
+    message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)        is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file */
@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Prepare the domain decomposition scheme */
-  enum repartition_type reparttype = REPART_NONE;
+  struct repartition reparttype;
 #ifdef WITH_MPI
   struct partition initial_partition;
   partition_init(&initial_partition, &reparttype, params, nr_nodes);
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
     if (initial_partition.type == INITPART_GRID)
       message("grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[reparttype]);
+    message("Using %s repartitioning", repartition_name[reparttype.type]);
   }
 #endif
 
@@ -448,8 +448,8 @@ int main(int argc, char *argv[]) {
   long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
   long long N_long[3] = {Ngas, Ngpart, Nspart};
-  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
-             MPI_COMM_WORLD);
+  MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                MPI_COMM_WORLD);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
@@ -531,10 +531,10 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-              engine_policies, talking, reparttype, &us, &prog_const,
-              &hydro_properties, &gravity_properties, &potential, &cooling_func,
-              &sourceterms);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
+              N_total[1], with_aff, engine_policies, talking, &reparttype, &us,
+              &prog_const, &hydro_properties, &gravity_properties, &potential,
+              &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

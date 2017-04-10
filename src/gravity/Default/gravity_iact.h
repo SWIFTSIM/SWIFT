@@ -44,6 +44,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
   const float u = r * rlr_inv;
   float f_lr, fi, fj, W;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r == 0.f) error("Interacting particles with 0 distance");
+#endif
+
   /* Get long-range correction */
   kernel_long_grav_eval(u, &f_lr);
 
@@ -107,6 +111,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
   const float u = r * rlr_inv;
   float f_lr, f, W;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r == 0.f) error("Interacting particles with 0 distance");
+#endif
+
   /* Get long-range correction */
   kernel_long_grav_eval(u, &f_lr);
 
@@ -141,51 +149,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
     float rlr_inv, float r2, const float *dx, struct gpart *gp,
     const struct multipole *multi) {
 
-  /* Apply the gravitational acceleration. */
-  const float r = sqrtf(r2);
-  const float ir = 1.f / r;
-  const float u = r * rlr_inv;
-  const float mrinv3 = multi->mass * ir * ir * ir;
-
-  /* Get long-range correction */
-  float f_lr;
-  kernel_long_grav_eval(u, &f_lr);
-
-#if const_gravity_multipole_order < 2
-
-  /* 0th and 1st order terms */
-  gp->a_grav[0] += mrinv3 * f_lr * dx[0];
-  gp->a_grav[1] += mrinv3 * f_lr * dx[1];
-  gp->a_grav[2] += mrinv3 * f_lr * dx[2];
-
-#elif const_gravity_multipole_order == 2
-  /* Terms up to 2nd order (quadrupole) */
-
-  /* Follows the notation in Bonsai */
-  const float mrinv5 = mrinv3 * ir * ir;
-  const float mrinv7 = mrinv5 * ir * ir;
-
-  const float D1 = -mrinv3;
-  const float D2 = 3.f * mrinv5;
-  const float D3 = -15.f * mrinv7;
-
-  const float q = multi->I_xx + multi->I_yy + multi->I_zz;
-  const float qRx =
-      multi->I_xx * dx[0] + multi->I_xy * dx[1] + multi->I_xz * dx[2];
-  const float qRy =
-      multi->I_xy * dx[0] + multi->I_yy * dx[1] + multi->I_yz * dx[2];
-  const float qRz =
-      multi->I_xz * dx[0] + multi->I_yz * dx[1] + multi->I_zz * dx[2];
-  const float qRR = qRx * dx[0] + qRy * dx[1] + qRz * dx[2];
-  const float C = D1 + 0.5f * D2 * q + 0.5f * D3 * qRR;
-
-  gp->a_grav[0] -= f_lr * (C * dx[0] + D2 * qRx);
-  gp->a_grav[1] -= f_lr * (C * dx[1] + D2 * qRy);
-  gp->a_grav[2] -= f_lr * (C * dx[2] + D2 * qRz);
-
-#else
-#error "Multipoles of order >2 not yet implemented."
-#endif
+  error("Dead function");
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */

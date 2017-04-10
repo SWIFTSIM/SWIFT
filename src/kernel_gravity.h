@@ -25,6 +25,7 @@
 /* Includes. */
 #include "const.h"
 #include "inline.h"
+#include "minmax.h"
 #include "vector.h"
 
 /* The gravity kernel is defined as a degree 6 polynomial in the distance
@@ -72,7 +73,7 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(
     float u, float *const W) {
 
   /* Pick the correct branch of the kernel */
-  const int ind = (int)fminf(u * (float)kernel_grav_ivals, kernel_grav_ivals);
+  const int ind = (int)min(u * (float)kernel_grav_ivals, kernel_grav_ivals);
   const float *const coeffs =
       &kernel_grav_coeffs[ind * (kernel_grav_degree + 1)];
 
