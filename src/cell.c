@@ -1402,7 +1402,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Reset the gravity acceleration tensors */
   if (cell_is_active(c, e) && e->policy & engine_policy_self_gravity)
-    gravity_field_tensor_init(c->multipole);
+    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1474,7 +1474,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
-        hydro_init_part(p);
+        hydro_init_part(p, &e->s->hs);
       }
     }
 
