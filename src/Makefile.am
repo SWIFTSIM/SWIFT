@@ -45,7 +45,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
     sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
+    vector_power.h hydro_space.h sort_part.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -55,7 +56,8 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     physical_constants.c potential.c hydro_properties.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
-    part_type.c xmf.c gravity_properties.c gravity.c
+    part_type.c xmf.c gravity_properties.c gravity.c \
+    hydro_space.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -75,8 +77,31 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
-                 hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
+		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
+                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
+                 hydro/Gizmo/hydro_part.h \
+                 hydro/Gizmo/hydro_gradients_gizmo.h \
+                 hydro/Gizmo/hydro_gradients.h \
+                 hydro/Gizmo/hydro_gradients_sph.h \
+                 hydro/Gizmo/hydro_slope_limiters_cell.h \
+                 hydro/Gizmo/hydro_slope_limiters_face.h \
+                 hydro/Gizmo/hydro_slope_limiters.h \
+                 hydro/Shadowswift/hydro_debug.h \
+                 hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
+                 hydro/Shadowswift/hydro_iact.h \
+                 hydro/Shadowswift/hydro_io.h \
+                 hydro/Shadowswift/hydro_part.h \
+                 hydro/Shadowswift/hydro_slope_limiters_cell.h \
+                 hydro/Shadowswift/hydro_slope_limiters_face.h \
+                 hydro/Shadowswift/hydro_slope_limiters.h \
+                 hydro/Shadowswift/voronoi1d_algorithm.h \
+                 hydro/Shadowswift/voronoi1d_cell.h \
+                 hydro/Shadowswift/voronoi2d_algorithm.h \
+                 hydro/Shadowswift/voronoi2d_cell.h \
+                 hydro/Shadowswift/voronoi3d_algorithm.h \
+                 hydro/Shadowswift/voronoi3d_cell.h \
+                 hydro/Shadowswift/voronoi_algorithm.h \
+                 hydro/Shadowswift/voronoi_cell.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
 	 	 stars.h stars_io.h \

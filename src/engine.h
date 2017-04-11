@@ -144,6 +144,9 @@ struct engine {
   /* Number of particles updated */
   size_t updates, g_updates, s_updates;
 
+  /* Total numbers of particles in the system. */
+  size_t total_nr_parts, total_nr_gparts;
+
   /* The internal system of units */
   const struct unit_system *internal_units;
 
@@ -181,8 +184,18 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
+#ifdef SWIFT_DEBUG_TASKS
   /* Tic/toc at the start/end of a step. */
   ticks tic_step, toc_step;
+#endif
+
+#ifdef WITH_MPI
+  /* CPU time of the last step. */
+  double cputime_last_step;
+
+  /* Step of last repartition. */
+  int last_repartition;
+#endif
 
   /* Wallclock time of the last time-step */
   float wallclock_time;
@@ -192,7 +205,7 @@ struct engine {
 
   /* Force the engine to repartition ? */
   int forcerepart;
-  enum repartition_type reparttype;
+  struct repartition *reparttype;
 
   /* Need to dump some statistics ? */
   int save_stats;
@@ -240,14 +253,14 @@ void engine_drift_all(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int with_aff, int policy, int verbose,
-                 enum repartition_type reparttype,
+                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct gravity_props *gravity,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling,
+                 const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners);
 void engine_prepare(struct engine *e);
@@ -262,6 +275,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             size_t *Nspart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
+void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);

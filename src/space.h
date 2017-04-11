@@ -31,6 +31,7 @@
 
 /* Includes. */
 #include "cell.h"
+#include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
@@ -55,9 +56,6 @@ extern int space_maxsize;
 extern int space_subsize;
 extern int space_maxcount;
 
-/* Map shift vector to sortlist. */
-extern const int sortlistID[27];
-
 /**
  * @brief The space in which the cells and particles reside.
  */
@@ -69,11 +67,11 @@ struct space {
   /*! Is the space periodic? */
   int periodic;
 
+  /*! Extra space information needed for some hydro schemes. */
+  struct hydro_space hs;
+
   /*! Are we doing gravity? */
   int gravity;
-
-  /*! Total mass in the system */
-  double total_mass;
 
   /*! Width of the top-level cells. */
   double width[3];

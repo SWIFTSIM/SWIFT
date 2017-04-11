@@ -1115,7 +1115,7 @@ void cell_check_multipole(struct cell *c, void *data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
-  const double tolerance = 1e-5; /* Relative */
+  const double tolerance = 1e-3; /* Relative */
 
   /* First recurse */
   if (c->split)
@@ -1128,8 +1128,7 @@ void cell_check_multipole(struct cell *c, void *data) {
     gravity_P2M(&ma, c->gparts, c->gcount);
 
     /* Now  compare the multipole expansion */
-    if (!gravity_multipole_equal(&ma.m_pole, &c->multipole->m_pole,
-                                 tolerance)) {
+    if (!gravity_multipole_equal(&ma, c->multipole, tolerance)) {
       message("Multipoles are not equal at depth=%d!", c->depth);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
@@ -1403,7 +1402,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Reset the gravity acceleration tensors */
   if (cell_is_active(c, e) && e->policy & engine_policy_self_gravity)
-    gravity_field_tensor_init(c->multipole);
+    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1475,7 +1474,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
-        hydro_init_part(p);
+        hydro_init_part(p, &e->s->hs);
       }
     }
 
@@ -1540,7 +1539,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   } else if (ti_current > ti_old_multipole) {
 
     /* Drift the multipole */
-    gravity_multipole_drift(c->multipole, dt);
+    gravity_drift(c->multipole, dt);
   }
 
   /* Update the time of the last drift */
@@ -1557,7 +1556,21 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
  * @param e The #engine (to get ti_current).
  */
 void cell_drift_multipole(struct cell *c, const struct engine *e) {
-  error("To be implemented");
+
+  const double timeBase = e->timeBase;
+  const integertime_t ti_old_multipole = c->ti_old_multipole;
+  const integertime_t ti_current = e->ti_current;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old_multipole) * timeBase;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
+
+  /* Update the time of the last drift */
+  c->ti_old_multipole = ti_current;
 }
 
 /**
