@@ -2150,7 +2150,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
-    if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);
+    if (s->gravity && gcount > 0) gravity_P2M(c->multipole, c->gparts, c->gcount);
   }
 
   /* Set the values for this cell. */
