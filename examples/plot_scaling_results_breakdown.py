@@ -139,17 +139,18 @@ def parse_files():
 
     branch[i] = branch[i].replace("_", "\\_") 
    
+    
     #version.append("$\\textrm{%s}$"%str(branch[i]))# + " " + revision[i])# + "\n" + hydro_scheme[i] + 
 #                   "\n" + hydro_kernel[i] + r", $N_{ngb}=%d$"%float(hydro_neighbours[i]) + 
 #                   r", $\eta=%.3f$"%float(hydro_eta[i]))
     totalTime.append([])
     speedUp.append([])
     parallelEff.append([])
-    
+   
     # Loop over all files for a given series and load the times
     for j in range(0,len(file_list)):
-      times = np.loadtxt(file_list[j],usecols=(6,))
-      updates = np.loadtxt(file_list[j],usecols=(3,))
+      times = np.loadtxt(file_list[j],usecols=(6,), skiprows=11)
+      updates = np.loadtxt(file_list[j],usecols=(3,), skiprows=11)
       totalTime[i].append(np.sum(times))
       
     sumTotal.append(np.sum(totalTime[i]))
@@ -240,18 +241,26 @@ def plot_results(totalTime,speedUp,parallelEff,numSeries):
   parallelEffPlot.set_xlim([0.9,10**(np.floor(np.log10(threadList[0][-1]))+0.5)])
 
   # Plot time to solution     
-  for i in range(0,numOfSeries):
-    pts = [1, 10**np.floor(np.log10(threadList[i][-1])+1)]
-    totalTimePlot.loglog(pts,totalTime[i][0]/pts, 'k--', lw=1., color='0.2')
-    totalTimePlot.loglog(threadList[i],totalTime[i],linestyle[i],label=version[i])
+  for i in range(0,numSeries):
+    for j in range(0,len(threadList[0])):
+      totalTime[i][j] = totalTime[i][j] * threadList[i][j]
+      if i > 1:
+        totalTime[i][j] = totalTime[i][j] + totalTime[i-1][j]
+    totalTimePlot.plot(threadList[0],totalTime[i],linestyle[i],label=version[i])
 
-  y_min = 10**np.floor(np.log10(np.min(totalTime[:][0])*0.6))
-  y_max = 1.0*10**np.floor(np.log10(np.max(totalTime[:][0]) * 1.5)+1)
+    if i > 1:
+      colour = color_variant(linestyle[i],100)
+      totalTimePlot.fill_between(threadList[0],np.array(totalTime[i]),np.array(totalTime[i-1]), facecolor=colour)
+    elif i==1:
+      colour = color_variant(linestyle[i],100)
+      totalTimePlot.fill_between(threadList[0], totalTime[i],facecolor=colour)
+
   totalTimePlot.set_xscale('log')
+  totalTimePlot.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
   totalTimePlot.set_xlabel("${\\rm Threads}$", labelpad=0.)
-  totalTimePlot.set_ylabel("${\\rm Time~to~solution}~[{\\rm ms}]$", labelpad=0.)
+  totalTimePlot.set_ylabel("${\\rm Time~to~solution~x~No.~of~cores}~[{\\rm ms}]$", labelpad=0.)
   totalTimePlot.set_xlim([0.9, 10**(np.floor(np.log10(threadList[0][-1]))+0.5)])
-  totalTimePlot.set_ylim(y_min, y_max)
+  #totalTimePlot.set_ylim(y_min, y_max)
 
   totalTimePlot.legend(bbox_to_anchor=(1.21, 0.97), loc=2, borderaxespad=0.,prop={'size':12}, frameon=False,title=legendTitle)
   emptyPlot.axis('off')
@@ -263,7 +272,7 @@ def plot_results(totalTime,speedUp,parallelEff,numSeries):
       totalTimePlot.annotate("$%s$"%txt, (threadList[0][i],totalTime[0][i]), (threadList[0][i], totalTime[0][i]*1.1), color=hexcols[0])
 
   #fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Platform: {}".format(numTimesteps),cmdLine,platform))
-  fig.suptitle("${\\rm Speed\\textendash up,~parallel~efficiency~and~time~to~solution~for}~%d~{\\rm time\\textendash steps}$"%numTimesteps, fontsize=16)
+  fig.suptitle("${\\rm Speed\\textendash up,~parallel~efficiency~and~time~to~solution~x~no.~of~cores~for}~%d~{\\rm time\\textendash steps}$"%numTimesteps, fontsize=16)
 
   return
 

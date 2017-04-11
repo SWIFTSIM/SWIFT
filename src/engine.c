@@ -2805,12 +2805,23 @@ void engine_collect_kick(struct cell *c) {
 }
 
 /**
- * @brief Collects the next time-step by making each super-cell recurse
- * to collect the minimal of ti_end and the number of updated particles.
+ * @brief Collects the next time-step and rebuild flag.
+ *
+ * The next time-step is determined by making each super-cell recurse to
+ * collect the minimal of ti_end and the number of updated particles.  When in
+ * MPI mode this routines reduces these across all nodes and also collects the
+ * forcerebuild flag -- this is so that we only use a single collective MPI
+ * call per step for all these values.
+ *
+ * Note that the results are stored in e->collect_group1 struct not in the
+ * engine fields, unless apply is true. These can be applied field-by-field
+ * or all at once using collectgroup1_copy();
  *
  * @param e The #engine.
+ * @param apply whether to apply the results to the engine or just keep in the
+ *              group1 struct.
  */
-void engine_collect_timestep(struct engine *e) {
+void engine_collect_timestep_and_rebuild(struct engine *e, int apply) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0, s_updates = 0;
@@ -2840,37 +2851,58 @@ void engine_collect_timestep(struct engine *e) {
     }
   }
 
-/* Aggregate the data from the different nodes. */
+  /* Store these in the temporary collection group. */
+  collectgroup1_init(&e->collect_group1, updates,g_updates, s_updates,
+                     ti_end_min,ti_end_max,ti_beg_max,e->forcerebuild);
+
+/* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
+  collectgroup1_reduce(&e->collect_group1);
+
+#ifdef SWIFT_DEBUG_CHECKS
   {
+    /* Check the above using the original MPI calls. */
     integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
     if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate t_end_min.");
-    ti_end_min = in_i[0];
-  }
-  {
+      error("Failed to aggregate ti_end_min.");
+    if (in_i[0] != (long long)e->collect_group1.ti_end_min)
+      error("Failed to get same ti_end_min, is %lld, should be %lld",
+            in_i[0], e->collect_group1.ti_end_min);
+
     long long in_ll[3], out_ll[3];
     out_ll[0] = updates;
     out_ll[1] = g_updates;
     out_ll[2] = s_updates;
     if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate energies.");
-    updates = in_ll[0];
-    g_updates = in_ll[1];
-    s_updates = in_ll[2];
+      error("Failed to aggregate particle counts.");
+    if (in_ll[0] != (long long)e->collect_group1.updates)
+      error("Failed to get same updates, is %lld, should be %ld",
+            in_ll[0], e->collect_group1.updates);
+    if (in_ll[1] != (long long)e->collect_group1.g_updates)
+      error("Failed to get same g_updates, is %lld, should be %ld",
+            in_ll[1], e->collect_group1.g_updates);
+    if (in_ll[2] != (long long)e->collect_group1.s_updates)
+      error("Failed to get same s_updates, is %lld, should be %ld",
+            in_ll[2], e->collect_group1.s_updates);
+
+    int buff = 0;
+    if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    if (!!buff != !!e->collect_group1.forcerebuild)
+      error("Failed to get same rebuild flag from all nodes, is %d,"
+            "should be %d", buff, e->collect_group1.forcerebuild);
   }
 #endif
+#endif
 
-  e->ti_end_min = ti_end_min;
-  e->ti_end_max = ti_end_max;
-  e->ti_beg_max = ti_beg_max;
-  e->updates = updates;
-  e->g_updates = g_updates;
-  e->s_updates = s_updates;
+  /* Apply to the engine, if requested. */
+  if (apply)
+    collectgroup1_apply(&e->collect_group1, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3112,7 +3144,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
+  engine_collect_timestep_and_rebuild(e, 1);
 
   clocks_gettime(&time2);
 
@@ -3212,14 +3244,12 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-/* Collect the values of rebuild from all nodes. */
-#ifdef WITH_MPI
-  int buff = 0;
-  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to aggregate the rebuild flag across nodes.");
-  e->forcerebuild = buff;
-#endif
+  /* Collect the values of rebuild from all nodes and recover the (integer)
+   * end of the next time-step. Do these together to reduce the collective MPI
+   * calls per step, but some of the gathered information is not applied just
+   * yet (in case we save a snapshot or drift). */
+  engine_collect_timestep_and_rebuild(e, 0);
+  e->forcerebuild = e->collect_group1.forcerebuild;
 
   /* Save some statistics ? */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
@@ -3255,8 +3285,8 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
+  /* Now apply all the collected time step updates and particle counts. */
+  collectgroup1_apply(&e->collect_group1, e);
 
   TIMER_TOC2(timer_step);
 
@@ -4041,11 +4071,14 @@ void engine_init(struct engine *e, struct space *s,
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
 
-/* Construct types for MPI communications */
+  /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
   stats_create_MPI_type();
 #endif
+
+  /* Initialise the collection group. */
+  collectgroup_init();
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);
