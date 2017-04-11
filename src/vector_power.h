@@ -410,4 +410,281 @@ __attribute__((always_inline)) INLINE static double X_112(const double v[3]) {
   return 0.5 * v[0] * v[1] * v[2] * v[2];
 }
 
+/***************************/
+/* 5th order vector powers */
+/***************************/
+
+/**
+* @brief Compute \f$ \frac{1}{(0,0,5)!}\vec{v}^{(0,0,5)} \f$.
+*
+* Note \f$ \vec{v}^{(0,0,5)} = v_z^5 \f$
+* and \f$ \frac{1}{(0,0,5)!} = 1/(0!*0!*5!) = 1/120 = 8.333333e-03 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_005(const double v[3]) {
+
+  return 8.333333333333333e-03 * v[2] * v[2] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(0,1,4)!}\vec{v}^{(0,1,4)} \f$.
+*
+* Note \f$ \vec{v}^{(0,1,4)} = v_y^1 v_z^4 \f$
+* and \f$ \frac{1}{(0,1,4)!} = 1/(0!*1!*4!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_014(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[1] * v[2] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(0,2,3)!}\vec{v}^{(0,2,3)} \f$.
+*
+* Note \f$ \vec{v}^{(0,2,3)} = v_y^2 v_z^3 \f$
+* and \f$ \frac{1}{(0,2,3)!} = 1/(0!*2!*3!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_023(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[1] * v[1] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(0,3,2)!}\vec{v}^{(0,3,2)} \f$.
+*
+* Note \f$ \vec{v}^{(0,3,2)} = v_y^3 v_z^2 \f$
+* and \f$ \frac{1}{(0,3,2)!} = 1/(0!*3!*2!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_032(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[1] * v[1] * v[1] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(0,4,1)!}\vec{v}^{(0,4,1)} \f$.
+*
+* Note \f$ \vec{v}^{(0,4,1)} = v_y^4 v_z^1 \f$
+* and \f$ \frac{1}{(0,4,1)!} = 1/(0!*4!*1!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_041(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[1] * v[1] * v[1] * v[1] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(0,5,0)!}\vec{v}^{(0,5,0)} \f$.
+*
+* Note \f$ \vec{v}^{(0,5,0)} = v_y^5 \f$
+* and \f$ \frac{1}{(0,5,0)!} = 1/(0!*5!*0!) = 1/120 = 8.333333e-03 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_050(const double v[3]) {
+
+  return 8.333333333333333e-03 * v[1] * v[1] * v[1] * v[1] * v[1];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(1,0,4)!}\vec{v}^{(1,0,4)} \f$.
+*
+* Note \f$ \vec{v}^{(1,0,4)} = v_x^1 v_z^4 \f$
+* and \f$ \frac{1}{(1,0,4)!} = 1/(1!*0!*4!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_104(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[0] * v[2] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(1,1,3)!}\vec{v}^{(1,1,3)} \f$.
+*
+* Note \f$ \vec{v}^{(1,1,3)} = v_x^1 v_y^1 v_z^3 \f$
+* and \f$ \frac{1}{(1,1,3)!} = 1/(1!*1!*3!) = 1/6 = 1.666667e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_113(const double v[3]) {
+
+  return 1.666666666666667e-01 * v[0] * v[1] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(1,2,2)!}\vec{v}^{(1,2,2)} \f$.
+*
+* Note \f$ \vec{v}^{(1,2,2)} = v_x^1 v_y^2 v_z^2 \f$
+* and \f$ \frac{1}{(1,2,2)!} = 1/(1!*2!*2!) = 1/4 = 2.500000e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_122(const double v[3]) {
+
+  return 2.500000000000000e-01 * v[0] * v[1] * v[1] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(1,3,1)!}\vec{v}^{(1,3,1)} \f$.
+*
+* Note \f$ \vec{v}^{(1,3,1)} = v_x^1 v_y^3 v_z^1 \f$
+* and \f$ \frac{1}{(1,3,1)!} = 1/(1!*3!*1!) = 1/6 = 1.666667e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_131(const double v[3]) {
+
+  return 1.666666666666667e-01 * v[0] * v[1] * v[1] * v[1] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(1,4,0)!}\vec{v}^{(1,4,0)} \f$.
+*
+* Note \f$ \vec{v}^{(1,4,0)} = v_x^1 v_y^4 \f$
+* and \f$ \frac{1}{(1,4,0)!} = 1/(1!*4!*0!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_140(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[0] * v[1] * v[1] * v[1] * v[1];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(2,0,3)!}\vec{v}^{(2,0,3)} \f$.
+*
+* Note \f$ \vec{v}^{(2,0,3)} = v_x^2 v_z^3 \f$
+* and \f$ \frac{1}{(2,0,3)!} = 1/(2!*0!*3!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_203(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[0] * v[0] * v[2] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(2,1,2)!}\vec{v}^{(2,1,2)} \f$.
+*
+* Note \f$ \vec{v}^{(2,1,2)} = v_x^2 v_y^1 v_z^2 \f$
+* and \f$ \frac{1}{(2,1,2)!} = 1/(2!*1!*2!) = 1/4 = 2.500000e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_212(const double v[3]) {
+
+  return 2.500000000000000e-01 * v[0] * v[0] * v[1] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(2,2,1)!}\vec{v}^{(2,2,1)} \f$.
+*
+* Note \f$ \vec{v}^{(2,2,1)} = v_x^2 v_y^2 v_z^1 \f$
+* and \f$ \frac{1}{(2,2,1)!} = 1/(2!*2!*1!) = 1/4 = 2.500000e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_221(const double v[3]) {
+
+  return 2.500000000000000e-01 * v[0] * v[0] * v[1] * v[1] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(2,3,0)!}\vec{v}^{(2,3,0)} \f$.
+*
+* Note \f$ \vec{v}^{(2,3,0)} = v_x^2 v_y^3 \f$
+* and \f$ \frac{1}{(2,3,0)!} = 1/(2!*3!*0!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_230(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[0] * v[0] * v[1] * v[1] * v[1];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(3,0,2)!}\vec{v}^{(3,0,2)} \f$.
+*
+* Note \f$ \vec{v}^{(3,0,2)} = v_x^3 v_z^2 \f$
+* and \f$ \frac{1}{(3,0,2)!} = 1/(3!*0!*2!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_302(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[0] * v[0] * v[0] * v[2] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(3,1,1)!}\vec{v}^{(3,1,1)} \f$.
+*
+* Note \f$ \vec{v}^{(3,1,1)} = v_x^3 v_y^1 v_z^1 \f$
+* and \f$ \frac{1}{(3,1,1)!} = 1/(3!*1!*1!) = 1/6 = 1.666667e-01 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_311(const double v[3]) {
+
+  return 1.666666666666667e-01 * v[0] * v[0] * v[0] * v[1] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(3,2,0)!}\vec{v}^{(3,2,0)} \f$.
+*
+* Note \f$ \vec{v}^{(3,2,0)} = v_x^3 v_y^2 \f$
+* and \f$ \frac{1}{(3,2,0)!} = 1/(3!*2!*0!) = 1/12 = 8.333333e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_320(const double v[3]) {
+
+  return 8.333333333333333e-02 * v[0] * v[0] * v[0] * v[1] * v[1];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(4,0,1)!}\vec{v}^{(4,0,1)} \f$.
+*
+* Note \f$ \vec{v}^{(4,0,1)} = v_x^4 v_z^1 \f$
+* and \f$ \frac{1}{(4,0,1)!} = 1/(4!*0!*1!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_401(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[0] * v[0] * v[0] * v[0] * v[2];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(4,1,0)!}\vec{v}^{(4,1,0)} \f$.
+*
+* Note \f$ \vec{v}^{(4,1,0)} = v_x^4 v_y^1 \f$
+* and \f$ \frac{1}{(4,1,0)!} = 1/(4!*1!*0!) = 1/24 = 4.166667e-02 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_410(const double v[3]) {
+
+  return 4.166666666666666e-02 * v[0] * v[0] * v[0] * v[0] * v[1];
+}
+
+/**
+* @brief Compute \f$ \frac{1}{(5,0,0)!}\vec{v}^{(5,0,0)} \f$.
+*
+* Note \f$ \vec{v}^{(5,0,0)} = v_x^5 \f$
+* and \f$ \frac{1}{(5,0,0)!} = 1/(5!*0!*0!) = 1/120 = 8.333333e-03 \f$
+*
+* @param v vector (\f$ v \f$).
+*/
+__attribute__((always_inline)) INLINE static double X_500(const double v[3]) {
+
+  return 8.333333333333333e-03 * v[0] * v[0] * v[0] * v[0] * v[0];
+}
+
 #endif /* SWIFT_VECTOR_POWER_H */

@@ -37,20 +37,25 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
+  struct gpart *gparts = c->gparts;
+  const int gcount = c->gcount;
 
   TIMER_TIC;
 
-  if (c->split) {
+  if (c->split) { /* Node case */
 
+    /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
       struct grav_tensor temp;
 
-      if (cp != NULL) {
+      /* Do we have a progenitor with any active g-particles ? */
+      if (cp != NULL && cell_is_active(cp, e)) {
 
         /* Shift the field tensor */
         gravity_L2L(&temp, &c->multipole->pot, cp->multipole->CoM,
                     c->multipole->CoM, 0 * periodic);
+
         /* Add it to this level's tensor */
         gravity_field_tensors_add(&cp->multipole->pot, &temp);
 
@@ -61,13 +66,13 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   } else { /* Leaf case */
 
-    const struct engine *e = r->e;
-    struct gpart *gparts = c->gparts;
-    const int gcount = c->gcount;
-
     /* Apply accelerations to the particles */
     for (int i = 0; i < gcount; ++i) {
+
+      /* Get a handle on the gpart */
       struct gpart *gp = &gparts[i];
+
+      /* Update if active */
       if (gpart_is_active(gp, e))
         gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
     }

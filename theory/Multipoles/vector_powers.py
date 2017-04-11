@@ -15,9 +15,9 @@ def ordinal(num):
 # Get the order
 order = int(sys.argv[1])
 
-print "-------------------------------------------------"
+print "----------------------------------------------------"
 print "Generating code for vector powers of order", order, "(only)."
-print "-------------------------------------------------\n"
+print "----------------------------------------------------\n"
 
 print "/***************************/"
 print "/* %s order vector powers */"%ordinal(order)
@@ -30,9 +30,14 @@ for i in range(order+1):
             if i + j + k == order:
                 fact = factorial(i) * factorial(j) * factorial(k)
                 print "/**"
-                print "* @brief \\f$ \\frac{1}{(%d,%d,%d)!}\\vec{v}^{(%d,%d,%d)} \\f$."%(i,j,k,i,j,k)
+                print "* @brief Compute \\f$ \\frac{1}{(%d,%d,%d)!}\\vec{v}^{(%d,%d,%d)} \\f$."%(i,j,k,i,j,k)
                 print "*"
-                print "* Note \\f$ \\frac{1}{(%d,%d,%d)!} = 1/(%d!*%d!*%d!) = 1/%d! = %e"%(i,j,k,i,j,k, fact, 1./fact)
+                print "* Note \\f$ \\vec{v}^{(%d,%d,%d)} ="%(i,j,k),
+                if i > 0: print "v_x^%d"%i,
+                if j > 0: print "v_y^%d"%j,
+                if k > 0: print "v_z^%d"%k,
+                print "\\f$"
+                print "* and \\f$ \\frac{1}{(%d,%d,%d)!} = 1/(%d!*%d!*%d!) = 1/%d = %e \\f$"%(i,j,k,i,j,k, fact, 1./fact)
                 print "*"
                 print "* @param v vector (\\f$ v \\f$)."
                 print "*/"
@@ -50,6 +55,6 @@ for i in range(order+1):
                 for kk in range(k):
                     print "* v[2]",
                 print ";"
-                print "}"
+                print "}\n"
 
 

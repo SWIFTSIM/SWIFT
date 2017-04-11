@@ -101,6 +101,45 @@ if order > 0:
 print ""
 print "-------------------------------------------------"
 
+print "gravity_multipole_equal():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d"%(order-1)
+
+# Create all the terms relevent for this order
+print "/* Manhattan Norm of %s order terms */"%ordinal(order)
+print "const float order%d_norm = "%order,
+first = True
+for i in range(order+1):
+    for j in range(order+1):
+        for k in range(order+1):
+            if i + j + k == order:
+                if first:
+                    first = False
+                else:
+                    print "+",
+                print "fabsf(ma->M_%d%d%d)"%(i,j,k),
+                print "+ fabsf(mb->M_%d%d%d)"%(i,j,k),
+print ";\n"
+print "/* Compare %s order terms above 1%% of norm */"%ordinal(order)
+for i in range(order+1):
+    for j in range(order+1):
+        for k in range(order+1):
+            if i + j + k == order:
+                print "if (fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > 0.01f * order%d_norm &&"%(i,j,k,i,j,k,order)
+                print "    fabsf(ma->M_%d%d%d - mb->M_%d%d%d) / fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > tolerance) {"%(i,j,k,i,j,k,i,j,k,i,j,k)
+                print "  message(\"M_%d%d%d term different\");"%(i,j,k)
+                print "  return 0;"
+                print "}"
+
+if order > 0:
+    print "#endif"
+
+
+print ""
+print "-------------------------------------------------"
+
 print "gravity_P2M(): (loop)"
 print "-------------------------------------------------\n"
 
@@ -168,7 +207,7 @@ for i in range(order+1):
                                 for iii in range(order+1):
                                     for jjj in range(order+1):
                                         for kkk in range(order+1):
-                                            if ii+iii == i and jj + jjj == j and kk+kkk == k:
+                                            if ii+iii == i and jj+jjj == j and kk+kkk == k:
                                                 print "+ X_%d%d%d(dx) * m_b->M_%d%d%d"%(ii, jj, kk, iii, jjj, kkk),
 
                                         
@@ -177,3 +216,119 @@ if order > 0:
     print "#endif"
 
     
+print ""
+print "-------------------------------------------------"
+
+print "gravity_M2L():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+
+# Loop over LHS order
+for l in range(order + 1):
+    print "/* Compute %s order field tensor terms (addition to rank %d) */"%(ordinal(order), l)
+
+    for i in range(l+1):
+        for j in range(l+1):
+            for k in range(l+1):
+                if i + j + k == l:
+                    print "l_b->F_%d%d%d +="%(i,j,k),
+
+                    first = True
+                    for ii in range(order+1):
+                        for jj in range(order+1):
+                            for kk in range(order+1):
+                                if ii + jj + kk  == order - l:
+                                    if first:
+                                        first = False
+                                    else:
+                                        print "+",
+                                    print "m_a->M_%d%d%d * D_%d%d%d(dx, dy, dz, r_inv)"%(ii,jj,kk,i+ii,j+jj,k+kk),
+                    print ";"
+    print ""
+    
+if order > 0:
+    print "#endif"
+
+
+print ""
+print "-------------------------------------------------"
+
+print "gravity_L2L():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+
+# Loop over LHS order
+for l in range(order + 1):
+    print "/* Shift %s order field tensor terms (addition to rank %d) */"%(ordinal(order), l)
+
+    for i in range(l+1):
+        for j in range(l+1):
+            for k in range(l+1):
+                if i + j + k == l:
+                    print "la->F_%d%d%d +="%(i,j,k),
+
+                    first = True
+                    for ii in range(order+1):
+                        for jj in range(order+1):
+                            for kk in range(order+1):
+                                if ii + jj + kk  == order - l:
+                                    if first:
+                                        first = False
+                                    else:
+                                        print "+",
+                                    print "X_%d%d%d(dx) * lb->F_%d%d%d"%(ii,jj,kk,i+ii,j+jj,k+kk),
+                    print ";"
+    print ""
+    
+if order > 0:
+    print "#endif"
+
+print ""
+print "-------------------------------------------------"
+
+print "gravity_L2P():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+
+    print "/* %s order contributions */"%(ordinal(order-1))
+
+    for r in range(3):
+        print "gp->a_grav[%d] +="%(r),
+
+        first = True
+        for i in range(order + 1):
+            for j in range(order + 1):
+                for k in range(order + 1):
+                    if i + j + k == order-1:
+                        if first:
+                            first = False
+                        else:
+                            print "+",
+                        if r == 0:
+                            ii = i+1
+                            jj = j
+                            kk = k
+                        if r == 1:
+                            ii = i
+                            jj = j+1
+                            kk = k
+                        if r == 2:
+                            ii = i
+                            jj = j
+                            kk = k+1
+                        print "X_%d%d%d(dx) * lb->F_%d%d%d"%(i,j,k,ii,jj,kk),
+        print ";"
+
+    print ""
+if order > 0:
+    print "#endif"
+
+print ""
+print "-------------------------------------------------"
+
