@@ -524,7 +524,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
         t->type != task_type_sub_self && t->type != task_type_sub_self &&
         t->type != task_type_ghost && t->type != task_type_kick1 &&
         t->type != task_type_kick2 && t->type != task_type_timestep &&
-        t->type != task_type_drift && t->type != task_type_init)
+        t->type != task_type_drift)
       continue;
 
     /* Get the task weight. */
