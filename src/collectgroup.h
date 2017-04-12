@@ -48,10 +48,8 @@ void collectgroup_init();
 void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e);
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,
                         size_t g_updates, size_t s_updates,
-                        integertime_t ti_end_min,
-                        integertime_t ti_end_max,
-                        integertime_t ti_beg_max,
-                        int forcerebuild);
+                        integertime_t ti_end_min, integertime_t ti_end_max,
+                        integertime_t ti_beg_max, int forcerebuild);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 
 #endif /* SWIFT_COLLECTGROUP_H */

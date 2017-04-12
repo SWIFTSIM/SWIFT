@@ -89,7 +89,8 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  *
  * @param grp1 The #collectgroup1 to initialise
  * @param updates the number of updated hydro particles on this node this step.
- * @param g_updates the number of updated gravity particles on this node this step.
+ * @param g_updates the number of updated gravity particles on this node this
+ * step.
  * @param s_updates the number of updated star particles on this node this step.
  * @param ti_end_min the minimum end time for next time step after this step.
  * @param ti_end_max the maximum end time for next time step after this step.
@@ -98,10 +99,8 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  */
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,
                         size_t g_updates, size_t s_updates,
-                        integertime_t ti_end_min,
-                        integertime_t ti_end_max,
-                        integertime_t ti_beg_max,
-                        int forcerebuild) {
+                        integertime_t ti_end_min, integertime_t ti_end_max,
+                        integertime_t ti_beg_max, int forcerebuild) {
   grp1->updates = updates;
   grp1->g_updates = g_updates;
   grp1->s_updates = s_updates;
@@ -133,8 +132,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
 
   struct mpicollectgroup1 mpigrp12;
   if (MPI_Allreduce(&mpigrp11, &mpigrp12, 1, mpicollectgroup1_type,
-                    mpicollectgroup1_reduce_op, MPI_COMM_WORLD)
-      != MPI_SUCCESS)
+                    mpicollectgroup1_reduce_op, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to reduce mpicollection1.");
 
   /* And update. */
@@ -146,7 +144,6 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
 
 #endif
 }
-
 
 #ifdef WITH_MPI
 /**
@@ -176,7 +173,7 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
  * @brief MPI reduce operator for #mpicollectgroup structures.
  */
 static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
-                             MPI_Datatype *datatype) {
+                                    MPI_Datatype *datatype) {
 
   for (int i = 0; i < *len; ++i)
     doreduce1(&((struct mpicollectgroup1 *)inout)[0],
