@@ -3222,7 +3222,8 @@ void engine_step(struct engine *e) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->s->nr_gparts)
-      error("Multipoles don't contain the total number of gpart");
+      error("Multipoles don't contain the total number of gpart mpoles=%zd ngparts=%zd",
+	    num_gpart_mpole, e->s->nr_gparts);
   }
 #endif
 
@@ -3243,6 +3244,9 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the gravity calculation */
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
+
+  if (!(e->policy & engine_policy_hydro) && (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
+    e->forcerebuild = 1;
 
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
