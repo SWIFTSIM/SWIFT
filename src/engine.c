@@ -2852,8 +2852,8 @@ void engine_collect_timestep_and_rebuild(struct engine *e, int apply) {
   }
 
   /* Store these in the temporary collection group. */
-  collectgroup1_init(&e->collect_group1, updates,g_updates, s_updates,
-                     ti_end_min,ti_end_max,ti_beg_max,e->forcerebuild);
+  collectgroup1_init(&e->collect_group1, updates, g_updates, s_updates,
+                     ti_end_min, ti_end_max, ti_beg_max, e->forcerebuild);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
@@ -2869,8 +2869,8 @@ void engine_collect_timestep_and_rebuild(struct engine *e, int apply) {
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate ti_end_min.");
     if (in_i[0] != (long long)e->collect_group1.ti_end_min)
-      error("Failed to get same ti_end_min, is %lld, should be %lld",
-            in_i[0], e->collect_group1.ti_end_min);
+      error("Failed to get same ti_end_min, is %lld, should be %lld", in_i[0],
+            e->collect_group1.ti_end_min);
 
     long long in_ll[3], out_ll[3];
     out_ll[0] = updates;
@@ -2880,29 +2880,30 @@ void engine_collect_timestep_and_rebuild(struct engine *e, int apply) {
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updates)
-      error("Failed to get same updates, is %lld, should be %ld",
-            in_ll[0], e->collect_group1.updates);
+      error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
+            e->collect_group1.updates);
     if (in_ll[1] != (long long)e->collect_group1.g_updates)
-      error("Failed to get same g_updates, is %lld, should be %ld",
-            in_ll[1], e->collect_group1.g_updates);
+      error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
+            e->collect_group1.g_updates);
     if (in_ll[2] != (long long)e->collect_group1.s_updates)
-      error("Failed to get same s_updates, is %lld, should be %ld",
-            in_ll[2], e->collect_group1.s_updates);
+      error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
+            e->collect_group1.s_updates);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
     if (!!buff != !!e->collect_group1.forcerebuild)
-      error("Failed to get same rebuild flag from all nodes, is %d,"
-            "should be %d", buff, e->collect_group1.forcerebuild);
+      error(
+          "Failed to get same rebuild flag from all nodes, is %d,"
+          "should be %d",
+          buff, e->collect_group1.forcerebuild);
   }
 #endif
 #endif
 
   /* Apply to the engine, if requested. */
-  if (apply)
-    collectgroup1_apply(&e->collect_group1, e);
+  if (apply) collectgroup1_apply(&e->collect_group1, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3222,8 +3223,10 @@ void engine_step(struct engine *e) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->s->nr_gparts)
-      error("Multipoles don't contain the total number of gpart mpoles=%zd ngparts=%zd",
-	    num_gpart_mpole, e->s->nr_gparts);
+      error(
+          "Multipoles don't contain the total number of gpart mpoles=%zd "
+          "ngparts=%zd",
+          num_gpart_mpole, e->s->nr_gparts);
   }
 #endif
 
@@ -3245,7 +3248,8 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  if (!(e->policy & engine_policy_hydro) && (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
+  if (!(e->policy & engine_policy_hydro) &&
+      (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
 
   /* Collect the values of rebuild from all nodes and recover the (integer)
@@ -4075,7 +4079,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
 
-  /* Construct types for MPI communications */
+/* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
   stats_create_MPI_type();
