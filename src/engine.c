@@ -3094,7 +3094,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   if (e->verbose) engine_print_task_counts(e);
 
   /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++) hydro_init_part(&s->parts[k], &e->s->hs);
+  for (size_t k = 0; k < s->nr_parts; k++)
+    hydro_init_part(&s->parts[k], &e->s->hs);
   for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
 
   /* Now, launch the calculation */
@@ -3143,7 +3144,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   engine_skip_drift(e);
 
   /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++) hydro_init_part(&s->parts[k], &e->s->hs);
+  for (size_t k = 0; k < s->nr_parts; k++)
+    hydro_init_part(&s->parts[k], &e->s->hs);
   for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
 
   /* Print the number of active tasks ? */
