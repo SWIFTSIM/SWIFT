@@ -430,7 +430,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
         xparts[k].x_diff_sort[1] = 0.0f;
         xparts[k].x_diff_sort[2] = 0.0f;
       }
-      const float px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
+      const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
           sort[j * (count + 1) + k].i = k;
