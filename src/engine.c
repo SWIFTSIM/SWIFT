@@ -846,7 +846,8 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_old);
+  space_check_drift_point(e->s, e->ti_old,
+                          e->policy & engine_policy_self_gravity);
 #endif
 
   /* Clear the repartition flag. */
@@ -2664,7 +2665,8 @@ void engine_rebuild(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_old);
+  space_check_drift_point(e->s, e->ti_old,
+                          e->policy & engine_policy_self_gravity);
 #endif
 
   if (e->verbose)
@@ -2686,7 +2688,8 @@ void engine_prepare(struct engine *e) {
     /* Check that all cells have been drifted to the current time.
      * That can include cells that have not
      * previously been active on this rank. */
-    space_check_drift_point(e->s, e->ti_old);
+    space_check_drift_point(e->s, e->ti_old,
+                            e->policy & engine_policy_self_gravity);
   }
 #endif
 
@@ -2920,7 +2923,8 @@ void engine_print_stats(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
   message("Saving statistics at t=%e.", e->time);
@@ -3219,7 +3223,10 @@ void engine_step(struct engine *e) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->s->nr_gparts)
-      error("Multipoles don't contain the total number of gpart");
+      error(
+          "Multipoles don't contain the total number of gpart mpoles=%zd "
+          "ngparts=%zd",
+          num_gpart_mpole, e->s->nr_gparts);
   }
 #endif
 
@@ -3227,6 +3234,9 @@ void engine_step(struct engine *e) {
   /* Run the brute-force gravity calculation for some gparts */
   gravity_exact_force_compute(e->s, e);
 #endif
+
+  /* Do we need to drift the top-level multipoles ? */
+  if (e->policy & engine_policy_self_gravity) engine_drift_top_multipoles(e);
 
   /* Start all the tasks. */
   TIMER_TIC;
@@ -3237,6 +3247,10 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the gravity calculation */
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
+
+  if (!(e->policy & engine_policy_hydro) &&
+      (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
+    e->forcerebuild = 1;
 
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
@@ -3317,8 +3331,8 @@ void engine_unskip(struct engine *e) {
 }
 
 /**
- * @brief Mapper function to drift ALL particle types and multipoles forward in
- * time.
+ * @brief Mapper function to drift *all* particle types and multipoles forward
+ * in time.
  *
  * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
@@ -3336,7 +3350,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       /* Drift all the particles */
       cell_drift_particles(c, e);
 
-      /* Drift the multipole */
+      /* Drift the multipoles */
       if (e->policy & engine_policy_self_gravity)
         cell_drift_all_multipoles(c, e);
     }
@@ -3344,7 +3358,8 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Drift *all* particles forward to the current time.
+ * @brief Drift *all* particles and multipoles at all levels
+ * forward to the current time.
  *
  * @param e The #engine.
  */
@@ -3361,7 +3376,54 @@ void engine_drift_all(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
+#endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Mapper function to drift *all* top-level multipoles forward in
+ * time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+    if (c != NULL && c->nodeID == e->nodeID) {
+
+      /* Drift the multipole at this level only */
+      cell_drift_multipole(c, e);
+    }
+  }
+}
+
+/**
+ * @brief Drift *all* top-level multipoles forward to the current time.
+ *
+ * @param e The #engine.
+ */
+void engine_drift_top_multipoles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time. */
+  space_check_top_multipoles_drift_point(e->s, e->ti_current);
 #endif
 
   if (e->verbose)
@@ -3577,7 +3639,8 @@ void engine_dump_snapshot(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
   message("writing snapshot at t=%e.", e->time);
