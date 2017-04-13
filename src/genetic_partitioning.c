@@ -51,22 +51,22 @@
 
 struct vertex {
     idx_t ci, cj;
-    double cost;
+    idx_t cost;
 };
 
 struct partitions{
     idx_t* partition;
-    double* costs;
+    idx_t* costs;
 };
 
-void sort_costs(idx_t *nodes, double *costs, int size)
+void sort_costs(idx_t *nodes, idx_t *costs, int size)
 {
 /* Sort partitions in ascending order using quickshed. */
     int lo = 0, hi = size-1;
-    double pivot = costs[(lo+hi)/2];
+    idx_t pivot = costs[(lo+hi)/2];
     int i = 0 , j = size-1;
     int temp;
-    double temp2;
+    idx_t temp2;
 
     if(size <= 9)
     {
@@ -110,15 +110,15 @@ void sort_costs(idx_t *nodes, double *costs, int size)
 
 }
 
-void sort_partitions(struct partitions *parts, double *costs, int size)
+void sort_partitions(struct partitions *parts, idx_t *costs, int size)
 {
     /* Sort partitions in ascending order using quickshed. */
     int lo = 0, hi = size-1;
     double pivot = costs[(lo+hi)/2];
     int i = 0 , j = size-1;
     idx_t* temp;
-    double* temp3;
-    double temp2;
+    idx_t* temp3;
+    idx_t temp2;
 
     /*if(size == 1)
         return;*/
@@ -178,7 +178,7 @@ void check_symmetry(struct vertex *graph, int N)
         struct vertex *v = &graph[i];
         if(v->ci == v->cj)
             continue;
-        double cost = v->cost;
+        idx_t cost = v->cost;
         idx_t ci = v->ci;
         idx_t cj = v->cj;
         int app = 0;
@@ -191,7 +191,7 @@ void check_symmetry(struct vertex *graph, int N)
                     message("cj, ci appeared twice for ci = %lli cj = %lli", ci, cj);
                 app = 1;
                 if(v2->cost != cost)
-                    message("v2->cost = %f v->cost = %f", v2->cost, cost);
+                    message("v2->cost = %lli v->cost = %lli", v2->cost, cost);
             }
         }
     }
@@ -207,7 +207,7 @@ struct vertex* partition_create_graph( struct space *s, struct task *tasks, int 
     if(graph == NULL)
         error("Failed to allocate graph");
     int i;
-    float wscale = 1e-3;
+    //float wscale = 1e-3;
 
 
   /* Loop over all cells in the space. */
@@ -293,7 +293,7 @@ struct vertex* partition_create_graph( struct space *s, struct task *tasks, int 
             {
                 if(graph[ci*27+i].cj == cj)
                 {
-                    graph[ci*27+i].cost += (t->cost) * wscale;
+                    graph[ci*27+i].cost += (t->cost)/1000;
                     break;
                 }
             }
@@ -302,7 +302,7 @@ struct vertex* partition_create_graph( struct space *s, struct task *tasks, int 
             {
                 if(graph[cj*27+i].cj == ci)
                 {
-                    graph[cj*27+i].cost += (t->cost) * wscale;
+                    graph[cj*27+i].cost += (t->cost)/1000;
                     break;
                 }
             }
@@ -320,10 +320,10 @@ return 0;
 #endif
 }
 
-void evaluate_partition(idx_t *partition, int N, int nr_nodes, double *cost, struct vertex *graph, double* cost_per_rank)
+void evaluate_partition(idx_t *partition, int N, int nr_nodes, idx_t *cost, struct vertex *graph, idx_t* cost_per_rank)
 {
 
-    double max_cost = -1.;
+    idx_t max_cost = -1;
     for(int i = 0; i < nr_nodes; i++)
     {
         cost_per_rank[i] = 0.;
@@ -353,10 +353,10 @@ void evaluate_partition(idx_t *partition, int N, int nr_nodes, double *cost, str
 
     for(int i = 0; i < nr_nodes; i++)
     {
-        if(cost_per_rank[i] == 0.)
+        if(cost_per_rank[i] == 0)
         {
             //message("cost per rank was 0 somehow");
-            max_cost = DBL_MAX;
+            max_cost = LLONG_MAX;
             break;
         }
     }
@@ -370,11 +370,11 @@ inline double log2(const double x){
     return  log(x) * M_LOG2E;
 }
 
-void mutate_partition(struct partitions *partition, /* TODO restrict*/struct vertex *graph, int N, int nr_nodes, struct partitions *new, idx_t *temp, double *temp_costs)
+void mutate_partition(struct partitions *partition, /* TODO restrict*/struct vertex *graph, int N, int nr_nodes, struct partitions *new, idx_t *temp, idx_t *temp_costs)
 {
     /* For now just find the max cost node*/
     idx_t *parray = partition->partition;
-    double *costs = partition->costs;
+    idx_t* costs = partition->costs;
     for(int i = 0; i < nr_nodes; i++)
     {
         temp_costs[i] = costs[i];
@@ -433,14 +433,14 @@ void mutate_partition(struct partitions *partition, /* TODO restrict*/struct ver
         //TODO Make a decision to do something if no neighbours are on another node! Currently just creates the original.
 //Craete a new partition that is the same as the original.
         memcpy( (void*)new->partition,(const void*)partition->partition, N*sizeof(idx_t));
-        memcpy( (void*)new->costs, (const void*) partition->costs, nr_nodes*sizeof(double));
+        memcpy( (void*)new->costs, (const void*) partition->costs, nr_nodes*sizeof(idx_t));
        /* TODO Never seems to get here so not gonna worry.*/
 
     }else{
         idx_t choice2 = rand() % nr_on_node;
         //Craete a new partition that is the same as the original.
         memcpy( (void*)new->partition,(const void*) partition->partition, N*sizeof(idx_t));
-        memcpy( (void*)new->costs, (const void*) partition->costs, nr_nodes*sizeof(double));
+        memcpy( (void*)new->costs, (const void*) partition->costs, nr_nodes*sizeof(idx_t));
         for(int i = choice*27; i < (choice+1)*27; i++)
         {
             idx_t ci = graph[i].ci;
@@ -470,7 +470,7 @@ void mutate_partition(struct partitions *partition, /* TODO restrict*/struct ver
     }
 }
 
-double quick_eval(double* cost_per_rank, int nr_nodes)
+idx_t quick_eval(idx_t* cost_per_rank, int nr_nodes)
 {
     double max = -1.;
     for(int i = 0; i < nr_nodes; i++)
@@ -485,10 +485,10 @@ double quick_eval(double* cost_per_rank, int nr_nodes)
 
 int hash_partition(idx_t* partition, int nr_nodes, int nr_cells, struct vertex *graph)
 {
-    int hash=0;
+    idx_t hash=0;
     for(int i = 0; i < nr_cells; i++)
     {
-        hash += partition[i] * (int)graph[i].cost;
+        hash += partition[i] * graph[i].cost;
     }
     return hash;
 }
@@ -539,7 +539,7 @@ FILE *file = fopen("/cosma/home/Virgo/d74ksy/swiftsim/src/partout.out", "w");
 tic = getticks();
 struct partitions initial;
 initial.partition = initial_partition;
-double initial_cost;
+idx_t initial_cost;
 
 
 //int test[]={ 2, 2, 1, 0, 4, 2, 3, 2, 4, 3, 3, 4, 8, 2, 1, 0, 6, 5, 5, 6, 9, 7, 8, 9, 9, 7, 8, 8, 6, 5, 5, 6, 7, 7, 5, 6, 9, 8, 8, 9, 9, 8, 8, 9, 7, 7, 5, 6, 0, 1, 1, 0, 4, 3, 3, 4, 4, 2, 3, 4, 0, 1, 1, 0 };
@@ -557,11 +557,11 @@ idx_t *temp = malloc(sizeof(idx_t) * nr_nodes);
 if(temp == NULL)
     error("failed to allocate temp");
 
-double *temp_costs = malloc(sizeof(double) * nr_nodes);
+idx_t *temp_costs = malloc(sizeof(idx_t) * nr_nodes);
 if(temp_costs == NULL)
     error("failed to allocate temp_costs");
 
-initial.costs = malloc(nr_nodes*sizeof(double));
+initial.costs = malloc(nr_nodes*sizeof(idx_t));
 if(initial.costs == NULL)
     error("Failed to allocate initial.costs");
 
@@ -577,13 +577,13 @@ printf("costs per node = [ ");
 //costs per node = [ 17397.833836 17907.148839 21065.156989 15360.329743 18486.952945 15420.812744 14943.531688 15977.754752 21729.249023 18747.356897 ];
 //temp costs per node = [ 17397.833836 17907.148839 21658.795009 15360.329743 18486.952945 15420.812744 14943.531688 15977.754752 21923.904029 18747.356897 ];
 evaluate_partition(initial.partition, s->nr_cells, nr_nodes, &initial_cost, graph, (initial.costs));
-double sum =0.;
-message("METIS cost is %f", initial_cost);
+idx_t sum =0;
+message("METIS cost is %lli", initial_cost);
 for(int i = 0; i < nr_nodes; i++)
 {
     sum += initial.costs[i];
 }
-message("METIS sum cost is %f", sum);
+message("METIS sum cost is %lli", sum);
 
 /*for(int i = 0; i < s->nr_cells; i++)
 {
@@ -611,7 +611,7 @@ struct partitions *population;
 population = malloc(sizeof(struct partitions) * pop_size);
 if(population == NULL)
     error("Failed to allocate population");
-double *population_costs = malloc(sizeof(double) * pop_size);
+idx_t *population_costs = malloc(sizeof(idx_t) * pop_size);
 if(population_costs == NULL)
     error("Failed to allocate population costs array");
 
@@ -621,7 +621,7 @@ if(population_costs == NULL)
 for(int i = 0; i < pop_size; i++)
 {
     population[i].partition = malloc(sizeof(idx_t) * s->nr_cells);
-    population[i].costs = malloc(nr_nodes*sizeof(double));
+    population[i].costs = malloc(nr_nodes*sizeof(idx_t));
     if(population[i].partition == NULL || population[i].costs == NULL)
         error("Failed to allocate population arrays");
     mutate_partition(&initial, graph, s->nr_cells, nr_nodes, &population[i], temp, temp_costs);
@@ -630,12 +630,12 @@ for(int i = 0; i < pop_size; i++)
     evaluate_partition(population[i].partition, s->nr_cells, nr_nodes, &population_costs[i], graph, population[i].costs);
     if(i < 10)
 {
-    printf("Hash = %i, cost = %f, {", hash_partition(population[i].partition,nr_nodes, s->nr_cells, graph), population_costs[i]);
+/*    printf("Hash = %i, cost = %lli, {", hash_partition(population[i].partition,nr_nodes, s->nr_cells, graph), population_costs[i]);
     for(int k = 0; k < s->nr_cells; k++)
     {
         printf("%lli ", population[i].partition[k]);
     }
-    printf("}\n");
+    printf("}\n");*/
 }
 /*    evaluate_partition(population[i].partition, s->nr_cells, nr_nodes, &tempcost, graph, tempcheck);
     if(tempcost != population_costs[i])
@@ -643,28 +643,28 @@ for(int i = 0; i < pop_size; i++)
 }
 random_partition(population[pop_size-1].partition, nr_nodes, s->nr_cells);
 evaluate_partition(population[pop_size-1].partition, s->nr_cells, nr_nodes, &population_costs[pop_size-1], graph, population[pop_size-1].costs);
-printf("Hash = %i, cost = %f, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
+/*printf("Hash = %i, cost = %lli, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
     for(int k = 0; k < s->nr_cells; k++)
     {
         printf("%lli ", population[pop_size-1].partition[k]);
     }
-    printf("}\n");
+    printf("}\n");*/
 random_partition(population[pop_size-1].partition, nr_nodes, s->nr_cells);
 evaluate_partition(population[pop_size-1].partition, s->nr_cells, nr_nodes, &population_costs[pop_size-1], graph, population[pop_size-1].costs);
-printf("Hash = %i, cost = %f, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
+/*printf("Hash = %i, cost = %lli, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
     for(int k = 0; k < s->nr_cells; k++)
     {
         printf("%lli ", population[pop_size-1].partition[k]);
     }
-    printf("}\n");
+    printf("}\n");*/
 random_partition(population[pop_size-1].partition, nr_nodes, s->nr_cells);
 evaluate_partition(population[pop_size-1].partition, s->nr_cells, nr_nodes, &population_costs[pop_size-1], graph, population[pop_size-1].costs);
-printf("Hash = %i, cost = %f, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
+/*printf("Hash = %i, cost = %lli, {", hash_partition(population[pop_size-1].partition,nr_nodes, s->nr_cells, graph), population_costs[pop_size-1]);
     for(int k = 0; k < s->nr_cells; k++)
     {
         printf("%lli ", population[pop_size-1].partition[k]);
     }
-    printf("}\n");
+    printf("}\n");*/
 //message("Trying to sort population");
 sort_partitions(population, population_costs, pop_size);
 
@@ -681,7 +681,7 @@ fprintf(file, "%.3f\n", population_costs[pop_size-1]);
 //if(population_costs[0] < initial_cost)
 //{
     initial_cost = population_costs[0];
-    memcpy(initial.costs, population[0].costs, sizeof(double) * nr_nodes);
+    memcpy(initial.costs, population[0].costs, sizeof(idx_t) * nr_nodes);
     memcpy(initial.partition, population[0].partition, sizeof(idx_t) * s->nr_cells);
 //}
 
@@ -690,7 +690,7 @@ double c = 50.0;
 int j = 0;
 while((since_improve < 250 && j < 5000) || j < 1000) 
 {
-    double max_diff = population_costs[pop_size-1] - population_costs[10];
+    double max_diff = (double) (population_costs[pop_size-1] - population_costs[10]);
   /* Go through the last 90 and choose 40 to keep, use probabilistic based shuffle */
     for(int i = 10; i < pop_size; i++)
     {
@@ -701,9 +701,9 @@ while((since_improve < 250 && j < 5000) || j < 1000)
             swap = rand() % (pop_size-10);
             swap += 10;
         }
-        if(population_costs[i] == DBL_MAX || population_costs[swap] == DBL_MAX)
+        if(population_costs[i] == LLONG_MAX || population_costs[swap] == LLONG_MAX)
             continue;
-        double diff = population_costs[i] - population_costs[swap];
+        double diff = (double)(population_costs[i] - population_costs[swap]);
         /*if(diff < 0)
         {*/
             /* Swap them. */
@@ -728,8 +728,8 @@ while((since_improve < 250 && j < 5000) || j < 1000)
         if(r2 > p)
         {
             idx_t *temp4 = population[i].partition;
-            double *temp2 = population[i].costs;
-            double temp3 = population_costs[i];
+            idx_t *temp2 = population[i].costs;
+            idx_t temp3 = population_costs[i];
             population[i].partition = population[swap].partition;
             population[i].costs = population[swap].costs;
             population_costs[i] = population_costs[swap];
@@ -785,7 +785,7 @@ fprintf(file, "%.3f\n", population_costs[pop_size-1]);
         if(population_costs[0] < initial_cost)
         {
         initial_cost = population_costs[0];
-        memcpy(initial.costs, population[0].costs, sizeof(double) *  nr_nodes);
+        memcpy(initial.costs, population[0].costs, sizeof(idx_t) *  nr_nodes);
         memcpy(initial.partition, population[0].partition, sizeof(idx_t) * s->nr_cells);
         since_improve = -1;
         }
@@ -794,22 +794,22 @@ since_improve++;
 j++;
 }
     message("Step count = %i, since imrpove = %i", j, since_improve);
-    message("Best result = %f", initial_cost);
-    printf("final = [ ");
+    message("Best result = %lli", initial_cost);
+/*    printf("final = [ ");
     for(int i = 0; i < s->nr_cells; i++)
     {
         printf("%lli ", initial.partition[i]);
     }
-    printf("];\n");
+    printf("];\n");*/
     sum =0.;
 printf("costs per node = [ ");
     for(int i = 0; i < nr_nodes; i++)
     {
         sum += initial.costs[i];
-        printf("%f ", initial.costs[i]);
+        printf("%lli ", initial.costs[i]);
     }
     printf("];\n");
-    message("Sum of costs = %f", sum);
+    message("Sum of costs = %lli", sum);
 
 toc = getticks();
 

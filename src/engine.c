@@ -3136,7 +3136,6 @@ void engine_step(struct engine *e) {
   TIMER_TIC2;
 
   struct clocks_time time1, time2;
-  clocks_gettime(&time1);
 
 #ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
@@ -3173,6 +3172,7 @@ void engine_step(struct engine *e) {
   engine_repartition_trigger(e);
 #endif
 
+  clocks_gettime(&time1);
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all) engine_drift_all(e);
 
@@ -3232,7 +3232,7 @@ void engine_step(struct engine *e) {
   if (e->dump_snapshot) {
 
     /* Dump... */
-    engine_dump_snapshot(e);
+//    engine_dump_snapshot(e);
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
