@@ -763,12 +763,18 @@ void scheduler_set_unlocks(struct scheduler *s) {
   }
 
   /* Compute the offset for each unlock block. */
-  short int *offsets;
-  if ((offsets = (short int *)malloc(sizeof(short int) * (s->nr_tasks + 1))) ==
-      NULL)
+  int *offsets;
+  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 0; k < s->nr_tasks; k++) offsets[k + 1] = offsets[k] + counts[k];
+  for (int k = 0; k < s->nr_tasks; k++) {
+    offsets[k + 1] = offsets[k] + counts[k];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we are not overflowing */
+    if (offsets[k + 1] < 0) error("Task unlock offset array overflowing");
+#endif
+  }
 
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
