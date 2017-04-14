@@ -30,7 +30,7 @@
 #include "vector.h"
 
 #define NUM_VEC_PROC 2
-#define CACHE_ALIGN sizeof(float) * VEC_SIZE
+#define CACHE_ALIGN 64
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 #define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
@@ -110,7 +110,6 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
    * the vector size
    * and include 2 vector lengths for remainder operations. */
-  unsigned long alignment = sizeof(float) * VEC_SIZE;
   unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
   unsigned int sizeBytes = (count + pad) * sizeof(float);
@@ -129,15 +128,15 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->max_d);
   }
 
-  error += posix_memalign((void **)&c->x, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->y, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->z, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->m, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->vx, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->vy, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->vz, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->h, alignment, sizeBytes);
-  error += posix_memalign((void **)&c->max_d, alignment, sizeBytes);
+  error += posix_memalign((void **)&c->x, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->y, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->z, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->m, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->vx, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->vy, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
