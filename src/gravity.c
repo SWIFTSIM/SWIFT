@@ -72,8 +72,8 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
                               gpi->x[2] - gpj->x[2]};  // z
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-        const double r = sqrtf(r2);
-        const double ir = 1.f / r;
+        const double r = sqrt(r2);
+        const double ir = 1. / r;
         const double mj = gpj->mass;
         const double hi = gpi->epsilon;
         double f;
@@ -86,15 +86,17 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
 
         } else {
 
-          const double hi_inv = 1.f / hi;
+          const double hi_inv = 1. / hi;
           const double hi_inv3 = hi_inv * hi_inv * hi_inv;
           const double ui = r * hi_inv;
-          float W;
+          double W;
 
-          kernel_grav_eval(ui, &W);
+          kernel_grav_eval_double(ui, &W);
 
           /* Get softened gravity */
           f = mj * hi_inv3 * W * f_lr;
+
+          // printf("r=%e hi=%e W=%e fac=%e\n", r, hi, W, f);
         }
 
         const double fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
@@ -188,12 +190,13 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       /* Check that we are not above tolerance */
       if (err_rel > rel_tol) {
         message(
-            "Error too large ! gp->a_grav=[%3.6e %3.6e %3.6e] "
+            "Error too large !"
+            "gp->a_grav=[%3.6e %3.6e %3.6e] "
             "gp->a_exact=[%3.6e %3.6e %3.6e], "
             "gp->num_interacted=%lld, err=%f",
-            gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
             gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-            gpi->num_interacted, err_rel);
+            gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2], gpi->num_interacted,
+            err_rel);
 
         continue;
       }
