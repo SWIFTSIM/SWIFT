@@ -38,11 +38,17 @@ struct gravity_props {
   float a_smooth;
   float r_cut;
 
-  /* Time integration parameters */
+  /*! Time integration dimensionless multiplier */
   float eta;
 
-  /* Softening lengths */
-  float epsilon;
+  /*! Softening length */
+  double epsilon;
+
+  /*! Square of softening length */
+  double epsilon2;
+
+  /*! Inverse of softening length */
+  double epsilon_inv;
 };
 
 void gravity_props_print(const struct gravity_props *p);

@@ -93,6 +93,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->s->periodic;
   const struct multipole *multi_j = &cj->multipole->m_pole;
   // const float a_smooth = e->gravity_properties->a_smooth;
@@ -114,7 +115,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, periodic * 0);
+              cj->multipole->CoM, props, periodic * 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }

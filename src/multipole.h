@@ -33,6 +33,7 @@
 #include "const.h"
 #include "error.h"
 #include "gravity_derivatives.h"
+#include "gravity_properties.h"
 #include "inline.h"
 #include "kernel_gravity.h"
 #include "minmax.h"
@@ -164,20 +165,23 @@ struct multipole {
  */
 struct gravity_tensors {
 
-  /*! Linking pointer for "memory management". */
-  struct gravity_tensors *next;
+  union {
 
-  /*! Centre of mass of the matter dsitribution */
-  double CoM[3];
+    /*! Linking pointer for "memory management". */
+    struct gravity_tensors *next;
 
-  /*! The actual content */
-  struct {
+    /*! The actual content */
+    struct {
 
-    /*! Multipole mass */
-    struct multipole m_pole;
+      /*! Centre of mass of the matter dsitribution */
+      double CoM[3];
 
-    /*! Field tensor for the potential */
-    struct grav_tensor pot;
+      /*! Multipole mass */
+      struct multipole m_pole;
+
+      /*! Field tensor for the potential */
+      struct grav_tensor pot;
+    };
   };
 } SWIFT_STRUCT_ALIGN;
 
@@ -206,6 +210,11 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
   m->CoM[2] += m->m_pole.vel[2] * dt;
 }
 
+/**
+ * @brief Zeroes all the fields of a field tensor
+ *
+ * @param l The field tensor.
+ */
 INLINE static void gravity_field_tensors_init(struct grav_tensor *l) {
 
   bzero(l, sizeof(struct grav_tensor));
@@ -354,6 +363,11 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
 #endif
 }
 
+/**
+ * @brief Zeroes all the fields of a multipole.
+ *
+ * @param m The multipole
+ */
 INLINE static void gravity_multipole_init(struct multipole *m) {
 
   bzero(m, sizeof(struct multipole));
@@ -1461,11 +1475,13 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param m_a The multipole creating the field.
  * @param pos_b The position of the field tensor.
  * @param pos_a The position of the multipole.
+ * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
+                               const struct gravity_props *props,
                                int periodic) {
 
   double dx, dy, dz;
