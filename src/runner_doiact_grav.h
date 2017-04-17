@@ -158,12 +158,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   TIMER_TIC;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
-          cj->width[0]);
-#endif
-
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
@@ -360,6 +354,11 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
                         int gettimer) {
 
+  /* Some constants */
+  const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const double theta_crit_inv = props->theta_crit_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   const int gcount_i = ci->gcount;
@@ -369,27 +368,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   if (gcount_i == 0 || gcount_j == 0)
     error("Doing pair gravity on an empty cell !");
 
-  /* Bad stuff will happen if cell sizes are different */
-  if (ci->width[0] != cj->width[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
-          cj->width[0]);
-
   /* Sanity check */
-  if (ci == cj)
-    error(
-        "The impossible has happened: pair interaction between a cell and "
-        "itself.");
-
-/* Are the cells direct neighbours? */
-/* if (!cell_are_neighbours(ci, cj)) */
-/*   error( */
-/*       "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f
- * " */
-/*       "%f] " */
-/*       "cj->width=%f", */
-/*       ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0], */
-/*       cj->loc[1], cj->loc[2], cj->width[0]); */
-
+  if (ci == cj) error("Pair interaction between a cell and itself.");
 #endif
 
 #if ICHECK > 0
@@ -418,34 +398,68 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  /* Are both cells split ? */
-  if (ci->split && cj->split) {
+  /* Can we use M-M interactions ? */
+  if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv)) {
+    runner_dopair_grav_mm(r, ci, cj);
+    runner_dopair_grav_mm(r, cj, ci);
+  }
+  /* We have two leaves. Go P-P. */
+  else if (!ci->split && !cj->split) {
+    runner_dopair_grav_pp(r, ci, cj);
+  }
+  /* Alright, we'll have to split and recurse. */
+  else {
 
-    for (int j = 0; j < 8; j++) {
-      if (ci->progeny[j] != NULL) {
+    const double ri_max = ci->multipole->r_max;
+    const double rj_max = cj->multipole->r_max;
 
+    /* Split the larger of the two cells and start over again */
+    if (ri_max > rj_max) {
+
+      /* Can we actually split that interaction ? */
+      if (ci->split) {
+
+        /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
-          if (cj->progeny[k] != NULL) {
-
-            if (cell_are_neighbours(ci->progeny[j], cj->progeny[k])) {
-
-              /* Recurse */
-              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k], 0);
-
-            } else {
-
-              /* Ok, here we can go for multipole-multipole interactions */
-              runner_dopair_grav_mm(r, ci->progeny[j], cj->progeny[k]);
-              runner_dopair_grav_mm(r, cj->progeny[k], ci->progeny[j]);
-            }
-          }
+          if (ci->progeny[k] != NULL)
+            runner_dopair_grav(r, ci->progeny[k], cj, 0);
         }
+
+      } else if (cj->split) {
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+        }
+
+      } else {
+        message("oO");
+        // runner_dpoair_grav_pm(r, ci, cj);
+      }
+    } else {
+
+      /* Can we actually split that interaction ? */
+      if (cj->split) {
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+        }
+
+      } else if (ci->split) {
+
+        /* Loop over ci's children */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL)
+            runner_dopair_grav(r, ci->progeny[k], cj, 0);
+        }
+
+      } else {
+        message("oO");
       }
     }
-  } else { /* Not split */
-
-    /* Compute the interactions at this level directly. */
-    runner_dopair_grav_pp(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
@@ -463,7 +477,6 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Early abort? */
   if (c->gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
