@@ -90,6 +90,7 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
+  printf("  %2s %8s %s\n", "-T", "", "Print timers every time-step.");
   printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity.");
   printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
@@ -165,12 +166,13 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int verbose = 0;
   int nr_threads = 1;
+  int with_verbose_timers = 0;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:Tv:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -228,6 +230,9 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'T':
+        with_verbose_timers = 1;
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
@@ -596,10 +601,17 @@ int main(int argc, char *argv[]) {
   engine_dump_snapshot(&e);
 
   /* Legend */
-  if (myrank == 0)
+  if (myrank == 0) {
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
+
+    if (with_verbose_timers) {
+      printf("timers: ");
+      for (int k = 0; k < timer_count; k++) printf("%s\t", timers_names[k]);
+      printf("\n");
+    }
+  }
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
@@ -609,6 +621,15 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
+
+    /* Print the timers. */
+    if (with_verbose_timers) {
+      printf("timers: ");
+      for (int k = 0; k < timer_count; k++)
+        printf("%.3f\t", clocks_from_ticks(timers[k]));
+      printf("\n");
+      timers_reset(0xFFFFFFFFllu);
+    }
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
