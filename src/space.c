@@ -2095,11 +2095,11 @@ void space_split_recursive(struct space *s, struct cell *c,
           gravity_multipole_add(&c->multipole->m_pole, &temp);
 
           /* Upper limit of max CoM<->gpart distance */
-          const float dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
-          const float dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
-          const float dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
-          const float r2 = dx * dx + dy * dy + dz * dz;
-          r_max = max(r_max, cp->multipole->r_max + sqrtf(r2));
+          const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
+          const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
+          const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+          const double r2 = dx * dx + dy * dy + dz * dz;
+          r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
       /* Alternative upper limit of max CoM<->gpart distance */
@@ -2115,7 +2115,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-    }
+    } /* Deal with gravity */
   }
 
   /* Otherwise, collect the data for this cell. */
