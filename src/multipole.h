@@ -1494,16 +1494,14 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                int periodic) {
 
   /* Compute distance vector */
-  double dx, dy, dz;
-  if (periodic) {
-    dx = box_wrap(pos_b[0] - pos_a[0], 0., 1.);
-    dy = box_wrap(pos_b[1] - pos_a[1], 0., 1.);
-    dz = box_wrap(pos_b[2] - pos_a[2], 0., 1.);
-  } else {
-    dx = pos_b[0] - pos_a[0];
-    dy = pos_b[1] - pos_a[1];
-    dz = pos_b[2] - pos_a[2];
-  }
+  const double dx =
+      periodic ? box_wrap(pos_b[0] - pos_a[0], 0., 1.) : pos_b[0] - pos_a[0];
+  const double dy =
+      periodic ? box_wrap(pos_b[1] - pos_a[1], 0., 1.) : pos_b[1] - pos_a[1];
+  const double dz =
+      periodic ? box_wrap(pos_b[2] - pos_a[2], 0., 1.) : pos_b[2] - pos_a[2];
+
+  /* Compute distance */
   const double r2 = dx * dx + dy * dy + dz * dz;
   const double r_inv = 1. / sqrt(r2);
 
