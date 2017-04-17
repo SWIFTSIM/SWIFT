@@ -32,6 +32,7 @@ examples/*/*/*.hdf5
 examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/used_parameters.yml
+examples/*/gravity_checks_*.dat
 
 tests/testPair
 tests/brute_force_standard.dat

@@ -45,13 +45,25 @@ cols = ['b', 'g', 'r', 'm']
 step = int(sys.argv[1])
 
 # Find the files for the different expansion orders
-order_list = glob.glob("gravity_checks_step%d_order*.dat"%step)
+order_list = glob.glob("gravity_checks_swift_step%d_order*.dat"%step)
 num_order = len(order_list)
 
 # Get the multipole orders
 order = np.zeros(num_order)
 for i in range(num_order):
-    order[i] = int(order_list[i][26])
+    order[i] = int(order_list[i][32])
+
+# Read the exact accelerations first
+data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
+exact_ids = data[:,0]
+exact_pos = data[:,1:4]
+exact_a = data[:,4:7]
+# Sort stuff
+sort_index = np.argsort(exact_ids)
+exact_ids = exact_ids[sort_index]
+exact_pos = exact_pos[sort_index, :]
+exact_a = exact_a[sort_index, :]        
+exact_a_norm = np.sqrt(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2)
     
 # Start the plot
 plt.figure()
@@ -72,6 +84,23 @@ if len(gadget2_file_list) != 0:
     gadget2_pos = gadget2_pos[sort_index, :]
     gadget2_a_exact = gadget2_a_exact[sort_index, :]
     gadget2_a_grav = gadget2_a_grav[sort_index, :]
+
+    # Cross-checks
+    if not np.array_equal(exact_ids, gadget2_ids):
+        print "Comparing different IDs !"
+
+    if np.max(np.abs(exact_pos - gadget2_pos)/np.abs(gadget2_pos)) > 1e-6:
+        print "Comparing different positions ! max difference:"
+        index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - gadget2_pos[:,0]**2 - gadget2_pos[:,1]**2 - gadget2_pos[:,2]**2)
+        print "Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
+
+    if np.max(np.abs(a_exact - gadget2_a_exact) / np.abs(gadget2_a_exact)) > 2e-6:
+        print "Comparing different exact accelerations ! max difference:"
+        index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
+        print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", a_exact[index,:]
+        print "a_grav ---  Gadget2:", gadget2_a_grav[index,:], "exact:", a_grav[index,:],"\n"
+        print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%ids[index], pos[index,:],"\n"
+
     
     # Compute the error norm
     diff = gadget2_a_exact - gadget2_a_grav
@@ -123,43 +152,33 @@ for i in range(num_order-1, -1, -1):
     data = np.loadtxt(order_list[i])
     ids = data[:,0]
     pos = data[:,1:4]
-    a_exact = data[:,4:7]
-    a_grav = data[:, 7:10]
+    a_grav = data[:, 4:7]
 
     # Sort stuff
     sort_index = np.argsort(ids)
     ids = ids[sort_index]
     pos = pos[sort_index, :]
-    a_exact = a_exact[sort_index, :]
-    a_grav = a_grav[sort_index, :]
+    a_grav = a_grav[sort_index, :]        
 
     # Cross-checks
-    if not np.array_equal(ids, gadget2_ids):
+    if not np.array_equal(exact_ids, ids):
         print "Comparing different IDs !"
 
-    if np.max(np.abs(pos - gadget2_pos)/np.abs(gadget2_pos)) > 1e-6:
+    if np.max(np.abs(exact_pos - pos)/np.abs(pos)) > 1e-6:
         print "Comparing different positions ! max difference:"
-        index = np.argmax(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2 - gadget2_pos[:,0]**2 - gadget2_pos[:,1]**2 - gadget2_pos[:,2]**2)
-        print "Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "SWIFT (id=%d):"%ids[index], pos[index,:], "\n"
+        index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - pos[:,0]**2 - pos[:,1]**2 - pos[:,2]**2)
+        print "SWIFT (id=%d):"%ids[index], pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
 
-    if np.max(np.abs(a_exact - gadget2_a_exact) / np.abs(gadget2_a_exact)) > 2e-6:
-        print "Comparing different exact accelerations ! max difference:"
-        index = np.argmax(a_exact[:,0]**2 + a_exact[:,1]**2 + a_exact[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
-        print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "SWIFT:", a_exact[index,:]
-        print "a_grav ---  Gadget2:", gadget2_a_grav[index,:], "SWIFT:", a_grav[index,:],"\n"
-        print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "SWIFT (id=%d):"%ids[index], pos[index,:],"\n"
-        
-        
+    
     # Compute the error norm
-    diff = a_exact - a_grav
+    diff = exact_a - a_grav
 
     norm_diff = np.sqrt(diff[:,0]**2 + diff[:,1]**2 + diff[:,2]**2)
-    norm_a = np.sqrt(a_exact[:,0]**2 + a_exact[:,1]**2 + a_exact[:,2]**2)
 
-    norm_error = norm_diff / norm_a
-    error_x = abs(diff[:,0]) / norm_a
-    error_y = abs(diff[:,1]) / norm_a
-    error_z = abs(diff[:,2]) / norm_a
+    norm_error = norm_diff / exact_a_norm
+    error_x = abs(diff[:,0]) / exact_a_norm
+    error_y = abs(diff[:,1]) / exact_a_norm
+    error_z = abs(diff[:,2]) / exact_a_norm
     
     # Bin the error
     norm_error_hist,_ = np.histogram(norm_error, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
