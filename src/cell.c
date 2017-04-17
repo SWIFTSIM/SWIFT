@@ -1165,6 +1165,16 @@ void cell_check_multipole(struct cell *c, void *data) {
       gravity_multipole_print(&c->multipole->m_pole);
       error("Aborting");
     }
+
+    /* Check that the upper limit of r_max is good enough */
+    if (!(c->multipole->r_max >= ma.r_max)) {
+      error("Upper-limit r_max=%e too small. Should be >=%e.",
+            c->multipole->r_max, ma.r_max);
+    } else if (c->multipole->r_max * c->multipole->r_max >
+               3. * c->width[0] * c->width[0]) {
+      error("r_max=%e larger than cell diagonal %e.", c->multipole->r_max,
+            sqrt(3. * c->width[0] * c->width[0]));
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");

@@ -176,6 +176,9 @@ struct gravity_tensors {
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];
 
+      /*! Upper limit of the CoM<->gpart distance */
+      double r_max;
+
       /*! Multipole mass */
       struct multipole m_pole;
 
@@ -967,9 +970,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   double com[3] = {0.0, 0.0, 0.0};
   double vel[3] = {0.f, 0.f, 0.f};
 
-  /* Collect the particle data. */
+  /* Collect the particle data for CoM. */
   for (int k = 0; k < gcount; k++) {
-    const float m = gparts[k].mass;
+    const double m = gparts[k].mass;
 
     mass += m;
     com[0] += gparts[k].x[0] * m;
@@ -989,7 +992,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   vel[1] *= imass;
   vel[2] *= imass;
 
-/* Prepare some local counters */
+  /* Prepare some local counters */
+  double r_max2 = 0.;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   double M_100 = 0., M_010 = 0., M_001 = 0.;
 #endif
@@ -1026,10 +1030,14 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
   /* Construce the higher order terms */
   for (int k = 0; k < gcount; k++) {
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const double m = gparts[k].mass;
     const double dx[3] = {gparts[k].x[0] - com[0], gparts[k].x[1] - com[1],
                           gparts[k].x[2] - com[2]};
+
+    /* Maximal distance CoM<->gpart */
+    r_max2 = max(r_max2, dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+    const double m = gparts[k].mass;
 
     /* 1st order terms */
     M_100 += -m * X_100(dx);
@@ -1115,6 +1123,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 
   /* Store the data on the multipole. */
   m->m_pole.M_000 = mass;
+  m->r_max = sqrt(r_max2);
   m->CoM[0] = com[0];
   m->CoM[1] = com[1];
   m->CoM[2] = com[2];
