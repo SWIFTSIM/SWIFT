@@ -42,10 +42,10 @@ struct gravity_props {
   float eta;
 
   /*! Tree opening angle (Multipole acceptance criterion) */
-  double theta;
+  double theta_crit;
 
   /*! Inverse of opening angle */
-  double theta_inv;
+  double theta_crit_inv;
 
   /*! Softening length */
   double epsilon;

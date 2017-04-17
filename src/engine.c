@@ -1647,9 +1647,9 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
  * @brief Constructs the top-level tasks for the short-range gravity
  * interactions.
  *
- * All top-cells get a self task.
- * All neighbouring pairs get a pair task.
- * All non-neighbouring pairs within a range of 6 cells get a M-M task.
+ * - All top-cells get a self task.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
  *
  * @param e The #engine.
  */
@@ -1658,6 +1658,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
 
@@ -1668,13 +1669,14 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* Skip cells without gravity particles */
     if (ci->gcount == 0) continue;
 
-    /* Is that neighbour local ? */
+    /* Is that cell local ? */
     if (ci->nodeID != nodeID) continue;
 
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
                       0);
 
+    /* Loop over every other cell */
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
       struct cell *cj = &cells[cjd];
@@ -1683,9 +1685,11 @@ void engine_make_self_gravity_tasks(struct engine *e) {
       if (cj->gcount == 0) continue;
 
       /* Is that neighbour local ? */
-      if (cj->nodeID != nodeID) continue;
+      if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
-      if (cell_are_neighbours(ci, cj))
+      /* Are the cells to close for a MM interaction ? */
+      if (!gravity_multipole_accept(ci->multipole, cj->multipole,
+                                    theta_crit_inv))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
     }

@@ -48,8 +48,8 @@ void gravity_props_init(struct gravity_props *p,
   p->eta = parser_get_param_float(params, "Gravity:eta");
 
   /* Opening angle */
-  p->theta = parser_get_param_double(params, "Gravity:theta");
-  p->theta_inv = 1. / p->theta;
+  p->theta_crit = parser_get_param_double(params, "Gravity:theta");
+  p->theta_crit_inv = 1. / p->theta_crit;
 
   /* Softening lengths */
   p->epsilon = parser_get_param_double(params, "Gravity:epsilon");
@@ -63,7 +63,7 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity time integration: eta=%.4f", p->eta);
 
-  message("Self-gravity opening angle:  theta=%.4f", p->theta);
+  message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
   message("Self-gravity softening:    epsilon=%.4f", p->epsilon);
 
@@ -80,7 +80,7 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
   io_write_attribute_f(h_grpgrav, "Softening length", p->epsilon);
-  io_write_attribute_f(h_grpgrav, "Opening angle", p->theta);
+  io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_f(h_grpgrav, "MM a_smooth", p->a_smooth);
   io_write_attribute_f(h_grpgrav, "MM r_cut", p->r_cut);
 }

@@ -23,6 +23,7 @@
 /* Includes. */
 #include "cell.h"
 #include "gravity.h"
+#include "inline.h"
 #include "part.h"
 
 /**
@@ -379,14 +380,15 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
         "The impossible has happened: pair interaction between a cell and "
         "itself.");
 
-  /* Are the cells direct neighbours? */
-  if (!cell_are_neighbours(ci, cj))
-    error(
-        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f "
-        "%f] "
-        "cj->width=%f",
-        ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0],
-        cj->loc[1], cj->loc[2], cj->width[0]);
+/* Are the cells direct neighbours? */
+/* if (!cell_are_neighbours(ci, cj)) */
+/*   error( */
+/*       "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f
+ * " */
+/*       "%f] " */
+/*       "cj->width=%f", */
+/*       ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0], */
+/*       cj->loc[1], cj->loc[2], cj->width[0]); */
 
 #endif
 
@@ -515,6 +517,14 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
   }
 }
 
+/**
+ * @brief Performs all M-M interactions between a given top-level cell and all
+ * the other top-levels that are far enough.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param timer Are we timing this ?
+ */
 void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
 #if ICHECK > 0
@@ -530,39 +540,40 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   }
 #endif
 
+  /* Some constants */
+  const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const double theta_crit_inv = props->theta_crit_inv;
+
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  const struct engine *e = r->e;
   struct cell *cells = e->s->cells_top;
   const int nr_cells = e->s->nr_cells;
-  /* const double max_d = */
-  /*     const_gravity_a_smooth * const_gravity_r_cut * ci->width[0]; */
-  /* const double max_d2 = max_d * max_d; */
-  // const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active(ci, e)) return;  // MATTHIEU (should never happen)
 
-  /* Drift our own multipole if need be */
-  if (ci->ti_old_multipole != e->ti_current) cell_drift_multipole(ci, e);
+  /* Check multipole has been drifted */
+  if (ci->ti_old_multipole != e->ti_current)
+    error("Interacting un-drifted multipole");
 
-  /* Loop over all the cells and go for a p-m interaction if far enough but not
-   * too far */
+  /* Loop over all the top-level cells and go for a M-M interaction if
+   * well-separated */
   for (int i = 0; i < nr_cells; ++i) {
 
+    /* Handle on the top-level cell */
     struct cell *cj = &cells[i];
 
-    if (ci == cj) continue;
-    if (cj->gcount == 0) continue;
+    /* Avoid stupid cases */
+    if (ci == cj || cj->gcount == 0) continue;
 
-    /* const double dx[3] = {cj->loc[0] - pos_i[0],   // x */
-    /*                       cj->loc[1] - pos_i[1],   // y */
-    /*                       cj->loc[2] - pos_i[2]};  // z */
-    /* const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
-    /* if (r2 > max_d2) continue; */
-
-    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_mm(r, ci, cj);
+    /* Check the multipole acceptance criterion */
+    if (gravity_multipole_accept(ci->multipole, cj->multipole,
+                                 theta_crit_inv)) {
+      /* Go for a (non-symmetric) M-M calculation */
+      runner_dopair_grav_mm(r, ci, cj);
+    }
   }
 
   if (timer) TIMER_TOC(timer_dograv_long_range);

@@ -208,9 +208,9 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
 INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 
   /* Move the whole thing according to bulk motion */
-  m->CoM[0] += m->m_pole.vel[0] * dt;
-  m->CoM[1] += m->m_pole.vel[1] * dt;
-  m->CoM[2] += m->m_pole.vel[2] * dt;
+  m->CoM[0] += m->m_pole.vel[0] * dt * 0;  // MATTHIEU
+  m->CoM[1] += m->m_pole.vel[1] * dt * 0;
+  m->CoM[2] += m->m_pole.vel[2] * dt * 0;
 }
 
 /**
@@ -2506,6 +2506,31 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[0] += a_grav[0];
   gp->a_grav[1] += a_grav[1];
   gp->a_grav[2] += a_grav[2];
+}
+
+/**
+ * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
+ * interaction.
+ *
+ * @param ma The #multipole of the first #cell.
+ * @param mb The #multipole of the second #cell.
+ * @param theta_crit_inv The inverse of the critical opening angle.
+ */
+__attribute__((always_inline)) INLINE static int gravity_multipole_accept(
+    const struct gravity_tensors *ma, const struct gravity_tensors *mb,
+    double theta_crit_inv) {
+
+  const double r_crit_a = ma->r_max * theta_crit_inv;
+  const double r_crit_b = mb->r_max * theta_crit_inv;
+
+  const double dx = ma->CoM[0] - mb->CoM[0];
+  const double dy = ma->CoM[1] - mb->CoM[1];
+  const double dz = ma->CoM[2] - mb->CoM[2];
+
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
+  return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
