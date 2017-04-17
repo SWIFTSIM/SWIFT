@@ -17,7 +17,7 @@ params = {'axes.labelsize': 14,
 'figure.subplot.left'    : 0.06,
 'figure.subplot.right'   : 0.99  ,
 'figure.subplot.bottom'  : 0.06  ,
-'figure.subplot.top'     : 0.985  ,
+'figure.subplot.top'     : 0.99  ,
 'figure.subplot.wspace'  : 0.14  ,
 'figure.subplot.hspace'  : 0.14  ,
 'lines.markersize' : 6,
@@ -27,9 +27,9 @@ params = {'axes.labelsize': 14,
 plt.rcParams.update(params)
 plt.rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
-min_error = 1e-6
-max_error = 1e-1
-num_bins = 51
+min_error = 1e-7
+max_error = 3e-1
+num_bins = 64
 
 # Construct the bins
 bin_edges = np.linspace(np.log10(min_error), np.log10(max_error), num_bins + 1)
@@ -39,7 +39,7 @@ bin_edges = 10**bin_edges
 bins = 10**bins
 
 # Colours
-cols = ['b', 'g', 'r', 'm']
+cols = ['#332288', '#88CCEE', '#117733', '#DDCC77', '#CC6677']
 
 # Time-step to plot
 step = int(sys.argv[1])
@@ -52,6 +52,8 @@ num_order = len(order_list)
 order = np.zeros(num_order)
 for i in range(num_order):
     order[i] = int(order_list[i][32])
+order = sorted(order)
+order_list = sorted(order_list)
 
 # Read the exact accelerations first
 data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
@@ -67,6 +69,8 @@ exact_a_norm = np.sqrt(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2)
     
 # Start the plot
 plt.figure()
+
+count = 0
 
 # Get the Gadget-2 data if existing
 gadget2_file_list = glob.glob("forcetest_gadget2.txt")
@@ -94,11 +98,10 @@ if len(gadget2_file_list) != 0:
         index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - gadget2_pos[:,0]**2 - gadget2_pos[:,1]**2 - gadget2_pos[:,2]**2)
         print "Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
 
-    if np.max(np.abs(a_exact - gadget2_a_exact) / np.abs(gadget2_a_exact)) > 2e-6:
+    if np.max(np.abs(exact_a - gadget2_a_exact) / np.abs(gadget2_a_exact)) > 2e-6:
         print "Comparing different exact accelerations ! max difference:"
         index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
-        print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", a_exact[index,:]
-        print "a_grav ---  Gadget2:", gadget2_a_grav[index,:], "exact:", a_grav[index,:],"\n"
+        print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", exact_a[index,:]
         print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%ids[index], pos[index,:],"\n"
 
     
@@ -124,31 +127,41 @@ if len(gadget2_file_list) != 0:
     median_y = np.median(error_y)
     median_z = np.median(error_z)
 
-    norm_per95 = np.percentile(norm_error,95)
-    per95_x = np.percentile(error_x,95)
-    per95_y = np.percentile(error_y,95)
-    per95_z = np.percentile(error_z,95)
+    norm_per99 = np.percentile(norm_error,99)
+    per99_x = np.percentile(error_x,99)
+    per99_y = np.percentile(error_y,99)
+    per99_z = np.percentile(error_z,99)
+
+    norm_max = np.max(norm_error)
+    max_x = np.max(error_x)
+    max_y = np.max(error_y)
+    max_z = np.max(error_z)
+
+    print "Gadget-2 ---- "
+    print "Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max)
+    print "X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x)
+    print "Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y)
+    print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
+    print ""
 
     plt.subplot(221)    
-    plt.semilogx(bins, norm_error_hist, 'k--', label="Gadget-2")
-    plt.plot([norm_median, norm_median], [2.7, 3], 'k-', lw=1)
-    plt.plot([norm_per95, norm_per95], [2.7, 3], 'k:', lw=1)
+    plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", alpha=0.8)
+    plt.semilogx(bins, norm_error_hist, 'k--', label="Gadget-2", alpha=0.8)
     plt.subplot(222)
-    plt.semilogx(bins, error_x_hist, 'k--', label="Gadget-2")
-    plt.plot([median_x, median_x], [1.8, 2], 'k-', lw=1)
-    plt.plot([per95_x, per95_x], [1.8, 2], 'k:', lw=1)
+    plt.semilogx(bins, error_x_hist, 'k--', label="Gadget-2", alpha=0.8)
+    plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_x, per99_x), ha="left", va="top", alpha=0.8)
     plt.subplot(223)    
-    plt.semilogx(bins, error_y_hist, 'k--', label="Gadget-2")
-    plt.plot([median_y, median_y], [1.8, 2], 'k-', lw=1)
-    plt.plot([per95_y, per95_y], [1.8, 2], 'k:', lw=1)
+    plt.semilogx(bins, error_y_hist, 'k--', label="Gadget-2", alpha=0.8)
+    plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_y, per99_y), ha="left", va="top", alpha=0.8)
     plt.subplot(224)    
-    plt.semilogx(bins, error_z_hist, 'k--', label="Gadget-2")
-    plt.plot([median_z, median_z], [1.8, 2], 'k-', lw=1)
-    plt.plot([per95_z, per95_z], [1.8, 2], 'k:', lw=1)
+    plt.semilogx(bins, error_z_hist, 'k--', label="Gadget-2", alpha=0.8)
+    plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_z, per99_z), ha="left", va="top", alpha=0.8)
+    
+    count += 1
 
 
 # Plot the different histograms
-for i in range(num_order-1, -1, -1):
+for i in range(num_order):
     data = np.loadtxt(order_list[i])
     ids = data[:,0]
     pos = data[:,1:4]
@@ -191,54 +204,64 @@ for i in range(num_order-1, -1, -1):
     median_y = np.median(error_y)
     median_z = np.median(error_z)
 
-    norm_per95 = np.percentile(norm_error,95)
-    per95_x = np.percentile(error_x,95)
-    per95_y = np.percentile(error_y,95)
-    per95_z = np.percentile(error_z,95)
+    norm_per99 = np.percentile(norm_error,99)
+    per99_x = np.percentile(error_x,99)
+    per99_y = np.percentile(error_y,99)
+    per99_z = np.percentile(error_z,99)
+
+    norm_max = np.max(norm_error)
+    max_x = np.max(error_x)
+    max_y = np.max(error_y)
+    max_z = np.max(error_z)
+
+    print "Order %d ---- "%order[i]
+    print "Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max)
+    print "X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x)
+    print "Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y)
+    print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
+    print ""
     
     plt.subplot(221)
     plt.semilogx(bins, norm_error_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
-    plt.plot([norm_median, norm_median], [2.7, 3],'-', color=cols[i], lw=1)
-    plt.plot([norm_per95, norm_per95], [2.7, 3],':', color=cols[i], lw=1)
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", color=cols[i])
     plt.subplot(222)    
     plt.semilogx(bins, error_x_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
-    plt.plot([median_x, median_x], [1.8, 2],'-', color=cols[i], lw=1)
-    plt.plot([per95_x, per95_x], [1.8, 2],':', color=cols[i], lw=1)
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_x, per99_x), ha="left", va="top", color=cols[i])
     plt.subplot(223)    
     plt.semilogx(bins, error_y_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
-    plt.plot([median_y, median_y], [1.8, 2],'-', color=cols[i], lw=1)
-    plt.plot([per95_y, per95_y], [1.8, 2],':', color=cols[i], lw=1)
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_y, per99_y), ha="left", va="top", color=cols[i])
     plt.subplot(224)    
     plt.semilogx(bins, error_z_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
-    plt.plot([median_z, median_z], [1.8, 2],'-', color=cols[i], lw=1)
-    plt.plot([per95_z, per95_z], [1.8, 2],':', color=cols[i], lw=1)
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_z, per99_z), ha="left", va="top", color=cols[i])
 
-    
+    count += 1
+
 plt.subplot(221)
 plt.xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
-plt.ylabel("Density")
-plt.xlim(min_error, 2*max_error)
-plt.ylim(0,3)
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,2.5)
 plt.legend(loc="upper left")
 plt.subplot(222)    
 plt.xlabel("$\delta a_x/|\overrightarrow{a}_{exact}|$")
-plt.ylabel("Density")
-plt.xlim(min_error, 2*max_error)
-plt.ylim(0,2)
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,1.75)
 #plt.legend(loc="center left")
 plt.subplot(223)    
 plt.xlabel("$\delta a_y/|\overrightarrow{a}_{exact}|$")
-plt.ylabel("Density")
-plt.xlim(min_error, 2*max_error)
-plt.ylim(0,2)
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,1.75)
 #plt.legend(loc="center left")
 plt.subplot(224)    
 plt.xlabel("$\delta a_z/|\overrightarrow{a}_{exact}|$")
-plt.ylabel("Density")
-plt.xlim(min_error, 2*max_error)
-plt.ylim(0,2)
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,1.75)
 #plt.legend(loc="center left")
 
 
 
-plt.savefig("gravity_checks_step%d.png"%step)
+plt.savefig("gravity_checks_step%d.png"%step, dpi=200)
+plt.savefig("gravity_checks_step%d.pdf"%step, dpi=200)

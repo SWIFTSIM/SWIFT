@@ -30,6 +30,7 @@
 /* Local headers. */
 #include "active.h"
 #include "error.h"
+#include "version.h"
 
 /**
  * @brief Checks whether the file containing the exact accelerations for
@@ -204,6 +205,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
   fprintf(file_swift, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
   fprintf(file_swift, "# theta=%16.8e\n", e->gravity_properties->theta_crit);
+  fprintf(file_swift, "# Git Branch: %s\n", git_branch());
+  fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
           "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]", "a_swift[2]");
 
