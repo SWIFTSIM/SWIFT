@@ -41,6 +41,12 @@ struct gravity_props {
   /*! Time integration dimensionless multiplier */
   float eta;
 
+  /*! Tree opening angle (Multipole acceptance criterion) */
+  double theta;
+
+  /*! Inverse of opening angle */
+  double theta_inv;
+
   /*! Softening length */
   double epsilon;
 

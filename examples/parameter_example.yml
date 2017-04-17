@@ -52,6 +52,7 @@ SPH:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration.
+  theta:                 0.7      # Opening angle (Multipole acceptance criterion)
   epsilon:               0.1      # Softening length (in internal units).
   a_smooth:              1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut:                 4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
