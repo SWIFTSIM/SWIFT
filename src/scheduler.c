@@ -634,7 +634,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the drift and sort for ci. */
         lock_lock(&ci->lock);
-        if (ci->drift == NULL)
+        if (ci->drift == NULL && ci->nodeID == engine_rank)
           ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
                                         0, 0, ci, NULL, 0);
         if (ci->sorts == NULL)
@@ -647,7 +647,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the sort for cj. */
         lock_lock(&cj->lock);
-        if (cj->drift == NULL)
+        if (cj->drift == NULL && cj->nodeID == engine_rank)
           cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
                                         0, 0, cj, NULL, 0);
         if (cj->sorts == NULL)
