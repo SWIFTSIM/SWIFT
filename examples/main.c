@@ -628,7 +628,7 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < timer_count; k++)
         printf("%.3f\t", clocks_from_ticks(timers[k]));
       printf("\n");
-      timers_reset(0xFFFFFFFFllu);
+      timers_reset(timers_mask_all);
     }
 
 #ifdef SWIFT_DEBUG_TASKS
