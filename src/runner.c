@@ -501,7 +501,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
 
   /* Drift the multipole */
   cell_drift_multipole(c, e);
-  
+
   /* Reset the gravity acceleration tensors */
   gravity_field_tensors_init(&c->multipole->pot);
 

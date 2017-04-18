@@ -3313,8 +3313,8 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Let's trigger a rebuild every-so-often for good measure */  
-  if (!(e->policy & engine_policy_hydro) && //MATTHIEU improve this
+  /* Let's trigger a rebuild every-so-often for good measure */
+  if (!(e->policy & engine_policy_hydro) &&  // MATTHIEU improve this
       (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
 
