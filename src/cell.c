@@ -1265,7 +1265,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, ci->sorts);
-        scheduler_activate(s, ci->drift);
+        if (ci->nodeID == engine_rank)
+          scheduler_activate(s, ci->drift);
       }
       if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1273,7 +1274,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, cj->sorts);
-        scheduler_activate(s, cj->drift);
+        if (cj->nodeID == engine_rank)
+          scheduler_activate(s, cj->drift);
       }
     }
 
@@ -1305,12 +1307,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (t->type == task_type_pair) {
-          if (cj->drift)
-            scheduler_activate(s, cj->drift);
-          else
-            error("Drift task missing !");
-        }
+        
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
+        else
+          error("Drift task missing !");
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1343,12 +1344,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (t->type == task_type_pair) {
-          if (ci->drift)
-            scheduler_activate(s, ci->drift);
-          else
-            error("Drift task missing !");
-        }
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
+        else
+          error("Drift task missing !");
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
