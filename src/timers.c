@@ -29,6 +29,53 @@
 /* The timers. */
 ticks timers[timer_count];
 
+/* Timer names. */
+char *timers_names[timer_count] = {
+    "none",
+    "prepare",
+    "init",
+    "drift",
+    "kick1",
+    "kick2",
+    "timestep",
+    "endforce",
+    "dosort",
+    "doself_density",
+    "doself_gradient",
+    "doself_force",
+    "doself_grav_pp",
+    "dopair_density",
+    "dopair_gradient",
+    "dopair_force",
+    "dopair_grav_pm",
+    "dopair_grav_mm",
+    "dopair_grav_pp",
+    "dograv_external",
+    "dograv_down",
+    "dograv_long_range",
+    "dosource",
+    "dosub_self_density",
+    "dosub_self_gradient",
+    "dosub_self_force",
+    "dosub_self_grav",
+    "dosub_pair_density",
+    "dosub_pair_gradient",
+    "dosub_pair_force",
+    "dosub_pair_grav",
+    "dopair_subset",
+    "do_ghost",
+    "do_extra_ghost",
+    "dorecv_part",
+    "dorecv_gpart",
+    "dorecv_spart",
+    "gettask",
+    "qget",
+    "qsteal",
+    "runners",
+    "step",
+    "do_cooling",
+};
+
 /**
  * @brief Re-set the timers.
  *
@@ -36,12 +83,9 @@ ticks timers[timer_count];
  *
  * To reset all timers, use the mask #timers_mask_all.
  */
-
 void timers_reset(unsigned long long mask) {
 
-  int k;
-
   /* Loop over the timers and set the masked ones to zero. */
-  for (k = 0; k < timer_count; k++)
+  for (int k = 0; k < timer_count; k++)
     if (mask & (1ull << k)) timers[k] = 0;
 }

@@ -307,7 +307,7 @@ __attribute__((always_inline)) INLINE static double X_310(const double v[3]) {
  */
 __attribute__((always_inline)) INLINE static double X_301(const double v[3]) {
 
-  return 0.1666666666666667 * v[0] * v[0] * v[0] * v[1];
+  return 0.1666666666666667 * v[0] * v[0] * v[0] * v[2];
 }
 
 /**

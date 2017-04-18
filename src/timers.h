@@ -27,7 +27,12 @@
 #include "cycle.h"
 #include "inline.h"
 
-/* The timers themselves. */
+/**
+ * @brief The timers themselves.
+ *
+ * If you modify this list, be sure to change timers_names in timers.c as
+ * well!
+ **/
 enum {
   timer_none = 0,
   timer_prepare,
@@ -77,6 +82,9 @@ enum {
 
 /* The timers. */
 extern ticks timers[timer_count];
+
+/* The timer names. */
+extern char *timers_names[];
 
 /* Mask for all timers. */
 #define timers_mask_all ((1ull << timer_count) - 1)
