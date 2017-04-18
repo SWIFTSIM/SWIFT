@@ -865,13 +865,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR1_NOSORT(r, ci, cj);
-    return;
-  }
-#endif
-
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));

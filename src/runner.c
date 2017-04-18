@@ -1405,6 +1405,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
+  
+  /* Clear this cell's sorted mask. */
+  c->sorted = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
