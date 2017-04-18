@@ -2072,7 +2072,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     struct task *t = &sched->tasks[ind];
 
     /* Sort tasks depend on the drift of the cell. */
-    if (t->type == task_type_sort) {
+    if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
       scheduler_addunlock(sched, t->ci->drift, t);
     }
 
@@ -2115,8 +2115,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift, t);
-      scheduler_addunlock(sched, t->cj->drift, t);
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->drift, t);
+      if (t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->drift, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2495,7 +2497,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, ci->sorts);
-          scheduler_activate(s, ci->drift);
+          if (ci->nodeID == engine_rank)
+            scheduler_activate(s, ci->drift);
         }
         if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2503,7 +2506,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, cj->sorts);
-          scheduler_activate(s, cj->drift);
+          if (cj->nodeID == engine_rank)
+            scheduler_activate(s, cj->drift);
         }
       }
 
@@ -2526,12 +2530,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (t->type == task_type_pair) {
-          if (cj->drift)
-            scheduler_activate(s, cj->drift);
-          else
-            error("Drift task missing !");
-        }
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
+        else
+          error("Drift task missing !");
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2564,12 +2566,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (t->type == task_type_pair) {
-          if (ci->drift)
-            scheduler_activate(s, ci->drift);
-          else
-            error("Drift task missing !");
-        }
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
+        else
+          error("Drift task missing !");
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
