@@ -40,6 +40,8 @@
  */
 int gravity_exact_force_file_exits(const struct engine *e) {
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
   /* File name */
   char file_name[100];
   sprintf(file_name, "gravity_checks_exact_step%d.dat", e->step);
@@ -74,6 +76,10 @@ int gravity_exact_force_file_exits(const struct engine *e) {
     }
   }
   return 0;
+#else
+  error("Gravity checking function called without the corresponding flag.");
+  return 0;
+#endif
 }
 
 /**
