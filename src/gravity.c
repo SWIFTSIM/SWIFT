@@ -22,6 +22,7 @@
 
 /* Some standard headers. */
 #include <stdio.h>
+#include <unistd.h>
 
 /* This object's header. */
 #include "gravity.h"
@@ -29,6 +30,57 @@
 /* Local headers. */
 #include "active.h"
 #include "error.h"
+#include "version.h"
+
+/**
+ * @brief Checks whether the file containing the exact accelerations for
+ * the current choice of parameters already exists.
+ *
+ * @param e The #engine.
+ */
+int gravity_exact_force_file_exits(const struct engine *e) {
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /* File name */
+  char file_name[100];
+  sprintf(file_name, "gravity_checks_exact_step%d.dat", e->step);
+
+  /* Does the file exist ? */
+  if (access(file_name, R_OK | W_OK) == 0) {
+
+    /* Let's check whether the header matches the parameters of this run */
+    FILE *file = fopen(file_name, "r");
+    if (!file) error("Problem reading gravity_check file");
+
+    char line[100];
+    char dummy1[10], dummy2[10];
+    double epsilon, newton_G;
+    int N;
+    /* Reads file header */
+    if (fgets(line, 100, file) != line) error("Problem reading title");
+    if (fgets(line, 100, file) != line) error("Problem reading G");
+    sscanf(line, "%s %s %le", dummy1, dummy2, &newton_G);
+    if (fgets(line, 100, file) != line) error("Problem reading N");
+    sscanf(line, "%s %s %d", dummy1, dummy2, &N);
+    if (fgets(line, 100, file) != line) error("Problem reading epsilon");
+    sscanf(line, "%s %s %le", dummy1, dummy2, &epsilon);
+    fclose(file);
+
+    /* Check whether it matches the current parameters */
+    if (N == SWIFT_GRAVITY_FORCE_CHECKS &&
+        (fabs(epsilon - e->gravity_properties->epsilon) / epsilon < 1e-5) &&
+        (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
+         1e-5)) {
+      return 1;
+    }
+  }
+  return 0;
+#else
+  error("Gravity checking function called without the corresponding flag.");
+  return 0;
+#endif
+}
 
 /**
  * @brief Run a brute-force gravity calculation for a subset of particles.
@@ -47,6 +99,13 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
   const double const_G = e->physical_constants->const_newton_G;
   int counter = 0;
 
+  /* Let's start by checking whether we already computed these forces */
+  if (gravity_exact_force_file_exits(e)) {
+    message("Exact accelerations already computed. Skipping calculation.");
+    return;
+  }
+
+  /* No matching file present ? Do it then */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
     struct gpart *gpi = &s->gparts[i];
@@ -72,8 +131,8 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
                               gpi->x[2] - gpj->x[2]};  // z
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-        const double r = sqrtf(r2);
-        const double ir = 1.f / r;
+        const double r = sqrt(r2);
+        const double ir = 1. / r;
         const double mj = gpj->mass;
         const double hi = gpi->epsilon;
         double f;
@@ -86,15 +145,17 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
 
         } else {
 
-          const double hi_inv = 1.f / hi;
+          const double hi_inv = 1. / hi;
           const double hi_inv3 = hi_inv * hi_inv * hi_inv;
           const double ui = r * hi_inv;
-          float W;
+          double W;
 
-          kernel_grav_eval(ui, &W);
+          kernel_grav_eval_double(ui, &W);
 
           /* Get softened gravity */
           f = mj * hi_inv3 * W * f_lr;
+
+          // printf("r=%e hi=%e W=%e fac=%e\n", r, hi, W, f);
         }
 
         const double fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
@@ -138,25 +199,24 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  int counter = 0;
-
-  /* Some accumulators */
-  float err_rel_max = 0.f;
-  float err_rel_min = FLT_MAX;
-  float err_rel_mean = 0.f;
-  float err_rel_mean2 = 0.f;
-  float err_rel_std = 0.f;
-
-  char file_name[100];
-  sprintf(file_name, "gravity_checks_step%d_order%d.dat", e->step,
+  /* File name */
+  char file_name_swift[100];
+  sprintf(file_name_swift, "gravity_checks_swift_step%d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
-  FILE *file = fopen(file_name, "w");
-  fprintf(file, "# Gravity accuracy test G = %16.8e\n",
-          e->physical_constants->const_newton_G);
-  fprintf(file, "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
-          "a_exact[2]", "a_grav[0]", "a_grav[1]", "a_grav[2]");
 
+  /* Creare files and write header */
+  FILE *file_swift = fopen(file_name_swift, "w");
+  fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
+  fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
+  fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
+  fprintf(file_swift, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
+  fprintf(file_swift, "# theta=%16.8e\n", e->gravity_properties->theta_crit);
+  fprintf(file_swift, "# Git Branch: %s\n", git_branch());
+  fprintf(file_swift, "# Git Revision: %s\n", git_revision());
+  fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
+          "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]", "a_swift[2]");
+
+  /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
     struct gpart *gpi = &s->gparts[i];
@@ -165,63 +225,53 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_starting(gpi, e)) {
 
-      fprintf(file,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e \n",
+      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e \n",
               gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
-              gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
               gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2]);
-
-      const float diff[3] = {gpi->a_grav[0] - gpi->a_grav_exact[0],
-                             gpi->a_grav[1] - gpi->a_grav_exact[1],
-                             gpi->a_grav[2] - gpi->a_grav_exact[2]};
-
-      const float diff_norm =
-          sqrtf(diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]);
-      const float a_norm = sqrtf(gpi->a_grav_exact[0] * gpi->a_grav_exact[0] +
-                                 gpi->a_grav_exact[1] * gpi->a_grav_exact[1] +
-                                 gpi->a_grav_exact[2] * gpi->a_grav_exact[2]);
-
-      /* Compute relative error */
-      const float err_rel = diff_norm / a_norm;
-
-      /* Check that we are not above tolerance */
-      if (err_rel > rel_tol) {
-        message(
-            "Error too large ! gp->a_grav=[%3.6e %3.6e %3.6e] "
-            "gp->a_exact=[%3.6e %3.6e %3.6e], "
-            "gp->num_interacted=%lld, err=%f",
-            gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2],
-            gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-            gpi->num_interacted, err_rel);
-
-        continue;
-      }
-
-      /* Construct some statistics */
-      err_rel_max = max(err_rel_max, fabsf(err_rel));
-      err_rel_min = min(err_rel_min, fabsf(err_rel));
-      err_rel_mean += err_rel;
-      err_rel_mean2 += err_rel * err_rel;
-      counter++;
     }
   }
 
+  message("Written SWIFT accelerations in file '%s'.", file_name_swift);
+
   /* Be nice */
-  fclose(file);
+  fclose(file_swift);
 
-  /* Final operation on the stats */
-  if (counter > 0) {
-    err_rel_mean /= counter;
-    err_rel_mean2 /= counter;
-    err_rel_std = sqrtf(err_rel_mean2 - err_rel_mean * err_rel_mean);
+  if (!gravity_exact_force_file_exits(e)) {
+
+    char file_name_exact[100];
+    sprintf(file_name_exact, "gravity_checks_exact_step%d.dat", e->step);
+
+    FILE *file_exact = fopen(file_name_exact, "w");
+    fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
+    fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
+    fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
+    fprintf(file_exact, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
+    fprintf(file_exact, "# theta=%16.8e\n", e->gravity_properties->theta_crit);
+    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s\n", "id",
+            "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
+            "a_exact[2]");
+
+    /* Output particle exact accelerations  */
+    for (size_t i = 0; i < s->nr_gparts; ++i) {
+
+      struct gpart *gpi = &s->gparts[i];
+
+      /* Is the particle was active and part of the subset to be tested ? */
+      if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
+          gpart_is_starting(gpi, e)) {
+
+        fprintf(
+            file_exact, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e \n",
+            gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
+            gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2]);
+      }
+    }
+
+    message("Written exact accelerations in file '%s'.", file_name_exact);
+
+    /* Be nice */
+    fclose(file_exact);
   }
-
-  /* Report on the findings */
-  message("Checked gravity for %d gparts.", counter);
-  message("Error on |a_grav|: min=%e max=%e mean=%e std=%e", err_rel_min,
-          err_rel_max, err_rel_mean, err_rel_std);
-
 #else
   error("Gravity checking function called without the corresponding flag.");
 #endif

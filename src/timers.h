@@ -27,9 +27,12 @@
 #include "cycle.h"
 #include "inline.h"
 
-/* The timers themselves.
-   If you modify this list, be sure to change timers_names in timers.c as
-   well! */
+/**
+ * @brief The timers themselves.
+ *
+ * If you modify this list, be sure to change timers_names in timers.c as
+ * well!
+ **/
 enum {
   timer_none = 0,
   timer_prepare,

@@ -163,10 +163,10 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split? */
-      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
+      if (ci->split && 2.f * kernel_gamma * ci->h_max * space_stretch < hi) {
 
         /* Make a sub? */
-        if (scheduler_dosub &&
+        if (scheduler_dosub && /* Note division here to avoid overflow */
             ((ci->count > 0 && ci->count < space_subsize / ci->count) ||
              (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount))) {
 
@@ -240,8 +240,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
-          ci->h_max * kernel_gamma * space_stretch < hi / 2 &&
-          cj->h_max * kernel_gamma * space_stretch < hj / 2) {
+          2.f * kernel_gamma * space_stretch * ci->h_max < hi &&
+          2.f * kernel_gamma * space_stretch * cj->h_max < hj) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
@@ -773,18 +773,34 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
-  int *counts;
-  if ((counts = (int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
+  short int *counts;
+  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
     error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(int) * s->nr_tasks);
-  for (int k = 0; k < s->nr_unlocks; k++) counts[s->unlock_ind[k]] += 1;
+  bzero(counts, sizeof(short int) * s->nr_tasks);
+  for (int k = 0; k < s->nr_unlocks; k++) {
+    counts[s->unlock_ind[k]] += 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we are not overflowing */
+    if (counts[s->unlock_ind[k]] < 0)
+      error("Task unlocking more than %d other tasks!",
+            (1 << (sizeof(short int) - 1)) - 1);
+#endif
+  }
 
   /* Compute the offset for each unlock block. */
   int *offsets;
   if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 0; k < s->nr_tasks; k++) offsets[k + 1] = offsets[k] + counts[k];
+  for (int k = 0; k < s->nr_tasks; k++) {
+    offsets[k + 1] = offsets[k] + counts[k];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we are not overflowing */
+    if (offsets[k + 1] < 0) error("Task unlock offset array overflowing");
+#endif
+  }
 
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
@@ -1054,10 +1070,17 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
     /* Increment the task's own wait counter for the enqueueing. */
     atomic_inc(&t->wait);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we don't have more waits that what can be stored. */
+    if (t->wait < 0)
+      error("Task unlocked by more than %d tasks!",
+            (1 << (8 * sizeof(t->wait) - 1)) - 1);
+
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
       error("Empty sort task encountered.");
     }
+#endif
 
     /* Sets the waits of the dependances */
     for (int k = 0; k < t->nr_unlock_tasks; k++) {

@@ -836,7 +836,8 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_old);
+  space_check_drift_point(e->s, e->ti_old,
+                          e->policy & engine_policy_self_gravity);
 #endif
 
   /* Clear the repartition flag. */
@@ -1635,9 +1636,9 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
  * @brief Constructs the top-level tasks for the short-range gravity
  * interactions.
  *
- * All top-cells get a self task.
- * All neighbouring pairs get a pair task.
- * All non-neighbouring pairs within a range of 6 cells get a M-M task.
+ * - All top-cells get a self task.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
  *
  * @param e The #engine.
  */
@@ -1646,6 +1647,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
 
@@ -1656,13 +1658,14 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* Skip cells without gravity particles */
     if (ci->gcount == 0) continue;
 
-    /* Is that neighbour local ? */
+    /* Is that cell local ? */
     if (ci->nodeID != nodeID) continue;
 
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
                       0);
 
+    /* Loop over every other cell */
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
       struct cell *cj = &cells[cjd];
@@ -1671,9 +1674,11 @@ void engine_make_self_gravity_tasks(struct engine *e) {
       if (cj->gcount == 0) continue;
 
       /* Is that neighbour local ? */
-      if (cj->nodeID != nodeID) continue;
+      if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
-      if (cell_are_neighbours(ci, cj))
+      /* Are the cells to close for a MM interaction ? */
+      if (!gravity_multipole_accept(ci->multipole, cj->multipole,
+                                    theta_crit_inv))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
     }
@@ -2711,7 +2716,8 @@ void engine_rebuild(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_old);
+  space_check_drift_point(e->s, e->ti_old,
+                          e->policy & engine_policy_self_gravity);
 #endif
 
   if (e->verbose)
@@ -2733,7 +2739,8 @@ void engine_prepare(struct engine *e) {
     /* Check that all cells have been drifted to the current time.
      * That can include cells that have not
      * previously been active on this rank. */
-    space_check_drift_point(e->s, e->ti_old);
+    space_check_drift_point(e->s, e->ti_old,
+                            e->policy & engine_policy_self_gravity);
   }
 #endif
 
@@ -2849,12 +2856,23 @@ void engine_collect_kick(struct cell *c) {
 }
 
 /**
- * @brief Collects the next time-step by making each super-cell recurse
- * to collect the minimal of ti_end and the number of updated particles.
+ * @brief Collects the next time-step and rebuild flag.
+ *
+ * The next time-step is determined by making each super-cell recurse to
+ * collect the minimal of ti_end and the number of updated particles.  When in
+ * MPI mode this routines reduces these across all nodes and also collects the
+ * forcerebuild flag -- this is so that we only use a single collective MPI
+ * call per step for all these values.
+ *
+ * Note that the results are stored in e->collect_group1 struct not in the
+ * engine fields, unless apply is true. These can be applied field-by-field
+ * or all at once using collectgroup1_copy();
  *
  * @param e The #engine.
+ * @param apply whether to apply the results to the engine or just keep in the
+ *              group1 struct.
  */
-void engine_collect_timestep(struct engine *e) {
+void engine_collect_timestep_and_rebuild(struct engine *e, int apply) {
 
   const ticks tic = getticks();
   int updates = 0, g_updates = 0, s_updates = 0;
@@ -2884,37 +2902,59 @@ void engine_collect_timestep(struct engine *e) {
     }
   }
 
-/* Aggregate the data from the different nodes. */
+  /* Store these in the temporary collection group. */
+  collectgroup1_init(&e->collect_group1, updates, g_updates, s_updates,
+                     ti_end_min, ti_end_max, ti_beg_max, e->forcerebuild);
+
+/* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
+  collectgroup1_reduce(&e->collect_group1);
+
+#ifdef SWIFT_DEBUG_CHECKS
   {
+    /* Check the above using the original MPI calls. */
     integertime_t in_i[1], out_i[1];
     in_i[0] = 0;
     out_i[0] = ti_end_min;
     if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate t_end_min.");
-    ti_end_min = in_i[0];
-  }
-  {
+      error("Failed to aggregate ti_end_min.");
+    if (in_i[0] != (long long)e->collect_group1.ti_end_min)
+      error("Failed to get same ti_end_min, is %lld, should be %lld", in_i[0],
+            e->collect_group1.ti_end_min);
+
     long long in_ll[3], out_ll[3];
     out_ll[0] = updates;
     out_ll[1] = g_updates;
     out_ll[2] = s_updates;
     if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to aggregate energies.");
-    updates = in_ll[0];
-    g_updates = in_ll[1];
-    s_updates = in_ll[2];
+      error("Failed to aggregate particle counts.");
+    if (in_ll[0] != (long long)e->collect_group1.updates)
+      error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
+            e->collect_group1.updates);
+    if (in_ll[1] != (long long)e->collect_group1.g_updates)
+      error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
+            e->collect_group1.g_updates);
+    if (in_ll[2] != (long long)e->collect_group1.s_updates)
+      error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
+            e->collect_group1.s_updates);
+
+    int buff = 0;
+    if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    if (!!buff != !!e->collect_group1.forcerebuild)
+      error(
+          "Failed to get same rebuild flag from all nodes, is %d,"
+          "should be %d",
+          buff, e->collect_group1.forcerebuild);
   }
 #endif
+#endif
 
-  e->ti_end_min = ti_end_min;
-  e->ti_end_max = ti_end_max;
-  e->ti_beg_max = ti_beg_max;
-  e->updates = updates;
-  e->g_updates = g_updates;
-  e->s_updates = s_updates;
+  /* Apply to the engine, if requested. */
+  if (apply) collectgroup1_apply(&e->collect_group1, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2934,7 +2974,8 @@ void engine_print_stats(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
   message("Saving statistics at t=%e.", e->time);
@@ -3165,7 +3206,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 #endif
 
   /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
+  engine_collect_timestep_and_rebuild(e, 1);
 
   clocks_gettime(&time2);
 
@@ -3243,7 +3284,10 @@ void engine_step(struct engine *e) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->s->nr_gparts)
-      error("Multipoles don't contain the total number of gpart");
+      error(
+          "Multipoles don't contain the total number of gpart mpoles=%zd "
+          "ngparts=%zd",
+          num_gpart_mpole, e->s->nr_gparts);
   }
 #endif
 
@@ -3251,6 +3295,9 @@ void engine_step(struct engine *e) {
   /* Run the brute-force gravity calculation for some gparts */
   gravity_exact_force_compute(e->s, e);
 #endif
+
+  /* Do we need to drift the top-level multipoles ? */
+  if (e->policy & engine_policy_self_gravity) engine_drift_top_multipoles(e);
 
   /* Start all the tasks. */
   TIMER_TIC;
@@ -3262,14 +3309,16 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-/* Collect the values of rebuild from all nodes. */
-#ifdef WITH_MPI
-  int buff = 0;
-  if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to aggregate the rebuild flag across nodes.");
-  e->forcerebuild = buff;
-#endif
+  if (!(e->policy & engine_policy_hydro) &&
+      (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
+    e->forcerebuild = 1;
+
+  /* Collect the values of rebuild from all nodes and recover the (integer)
+   * end of the next time-step. Do these together to reduce the collective MPI
+   * calls per step, but some of the gathered information is not applied just
+   * yet (in case we save a snapshot or drift). */
+  engine_collect_timestep_and_rebuild(e, 0);
+  e->forcerebuild = e->collect_group1.forcerebuild;
 
   /* Save some statistics ? */
   if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
@@ -3305,8 +3354,8 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Recover the (integer) end of the next time-step */
-  engine_collect_timestep(e);
+  /* Now apply all the collected time step updates and particle counts. */
+  collectgroup1_apply(&e->collect_group1, e);
 
   TIMER_TOC2(timer_step);
 
@@ -3343,8 +3392,8 @@ void engine_unskip(struct engine *e) {
 }
 
 /**
- * @brief Mapper function to drift ALL particle types and multipoles forward in
- * time.
+ * @brief Mapper function to drift *all* particle types and multipoles forward
+ * in time.
  *
  * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
@@ -3362,7 +3411,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       /* Drift all the particles */
       cell_drift_particles(c, e);
 
-      /* Drift the multipole */
+      /* Drift the multipoles */
       if (e->policy & engine_policy_self_gravity)
         cell_drift_all_multipoles(c, e);
     }
@@ -3370,7 +3419,8 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Drift *all* particles forward to the current time.
+ * @brief Drift *all* particles and multipoles at all levels
+ * forward to the current time.
  *
  * @param e The #engine.
  */
@@ -3387,7 +3437,54 @@ void engine_drift_all(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
+#endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Mapper function to drift *all* top-level multipoles forward in
+ * time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+    if (c != NULL && c->nodeID == e->nodeID) {
+
+      /* Drift the multipole at this level only */
+      cell_drift_multipole(c, e);
+    }
+  }
+}
+
+/**
+ * @brief Drift *all* top-level multipoles forward to the current time.
+ *
+ * @param e The #engine.
+ */
+void engine_drift_top_multipoles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all cells have been drifted to the current time. */
+  space_check_top_multipoles_drift_point(e->s, e->ti_current);
 #endif
 
   if (e->verbose)
@@ -3603,7 +3700,8 @@ void engine_dump_snapshot(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current);
+  space_check_drift_point(e->s, e->ti_current,
+                          e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
   message("writing snapshot at t=%e.", e->time);
@@ -4047,6 +4145,9 @@ void engine_init(struct engine *e, struct space *s,
   part_create_mpi_types();
   stats_create_MPI_type();
 #endif
+
+  /* Initialise the collection group. */
+  collectgroup_init();
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);

@@ -2028,6 +2028,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (ci->count == 0 || cj->count == 0) return;
 
   /* Get the cell dimensions. */
   const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
@@ -2275,7 +2276,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, r->e)) return;
+  if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
 
   /* Recurse? */
   if (ci->split) {
@@ -2329,6 +2330,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (ci->count == 0 || cj->count == 0) return;
 
   /* Get the cell dimensions. */
   const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
@@ -2576,7 +2578,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, r->e)) return;
+  if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
 
   /* Recurse? */
   if (ci->split) {

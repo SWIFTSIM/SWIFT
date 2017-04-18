@@ -90,6 +90,7 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
+  printf("  %2s %8s %s\n", "-T", "", "Print timers every time-step.");
   printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity.");
   printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
@@ -604,6 +605,7 @@ int main(int argc, char *argv[]) {
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
+
     if (with_verbose_timers) {
       printf("timers: ");
       for (int k = 0; k < timer_count; k++) printf("%s\t", timers_names[k]);
@@ -626,6 +628,7 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < timer_count; k++)
         printf("%.3f\t", clocks_from_ticks(timers[k]));
       printf("\n");
+      timers_reset(0xFFFFFFFFllu);
     }
 
 #ifdef SWIFT_DEBUG_TASKS

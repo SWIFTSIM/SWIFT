@@ -31,6 +31,7 @@ Valid options are:
   -s          Run with hydrodynamics.
   -S          Run with stars.
   -t    {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
+  -T          Print timers every time-step.
   -v     [12] Increase the level of verbosity
   	      1: MPI-rank 0 writes
 	      2: All MPI-ranks write
