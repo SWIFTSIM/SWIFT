@@ -1090,6 +1090,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     di = sort_i[max_ind_i].d;
   }
 
+  /* Limits of the outer loops. */
+  int first_pi_loop = first_pi;
+  int last_pj_loop = last_pj;
+
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
   last_pj = max(last_pj, max_ind_j);
@@ -1108,7 +1112,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci. */
-    for (int pid = count_i - 1; pid >= first_pi && max_ind_j >= 0; pid--) {
+    for (int pid = count_i - 1; pid >= first_pi_loop && max_ind_j >= 0; pid--) {
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -1127,9 +1131,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int ci_cache_idx = pid - first_pi_align;
 
       const float hi = ci_cache->h[ci_cache_idx];
-      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
-      if (di < dj_min) continue;
-
       const float hig2 = hi * hi * kernel_gamma2;
 
       vector pix, piy, piz;
@@ -1244,7 +1245,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   if (cell_is_active(cj, e)) {
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd <= last_pj && max_ind_i < count_i; pjd++) {
+    for (int pjd = 0; pjd <= last_pj_loop && max_ind_i < count_i; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1263,9 +1264,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int cj_cache_idx = pjd;
 
       const float hj = cj_cache->h[cj_cache_idx];
-      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
-      if (dj > di_max) continue;
-
       const float hjg2 = hj * hj * kernel_gamma2;
 
       vector pjx, pjy, pjz;
