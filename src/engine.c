@@ -160,6 +160,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       if (is_self_gravity) {
 
+        /* Initialisation of the multipoles */
+        c->init_grav = scheduler_addtask(s, task_type_init_grav,
+                                         task_subtype_none, 0, 0, c, NULL, 0);
+
         /* Gravity non-neighbouring pm calculations */
         c->grav_long_range = scheduler_addtask(
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL, 0);
@@ -172,8 +176,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL, 0);
 
-        scheduler_addunlock(s, c->ghost, c->grav_long_range);
-        scheduler_addunlock(s, c->ghost, c->grav_top_level);
+        scheduler_addunlock(s, c->init_grav, c->grav_long_range);
+        scheduler_addunlock(s, c->init_grav, c->grav_top_level);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_top_level, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -1887,7 +1891,7 @@ static inline void engine_make_self_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> gravity --> grav_down --> kick */
-  scheduler_addunlock(sched, c->ghost, gravity);
+  scheduler_addunlock(sched, c->super->init_grav, gravity);
   scheduler_addunlock(sched, gravity, c->super->grav_down);
 }
 
@@ -1903,7 +1907,7 @@ static inline void engine_make_external_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> external gravity --> kick */
-  scheduler_addunlock(sched, c->ghost, gravity);
+  scheduler_addunlock(sched, c->drift, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick2);
 }
 
@@ -2591,7 +2595,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Kick/Drift? */
     else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-             t->type == task_type_drift) {
+             t->type == task_type_drift || t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -3309,7 +3313,8 @@ void engine_step(struct engine *e) {
   gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  if (!(e->policy & engine_policy_hydro) &&
+  /* Let's trigger a rebuild every-so-often for good measure */  
+  if (!(e->policy & engine_policy_hydro) && //MATTHIEU improve this
       (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
 

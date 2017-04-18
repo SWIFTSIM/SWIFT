@@ -37,6 +37,7 @@ enum {
   timer_none = 0,
   timer_prepare,
   timer_init,
+  timer_init_grav,
   timer_drift,
   timer_kick1,
   timer_kick2,

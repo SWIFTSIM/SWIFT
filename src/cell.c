@@ -1381,6 +1381,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, l->t);
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
+  if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
   if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
@@ -1439,10 +1440,6 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
-
-  /* Reset the gravity acceleration tensors */
-  if (cell_is_active(c, e) && e->policy & engine_policy_self_gravity)
-    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Are we not in a leaf ? */
   if (c->split) {
