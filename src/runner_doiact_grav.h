@@ -185,6 +185,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif
 
+  /* MATTHIEU: Should we use local DP accumulators ? */
+
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -283,6 +285,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
               c->width[0], c->gcount);
   }
 #endif
+
+  /* MATTHIEU: Should we use local DP accumulators ? */
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -400,6 +404,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Can we use M-M interactions ? */
   if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv)) {
+    /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
     runner_dopair_grav_mm(r, cj, ci);
   }
@@ -426,6 +431,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
         }
 
       } else if (cj->split) {
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
 
         /* Loop over cj's children */
         for (int k = 0; k < 8; k++) {
@@ -434,8 +440,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
         }
 
       } else {
-        message("oO");
-        // runner_dpoair_grav_pm(r, ci, cj);
+        error("Fundamental error in the logic");
       }
     } else {
 
@@ -449,6 +454,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
         }
 
       } else if (ci->split) {
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
 
         /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
@@ -457,7 +463,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
         }
 
       } else {
-        message("oO");
+        error("Fundamental error in the logic");
       }
     }
   }
