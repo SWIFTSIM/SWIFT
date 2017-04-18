@@ -2526,7 +2526,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (cj->drift)
+        if (cj->drift && t->type == task_type_pair)
           scheduler_activate(s, cj->drift);
         else
           error("Drift task missing !");
@@ -2562,7 +2562,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (ci->drift)
+        if (ci->drift && t->type == task_type_pair)
           scheduler_activate(s, ci->drift);
         else
           error("Drift task missing !");
