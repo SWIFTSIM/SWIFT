@@ -2497,8 +2497,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank)
-            scheduler_activate(s, ci->drift);
+          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
         }
         if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2506,8 +2505,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, cj->sorts);
-          if (cj->nodeID == engine_rank)
-            scheduler_activate(s, cj->drift);
+          if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
         }
       }
 
