@@ -148,8 +148,11 @@ struct cell {
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
 
-  /*! The initialistation task */
+  /*! The particle initialistation task */
   struct task *init;
+
+  /*! The multipole initialistation task */
+  struct task *init_grav;
 
   /*! The ghost task */
   struct task *ghost;

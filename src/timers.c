@@ -34,6 +34,7 @@ char *timers_names[timer_count] = {
     "none",
     "prepare",
     "init",
+    "init_grav",
     "drift",
     "kick1",
     "kick2",

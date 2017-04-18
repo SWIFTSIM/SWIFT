@@ -43,6 +43,7 @@ enum task_types {
   task_type_sub_self,
   task_type_sub_pair,
   task_type_init,
+  task_type_init_grav,
   task_type_ghost,
   task_type_extra_ghost,
   task_type_drift,
