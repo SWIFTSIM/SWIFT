@@ -324,9 +324,6 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   }
   if (flags == 0) return;
 
-  /* Sorting an un-drifted cell? */
-  if (!cell_is_drifted(c, r->e)) error("Sorting undrifted cell.");
-
   /* start by allocating the entry arrays. */
   if (c->sort == NULL || c->sortsize < count) {
     if (c->sort != NULL) free(c->sort);
