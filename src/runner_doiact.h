@@ -110,8 +110,6 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-#include "runner_doiact_nosort.h"
-
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *
@@ -571,13 +569,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
   struct engine *e = r->e;
-
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR_SUBSET_NOSORT(r, ci, parts_i, ind, count, cj);
-    return;
-  }
-#endif
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
@@ -1102,13 +1093,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
-
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR2_NOSORT(r, ci, cj);
-    return;
-  }
-#endif
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;

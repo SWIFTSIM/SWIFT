@@ -423,13 +423,17 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   /* Otherwise, just sort. */
   else {
 
-    /* Fill the sort array. */
-    for (int k = 0; k < count; k++) {
-      if (xparts != NULL) {
+    /* Reset the sort distance if we are in a local cell */
+    if (xparts != NULL) {
+      for (int k = 0; k < count; k++) {
         xparts[k].x_diff_sort[0] = 0.0f;
         xparts[k].x_diff_sort[1] = 0.0f;
         xparts[k].x_diff_sort[2] = 0.0f;
       }
+    }
+
+    /* Fill the sort array. */
+    for (int k = 0; k < count; k++) {
       const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
