@@ -211,6 +211,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gcount = 0;
     c->scount = 0;
     c->init = NULL;
+    c->init_grav = NULL;
     c->extra_ghost = NULL;
     c->ghost = NULL;
     c->kick1 = NULL;
@@ -2083,16 +2084,39 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
+      double r_max = 0.;
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct cell *cp = c->progeny[k];
           const struct multipole *m = &cp->multipole->m_pole;
+
+          /* Contribution to multipole */
           gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
                       s->periodic);
           gravity_multipole_add(&c->multipole->m_pole, &temp);
+
+          /* Upper limit of max CoM<->gpart distance */
+          const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
+          const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
+          const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+          const double r2 = dx * dx + dy * dy + dz * dz;
+          r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
-    }
+      /* Alternative upper limit of max CoM<->gpart distance */
+      const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                            ? c->multipole->CoM[0] - c->loc[0]
+                            : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+      const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                            ? c->multipole->CoM[1] - c->loc[1]
+                            : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+      const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                            ? c->multipole->CoM[2] - c->loc[2]
+                            : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+
+      /* Take minimum of both limits */
+      c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+    } /* Deal with gravity */
   }
 
   /* Otherwise, collect the data for this cell. */
@@ -2150,7 +2174,27 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
-    if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);
+    if (s->gravity) {
+      if (gcount > 0) {
+        gravity_P2M(c->multipole, c->gparts, c->gcount);
+        const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                              ? c->multipole->CoM[0] - c->loc[0]
+                              : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+        const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                              ? c->multipole->CoM[1] - c->loc[1]
+                              : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+        const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                              ? c->multipole->CoM[2] - c->loc[2]
+                              : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+        c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+      } else {
+        gravity_multipole_init(&c->multipole->m_pole);
+        c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+        c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+        c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+        c->multipole->r_max = 0.;
+      }
+    }
   }
 
   /* Set the values for this cell. */
@@ -2819,11 +2863,26 @@ void space_link_cleanup(struct space *s) {
  *
  * @param s The #space to check.
  * @param ti_drift The (integer) time.
+ * @param multipole Are we also checking the multipoles ?
  */
-void space_check_drift_point(struct space *s, integertime_t ti_drift) {
+void space_check_drift_point(struct space *s, integertime_t ti_drift,
+                             int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_particle_drift_point, &ti_drift);
+  if (multipole)
+    space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+void space_check_top_multipoles_drift_point(struct space *s,
+                                            integertime_t ti_drift) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_check_multipole_drift_point(&s->cells_top[i], &ti_drift);
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

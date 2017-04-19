@@ -407,4 +407,681 @@ __attribute__((always_inline)) INLINE static double D_111(double r_x,
   return -15. * r_x * r_y * r_z * r_inv7;
 }
 
+/*********************************/
+/* 4th order gravity derivatives */
+/*********************************/
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_z^4 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_004(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_z * r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_z * r_z) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 5 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_y^1 \partial_z^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_013(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y * r_z);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_y^2 \partial_z^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_022(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv;
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_y^3 \partial_z^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_031(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_y * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y * r_z);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_y^4 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_040(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_y * r_y) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 5 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^1 \partial_z^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_103(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_z);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^1 \partial_y^1 \partial_z^2
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_112(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_y * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_y);
+  /* 13 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^1 \partial_y^2 \partial_z^1
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_121(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_y * r_y * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_z);
+  /* 13 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^1 \partial_y^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_130(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_y * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^2 \partial_z^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_202(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_z * r_z) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv;
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^2 \partial_y^1 \partial_z^1
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_211(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_y * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_z);
+  /* 13 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^2 \partial_y^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_220(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_x * r_x) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             (r_y * r_y) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv;
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^3 \partial_z^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_301(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_x * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_z);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^3 \partial_y^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_310(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_x * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x * r_y);
+  /* 11 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^4}{ \partial_x^4 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_400(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_x * r_x) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
+             (r_x * r_x) +
+         3. * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0;
+  /* 5 zero-valued terms not written out */
+}
+
+/*********************************/
+/* 5th order gravity derivatives */
+/*********************************/
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_z^5 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_005(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_z * r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 10.0 * (r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_z);
+  /* 26 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_y^1 \partial_z^4 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_014(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_y * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_y^2 \partial_z^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_023(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_z);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_y^3 \partial_z^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_032(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_y * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_y^4 \partial_z^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_041(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_y * r_y * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_z);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_y^5 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_050(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 10.0 * (r_y * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_y);
+  /* 26 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^1 \partial_z^4 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_104(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_z * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^1 \partial_y^1 \partial_z^3
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_113(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_y * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y * r_z);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^1 \partial_y^2 \partial_z^2
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_122(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * (r_x);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^1 \partial_y^3 \partial_z^1
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_131(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y * r_z);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^1 \partial_y^4 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_140(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^2 \partial_z^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_203(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_z * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_x * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_z * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_z);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^2 \partial_y^1 \partial_z^2
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_212(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * (r_y);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^2 \partial_y^2 \partial_z^1
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_221(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * (r_z);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^2 \partial_y^3 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_230(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_x * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_y * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^3 \partial_z^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_302(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_z * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_z * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^3 \partial_y^1 \partial_z^1
+ * }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_311(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_y * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y * r_z);
+  /* 48 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^3 \partial_y^2 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_320(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_y * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * (r_x * r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 3.0 * (r_x * r_y * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_x);
+  /* 44 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^4 \partial_z^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_401(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_z) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_x * r_z) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_z);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^4 \partial_y^1 }\phi(x, y,
+ * z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_410(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_y) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 6.0 * (r_x * r_x * r_y) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
+             (r_y);
+  /* 42 zero-valued terms not written out */
+}
+
+/**
+ * @brief Compute \f$ \frac{\partial^5}{ \partial_x^5 }\phi(x, y, z} \f$.
+ *
+ * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
+ */
+__attribute__((always_inline)) INLINE static double D_500(double r_x,
+                                                          double r_y,
+                                                          double r_z,
+                                                          double r_inv) {
+  return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_x) +
+         105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
+             r_inv * 10.0 * (r_x * r_x * r_x) -
+         15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 15.0 *
+             (r_x);
+  /* 26 zero-valued terms not written out */
+}
+
 #endif /* SWIFT_GRAVITY_DERIVATIVE_H */

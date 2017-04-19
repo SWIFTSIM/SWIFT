@@ -1017,14 +1017,15 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
- * @brief Checks that a cell is at the current point in time
+ * @brief Checks that the particles in a cell are at the
+ * current point in time
  *
  * Calls error() if the cell is not at the current time.
  *
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_drift_point(struct cell *c, void *data) {
+void cell_check_particle_drift_point(struct cell *c, void *data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1051,6 +1052,34 @@ void cell_check_drift_point(struct cell *c, void *data) {
     if (c->sparts[i].ti_drift != ti_drift)
       error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
             c->sparts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the multipole of a cell is at the current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_multipole_drift_point(struct cell *c, void *data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  if (c->ti_old_multipole != ti_drift)
+    error(
+        "Cell multipole in an incorrect time-zone! c->ti_old_multipole=%lld "
+        "ti_drift=%lld (depth=%d)",
+        c->ti_old_multipole, ti_drift, c->depth);
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -1128,12 +1157,23 @@ void cell_check_multipole(struct cell *c, void *data) {
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d!", c->depth);
+      message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
+              tolerance);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
       gravity_multipole_print(&c->multipole->m_pole);
       error("Aborting");
+    }
+
+    /* Check that the upper limit of r_max is good enough */
+    if (!(c->multipole->r_max >= ma.r_max)) {
+      error("Upper-limit r_max=%e too small. Should be >=%e.",
+            c->multipole->r_max, ma.r_max);
+    } else if (c->multipole->r_max * c->multipole->r_max >
+               3. * c->width[0] * c->width[0]) {
+      error("r_max=%e larger than cell diagonal %e.", c->multipole->r_max,
+            sqrt(3. * c->width[0] * c->width[0]));
     }
   }
 #else
@@ -1316,6 +1356,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
   if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
@@ -1476,17 +1517,15 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
 
+  /* Drift the multipole */
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
+
   /* Are we not in a leaf ? */
   if (c->split) {
 
-    /* Loop over the progeny and drift the multipoles. */
+    /* Loop over the progeny and recurse. */
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_drift_particles(c->progeny[k], e);
-
-  } else if (ti_current > ti_old_multipole) {
-
-    /* Drift the multipole */
-    gravity_drift(c->multipole, dt);
+      if (c->progeny[k] != NULL) cell_drift_all_multipoles(c->progeny[k], e);
   }
 
   /* Update the time of the last drift */

@@ -38,6 +38,7 @@
 
 /* Includes. */
 #include "clocks.h"
+#include "collectgroup.h"
 #include "cooling_struct.h"
 #include "gravity_properties.h"
 #include "parser.h"
@@ -243,6 +244,10 @@ struct engine {
 
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
+
+  /* Temporary struct to hold a group of deferable properties (in MPI mode
+   * these are reduced together, but may not be required just yet). */
+  struct collectgroup1 collect_group1;
 };
 
 /* Function prototypes. */
@@ -250,6 +255,7 @@ void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
+void engine_drift_top_multipoles(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,

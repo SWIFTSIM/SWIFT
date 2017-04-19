@@ -444,7 +444,44 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 }
 
 /**
- * @brief Initialize the particles before the density calculation
+ * @brief Initialize the multipoles before the gravity calculation.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_self_gravity))
+    error("Grav-init task called outside of self-gravity calculation");
+#endif
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) return;
+
+  /* Drift the multipole */
+  cell_drift_multipole(c, e);
+
+  /* Reset the gravity acceleration tensors */
+  gravity_field_tensors_init(&c->multipole->pot);
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) runner_do_init_grav(r, c->progeny[k], 0);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_init_grav);
+}
+
+/**
+ * @brief Initialize the particles before the density calculation.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -463,10 +500,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
-
-  /* Reset the gravity acceleration tensors */
-  if (e->policy & engine_policy_self_gravity)
-    gravity_field_tensors_init(&c->multipole->pot);
 
   /* Recurse? */
   if (c->split) {
@@ -1769,6 +1802,9 @@ void *runner_main(void *data) {
 
         case task_type_sort:
           runner_do_sort(r, ci, t->flags, 1);
+          break;
+        case task_type_init_grav:
+          runner_do_init_grav(r, ci, 1);
           break;
         case task_type_init:
           runner_do_init(r, ci, 1);

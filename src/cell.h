@@ -148,8 +148,11 @@ struct cell {
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
 
-  /*! The initialistation task */
+  /*! The particle initialistation task */
   struct task *init;
+
+  /*! The multipole initialistation task */
+  struct task *init_grav;
 
   /*! The ghost task */
   struct task *ghost;
@@ -352,7 +355,8 @@ int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
-void cell_check_drift_point(struct cell *c, void *data);
+void cell_check_particle_drift_point(struct cell *c, void *data);
+void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);

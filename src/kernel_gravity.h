@@ -87,4 +87,49 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(
   *W = w / (u * u * u);
 }
 
-#endif  // SWIFT_KERNEL_GRAVITY_H
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_double(
+    double u, double *const W) {
+
+  static const double kernel_grav_coeffs_double[(kernel_grav_degree + 1) *
+                                                (kernel_grav_ivals + 1)]
+      __attribute__((aligned(16))) = {32.,
+                                      -38.4,
+                                      0.,
+                                      10.66666667,
+                                      0.,
+                                      0.,
+                                      0., /* 0 < u < 0.5 */
+                                      -10.66666667,
+                                      38.4,
+                                      -48.,
+                                      21.3333333,
+                                      0.,
+                                      0.,
+                                      -0.066666667, /* 0.5 < u < 1 */
+                                      0.,
+                                      0.,
+                                      0.,
+                                      0.,
+                                      0.,
+                                      0.,
+                                      0.}; /* 1 < u */
+
+  /* Pick the correct branch of the kernel */
+  const int ind = (int)min(u * (double)kernel_grav_ivals, kernel_grav_ivals);
+  const double *const coeffs =
+      &kernel_grav_coeffs_double[ind * (kernel_grav_degree + 1)];
+
+  /* First two terms of the polynomial ... */
+  double w = coeffs[0] * u + coeffs[1];
+
+  /* ... and the rest of them */
+  for (int k = 2; k <= kernel_grav_degree; k++) w = u * w + coeffs[k];
+
+  /* Return everything */
+  *W = w / (u * u * u);
+}
+#endif /* SWIFT_GRAVITY_FORCE_CHECKS */
+
+#endif /* SWIFT_KERNEL_GRAVITY_H */

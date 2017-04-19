@@ -32,6 +32,7 @@ examples/*/*/*.hdf5
 examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/used_parameters.yml
+examples/*/gravity_checks_*.dat
 
 tests/testPair
 tests/brute_force_standard.dat
@@ -88,6 +89,8 @@ theory/SPH/Flavours/sph_flavours.pdf
 theory/SPH/EoS/eos.pdf
 theory/SPH/*.pdf
 theory/paper_pasc/pasc_paper.pdf
+theory/Multipoles/fmm.pdf
+theory/Multipoles/fmm_standalone.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4
