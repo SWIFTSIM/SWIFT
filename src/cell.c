@@ -1448,10 +1448,16 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
+
+        /* Collect */
         cell_drift_particles(cp, e);
+
+        /* Update */
         dx_max = max(dx_max, cp->dx_max);
         dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         cell_h_max = max(cell_h_max, cp->h_max);
+
+        /* Deal with the sort flag */
         if (cp->ti_sort > c->ti_sort)
           c->sorted = 0;
         else
@@ -1489,6 +1495,11 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       /* Get a handle on the part. */
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (p->density.wcount == 0.)
+        error("Attempting to drift a particle that has been initialised");
+#endif
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
