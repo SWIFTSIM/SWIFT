@@ -1103,36 +1103,6 @@ void cell_reset_task_counters(struct cell *c) {
 }
 
 /**
- * @brief Checks whether the cells are direct neighbours ot not. Both cells have
- * to be of the same size
- *
- * @param ci First #cell.
- * @param cj Second #cell.
- *
- * @todo Deal with periodicity.
- */
-int cell_are_neighbours(const struct cell *restrict ci,
-                        const struct cell *restrict cj) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("Cells of different size !");
-#endif
-
-  /* Maximum allowed distance */
-  const double min_dist =
-      1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
-
-  /* (Manhattan) Distance between the cells */
-  for (int k = 0; k < 3; k++) {
-    const double center_i = ci->loc[k];
-    const double center_j = cj->loc[k];
-    if (fabs(center_i - center_j) > min_dist) return 0;
-  }
-
-  return 1;
-}
-
-/**
  * @brief Computes the multi-pole brutally and compare to the
  * recursively computed one.
  *
@@ -1144,6 +1114,8 @@ void cell_check_multipole(struct cell *c, void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
+
+  return;
 
   /* First recurse */
   if (c->split)
