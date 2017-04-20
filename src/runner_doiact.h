@@ -461,7 +461,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   struct engine *e = r->e;
 
-  error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
@@ -3165,13 +3165,14 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                        : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
       new_sid = sortlistID[new_sid];
 
-      /* Do any of the cells need to be drifted or sorted first? */
+      /* Do any of the cells need to be drifted first? */
       if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
-      if (!(cj->sorted & (1 << new_sid)))
-        runner_do_sort(r, cj, (1 << new_sid), 1);
 
-      /* Compute the interactions. */
-      DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
+      /* If the cell is not sorted, don't re-generate the sort indices. */
+      if (!(cj->sorted & (1 << new_sid)))
+        DOPAIR_SUBSET_NAIVE(r, ci, parts, ind, count, cj);
+      else
+        DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
     }
 
   } /* otherwise, pair interaction. */
