@@ -27,6 +27,7 @@ Valid options are:
   -f    {int} Overwrite the CPU frequency (Hz) to be used for time measurements.
   -g          Run with an external gravitational potential.
   -G          Run with self-gravity.
+  -M          Reconstruct the multipoles every time-step.
   -n    {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop. 
   -s          Run with hydrodynamics.
   -S          Run with stars.

@@ -351,6 +351,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
+void cell_make_multipoles(struct cell *c, integertime_t ti_current);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 void cell_check_particle_drift_point(struct cell *c, void *data);

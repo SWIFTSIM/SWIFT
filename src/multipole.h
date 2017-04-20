@@ -1232,12 +1232,10 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
  * @param m_b The #multipole to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
- * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_M2M(struct multipole *m_a,
                                const struct multipole *m_b,
-                               const double pos_a[3], const double pos_b[3],
-                               int periodic) {
+                               const double pos_a[3], const double pos_b[3]) {
   /* Shift bulk velocity */
   m_a->vel[0] = m_b->vel[0];
   m_a->vel[1] = m_b->vel[1];

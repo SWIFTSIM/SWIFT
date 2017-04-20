@@ -2091,8 +2091,7 @@ void space_split_recursive(struct space *s, struct cell *c,
           const struct multipole *m = &cp->multipole->m_pole;
 
           /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
-                      s->periodic);
+          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
           gravity_multipole_add(&c->multipole->m_pole, &temp);
 
           /* Upper limit of max CoM<->gpart distance */

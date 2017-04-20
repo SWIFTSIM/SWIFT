@@ -1103,6 +1103,95 @@ void cell_reset_task_counters(struct cell *c) {
 }
 
 /**
+ * @brief Recursively construct all the multipoles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ */
+void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
+
+  /* Reset everything */
+  gravity_reset(c->multipole);
+
+  if (c->split) {
+
+    /* Compute CoM of all progenies */
+    double CoM[3] = {0., 0., 0.};
+    double mass = 0.;
+
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct gravity_tensors *m = c->progeny[k]->multipole;
+        CoM[0] += m->CoM[0] * m->m_pole.M_000;
+        CoM[1] += m->CoM[1] * m->m_pole.M_000;
+        CoM[2] += m->CoM[2] * m->m_pole.M_000;
+        mass += m->m_pole.M_000;
+      }
+    }
+    c->multipole->CoM[0] = CoM[0] / mass;
+    c->multipole->CoM[1] = CoM[1] / mass;
+    c->multipole->CoM[2] = CoM[2] / mass;
+
+    /* Now shift progeny multipoles and add them up */
+    struct multipole temp;
+    double r_max = 0.;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct cell *cp = c->progeny[k];
+        const struct multipole *m = &cp->multipole->m_pole;
+
+        /* Contribution to multipole */
+        gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
+        gravity_multipole_add(&c->multipole->m_pole, &temp);
+
+        /* Upper limit of max CoM<->gpart distance */
+        const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
+        const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
+        const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+        const double r2 = dx * dx + dy * dy + dz * dz;
+        r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
+      }
+    }
+    /* Alternative upper limit of max CoM<->gpart distance */
+    const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                          ? c->multipole->CoM[0] - c->loc[0]
+                          : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+    const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                          ? c->multipole->CoM[1] - c->loc[1]
+                          : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+    const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                          ? c->multipole->CoM[2] - c->loc[2]
+                          : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+
+    /* Take minimum of both limits */
+    c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+  } else {
+
+    if (c->gcount > 0) {
+      gravity_P2M(c->multipole, c->gparts, c->gcount);
+      const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                            ? c->multipole->CoM[0] - c->loc[0]
+                            : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+      const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                            ? c->multipole->CoM[1] - c->loc[1]
+                            : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+      const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                            ? c->multipole->CoM[2] - c->loc[2]
+                            : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+      c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+    } else {
+      gravity_multipole_init(&c->multipole->m_pole);
+      c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+      c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+      c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+      c->multipole->r_max = 0.;
+    }
+  }
+
+  c->ti_old_multipole = ti_current;
+}
+
+/**
  * @brief Computes the multi-pole brutally and compare to the
  * recursively computed one.
  *
