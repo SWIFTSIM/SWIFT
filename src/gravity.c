@@ -94,6 +94,8 @@ int gravity_exact_force_file_exits(const struct engine *e) {
  */
 void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
                                         void *extra_data) {
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
   /* Unpack the data */
   struct gpart *restrict gparts = (struct gpart *)map_data;
   struct exact_force_data *data = (struct exact_force_data *)extra_data;
@@ -170,6 +172,10 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
     }
   }
   atomic_add(&data->counter_global, counter);
+
+#else
+  error("Gravity checking function called without the corresponding flag.");
+#endif
 }
 
 /**
