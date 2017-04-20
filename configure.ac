@@ -215,6 +215,21 @@ elif test "$gravity_force_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
 fi
 
+# Check if we want to zero the gravity forces for all particles below some ID.
+AC_ARG_ENABLE([no-gravity-below-id],
+   [AS_HELP_STRING([--enable-no-gravity-below-id],
+     [Zeros the gravitational acceleration of all particles with an ID smaller than @<:@N@:>@]
+   )],
+   [no_gravity_below_id="$enableval"],
+   [no_gravity_below_id="no"]
+)
+if test "$no_gravity_below_id" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
+elif test "$no_gravity_below_id" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+fi
+
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -854,12 +869,14 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
-   External potential : $with_potential
-   Multipole order    : $with_multipole_order
+   
+   External potential  : $with_potential
+   Multipole order     : $with_multipole_order
+   No gravity below ID : $no_gravity_below_id
 
-   Task debugging     : $enable_task_debugging
-   Debugging checks   : $enable_debugging_checks
-   Gravity checks     : $gravity_force_checks
+   Task debugging    : $enable_task_debugging
+   Debugging checks  : $enable_debugging_checks
+   Gravity checks    : $gravity_force_checks
 ])
 
 # Make sure the latest git revision string gets included

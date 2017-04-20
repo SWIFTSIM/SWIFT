@@ -1356,9 +1356,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
-        /* First, finish the force loop */
+        /* Finish the force loop */
         hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
       }
     }
 
@@ -1368,25 +1367,45 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the gpart. */
       struct gpart *restrict gp = &gparts[k];
 
-      if (gp->type == swift_type_dark_matter) {
+      if (gpart_is_active(gp, e)) {
 
-        if (gpart_is_active(gp, e)) gravity_end_force(gp, const_G);
-      }
+        /* Finish the force calculation */
+        gravity_end_force(gp, const_G);
+
+#ifdef SWIFT_NO_GRAVITY_BELOW_ID
+        /* Cancel gravity forces of these particles */
+        if ((gp->type == swift_type_dark_matter &&
+             gp->id_or_neg_offset < SWIFT_NO_GRAVITY_BELOW_ID) ||
+            (gp->type == swift_type_gas &&
+             parts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID) ||
+            (gp->type == swift_type_star &&
+             sparts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID)) {
+
+          /* Don't move ! */
+          gp->a_grav[0] = 0.f;
+          gp->a_grav[1] = 0.f;
+          gp->a_grav[2] = 0.f;
+        }
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (e->policy & engine_policy_self_gravity && gpart_is_active(gp, e)) {
+        if (e->policy & engine_policy_self_gravity) {
 
-        /* Check that this gpart has interacted with all the other particles
-         * (via direct or multipoles) in the box */
-        gp->num_interacted++;
-        if (gp->num_interacted != (long long)e->s->nr_gparts)
-          error(
-              "g-particle (id=%lld, type=%d) did not interact gravitationally "
-              "with all other gparts gp->num_interacted=%lld, total_gparts=%zd",
-              gp->id_or_neg_offset, gp->type, gp->num_interacted,
-              e->s->nr_gparts);
-      }
+          /* Check that this gpart has interacted with all the other
+           * particles
+           * (via direct or multipoles) in the box */
+          gp->num_interacted++;
+          if (gp->num_interacted != (long long)e->s->nr_gparts)
+            error(
+                "g-particle (id=%lld, type=%d) did not interact "
+                "gravitationally "
+                "with all other gparts gp->num_interacted=%lld, "
+                "total_gparts=%zd",
+                gp->id_or_neg_offset, gp->type, gp->num_interacted,
+                e->s->nr_gparts);
+        }
 #endif
+      }
     }
 
     /* Loop over the star particles in this cell. */
@@ -1396,9 +1415,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       struct spart *restrict sp = &sparts[k];
       if (spart_is_active(sp, e)) {
 
-        /* First, finish the force loop */
+        /* Finish the force loop */
         star_end_force(sp);
-        gravity_end_force(sp->gpart, const_G);
       }
     }
   }
