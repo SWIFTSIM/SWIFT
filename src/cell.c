@@ -1106,6 +1106,7 @@ void cell_reset_task_counters(struct cell *c) {
  * @brief Recursively construct all the multipoles in a cell hierarchy.
  *
  * @param c The #cell.
+ * @param ti_current The current integer time.
  */
 void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 
