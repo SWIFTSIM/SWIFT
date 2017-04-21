@@ -158,6 +158,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
    * used instead of double precision. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
+#elif defined(WITH_VECTORIZATION)
+#pragma omp simd  
 #endif
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
@@ -351,6 +353,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * due to BCs but leave cell cj. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
+#elif defined(WITH_VECTORIZATION)
+#pragma omp simd  
 #endif
   for (int i = first_pi_align; i < ci->count; i++) {
     /* Make sure ci_cache is filled from the first element. */
@@ -375,6 +379,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
+#elif defined(WITH_VECTORIZATION)
+#pragma omp simd  
 #endif
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
