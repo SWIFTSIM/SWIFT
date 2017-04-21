@@ -2525,8 +2525,8 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
- * @param Are we using the current value of CoM or the ones from the last
- * rebuild ?
+ * @param rebuild Are we using the current value of CoM or the ones from
+ * the last rebuild ?
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
     const struct gravity_tensors *ma, const struct gravity_tensors *mb,
@@ -2545,6 +2545,8 @@ __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
                             : ma->CoM[2] - mb->CoM[2];
 
   const double r2 = dx * dx + dy * dy + dz * dz;
+
+  // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
   return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));

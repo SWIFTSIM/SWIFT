@@ -650,6 +650,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
                                       theta_crit_inv, 1)) {
 
       /* Alright, we have to take charge of that pair in a different way. */
+      // MATTHIEU: We should actually open the tree-node here and recurse.
       runner_dopair_grav_mm(r, ci, cj);
     }
   }
