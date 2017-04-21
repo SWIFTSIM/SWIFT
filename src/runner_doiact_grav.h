@@ -458,7 +458,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   /* Can we use M-M interactions ? */
-  if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv)) {
+  if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
+                               0)) {
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
     runner_dopair_grav_mm(r, cj, ci);
@@ -638,9 +639,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     if (ci == cj || cj->gcount == 0) continue;
 
     /* Check the multipole acceptance criterion */
-    if (gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
-                                         theta_crit_inv)) {
+    if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
+                                 0)) {
+
       /* Go for a (non-symmetric) M-M calculation */
+      runner_dopair_grav_mm(r, ci, cj);
+    }
+    /* Is the criterion violated now but was OK at the last rebuild ? */
+    else if (gravity_multipole_accept(ci->multipole, cj->multipole,
+                                      theta_crit_inv, 1)) {
+
+      /* Alright, we have to take charge of that pair in a different way. */
       runner_dopair_grav_mm(r, ci, cj);
     }
   }

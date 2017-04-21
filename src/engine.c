@@ -1693,7 +1693,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
       /* Are the cells to close for a MM interaction ? */
       if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                    theta_crit_inv))
+                                    theta_crit_inv, 1))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
     }
