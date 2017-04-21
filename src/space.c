@@ -2115,6 +2115,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+      c->multipole->r_max_rebuild = c->multipole->r_max;
+      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
     } /* Deal with gravity */
   }
 
@@ -2194,6 +2198,10 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->multipole->r_max = 0.;
       }
     }
+    c->multipole->r_max_rebuild = c->multipole->r_max;
+    c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+    c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+    c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
   }
 
   /* Set the values for this cell. */

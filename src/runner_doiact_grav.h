@@ -638,8 +638,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     if (ci == cj || cj->gcount == 0) continue;
 
     /* Check the multipole acceptance criterion */
-    if (gravity_multipole_accept(ci->multipole, cj->multipole,
-                                 theta_crit_inv)) {
+    if (gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
+                                         theta_crit_inv)) {
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
     }
