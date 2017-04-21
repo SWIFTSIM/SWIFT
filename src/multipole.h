@@ -176,8 +176,14 @@ struct gravity_tensors {
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];
 
+      /*! Centre of mass of the matter dsitribution at the last rebuild */
+      double CoM_rebuild[3];
+
       /*! Upper limit of the CoM<->gpart distance */
       double r_max;
+
+      /*! Upper limit of the CoM<->gpart distance at the last rebuild */
+      double r_max_rebuild;
 
       /*! Multipole mass */
       struct multipole m_pole;
@@ -1232,12 +1238,10 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
  * @param m_b The #multipole to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
- * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_M2M(struct multipole *m_a,
                                const struct multipole *m_b,
-                               const double pos_a[3], const double pos_b[3],
-                               int periodic) {
+                               const double pos_a[3], const double pos_b[3]) {
   /* Shift bulk velocity */
   m_a->vel[0] = m_b->vel[0];
   m_a->vel[1] = m_b->vel[1];
@@ -2521,17 +2525,24 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
+ * @param Are we using the current value of CoM or the ones from the last
+ * rebuild ?
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
     const struct gravity_tensors *ma, const struct gravity_tensors *mb,
-    double theta_crit_inv) {
+    double theta_crit_inv, int rebuild) {
 
-  const double r_crit_a = ma->r_max * theta_crit_inv;
-  const double r_crit_b = mb->r_max * theta_crit_inv;
+  const double r_crit_a =
+      (rebuild ? ma->r_max_rebuild : ma->r_max) * theta_crit_inv;
+  const double r_crit_b =
+      (rebuild ? mb->r_max_rebuild : mb->r_max) * theta_crit_inv;
 
-  const double dx = ma->CoM[0] - mb->CoM[0];
-  const double dy = ma->CoM[1] - mb->CoM[1];
-  const double dz = ma->CoM[2] - mb->CoM[2];
+  const double dx = rebuild ? ma->CoM_rebuild[0] - mb->CoM_rebuild[0]
+                            : ma->CoM[0] - mb->CoM[0];
+  const double dy = rebuild ? ma->CoM_rebuild[1] - mb->CoM_rebuild[1]
+                            : ma->CoM[1] - mb->CoM[1];
+  const double dz = rebuild ? ma->CoM_rebuild[2] - mb->CoM_rebuild[2]
+                            : ma->CoM[2] - mb->CoM[2];
 
   const double r2 = dx * dx + dy * dy + dz * dz;
 

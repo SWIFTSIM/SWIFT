@@ -1693,7 +1693,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
       /* Are the cells to close for a MM interaction ? */
       if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                    theta_crit_inv))
+                                    theta_crit_inv, 1))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
     }
@@ -3225,6 +3225,15 @@ void engine_step(struct engine *e) {
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all) engine_drift_all(e);
 
+  /* Are we reconstructing the multipoles or drifting them ?*/
+  if (e->policy & engine_policy_self_gravity) {
+
+    if (e->policy & engine_policy_reconstruct_mpoles)
+      engine_reconstruct_multipoles(e);
+    else
+      engine_drift_top_multipoles(e);
+  }
+
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -3247,9 +3256,6 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_compute(e->s, e);
 #endif
-
-  /* Do we need to drift the top-level multipoles ? */
-  if (e->policy & engine_policy_self_gravity) engine_drift_top_multipoles(e);
 
   /* Start all the tasks. */
   TIMER_TIC;
@@ -3441,6 +3447,39 @@ void engine_drift_top_multipoles(struct engine *e) {
   /* Check that all cells have been drifted to the current time. */
   space_check_top_multipoles_drift_point(e->s, e->ti_current);
 #endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+    if (c != NULL && c->nodeID == e->nodeID) {
+
+      /* Construct the multipoles in this cell hierarchy */
+      cell_make_multipoles(c, e->ti_current);
+    }
+  }
+}
+
+/**
+ * @brief Reconstruct all the multipoles at all the levels in the tree.
+ *
+ * @param e The #engine.
+ */
+void engine_reconstruct_multipoles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

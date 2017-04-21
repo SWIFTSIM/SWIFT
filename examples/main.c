@@ -82,6 +82,8 @@ void print_help_message() {
          "Run with an external gravitational potential.");
   printf("  %2s %8s %s\n", "-F", "", "Run with feedback.");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity.");
+  printf("  %2s %8s %s\n", "-M", "",
+         "Reconstruct the multipoles every time-step.");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
@@ -164,6 +166,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
+  int with_mpole_reconstruction = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -172,7 +175,8 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:Tv:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:sSt:Tv:y:")) != -1)
+    switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -210,6 +214,9 @@ int main(int argc, char *argv[]) {
       case 'h':
         if (myrank == 0) print_help_message();
         return 0;
+      case 'M':
+        with_mpole_reconstruction = 1;
+        break;
       case 'n':
         if (sscanf(optarg, "%d", &nsteps) != 1) {
           if (myrank == 0) printf("Error parsing fixed number of steps.\n");
@@ -521,6 +528,8 @@ int main(int argc, char *argv[]) {
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_drift_all) engine_policies |= engine_policy_drift_all;
+  if (with_mpole_reconstruction)
+    engine_policies |= engine_policy_reconstruct_mpoles;
   if (with_hydro) engine_policies |= engine_policy_hydro;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
