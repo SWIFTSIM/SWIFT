@@ -21,7 +21,7 @@
 
 /**
  * @file gravity_derivatives.h
- * @brief Derivatives (up to 3rd order) of the gravitational potential.
+ * @brief Derivatives (up to 5th order) of the gravitational potential.
  *
  * We use the notation of Dehnen, Computational Astrophysics and Cosmology,
  * 1, 1, pp. 24 (2014), arXiv:1405.2255
