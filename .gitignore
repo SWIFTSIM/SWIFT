@@ -91,6 +91,7 @@ theory/SPH/*.pdf
 theory/paper_pasc/pasc_paper.pdf
 theory/Multipoles/fmm.pdf
 theory/Multipoles/fmm_standalone.pdf
+theory/Multipoles/potential.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4
