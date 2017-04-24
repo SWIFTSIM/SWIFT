@@ -396,10 +396,10 @@ runner_iact_nonsym_1_vec_density(
   vector curlvrx, curlvry, curlvrz;
 
   /* Fill the vectors. */
-  mj.v = vec_unaligned_load(Mj);
-  vjx.v = vec_unaligned_load(Vjx);
-  vjy.v = vec_unaligned_load(Vjy);
-  vjz.v = vec_unaligned_load(Vjz);
+  mj.v = vec_load(Mj);
+  vjx.v = vec_load(Vjx);
+  vjy.v = vec_load(Vjy);
+  vjz.v = vec_load(Vjz);
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(*r2);
