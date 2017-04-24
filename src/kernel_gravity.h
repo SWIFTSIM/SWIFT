@@ -23,10 +23,8 @@
 #include <math.h>
 
 /* Includes. */
-#include "const.h"
 #include "inline.h"
 #include "minmax.h"
-#include "vector.h"
 
 /**
  * @brief Computes the gravity softening function.
@@ -39,13 +37,12 @@
 __attribute__((always_inline)) INLINE static void kernel_grav_eval(
     float u, float *const W) {
 
-  /* W(u) = 21u^6 - 90u^5 + 140u^4 - 84u^3 + 14u */
+  /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
   *W = 21.f * u - 90.f;
   *W = *W * u + 140.f;
   *W = *W * u - 84.f;
   *W = *W * u;
   *W = *W * u + 14.f;
-  *W = *W * u;
 }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -61,14 +58,77 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(
 __attribute__((always_inline)) INLINE static void kernel_grav_eval_double(
     double u, double *const W) {
 
-  /* W(u) = 21u^6 - 90u^5 + 140u^4 - 84u^3 + 14u */
+  /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
   *W = 21. * u - 90.;
   *W = *W * u + 140.;
   *W = *W * u - 84.;
   *W = *W * u;
   *W = *W * u + 14.;
-  *W = *W * u;
 }
 #endif /* SWIFT_GRAVITY_FORCE_CHECKS */
+
+/************************************************/
+/* Derivatives of softening kernel used for FMM */
+/************************************************/
+
+__attribute__((always_inline)) INLINE static double D_soft_0(double u) {
+
+  /* phi(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  double phi = 3. * u - 15.;
+  phi = phi * u + 28.;
+  phi = phi * u - 21.;
+  phi = phi * u;
+  phi = phi * u + 7.;
+  phi = phi * u;
+  phi = phi * u - 3.;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static double D_soft_1(double u) {
+
+  /* phi'(u) = 21u^6 - 90u^5 + 140u^4 - 84u^3 + 14u */
+  double phi = 21. * u - 90.;
+  phi = phi * u + 140.;
+  phi = phi * u - 84.;
+  phi = phi * u;
+  phi = phi * u + 14.;
+  phi = phi * u;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static double D_soft_2(double u) {
+
+  /* phi''(u) = 126u^5 - 450u^4 + 560u^3 - 252u^2 + 14 */
+  double phi = 126. * u - 450.;
+  phi = phi * u + 560.;
+  phi = phi * u - 252.;
+  phi = phi * u;
+  phi = phi * u + 14.;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static double D_soft_3(double u) {
+
+  /* phi'''(u) = 630u^4 - 1800u^3 + 1680u^2 - 504u */
+  double phi = 630. * u - 1800.;
+  phi = phi * u + 1680.;
+  phi = phi * u - 504.;
+  phi = phi * u;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static double D_soft_4(double u) {
+
+  /* phi''''(u) = 2520u^3 - 5400u^2 + 3360u - 504 */
+  double phi = 2520. * u - 5400.;
+  phi = phi * u + 3360.;
+  phi = phi * u - 504.;
+
+  return phi;
+}
 
 #endif /* SWIFT_KERNEL_GRAVITY_H */

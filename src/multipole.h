@@ -2097,6 +2097,72 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
     l_b->F_101 += m_a->M_000 * D_soft_101(dx, dy, dz, r, eps_inv);
     l_b->F_011 += m_a->M_000 * D_soft_011(dx, dy, dz, r, eps_inv);
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+    /*  3rd order multipole term (addition to rank 0)*/
+    l_b->F_000 += m_a->M_300 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_030 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_003 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_210 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_201 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_120 * D_soft_120(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_021 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_102 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_012 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_111 * D_soft_111(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 1)*/
+    l_b->F_100 += m_a->M_200 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_100 += m_a->M_110 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_111(dx, dy, dz, r, eps_inv);
+    l_b->F_010 += m_a->M_200 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_010 += m_a->M_110 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_001 += m_a->M_200 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_001 += m_a->M_110 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_012(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 2)*/
+    l_b->F_200 += m_a->M_100 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_201(dx, dy, dz, r, eps_inv);
+    l_b->F_020 += m_a->M_100 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_002 += m_a->M_100 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_012(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_110 += m_a->M_100 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_111(dx, dy, dz, r, eps_inv);
+    l_b->F_101 += m_a->M_100 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_011 += m_a->M_100 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_012(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 2)*/
+    l_b->F_300 += m_a->M_000 * D_soft_300(dx, dy, dz, r, eps_inv);
+    l_b->F_030 += m_a->M_000 * D_soft_030(dx, dy, dz, r, eps_inv);
+    l_b->F_003 += m_a->M_000 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_210 += m_a->M_000 * D_soft_210(dx, dy, dz, r, eps_inv);
+    l_b->F_201 += m_a->M_000 * D_soft_201(dx, dy, dz, r, eps_inv);
+    l_b->F_120 += m_a->M_000 * D_soft_120(dx, dy, dz, r, eps_inv);
+    l_b->F_021 += m_a->M_000 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_102 += m_a->M_000 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_012 += m_a->M_000 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_111 += m_a->M_000 * D_soft_111(dx, dy, dz, r, eps_inv);
+#endif
   }
 }
 
