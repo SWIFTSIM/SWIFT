@@ -41,6 +41,9 @@ struct gpart {
   /* Particle mass. */
   float mass;
 
+  /* Gravitational potential */
+  float potential;
+
   /* Softening length */
   float epsilon;
 

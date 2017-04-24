@@ -25,6 +25,39 @@
 #include "minmax.h"
 
 /**
+ * @brief Returns the mass of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_mass(
+    const struct gpart* restrict gp) {
+
+  return gp->mass;
+}
+
+/**
+ * @brief Returns the softening of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_softening(
+    const struct gpart* restrict gp) {
+
+  return gp->epsilon;
+}
+
+/**
+ * @brief Returns the potential of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_potential(
+    const struct gpart* restrict gp) {
+
+  return gp->potential;
+}
+
+/**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
  * We use Gadget-2's type 0 time-step criterion.
@@ -63,6 +96,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+  gp->potential = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->num_interacted = 0;
