@@ -61,6 +61,12 @@ struct cache {
 
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
+  
+  float *restrict rho __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict grad_h __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict pOrho2 __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict balsara __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict soundspeed __attribute__((aligned(CACHE_ALIGN)));
 
   /* Maximum distance of particles into neighbouring cell. */
   float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
@@ -96,6 +102,13 @@ struct c2_cache {
 
   /* z velocity of particle pj. */
   float vzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  float rhoq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float grad_hq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float pOrho2q[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float balsaraq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float soundspeedq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float h_invq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 };
 
 /**
@@ -125,6 +138,11 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
+    free(c->rho);
+    free(c->grad_h);
+    free(c->pOrho2);
+    free(c->balsara);
+    free(c->soundspeed);
     free(c->max_d);
   }
 
@@ -137,6 +155,12 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
+
+  error += posix_memalign((void **)&c->rho, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->grad_h, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->pOrho2, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->balsara, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->soundspeed, CACHE_ALIGN, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -158,8 +182,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
    * used instead of double precision. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
 #endif
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
@@ -171,6 +193,12 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     ci_cache->vx[i] = ci->parts[i].v[0];
     ci_cache->vy[i] = ci->parts[i].v[1];
     ci_cache->vz[i] = ci->parts[i].v[2];
+    
+    ci_cache->rho[i] = ci->parts[i].rho;
+    ci_cache->grad_h[i] = ci->parts[i].force.f;
+    ci_cache->pOrho2[i] = ci->parts[i].force.P_over_rho2;
+    ci_cache->balsara[i] = ci->parts[i].force.balsara;
+    ci_cache->soundspeed[i] = ci->parts[i].force.soundspeed;
   }
 
 #endif
@@ -353,8 +381,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * due to BCs but leave cell cj. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
 #endif
   for (int i = first_pi_align; i < ci->count; i++) {
     /* Make sure ci_cache is filled from the first element. */
@@ -379,8 +405,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
 #endif
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
