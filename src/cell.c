@@ -1456,12 +1456,6 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
         dx_max = max(dx_max, cp->dx_max);
         dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         cell_h_max = max(cell_h_max, cp->h_max);
-
-        /* Deal with the sort flag */
-        if (cp->ti_sort > c->ti_sort)
-          c->sorted = 0;
-        else
-          c->sorted &= cp->sorted;
       }
 
   } else if (ti_current > ti_old) {
