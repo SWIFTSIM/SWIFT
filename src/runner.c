@@ -290,12 +290,10 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
 }
 
 void runner_check_sorts(struct cell *c, int flags) {
-  if (flags & ~c->sorted)
-    error("Inconsistent sort flags (downward)!");
+  if (flags & ~c->sorted) error("Inconsistent sort flags (downward)!");
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) 
-         runner_check_sorts(c->progeny[k], c->sorted);
+      if (c->progeny[k] != NULL) runner_check_sorts(c->progeny[k], c->sorted);
 }
 
 /**
@@ -321,15 +319,15 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   /* Check that the particles have been moved to the current time */
   if (!cell_is_drifted(c, r->e)) error("Sorting un-drifted cell");
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
   runner_check_sorts(c, c->sorted);
 
   /* Make sure the sort flags are consistent (upard). */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent) {
-    if (finger->sorted & ~c->sorted)
-      error("Inconsistent sort flags (upward).");
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->sorted & ~c->sorted) error("Inconsistent sort flags (upward).");
   }
 #endif
 
@@ -344,7 +342,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
     c->sorted = 0;
   }
   if (flags == 0) return;
-  
+
   /* start by allocating the entry arrays. */
   if (c->sort == NULL || c->sortsize < count) {
     if (c->sort != NULL) free(c->sort);
@@ -357,7 +355,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   /* Does this cell have any progeny? */
   if (c->split) {
-  
+
     /* Fill in the gaps within the progeny. */
     float dx_max_sort = 0.0f;
     for (int k = 0; k < 8; k++) {
@@ -495,14 +493,14 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       if (finger[k].i >= count) error("Sorting failed, indices borked.");
     }
   }
-  
+
   /* Make sure the sort flags are consistent (downward). */
   runner_check_sorts(c, flags);
 
   /* Make sure the sort flags are consistent (upward). */
-  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent) {
-    if (finger->sorted & ~c->sorted)
-      error("Inconsistent sort flags.");
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->sorted & ~c->sorted) error("Inconsistent sort flags.");
   }
 #endif
 

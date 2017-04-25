@@ -605,11 +605,12 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin) {
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort > space_maxreldx * cj->dmin) {
     DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
     return;
   }
-  
+
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
   const float dxj = cj->dx_max_sort;
