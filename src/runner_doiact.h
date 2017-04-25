@@ -605,9 +605,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
-
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin) {
+    DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
+    return;
+  }
+  
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
   const float dxj = cj->dx_max_sort;
@@ -2590,15 +2592,6 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   struct cell *sub = NULL;
   for (int k = 0; k < 8; k++)
     if (ci->progeny[k] != NULL) {
-      // if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
-      //      parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] +
-      // ci->progeny[k]->width[0] &&
-      //      parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
-      //      parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] +
-      // ci->progeny[k]->width[1] &&
-      //      parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
-      //      parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] +
-      // ci->progeny[k]->width[2] ) {
       if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
           &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
         sub = ci->progeny[k];
@@ -3168,11 +3161,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       /* Do any of the cells need to be drifted first? */
       if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
-      /* If the cell is not sorted, don't re-generate the sort indices. */
-      if (!(cj->sorted & (1 << new_sid)))
-        DOPAIR_SUBSET_NAIVE(r, ci, parts, ind, count, cj);
-      else
-        DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
+      DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
     }
 
   } /* otherwise, pair interaction. */
