@@ -123,8 +123,10 @@ __attribute__((always_inline)) INLINE static double D_soft_200(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_x * r_x * eps_inv * eps_inv * D_soft_2(u) +
-         (r_y * r_y + r_z * r_z) * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv3 = eps_inv * eps_inv2;
+  const double eps_inv5 = eps_inv3 * eps_inv2;
+  return r_x * r_x * eps_inv5 * D_soft_2(u) - eps_inv3 * D_soft_1(u);
 }
 
 /**
@@ -140,8 +142,10 @@ __attribute__((always_inline)) INLINE static double D_soft_020(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_y * r_y * eps_inv * eps_inv * D_soft_2(u) +
-         (r_x * r_x + r_z * r_z) * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv3 = eps_inv * eps_inv2;
+  const double eps_inv5 = eps_inv3 * eps_inv2;
+  return r_y * r_y * eps_inv5 * D_soft_2(u) - eps_inv3 * D_soft_1(u);
 }
 
 /**
@@ -157,8 +161,10 @@ __attribute__((always_inline)) INLINE static double D_soft_002(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_z * r_z * eps_inv * eps_inv * D_soft_2(u) +
-         (r_x * r_x + r_y * r_y) * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv3 = eps_inv * eps_inv2;
+  const double eps_inv5 = eps_inv3 * eps_inv2;
+  return r_z * r_z * eps_inv5 * D_soft_2(u) - eps_inv3 * D_soft_1(u);
 }
 
 /**
@@ -175,8 +181,9 @@ __attribute__((always_inline)) INLINE static double D_soft_110(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_x * r_y * eps_inv * eps_inv * D_soft_2(u) -
-         r_x * r_y * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  return r_x * r_y * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -193,8 +200,9 @@ __attribute__((always_inline)) INLINE static double D_soft_101(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_x * r_z * eps_inv * eps_inv * D_soft_2(u) -
-         r_x * r_z * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  return r_x * r_z * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -211,8 +219,9 @@ __attribute__((always_inline)) INLINE static double D_soft_011(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return r_y * r_z * eps_inv * eps_inv * D_soft_2(u) -
-         r_y * r_z * eps_inv * eps_inv * eps_inv * D_soft_1(u);
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  return r_y * r_z * eps_inv5 * D_soft_2(u);
 }
 
 /*************************/
@@ -232,7 +241,11 @@ __attribute__((always_inline)) INLINE static double D_soft_300(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
 
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_x * r_x * r_x * eps_inv7 * D_soft_3(u) +
+         3. * r_x * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -246,8 +259,13 @@ __attribute__((always_inline)) INLINE static double D_soft_300(
  */
 __attribute__((always_inline)) INLINE static double D_soft_030(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_y * r_y * r_y * eps_inv7 * D_soft_3(u) +
+         3. * r_y * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -261,8 +279,13 @@ __attribute__((always_inline)) INLINE static double D_soft_030(
  */
 __attribute__((always_inline)) INLINE static double D_soft_003(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_z * r_z * r_z * eps_inv7 * D_soft_3(u) +
+         3. * r_z * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -278,8 +301,13 @@ __attribute__((always_inline)) INLINE static double D_soft_003(
  */
 __attribute__((always_inline)) INLINE static double D_soft_210(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_x * r_x * r_y * eps_inv7 * D_soft_3(u) +
+         r_y * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -295,8 +323,13 @@ __attribute__((always_inline)) INLINE static double D_soft_210(
  */
 __attribute__((always_inline)) INLINE static double D_soft_201(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_x * r_x * r_z * eps_inv7 * D_soft_3(u) +
+         r_z * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -312,8 +345,13 @@ __attribute__((always_inline)) INLINE static double D_soft_201(
  */
 __attribute__((always_inline)) INLINE static double D_soft_120(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_x * r_y * r_y * eps_inv7 * D_soft_3(u) +
+         r_x * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -329,8 +367,13 @@ __attribute__((always_inline)) INLINE static double D_soft_120(
  */
 __attribute__((always_inline)) INLINE static double D_soft_021(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_y * r_y * r_z * eps_inv7 * D_soft_3(u) +
+         r_z * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -346,8 +389,13 @@ __attribute__((always_inline)) INLINE static double D_soft_021(
  */
 __attribute__((always_inline)) INLINE static double D_soft_102(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_x * r_z * r_z * eps_inv7 * D_soft_3(u) +
+         r_x * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -363,8 +411,13 @@ __attribute__((always_inline)) INLINE static double D_soft_102(
  */
 __attribute__((always_inline)) INLINE static double D_soft_012(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv5 = eps_inv2 * eps_inv2 * eps_inv;
+  const double eps_inv7 = eps_inv5 * eps_inv2;
+  return -r_y * r_z * r_z * eps_inv7 * D_soft_3(u) +
+         r_y * eps_inv5 * D_soft_2(u);
 }
 
 /**
@@ -379,8 +432,12 @@ __attribute__((always_inline)) INLINE static double D_soft_012(
  */
 __attribute__((always_inline)) INLINE static double D_soft_111(
     double r_x, double r_y, double r_z, double r, double eps_inv) {
+
   const double u = r * eps_inv;
-  return u * 0;
+  const double eps_inv2 = eps_inv * eps_inv;
+  const double eps_inv4 = eps_inv2 * eps_inv2;
+  const double eps_inv7 = eps_inv4 * eps_inv2 * eps_inv;
+  return -r_x * r_y * r_z * eps_inv7 * D_soft_3(u);
 }
 
 #endif /* SWIFT_GRAVITY_SOFTENED_DERIVATIVE_H */

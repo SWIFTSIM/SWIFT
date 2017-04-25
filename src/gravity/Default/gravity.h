@@ -75,8 +75,10 @@ gravity_compute_timestep_self(const struct gpart* const gp,
 
   const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
 
+  const float epsilon = gravity_get_softening(gp);
+
   /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
-  const float dt = sqrtf(0.66666667f * grav_props->eta * gp->epsilon * ac_inv);
+  const float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }
@@ -165,7 +167,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_softening(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
   /* Note 3 is the Plummer-equivalent correction */
-  gp->epsilon = 3.f * grav_props->epsilon;
+  gp->epsilon = grav_props->epsilon;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

@@ -64,6 +64,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
 
     kernel_grav_eval(ui, &W);
 
+    if (W < 0) error("W < 0");
+
     /* Get softened gravity */
     fi = mj * hi_inv3 * W * f_lr;
   }
@@ -80,6 +82,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
     const float uj = r * hj_inv;
 
     kernel_grav_eval(uj, &W);
+
+    if (W < 0) error("W < 0");
 
     /* Get softened gravity */
     fj = mi * hj_inv3 * W * f_lr;
@@ -130,6 +134,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
     const float ui = r * hi_inv;
 
     kernel_grav_eval(ui, &W);
+
+    if (W < 0) error("W < 0");
 
     /* Get softened gravity */
     f = mj * hi_inv3 * W * f_lr;
