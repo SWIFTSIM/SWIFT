@@ -102,6 +102,8 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
+
+  pthread_key_t local_seed_pointer;
 };
 
 /* Inlined functions (for speed). */

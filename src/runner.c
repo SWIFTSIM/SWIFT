@@ -1656,7 +1656,8 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-
+  int seed = r->id
+  pthread_setspecific(sched->local_seed_pointer, &seed);
   /* Main loop. */
   while (1) {
 
