@@ -400,6 +400,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     
     rhoj.v = vec_load(&int_cache->rhoq[*icount_align]);
     grad_hj.v = vec_load(&int_cache->grad_hq[*icount_align]);
+    pOrhoj2.v = vec_load(&int_cache->pOrho2q[*icount_align]);
     balsara_j.v = vec_load(&int_cache->balsaraq[*icount_align]);
     cj.v = vec_load(&int_cache->soundspeedq[*icount_align]);
     hj_inv.v = vec_load(&int_cache->h_invq[*icount_align]);
@@ -568,6 +569,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
       
       rhoj.v = vec_load(&int_cache->rhoq[pjd]);
       grad_hj.v = vec_load(&int_cache->grad_hq[pjd]);
+      pOrhoj2.v = vec_load(&int_cache->pOrho2q[pjd]);
       balsara_j.v = vec_load(&int_cache->balsaraq[pjd]);
       cj.v = vec_load(&int_cache->soundspeedq[pjd]);
       hj_inv.v = vec_load(&int_cache->h_invq[pjd]);
@@ -1774,7 +1776,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  static int intCount = 0;
   const struct engine *e = r->e;
   int doi_mask;
   struct part *restrict pi;
@@ -2050,14 +2051,10 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
     VEC_HADD(entropy_dtSum, pi->entropy_dt);
 
-    intCount += icount;
-
-    message("No. of interactions for particle %lld: %d", pi->id, icount);
     /* Reset interaction count. */
     icount = 0;
   } /* loop over all particles. */
 
-  message("No. of force interactions: %d", intCount);
   //TIMER_TOC(timer_doself_force);
 #endif /* WITH_VECTORIZATION */
 }
