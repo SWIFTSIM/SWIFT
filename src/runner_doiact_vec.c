@@ -27,7 +27,31 @@
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+#ifdef WITH_VECTORIZATION
+static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
+
+//static void printFloatVector(vector v, char *label, int length) {
+//
+//  int i;
+//  printf("%s:[", label);
+//  for (i = 0; i < length; i++) {
+//    printf("%f, ", v.f[i]);
+//  }
+//  printf("]\n");
+//}
+
+//static void printIntVector(vector v, char *label, int length) {
+//
+//  int i;
+//  printf("%s:[", label);
+//  for (i = 0; i < length; i++) {
+//    printf("%d, ", v.i[i]);
+//  }
+//  printf("]\n");
+//}
+
+#endif
+
 #ifdef WITH_VECTORIZATION
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
@@ -256,6 +280,303 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
           &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
           div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
+    }
+
+    /* Reset interaction count. */
+    *icount = 0;
+  }
+}
+
+/**
+ * @brief Compute the vector remainder interactions from the secondary cache.
+ *
+ * @param int_cache (return) secondary #cache of interactions between two
+ * particles.
+ * @param icount Interaction count.
+ * @param rhoSum (return) #vector holding the cumulative sum of the density
+ * update on pi.
+ * @param rho_dhSum (return) #vector holding the cumulative sum of the density
+ * gradient update on pi.
+ * @param wcountSum (return) #vector holding the cumulative sum of the wcount
+ * update on pi.
+ * @param wcount_dhSum (return) #vector holding the cumulative sum of the wcount
+ * gradient update on pi.
+ * @param div_vSum (return) #vector holding the cumulative sum of the divergence
+ * update on pi.
+ * @param curlvxSum (return) #vector holding the cumulative sum of the curl of
+ * vx update on pi.
+ * @param curlvySum (return) #vector holding the cumulative sum of the curl of
+ * vy update on pi.
+ * @param curlvzSum (return) #vector holding the cumulative sum of the curl of
+ * vz update on pi.
+ * @param v_hi_inv #vector of 1/h for pi.
+ * @param v_vix #vector of x velocity of pi.
+ * @param v_viy #vector of y velocity of pi.
+ * @param v_viz #vector of z velocity of pi.
+ * @param icount_align (return) Interaction count after the remainder
+ * interactions have been performed, should be a multiple of the vector length.
+ */
+__attribute__((always_inline)) INLINE static void calcRemForceInteractions(
+    struct c2_cache *const int_cache, const int icount, vector *a_hydro_xSum,
+    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
+    vector *v_sigSum, vector *entropy_dtSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
+    vector v_rhoi, vector v_grad_hi, vector v_pOrhoi2, vector v_balsara_i, vector v_ci,
+    int *icount_align) {
+
+#ifdef HAVE_AVX512_F
+  KNL_MASK_16 knl_mask, knl_mask2;
+#endif
+  vector int_mask;//, int_mask2;
+
+  /* Work out the number of remainder interactions and pad secondary cache. */
+  *icount_align = icount;
+  int rem = icount % (1 * VEC_SIZE);
+  if (rem != 0) {
+    int pad = (1 * VEC_SIZE) - rem;
+    *icount_align += pad;
+
+/* Initialise masks to true. */
+#ifdef HAVE_AVX512_F
+    knl_mask = 0xFFFF;
+    knl_mask2 = 0xFFFF;
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
+#else
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    //int_mask2.m = vec_setint1(0xFFFFFFFF);
+#endif
+    /* Pad secondary cache so that there are no contributions in the interaction
+     * function. */
+    for (int i = icount; i < *icount_align; i++) {
+      int_cache->mq[i] = 0.f;
+      int_cache->r2q[i] = 1.f;
+      int_cache->dxq[i] = 0.f;
+      int_cache->dyq[i] = 0.f;
+      int_cache->dzq[i] = 0.f;
+      int_cache->vxq[i] = 0.f;
+      int_cache->vyq[i] = 0.f;
+      int_cache->vzq[i] = 0.f;
+      int_cache->rhoq[i] = 1.f;
+      int_cache->grad_hq[i] = 1.f;
+      int_cache->pOrho2q[i] = 1.f;
+      int_cache->balsaraq[i] = 1.f;
+      int_cache->soundspeedq[i] = 1.f;
+      int_cache->h_invq[i] = 1.f;
+    }
+
+    /* Zero parts of mask that represent the padded values.*/
+    if (pad < VEC_SIZE) {
+#ifdef HAVE_AVX512_F
+      knl_mask2 = knl_mask2 >> pad;
+#else
+      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask.i[i] = 0;
+#endif
+    } else {
+#ifdef HAVE_AVX512_F
+      knl_mask = knl_mask >> (VEC_SIZE - rem);
+      knl_mask2 = 0;
+#else
+      error("Pad should not be greater than VEC_SIZE.");
+      for (int i = rem; i < VEC_SIZE; i++) int_mask.i[i] = 0;
+      //int_mask2.v = vec_setzero();
+#endif
+    }
+
+    /* Perform remainder interaction and remove remainder from aligned
+     * interaction count. */
+    *icount_align = icount - rem;
+
+    vector r2, dx, dy, dz;
+    vector vjx, vjy, vjz, mj, rhoj, grad_hj, pOrhoj2, balsara_j, cj, hj_inv;
+    r2.v = vec_load(&int_cache->r2q[*icount_align]);
+    dx.v = vec_load(&int_cache->dxq[*icount_align]);
+    dy.v = vec_load(&int_cache->dyq[*icount_align]);
+    dz.v = vec_load(&int_cache->dzq[*icount_align]);
+    vjx.v = vec_load(&int_cache->vxq[*icount_align]);
+    vjy.v = vec_load(&int_cache->vyq[*icount_align]);
+    vjz.v = vec_load(&int_cache->vzq[*icount_align]);
+    mj.v = vec_load(&int_cache->mq[*icount_align]);
+    
+    rhoj.v = vec_load(&int_cache->rhoq[*icount_align]);
+    grad_hj.v = vec_load(&int_cache->grad_hq[*icount_align]);
+    balsara_j.v = vec_load(&int_cache->balsaraq[*icount_align]);
+    cj.v = vec_load(&int_cache->soundspeedq[*icount_align]);
+    hj_inv.v = vec_load(&int_cache->h_invq[*icount_align]);
+
+    runner_iact_nonsym_1_vec_force_2(
+        &r2, &dx, &dy, &dz, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+        &vjx, &vjy, &vjz, &rhoj, &grad_hj, &pOrhoj2, &balsara_j, &cj, &mj, v_hi_inv, hj_inv,
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask
+#ifdef HAVE_AVX512_F
+        ,knl_mask, knl_mask2);
+#else
+        );
+#endif
+  }
+}
+
+/**
+ * @brief Left-packs the values needed by an interaction into the secondary
+ * cache (Supports AVX, AVX2 and AVX512 instruction sets).
+ *
+ * @param mask Contains which particles need to interact.
+ * @param pjd Index of the particle to store into.
+ * @param v_r2 #vector of the separation between two particles squared.
+ * @param v_dx #vector of the x separation between two particles.
+ * @param v_dy #vector of the y separation between two particles.
+ * @param v_dz #vector of the z separation between two particles.
+ * @param v_mj #vector of the mass of particle pj.
+ * @param v_vjx #vector of x velocity of pj.
+ * @param v_vjy #vector of y velocity of pj.
+ * @param v_vjz #vector of z velocity of pj.
+ * @param cell_cache #cache of all particles in the cell.
+ * @param int_cache (return) secondary #cache of interactions between two
+ * particles.
+ * @param icount Interaction count.
+ * @param rhoSum #vector holding the cumulative sum of the density update on pi.
+ * @param rho_dhSum #vector holding the cumulative sum of the density gradient
+ * update on pi.
+ * @param wcountSum #vector holding the cumulative sum of the wcount update on
+ * pi.
+ * @param wcount_dhSum #vector holding the cumulative sum of the wcount gradient
+ * update on pi.
+ * @param div_vSum #vector holding the cumulative sum of the divergence update
+ * on pi.
+ * @param curlvxSum #vector holding the cumulative sum of the curl of vx update
+ * on pi.
+ * @param curlvySum #vector holding the cumulative sum of the curl of vy update
+ * on pi.
+ * @param curlvzSum #vector holding the cumulative sum of the curl of vz update
+ * on pi.
+ * @param v_hi_inv #vector of 1/h for pi.
+ * @param v_vix #vector of x velocity of pi.
+ * @param v_viy #vector of y velocity of pi.
+ * @param v_viz #vector of z velocity of pi.
+ */
+__attribute__((always_inline)) INLINE static void storeForceInteractions(
+    const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
+    vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz,
+    vector *v_rhoj, vector *v_grad_hj, vector *v_pOrhoj2, vector *v_balsara_j, vector *v_cj, vector *v_hj_inv,
+    const struct cache *const cell_cache, struct c2_cache *const int_cache,
+    int *icount, vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum,
+    vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci) {
+
+/* Left-pack values needed into the secondary cache using the interaction mask.
+ */
+#if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
+  int pack = 0;
+
+#ifdef HAVE_AVX512_F
+  pack += __builtin_popcount(mask);
+  VEC_LEFT_PACK(v_r2->v, mask, &int_cache->r2q[*icount]);
+  VEC_LEFT_PACK(v_dx->v, mask, &int_cache->dxq[*icount]);
+  VEC_LEFT_PACK(v_dy->v, mask, &int_cache->dyq[*icount]);
+  VEC_LEFT_PACK(v_dz->v, mask, &int_cache->dzq[*icount]);
+  VEC_LEFT_PACK(v_mj->v, mask, &int_cache->mq[*icount]);
+  VEC_LEFT_PACK(v_vjx->v, mask, &int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(v_vjy->v, mask, &int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(v_vjz->v, mask, &int_cache->vzq[*icount]);
+  
+  VEC_LEFT_PACK(v_rhoj->v, mask, &int_cache->rhoq[*icount]);
+  VEC_LEFT_PACK(v_grad_hj->v, mask, &int_cache->grad_hq[*icount]);
+  VEC_LEFT_PACK(v_pOrhoj2->v, mask, &int_cache->pOrho2q[*icount]);
+  VEC_LEFT_PACK(v_balsara_j->v, mask, &int_cache->balsaraq[*icount]);
+  VEC_LEFT_PACK(v_cj->v, mask, &int_cache->soundspeedq[*icount]);
+  VEC_LEFT_PACK(v_hj_inv->v, mask, &int_cache->h_invq[*icount]);
+#else
+  vector v_mask;
+  VEC_FORM_PACKED_MASK(mask, v_mask.m, pack);
+
+  VEC_LEFT_PACK(v_r2->v, v_mask.m, &int_cache->r2q[*icount]);
+  VEC_LEFT_PACK(v_dx->v, v_mask.m, &int_cache->dxq[*icount]);
+  VEC_LEFT_PACK(v_dy->v, v_mask.m, &int_cache->dyq[*icount]);
+  VEC_LEFT_PACK(v_dz->v, v_mask.m, &int_cache->dzq[*icount]);
+  VEC_LEFT_PACK(v_mj->v, v_mask.m, &int_cache->mq[*icount]);
+  VEC_LEFT_PACK(v_vjx->v, v_mask.m, &int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(v_vjy->v, v_mask.m, &int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(v_vjz->v, v_mask.m, &int_cache->vzq[*icount]);
+
+  VEC_LEFT_PACK(v_rhoj->v, v_mask.m, &int_cache->rhoq[*icount]);
+  VEC_LEFT_PACK(v_grad_hj->v, v_mask.m, &int_cache->grad_hq[*icount]);
+  VEC_LEFT_PACK(v_pOrhoj2->v, v_mask.m, &int_cache->pOrho2q[*icount]);
+  VEC_LEFT_PACK(v_balsara_j->v, v_mask.m, &int_cache->balsaraq[*icount]);
+  VEC_LEFT_PACK(v_cj->v, v_mask.m, &int_cache->soundspeedq[*icount]);
+  VEC_LEFT_PACK(v_hj_inv->v, v_mask.m, &int_cache->h_invq[*icount]);
+
+#endif /* HAVE_AVX512_F */
+
+  (*icount) += pack;
+#else
+  /* Quicker to do it serially in AVX rather than use intrinsics. */
+  for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+    if (mask & (1 << bit_index)) {
+      /* Add this interaction to the queue. */
+      int_cache->r2q[*icount] = v_r2->f[bit_index];
+      int_cache->dxq[*icount] = v_dx->f[bit_index];
+      int_cache->dyq[*icount] = v_dy->f[bit_index];
+      int_cache->dzq[*icount] = v_dz->f[bit_index];
+      int_cache->mq[*icount] = cell_cache->m[pjd + bit_index];
+      int_cache->vxq[*icount] = cell_cache->vx[pjd + bit_index];
+      int_cache->vyq[*icount] = cell_cache->vy[pjd + bit_index];
+      int_cache->vzq[*icount] = cell_cache->vz[pjd + bit_index];
+      
+      int_cache->rhoq[*icount] = cell_cache->rho[pjd + bit_index];
+      int_cache->grad_hq[*icount] = cell_cache->grad_h[pjd + bit_index];
+      int_cache->pOrho2q[*icount] = cell_cache->pOrho2[pjd + bit_index];
+      int_cache->balsaraq[*icount] = cell_cache->balsara[pjd + bit_index];
+      int_cache->soundspeedq[*icount] = cell_cache->soundspeed[pjd + bit_index];
+      int_cache->h_invq[*icount] = v_hj_inv->f[bit_index];
+
+      (*icount)++;
+    }
+  }
+
+#endif /* defined(HAVE_AVX2) || defined(HAVE_AVX512_F) */
+
+  /* Flush the c2 cache if it has reached capacity. */
+  if (*icount >= (C2_CACHE_SIZE - (1 * VEC_SIZE))) {
+
+    error("Flushing interaction cache...");
+
+    int icount_align = *icount;
+
+    /* Peform remainder interactions. */
+    calcRemForceInteractions(int_cache, *icount, a_hydro_xSum, a_hydro_ySum, a_hydro_zSum,
+                             h_dtSum, v_sigSum, entropy_dtSum, v_hi_inv,
+                             v_vix, v_viy, v_viz, *v_rhoi, *v_grad_hi, *v_pOrhoi2, *v_balsara_i, *v_ci,
+                             &icount_align);
+
+
+    vector int_mask;//, int_mask2;
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    //int_mask2.m = vec_setint1(0xFFFFFFFF);
+
+    /* Perform interactions. */
+    for (int pjd = 0; pjd < icount_align; pjd += (1 * VEC_SIZE)) {
+      vector r2, dx, dy, dz;
+      vector vjx, vjy, vjz, mj, rhoj, grad_hj, pOrhoj2, balsara_j, cj, hj_inv;
+      r2.v = vec_load(&int_cache->r2q[pjd]);
+      dx.v = vec_load(&int_cache->dxq[pjd]);
+      dy.v = vec_load(&int_cache->dyq[pjd]);
+      dz.v = vec_load(&int_cache->dzq[pjd]);
+      vjx.v = vec_load(&int_cache->vxq[pjd]);
+      vjy.v = vec_load(&int_cache->vyq[pjd]);
+      vjz.v = vec_load(&int_cache->vzq[pjd]);
+      mj.v = vec_load(&int_cache->mq[pjd]);
+      
+      rhoj.v = vec_load(&int_cache->rhoq[pjd]);
+      grad_hj.v = vec_load(&int_cache->grad_hq[pjd]);
+      balsara_j.v = vec_load(&int_cache->balsaraq[pjd]);
+      cj.v = vec_load(&int_cache->soundspeedq[pjd]);
+      hj_inv.v = vec_load(&int_cache->h_invq[pjd]);
+
+      runner_iact_nonsym_1_vec_force_2(
+        &r2, &dx, &dy, &dz, &v_vix, &v_viy, &v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
+        &vjx, &vjy, &vjz, &rhoj, &grad_hj, &pOrhoj2, &balsara_j, &cj, &mj, v_hi_inv, hj_inv,
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask);
+
     }
 
     /* Reset interaction count. */
@@ -967,6 +1288,777 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec_2(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_density);
+#endif /* WITH_VECTORIZATION */
+}
+
+/**
+ * @brief Compute the cell self-interaction (non-symmetric) using vector
+ * intrinsics with one particle pi at a time.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE void runner_doself2_force_vec(
+    struct runner *r, struct cell *restrict c) {
+
+#ifdef WITH_VECTORIZATION
+  //static int intCount = 0;
+  const struct engine *e = r->e;
+  int doi_mask;
+  struct part *restrict pi;
+  int count_align;
+  int num_vec_proc = 1;//NUM_VEC_PROC;
+
+  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+
+  vector v_hi, v_hig2, v_r2;
+
+  //TIMER_TIC
+
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->ci_cache;
+
+  if (cell_cache->count < count) {
+    cache_init(cell_cache, count);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(c, cell_cache);
+
+  /* Create secondary cache to store particle interactions. */
+  //struct c2_cache int_cache;
+  //int icount = 0, icount_align = 0;
+
+  /* Loop over the particles in the cell. */
+  for (int pid = 0; pid < count; pid++) {
+
+    /* Get a pointer to the ith particle. */
+    pi = &parts[pid];
+
+    /* Is the ith particle active? */
+    if (!part_is_active(pi, e)) continue;
+
+    vector pix, piy, piz;
+
+    const float hi = cell_cache->h[pid];
+
+    /* Fill particle pi vectors. */
+    pix.v = vec_set1(cell_cache->x[pid]);
+    piy.v = vec_set1(cell_cache->y[pid]);
+    piz.v = vec_set1(cell_cache->z[pid]);
+    v_hi.v = vec_set1(hi);
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    v_hig2.v = vec_set1(hig2);
+
+    /* Reset cumulative sums of update vectors. */
+    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum;
+
+    /* Get the inverse of hi. */
+    vector v_hi_inv;
+
+    v_hi_inv = vec_reciprocal(v_hi);
+
+    a_hydro_xSum.v = vec_setzero();
+    a_hydro_ySum.v = vec_setzero();
+    a_hydro_zSum.v = vec_setzero();
+    h_dtSum.v = vec_setzero();
+    v_sigSum.v = vec_set1(pi->force.v_sig);
+    entropy_dtSum.v = vec_setzero();
+
+    /* Pad cache if there is a serial remainder. */
+    count_align = count;
+    int rem = count % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = pix.f[0];
+        cell_cache->y[i] = piy.f[0];
+        cell_cache->z[i] = piz.f[0];
+      }
+    }
+
+    vector pjx, pjy, pjz;
+    //vector pjvx, pjvy, pjvz, mj;
+    vector hj, hjg2;
+    //vector pjx2, pjy2, pjz2;
+    //vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
+
+    for(int k=0; k<VEC_SIZE; k++)
+      piq[k] = pi;
+
+    /* Find all of particle pi's interacions and store needed values in the
+     * secondary cache.*/
+    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+
+      /* Load 2 sets of vectors from the particle cache. */
+      //pjx.v = vec_load(&cell_cache->x[pjd]);
+      //pjy.v = vec_load(&cell_cache->y[pjd]);
+      //pjz.v = vec_load(&cell_cache->z[pjd]);
+      //pjvx.v = vec_load(&cell_cache->vx[pjd]);
+      //pjvy.v = vec_load(&cell_cache->vy[pjd]);
+      //pjvz.v = vec_load(&cell_cache->vz[pjd]);
+      //mj.v = vec_load(&cell_cache->m[pjd]);
+    
+      hj.v = vec_load(&cell_cache->h[pjd]);
+      hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
+
+      //pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
+      //pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
+      //pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      //pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
+      //pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
+      //pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
+      //mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
+
+      //hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
+      //hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
+
+      vector v_hj_inv;
+
+      v_hj_inv = vec_reciprocal(hj);
+
+      /* Compute the pairwise distance. */
+      vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
+      //vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
+
+      v_dx_tmp.v = vec_sub(pix.v, pjx.v);
+      //v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
+      v_dy_tmp.v = vec_sub(piy.v, pjy.v);
+      //v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
+      v_dz_tmp.v = vec_sub(piz.v, pjz.v);
+      //v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
+
+      v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
+      //v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
+      v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
+
+/* Form a mask from r2 < hig2 and r2 > 0.*/
+#ifdef HAVE_AVX512_F
+      // KNL_MASK_16 doi_mask, doi_mask_check, doi_mask2, doi_mask2_check;
+      KNL_MASK_16 doi_mask_check, doi_mask2, doi_mask2_check;
+
+      doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
+      doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
+
+      doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+
+      doi_mask = doi_mask & doi_mask_check;
+      doi_mask2 = doi_mask2 & doi_mask2_check;
+
+#else
+      vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
+      //vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
+      //int doi_mask2;
+
+      /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
+      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      //v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      //v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      //v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, v_hjg2_2.v);
+
+      v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
+      
+      /* Combine two masks and form integer mask. */
+      doi_mask = vec_cmp_result(v_doi_mask.v);
+      //doi_mask2 = vec_cmp_result(vec_add(vec_and(v_doi_mask2.v, v_doi_mask2_check.v), v_doi_N3_mask2.v));
+      
+#endif /* HAVE_AVX512_F */
+
+      for(int k=0; k<VEC_SIZE; k++)
+        pjq[k] = &parts[pjd + k];
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask) {
+        for(int k=0; k<VEC_SIZE; k++) {
+          if( v_r2.f[k] == 0.f) v_r2.f[k] = 1.f;
+        }
+        
+        //intCount += __builtin_popcount(doi_mask);
+
+        runner_iact_nonsym_1_vec_force(&v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
+                          v_hi_inv, v_hj_inv, piq, pjq, 
+                          &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+                          &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
+      }
+      
+    }
+    
+    VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
+    VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
+    VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
+    VEC_HADD(h_dtSum, pi->force.h_dt);
+    /* TODO: Implement a horizontal max of a vector. */
+    for(int k=0; k<VEC_SIZE; k++)
+      pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
+    VEC_HADD(entropy_dtSum, pi->entropy_dt);
+    
+  } /* loop over all particles. */
+
+  //TIMER_TOC(timer_doself_force);
+#endif /* WITH_VECTORIZATION */
+}
+
+/**
+ * @brief Compute the cell self-interaction (non-symmetric) using vector
+ * intrinsics with one particle pi at a time.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
+    struct runner *r, struct cell *restrict c) {
+
+#ifdef WITH_VECTORIZATION
+  //static int intCount = 0;
+  const struct engine *e = r->e;
+  int doi_mask;
+  struct part *restrict pi;
+  int count_align;
+  int num_vec_proc = 1;//NUM_VEC_PROC;
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+
+  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
+  vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
+
+  //TIMER_TIC
+
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->ci_cache;
+
+  if (cell_cache->count < count) {
+    cache_init(cell_cache, count);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(c, cell_cache);
+
+  /* Create secondary cache to store particle interactions. */
+  //struct c2_cache int_cache;
+  //int icount = 0, icount_align = 0;
+
+  /* Loop over the particles in the cell. */
+  for (int pid = 0; pid < count; pid++) {
+
+    /* Get a pointer to the ith particle. */
+    pi = &parts[pid];
+
+    /* Is the ith particle active? */
+    if (!part_is_active(pi, e)) continue;
+
+    vector pix, piy, piz;
+
+    const float hi = cell_cache->h[pid];
+
+    /* Fill particle pi vectors. */
+    pix.v = vec_set1(cell_cache->x[pid]);
+    piy.v = vec_set1(cell_cache->y[pid]);
+    piz.v = vec_set1(cell_cache->z[pid]);
+    v_hi.v = vec_set1(hi);
+    v_vix.v = vec_set1(cell_cache->vx[pid]);
+    v_viy.v = vec_set1(cell_cache->vy[pid]);
+    v_viz.v = vec_set1(cell_cache->vz[pid]);
+    
+    v_rhoi.v = vec_set1(cell_cache->rho[pid]);
+    v_grad_hi.v = vec_set1(cell_cache->grad_h[pid]);
+    v_pOrhoi2.v = vec_set1(cell_cache->pOrho2[pid]);
+    v_balsara_i.v = vec_set1(cell_cache->balsara[pid]);
+    v_ci.v = vec_set1(cell_cache->soundspeed[pid]);
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    v_hig2.v = vec_set1(hig2);
+
+    /* Reset cumulative sums of update vectors. */
+    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum;
+
+    /* Get the inverse of hi. */
+    vector v_hi_inv;
+
+    v_hi_inv = vec_reciprocal(v_hi);
+
+    a_hydro_xSum.v = vec_setzero();
+    a_hydro_ySum.v = vec_setzero();
+    a_hydro_zSum.v = vec_setzero();
+    h_dtSum.v = vec_setzero();
+    v_sigSum.v = vec_set1(pi->force.v_sig);
+    entropy_dtSum.v = vec_setzero();
+
+    /* Pad cache if there is a serial remainder. */
+    count_align = count;
+    int rem = count % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = pix.f[0];
+        cell_cache->y[i] = piy.f[0];
+        cell_cache->z[i] = piz.f[0];
+      }
+    }
+
+    vector pjx, pjy, pjz;
+    vector pjvx, pjvy, pjvz, mj, hj, hjg2;
+    vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+    //vector pjx2, pjy2, pjz2;
+    //vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
+
+    /* Find all of particle pi's interacions and store needed values in the
+     * secondary cache.*/
+    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+
+      /* Load 2 sets of vectors from the particle cache. */
+      pjx.v = vec_load(&cell_cache->x[pjd]);
+      pjy.v = vec_load(&cell_cache->y[pjd]);
+      pjz.v = vec_load(&cell_cache->z[pjd]);
+      pjvx.v = vec_load(&cell_cache->vx[pjd]);
+      pjvy.v = vec_load(&cell_cache->vy[pjd]);
+      pjvz.v = vec_load(&cell_cache->vz[pjd]);
+      mj.v = vec_load(&cell_cache->m[pjd]);
+    
+      hj.v = vec_load(&cell_cache->h[pjd]);
+      hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
+
+      v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
+      v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
+      v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
+      v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
+      v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
+
+      //pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
+      //pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
+      //pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      //pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
+      //pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
+      //pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
+      //mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
+
+      //hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
+      //hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
+
+      vector v_hj_inv;
+
+      v_hj_inv = vec_reciprocal(hj);
+
+      /* Compute the pairwise distance. */
+      vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
+      //vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
+
+      v_dx_tmp.v = vec_sub(pix.v, pjx.v);
+      //v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
+      v_dy_tmp.v = vec_sub(piy.v, pjy.v);
+      //v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
+      v_dz_tmp.v = vec_sub(piz.v, pjz.v);
+      //v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
+
+      v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
+      //v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
+      v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
+
+/* Form a mask from r2 < hig2 and r2 > 0.*/
+#ifdef HAVE_AVX512_F
+      // KNL_MASK_16 doi_mask, doi_mask_check, doi_mask2, doi_mask2_check;
+      KNL_MASK_16 doi_mask_check, doi_mask2, doi_mask2_check;
+
+      doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
+      doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
+
+      doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+
+      doi_mask = doi_mask & doi_mask_check;
+      doi_mask2 = doi_mask2 & doi_mask2_check;
+
+#else
+      vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
+      //vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
+      //int doi_mask2;
+
+      /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
+      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      //v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      //v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      //v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, v_hjg2_2.v);
+
+      v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
+      
+      /* Combine two masks and form integer mask. */
+      doi_mask = vec_cmp_result(v_doi_mask.v);
+      //doi_mask2 = vec_cmp_result(vec_add(vec_and(v_doi_mask2.v, v_doi_mask2_check.v), v_doi_N3_mask2.v));
+      
+#endif /* HAVE_AVX512_F */
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask) {
+        for(int k=0; k<VEC_SIZE; k++) {
+          if( v_r2.f[k] == 0.f) v_r2.f[k] = 1.f;
+        }
+        
+        //intCount += __builtin_popcount(doi_mask);
+
+        runner_iact_nonsym_1_vec_force_2(&v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
+                          &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+                          &pjvx, &pjvy, &pjvz, &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj, &mj,
+                          v_hi_inv, v_hj_inv, 
+                          &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+                          &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
+      }
+      
+    }
+
+    
+    VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
+    VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
+    VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
+    VEC_HADD(h_dtSum, pi->force.h_dt);
+    /* TODO: Implement a horizontal max of a vector. */
+    for(int k=0; k<VEC_SIZE; k++)
+      pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
+    VEC_HADD(entropy_dtSum, pi->entropy_dt);
+    
+  } /* loop over all particles. */
+
+  //message("No. of force interactions: %d", intCount);
+  //TIMER_TOC(timer_doself_force);
+#endif /* WITH_VECTORIZATION */
+}
+
+/**
+ * @brief Compute the cell self-interaction (non-symmetric) using vector
+ * intrinsics with one particle pi at a time.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
+    struct runner *r, struct cell *restrict c) {
+
+#ifdef WITH_VECTORIZATION
+  static int intCount = 0;
+  const struct engine *e = r->e;
+  int doi_mask;
+  struct part *restrict pi;
+  int count_align;
+  int num_vec_proc = 1;//NUM_VEC_PROC;
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+
+  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
+  vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
+
+  //TIMER_TIC
+
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->ci_cache;
+
+  if (cell_cache->count < count) {
+    cache_init(cell_cache, count);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(c, cell_cache);
+
+  /* Create secondary cache to store particle interactions. */
+  struct c2_cache int_cache;
+  int icount = 0, icount_align = 0;
+
+  /* Loop over the particles in the cell. */
+  for (int pid = 0; pid < count; pid++) {
+
+    /* Get a pointer to the ith particle. */
+    pi = &parts[pid];
+
+    /* Is the ith particle active? */
+    if (!part_is_active(pi, e)) continue;
+
+    vector pix, piy, piz;
+
+    const float hi = cell_cache->h[pid];
+
+    /* Fill particle pi vectors. */
+    pix.v = vec_set1(cell_cache->x[pid]);
+    piy.v = vec_set1(cell_cache->y[pid]);
+    piz.v = vec_set1(cell_cache->z[pid]);
+    v_hi.v = vec_set1(hi);
+    v_vix.v = vec_set1(cell_cache->vx[pid]);
+    v_viy.v = vec_set1(cell_cache->vy[pid]);
+    v_viz.v = vec_set1(cell_cache->vz[pid]);
+    
+    v_rhoi.v = vec_set1(cell_cache->rho[pid]);
+    v_grad_hi.v = vec_set1(cell_cache->grad_h[pid]);
+    v_pOrhoi2.v = vec_set1(cell_cache->pOrho2[pid]);
+    v_balsara_i.v = vec_set1(cell_cache->balsara[pid]);
+    v_ci.v = vec_set1(cell_cache->soundspeed[pid]);
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    v_hig2.v = vec_set1(hig2);
+
+    /* Reset cumulative sums of update vectors. */
+    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum;
+
+    /* Get the inverse of hi. */
+    vector v_hi_inv;
+
+    v_hi_inv = vec_reciprocal(v_hi);
+
+    a_hydro_xSum.v = vec_setzero();
+    a_hydro_ySum.v = vec_setzero();
+    a_hydro_zSum.v = vec_setzero();
+    h_dtSum.v = vec_setzero();
+    v_sigSum.v = vec_set1(pi->force.v_sig);
+    entropy_dtSum.v = vec_setzero();
+
+    /* Pad cache if there is a serial remainder. */
+    count_align = count;
+    int rem = count % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = pix.f[0];
+        cell_cache->y[i] = piy.f[0];
+        cell_cache->z[i] = piz.f[0];
+      }
+    }
+
+    vector pjx, pjy, pjz;
+    vector pjvx, pjvy, pjvz, mj, hj, hjg2;
+    vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+    //vector pjx2, pjy2, pjz2;
+    //vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
+
+    /* Find all of particle pi's interacions and store needed values in the
+     * secondary cache.*/
+    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+
+      /* Load 2 sets of vectors from the particle cache. */
+      pjx.v = vec_load(&cell_cache->x[pjd]);
+      pjy.v = vec_load(&cell_cache->y[pjd]);
+      pjz.v = vec_load(&cell_cache->z[pjd]);
+      pjvx.v = vec_load(&cell_cache->vx[pjd]);
+      pjvy.v = vec_load(&cell_cache->vy[pjd]);
+      pjvz.v = vec_load(&cell_cache->vz[pjd]);
+      mj.v = vec_load(&cell_cache->m[pjd]);
+    
+      hj.v = vec_load(&cell_cache->h[pjd]);
+      hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
+
+      v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
+      v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
+      v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
+      v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
+      v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
+
+      //pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
+      //pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
+      //pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      //pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
+      //pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
+      //pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
+      //mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
+
+      //hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
+      //hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
+
+      vector v_hj_inv;
+
+      v_hj_inv = vec_reciprocal(hj);
+
+      /* Compute the pairwise distance. */
+      vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
+      //vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
+
+      v_dx_tmp.v = vec_sub(pix.v, pjx.v);
+      //v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
+      v_dy_tmp.v = vec_sub(piy.v, pjy.v);
+      //v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
+      v_dz_tmp.v = vec_sub(piz.v, pjz.v);
+      //v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
+
+      v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
+      //v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
+      v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
+      //v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
+
+/* Form a mask from r2 < hig2 and r2 > 0.*/
+#ifdef HAVE_AVX512_F
+      // KNL_MASK_16 doi_mask, doi_mask_check, doi_mask2, doi_mask2_check;
+      KNL_MASK_16 doi_mask_check, doi_mask2, doi_mask2_check;
+
+      doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
+      doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
+
+      doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+
+      doi_mask = doi_mask & doi_mask_check;
+      doi_mask2 = doi_mask2 & doi_mask2_check;
+
+#else
+      vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
+      //vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
+      //int doi_mask2;
+
+      /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
+      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      //v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      //v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      //v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, v_hjg2_2.v);
+
+      v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
+      
+      /* Combine two masks and form integer mask. */
+      doi_mask = vec_cmp_result(v_doi_mask.v);
+      //doi_mask2 = vec_cmp_result(vec_add(vec_and(v_doi_mask2.v, v_doi_mask2_check.v), v_doi_N3_mask2.v));
+      
+#endif /* HAVE_AVX512_F */
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask) {
+        
+        //for(int k=0; k<VEC_SIZE; k++) {
+        //  if( v_r2.f[k] == 0.f) v_r2.f[k] = 1.f;
+        //}
+        storeForceInteractions(doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
+                          &mj, &pjvx, &pjvy, &pjvz, &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj, &v_hj_inv, cell_cache, &int_cache,
+                          &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+                          &h_dtSum, &v_sigSum, &entropy_dtSum,
+                          v_hi_inv, v_vix, v_viy, v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
+      }
+
+    } /* Loop over all other particles. */
+
+    //printFloatVector(a_hydro_xSum,"a_hydro_xSum before rem",8);
+    /* Perform padded vector remainder interactions if any are present. */
+    calcRemForceInteractions(&int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+                             &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv,
+                             v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
+                             &icount_align);
+    //printFloatVector(a_hydro_xSum,"a_hydro_xSum after rem",8);
+
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    vector int_mask;//, int_mask2;
+#ifdef HAVE_AVX512_F
+    KNL_MASK_16 knl_mask = 0xFFFF;
+    KNL_MASK_16 knl_mask2 = 0xFFFF;
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
+#else
+    int_mask.m = vec_setint1(0xFFFFFFFF);
+    //int_mask2.m = vec_setint1(0xFFFFFFFF);
+#endif
+
+    /* Perform interaction with 2 vectors. */
+    for (int pjd = 0; pjd < icount_align; pjd += (1 * VEC_SIZE)) {
+      
+      vector r2, dx, dy, dz;
+      
+      vector vjx, vjy, vjz, mj, rhoj, grad_hj, pOrhoj2, balsara_j, cj, hj_inv;
+      
+      r2.v = vec_load(&int_cache.r2q[pjd]);
+      dx.v = vec_load(&int_cache.dxq[pjd]);
+      dy.v = vec_load(&int_cache.dyq[pjd]);
+      dz.v = vec_load(&int_cache.dzq[pjd]);
+
+      vjx.v = vec_load(&int_cache.vxq[pjd]);
+      vjy.v = vec_load(&int_cache.vyq[pjd]);
+      vjz.v = vec_load(&int_cache.vzq[pjd]);
+      mj.v = vec_load(&int_cache.mq[pjd]);
+      
+      rhoj.v = vec_load(&int_cache.rhoq[pjd]);
+      grad_hj.v = vec_load(&int_cache.grad_hq[pjd]);
+      pOrhoj2.v = vec_load(&int_cache.pOrho2q[pjd]);
+      balsara_j.v = vec_load(&int_cache.balsaraq[pjd]);
+      cj.v = vec_load(&int_cache.soundspeedq[pjd]);
+      hj_inv.v = vec_load(&int_cache.h_invq[pjd]);
+
+      runner_iact_nonsym_1_vec_force_2(
+        &r2, &dx, &dy, &dz, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+        &vjx, &vjy, &vjz, &rhoj, &grad_hj, &pOrhoj2, &balsara_j, &cj, &mj, v_hi_inv, hj_inv,
+        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask
+#ifdef HAVE_AVX512_F
+          knl_mask, knl_mask2);
+#else
+          );
+#endif
+    }
+    
+    VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
+    VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
+    VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
+    VEC_HADD(h_dtSum, pi->force.h_dt);
+    /* TODO: Implement a horizontal max of a vector. */
+    for(int k=0; k<VEC_SIZE; k++)
+      pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
+    VEC_HADD(entropy_dtSum, pi->entropy_dt);
+
+    intCount += icount;
+
+    message("No. of interactions for particle %lld: %d", pi->id, icount);
+    /* Reset interaction count. */
+    icount = 0;
+  } /* loop over all particles. */
+
+  message("No. of force interactions: %d", intCount);
+  //TIMER_TOC(timer_doself_force);
 #endif /* WITH_VECTORIZATION */
 }
 
