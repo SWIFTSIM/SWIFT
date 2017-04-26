@@ -1626,7 +1626,7 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                   m_a->M_010 * D_021(dx, dy, dz, r_inv) +
                   m_a->M_001 * D_012(dx, dy, dz, r_inv);
 
-    /*  3rd order multipole term (addition to rank 2)*/
+    /*  3rd order multipole term (addition to rank 3)*/
     l_b->F_300 += m_a->M_000 * D_300(dx, dy, dz, r_inv);
     l_b->F_030 += m_a->M_000 * D_030(dx, dy, dz, r_inv);
     l_b->F_003 += m_a->M_000 * D_003(dx, dy, dz, r_inv);
@@ -2151,7 +2151,7 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                   m_a->M_010 * D_soft_021(dx, dy, dz, r, eps_inv) +
                   m_a->M_001 * D_soft_012(dx, dy, dz, r, eps_inv);
 
-    /*  3rd order multipole term (addition to rank 2)*/
+    /*  3rd order multipole term (addition to rank 3)*/
     l_b->F_300 += m_a->M_000 * D_soft_300(dx, dy, dz, r, eps_inv);
     l_b->F_030 += m_a->M_000 * D_soft_030(dx, dy, dz, r, eps_inv);
     l_b->F_003 += m_a->M_000 * D_soft_003(dx, dy, dz, r, eps_inv);
