@@ -2528,10 +2528,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        /* Drift both cells, the foreign one at the level which it is sent. */
         if (l->t->ci->drift)
           scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
+        scheduler_activate(s, cj->drift);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2564,10 +2566,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
+        /* Drift both cells, the foreign one at the level which it is sent. */
         if (l->t->ci->drift)
           scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
+        scheduler_activate(s, ci->drift);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
