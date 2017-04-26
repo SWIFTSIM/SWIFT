@@ -2533,7 +2533,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
-        scheduler_activate(s, cj->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, cj->drift);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2571,7 +2571,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
-        scheduler_activate(s, ci->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, ci->drift);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
