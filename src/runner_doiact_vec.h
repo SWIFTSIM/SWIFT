@@ -35,6 +35,9 @@
 
 /* Function prototypes. */
 void runner_doself1_density_vec(struct runner *r, struct cell *restrict c);
+void runner_doself2_force_vec(struct runner *r, struct cell *restrict c);
+void runner_doself2_force_vec_2(struct runner *r, struct cell *restrict c);
+void runner_doself2_force_vec_3(struct runner *r, struct cell *restrict c);
 void runner_doself1_density_vec_2(struct runner *r, struct cell *restrict c);
 void runner_dopair1_density_vec(struct runner *r, struct cell *restrict ci,
                                 struct cell *restrict cj);
