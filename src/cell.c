@@ -1494,11 +1494,6 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
-#ifdef SWIFT_DEBUG_CHECKS
-      if (p->density.wcount == 0.)
-        error("Attempting to drift a particle that has been initialised");
-#endif
-
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
