@@ -30,6 +30,19 @@
 /* Local headers. */
 #include "swift.h"
 
+#if defined(WITH_VECTORIZATION)
+#define DOSELF2 runner_doself2_force_vec_2
+#define DOPAIR2 runner_dopair2_density_vec
+#define DOSELF2_NAME "runner_doself2_force_vec_3"
+#define DOPAIR2_NAME "runner_dopair2_force_vec"
+#endif
+
+#ifndef DOSELF2
+#define DOSELF2 runner_doself2_force
+#define DOSELF2_NAME "runner_doself2_density"
+#define DOPAIR2_NAME "runner_dopair2_force"
+#endif
+
 enum velocity_field {
   velocity_zero,
   velocity_const,
@@ -421,6 +434,9 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
+void runner_doself2_force_vec(struct runner *r, struct cell *ci);
+void runner_doself2_force_vec_2(struct runner *r, struct cell *ci);
+void runner_doself2_force_vec_3(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -495,6 +511,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("DOSELF2 function called: %s", DOSELF2_NAME);
+  message("DOPAIR2 function called: %s", DOPAIR2_NAME);
   message("Adiabatic index: ga = %f", hydro_gamma);
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
@@ -578,6 +596,7 @@ int main(int argc, char *argv[]) {
 
   /* Start the test */
   ticks time = 0;
+  ticks self_force_time = 0;
   for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
@@ -651,8 +670,18 @@ int main(int argc, char *argv[]) {
       }
     }
 
+/* Initialise the cache. */
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+
     /* And now the self-interaction for the main cell */
-    runner_doself2_force(&runner, main_cell);
+    //runner_doself2_force(&runner, main_cell);
+    
+    ticks self_tic = getticks();
+
+    DOSELF2(&runner, main_cell);
+
+    self_force_time += getticks() - self_tic;
 #endif
 
     /* Finally, give a gentle kick */
@@ -671,6 +700,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Output timing */
+  message("Self calculations took       : %15lli ticks.", self_force_time / runs);
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)
