@@ -152,6 +152,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
+  cell->dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -162,6 +163,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
+  cell->ti_sort = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -397,7 +399,10 @@ int main(int argc, char *argv[]) {
 
   /* Build the infrastructure */
   struct space space;
-  space.periodic = 0;
+  space.periodic = 1;
+  space.dim[0] = 3.;
+  space.dim[1] = 3.;
+  space.dim[2] = 3.;
 
   struct engine engine;
   engine.s = &space;
@@ -418,6 +423,8 @@ int main(int argc, char *argv[]) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
                                              &partId, perturbation, vel);
+
+        runner_do_drift_particles(&runner, cells[i * 9 + j * 3 + k], 0);
 
         runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
       }
