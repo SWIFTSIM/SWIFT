@@ -924,7 +924,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
+        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
       error("particle shift diff exceeds dx_max_sort.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
