@@ -322,18 +322,18 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     vector *v_sigSum, vector *entropy_dtSum,
     vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
     vector v_rhoi, vector v_grad_hi, vector v_pOrhoi2, vector v_balsara_i, vector v_ci,
-    int *icount_align) {
+    int *icount_align, int num_vec_proc) {
 
 #ifdef HAVE_AVX512_F
   KNL_MASK_16 knl_mask, knl_mask2;
 #endif
-  vector int_mask;//, int_mask2;
+  vector int_mask, int_mask2;
 
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
-  int rem = icount % (1 * VEC_SIZE);
+  int rem = icount % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
-    int pad = (1 * VEC_SIZE) - rem;
+    int pad = (num_vec_proc * VEC_SIZE) - rem;
     *icount_align += pad;
 
 /* Initialise masks to true. */
@@ -344,7 +344,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     int_mask2.m = vec_setint1(0xFFFFFFFF);
 #else
     int_mask.m = vec_setint1(0xFFFFFFFF);
-    //int_mask2.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
 #endif
     /* Pad secondary cache so that there are no contributions in the interaction
      * function. */
@@ -370,16 +370,15 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
 #ifdef HAVE_AVX512_F
       knl_mask2 = knl_mask2 >> pad;
 #else
-      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask.i[i] = 0;
+      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask2.i[i] = 0;
 #endif
     } else {
 #ifdef HAVE_AVX512_F
       knl_mask = knl_mask >> (VEC_SIZE - rem);
       knl_mask2 = 0;
 #else
-      error("Pad should not be greater than VEC_SIZE.");
       for (int i = rem; i < VEC_SIZE; i++) int_mask.i[i] = 0;
-      //int_mask2.v = vec_setzero();
+      int_mask2.v = vec_setzero();
 #endif
     }
 
@@ -387,28 +386,10 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
      * interaction count. */
     *icount_align = icount - rem;
 
-    vector r2, dx, dy, dz;
-    vector vjx, vjy, vjz, mj, rhoj, grad_hj, pOrhoj2, balsara_j, cj, hj_inv;
-    r2.v = vec_load(&int_cache->r2q[*icount_align]);
-    dx.v = vec_load(&int_cache->dxq[*icount_align]);
-    dy.v = vec_load(&int_cache->dyq[*icount_align]);
-    dz.v = vec_load(&int_cache->dzq[*icount_align]);
-    vjx.v = vec_load(&int_cache->vxq[*icount_align]);
-    vjy.v = vec_load(&int_cache->vyq[*icount_align]);
-    vjz.v = vec_load(&int_cache->vzq[*icount_align]);
-    mj.v = vec_load(&int_cache->mq[*icount_align]);
-    
-    rhoj.v = vec_load(&int_cache->rhoq[*icount_align]);
-    grad_hj.v = vec_load(&int_cache->grad_hq[*icount_align]);
-    pOrhoj2.v = vec_load(&int_cache->pOrho2q[*icount_align]);
-    balsara_j.v = vec_load(&int_cache->balsaraq[*icount_align]);
-    cj.v = vec_load(&int_cache->soundspeedq[*icount_align]);
-    hj_inv.v = vec_load(&int_cache->h_invq[*icount_align]);
-
-    runner_iact_nonsym_1_vec_force_2(
-        &r2, &dx, &dy, &dz, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
-        &vjx, &vjy, &vjz, &rhoj, &grad_hj, &pOrhoj2, &balsara_j, &cj, &mj, v_hi_inv, hj_inv,
-        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask
+    runner_iact_nonsym_2_vec_force(
+        &int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+        &int_cache->vxq[*icount_align], &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align], &int_cache->rhoq[*icount_align], &int_cache->grad_hq[*icount_align], &int_cache->pOrho2q[*icount_align], &int_cache->balsaraq[*icount_align], &int_cache->soundspeedq[*icount_align], &int_cache->mq[*icount_align], v_hi_inv, &int_cache->h_invq[*icount_align],
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2
 #ifdef HAVE_AVX512_F
         ,knl_mask, knl_mask2);
 #else
@@ -547,7 +528,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
     calcRemForceInteractions(int_cache, *icount, a_hydro_xSum, a_hydro_ySum, a_hydro_zSum,
                              h_dtSum, v_sigSum, entropy_dtSum, v_hi_inv,
                              v_vix, v_viy, v_viz, *v_rhoi, *v_grad_hi, *v_pOrhoi2, *v_balsara_i, *v_ci,
-                             &icount_align);
+                             &icount_align, 1);
 
 
     vector int_mask;//, int_mask2;
@@ -1991,12 +1972,12 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
     calcRemForceInteractions(&int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                              &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv,
                              v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
-                             &icount_align);
+                             &icount_align, 2);
     //printFloatVector(a_hydro_xSum,"a_hydro_xSum after rem",8);
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
-    vector int_mask;//, int_mask2;
+    vector int_mask, int_mask2;
 #ifdef HAVE_AVX512_F
     KNL_MASK_16 knl_mask = 0xFFFF;
     KNL_MASK_16 knl_mask2 = 0xFFFF;
@@ -2008,12 +1989,12 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 #endif
 
     /* Perform interaction with 2 vectors. */
-    for (int pjd = 0; pjd < icount_align; pjd += (1 * VEC_SIZE)) {
+    for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
       
           runner_iact_nonsym_2_vec_force(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
         &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], v_hi_inv, &int_cache.h_invq[pjd],
-        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask
+        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask, int_mask2
 #ifdef HAVE_AVX512_F
           knl_mask, knl_mask2);
 #else
