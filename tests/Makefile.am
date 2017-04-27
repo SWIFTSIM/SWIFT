@@ -15,8 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) -DTIMER
-
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS)
 

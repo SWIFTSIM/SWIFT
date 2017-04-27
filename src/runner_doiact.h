@@ -255,7 +255,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-// error("Don't use in actual runs ! Slow code !");
+  error("Don't use in actual runs ! Slow code !");
 #endif
 
 #ifdef WITH_OLD_VECTORIZATION
@@ -562,7 +562,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-  TIMER_TOC(timer_dopair_subset);
+  TIMER_TOC(timer_dopair_subset_naive);
 }
 
 /**
@@ -857,7 +857,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-  TIMER_TOC(timer_dopair_subset);
+  TIMER_TOC(timer_doself_subset);
 }
 
 /**
@@ -3179,5 +3179,5 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
+  if (gettimer) TIMER_TOC(timer_dosub_subset);
 }

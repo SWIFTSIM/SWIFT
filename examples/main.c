@@ -610,35 +610,25 @@ int main(int argc, char *argv[]) {
   engine_dump_snapshot(&e);
 
   /* Legend */
-  if (myrank == 0) {
+  if (myrank == 0)
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
 
-    if (with_verbose_timers) {
-      printf("timers: ");
-      for (int k = 0; k < timer_count; k++) printf("%s\t", timers_names[k]);
-      printf("\n");
-    }
-  }
+  /* File for the timers */
+  if (with_verbose_timers) timers_open_file();
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
 
     /* Reset timers */
-    timers_reset(timers_mask_all);
+    timers_reset_all();
 
     /* Take a step. */
     engine_step(&e);
 
     /* Print the timers. */
-    if (with_verbose_timers) {
-      printf("timers: ");
-      for (int k = 0; k < timer_count; k++)
-        printf("%.3f\t", clocks_from_ticks(timers[k]));
-      printf("\n");
-      timers_reset(timers_mask_all);
-    }
+    if (with_verbose_timers) timers_print(e.step);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
@@ -744,6 +734,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Clean everything */
+  if (with_verbose_timers) timers_close_file();
   engine_clean(&e);
   free(params);
 

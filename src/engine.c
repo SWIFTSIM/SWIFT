@@ -2742,7 +2742,8 @@ void engine_rebuild(struct engine *e) {
  */
 void engine_prepare(struct engine *e) {
 
-  TIMER_TIC;
+  TIMER_TIC2;
+  const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
@@ -2769,7 +2770,7 @@ void engine_prepare(struct engine *e) {
   }
   e->tasks_age += 1;
 
-  TIMER_TOC(timer_prepare);
+  TIMER_TOC2(timer_prepare);
 
   if (e->verbose)
     message("took %.3f %s (including unskip and reweight).",
