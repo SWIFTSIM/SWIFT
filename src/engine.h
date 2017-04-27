@@ -66,9 +66,10 @@ enum engine_policy {
   engine_policy_external_gravity = (1 << 9),
   engine_policy_cosmology = (1 << 10),
   engine_policy_drift_all = (1 << 11),
-  engine_policy_cooling = (1 << 12),
-  engine_policy_sourceterms = (1 << 13),
-  engine_policy_stars = (1 << 14)
+  engine_policy_reconstruct_mpoles = (1 << 12),
+  engine_policy_cooling = (1 << 13),
+  engine_policy_sourceterms = (1 << 14),
+  engine_policy_stars = (1 << 15)
 };
 
 extern const char *engine_policy_names[];
@@ -256,6 +257,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
+void engine_reconstruct_multipoles(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,

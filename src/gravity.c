@@ -32,6 +32,13 @@
 #include "error.h"
 #include "version.h"
 
+struct exact_force_data {
+  const struct engine *e;
+  const struct space *s;
+  int counter_global;
+  double const_G;
+};
+
 /**
  * @brief Checks whether the file containing the exact accelerations for
  * the current choice of parameters already exists.
@@ -83,32 +90,23 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 }
 
 /**
- * @brief Run a brute-force gravity calculation for a subset of particles.
- *
- * All gpart with ID modulo SWIFT_GRAVITY_FORCE_CHECKS will get their forces
- * computed.
- *
- * @param s The #space to use.
- * @param e The #engine (to access the current time).
+ * @brief Mapper function for the exact gravity calculation.
  */
-void gravity_exact_force_compute(struct space *s, const struct engine *e) {
-
+void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
+                                        void *extra_data) {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  const ticks tic = getticks();
-  const double const_G = e->physical_constants->const_newton_G;
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct exact_force_data *data = (struct exact_force_data *)extra_data;
+  const struct space *s = data->s;
+  const struct engine *e = data->e;
+  const double const_G = data->const_G;
   int counter = 0;
 
-  /* Let's start by checking whether we already computed these forces */
-  if (gravity_exact_force_file_exits(e)) {
-    message("Exact accelerations already computed. Skipping calculation.");
-    return;
-  }
+  for (int i = 0; i < nr_gparts; ++i) {
 
-  /* No matching file present ? Do it then */
-  for (size_t i = 0; i < s->nr_gparts; ++i) {
-
-    struct gpart *gpi = &s->gparts[i];
+    struct gpart *gpi = &gparts[i];
 
     /* Is the particle active and part of the subset to be tested ? */
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
@@ -118,12 +116,12 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
       double a_grav[3] = {0., 0., 0.};
 
       /* Interact it with all other particles in the space.*/
-      for (size_t j = 0; j < s->nr_gparts; ++j) {
-
-        /* No self interaction */
-        if (i == j) continue;
+      for (int j = 0; j < (int)s->nr_gparts; ++j) {
 
         struct gpart *gpj = &s->gparts[j];
+
+        /* No self interaction */
+        if (gpi == gpj) continue;
 
         /* Compute the pairwise distance. */
         const double dx[3] = {gpi->x[0] - gpj->x[0],   // x
@@ -173,9 +171,47 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
       counter++;
     }
   }
+  atomic_add(&data->counter_global, counter);
 
-  message("Computed exact gravity for %d gparts (took %.3f %s). ", counter,
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("Gravity checking function called without the corresponding flag.");
+#endif
+}
+
+/**
+ * @brief Run a brute-force gravity calculation for a subset of particles.
+ *
+ * All gpart with ID modulo SWIFT_GRAVITY_FORCE_CHECKS will get their forces
+ * computed.
+ *
+ * @param s The #space to use.
+ * @param e The #engine (to access the current time).
+ */
+void gravity_exact_force_compute(struct space *s, const struct engine *e) {
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  const ticks tic = getticks();
+
+  /* Let's start by checking whether we already computed these forces */
+  if (gravity_exact_force_file_exits(e)) {
+    message("Exact accelerations already computed. Skipping calculation.");
+    return;
+  }
+
+  /* No matching file present ? Do it then */
+  struct exact_force_data data;
+  data.e = e;
+  data.s = s;
+  data.counter_global = 0;
+  data.const_G = e->physical_constants->const_newton_G;
+
+  threadpool_map(&s->e->threadpool, gravity_exact_force_compute_mapper,
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
+
+  message("Computed exact gravity for %d gparts (took %.3f %s). ",
+          data.counter_global, clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 
 #else
   error("Gravity checking function called without the corresponding flag.");

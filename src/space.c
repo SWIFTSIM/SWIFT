@@ -206,11 +206,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->force = NULL;
     c->grav = NULL;
     c->dx_max = 0.0f;
+    c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
     c->gcount = 0;
     c->scount = 0;
-    c->init = NULL;
     c->init_grav = NULL;
     c->extra_ghost = NULL;
     c->ghost = NULL;
@@ -2027,6 +2027,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->split = 0;
       cp->h_max = 0.0;
       cp->dx_max = 0.f;
+      cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
@@ -2091,8 +2092,7 @@ void space_split_recursive(struct space *s, struct cell *c,
           const struct multipole *m = &cp->multipole->m_pole;
 
           /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
-                      s->periodic);
+          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
           gravity_multipole_add(&c->multipole->m_pole, &temp);
 
           /* Upper limit of max CoM<->gpart distance */
@@ -2116,6 +2116,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+      c->multipole->r_max_rebuild = c->multipole->r_max;
+      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
     } /* Deal with gravity */
   }
 
@@ -2194,6 +2198,10 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
         c->multipole->r_max = 0.;
       }
+      c->multipole->r_max_rebuild = c->multipole->r_max;
+      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
     }
   }
 

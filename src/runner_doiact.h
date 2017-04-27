@@ -50,8 +50,11 @@
 #define _DOPAIR_SUBSET_NAIVE(f) PASTE(runner_dopair_subset_naive, f)
 #define DOPAIR_SUBSET_NAIVE _DOPAIR_SUBSET_NAIVE(FUNCTION)
 
-#define _DOPAIR_NAIVE(f) PASTE(runner_dopair_naive, f)
-#define DOPAIR_NAIVE _DOPAIR_NAIVE(FUNCTION)
+#define _DOPAIR1_NAIVE(f) PASTE(runner_dopair1_naive, f)
+#define DOPAIR1_NAIVE _DOPAIR1_NAIVE(FUNCTION)
+
+#define _DOPAIR2_NAIVE(f) PASTE(runner_dopair2_naive, f)
+#define DOPAIR2_NAIVE _DOPAIR2_NAIVE(FUNCTION)
 
 #define _DOSELF_NAIVE(f) PASTE(runner_doself_naive, f)
 #define DOSELF_NAIVE _DOSELF_NAIVE(FUNCTION)
@@ -110,21 +113,153 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-#include "runner_doiact_nosort.h"
-
 /**
- * @brief Compute the interactions between a cell pair.
+ * @brief Compute the interactions between a cell pair (non-symmetric).
  *
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
-                  struct cell *restrict cj) {
+void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
+                   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
+#ifndef SWIFT_DEBUG_CHECKS
   error("Don't use in actual runs ! Slow code !");
+#endif
+
+#ifdef WITH_VECTORIZATION
+  int icount = 0;
+  float r2q[VEC_SIZE] __attribute__((aligned(16)));
+  float hiq[VEC_SIZE] __attribute__((aligned(16)));
+  float hjq[VEC_SIZE] __attribute__((aligned(16)));
+  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
+  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+#endif
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+  /* Loop over the parts in ci. */
+  for (int pid = 0; pid < count_i; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct part *restrict pi = &parts_i[pid];
+    const float hi = pi->h;
+
+    double pix[3];
+    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      for (int k = 0; k < 3; k++) {
+        dx[k] = pix[k] - pj->x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+#ifndef WITH_VECTORIZATION
+
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = dx[0];
+        dxq[3 * icount + 1] = dx[1];
+        dxq[3 * icount + 2] = dx[2];
+        hiq[icount] = hi;
+        hjq[icount] = pj->h;
+        piq[icount] = pi;
+        pjq[icount] = pj;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+      if (r2 < pj->h * pj->h * kernel_gamma2) {
+
+#ifndef WITH_VECTORIZATION
+
+        for (int k = 0; k < 3; k++) dx[k] = -dx[k];
+        IACT_NONSYM(r2, dx, pj->h, hi, pj, pi);
+
+#else
+
+        /* Add this interaction to the queue. */
+        r2q[icount] = r2;
+        dxq[3 * icount + 0] = -dx[0];
+        dxq[3 * icount + 1] = -dx[1];
+        dxq[3 * icount + 2] = -dx[2];
+        hiq[icount] = pj->h;
+        hjq[icount] = hi;
+        piq[icount] = pj;
+        pjq[icount] = pi;
+        icount += 1;
+
+        /* Flush? */
+        if (icount == VEC_SIZE) {
+          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
+          icount = 0;
+        }
+
+#endif
+      }
+
+    } /* loop over the parts in cj. */
+
+  } /* loop over the parts in ci. */
+
+#ifdef WITH_VECTORIZATION
+  /* Pick up any leftovers. */
+  if (icount > 0)
+    for (int k = 0; k < icount; k++)
+      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
+#endif
+
+  TIMER_TOC(TIMER_DOPAIR);
+}
+
+void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
+                   struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+#ifndef SWIFT_DEBUG_CHECKS
+// error("Don't use in actual runs ! Slow code !");
+#endif
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
@@ -225,7 +360,9 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
+#ifndef SWIFT_DEBUG_CHECKS
   error("Don't use in actual runs ! Slow code !");
+#endif
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
@@ -325,9 +462,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct part *restrict parts_i, int *restrict ind,
                          int count, struct cell *restrict cj) {
 
-  struct engine *e = r->e;
-
-  error("Don't use in actual runs ! Slow code !");
+  const struct engine *e = r->e;
 
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
@@ -362,6 +497,12 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!part_is_active(pi, e))
+      error("Trying to correct smoothing length of inactive particle !");
+
+#endif
+
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -375,6 +516,14 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[k] = pix[k] - pj->x[k];
         r2 += dx[k] * dx[k];
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pi->ti_drift != e->ti_current)
+        error("Particle pi not drifted to current time");
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
 
       /* Hit or miss? */
       if (r2 < hig2) {
@@ -436,13 +585,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   struct engine *e = r->e;
 
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR_SUBSET_NOSORT(r, ci, parts_i, ind, count, cj);
-    return;
-  }
-#endif
-
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -478,11 +620,15 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid))) error("Trying to interact unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort > space_maxreldx * cj->dmin) {
+    DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
+    return;
+  }
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
-  const float dxj = cj->dx_max;
+  const float dxj = cj->dx_max_sort;
 
   /* Parts are on the left? */
   if (!flipped) {
@@ -728,13 +874,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR1_NOSORT(r, ci, cj);
-    return;
-  }
-#endif
-
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -749,16 +888,18 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+    error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -767,6 +908,29 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
+        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
   const double hi_max = ci->h_max * kernel_gamma - rshift;
@@ -777,7 +941,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max + cj->dx_max);
+  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   if (cell_is_active(ci, e)) {
 
@@ -948,13 +1112,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
 
-#ifdef WITH_MPI
-  if (ci->nodeID != cj->nodeID) {
-    DOPAIR2_NOSORT(r, ci, cj);
-    return;
-  }
-#endif
-
 #ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
@@ -975,16 +1132,18 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) error("Cell ci not drifted");
-  if (!cell_is_drifted(cj, e)) error("Cell cj not drifted");
+  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+    error("Interacting undrifted cells.");
 
   /* Get the shift ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1003,7 +1162,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const double dx_max = (ci->dx_max + cj->dx_max);
+  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   /* Collect the number of parts left and right below dt. */
   int countdt_i = 0, countdt_j = 0;
@@ -1400,7 +1559,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+  if (!cell_is_drifted(c, e)) error("Interacting undrifted cell.");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1876,7 +2035,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+              cj->dx_max_sort <
           h / 2) {
 
     /* Different types of flags. */
@@ -2080,9 +2240,17 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
+    /* Make sure both cells are drifted to the current timestep. */
+    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+    if (!(ci->sorted & (1 << sid)) ||
+        ci->dx_max_sort > ci->dmin * space_maxreldx)
+      runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid)) ||
+        cj->dx_max_sort > cj->dmin * space_maxreldx)
+      runner_do_sort(r, cj, (1 << sid), 1);
 
 /* Compute the interactions. */
 #if (DOPAIR1 == runner_dopair1_density) && defined(WITH_VECTORIZATION) && \
@@ -2110,10 +2278,6 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   /* Should we even bother? */
   if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  cell_is_drifted(ci, r->e);
-#endif
-
   /* Recurse? */
   if (ci->split) {
 
@@ -2129,6 +2293,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Otherwise, compute self-interaction. */
   else {
+
+    /* Drift the cell to the current timestep if needed. */
+    if (!cell_is_drifted(ci, r->e)) cell_drift_particles(ci, r->e);
+
 #if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
     runner_doself1_density_vec(r, ci);
@@ -2174,7 +2342,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+              cj->dx_max_sort <
           h / 2) {
 
     /* Different types of flags. */
@@ -2378,9 +2547,17 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
+    /* Make sure both cells are drifted to the current timestep. */
+    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
+    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+    if (!(ci->sorted & (1 << sid)) ||
+        ci->dx_max_sort > ci->dmin * space_maxreldx)
+      runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid)) ||
+        cj->dx_max_sort > cj->dmin * space_maxreldx)
+      runner_do_sort(r, cj, (1 << sid), 1);
 
     /* Compute the interactions. */
     DOPAIR2(r, ci, cj);
@@ -2436,15 +2613,6 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   struct cell *sub = NULL;
   for (int k = 0; k < 8; k++)
     if (ci->progeny[k] != NULL) {
-      // if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
-      //      parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] +
-      // ci->progeny[k]->width[0] &&
-      //      parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
-      //      parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] +
-      // ci->progeny[k]->width[1] &&
-      //      parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
-      //      parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] +
-      // ci->progeny[k]->width[2] ) {
       if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
           &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
         sub = ci->progeny[k];
@@ -2480,7 +2648,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Recurse? */
     if (ci->split && cj->split &&
-        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
+                cj->dx_max_sort <
             h / 2) {
 
       /* Get the type of pair if not specified explicitly. */
@@ -3010,11 +3179,9 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                        : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
       new_sid = sortlistID[new_sid];
 
-      /* Do any of the cells need to be sorted first? */
-      if (!(cj->sorted & (1 << new_sid)))
-        runner_do_sort(r, cj, (1 << new_sid), 1);
+      /* Do any of the cells need to be drifted first? */
+      if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
 
-      /* Compute the interactions. */
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
     }
 
