@@ -173,12 +173,15 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
 
-          /* Make sure we have a drift task */
-          lock_lock(&ci->lock);
-          if (ci->drift == NULL)
-            ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                          0, 0, ci, NULL, 0);
-          lock_unlock_blind(&ci->lock);
+          /* Make sure we have a drift task (MATTHIEU temp. fix for gravity) */
+          if (t->subtype == task_subtype_grav ||
+              t->subtype == task_subtype_external_grav) {
+            lock_lock(&ci->lock);
+            if (ci->drift == NULL)
+              ci->drift = scheduler_addtask(
+                  s, task_type_drift, task_subtype_none, 0, 0, ci, NULL, 0);
+            lock_unlock_blind(&ci->lock);
+          }
 
           /* Depend on local sorts on this cell. */
           if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
