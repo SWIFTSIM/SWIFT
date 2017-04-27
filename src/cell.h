@@ -148,9 +148,6 @@ struct cell {
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
 
-  /*! The particle initialistation task */
-  struct task *init;
-
   /*! The multipole initialistation task */
   struct task *init_grav;
 
@@ -239,6 +236,9 @@ struct cell {
   /*! Last (integer) time the cell's particle was drifted forward in time. */
   integertime_t ti_old;
 
+  /*! Last (integer) time the cell's sort arrays were updated. */
+  integertime_t ti_sort;
+
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
 
@@ -247,6 +247,9 @@ struct cell {
 
   /*! Maximum particle movement in this cell since last construction. */
   float dx_max;
+
+  /*! Maximum particle movement in this cell since the last sort. */
+  float dx_max_sort;
 
   /*! Nr of #part in this cell. */
   int count;

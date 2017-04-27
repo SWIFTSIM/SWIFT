@@ -34,6 +34,8 @@
 
 /**
  * @brief The different task types.
+ *
+ * Be sure to update the taskID_names array in tasks.c if you modify this list!
  */
 enum task_types {
   task_type_none = 0,
@@ -42,7 +44,6 @@ enum task_types {
   task_type_pair,
   task_type_sub_self,
   task_type_sub_pair,
-  task_type_init,
   task_type_init_grav,
   task_type_ghost,
   task_type_extra_ghost,
@@ -167,8 +168,9 @@ struct task {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  int ti_run;
-#endif
+  /* When was this task last run? */
+  integertime_t ti_run;
+#endif /* SWIFT_DEBUG_CHECKS */
 
 } SWIFT_STRUCT_ALIGN;
 

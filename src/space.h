@@ -45,7 +45,7 @@
 #define space_maxcount_default 10000
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
-#define space_maxreldx 0.25f
+#define space_maxreldx 0.1f
 
 /* Maximum allowed depth of cell splits. */
 #define space_cell_maxdepth 52
