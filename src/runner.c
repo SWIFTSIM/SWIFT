@@ -289,11 +289,24 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
   }
 }
 
+/**
+ * @brief Recursively checks that the flags are consistent in a cell hierarchy.
+ *
+ * Debugging function.
+ *
+ * @param c The #cell to check.
+ * @param flags The sorting flags to check.
+ */
 void runner_check_sorts(struct cell *c, int flags) {
+
+#ifdef SWIFT_DEBUG_CHECKS
   if (flags & ~c->sorted) error("Inconsistent sort flags (downward)!");
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_check_sorts(c->progeny[k], c->sorted);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**

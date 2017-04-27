@@ -714,7 +714,6 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param wait The number of unsatisfied dependencies of this task.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
- * @param tight
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags, int wait,

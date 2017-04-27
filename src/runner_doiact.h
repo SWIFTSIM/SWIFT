@@ -32,12 +32,6 @@
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
 
-#define _DOPAIR1_NOSORT(f) PASTE(runner_dopair1_nosort, f)
-#define DOPAIR1_NOSORT _DOPAIR1_NOSORT(FUNCTION)
-
-#define _DOPAIR2_NOSORT(f) PASTE(runner_dopair2_nosort, f)
-#define DOPAIR2_NOSORT _DOPAIR2_NOSORT(FUNCTION)
-
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset, f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
 
@@ -53,8 +47,8 @@
 #define _DOPAIR2_NAIVE(f) PASTE(runner_dopair2_naive, f)
 #define DOPAIR2_NAIVE _DOPAIR2_NAIVE(FUNCTION)
 
-#define _DOSELF_NAIVE(f) PASTE(runner_doself_naive, f)
-#define DOSELF_NAIVE _DOSELF_NAIVE(FUNCTION)
+#define _DOSELF2_NAIVE(f) PASTE(runner_doself2_naive, f)
+#define DOSELF2_NAIVE _DOSELF2_NAIVE(FUNCTION)
 
 #define _DOSELF1(f) PASTE(runner_doself1, f)
 #define DOSELF1 _DOSELF1(FUNCTION)
@@ -111,7 +105,9 @@
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
 /**
- * @brief Compute the interactions between a cell pair (non-symmetric).
+ * @brief Compute the interactions between a cell pair (non-symmetric case).
+ *
+ * Inefficient version using a brute-force algorithm.
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -249,6 +245,15 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR);
 }
 
+/**
+ * @brief Compute the interactions between a cell pair (symmetric case).
+ *
+ * Inefficient version using a brute-force algorithm.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
 void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
@@ -353,7 +358,15 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR);
 }
 
-void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
+/**
+ * @brief Compute the interactions within a cell (symmetric case).
+ *
+ * Inefficient version using a brute-force algorithm.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
@@ -447,6 +460,8 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 /**
  * @brief Compute the interactions between a cell pair, but only for the
  *      given indices in ci.
+ *
+ * Version using a brute-force algorithm.
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -1150,6 +1165,29 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
   struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
+        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+  
   /* Get some other useful values. */
   const double hi_max = ci->h_max * kernel_gamma - rshift;
   const double hj_max = cj->h_max * kernel_gamma;
