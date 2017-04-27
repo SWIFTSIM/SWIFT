@@ -189,6 +189,18 @@ if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
 fi
 
+# Check if the general timers are switched on.
+AC_ARG_ENABLE([timers],
+   [AS_HELP_STRING([--enable-timers],
+     [Activate the basic timers @<:@yes/no@:>@]
+   )],
+   [enable_timers="$enableval"],
+   [enable_timers="no"]
+)
+if test "$enable_timers" = "yes"; then
+   AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],
@@ -874,6 +886,7 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
+   Individual timers : $enable_timers
    Task debugging    : $enable_task_debugging
    Debugging checks  : $enable_debugging_checks
    Gravity checks    : $gravity_force_checks
