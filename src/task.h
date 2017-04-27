@@ -153,9 +153,6 @@ struct task {
   /*! Should the scheduler skip this task ? */
   char skip;
 
-  /*! Does this task require the particles to be tightly in the cell ? */
-  char tight;
-
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 

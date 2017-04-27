@@ -146,14 +146,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+                                   c, NULL);
 
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+                                   c, NULL);
 
       /* Add the time-step calculation task and its dependency */
       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
-                                      0, 0, c, NULL, 0);
+                                      0, 0, c, NULL);
 
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
@@ -162,19 +162,19 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
         /* Initialisation of the multipoles */
         c->init_grav = scheduler_addtask(s, task_type_init_grav,
-                                         task_subtype_none, 0, 0, c, NULL, 0);
+                                         task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity non-neighbouring pm calculations */
         c->grav_long_range = scheduler_addtask(
-            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL, 0);
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity top-level periodic calculation */
-        c->grav_top_level = scheduler_addtask(
-            s, task_type_grav_top_level, task_subtype_none, 0, 0, c, NULL, 0);
+        c->grav_top_level = scheduler_addtask(s, task_type_grav_top_level,
+                                              task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity recursive down-pass */
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
-                                         task_subtype_none, 0, 0, c, NULL, 0);
+                                         task_subtype_none, 0, 0, c, NULL);
 
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->init_grav, c->grav_top_level);
@@ -186,19 +186,19 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       /* Generate the ghost task. */
       if (is_hydro)
         c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
+                                     0, c, NULL);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       if (is_hydro)
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
-                                           task_subtype_none, 0, 0, c, NULL, 0);
+                                           task_subtype_none, 0, 0, c, NULL);
 #endif
 
       /* Cooling task */
       if (is_with_cooling) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
-                                       0, 0, c, NULL, 0);
+                                       0, 0, c, NULL);
 
         scheduler_addunlock(s, c->cooling, c->kick2);
       }
@@ -206,7 +206,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       /* add source terms */
       if (is_with_sourceterms) {
         c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
-                                           task_subtype_none, 0, 0, c, NULL, 0);
+                                           task_subtype_none, 0, 0, c, NULL);
       }
     }
 
@@ -1011,14 +1011,14 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     if (t_xv == NULL) {
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
-                               0, ci, cj, 0);
+                               0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                4 * ci->tag + 1, 0, ci, cj, 0);
+                                4 * ci->tag + 1, 0, ci, cj);
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               4 * ci->tag + 2, 0, ci, cj, 0);
+                               4 * ci->tag + 2, 0, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     4 * ci->tag + 3, 0, ci, cj, 0);
+                                     4 * ci->tag + 3, 0, ci, cj);
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1051,7 +1051,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       /* Drift before you send */
       if (ci->drift == NULL)
         ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
-                                      0, ci, NULL, 0);
+                                      0, ci, NULL);
       scheduler_addunlock(s, ci->drift, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
@@ -1103,14 +1103,14 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag, 0,
-                             c, NULL, 0);
+                             c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                              4 * c->tag + 1, 0, c, NULL, 0);
+                              4 * c->tag + 1, 0, c, NULL);
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             4 * c->tag + 2, 0, c, NULL, 0);
+                             4 * c->tag + 2, 0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                   4 * c->tag + 3, 0, c, NULL, 0);
+                                   4 * c->tag + 3, 0, c, NULL);
 #endif
   }
   c->recv_xv = t_xv;
@@ -1666,8 +1666,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     if (ci->nodeID != nodeID) continue;
 
     /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
-                      0);
+    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
 
     /* Loop over every other cell */
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
@@ -1684,7 +1683,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
       if (!gravity_multipole_accept(ci->multipole, cj->multipole,
                                     theta_crit_inv, 1))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
-                          cj, 1);
+                          cj);
     }
   }
 }
@@ -1709,7 +1708,7 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 
     /* If the cell is local, build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
-                      ci, NULL, 0);
+                      ci, NULL);
   }
 }
 
@@ -1747,7 +1746,7 @@ void engine_make_hydroloop_tasks(struct engine *e) {
         /* If the cells is local build a self-interaction */
         if (ci->nodeID == nodeID)
           scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0,
-                            ci, NULL, 0);
+                            ci, NULL);
 
         /* Now loop over all the neighbours of this cell */
         for (int ii = -1; ii < 2; ii++) {
@@ -1776,7 +1775,7 @@ void engine_make_hydroloop_tasks(struct engine *e) {
               const int sid =
                   sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
               scheduler_addtask(sched, task_type_pair, task_subtype_density,
-                                sid, 0, ci, cj, 1);
+                                sid, 0, ci, cj);
             }
           }
         }
@@ -2085,9 +2084,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
       struct task *t2 = scheduler_addtask(
-          sched, task_type_self, task_subtype_gradient, 0, 0, t->ci, NULL, 0);
+          sched, task_type_self, task_subtype_gradient, 0, 0, t->ci, NULL);
       struct task *t3 = scheduler_addtask(
-          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL);
 
       /* Add the link between the new loops and the cell */
       engine_addlink(e, &t->ci->gradient, t2);
@@ -2101,7 +2100,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 = scheduler_addtask(
-          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL);
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->force, t2);
@@ -2148,7 +2147,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 = scheduler_addtask(
-          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->force, t2);
@@ -2196,7 +2195,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->force, t2);
@@ -2244,7 +2243,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->force, t2);
@@ -2289,7 +2288,7 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   /*     struct task *down = NULL; */
   /*         /\* scheduler_addtask(sched, task_type_grav_down,
    * task_subtype_none, 0, 0, *\/ */
-  /*         /\*                   &cells[k], NULL, 0); *\/ */
+  /*         /\*                   &cells[k], NULL); *\/ */
 
   /*     /\* Push tasks down the cell hierarchy. *\/ */
   /*     engine_addtasks_grav(e, &cells[k], up, down); */
@@ -2465,11 +2464,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      /* Too much particle movement? */
-      if (t->tight &&
-          max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
-        *rebuild_space = 1;
-
       /* Set this task's skip, otherwise nothing to do. */
       if (cell_is_active(t->ci, e) || cell_is_active(t->cj, e))
         scheduler_activate(s, t);
@@ -2478,6 +2472,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* If this is not a density task, we don't have to do any of the below. */
       if (t->subtype != task_subtype_density) continue;
+
+      /* Too much particle movement? */
+      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
+        *rebuild_space = 1;
 
       /* Set the correct sorting flags */
       if (t->type == task_type_pair) {

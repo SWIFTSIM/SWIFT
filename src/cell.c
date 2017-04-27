@@ -1344,8 +1344,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (t->tight &&
-          max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
+      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
         rebuild = 1;
 
 #ifdef WITH_MPI
