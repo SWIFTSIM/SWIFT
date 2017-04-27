@@ -1407,9 +1407,9 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
-      //pjx.v = vec_load(&cell_cache->x[pjd]);
-      //pjy.v = vec_load(&cell_cache->y[pjd]);
-      //pjz.v = vec_load(&cell_cache->z[pjd]);
+      pjx.v = vec_load(&cell_cache->x[pjd]);
+      pjy.v = vec_load(&cell_cache->y[pjd]);
+      pjz.v = vec_load(&cell_cache->z[pjd]);
       //pjvx.v = vec_load(&cell_cache->vx[pjd]);
       //pjvy.v = vec_load(&cell_cache->vy[pjd]);
       //pjvz.v = vec_load(&cell_cache->vz[pjd]);
@@ -2004,42 +2004,22 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
     int_mask2.m = vec_setint1(0xFFFFFFFF);
 #else
     int_mask.m = vec_setint1(0xFFFFFFFF);
-    //int_mask2.m = vec_setint1(0xFFFFFFFF);
+    int_mask2.m = vec_setint1(0xFFFFFFFF);
 #endif
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (1 * VEC_SIZE)) {
       
-      vector r2, dx, dy, dz;
-      
-      vector vjx, vjy, vjz, mj, rhoj, grad_hj, pOrhoj2, balsara_j, cj, hj_inv;
-      
-      r2.v = vec_load(&int_cache.r2q[pjd]);
-      dx.v = vec_load(&int_cache.dxq[pjd]);
-      dy.v = vec_load(&int_cache.dyq[pjd]);
-      dz.v = vec_load(&int_cache.dzq[pjd]);
-
-      vjx.v = vec_load(&int_cache.vxq[pjd]);
-      vjy.v = vec_load(&int_cache.vyq[pjd]);
-      vjz.v = vec_load(&int_cache.vzq[pjd]);
-      mj.v = vec_load(&int_cache.mq[pjd]);
-      
-      rhoj.v = vec_load(&int_cache.rhoq[pjd]);
-      grad_hj.v = vec_load(&int_cache.grad_hq[pjd]);
-      pOrhoj2.v = vec_load(&int_cache.pOrho2q[pjd]);
-      balsara_j.v = vec_load(&int_cache.balsaraq[pjd]);
-      cj.v = vec_load(&int_cache.soundspeedq[pjd]);
-      hj_inv.v = vec_load(&int_cache.h_invq[pjd]);
-
-      runner_iact_nonsym_1_vec_force_2(
-        &r2, &dx, &dy, &dz, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
-        &vjx, &vjy, &vjz, &rhoj, &grad_hj, &pOrhoj2, &balsara_j, &cj, &mj, v_hi_inv, hj_inv,
+          runner_iact_nonsym_2_vec_force(
+        &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+        &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], v_hi_inv, &int_cache.h_invq[pjd],
         &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask
 #ifdef HAVE_AVX512_F
           knl_mask, knl_mask2);
 #else
           );
 #endif
+
     }
     
     VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
