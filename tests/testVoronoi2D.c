@@ -107,8 +107,10 @@ int main() {
     Atot = 0.0f;
     /* print the cells to the stdout */
     for (i = 0; i < TESTVORONOI2D_NUMCELL; ++i) {
+#ifdef VORONOI_VERBOSE
       printf("Cell %i:\n", i);
       voronoi_print_cell(&cells[i]);
+#endif
       voronoi_cell_finalize(&cells[i]);
       Atot += cells[i].volume;
     }
@@ -185,8 +187,10 @@ int main() {
     Atot = 0.0f;
     /* print the cells to the stdout */
     for (i = 0; i < 100; ++i) {
+#ifdef VORONOI_VERBOSE
       printf("Cell %i:\n", i);
       voronoi_print_cell(&cells[i]);
+#endif
       voronoi_cell_finalize(&cells[i]);
       Atot += cells[i].volume;
     }

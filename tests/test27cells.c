@@ -404,11 +404,15 @@ int main(int argc, char *argv[]) {
   space.dim[1] = 3.;
   space.dim[2] = 3.;
 
+  struct hydro_props hp;
+  hp.h_max = FLT_MAX;
+
   struct engine engine;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
+  engine.hydro_properties = &hp;
 
   struct runner runner;
   runner.e = &engine;
