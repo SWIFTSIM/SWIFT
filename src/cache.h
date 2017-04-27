@@ -157,9 +157,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
+#pragma vector aligned
 #endif
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
@@ -352,9 +350,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * used instead of double precision. Also shift the cell ci, particles positions
  * due to BCs but leave cell cj. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
+#pragma vector aligned
 #endif
   for (int i = first_pi_align; i < ci->count; i++) {
     /* Make sure ci_cache is filled from the first element. */
@@ -378,9 +374,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     ci_cache->x[i] = fake_pix;
 
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#elif defined(WITH_VECTORIZATION)
-#pragma omp simd  
+#pragma vector aligned
 #endif
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
