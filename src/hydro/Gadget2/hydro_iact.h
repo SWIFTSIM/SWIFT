@@ -381,12 +381,14 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
  * (non-symmetric vectorized version).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_1_vec_density(
-    vector *r2, vector *dx, vector *dy, vector *dz, vector hi_inv, vector vix,
-    vector viy, vector viz, float *Vjx, float *Vjy, float *Vjz, float *Mj,
-    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
-    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
-    vector mask, int knlMask) {
+runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
+                                 vector hi_inv, vector vix, vector viy,
+                                 vector viz, float *Vjx, float *Vjy, float *Vjz,
+                                 float *Mj, vector *rhoSum, vector *rho_dhSum,
+                                 vector *wcountSum, vector *wcount_dhSum,
+                                 vector *div_vSum, vector *curlvxSum,
+                                 vector *curlvySum, vector *curlvzSum,
+                                 vector mask, int knlMask) {
 
   vector r, ri, xi, wi, wi_dx;
   vector mj;

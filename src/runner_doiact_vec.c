@@ -299,7 +299,8 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
 
   int first_pi = 0, last_pj = cj->count - 1;
 
-  /* Find the first active particle in ci to interact with any particle in cj. */
+  /* Find the first active particle in ci to interact with any particle in cj.
+   */
   /* Populate max_di with distances. */
   int active_id = ci->count - 1;
   for (int k = ci->count - 1; k >= 0; k--) {
@@ -309,20 +310,19 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
 
     max_di[k] = d;
 
-    /* If the particle is out of range set the index to 
+    /* If the particle is out of range set the index to
      * the last active particle within range. */
     if (d < dj_min) {
       first_pi = active_id;
       break;
-    }
-    else {
-      if(part_is_active(p,e)) active_id = k;
+    } else {
+      if (part_is_active(p, e)) active_id = k;
     }
   }
 
   /* Find the maximum distance of pi particles into cj.*/
   for (int k = first_pi; k < ci->count; k++) {
-    max_di[k] = fmaxf(max_di[k - 1],max_di[k]);
+    max_di[k] = fmaxf(max_di[k - 1], max_di[k]);
   }
 
   /* Find the last particle in cj to interact with any particle in ci. */
@@ -332,17 +332,16 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     p = &parts_j[sort_j[k].i];
     h = p->h;
     d = sort_j[k].d - h * kernel_gamma - dx_max - rshift;
-    
+
     max_dj[k] = d;
-    
-    /* If the particle is out of range set the index to 
+
+    /* If the particle is out of range set the index to
      * the last active particle within range. */
     if (d > di_max) {
       last_pj = active_id;
       break;
-    }
-    else {
-      if(part_is_active(p,e)) active_id = k;
+    } else {
+      if (part_is_active(p, e)) active_id = k;
     }
   }
 
@@ -1021,28 +1020,28 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const float dx_max = (ci->dx_max + cj->dx_max);
 
   /* Check if any particles are active and return if there are not. */
-  int numActive = 0; 
-  for (int pid = count_i - 1; 
-      pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+  int numActive = 0;
+  for (int pid = count_i - 1;
+       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
     struct part *restrict pi = &parts_i[sort_i[pid].i];
     if (part_is_active(pi, e)) {
       numActive++;
       break;
-    }    
+    }
   }
 
-  if(!numActive) {
+  if (!numActive) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
-        pjd++) {
+         pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active(pj, e)) {
         numActive++;
         break;
-      }    
-    }    
+      }
+    }
   }
 
-  if(numActive == 0) return;
+  if (numActive == 0) return;
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
@@ -1067,7 +1066,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, max_di,
-      max_dj, &first_pi, &last_pj, e);
+                          max_dj, &first_pi, &last_pj, e);
 
   /* Find the maximum index into cj that is required by a particle in ci. */
   /* Find the maximum index into ci that is required by a particle in cj. */
@@ -1102,8 +1101,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   int first_pi_align = first_pi;
   int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i,
-      sort_j, shift, &first_pi_align,
-      &last_pj_align, 1);
+                                      sort_j, shift, &first_pi_align,
+                                      &last_pj_align, 1);
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
@@ -1147,7 +1146,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Reset cumulative sums of update vectors. */
       vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
-             curlvySum, curlvzSum;
+          curlvySum, curlvzSum;
 
       /* Get the inverse of hi. */
       vector v_hi_inv;
@@ -1184,8 +1183,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         vector v_dx, v_dy, v_dz, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (cj_cache_idx%VEC_SIZE != 0 || cj_cache_idx < 0) {
-          error("Unaligned read!!! cj_cache_idx=%d",cj_cache_idx);
+        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0) {
+          error("Unaligned read!!! cj_cache_idx=%d", cj_cache_idx);
         }
 #endif
 
@@ -1223,7 +1222,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef HAVE_AVX512_F
               knl_mask);
 #else
-        0);
+              0);
 #endif
 
       } /* loop over the parts in cj. */
@@ -1281,7 +1280,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Reset cumulative sums of update vectors. */
       vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
-             curlvySum, curlvzSum;
+          curlvySum, curlvzSum;
 
       /* Get the inverse of hj. */
       vector v_hj_inv;
@@ -1304,17 +1303,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Pad the exit iteration align so cache reads are aligned. */
       int rem = exit_iteration_align % VEC_SIZE;
-      if ( exit_iteration_align < VEC_SIZE) {
+      if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
-      }
-      else exit_iteration_align -= rem;
+      } else
+        exit_iteration_align -= rem;
 
       /* Loop over the parts in ci. */
-      for (int ci_cache_idx = exit_iteration_align; ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
+      for (int ci_cache_idx = exit_iteration_align;
+           ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ci_cache_idx%VEC_SIZE != 0 || ci_cache_idx < 0) {
-          error("Unaligned read!!! ci_cache_idx=%d",ci_cache_idx);
+        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0) {
+          error("Unaligned read!!! ci_cache_idx=%d", ci_cache_idx);
         }
 #endif
 
@@ -1354,12 +1354,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef HAVE_AVX512_F
               knl_mask);
 #else
-        0);
+              0);
 #endif
 
       } /* loop over the parts in ci. */
 
-      /* Perform horizontal adds on vector sums and store result in particle pj. */
+      /* Perform horizontal adds on vector sums and store result in particle pj.
+       */
       VEC_HADD(rhoSum, pj->rho);
       VEC_HADD(rho_dhSum, pj->density.rho_dh);
       VEC_HADD(wcountSum, pj->density.wcount);
@@ -1370,7 +1371,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       VEC_HADD(curlvzSum, pj->density.rot_v[2]);
 
     } /* loop over the parts in cj. */
-    
+
     TIMER_TOC(timer_dopair_density);
   }
 
