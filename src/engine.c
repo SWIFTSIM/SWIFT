@@ -2122,9 +2122,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
       struct task *t2 = scheduler_addtask(
-          sched, task_type_pair, task_subtype_gradient, 0, 0, t->ci, t->cj, 0);
+          sched, task_type_pair, task_subtype_gradient, 0, 0, t->ci, t->cj);
       struct task *t3 = scheduler_addtask(
-          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->gradient, t2);
@@ -2175,10 +2175,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Start by constructing the task for the second and third hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_self, task_subtype_gradient,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
       struct task *t3 =
           scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->gradient, t2);
@@ -2217,10 +2217,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Start by constructing the task for the second and third hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_pair, task_subtype_gradient,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
       struct task *t3 =
           scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
+                            t->flags, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->gradient, t2);
