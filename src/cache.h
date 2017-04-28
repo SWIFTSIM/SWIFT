@@ -369,10 +369,19 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pix = 2.0f * ci_cache->x[ci->count - 1];
+  float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
   for (int i = ci->count - first_pi_align;
-       i < ci->count - first_pi_align + VEC_SIZE; i++)
+       i < ci->count - first_pi_align + VEC_SIZE; i++) {
     ci_cache->x[i] = fake_pix;
+    ci_cache->y[i] = 1.f;
+    ci_cache->z[i] = 1.f;
+    ci_cache->h[i] = 1.f;
+
+    ci_cache->m[i] = 1.f;
+    ci_cache->vx[i] = 1.f;
+    ci_cache->vy[i] = 1.f;
+    ci_cache->vz[i] = 1.f;
+  }
 
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
 #pragma vector aligned
@@ -392,9 +401,19 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pjx = 2.0f * cj_cache->x[last_pj_align];
-  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++)
+  float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
+  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
     cj_cache->x[i] = fake_pjx;
+    cj_cache->y[i] = 1.f;
+    cj_cache->z[i] = 1.f;
+    cj_cache->h[i] = 1.f;
+
+    cj_cache->m[i] = 1.f;
+    cj_cache->vx[i] = 1.f;
+    cj_cache->vy[i] = 1.f;
+    cj_cache->vz[i] = 1.f;
+  }
+
 }
 
 /* @brief Clean the memory allocated by a #cache object.
