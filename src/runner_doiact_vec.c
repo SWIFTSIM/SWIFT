@@ -321,7 +321,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   }
 
   /* Find the maximum distance of pi particles into cj.*/
-  for (int k = first_pi; k < ci->count; k++) {
+  for (int k = first_pi + 1; k < ci->count; k++) {
     max_di[k] = fmaxf(max_di[k - 1], max_di[k]);
   }
 
