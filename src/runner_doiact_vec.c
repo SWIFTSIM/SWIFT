@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+  if (!cell_is_drifted(c, e)) error("Interacting undrifted cell.");
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -989,16 +989,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
-
+  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+    error("Interacting undrifted cells.");
+  
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1007,6 +1009,29 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
+        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
   const int count_i = ci->count;
@@ -1017,7 +1042,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max + cj->dx_max);
+  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   /* Check if any particles are active and return if there are not. */
   int numActive = 0;
