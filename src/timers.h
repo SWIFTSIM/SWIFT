@@ -118,7 +118,7 @@ INLINE static ticks timers_toc(unsigned int t, ticks tic) {
 /* Function prototypes. */
 void timers_reset_all();
 void timers_reset(unsigned long long mask);
-void timers_open_file();
+void timers_open_file(int rank);
 void timers_close_file();
 void timers_print(int step);
 

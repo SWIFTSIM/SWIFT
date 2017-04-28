@@ -123,10 +123,14 @@ void timers_print(int step) {
 
 /**
  * @brief Opens the file to contain the timers info and print a header
+ *
+ * @param rank The MPI rank of the file.
  */
-void timers_open_file() {
+void timers_open_file(int rank) {
 
-  timers_file = fopen("timers.txt", "w");
+  char buff[100];
+  sprintf(buff, "timers_%d.txt", rank);
+  timers_file = fopen(buff, "w");
 
   fprintf(timers_file, "# timers: \n# step | ");
   for (int k = 0; k < timer_count; k++)

@@ -616,7 +616,7 @@ int main(int argc, char *argv[]) {
            clocks_getunit());
 
   /* File for the timers */
-  if (with_verbose_timers) timers_open_file();
+  if (with_verbose_timers) timers_open_file(myrank);
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {

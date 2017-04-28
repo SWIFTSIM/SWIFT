@@ -1450,7 +1450,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts, int timer) {
+void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
+                         int timer) {
 
 #ifdef WITH_MPI
 
@@ -1467,8 +1468,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts, int 
   float h_max = 0.f;
 
   /* Clear this cell's sorted mask. */
-  if(clear_sorts)
-    c->sorted = 0;
+  if (clear_sorts) c->sorted = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
@@ -1876,8 +1876,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
-	  } else if  (t->subtype == task_subtype_rho) {
-            runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_rho) {
+            runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {

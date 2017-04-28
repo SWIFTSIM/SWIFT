@@ -1187,7 +1187,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       error("particle shift diff exceeds dx_max_sort.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
-  
+
   /* Get some other useful values. */
   const double hi_max = ci->h_max * kernel_gamma - rshift;
   const double hj_max = cj->h_max * kernel_gamma;
