@@ -35,6 +35,7 @@
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "threadpool.h"
 
@@ -164,10 +165,12 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
     stats.E_int += m * hydro_get_internal_energy(p);
     stats.E_rad += cooling_get_radiated_energy(xp);
-    stats.E_pot_self += 0.f;
-    if (gp != NULL)
+    if (gp != NULL) {
+      stats.E_pot_self += m * gravity_get_potential(gp);
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
+    }
+
     /* Collect entropy */
     stats.entropy += m * hydro_get_entropy(p);
   }
@@ -224,7 +227,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
                         gp->v_full[1] + gp->a_grav[1] * dt,
                         gp->v_full[2] + gp->a_grav[2] * dt};
 
-    const float m = gp->mass;
+    const float m = gravity_get_mass(gp);
     const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
 
     /* Collect mass */
@@ -242,7 +245,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot_self += 0.f;
+    stats.E_pot_self += m * gravity_get_potential(gp);
     stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                time, potential, phys_const, gp);
   }

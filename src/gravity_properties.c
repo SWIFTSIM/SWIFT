@@ -52,7 +52,7 @@ void gravity_props_init(struct gravity_props *p,
   p->theta_crit_inv = 1. / p->theta_crit;
 
   /* Softening lengths */
-  p->epsilon = parser_get_param_double(params, "Gravity:epsilon");
+  p->epsilon = 3. * parser_get_param_double(params, "Gravity:epsilon");
   p->epsilon2 = p->epsilon * p->epsilon;
   p->epsilon_inv = 1. / p->epsilon;
 }
@@ -66,7 +66,8 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
-  message("Self-gravity softening:    epsilon=%.4f", p->epsilon);
+  message("Self-gravity softening:    epsilon=%.4f (Plummer equivalent: %.4f)",
+          p->epsilon, p->epsilon / 3.);
 
   if (p->a_smooth != gravity_props_default_a_smooth)
     message("Self-gravity MM smoothing-scale: a_smooth=%f", p->a_smooth);
@@ -81,6 +82,8 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
   io_write_attribute_f(h_grpgrav, "Softening length", p->epsilon);
+  io_write_attribute_f(h_grpgrav, "Softening length (Plummer equivalent)",
+                       p->epsilon / 3.);
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "MM a_smooth", p->a_smooth);

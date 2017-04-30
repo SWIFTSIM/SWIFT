@@ -25,6 +25,39 @@
 #include "minmax.h"
 
 /**
+ * @brief Returns the mass of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_mass(
+    const struct gpart* restrict gp) {
+
+  return gp->mass;
+}
+
+/**
+ * @brief Returns the softening of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_softening(
+    const struct gpart* restrict gp) {
+
+  return gp->epsilon;
+}
+
+/**
+ * @brief Returns the potential of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_potential(
+    const struct gpart* restrict gp) {
+
+  return gp->potential;
+}
+
+/**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
  * We use Gadget-2's type 0 time-step criterion.
@@ -42,8 +75,10 @@ gravity_compute_timestep_self(const struct gpart* const gp,
 
   const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
 
-  /* Note that 0.714285714 = 2. (from Gadget) / 2.8 (Plummer softening) */
-  const float dt = sqrtf(0.714285714f * grav_props->eta * gp->epsilon * ac_inv);
+  const float epsilon = gravity_get_softening(gp);
+
+  /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
+  const float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }
@@ -63,6 +98,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+  gp->potential = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->num_interacted = 0;
@@ -130,8 +166,8 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 __attribute__((always_inline)) INLINE static void gravity_init_softening(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
-  /* Note 2.8 is the Plummer-equivalent correction */
-  gp->epsilon = 2.8f * grav_props->epsilon;
+  /* Note 3 is the Plummer-equivalent correction */
+  gp->epsilon = grav_props->epsilon;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */
