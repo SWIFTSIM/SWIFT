@@ -991,7 +991,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
     error("Interacting undrifted cells.");
-  
+
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);

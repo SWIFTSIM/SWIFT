@@ -413,7 +413,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     cj_cache->vy[i] = 1.f;
     cj_cache->vz[i] = 1.f;
   }
-
 }
 
 /* @brief Clean the memory allocated by a #cache object.
