@@ -74,6 +74,7 @@
 #define vec_cmp_gt(a, b) _mm512_cmp_ps_mask(a, b, _CMP_GT_OQ)
 #define vec_cmp_lt(a, b) _mm512_cmp_ps_mask(a, b, _CMP_LT_OQ)
 #define vec_cmp_lte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_LE_OQ)
+#define vec_cmp_gte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_GE_OQ)
 #define vec_and(a, b) _mm512_and_ps(a, b)
 #define vec_todbl_lo(a) _mm512_cvtps_pd(_mm512_extract128_ps(a, 0))
 #define vec_todbl_hi(a) _mm512_cvtps_pd(_mm512_extract128_ps(a, 1))
@@ -106,8 +107,15 @@
   }
 
 /* Performs a horizontal add on the vector and adds the result to a float. */
+#ifdef __ICC
 #define VEC_HADD(a, b) b += _mm512_reduce_add_ps(a.v)
-
+#else /* _mm512_reduce_add_ps not present in GCC compiler. \
+       TODO: Implement intrinsic version.*/
+#define VEC_HADD(a, b)                              \
+  {                                                 \
+    for (int i = 0; i < VEC_SIZE; i++) b += a.f[i]; \
+  }
+#endif
 /* Calculates the number of set bits in the mask and adds the result to an int.
  */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \
@@ -147,6 +155,7 @@
 #define vec_cmp_lt(a, b) _mm256_cmp_ps(a, b, _CMP_LT_OQ)
 #define vec_cmp_gt(a, b) _mm256_cmp_ps(a, b, _CMP_GT_OQ)
 #define vec_cmp_lte(a, b) _mm256_cmp_ps(a, b, _CMP_LE_OQ)
+#define vec_cmp_gte(a, b) _mm256_cmp_ps(a, b, _CMP_GE_OQ)
 #define vec_cmp_result(a) _mm256_movemask_ps(a)
 #define vec_and(a, b) _mm256_and_ps(a, b)
 #define vec_todbl_lo(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 0))

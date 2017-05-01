@@ -4264,9 +4264,11 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
 
-    /* Allocate particle cache. */
-    e->runners[k].par_cache.count = 0;
-    cache_init(&e->runners[k].par_cache, CACHE_SIZE);
+    /* Allocate particle caches. */
+    e->runners[k].ci_cache.count = 0;
+    e->runners[k].cj_cache.count = 0;
+    cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
+    cache_init(&e->runners[k].cj_cache, CACHE_SIZE);
 
     if (verbose) {
       if (with_aff)
@@ -4353,7 +4355,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_clean(struct engine *e) {
 
-  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].par_cache);
+  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].ci_cache);
+  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].cj_cache);
   free(e->runners);
   free(e->snapshotUnits);
   free(e->links);

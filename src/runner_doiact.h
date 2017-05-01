@@ -26,6 +26,9 @@
 
 #define PASTE(x, y) x##_##y
 
+#define _DOPAIR1_BRANCH(f) PASTE(runner_dopair1_branch, f)
+#define DOPAIR1_BRANCH _DOPAIR1_BRANCH(FUNCTION)
+
 #define _DOPAIR1(f) PASTE(runner_dopair1, f)
 #define DOPAIR1 _DOPAIR1(FUNCTION)
 
@@ -2287,8 +2290,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
         cj->dx_max_sort > cj->dmin * space_maxreldx)
       runner_do_sort(r, cj, (1 << sid), 1);
 
-    /* Compute the interactions. */
+/* Compute the interactions. */
+#if (DOPAIR1 == runner_dopair1_density) && defined(WITH_VECTORIZATION) && \
+    defined(GADGET2_SPH)
+    runner_dopair1_density_vec(r, ci, cj);
+#else
     DOPAIR1(r, ci, cj);
+#endif
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);

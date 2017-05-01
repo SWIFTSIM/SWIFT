@@ -34,12 +34,19 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
+#define DOPAIR1 runner_dopair1_density_vec
 #define DOSELF1_NAME "runner_doself1_density_vec"
+#define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
 #define DOSELF1_NAME "runner_doself1_density"
+#endif
+
+#ifndef DOPAIR1
+#define DOPAIR1 runner_dopair1_density
+#define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
 enum velocity_types {
@@ -303,9 +310,11 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
+void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+                                struct cell *cj);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -384,7 +393,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
-  message("Function called: %s", DOSELF1_NAME);
+  message("DOSELF1 function called: %s", DOSELF1_NAME);
+  message("DOPAIR1 function called: %s", DOPAIR1_NAME);
   message("Vector size: %d", VEC_SIZE);
   message("Adiabatic index: ga = %f", hydro_gamma);
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
@@ -450,24 +460,26 @@ int main(int argc, char *argv[]) {
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+#ifdef WITH_VECTORIZATION
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    runner.cj_cache.count = 0;
+    cache_init(&runner.cj_cache, 512);
+#endif
+
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j) {
       if (cells[j] != main_cell) {
         const ticks sub_tic = getticks();
 
-        runner_dopair1_density(&runner, main_cell, cells[j]);
+        DOPAIR1(&runner, main_cell, cells[j]);
 
         const ticks sub_toc = getticks();
         timings[j] += sub_toc - sub_tic;
       }
     }
 
-/* And now the self-interaction */
-#ifdef WITH_VECTORIZATION
-    runner.par_cache.count = 0;
-    cache_init(&runner.par_cache, 512);
-#endif
-
+    /* And now the self-interaction */
     const ticks self_tic = getticks();
 
     DOSELF1(&runner, main_cell);
