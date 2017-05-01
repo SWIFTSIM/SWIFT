@@ -32,6 +32,7 @@
  * Gadget-2 tree-code neighbours search.
  */
 
+#include "cache.h"
 #include "minmax.h"
 
 /**
@@ -150,7 +151,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -317,7 +318,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -374,6 +375,106 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 }
 
 #ifdef WITH_VECTORIZATION
+
+/**
+ * @brief Density interaction computed using 1 vector
+ * (non-symmetric vectorized version).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
+                                 vector hi_inv, vector vix, vector viy,
+                                 vector viz, float *Vjx, float *Vjy, float *Vjz,
+                                 float *Mj, vector *rhoSum, vector *rho_dhSum,
+                                 vector *wcountSum, vector *wcount_dhSum,
+                                 vector *div_vSum, vector *curlvxSum,
+                                 vector *curlvySum, vector *curlvzSum,
+                                 vector mask, int knlMask) {
+
+  vector r, ri, xi, wi, wi_dx;
+  vector mj;
+  vector dvx, dvy, dvz;
+  vector vjx, vjy, vjz;
+  vector dvdr;
+  vector curlvrx, curlvry, curlvrz;
+
+  /* Fill the vectors. */
+  mj.v = vec_load(Mj);
+  vjx.v = vec_load(Vjx);
+  vjy.v = vec_load(Vjy);
+  vjz.v = vec_load(Vjz);
+
+  /* Get the radius and inverse radius. */
+  ri = vec_reciprocal_sqrt(*r2);
+  r.v = vec_mul(r2->v, ri.v);
+
+  xi.v = vec_mul(r.v, hi_inv.v);
+
+  /* Calculate the kernel for two particles. */
+  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
+
+  /* Compute dv dot r */
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+  dvdr.v = vec_mul(dvdr.v, ri.v);
+
+  /* Compute dv cross r */
+  curlvrx.v =
+      vec_fma(dvy.v, dz->v, vec_mul(vec_set1(-1.0f), vec_mul(dvz.v, dy->v)));
+  curlvry.v =
+      vec_fma(dvz.v, dx->v, vec_mul(vec_set1(-1.0f), vec_mul(dvx.v, dz->v)));
+  curlvrz.v =
+      vec_fma(dvx.v, dy->v, vec_mul(vec_set1(-1.0f), vec_mul(dvy.v, dx->v)));
+  curlvrx.v = vec_mul(curlvrx.v, ri.v);
+  curlvry.v = vec_mul(curlvry.v, ri.v);
+  curlvrz.v = vec_mul(curlvrz.v, ri.v);
+
+/* Mask updates to intermediate vector sums for particle pi. */
+#ifdef HAVE_AVX512_F
+  rhoSum->v =
+      _mm512_mask_add_ps(rhoSum->v, knlMask, vec_mul(mj.v, wi.v), rhoSum->v);
+
+  rho_dhSum->v =
+      _mm512_mask_sub_ps(rho_dhSum->v, knlMask, rho_dhSum->v,
+                         vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                               vec_mul(xi.v, wi_dx.v))));
+
+  wcountSum->v = _mm512_mask_add_ps(wcountSum->v, knlMask, wi.v, wcountSum->v);
+
+  wcount_dhSum->v = _mm512_mask_sub_ps(wcount_dhSum->v, knlMask,
+                                       wcount_dhSum->v, vec_mul(xi.v, wi_dx.v));
+
+  div_vSum->v = _mm512_mask_sub_ps(div_vSum->v, knlMask, div_vSum->v,
+                                   vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
+
+  curlvxSum->v = _mm512_mask_add_ps(curlvxSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)),
+                                    curlvxSum->v);
+
+  curlvySum->v = _mm512_mask_add_ps(curlvySum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)),
+                                    curlvySum->v);
+
+  curlvzSum->v = _mm512_mask_add_ps(curlvzSum->v, knlMask,
+                                    vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)),
+                                    curlvzSum->v);
+#else
+  rhoSum->v += vec_and(vec_mul(mj.v, wi.v), mask.v);
+  rho_dhSum->v -= vec_and(vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
+                                                vec_mul(xi.v, wi_dx.v))),
+                          mask.v);
+  wcountSum->v += vec_and(wi.v, mask.v);
+  wcount_dhSum->v -= vec_and(vec_mul(xi.v, wi_dx.v), mask.v);
+  div_vSum->v -= vec_and(vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask.v);
+  curlvxSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)), mask.v);
+  curlvySum->v += vec_and(vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)), mask.v);
+  curlvzSum->v += vec_and(vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)), mask.v);
+#endif
+}
+
 /**
  * @brief Density interaction computed using 2 interleaved vectors
  * (non-symmetric vectorized version).
@@ -744,7 +845,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
               vec_set(pj[0]->force.balsara, pj[1]->force.balsara,
                       pj[2]->force.balsara, pj[3]->force.balsara);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -1023,7 +1124,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
               vec_set(pj[0]->force.balsara, pj[1]->force.balsara,
                       pj[2]->force.balsara, pj[3]->force.balsara);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */

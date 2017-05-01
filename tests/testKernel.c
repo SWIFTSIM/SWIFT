@@ -53,7 +53,7 @@ int main() {
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
   printf("-------------\n");
 
-#ifdef WITH_VECORIZATION
+#ifdef WITH_VECTORIZATION
 
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
