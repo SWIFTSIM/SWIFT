@@ -320,8 +320,8 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     struct c2_cache *const int_cache, const int icount, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
     vector *v_sigSum, vector *entropy_dtSum,
-    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
-    vector v_rhoi, vector v_grad_hi, vector v_pOrhoi2, vector v_balsara_i, vector v_ci,
+    vector *v_hi_inv, vector *v_vix, vector *v_viy, vector *v_viz,
+    vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci,
     int *icount_align, int num_vec_proc) {
 
 #ifdef HAVE_AVX512_F
@@ -387,7 +387,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     *icount_align = icount - rem;
 
     runner_iact_nonsym_2_vec_force(
-        &int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+        &int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[*icount_align], &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align], &int_cache->rhoq[*icount_align], &int_cache->grad_hq[*icount_align], &int_cache->pOrho2q[*icount_align], &int_cache->balsaraq[*icount_align], &int_cache->soundspeedq[*icount_align], &int_cache->mq[*icount_align], v_hi_inv, &int_cache->h_invq[*icount_align],
         a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2
 #ifdef HAVE_AVX512_F
@@ -441,7 +441,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
     vector *v_dz, const struct cache *const cell_cache, struct c2_cache *const int_cache,
     int *icount, vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum,
     vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum,
-    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci) {
+    vector *v_hi_inv, vector *v_vix, vector *v_viy, vector *v_viz, vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask.
  */
@@ -524,8 +524,8 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
 
     /* Peform remainder interactions. */
     calcRemForceInteractions(int_cache, *icount, a_hydro_xSum, a_hydro_ySum, a_hydro_zSum,
-                             h_dtSum, v_sigSum, entropy_dtSum, v_hi_inv,
-                             v_vix, v_viy, v_viz, *v_rhoi, *v_grad_hi, *v_pOrhoi2, *v_balsara_i, *v_ci,
+                             h_dtSum, v_sigSum, entropy_dtSum, v_hi_inv, 
+                             v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
                              &icount_align, 2);
 
 
@@ -537,7 +537,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
 
       runner_iact_nonsym_2_vec_force(
-        &int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd], &int_cache->dzq[pjd], &v_vix, &v_viy, &v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
+        &int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd], &int_cache->dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd], &int_cache->rhoq[pjd], &int_cache->grad_hq[pjd], &int_cache->pOrho2q[pjd], &int_cache->balsaraq[pjd], &int_cache->soundspeedq[pjd], &int_cache->mq[pjd], v_hi_inv, &int_cache->h_invq[pjd],
         a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2
 #ifdef HAVE_AVX512_F
@@ -1508,7 +1508,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
   int doi_mask;
   struct part *restrict pi;
   int count_align;
-  int num_vec_proc = 1;//NUM_VEC_PROC;
+  int num_vec_proc = 2;//NUM_VEC_PROC;
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1603,8 +1603,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
 
     vector pjx, pjy, pjz;
     vector hj, hjg2;
-    //vector pjx2, pjy2, pjz2;
-    //vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
+    vector pjx2, pjy2, pjz2;
+    vector hj_2, hjg2_2;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -1617,42 +1617,35 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
       
       hj.v = vec_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
-      //v_hj_inv = vec_reciprocal(hj);
 
-      //v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
-      //v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
-      //v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
-      //v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
-      //v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
-
-      //pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
-      //pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
-      //pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
+      pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
+      pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
       //pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
       //pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
       //pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
       //mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
 
-      //hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
-      //hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
+      hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
+      hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
       
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
-      //vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
+      vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
 
       v_dx_tmp.v = vec_sub(pix.v, pjx.v);
-      //v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
+      v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
       v_dy_tmp.v = vec_sub(piy.v, pjy.v);
-      //v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
+      v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
       v_dz_tmp.v = vec_sub(piz.v, pjz.v);
-      //v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
+      v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
 
       v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
-      //v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
+      v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
       v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
-      //v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
+      v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
       v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
-      //v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
+      v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
 /* Form a mask from r2 < hig2 and r2 > 0.*/
 #ifdef HAVE_AVX512_F
@@ -1670,8 +1663,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
 
 #else
       vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
-      //vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
-      //int doi_mask2;
+      vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
+      int doi_mask2;
 
       /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
       v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
@@ -1679,15 +1672,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
       v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      //v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      //v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
-      //v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, v_hjg2_2.v);
+      v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, hjg2_2.v);
 
       v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
+      v_doi_mask2.v = vec_and(vec_add(v_doi_mask2.v, v_doi_N3_mask2.v), v_doi_mask2_check.v);
       
       /* Combine two masks and form integer mask. */
       doi_mask = vec_cmp_result(v_doi_mask.v);
-      //doi_mask2 = vec_cmp_result(vec_add(vec_and(v_doi_mask2.v, v_doi_mask2_check.v), v_doi_N3_mask2.v));
+      doi_mask2 = vec_cmp_result(v_doi_mask2.v);
       
 #endif /* HAVE_AVX512_F */
 
@@ -1721,6 +1715,33 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
                           v_hi_inv, v_hj_inv, 
                           &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
+      }
+      if (doi_mask2) {
+        for(int k=0; k<VEC_SIZE; k++) {
+          if( v_r2_2.f[k] == 0.f) v_r2_2.f[k] = 1.f;
+        }
+        
+        vector pjvx, pjvy, pjvz, mj, v_hj_inv;
+        vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+
+        v_hj_inv = vec_reciprocal(hj_2);
+        mj.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
+        pjvx.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
+        pjvy.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
+        pjvz.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
+
+        v_rhoj.v = vec_load(&cell_cache->rho[pjd + VEC_SIZE]);
+        v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd + VEC_SIZE]);
+        v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd + VEC_SIZE]);
+        v_balsara_j.v = vec_load(&cell_cache->balsara[pjd + VEC_SIZE]);
+        v_cj.v = vec_load(&cell_cache->soundspeed[pjd + VEC_SIZE]);
+
+        runner_iact_nonsym_1_vec_force_2(&v_r2_2, &v_dx_tmp2, &v_dy_tmp2, &v_dz_tmp2,
+                          &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+                          &pjvx, &pjvy, &pjvz, &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj, &mj,
+                          v_hi_inv, v_hj_inv, 
+                          &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+                          &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask2);
       }
       
     }
@@ -1824,8 +1845,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 
     v_hi_inv = vec_reciprocal(v_hi);
 
-    /*TODO: Define hid_inv pow_dimension_plus_one_vec */
-
     a_hydro_xSum.v = vec_setzero();
     a_hydro_ySum.v = vec_setzero();
     a_hydro_zSum.v = vec_setzero();
@@ -1864,8 +1883,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       pjz.v = vec_load(&cell_cache->z[pjd]);
       hj.v = vec_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
-
-      /* TODO: Don't load unneeded quantities until you have to in storeInteractions()!!! */
 
       pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
       pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
@@ -1937,7 +1954,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
                           cell_cache, &int_cache,
                           &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum,
-                          v_hi_inv, v_vix, v_viy, v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
+                          &v_hi_inv, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
       }
       if (doi_mask2) {
         
@@ -1945,15 +1962,15 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
                           cell_cache, &int_cache,
                           &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum,
-                          v_hi_inv, v_vix, v_viy, v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
+                          &v_hi_inv, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
       }
 
     } /* Loop over all other particles. */
 
     /* Perform padded vector remainder interactions if any are present. */
     calcRemForceInteractions(&int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-                             &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv,
-                             v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
+                             &h_dtSum, &v_sigSum, &entropy_dtSum, &v_hi_inv,
+                             &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
                              &icount_align, 2);
 
     /* Initialise masks to true in case remainder interactions have been
@@ -1974,7 +1991,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       
       runner_iact_nonsym_2_vec_force(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
-        &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], v_hi_inv, &int_cache.h_invq[pjd],
+        &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], &v_hi_inv, &int_cache.h_invq[pjd],
         &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask, int_mask2
 #ifdef HAVE_AVX512_F
           knl_mask, knl_mask2);

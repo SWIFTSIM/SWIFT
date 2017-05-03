@@ -1465,7 +1465,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force
 }
 
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv, float *Hj_inv, 
+    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
     vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, vector mask, vector mask_2) {
 
 #ifdef WITH_VECTORIZATION
@@ -1544,9 +1544,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   r_2.v = r2_2.v * ri_2.v;
 
   /* Get the kernel for hi. */
-  hid_inv = pow_dimension_plus_one_vec(hi_inv);
-  xi.v = r.v * hi_inv.v;
-  xi_2.v = r_2.v * hi_inv.v;
+  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
+  xi.v = r.v * hi_inv->v;
+  xi_2.v = r_2.v * hi_inv->v;
   kernel_deval_1_vec(&xi, &wi, &wi_dx);
   kernel_deval_1_vec(&xi_2, &wi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
