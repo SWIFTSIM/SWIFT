@@ -438,9 +438,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
  */
 __attribute__((always_inline)) INLINE static void storeForceInteractions(
     const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
-    vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz,
-    vector *v_rhoj, vector *v_grad_hj, vector *v_pOrhoj2, vector *v_balsara_j, vector *v_cj, vector *v_hj_inv,
-    const struct cache *const cell_cache, struct c2_cache *const int_cache,
+    vector *v_dz, const struct cache *const cell_cache, struct c2_cache *const int_cache,
     int *icount, vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum,
     vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum,
     vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz, vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci) {
@@ -509,7 +507,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
       int_cache->pOrho2q[*icount] = cell_cache->pOrho2[pjd + bit_index];
       int_cache->balsaraq[*icount] = cell_cache->balsara[pjd + bit_index];
       int_cache->soundspeedq[*icount] = cell_cache->soundspeed[pjd + bit_index];
-      int_cache->h_invq[*icount] = v_hj_inv->f[bit_index];
+      int_cache->h_invq[*icount] = 1.f / cell_cache->h[pjd + bit_index];
 
       (*icount)++;
     }
@@ -769,6 +767,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       pjvy.v = vec_load(&cell_cache->vy[pjd]);
       pjvz.v = vec_load(&cell_cache->vz[pjd]);
       mj.v = vec_load(&cell_cache->m[pjd]);
+
+      /* TODO: Don't load unneeded quantities until you have to in storeInteractions()!!! */
 
       pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
       pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
@@ -1597,12 +1597,12 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
         cell_cache->x[i] = pix.f[0];
         cell_cache->y[i] = piy.f[0];
         cell_cache->z[i] = piz.f[0];
+        cell_cache->h[i] = 1.f;
       }
     }
 
     vector pjx, pjy, pjz;
-    vector pjvx, pjvy, pjvz, mj, hj, hjg2;
-    vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+    vector hj, hjg2;
     //vector pjx2, pjy2, pjz2;
     //vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
 
@@ -1614,19 +1614,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
       pjx.v = vec_load(&cell_cache->x[pjd]);
       pjy.v = vec_load(&cell_cache->y[pjd]);
       pjz.v = vec_load(&cell_cache->z[pjd]);
-      pjvx.v = vec_load(&cell_cache->vx[pjd]);
-      pjvy.v = vec_load(&cell_cache->vy[pjd]);
-      pjvz.v = vec_load(&cell_cache->vz[pjd]);
-      mj.v = vec_load(&cell_cache->m[pjd]);
-    
+      
       hj.v = vec_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
+      //v_hj_inv = vec_reciprocal(hj);
 
-      v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
-      v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
-      v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
-      v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
-      v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
+      //v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
+      //v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
+      //v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
+      //v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
+      //v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
 
       //pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
       //pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
@@ -1638,11 +1635,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
 
       //hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
       //hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
-
-      vector v_hj_inv;
-
-      v_hj_inv = vec_reciprocal(hj);
-
+      
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
       //vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
@@ -1707,6 +1700,21 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
         
         //intCount += __builtin_popcount(doi_mask);
 
+        vector pjvx, pjvy, pjvz, mj, v_hj_inv;
+        vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+
+        v_hj_inv = vec_reciprocal(hj);
+        mj.v = vec_load(&cell_cache->m[pjd]);
+        pjvx.v = vec_load(&cell_cache->vx[pjd]);
+        pjvy.v = vec_load(&cell_cache->vy[pjd]);
+        pjvz.v = vec_load(&cell_cache->vz[pjd]);
+
+        v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
+        v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
+        v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
+        v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
+        v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
+
         runner_iact_nonsym_1_vec_force_2(&v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
                           &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
                           &pjvx, &pjvy, &pjvz, &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj, &mj,
@@ -1716,7 +1724,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
       }
       
     }
-
     
     VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
     VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
@@ -1817,6 +1824,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 
     v_hi_inv = vec_reciprocal(v_hi);
 
+    /*TODO: Define hid_inv pow_dimension_plus_one_vec */
+
     a_hydro_xSum.v = vec_setzero();
     a_hydro_ySum.v = vec_setzero();
     a_hydro_zSum.v = vec_setzero();
@@ -1842,13 +1851,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       }
     }
 
-    vector pjx, pjy, pjz;
-    vector pjvx, pjvy, pjvz, mj, hj, hjg2;
-    vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
-    
-    vector pjx2, pjy2, pjz2;
-    vector pjvx2, pjvy2, pjvz2, mj2, hj_2, hjg2_2;
-    vector v_rhoj_2, v_grad_hj_2, v_pOrhoj2_2, v_balsara_j_2, v_cj_2;
+    vector pjx, pjy, pjz, hj, hjg2;
+    vector pjx2, pjy2, pjz2, hj_2, hjg2_2;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -1858,43 +1862,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       pjx.v = vec_load(&cell_cache->x[pjd]);
       pjy.v = vec_load(&cell_cache->y[pjd]);
       pjz.v = vec_load(&cell_cache->z[pjd]);
-      pjvx.v = vec_load(&cell_cache->vx[pjd]);
-      pjvy.v = vec_load(&cell_cache->vy[pjd]);
-      pjvz.v = vec_load(&cell_cache->vz[pjd]);
-      mj.v = vec_load(&cell_cache->m[pjd]);
-    
       hj.v = vec_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
 
       /* TODO: Don't load unneeded quantities until you have to in storeInteractions()!!! */
 
-      v_rhoj.v = vec_load(&cell_cache->rho[pjd]);
-      v_grad_hj.v = vec_load(&cell_cache->grad_h[pjd]);
-      v_pOrhoj2.v = vec_load(&cell_cache->pOrho2[pjd]);
-      v_balsara_j.v = vec_load(&cell_cache->balsara[pjd]);
-      v_cj.v = vec_load(&cell_cache->soundspeed[pjd]);
-
       pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
       pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
       pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
-      pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
-      pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
-      pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
-      mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
-
       hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
       hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
-
-      v_rhoj_2.v = vec_load(&cell_cache->rho[pjd + VEC_SIZE]);
-      v_grad_hj_2.v = vec_load(&cell_cache->grad_h[pjd + VEC_SIZE]);
-      v_pOrhoj2_2.v = vec_load(&cell_cache->pOrho2[pjd + VEC_SIZE]);
-      v_balsara_j_2.v = vec_load(&cell_cache->balsara[pjd + VEC_SIZE]);
-      v_cj_2.v = vec_load(&cell_cache->soundspeed[pjd + VEC_SIZE]);
-
-      vector v_hj_inv, v_hj_inv_2;
-
-      v_hj_inv = vec_reciprocal(hj);
-      v_hj_inv_2 = vec_reciprocal(hj_2);
 
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
@@ -1957,7 +1934,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       if (doi_mask) {
         
         storeForceInteractions(doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
-                          &mj, &pjvx, &pjvy, &pjvz, &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj, &v_hj_inv, cell_cache, &int_cache,
+                          cell_cache, &int_cache,
                           &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum,
                           v_hi_inv, v_vix, v_viy, v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
@@ -1965,7 +1942,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       if (doi_mask2) {
         
         storeForceInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2, &v_dy_tmp2, &v_dz_tmp2,
-                          &mj2, &pjvx2, &pjvy2, &pjvz2, &v_rhoj_2, &v_grad_hj_2, &v_pOrhoj2_2, &v_balsara_j_2, &v_cj_2, &v_hj_inv_2, cell_cache, &int_cache,
+                          cell_cache, &int_cache,
                           &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum,
                           v_hi_inv, v_vix, v_viy, v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
@@ -1973,13 +1950,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 
     } /* Loop over all other particles. */
 
-    //printFloatVector(a_hydro_xSum,"a_hydro_xSum before rem",8);
     /* Perform padded vector remainder interactions if any are present. */
     calcRemForceInteractions(&int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                              &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv,
                              v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
                              &icount_align, 2);
-    //printFloatVector(a_hydro_xSum,"a_hydro_xSum after rem",8);
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
