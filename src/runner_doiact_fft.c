@@ -35,8 +35,8 @@
 #include "error.h"
 #include "runner.h"
 #include "space.h"
+#include "timers.h"
 
-//#define index(i, j, k, N) ((i % N) * N * N + (j % N) * N + (k % N))
 __attribute__((always_inline)) INLINE int id(int i, int j, int k, int N) {
   return ((i % N) * N * N + (j % N) * N + (k % N));
 }
@@ -143,17 +143,24 @@ void print_carray(fftw_complex* array, int N) {
   }
 }
 
-void runner_do_grav_fft(struct runner* r) {
+/**
+ * @brief Computes the potential on the top multipoles using a Fourier transform
+ *
+ * @param r The #runner task
+ * @param timer Are we timing this ?
+ */
+void runner_do_grav_fft(struct runner* r, int timer) {
 
+#ifdef HAVE_FFTW
+  
   const struct engine* e = r->e;
   const struct space* s = e->s;
   const integertime_t ti_current = e->ti_current;
-  const double a_smooth = 0. * e->gravity_properties->a_smooth;
+  const double a_smooth = e->gravity_properties->a_smooth;
   const double box_size = s->dim[0];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
+  TIMER_TIC;
 
   if (cdim[0] != cdim[1] || cdim[0] != cdim[2]) error("Non-square mesh");
 
@@ -204,8 +211,6 @@ void runner_do_grav_fft(struct runner* r) {
   const double a_smooth2 = 4. * M_PI * a_smooth * a_smooth / ((double)(N * N));
   const double k_fac = M_PI / (double)N;
 
-  message("k_fac = %e N = %d", k_fac, N);
-  
   /* Now de-convolve the CIC kernel and apply the Green function */
   for (int i = 0; i < N; ++i) {
 
@@ -277,7 +282,9 @@ void runner_do_grav_fft(struct runner* r) {
   fftw_free(frho);
 
   /* Time the whole thing */
-  clocks_gettime(&time2);
-  message("took %.3f %s.", (float)clocks_diff(&time1, &time2),
-          clocks_getunit());
+  if (timer) TIMER_TOC(timer_dograv_top_level);
+
+#else
+  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
 }
