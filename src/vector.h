@@ -176,6 +176,16 @@
   a.v = _mm256_hadd_ps(a.v, a.v); \
   b += a.f[0] + a.f[4];
 
+/* Performs a horizontal maximum on the vector and takes the maximum of the result with a float, b. */
+#define VEC_HMAX(a, b)                                                                            \
+{                                                                                                 \
+__m256 y = _mm256_permute2f128_ps(a.v, a.v, 1); /* Permute 128-bit values, y = [a.high, a.low] */ \
+__m256 m1 = _mm256_max_ps(a.v, y); /* m1[0] = max(x[0], x[3]), m1[1] = max(x[1], x[4]), etc. */   \
+__m256 m2 = _mm256_permute_ps(m1, 177); /* Set m2[0] = m1[1], m2[1] = m1[0], m2[2] = m1[3] etc. */\
+__m256 m = _mm256_max_ps(m1, m2); /* m[0] and m[7] contain maximums of each part of vector. */    \
+  b = fmaxf(fmaxf(b,m[0]),m[7]);                                                                  \
+}
+
 /* Returns the lower 128-bits of the 256-bit vector. */
 #define VEC_GET_LOW(a) _mm256_castps256_ps128(a)
 
