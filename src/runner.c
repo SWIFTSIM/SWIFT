@@ -53,6 +53,7 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
+#include "runner_doiact_fft.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
@@ -1902,14 +1903,11 @@ void *runner_main(void *data) {
           }
           break;
 #endif
-        case task_type_grav_mm:
-          // runner_do_grav_mm(r, t->ci, 1);
-          break;
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_top_level:
-          // runner_do_grav_top_level(r);
+          runner_do_grav_fft(r, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);

@@ -37,8 +37,17 @@
 #include "space.h"
 #include "timers.h"
 
-__attribute__((always_inline)) INLINE int id(int i, int j, int k, int N) {
-  return ((i % N) * N * N + (j % N) * N + (k % N));
+/**
+ * @brief Returns 1D index of a 3D NxNxN array using row-major style.
+ *
+ * @param i Index along x.
+ * @param j Index along y.
+ * @param k Index along z.
+ * @param N Size of the array along one axis.
+ */
+__attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
+                                                              int k, int N) {
+  return (i * N * N + j * N + k);
 }
 
 /**
@@ -49,33 +58,33 @@ __attribute__((always_inline)) INLINE int id(int i, int j, int k, int N) {
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  */
-__attribute__((always_inline)) INLINE void multipole_to_mesh_CIC(
+__attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
     const struct gravity_tensors* m, double* rho, int N, double fac) {
 
   int i = (int)(fac * m->CoM[0]);
-  if(i >= N) i = N-1;
+  if (i >= N) i = N - 1;
   const double dx = fac * m->CoM[0] - i;
   const double tx = 1. - dx;
 
   int j = (int)(fac * m->CoM[1]);
-  if(j >= N) j = N-1;
+  if (j >= N) j = N - 1;
   const double dy = fac * m->CoM[1] - j;
   const double ty = 1. - dy;
 
   int k = (int)(fac * m->CoM[2]);
-  if(k >= N) k = N-1;
+  if (k >= N) k = N - 1;
   const double dz = fac * m->CoM[2] - k;
   const double tz = 1. - dz;
 
   /* CIC ! */
-  rho[id(i + 0, j + 0, k + 0, N)] +=  m->m_pole.M_000 * tx * ty * tz;
-  rho[id(i + 0, j + 0, k + 1, N)] +=  m->m_pole.M_000 * tx * ty * dz;
-  rho[id(i + 0, j + 1, k + 0, N)] +=  m->m_pole.M_000 * tx * dy * tz;
-  rho[id(i + 0, j + 1, k + 1, N)] +=  m->m_pole.M_000 * tx * dy * dz;
-  rho[id(i + 1, j + 0, k + 0, N)] +=  m->m_pole.M_000 * dx * ty * tz;
-  rho[id(i + 1, j + 0, k + 1, N)] +=  m->m_pole.M_000 * dx * ty * dz;
-  rho[id(i + 1, j + 1, k + 0, N)] +=  m->m_pole.M_000 * dx * dy * tz;
-  rho[id(i + 1, j + 1, k + 1, N)] +=  m->m_pole.M_000 * dx * dy * dz;
+  rho[row_major_id(i + 0, j + 0, k + 0, N)] += m->m_pole.M_000 * tx * ty * tz;
+  rho[row_major_id(i + 0, j + 0, k + 1, N)] += m->m_pole.M_000 * tx * ty * dz;
+  rho[row_major_id(i + 0, j + 1, k + 0, N)] += m->m_pole.M_000 * tx * dy * tz;
+  rho[row_major_id(i + 0, j + 1, k + 1, N)] += m->m_pole.M_000 * tx * dy * dz;
+  rho[row_major_id(i + 1, j + 0, k + 0, N)] += m->m_pole.M_000 * dx * ty * tz;
+  rho[row_major_id(i + 1, j + 0, k + 1, N)] += m->m_pole.M_000 * dx * ty * dz;
+  rho[row_major_id(i + 1, j + 1, k + 0, N)] += m->m_pole.M_000 * dx * dy * tz;
+  rho[row_major_id(i + 1, j + 1, k + 1, N)] += m->m_pole.M_000 * dx * dy * dz;
 }
 
 /**
@@ -87,60 +96,33 @@ __attribute__((always_inline)) INLINE void multipole_to_mesh_CIC(
  * @param N the size of the mesh along one axis.
  * @param fac width of a mesh cell.
  */
-__attribute__((always_inline)) INLINE void mesh_to_multipole_CIC(
+__attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
     struct gravity_tensors* m, double* pot, int N, double fac) {
-  
+
   int i = (int)(fac * m->CoM[0]);
-  if(i >= N) i = N-1;
+  if (i >= N) i = N - 1;
   const double dx = fac * m->CoM[0] - i;
   const double tx = 1. - dx;
 
   int j = (int)(fac * m->CoM[1]);
-  if(j >= N) j = N-1;
+  if (j >= N) j = N - 1;
   const double dy = fac * m->CoM[1] - j;
   const double ty = 1. - dy;
 
   int k = (int)(fac * m->CoM[2]);
-  if(k >= N) k = N-1;
+  if (k >= N) k = N - 1;
   const double dz = fac * m->CoM[2] - k;
   const double tz = 1. - dz;
 
   /* CIC ! */
-  m->pot.F_000 += pot[id(i + 0, j + 0, k + 0, N)] * tx * ty * tz;
-  m->pot.F_000 += pot[id(i + 0, j + 0, k + 1, N)] * tx * ty * dz;
-  m->pot.F_000 += pot[id(i + 0, j + 1, k + 0, N)] * tx * dy * tz;
-  m->pot.F_000 += pot[id(i + 0, j + 1, k + 1, N)] * tx * dy * dz;
-  m->pot.F_000 += pot[id(i + 1, j + 0, k + 0, N)] * dx * ty * tz;
-  m->pot.F_000 += pot[id(i + 1, j + 0, k + 1, N)] * dx * ty * dz;
-  m->pot.F_000 += pot[id(i + 1, j + 1, k + 0, N)] * dx * dy * tz;
-  m->pot.F_000 += pot[id(i + 1, j + 1, k + 1, N)] * dx * dy * dz;
-}
-
-void print_array(double* array, int N) {
-
-  for (int k = N - 1; k >= 0; --k) {
-    printf("--- z = %d ---------\n", k);
-    for (int j = N - 1; j >= 0; --j) {
-      for (int i = 0; i < N; ++i) {
-        printf("%f ", array[i * N * N + j * N + k]);
-      }
-      printf("\n");
-    }
-  }
-}
-
-void print_carray(fftw_complex* array, int N) {
-
-  for (int k = N - 1; k >= 0; --k) {
-    printf("--- z = %d ---------\n", k);
-    for (int j = N - 1; j >= 0; --j) {
-      for (int i = 0; i < N; ++i) {
-        printf("(%f %f) ", array[i * N * N + j * N + k][0],
-               array[i * N * N + j * N + k][1]);
-      }
-      printf("\n");
-    }
-  }
+  m->pot.F_000 += pot[row_major_id(i + 0, j + 0, k + 0, N)] * tx * ty * tz;
+  m->pot.F_000 += pot[row_major_id(i + 0, j + 0, k + 1, N)] * tx * ty * dz;
+  m->pot.F_000 += pot[row_major_id(i + 0, j + 1, k + 0, N)] * tx * dy * tz;
+  m->pot.F_000 += pot[row_major_id(i + 0, j + 1, k + 1, N)] * tx * dy * dz;
+  m->pot.F_000 += pot[row_major_id(i + 1, j + 0, k + 0, N)] * dx * ty * tz;
+  m->pot.F_000 += pot[row_major_id(i + 1, j + 0, k + 1, N)] * dx * ty * dz;
+  m->pot.F_000 += pot[row_major_id(i + 1, j + 1, k + 0, N)] * dx * dy * tz;
+  m->pot.F_000 += pot[row_major_id(i + 1, j + 1, k + 1, N)] * dx * dy * dz;
 }
 
 /**
@@ -152,7 +134,7 @@ void print_carray(fftw_complex* array, int N) {
 void runner_do_grav_fft(struct runner* r, int timer) {
 
 #ifdef HAVE_FFTW
-  
+
   const struct engine* e = r->e;
   const struct space* s = e->s;
   const integertime_t ti_current = e->ti_current;
@@ -168,10 +150,11 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   const int N = cdim[0];
   const int N_half = N / 2;
   const int Ncells = N * N * N;
+  const double cell_fac = N / box_size;
 
   /* Recover the list of top-level multipoles */
   const int nr_cells = s->nr_cells;
-  struct gravity_tensors* multipoles = s->multipoles_top;
+  struct gravity_tensors* restrict multipoles = s->multipoles_top;
   struct cell* cells = s->cells_top;
 
   /* Make sure everything has been drifted to the current point */
@@ -181,31 +164,31 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   }
 
   /* Allocates some memory for the density mesh */
-  double* rho = fftw_alloc_real(Ncells);
+  double* restrict rho = fftw_alloc_real(Ncells);
   if (rho == NULL) error("Error allocating memory for density mesh");
 
   /* Allocates some memory for the mesh in Fourier space */
-  fftw_complex* frho = fftw_alloc_complex(N * N *(N_half+1));
+  fftw_complex* restrict frho = fftw_alloc_complex(N * N * (N_half + 1));
   if (frho == NULL)
     error("Error allocating memory for transform of density mesh");
 
   /* Prepare the FFT library */
-  fftw_plan forward_plan =
-      fftw_plan_dft_r2c_3d(N, N, N, rho, frho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
-  fftw_plan inverse_plan =
-    fftw_plan_dft_c2r_3d(N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+  fftw_plan forward_plan = fftw_plan_dft_r2c_3d(
+      N, N, N, rho, frho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+  fftw_plan inverse_plan = fftw_plan_dft_c2r_3d(
+      N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
   /* Do a CIC mesh assignment of the multipoles */
   bzero(rho, Ncells * sizeof(double));
   for (int i = 0; i < nr_cells; ++i)
-    multipole_to_mesh_CIC(&multipoles[i], rho, N, N / box_size);
+    multipole_to_mesh_CIC(&multipoles[i], rho, N, cell_fac);
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
 
   /* frho now contains the Fourier transform of the density field */
   /* frho contains NxNx(N/2+1) complex numbers */
-  
+
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
   const double a_smooth2 = 4. * M_PI * a_smooth * a_smooth / ((double)(N * N));
@@ -233,7 +216,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
         /* kz component of vector in Fourier space and 1/sinc(kz) */
         const int kz = (k > N_half ? k - N : k);
         const double kz_d = (double)kz;
-	const double fz = k_fac * kz_d;
+        const double fz = k_fac * kz_d;
         const double sinc_kz_inv = (kz != 0) ? fz / sin(fz) : 1.;
 
         /* Norm of vector in Fourier space */
@@ -273,7 +256,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 
   /* Get the potential from the mesh using CIC */
   for (int i = 0; i < nr_cells; ++i)
-    mesh_to_multipole_CIC(&multipoles[i], rho, N, N/box_size);
+    mesh_to_multipole_CIC(&multipoles[i], rho, N, cell_fac);
 
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);
@@ -287,4 +270,31 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
+}
+
+void print_array(double* array, int N) {
+
+  for (int k = N - 1; k >= 0; --k) {
+    printf("--- z = %d ---------\n", k);
+    for (int j = N - 1; j >= 0; --j) {
+      for (int i = 0; i < N; ++i) {
+        printf("%f ", array[i * N * N + j * N + k]);
+      }
+      printf("\n");
+    }
+  }
+}
+
+void print_carray(fftw_complex* array, int N) {
+
+  for (int k = N - 1; k >= 0; --k) {
+    printf("--- z = %d ---------\n", k);
+    for (int j = N - 1; j >= 0; --j) {
+      for (int i = 0; i < N; ++i) {
+        printf("(%f %f) ", array[i * N * N + j * N + k][0],
+               array[i * N * N + j * N + k][1]);
+      }
+      printf("\n");
+    }
+  }
 }
