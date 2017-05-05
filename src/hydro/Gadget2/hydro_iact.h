@@ -1642,6 +1642,414 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
 #endif
 }
 
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force_3(
+    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, vector mask) {
+
+#ifdef WITH_VECTORIZATION
+
+  vector r, r2, ri;
+  vector dx, dy, dz;
+  vector vjx, vjy, vjz;
+  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector xi, xj;
+  vector hid_inv, hjd_inv;
+  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector piax, piay, piaz;
+  vector pih_dt;
+  vector v_sig;
+  vector omega_ij, mu_ij, fac_mu, balsara;
+  vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
+
+  /* Fill vectors. */
+  r2.v = vec_load(R2);
+  dx.v = vec_load(Dx);
+  dy.v = vec_load(Dy);
+  dz.v = vec_load(Dz);
+  
+  vjx.v = vec_load(Vjx);
+  vjy.v = vec_load(Vjy);
+  vjz.v = vec_load(Vjz);
+  mj.v = vec_load(Mj);
+
+  pjrho.v = vec_load(Pjrho);
+  grad_hj.v = vec_load(Grad_hj);
+  pjPOrho2.v = vec_load(PjPOrho2);
+  balsara_j.v = vec_load(Balsara_j);
+  cj.v = vec_load(Cj);
+  hj_inv.v = vec_load(Hj_inv);
+
+  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+
+/* Load stuff. */
+  balsara.v = balsara_i->v + balsara_j.v;
+
+  /* Get the radius and inverse radius. */
+  ri = vec_reciprocal_sqrt(r2);
+  r.v = r2.v * ri.v;
+
+  /* Get the kernel for hi. */
+  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
+  xi.v = r.v * hi_inv->v;
+  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+  wi_dr.v = hid_inv.v * wi_dx.v;
+
+  /* Get the kernel for hj. */
+  hjd_inv = pow_dimension_plus_one_vec(hj_inv);
+  xj.v = r.v * hj_inv.v;
+  
+  /* Calculate the kernel for two particles. */
+  kernel_deval_1_vec(&xj, &wj, &wj_dx);
+  
+  wj_dr.v = hjd_inv.v * wj_dx.v;
+
+  /* Compute dv dot r. */
+  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
+           ((viz->v - vjz.v) * dz.v);
+
+  /* Compute the relative velocity. (This is 0 if the particles move away from
+   * each other and negative otherwise) */
+  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
+  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+
+  /* Compute signal velocity */
+  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
+
+  /* Now construct the full viscosity term */
+  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
+           mu_ij.v * balsara.v / rho_ij.v;
+
+  /* Now, convolve with the kernel */
+  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
+  
+  /* Eventually get the acceleration */
+  acc.v = visc_term.v + sph_term.v;
+
+  /* Use the force, Luke! */
+  piax.v = mj.v * dx.v * acc.v;
+  piay.v = mj.v * dy.v * acc.v;
+  piaz.v = mj.v * dz.v * acc.v;
+
+  /* Get the time derivative for h. */
+  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
+
+  /* Change in entropy */
+  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
+
+  /* Store the forces back on the particles. */
+  a_hydro_xSum->v -= vec_and(piax.v, mask.v);
+  a_hydro_ySum->v -= vec_and(piay.v, mask.v);
+  a_hydro_zSum->v -= vec_and(piaz.v, mask.v);
+  h_dtSum->v -= vec_and(pih_dt.v, mask.v);
+  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and(v_sig.v, mask.v));
+  entropy_dtSum->v += vec_and(entropy_dt.v,mask.v);
+
+#else
+
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_force was called when "
+      "the vectorised version should have been used.");
+
+#endif
+}
+
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force_nomask(
+    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum) {
+
+#ifdef WITH_VECTORIZATION
+
+  vector r, r2, ri;
+  vector dx, dy, dz;
+  vector vjx, vjy, vjz;
+  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector xi, xj;
+  vector hid_inv, hjd_inv;
+  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector piax, piay, piaz;
+  vector pih_dt;
+  vector v_sig;
+  vector omega_ij, mu_ij, fac_mu, balsara;
+  vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
+
+  /* Fill vectors. */
+  r2.v = vec_load(R2);
+  dx.v = vec_load(Dx);
+  dy.v = vec_load(Dy);
+  dz.v = vec_load(Dz);
+  
+  vjx.v = vec_load(Vjx);
+  vjy.v = vec_load(Vjy);
+  vjz.v = vec_load(Vjz);
+  mj.v = vec_load(Mj);
+
+  pjrho.v = vec_load(Pjrho);
+  grad_hj.v = vec_load(Grad_hj);
+  pjPOrho2.v = vec_load(PjPOrho2);
+  balsara_j.v = vec_load(Balsara_j);
+  cj.v = vec_load(Cj);
+  hj_inv.v = vec_load(Hj_inv);
+
+  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+
+/* Load stuff. */
+  balsara.v = balsara_i->v + balsara_j.v;
+
+  /* Get the radius and inverse radius. */
+  ri = vec_reciprocal_sqrt(r2);
+  r.v = r2.v * ri.v;
+
+  /* Get the kernel for hi. */
+  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
+  xi.v = r.v * hi_inv->v;
+  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+  wi_dr.v = hid_inv.v * wi_dx.v;
+
+  /* Get the kernel for hj. */
+  hjd_inv = pow_dimension_plus_one_vec(hj_inv);
+  xj.v = r.v * hj_inv.v;
+  
+  /* Calculate the kernel for two particles. */
+  kernel_deval_1_vec(&xj, &wj, &wj_dx);
+  
+  wj_dr.v = hjd_inv.v * wj_dx.v;
+
+  /* Compute dv dot r. */
+  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
+           ((viz->v - vjz.v) * dz.v);
+
+  /* Compute the relative velocity. (This is 0 if the particles move away from
+   * each other and negative otherwise) */
+  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
+  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+
+  /* Compute signal velocity */
+  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
+
+  /* Now construct the full viscosity term */
+  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
+           mu_ij.v * balsara.v / rho_ij.v;
+
+  /* Now, convolve with the kernel */
+  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
+  sph_term.v =
+      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
+  
+  /* Eventually get the acceleration */
+  acc.v = visc_term.v + sph_term.v;
+
+  /* Use the force, Luke! */
+  piax.v = mj.v * dx.v * acc.v;
+  piay.v = mj.v * dy.v * acc.v;
+  piaz.v = mj.v * dz.v * acc.v;
+
+  /* Get the time derivative for h. */
+  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
+
+  /* Change in entropy */
+  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
+
+  /* Store the forces back on the particles. */
+  a_hydro_xSum->v -= piax.v;
+  a_hydro_ySum->v -= piay.v;
+  a_hydro_zSum->v -= piaz.v;
+  h_dtSum->v -= pih_dt.v;
+  v_sigSum->v = vec_fmax(v_sigSum->v, v_sig.v);
+  entropy_dtSum->v += entropy_dt.v;
+
+#else
+
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_force was called when "
+      "the vectorised version should have been used.");
+
+#endif
+}
+
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force_nomask(
+    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum) {
+
+#ifdef WITH_VECTORIZATION
+
+  vector r, r2, ri;
+  vector dx, dy, dz;
+  vector vjx, vjy, vjz;
+  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector xi, xj;
+  vector hid_inv, hjd_inv;
+  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector piax, piay, piaz;
+  vector pih_dt;
+  vector v_sig;
+  vector omega_ij, mu_ij, fac_mu, balsara;
+  vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
+
+  vector r_2, r2_2, ri_2;
+  vector dx_2, dy_2, dz_2;
+  vector vjx_2, vjy_2, vjz_2;
+  vector pjrho_2, grad_hj_2, pjPOrho2_2, balsara_j_2, cj_2, mj_2, hj_inv_2;
+  vector xi_2, xj_2;
+  vector hjd_inv_2;
+  vector wi_2, wj_2, wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
+  vector piax_2, piay_2, piaz_2;
+  vector pih_dt_2;
+  vector v_sig_2;
+  vector omega_ij_2, mu_ij_2, balsara_2;
+  vector rho_ij_2, visc_2, visc_term_2, sph_term_2, acc_2, entropy_dt_2;
+
+  /* Fill vectors. */
+  r2.v = vec_load(R2);
+  dx.v = vec_load(Dx);
+  dy.v = vec_load(Dy);
+  dz.v = vec_load(Dz);
+  
+  vjx.v = vec_load(Vjx);
+  vjy.v = vec_load(Vjy);
+  vjz.v = vec_load(Vjz);
+  mj.v = vec_load(Mj);
+
+  pjrho.v = vec_load(Pjrho);
+  grad_hj.v = vec_load(Grad_hj);
+  pjPOrho2.v = vec_load(PjPOrho2);
+  balsara_j.v = vec_load(Balsara_j);
+  cj.v = vec_load(Cj);
+  hj_inv.v = vec_load(Hj_inv);
+
+  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+
+  r2_2.v = vec_load(&R2[VEC_SIZE]);
+  dx_2.v = vec_load(&Dx[VEC_SIZE]);
+  dy_2.v = vec_load(&Dy[VEC_SIZE]);
+  dz_2.v = vec_load(&Dz[VEC_SIZE]);
+  
+  vjx_2.v = vec_load(&Vjx[VEC_SIZE]);
+  vjy_2.v = vec_load(&Vjy[VEC_SIZE]);
+  vjz_2.v = vec_load(&Vjz[VEC_SIZE]);
+  mj_2.v = vec_load(&Mj[VEC_SIZE]);
+
+  pjrho_2.v = vec_load(&Pjrho[VEC_SIZE]);
+  grad_hj_2.v = vec_load(&Grad_hj[VEC_SIZE]);
+  pjPOrho2_2.v = vec_load(&PjPOrho2[VEC_SIZE]);
+  balsara_j_2.v = vec_load(&Balsara_j[VEC_SIZE]);
+  cj_2.v = vec_load(&Cj[VEC_SIZE]);
+  hj_inv_2.v = vec_load(&Hj_inv[VEC_SIZE]);
+
+/* Load stuff. */
+  balsara.v = balsara_i->v + balsara_j.v;
+  balsara_2.v = balsara_i->v + balsara_j_2.v;
+
+  /* Get the radius and inverse radius. */
+  ri = vec_reciprocal_sqrt(r2);
+  ri_2 = vec_reciprocal_sqrt(r2_2);
+  r.v = r2.v * ri.v;
+  r_2.v = r2_2.v * ri_2.v;
+
+  /* Get the kernel for hi. */
+  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
+  xi.v = r.v * hi_inv->v;
+  xi_2.v = r_2.v * hi_inv->v;
+  /* TODO: kernel_deval_2_vec */
+  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+  kernel_deval_1_vec(&xi_2, &wi_2, &wi_dx_2);
+  wi_dr.v = hid_inv.v * wi_dx.v;
+  wi_dr_2.v = hid_inv.v * wi_dx_2.v;
+
+  /* Get the kernel for hj. */
+  hjd_inv = pow_dimension_plus_one_vec(hj_inv);
+  hjd_inv_2 = pow_dimension_plus_one_vec(hj_inv_2);
+  xj.v = r.v * hj_inv.v;
+  xj_2.v = r_2.v * hj_inv_2.v;
+  
+  /* Calculate the kernel for two particles. */
+  kernel_deval_2_vec(&xj, &wj, &wj_dx, &xj_2, &wj_2, &wj_dx_2);
+  
+  wj_dr.v = hjd_inv.v * wj_dx.v;
+  wj_dr_2.v = hjd_inv_2.v * wj_dx_2.v;
+
+  /* Compute dv dot r. */
+  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
+           ((viz->v - vjz.v) * dz.v);
+  dvdr_2.v = ((vix->v - vjx_2.v) * dx_2.v) + ((viy->v - vjy_2.v) * dy_2.v) +
+           ((viz->v - vjz_2.v) * dz_2.v);
+
+  /* Compute the relative velocity. (This is 0 if the particles move away from
+   * each other and negative otherwise) */
+  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
+  omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
+  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+  mu_ij_2.v = fac_mu.v * ri_2.v * omega_ij_2.v; /* This is 0 or negative */
+
+  /* Compute signal velocity */
+  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  v_sig_2.v = ci->v + cj_2.v - vec_set1(3.0f) * mu_ij_2.v;
+
+  /* Now construct the full viscosity term */
+  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
+  rho_ij_2.v = vec_set1(0.5f) * (pirho->v + pjrho_2.v);
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
+           mu_ij.v * balsara.v / rho_ij.v;
+  visc_2.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig_2.v *
+           mu_ij_2.v * balsara_2.v / rho_ij_2.v;
+
+  /* Now, convolve with the kernel */
+  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
+  visc_term_2.v = vec_set1(0.5f) * visc_2.v * (wi_dr_2.v + wj_dr_2.v) * ri_2.v;
+  sph_term.v =
+      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      ri.v;
+  sph_term_2.v =
+      (grad_hi->v * piPOrho2->v * wi_dr_2.v + grad_hj_2.v * pjPOrho2_2.v * wj_dr_2.v) *
+      ri_2.v;
+
+  /* Eventually get the acceleration */
+  acc.v = visc_term.v + sph_term.v;
+  acc_2.v = visc_term_2.v + sph_term_2.v;
+
+  /* Use the force, Luke! */
+  piax.v = mj.v * dx.v * acc.v;
+  piax_2.v = mj_2.v * dx_2.v * acc_2.v;
+  piay.v = mj.v * dy.v * acc.v;
+  piay_2.v = mj_2.v * dy_2.v * acc_2.v;
+  piaz.v = mj.v * dz.v * acc.v;
+  piaz_2.v = mj_2.v * dz_2.v * acc_2.v;
+
+  /* Get the time derivative for h. */
+  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
+  pih_dt_2.v = mj_2.v * dvdr_2.v * ri_2.v / pjrho_2.v * wi_dr_2.v;
+
+  /* Change in entropy */
+  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
+  entropy_dt_2.v = mj_2.v * visc_term_2.v * dvdr_2.v;
+
+  /* Store the forces back on the particles. */
+  a_hydro_xSum->v -= piax.v;
+  a_hydro_xSum->v -= piax_2.v;
+  a_hydro_ySum->v -= piay.v;
+  a_hydro_ySum->v -= piay_2.v;
+  a_hydro_zSum->v -= piaz.v;
+  a_hydro_zSum->v -= piaz_2.v;
+  h_dtSum->v -= pih_dt.v;
+  h_dtSum->v -= pih_dt_2.v;
+  v_sigSum->v = vec_fmax(v_sigSum->v, v_sig.v);
+  v_sigSum->v = vec_fmax(v_sigSum->v, v_sig_2.v);
+  entropy_dtSum->v += entropy_dt.v;
+  entropy_dtSum->v += entropy_dt_2.v;
+
+#else
+
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_force was called when "
+      "the vectorised version should have been used.");
+
+#endif
+}
 #endif
 
 #endif /* SWIFT_GADGET2_HYDRO_IACT_H */

@@ -1777,7 +1777,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
   int doi_mask;
   struct part *restrict pi;
   int count_align;
-  int num_vec_proc = 2;//NUM_VEC_PROC;
+  int num_vec_proc = 1;//NUM_VEC_PROC;
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1871,7 +1871,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
     }
 
     vector pjx, pjy, pjz, hj, hjg2;
-    vector pjx2, pjy2, pjz2, hj_2, hjg2_2;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -1884,29 +1883,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       hj.v = vec_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v,hj.v), kernel_gamma2_vec.v);
 
-      pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
-      pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
-      pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
-      hj_2.v = vec_load(&cell_cache->h[pjd + VEC_SIZE]);
-      hjg2_2.v = vec_mul(vec_mul(hj_2.v,hj_2.v), kernel_gamma2_vec.v);
-
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
-      vector v_dx_tmp2, v_dy_tmp2, v_dz_tmp2, v_r2_2;
 
       v_dx_tmp.v = vec_sub(pix.v, pjx.v);
-      v_dx_tmp2.v = vec_sub(pix.v, pjx2.v);
       v_dy_tmp.v = vec_sub(piy.v, pjy.v);
-      v_dy_tmp2.v = vec_sub(piy.v, pjy2.v);
       v_dz_tmp.v = vec_sub(piz.v, pjz.v);
-      v_dz_tmp2.v = vec_sub(piz.v, pjz2.v);
 
       v_r2.v = vec_mul(v_dx_tmp.v, v_dx_tmp.v);
-      v_r2_2.v = vec_mul(v_dx_tmp2.v, v_dx_tmp2.v);
       v_r2.v = vec_fma(v_dy_tmp.v, v_dy_tmp.v, v_r2.v);
-      v_r2_2.v = vec_fma(v_dy_tmp2.v, v_dy_tmp2.v, v_r2_2.v);
       v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
-      v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
 /* Form a mask from r2 < hig2 and r2 > 0.*/
 #ifdef HAVE_AVX512_F
@@ -1924,25 +1910,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 
 #else
       vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
-      vector v_doi_mask2, v_doi_mask2_check, v_doi_N3_mask2;
-      int doi_mask2;
 
       /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
       v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
       v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
       v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
 
-      /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
-      v_doi_N3_mask2.v = vec_cmp_lt(v_r2_2.v, hjg2_2.v);
-
       v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
-      v_doi_mask2.v = vec_and(vec_add(v_doi_mask2.v, v_doi_N3_mask2.v), v_doi_mask2_check.v);
       
       /* Combine two masks and form integer mask. */
       doi_mask = vec_cmp_result(v_doi_mask.v);
-      doi_mask2 = vec_cmp_result(v_doi_mask2.v);
       
 #endif /* HAVE_AVX512_F */
 
@@ -1951,14 +1928,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       if (doi_mask) {
         
         storeForceInteractions(doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
-                          cell_cache, &int_cache,
-                          &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-                          &h_dtSum, &v_sigSum, &entropy_dtSum,
-                          &v_hi_inv, &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
-      }
-      if (doi_mask2) {
-        
-        storeForceInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2, &v_dy_tmp2, &v_dz_tmp2,
                           cell_cache, &int_cache,
                           &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
                           &h_dtSum, &v_sigSum, &entropy_dtSum,
@@ -1988,16 +1957,10 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
-      
-      runner_iact_nonsym_2_vec_force(
+      runner_iact_nonsym_2_vec_force_nomask(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
         &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], &v_hi_inv, &int_cache.h_invq[pjd],
-        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask, int_mask2
-#ifdef HAVE_AVX512_F
-          knl_mask, knl_mask2);
-#else
-          );
-#endif
+        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum);
 
     }
     
@@ -2005,7 +1968,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
     VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(h_dtSum, pi->force.h_dt);
-    /* TODO: Implement a horizontal max of a vector. */
     for(int k=0; k<VEC_SIZE; k++)
       pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
     VEC_HADD(entropy_dtSum, pi->entropy_dt);
