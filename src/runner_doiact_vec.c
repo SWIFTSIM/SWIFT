@@ -1942,19 +1942,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
                              &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
                              &icount_align, 2);
 
-    /* Initialise masks to true in case remainder interactions have been
-     * performed. */
-    vector int_mask, int_mask2;
-#ifdef HAVE_AVX512_F
-    KNL_MASK_16 knl_mask = 0xFFFF;
-    KNL_MASK_16 knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
-
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_force_nomask(
