@@ -206,7 +206,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
-    c->dx_max = 0.0f;
+    c->dx_max_part = 0.0f;
+    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
@@ -218,7 +219,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->drift = NULL;
+    c->drift_part = NULL;
+    c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
     c->grav_long_range = NULL;
@@ -420,7 +422,8 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
-          c->ti_old = ti_old;
+          c->ti_old_part = ti_old;
+          c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
@@ -902,7 +905,8 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_old;
+    c->ti_old_part = ti_old;
+    c->ti_old_gpart = ti_old;
     c->ti_old_multipole = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
@@ -2011,7 +2015,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->count = 0;
       cp->gcount = 0;
       cp->scount = 0;
-      cp->ti_old = c->ti_old;
+      cp->ti_old_part = c->ti_old_part;
+      cp->ti_old_gpart = c->ti_old_gpart;
       cp->ti_old_multipole = c->ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
@@ -2025,8 +2030,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      cp->h_max = 0.0;
-      cp->dx_max = 0.f;
+      cp->h_max = 0.f;
+      cp->dx_max_part = 0.f;
+      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -2877,7 +2883,8 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_particle_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else

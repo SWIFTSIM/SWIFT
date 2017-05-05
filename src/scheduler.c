@@ -141,7 +141,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         ((t->type == task_type_pair && t->cj == NULL)) ||
         ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
-        ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_drift_part) && t->ci->nodeID != s->nodeID) ||
+        ((t->type == task_type_drift_gpart) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_timestep) && t->ci->nodeID != s->nodeID)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
@@ -178,9 +179,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           if (t->subtype == task_subtype_grav ||
               t->subtype == task_subtype_external_grav) {
             lock_lock(&ci->lock);
-            if (ci->drift == NULL)
-              ci->drift = scheduler_addtask(s, task_type_drift,
-                                            task_subtype_none, 0, 0, ci, NULL);
+            if (ci->drift_gpart == NULL)
+              ci->drift_gpart = scheduler_addtask(
+                  s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
             lock_unlock_blind(&ci->lock);
           }
 
@@ -220,16 +221,25 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         }
       }
 
-      /* Otherwise, make sure the self task has a drift task. */
+      /* Otherwise, make sure the self task has a drift task of the correct
+         kind. */
       else {
+
         lock_lock(&ci->lock);
-        if (ci->drift == NULL)
-          ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                        0, 0, ci, NULL);
+
+        /* Drift gparts case */
+        if (t->subtype == task_subtype_grav && ci->drift_gpart == NULL)
+          ci->drift_gpart = scheduler_addtask(
+              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
+
+        /* Drift parts case */
+        else if (t->subtype == task_subtype_density && ci->drift_part == NULL)
+          ci->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                             task_subtype_none, 0, 0, ci, NULL);
         lock_unlock_blind(&ci->lock);
       }
 
-      /* Pair interaction? */
+      /* Non-gravity pair interaction? */
     } else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
 
       /* Get a handle on the cells involved. */
@@ -633,9 +643,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the drift and sort for ci. */
         lock_lock(&ci->lock);
-        if (ci->drift == NULL && ci->nodeID == engine_rank)
-          ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                        0, 0, ci, NULL);
+        if (ci->drift_part == NULL && ci->nodeID == engine_rank)
+          ci->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                             task_subtype_none, 0, 0, ci, NULL);
         if (ci->sorts == NULL)
           ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
                                         1 << sid, 0, ci, NULL);
@@ -646,9 +656,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Create the sort for cj. */
         lock_lock(&cj->lock);
-        if (cj->drift == NULL && cj->nodeID == engine_rank)
-          cj->drift = scheduler_addtask(s, task_type_drift, task_subtype_none,
-                                        0, 0, cj, NULL);
+        if (cj->drift_part == NULL && cj->nodeID == engine_rank)
+          cj->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                             task_subtype_none, 0, 0, cj, NULL);
         if (cj->sorts == NULL)
           cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
                                         1 << sid, 0, cj, NULL);
@@ -1013,8 +1023,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_ghost:
         if (t->ci == t->ci->super) cost = wscale * t->ci->count;
         break;
-      case task_type_drift:
+      case task_type_drift_part:
         cost = wscale * t->ci->count;
+        break;
+      case task_type_drift_gpart:
+        cost = wscale * t->ci->gcount;
         break;
       case task_type_kick1:
         cost = wscale * t->ci->count;
@@ -1144,7 +1157,8 @@ void scheduler_start(struct scheduler *s) {
       } else if (cj == NULL) { /* self */
 
         if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort && t->type != task_type_drift && t->type)
+            t->type != task_type_sort && t->type != task_type_drift_part &&
+            t->type != task_type_drift_gpart)
           error(
               "Task (type='%s/%s') should not have been skipped "
               "ti_current=%lld "
@@ -1235,7 +1249,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_ghost:
       case task_type_kick1:
       case task_type_kick2:
-      case task_type_drift:
+      case task_type_drift_part:
+      case task_type_drift_gpart:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;
