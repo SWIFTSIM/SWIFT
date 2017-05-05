@@ -168,18 +168,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_long_range = scheduler_addtask(
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
-        /* Gravity top-level periodic calculation */
-        c->grav_top_level = scheduler_addtask(s, task_type_grav_top_level,
-                                              task_subtype_none, 0, 0, c, NULL);
-
         /* Gravity recursive down-pass */
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
-        scheduler_addunlock(s, c->init_grav, c->grav_top_level);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
-        scheduler_addunlock(s, c->grav_top_level, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
@@ -1655,6 +1649,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
 
+  /* Create the FFT task for this MPI rank */
+  struct task *fft = scheduler_addtask(sched, task_type_grav_top_level,
+                                       task_type_none, 0, 0, NULL, NULL);
+
   for (int cid = 0; cid < nr_cells; ++cid) {
 
     struct cell *ci = &cells[cid];
@@ -1666,7 +1664,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     if (ci->nodeID != nodeID) continue;
 
     /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
+    struct task *self = scheduler_addtask(sched, task_type_self,
+                                          task_subtype_grav, 0, 0, ci, NULL);
+
+    scheduler_addunlock(sched, fft, self);
 
     /* Loop over every other cell */
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
@@ -1681,9 +1682,12 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
       /* Are the cells to close for a MM interaction ? */
       if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                    theta_crit_inv, 1))
+                                    theta_crit_inv, 1)) {
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj);
+
+        // scheduler_addunlock(sched, fft, pair);
+      }
     }
   }
 }
@@ -2605,9 +2609,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Gravity ? */
     else if (t->type == task_type_grav_down ||
-             t->type == task_type_grav_long_range ||
-             t->type == task_type_grav_top_level) {
+             t->type == task_type_grav_long_range) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Periodic gravity ? */
+    else if (t->type == task_type_grav_top_level) {
+      scheduler_activate(s, t);
     }
 
     /* Time-step? */

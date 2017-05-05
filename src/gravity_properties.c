@@ -69,11 +69,9 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity softening:    epsilon=%.4f (Plummer equivalent: %.4f)",
           p->epsilon, p->epsilon / 3.);
 
-  if (p->a_smooth != gravity_props_default_a_smooth)
-    message("Self-gravity MM smoothing-scale: a_smooth=%f", p->a_smooth);
+  message("Self-gravity MM smoothing-scale: a_smooth=%f", p->a_smooth);
 
-  if (p->r_cut != gravity_props_default_r_cut)
-    message("Self-gravity MM cut-off: r_cut=%f", p->r_cut);
+  message("Self-gravity MM cut-off: r_cut=%f", p->r_cut);
 }
 
 #if defined(HAVE_HDF5)

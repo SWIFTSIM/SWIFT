@@ -47,7 +47,7 @@
  */
 __attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
                                                               int k, int N) {
-  return (i * N * N + j * N + k);
+  return ((i % N) * N * N + (j % N) * N + (k % N));
 }
 
 /**
@@ -75,6 +75,12 @@ __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
   if (k >= N) k = N - 1;
   const double dz = fac * m->CoM[2] - k;
   const double tz = 1. - dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (i < 0 || i >= N) error("Invalid multipole position in x");
+  if (j < 0 || j >= N) error("Invalid multipole position in y");
+  if (k < 0 || k >= N) error("Invalid multipole position in z");
+#endif
 
   /* CIC ! */
   rho[row_major_id(i + 0, j + 0, k + 0, N)] += m->m_pole.M_000 * tx * ty * tz;
@@ -114,6 +120,12 @@ __attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
   const double dz = fac * m->CoM[2] - k;
   const double tz = 1. - dz;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (i < 0 || i >= N) error("Invalid multipole position in x");
+  if (j < 0 || j >= N) error("Invalid multipole position in y");
+  if (k < 0 || k >= N) error("Invalid multipole position in z");
+#endif
+
   /* CIC ! */
   m->pot.F_000 += pot[row_major_id(i + 0, j + 0, k + 0, N)] * tx * ty * tz;
   m->pot.F_000 += pot[row_major_id(i + 0, j + 0, k + 1, N)] * tx * ty * dz;
@@ -149,7 +161,6 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   /* Some useful constants */
   const int N = cdim[0];
   const int N_half = N / 2;
-  const int Ncells = N * N * N;
   const double cell_fac = N / box_size;
 
   /* Recover the list of top-level multipoles */
@@ -164,7 +175,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   }
 
   /* Allocates some memory for the density mesh */
-  double* restrict rho = fftw_alloc_real(Ncells);
+  double* restrict rho = fftw_alloc_real(N * N * N);
   if (rho == NULL) error("Error allocating memory for density mesh");
 
   /* Allocates some memory for the mesh in Fourier space */
@@ -179,7 +190,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
       N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
   /* Do a CIC mesh assignment of the multipoles */
-  bzero(rho, Ncells * sizeof(double));
+  bzero(rho, N * N * N * sizeof(double));
   for (int i = 0; i < nr_cells; ++i)
     multipole_to_mesh_CIC(&multipoles[i], rho, N, cell_fac);
 

@@ -14,7 +14,7 @@ TimeIntegration:
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 16
   cell_split_size:     50
   
 # Parameters governing the snapshots
@@ -35,4 +35,4 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./uniformDMBox_100.hdf5     # The file to read
+  file_name:  ./uniformDMBox_50.hdf5     # The file to read

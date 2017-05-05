@@ -169,10 +169,7 @@ struct cell {
   /*! The task to compute time-steps */
   struct task *timestep;
 
-  /*! Task constructing the multipole from the particles */
-  struct task *grav_top_level;
-
-  /*! Task constructing the multipole from the particles */
+  /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
 
   /*! Task propagating the multipole to the particles */

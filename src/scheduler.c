@@ -137,7 +137,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
+    if ((t->ci == NULL && t->type != task_type_grav_top_level) ||
+        ((t->type == task_type_pair && t->cj == NULL)) ||
         ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
@@ -1132,6 +1133,9 @@ void scheduler_start(struct scheduler *s) {
 
       /* Don't check MPI stuff */
       if (t->type == task_type_send || t->type == task_type_recv) continue;
+
+      /* Don't check the FFT task */
+      if (t->type == task_type_grav_top_level) continue;
 
       if (ci == NULL && cj == NULL) {
 

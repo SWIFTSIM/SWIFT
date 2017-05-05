@@ -1728,10 +1728,12 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
       t->ti_run = e->ti_current;
 #ifndef WITH_MPI
-      if (ci == NULL && cj == NULL) {
+      if (t->type == task_type_grav_top_level) {
+        if (ci != NULL || cj != NULL)
+          error("Top-level gravity task associated with a cell");
+      } else if (ci == NULL && cj == NULL) {
 
         error("Task not associated with cells!");
-
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
