@@ -34,6 +34,7 @@
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 #define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
+#ifdef WITH_VECTORIZATION
 /* Cache struct to hold a local copy of a cells' particle
  * properties required for density/force calculations.*/
 struct cache {
@@ -432,5 +433,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->max_d);
   }
 }
+
+#endif /* WITH_VECTORIZATION */
 
 #endif /* SWIFT_CACHE_H */
