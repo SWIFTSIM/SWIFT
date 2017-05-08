@@ -1104,7 +1104,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(h_dtSum, pi->force.h_dt);
-    /* TODO: Implement a horizontal max of a vector. */
     for(int k=0; k<VEC_SIZE; k++)
       pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
     VEC_HADD(entropy_dtSum, pi->entropy_dt);
@@ -1373,7 +1372,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_2(
     VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(h_dtSum, pi->force.h_dt);
-    /* TODO: Implement a horizontal max of a vector. */
     for(int k=0; k<VEC_SIZE; k++)
       pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
     VEC_HADD(entropy_dtSum, pi->entropy_dt);
@@ -1400,7 +1398,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
   int doi_mask;
   struct part *restrict pi;
   int count_align;
-  int num_vec_proc = 1;//NUM_VEC_PROC;
+  const int num_vec_proc = 1;//NUM_VEC_PROC;
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1532,17 +1530,21 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec_3(
       doi_mask2 = doi_mask2 & doi_mask2_check;
 
 #else
-      vector v_doi_mask, v_doi_mask_check, v_doi_N3_mask;
+      vector v_doi_mask, v_doi_mask_self_check, v_doi_N3_mask;
 
       /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
-      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask_self_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
       v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
       v_doi_N3_mask.v = vec_cmp_lt(v_r2.v, hjg2.v);
 
-      v_doi_mask.v = vec_and(vec_add(v_doi_mask.v, v_doi_N3_mask.v), v_doi_mask_check.v);
-      
-      /* Combine two masks and form integer mask. */
+      /* Form integer masks. */
+      int doi_mask_self_check, doi_N3_mask;
+      doi_mask_self_check = vec_cmp_result(v_doi_mask_self_check.v);
+      doi_N3_mask = vec_cmp_result(v_doi_N3_mask.v);
       doi_mask = vec_cmp_result(v_doi_mask.v);
+      
+      /* Combine all 3 masks. */
+      doi_mask = (doi_mask | doi_N3_mask) & doi_mask_self_check;
       
 #endif /* HAVE_AVX512_F */
 
