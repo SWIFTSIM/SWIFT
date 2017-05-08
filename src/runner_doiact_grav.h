@@ -429,6 +429,11 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
+
+  if (cell_is_active(ci, e) && ci->ti_old_multipole != e->ti_current)
+    error("ci->multipole not drifted.");
+  if (cell_is_active(cj, e) && cj->ti_old_multipole != e->ti_current)
+    error("cj->multipole not drifted.");
 #endif
 
 #if ICHECK > 0

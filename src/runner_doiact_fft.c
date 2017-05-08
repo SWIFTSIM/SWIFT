@@ -169,10 +169,10 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   struct cell* cells = s->cells_top;
 
   /* Make sure everything has been drifted to the current point */
-  for (int i = 0; i < nr_cells; ++i) {
+  for (int i = 0; i < nr_cells; ++i)
     if (cells[i].ti_old_multipole != ti_current)
       cell_drift_multipole(&cells[i], e);
-  }
+  // error("Top-level multipole %d not drifted", i);
 
   /* Allocates some memory for the density mesh */
   double* restrict rho = fftw_alloc_real(N * N * N);

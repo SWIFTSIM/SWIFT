@@ -133,6 +133,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int periodic = e->s->periodic;
   const int is_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
@@ -172,6 +173,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
+        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -1645,51 +1647,108 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
+                             s->cdim[2] / 4 + 1};
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
+  struct task **ghosts = NULL;
+  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
-  /* Create the FFT task for this MPI rank */
-  struct task *fft = scheduler_addtask(sched, task_type_grav_top_level,
-                                       task_type_none, 0, 0, NULL, NULL);
+  /* Create the top-level task if periodic */
+  if (periodic) {
 
-  for (int cid = 0; cid < nr_cells; ++cid) {
+    /* Create the FFT task for this MPI rank */
+    s->grav_top_level = scheduler_addtask(sched, task_type_grav_top_level,
+                                          task_type_none, 0, 0, NULL, NULL);
 
-    struct cell *ci = &cells[cid];
+    /* Create a grid of ghosts to deal with the dependencies */
+    if ((ghosts = malloc(n_ghosts * sizeof(struct task *))) == 0)
+      error("Error allocating memory for gravity fft ghosts");
 
-    /* Skip cells without gravity particles */
-    if (ci->gcount == 0) continue;
+    /* Make the ghosts implicit and add the dependencies */
+    for (int n = 0; n < n_ghosts / 2; ++n) {
+      ghosts[2 * n + 0] = scheduler_addtask(sched, task_type_grav_ghost,
+                                            task_type_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 1] = scheduler_addtask(sched, task_type_grav_ghost,
+                                            task_type_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 0]->implicit = 1;
+      ghosts[2 * n + 1]->implicit = 1;
+      scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
+      scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
+    }
+  }
 
-    /* Is that cell local ? */
-    if (ci->nodeID != nodeID) continue;
+  /* Run through the higher level cells */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
 
-    /* If the cells is local build a self-interaction */
-    struct task *self = scheduler_addtask(sched, task_type_self,
-                                          task_subtype_grav, 0, 0, ci, NULL);
+        /* Get the cell */
+        const int cid = cell_getid(cdim, i, j, k);
+        struct cell *ci = &cells[cid];
 
-    scheduler_addunlock(sched, fft, self);
+        /* Skip cells without gravity particles */
+        if (ci->gcount == 0) continue;
 
-    /* Loop over every other cell */
-    for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
+        /* Is that cell local ? */
+        if (ci->nodeID != nodeID) continue;
 
-      struct cell *cj = &cells[cjd];
+        /* If the cells is local build a self-interaction */
+        struct task *self = scheduler_addtask(
+            sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
 
-      /* Skip cells without gravity particles */
-      if (cj->gcount == 0) continue;
+        /* Deal with periodicity dependencies */
+        const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
+        if (ghost_id > n_ghosts) error("Invalid ghost_id");
+        if (periodic) {
+          scheduler_addunlock(sched, ghosts[2 * ghost_id + 1], self);
+          ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
+          ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
+        }
 
-      /* Is that neighbour local ? */
-      if (cj->nodeID != nodeID) continue;  // MATTHIEU
+        /* Loop over every other cell */
+        for (int ii = 0; ii < cdim[0]; ii++) {
+          for (int jj = 0; jj < cdim[1]; jj++) {
+            for (int kk = 0; kk < cdim[2]; kk++) {
 
-      /* Are the cells to close for a MM interaction ? */
-      if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                    theta_crit_inv, 1)) {
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
-                          cj);
+              /* Get the cell */
+              const int cjd = cell_getid(cdim, ii, jj, kk);
+              const int ghost_jd =
+                  cell_getid(cdim_ghost, ii / 4, jj / 4, kk / 4);
+              struct cell *cj = &cells[cjd];
 
-        // scheduler_addunlock(sched, fft, pair);
+              /* Avoid duplicates */
+              if (cid <= cjd) continue;
+
+              /* Skip cells without gravity particles */
+              if (cj->gcount == 0) continue;
+
+              /* Is that neighbour local ? */
+              if (cj->nodeID != nodeID) continue;  // MATTHIEU
+
+              /* Are the cells to close for a MM interaction ? */
+              if (!gravity_multipole_accept(ci->multipole, cj->multipole,
+                                            theta_crit_inv, 1)) {
+
+                struct task *pair = scheduler_addtask(
+                    sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj);
+
+                /* Deal with periodicity dependencies */
+                if (periodic) {
+                  scheduler_addunlock(sched, ghosts[2 * ghost_id + 1], pair);
+                  if (ghost_id != ghost_jd)
+                    scheduler_addunlock(sched, ghosts[2 * ghost_jd + 1], pair);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
+  if (periodic) free(ghosts);
 }
 
 void engine_make_external_gravity_tasks(struct engine *e) {
@@ -2618,7 +2677,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Periodic gravity ? */
-    else if (t->type == task_type_grav_top_level) {
+    else if (t->type == task_type_grav_top_level ||
+             t->type == task_type_grav_ghost) {
       scheduler_activate(s, t);
     }
 
@@ -3053,6 +3113,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav ||
         t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_ghost ||
         t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
@@ -3304,8 +3365,8 @@ void engine_step(struct engine *e) {
 
     if (e->policy & engine_policy_reconstruct_mpoles)
       engine_reconstruct_multipoles(e);
-    else
-      engine_drift_top_multipoles(e);
+    // else
+    //  engine_drift_top_multipoles(e);
   }
 
   /* Print the number of active tasks ? */
@@ -3417,8 +3478,13 @@ int engine_is_done(struct engine *e) {
 void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
+
+  /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
+  /* And the top level gravity FFT one */
+  if (e->s->periodic) scheduler_activate(&e->sched, e->s->grav_top_level);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

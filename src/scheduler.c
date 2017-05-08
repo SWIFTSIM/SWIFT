@@ -137,7 +137,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL && t->type != task_type_grav_top_level) ||
+    if ((t->ci == NULL && t->type != task_type_grav_top_level &&
+         t->type != task_type_grav_ghost) ||
         ((t->type == task_type_pair && t->cj == NULL)) ||
         ((t->type == task_type_kick1) && t->ci->nodeID != s->nodeID) ||
         ((t->type == task_type_kick2) && t->ci->nodeID != s->nodeID) ||
@@ -791,7 +792,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
       error("Task unlocking more than %d other tasks!",
-            (1 << (sizeof(short int) - 1)) - 1);
+            (1 << (8 * sizeof(short int) - 1)) - 1);
+
 #endif
   }
 
@@ -1148,7 +1150,9 @@ void scheduler_start(struct scheduler *s) {
       if (t->type == task_type_send || t->type == task_type_recv) continue;
 
       /* Don't check the FFT task */
-      if (t->type == task_type_grav_top_level) continue;
+      if (t->type == task_type_grav_top_level ||
+          t->type == task_type_grav_ghost)
+        continue;
 
       if (ci == NULL && cj == NULL) {
 
@@ -1194,6 +1198,8 @@ void scheduler_start(struct scheduler *s) {
     }
   }
 #endif
+
+  scheduler_print_tasks(s, "tasks.dat");
 
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {

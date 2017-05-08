@@ -54,8 +54,8 @@ const char *taskID_names[task_type_count] = {
     "drift_part", "drift_gpart",    "kick1",
     "kick2",      "timestep",       "send",
     "recv",       "grav_top_level", "grav_long_range",
-    "grav_mm",    "grav_down",      "cooling",
-    "sourceterms"};
+    "grav_ghost", "grav_mm",        "grav_down",
+    "cooling",    "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {

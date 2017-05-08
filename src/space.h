@@ -130,6 +130,9 @@ struct space {
   /*! The s-particle data (cells have pointers to this). */
   struct spart *sparts;
 
+  /*! The top-level FFT task */
+  struct task *grav_top_level;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 

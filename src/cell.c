@@ -1467,6 +1467,28 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* for (struct link *l = c->grav; l != NULL; l = l->next) { */
+
+  /*   struct task *t = l->t; */
+  /*   struct cell *ci = t->ci; */
+  /*   struct cell *cj = t->cj; */
+  /*   scheduler_activate(s, t); */
+
+  /*   if (t->type == task_type_pair) { */
+  /*     scheduler_activate(s, ci->drift_gpart); */
+  /*     scheduler_activate(s, cj->drift_gpart); */
+  /*     scheduler_activate(s, ci->init_grav); */
+  /*     scheduler_activate(s, cj->init_grav); */
+  /*     scheduler_activate(s, ci->grav_ghost[1]); */
+  /*     scheduler_activate(s, cj->grav_ghost[1]); */
+  /*   } */
+
+  /*   if (t->type == task_type_self) { */
+  /*     scheduler_activate(s, ci->drift_gpart); */
+  /*     scheduler_activate(s, ci->init_grav); */
+  /*   } */
+  /* } */
+
   /* Unskip all the other task types. */
   for (struct link *l = c->gradient; l != NULL; l = l->next)
     scheduler_activate(s, l->t);
@@ -1482,6 +1504,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
   if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+  if (c->grav_ghost[0] != NULL) scheduler_activate(s, c->grav_ghost[0]);
+  if (c->grav_ghost[1] != NULL) scheduler_activate(s, c->grav_ghost[1]);
   if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
   if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);

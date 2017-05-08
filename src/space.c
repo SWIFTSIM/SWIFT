@@ -223,6 +223,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
+    c->grav_ghost[0] = NULL;
+    c->grav_ghost[1] = NULL;
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
@@ -2589,6 +2591,8 @@ void space_init(struct space *s, const struct swift_params *params,
   s->size_sparts = Nspart;
   s->sparts = sparts;
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  s->periodic = 0;
 
   /* Are we replicating the space ? */
   if (replicate < 1)
