@@ -2592,8 +2592,6 @@ void space_init(struct space *s, const struct swift_params *params,
   s->sparts = sparts;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
-  s->periodic = 0;
-
   /* Are we replicating the space ? */
   if (replicate < 1)
     error("Value of 'InitialConditions:replicate' (%d) is too small",

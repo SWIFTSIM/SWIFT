@@ -1696,14 +1696,13 @@ void engine_make_self_gravity_tasks(struct engine *e) {
         if (ci->nodeID != nodeID) continue;
 
         /* If the cells is local build a self-interaction */
-        struct task *self = scheduler_addtask(
-            sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
+        scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+                          NULL);
 
         /* Deal with periodicity dependencies */
         const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
         if (ghost_id > n_ghosts) error("Invalid ghost_id");
         if (periodic) {
-          scheduler_addunlock(sched, ghosts[2 * ghost_id + 1], self);
           ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
           ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
         }
@@ -1715,8 +1714,6 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
               /* Get the cell */
               const int cjd = cell_getid(cdim, ii, jj, kk);
-              const int ghost_jd =
-                  cell_getid(cdim_ghost, ii / 4, jj / 4, kk / 4);
               struct cell *cj = &cells[cjd];
 
               /* Avoid duplicates */
@@ -1732,15 +1729,8 @@ void engine_make_self_gravity_tasks(struct engine *e) {
               if (!gravity_multipole_accept(ci->multipole, cj->multipole,
                                             theta_crit_inv, 1)) {
 
-                struct task *pair = scheduler_addtask(
-                    sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj);
-
-                /* Deal with periodicity dependencies */
-                if (periodic) {
-                  scheduler_addunlock(sched, ghosts[2 * ghost_id + 1], pair);
-                  if (ghost_id != ghost_jd)
-                    scheduler_addunlock(sched, ghosts[2 * ghost_jd + 1], pair);
-                }
+                scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0,
+                                  0, ci, cj);
               }
             }
           }
@@ -1956,6 +1946,11 @@ static inline void engine_make_self_gravity_dependencies(
   /* init --> gravity --> grav_down --> kick */
   scheduler_addunlock(sched, c->super->init_grav, gravity);
   scheduler_addunlock(sched, gravity, c->super->grav_down);
+
+  if (gravity->type == task_type_self ||
+      (gravity->type == task_type_pair &&
+       gravity->ci->super < gravity->cj->super))
+    scheduler_addunlock(sched, c->super->grav_ghost[1], gravity);
 }
 
 /**
@@ -1984,6 +1979,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
+  // const int periodic = e->s->periodic;
 
   for (int k = 0; k < nr_tasks; k++) {
 
@@ -1994,6 +1990,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
       engine_make_self_gravity_dependencies(sched, t, t->ci);
+      // if (periodic) scheduler_addunlock(sched, t->ci->super->grav_ghost[1],
+      // t);
     }
 
     /* Self-interaction for external gravity ? */
@@ -2009,11 +2007,15 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
 
         engine_make_self_gravity_dependencies(sched, t, t->ci);
+        // if (periodic && (t->ci < t->cj))
+        //  scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_self_gravity_dependencies(sched, t, t->cj);
+        // if (periodic && (t->ci < t->cj))
+        //  scheduler_addunlock(sched, t->cj->super->grav_ghost[1], t);
       }
 
     }
@@ -2023,6 +2025,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
         engine_make_self_gravity_dependencies(sched, t, t->ci);
+        // if (periodic)
+        //  scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
       }
     }
 
