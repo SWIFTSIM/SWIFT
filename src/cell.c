@@ -1467,28 +1467,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  /* for (struct link *l = c->grav; l != NULL; l = l->next) { */
-
-  /*   struct task *t = l->t; */
-  /*   struct cell *ci = t->ci; */
-  /*   struct cell *cj = t->cj; */
-  /*   scheduler_activate(s, t); */
-
-  /*   if (t->type == task_type_pair) { */
-  /*     scheduler_activate(s, ci->drift_gpart); */
-  /*     scheduler_activate(s, cj->drift_gpart); */
-  /*     scheduler_activate(s, ci->init_grav); */
-  /*     scheduler_activate(s, cj->init_grav); */
-  /*     scheduler_activate(s, ci->grav_ghost[1]); */
-  /*     scheduler_activate(s, cj->grav_ghost[1]); */
-  /*   } */
-
-  /*   if (t->type == task_type_self) { */
-  /*     scheduler_activate(s, ci->drift_gpart); */
-  /*     scheduler_activate(s, ci->init_grav); */
-  /*   } */
-  /* } */
-
   /* Unskip all the other task types. */
   for (struct link *l = c->gradient; l != NULL; l = l->next)
     scheduler_activate(s, l->t);
