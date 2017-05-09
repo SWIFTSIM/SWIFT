@@ -28,7 +28,6 @@
 #include <string.h>
 
 /* Includes. */
-//#include "active.h"
 #include "align.h"
 #include "const.h"
 #include "error.h"
