@@ -283,6 +283,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 #endif
 }
 
+#ifdef HAVE_FFTW
 void print_array(double* array, int N) {
 
   for (int k = N - 1; k >= 0; --k) {
@@ -309,3 +310,4 @@ void print_carray(fftw_complex* array, int N) {
     }
   }
 }
+#endif /* HAVE_FFTW */
