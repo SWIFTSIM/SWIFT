@@ -1107,6 +1107,15 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
+/* Reset all task debugging timers */
+#ifdef SWIFT_DEBUG_TASKS
+  for (int i = 0; i < s->nr_tasks; ++i) {
+    s->tasks[i].tic = 0;
+    s->tasks[i].toc = 0;
+    s->tasks[i].rid = -1;
+  }
+#endif
+
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
