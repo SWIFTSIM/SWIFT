@@ -35,13 +35,18 @@ file1 = sys.argv[1]
 file2 = sys.argv[2]
 number_to_check = -1
 
-if len(sys.argv) == 5:
-    number_to_check = int(sys.argv[4])
-
 fileTol = ""
 if len(sys.argv) >= 4:
     fileTol = sys.argv[3]
 
+if len(sys.argv) >= 5:
+    number_to_check = int(sys.argv[4])
+
+if len(sys.argv) == 6:
+    ignoreSmallRhoDh = int(sys.argv[5])
+else:
+    ignoreSmallRhoDh = 0
+    
 data1 = loadtxt(file1)
 data2 = loadtxt(file2)
 if fileTol != "":
@@ -102,8 +107,11 @@ for i in range(n_lines_to_check):
             print ""
             error = True
 
-        if abs(data1[i,j]) < 1e-6 and + abs(data2[i,j]) < 1e-6 : continue
-            
+        if abs(data1[i,j]) + abs(data2[i,j]) < 1e-6 : continue
+
+        # Ignore pathological cases with rho_dh
+        if ignoreSmallRhoDh and j == 8 and abs(data1[i,j]) < 2e-4: continue
+        
         if( rel_diff > 1.1*relTol[j]):
             print "Relative difference larger than tolerance (%e) for particle %d, column %d:"%(relTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
