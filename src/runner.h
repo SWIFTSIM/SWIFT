@@ -49,11 +49,13 @@ struct runner {
   /*! The engine owing this runner. */
   struct engine *e;
 
+#ifdef WITH_VECTORIZATION
   /*! The particle cache of cell ci. */
   struct cache ci_cache;
 
   /*! The particle cache of cell cj. */
   struct cache cj_cache;
+#endif
 };
 
 /* Function prototypes. */
