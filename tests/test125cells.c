@@ -315,7 +315,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->gcount = 0;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
   cell->dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
@@ -324,7 +324,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 8;
+  cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
   cell->ti_sort = 0;
@@ -592,8 +592,7 @@ int main(int argc, char *argv[]) {
     const ticks tic = getticks();
 
     /* Initialise the particles */
-    for (int j = 0; j < 125; ++j)
-      runner_do_drift_particles(&runner, cells[j], 0);
+    for (int j = 0; j < 125; ++j) runner_do_drift_part(&runner, cells[j], 0);
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);

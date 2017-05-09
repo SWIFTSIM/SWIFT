@@ -91,7 +91,7 @@ int main() {
 
   printf("\nVector Output for kernel_deval_2_vec\n");
   printf("-------------\n");
-  
+
   /* Test vectorised kernel that uses two vectors. */
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
@@ -100,7 +100,7 @@ int main() {
 
     vector vx_2, vx_h_2;
     vector W_vec_2, dW_vec_2;
-    
+
     for (int j = 0; j < VEC_SIZE; j++) {
       vx.f[j] = (i + j) * 2.25f / numPoints;
       vx_2.f[j] = (i + j) * 2.25f / numPoints;
@@ -127,7 +127,7 @@ int main() {
         return 1;
       }
     }
-    
+
     /* Check second vector results. */
     for (int j = 0; j < VEC_SIZE; j++) {
       printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
