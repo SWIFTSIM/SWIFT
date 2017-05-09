@@ -895,8 +895,9 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
-                    nr_sparts, verbose);
+  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0))
+    part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
+                      nr_sparts, verbose);
 #endif
 
   /* Hook the cells up to the parts. */
@@ -2951,48 +2952,4 @@ void space_clean(struct space *s) {
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
-}
-
-void space_dump_multipoles(struct space *s) {
-
-  hid_t h_file =
-      H5Fcreate("multipoles.hdf5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  hid_t h_grp =
-      H5Gcreate(h_file, "/Multipoles", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  const hid_t h_space = H5Screate(H5S_SIMPLE);
-  const hid_t h_space2 = H5Screate(H5S_SIMPLE);
-  hsize_t shape[2] = {s->nr_cells, 3};
-  hsize_t shape2[1] = {s->nr_cells};
-  H5Sset_extent_simple(h_space, 2, shape, NULL);
-  H5Sset_extent_simple(h_space2, 1, shape2, NULL);
-
-  const hid_t h_data =
-      H5Dcreate(h_grp, "Coordinates", H5T_NATIVE_DOUBLE, h_space, H5P_DEFAULT,
-                H5P_DEFAULT, H5P_DEFAULT);
-
-  const hid_t h_data2 =
-      H5Dcreate(h_grp, "Potential", H5T_NATIVE_DOUBLE, h_space2, H5P_DEFAULT,
-                H5P_DEFAULT, H5P_DEFAULT);
-
-  double *temp = malloc(s->nr_cells * 3 * sizeof(double));
-  double *temp2 = malloc(s->nr_cells * 1 * sizeof(double));
-  for (int i = 0; i < s->nr_cells; ++i) {
-    temp[i * 3 + 0] = s->multipoles_top[i].CoM[0];
-    temp[i * 3 + 1] = s->multipoles_top[i].CoM[1];
-    temp[i * 3 + 2] = s->multipoles_top[i].CoM[2];
-    temp2[i] = s->multipoles_top[i].pot.F_000;
-  }
-
-  H5Dwrite(h_data, H5T_NATIVE_DOUBLE, h_space, H5S_ALL, H5P_DEFAULT, temp);
-  H5Dwrite(h_data2, H5T_NATIVE_DOUBLE, h_space2, H5S_ALL, H5P_DEFAULT, temp2);
-
-  free(temp);
-  free(temp2);
-  H5Dclose(h_data);
-  H5Dclose(h_data2);
-  H5Sclose(h_space);
-  H5Sclose(h_space2);
-  H5Gclose(h_grp);
-  H5Fclose(h_file);
 }
