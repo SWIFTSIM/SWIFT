@@ -37,8 +37,8 @@
 #include "gravity_softened_derivatives.h"
 #include "inline.h"
 #include "kernel_gravity.h"
-#include "minmax.h"
 #include "part.h"
+#include "periodic.h"
 #include "vector_power.h"
 
 #define multipole_align 128

@@ -45,6 +45,7 @@
 #include "parser.h"
 #include "part.h"
 #include "partition.h"
+#include "periodic.h"
 #include "physical_constants.h"
 #include "potential.h"
 #include "profiler.h"

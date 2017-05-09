@@ -35,8 +35,6 @@ int main() { return 0; }
 /* Includes. */
 #include "swift.h"
 
-#define NEAREST(x) (((x) > 0.5) ? ((x)-1.) : (((x) < -0.5) ? ((x) + 1.) : (x)))
-
 int main() {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -97,17 +95,20 @@ int main() {
   double *pot = malloc(nr_cells * sizeof(double));
   double *pot_exact = malloc(nr_cells * sizeof(double));
 
-  FILE *file = fopen("potential.dat", "w");
+  // FILE *file = fopen("potential.dat", "w");
   for (int i = 0; i < nr_cells; ++i) {
     pot[i] = space.multipoles_top[i].pot.F_000;
-    double dx = NEAREST(space.multipoles_top[i].CoM[0] - gparts[0].x[0]);
-    double dy = NEAREST(space.multipoles_top[i].CoM[1] - gparts[0].x[1]);
-    double dz = NEAREST(space.multipoles_top[i].CoM[2] - gparts[0].x[2]);
+    double dx =
+        nearest(space.multipoles_top[i].CoM[0] - gparts[0].x[0], dim[0]);
+    double dy =
+        nearest(space.multipoles_top[i].CoM[1] - gparts[0].x[1], dim[1]);
+    double dz =
+        nearest(space.multipoles_top[i].CoM[2] - gparts[0].x[2], dim[2]);
     r[i] = sqrt(dx * dx + dy * dy + dz * dz);
     if (r[i] > 0) pot_exact[i] = -1. / r[i];
-    fprintf(file, "%e %e %e\n", r[i], pot[i], pot_exact[i]);
+    // fprintf(file, "%e %e %e\n", r[i], pot[i], pot_exact[i]);
   }
-  fclose(file);
+  // fclose(file);
 
   /* Clean up */
   free(r);
