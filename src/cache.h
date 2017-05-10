@@ -34,6 +34,7 @@
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 #define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
+#ifdef WITH_VECTORIZATION
 /* Cache struct to hold a local copy of a cells' particle
  * properties required for density/force calculations.*/
 struct cache {
@@ -178,10 +179,10 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
 #if defined(GADGET2_SPH)
 
-  /* Shift the particles positions to a local frame so single precision can be
-   * used instead of double precision. */
+/* Shift the particles positions to a local frame so single precision can be
+ * used instead of double precision. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
+#pragma vector aligned
 #endif
   for (int i = 0; i < ci->count; i++) {
     ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
@@ -380,7 +381,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * used instead of double precision. Also shift the cell ci, particles positions
  * due to BCs but leave cell cj. */
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
+#pragma vector aligned
 #endif
   for (int i = first_pi_align; i < ci->count; i++) {
     /* Make sure ci_cache is filled from the first element. */
@@ -397,14 +398,24 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
   }
 
-  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
-  float fake_pix = 2.0f * ci_cache->x[ci->count - 1];
+  /* Pad cache with fake particles that exist outside the cell so will not
+   * interact.*/
+  float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
   for (int i = ci->count - first_pi_align;
-       i < ci->count - first_pi_align + VEC_SIZE; i++)
+       i < ci->count - first_pi_align + VEC_SIZE; i++) {
     ci_cache->x[i] = fake_pix;
+    ci_cache->y[i] = 1.f;
+    ci_cache->z[i] = 1.f;
+    ci_cache->h[i] = 1.f;
+
+    ci_cache->m[i] = 1.f;
+    ci_cache->vx[i] = 1.f;
+    ci_cache->vy[i] = 1.f;
+    ci_cache->vz[i] = 1.f;
+  }
 
 #if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
+#pragma vector aligned
 #endif
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
@@ -419,10 +430,20 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     cj_cache->vz[i] = cj->parts[idx].v[2];
   }
 
-  /* Pad cache with fake particles that exist outside the cell so will not interact.*/
-  float fake_pjx = 2.0f * cj_cache->x[last_pj_align];
-  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++)
+  /* Pad cache with fake particles that exist outside the cell so will not
+   * interact.*/
+  float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
+  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
     cj_cache->x[i] = fake_pjx;
+    cj_cache->y[i] = 1.f;
+    cj_cache->z[i] = 1.f;
+    cj_cache->h[i] = 1.f;
+
+    cj_cache->m[i] = 1.f;
+    cj_cache->vx[i] = 1.f;
+    cj_cache->vy[i] = 1.f;
+    cj_cache->vz[i] = 1.f;
+  }
 }
 
 /* @brief Clean the memory allocated by a #cache object.
@@ -442,5 +463,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->max_d);
   }
 }
+
+#endif /* WITH_VECTORIZATION */
 
 #endif /* SWIFT_CACHE_H */

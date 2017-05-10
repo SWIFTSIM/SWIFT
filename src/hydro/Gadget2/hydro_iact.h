@@ -151,7 +151,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -318,7 +318,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -381,12 +381,14 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
  * (non-symmetric vectorized version).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_1_vec_density(
-    vector *r2, vector *dx, vector *dy, vector *dz, vector hi_inv, vector vix,
-    vector viy, vector viz, float *Vjx, float *Vjy, float *Vjz, float *Mj,
-    vector *rhoSum, vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
-    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
-    vector mask, int knlMask) {
+runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
+                                 vector hi_inv, vector vix, vector viy,
+                                 vector viz, float *Vjx, float *Vjy, float *Vjz,
+                                 float *Mj, vector *rhoSum, vector *rho_dhSum,
+                                 vector *wcountSum, vector *wcount_dhSum,
+                                 vector *div_vSum, vector *curlvxSum,
+                                 vector *curlvySum, vector *curlvzSum,
+                                 vector mask, int knlMask) {
 
   vector r, ri, xi, wi, wi_dx;
   vector mj;
@@ -843,7 +845,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
               vec_set(pj[0]->force.balsara, pj[1]->force.balsara,
                       pj[2]->force.balsara, pj[3]->force.balsara);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */
@@ -1122,7 +1124,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
               vec_set(pj[0]->force.balsara, pj[1]->force.balsara,
                       pj[2]->force.balsara, pj[3]->force.balsara);
 #else
-  error("Unknown vector size.")
+  error("Unknown vector size.");
 #endif
 
   /* Get the radius and inverse radius. */

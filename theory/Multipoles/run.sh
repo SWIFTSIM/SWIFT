@@ -1,5 +1,5 @@
 #!/bin/bash
-python kernels.py
+python potential.py
 pdflatex -jobname=fmm fmm_standalone.tex
 bibtex fmm.aux
 pdflatex -jobname=fmm fmm_standalone.tex

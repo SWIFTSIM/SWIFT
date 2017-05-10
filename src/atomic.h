@@ -19,6 +19,9 @@
 #ifndef SWIFT_ATOMIC_H
 #define SWIFT_ATOMIC_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "inline.h"
 

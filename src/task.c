@@ -47,15 +47,27 @@
 #include "lock.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = {
-    "none",        "sort",           "self",
-    "pair",        "sub_self",       "sub_pair",
-    "init",        "init_grav",      "ghost",
-    "extra_ghost", "drift",          "kick1",
-    "kick2",       "timestep",       "send",
-    "recv",        "grav_top_level", "grav_long_range",
-    "grav_mm",     "grav_down",      "cooling",
-    "sourceterms"};
+const char *taskID_names[task_type_count] = {"none",
+                                             "sort",
+                                             "self",
+                                             "pair",
+                                             "sub_self",
+                                             "sub_pair",
+                                             "init_grav",
+                                             "ghost",
+                                             "extra_ghost",
+                                             "drift",
+                                             "kick1",
+                                             "kick2",
+                                             "timestep",
+                                             "send",
+                                             "recv",
+                                             "grav_top_level",
+                                             "grav_long_range",
+                                             "grav_mm",
+                                             "grav_down",
+                                             "cooling",
+                                             "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -152,7 +164,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       }
       break;
 
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -272,11 +283,6 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-    case task_type_init_grav:
-      cell_munlocktree(ci);
-      break;
-
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -363,12 +369,6 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_init_grav:
-      if (ci->mhold) return 0;
-      if (cell_mlocktree(ci) != 0) return 0;
-      break;
-
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:

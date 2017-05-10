@@ -21,16 +21,21 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
 
 /* This object's header. */
 #include "timers.h"
+
+/* Some standard headers. */
+#include <stdio.h>
+
+/* Local includes. */
+#include "clocks.h"
 
 /* The timers. */
 ticks timers[timer_count];
 
 /* Timer names. */
-char *timers_names[timer_count] = {
+const char* timers_names[timer_count] = {
     "none",
     "prepare",
     "init",
@@ -63,19 +68,26 @@ char *timers_names[timer_count] = {
     "dosub_pair_gradient",
     "dosub_pair_force",
     "dosub_pair_grav",
+    "doself_subset",
     "dopair_subset",
+    "dopair_subset_naive",
+    "dosub_subset",
     "do_ghost",
     "do_extra_ghost",
     "dorecv_part",
     "dorecv_gpart",
     "dorecv_spart",
+    "do_cooling",
     "gettask",
     "qget",
     "qsteal",
+    "locktree",
     "runners",
     "step",
-    "do_cooling",
 };
+
+/* File to store the timers */
+static FILE* timers_file;
 
 /**
  * @brief Re-set the timers.
@@ -90,3 +102,43 @@ void timers_reset(unsigned long long mask) {
   for (int k = 0; k < timer_count; k++)
     if (mask & (1ull << k)) timers[k] = 0;
 }
+
+/**
+ * @brief Re-set all the timers.
+ *
+ */
+void timers_reset_all() { timers_reset(timers_mask_all); }
+
+/**
+ * @brief Outputs all the timers to the timers dump file.
+ *
+ * @param step The current step.
+ */
+void timers_print(int step) {
+  fprintf(timers_file, "%d\t", step);
+  for (int k = 0; k < timer_count; k++)
+    fprintf(timers_file, "%.3f\t", clocks_from_ticks(timers[k]));
+  fprintf(timers_file, "\n");
+}
+
+/**
+ * @brief Opens the file to contain the timers info and print a header
+ *
+ * @param rank The MPI rank of the file.
+ */
+void timers_open_file(int rank) {
+
+  char buff[100];
+  sprintf(buff, "timers_%d.txt", rank);
+  timers_file = fopen(buff, "w");
+
+  fprintf(timers_file, "# timers: \n# step | ");
+  for (int k = 0; k < timer_count; k++)
+    fprintf(timers_file, "%s\t", timers_names[k]);
+  fprintf(timers_file, "\n");
+}
+
+/**
+ * @brief Close the file containing the timer info.
+ */
+void timers_close_file() { fclose(timers_file); }

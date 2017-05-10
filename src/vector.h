@@ -107,8 +107,15 @@
   }
 
 /* Performs a horizontal add on the vector and adds the result to a float. */
+#ifdef __ICC
 #define VEC_HADD(a, b) b += _mm512_reduce_add_ps(a.v)
-
+#else /* _mm512_reduce_add_ps not present in GCC compiler. \
+       TODO: Implement intrinsic version.*/
+#define VEC_HADD(a, b)                              \
+  {                                                 \
+    for (int i = 0; i < VEC_SIZE; i++) b += a.f[i]; \
+  }
+#endif
 /* Calculates the number of set bits in the mask and adds the result to an int.
  */
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \

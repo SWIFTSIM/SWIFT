@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Common flags
-MYFLAGS = -DTIMER
+MYFLAGS = 
 
 # Add the source directory and debug to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)

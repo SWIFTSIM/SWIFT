@@ -22,7 +22,10 @@
 #ifndef SWIFT_TIMERS_H
 #define SWIFT_TIMERS_H
 
-/* Includes. */
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
 #include "atomic.h"
 #include "cycle.h"
 #include "inline.h"
@@ -66,18 +69,22 @@ enum {
   timer_dosub_pair_gradient,
   timer_dosub_pair_force,
   timer_dosub_pair_grav,
+  timer_doself_subset,
   timer_dopair_subset,
+  timer_dopair_subset_naive,
+  timer_dosub_subset,
   timer_do_ghost,
   timer_do_extra_ghost,
   timer_dorecv_part,
   timer_dorecv_gpart,
   timer_dorecv_spart,
+  timer_do_cooling,
   timer_gettask,
   timer_qget,
   timer_qsteal,
+  timer_locktree,
   timer_runners,
   timer_step,
-  timer_do_cooling,
   timer_count,
 };
 
@@ -85,32 +92,34 @@ enum {
 extern ticks timers[timer_count];
 
 /* The timer names. */
-extern char *timers_names[];
+extern const char *timers_names[];
 
 /* Mask for all timers. */
 #define timers_mask_all ((1ull << timer_count) - 1)
 
 /* Define the timer macros. */
-#ifdef TIMER
-#define TIMER_TIC_ND tic = getticks();
-#define TIMER_TIC2_ND ticks tic2 = getticks();
-#define TIMER_TIC ticks tic = getticks();
+#ifdef SWIFT_USE_TIMERS
+#define TIMER_TIC const ticks tic = getticks();
 #define TIMER_TOC(t) timers_toc(t, tic)
-#define TIMER_TIC2 ticks tic2 = getticks();
+#define TIMER_TIC2 const ticks tic2 = getticks();
 #define TIMER_TOC2(t) timers_toc(t, tic2)
 INLINE static ticks timers_toc(unsigned int t, ticks tic) {
-  ticks d = (getticks() - tic);
+  const ticks d = (getticks() - tic);
   atomic_add(&timers[t], d);
   return d;
 }
 #else
 #define TIMER_TIC
-#define TIMER_TOC(t)
+#define TIMER_TOC(t) (void)0
 #define TIMER_TIC2
-#define TIMER_TOC2(t)
+#define TIMER_TOC2(t) (void)0
 #endif
 
 /* Function prototypes. */
+void timers_reset_all();
 void timers_reset(unsigned long long mask);
+void timers_open_file(int rank);
+void timers_close_file();
+void timers_print(int step);
 
 #endif /* SWIFT_TIMERS_H */

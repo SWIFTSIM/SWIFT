@@ -129,6 +129,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max = 0.f;
+      temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -1103,33 +1104,93 @@ void cell_reset_task_counters(struct cell *c) {
 }
 
 /**
- * @brief Checks whether the cells are direct neighbours ot not. Both cells have
- * to be of the same size
+ * @brief Recursively construct all the multipoles in a cell hierarchy.
  *
- * @param ci First #cell.
- * @param cj Second #cell.
- *
- * @todo Deal with periodicity.
+ * @param c The #cell.
+ * @param ti_current The current integer time.
  */
-int cell_are_neighbours(const struct cell *restrict ci,
-                        const struct cell *restrict cj) {
+void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("Cells of different size !");
-#endif
+  /* Reset everything */
+  gravity_reset(c->multipole);
 
-  /* Maximum allowed distance */
-  const double min_dist =
-      1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
+  if (c->split) {
 
-  /* (Manhattan) Distance between the cells */
-  for (int k = 0; k < 3; k++) {
-    const double center_i = ci->loc[k];
-    const double center_j = cj->loc[k];
-    if (fabs(center_i - center_j) > min_dist) return 0;
+    /* Compute CoM of all progenies */
+    double CoM[3] = {0., 0., 0.};
+    double mass = 0.;
+
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct gravity_tensors *m = c->progeny[k]->multipole;
+        CoM[0] += m->CoM[0] * m->m_pole.M_000;
+        CoM[1] += m->CoM[1] * m->m_pole.M_000;
+        CoM[2] += m->CoM[2] * m->m_pole.M_000;
+        mass += m->m_pole.M_000;
+      }
+    }
+    c->multipole->CoM[0] = CoM[0] / mass;
+    c->multipole->CoM[1] = CoM[1] / mass;
+    c->multipole->CoM[2] = CoM[2] / mass;
+
+    /* Now shift progeny multipoles and add them up */
+    struct multipole temp;
+    double r_max = 0.;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct cell *cp = c->progeny[k];
+        const struct multipole *m = &cp->multipole->m_pole;
+
+        /* Contribution to multipole */
+        gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
+        gravity_multipole_add(&c->multipole->m_pole, &temp);
+
+        /* Upper limit of max CoM<->gpart distance */
+        const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
+        const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
+        const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+        const double r2 = dx * dx + dy * dy + dz * dz;
+        r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
+      }
+    }
+    /* Alternative upper limit of max CoM<->gpart distance */
+    const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                          ? c->multipole->CoM[0] - c->loc[0]
+                          : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+    const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                          ? c->multipole->CoM[1] - c->loc[1]
+                          : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+    const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                          ? c->multipole->CoM[2] - c->loc[2]
+                          : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+
+    /* Take minimum of both limits */
+    c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+  } else {
+
+    if (c->gcount > 0) {
+      gravity_P2M(c->multipole, c->gparts, c->gcount);
+      const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                            ? c->multipole->CoM[0] - c->loc[0]
+                            : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+      const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                            ? c->multipole->CoM[1] - c->loc[1]
+                            : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+      const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                            ? c->multipole->CoM[2] - c->loc[2]
+                            : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+      c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+    } else {
+      gravity_multipole_init(&c->multipole->m_pole);
+      c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+      c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+      c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+      c->multipole->r_max = 0.;
+    }
   }
 
-  return 1;
+  c->ti_old_multipole = ti_current;
 }
 
 /**
@@ -1144,6 +1205,8 @@ void cell_check_multipole(struct cell *c, void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
+
+  return;
 
   /* First recurse */
   if (c->split)
@@ -1244,28 +1307,44 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
-    const struct cell *ci = t->ci;
-    const struct cell *cj = t->cj;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
     scheduler_activate(s, t);
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
+      if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
+        for (struct cell *finger = ci; finger != NULL; finger = finger->parent)
+          finger->sorted = 0;
+      }
+      if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
+        for (struct cell *finger = cj; finger != NULL; finger = finger->parent)
+          finger->sorted = 0;
+      }
       if (!(ci->sorted & (1 << t->flags))) {
-        atomic_or(&ci->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(ci->sorts->flags & (1 << t->flags)))
+          error("bad flags in sort task.");
+#endif
         scheduler_activate(s, ci->sorts);
+        if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
       }
       if (!(cj->sorted & (1 << t->flags))) {
-        atomic_or(&cj->sorts->flags, (1 << t->flags));
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(cj->sorts->flags & (1 << t->flags)))
+          error("bad flags in sort task.");
+#endif
         scheduler_activate(s, cj->sorts);
+        if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
       }
     }
 
-    /* Check whether there was too much particle motion */
+    /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      if (t->tight &&
-          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
+
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
         rebuild = 1;
 
 #ifdef WITH_MPI
@@ -1287,10 +1366,12 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (cj->super->drift)
-          scheduler_activate(s, cj->super->drift);
+        /* Drift both cells, the foreign one at the level which it is sent. */
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
+        if (t->type == task_type_pair) scheduler_activate(s, cj->drift);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1323,10 +1404,12 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        if (ci->super->drift)
-          scheduler_activate(s, ci->super->drift);
+        /* Drift both cells, the foreign one at the level which it is sent. */
+        if (l->t->ci->drift)
+          scheduler_activate(s, l->t->ci->drift);
         else
           error("Drift task missing !");
+        if (t->type == task_type_pair) scheduler_activate(s, ci->drift);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -1341,6 +1424,14 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
+      } else if (t->type == task_type_pair) {
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
+      }
+#else
+      if (t->type == task_type_pair) {
+        scheduler_activate(s, ci->drift);
+        scheduler_activate(s, cj->drift);
       }
 #endif
     }
@@ -1355,7 +1446,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, l->t);
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
-  if (c->init != NULL) scheduler_activate(s, c->init);
   if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
   if (c->drift != NULL) scheduler_activate(s, c->drift);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
@@ -1409,7 +1499,9 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
-  float dx_max = 0.f, dx2_max = 0.f, cell_h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f;
+  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
+  float cell_h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old) error("Attempt to drift to the past");
@@ -1421,8 +1513,13 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
+
+        /* Collect */
         cell_drift_particles(cp, e);
+
+        /* Update */
         dx_max = max(dx_max, cp->dx_max);
+        dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         cell_h_max = max(cell_h_max, cp->h_max);
       }
 
@@ -1443,6 +1540,11 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+
+      /* Init gravity force fields. */
+      if (gpart_is_active(gp, e)) {
+        gravity_init_gpart(gp);
+      }
     }
 
     /* Loop over all the gas particles in the cell */
@@ -1464,9 +1566,18 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+      const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+                             xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+                             xp->x_diff_sort[2] * xp->x_diff_sort[2];
+      dx2_max_sort = max(dx2_max_sort, dx2_sort);
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, p->h);
+
+      /* Get ready for a density calculation */
+      if (part_is_active(p, e)) {
+        hydro_init_part(p, &e->s->hs);
+      }
     }
 
     /* Loop over all the star particles in the cell */
@@ -1484,16 +1595,19 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
+    dx_max_sort = sqrtf(dx2_max_sort);
 
   } else {
 
     cell_h_max = c->h_max;
     dx_max = c->dx_max;
+    dx_max_sort = c->dx_max_sort;
   }
 
   /* Store the values */
   c->h_max = cell_h_max;
   c->dx_max = dx_max;
+  c->dx_max_sort = dx_max_sort;
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;

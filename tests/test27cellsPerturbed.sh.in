@@ -10,7 +10,7 @@ do
 
     if [ -e brute_force_27_perturbed.dat ]
     then
-	python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed.dat 6
+	python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed.dat 6 1
     else
 	exit 1
     fi
