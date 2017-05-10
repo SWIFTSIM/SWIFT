@@ -47,7 +47,9 @@ int main() {
   /* Make one particle */
   int nr_gparts = 1;
   struct gpart *gparts = NULL;
-  posix_memalign((void **)&gparts, 64, nr_gparts * sizeof(struct gpart));
+  if (posix_memalign((void **)&gparts, 64, nr_gparts * sizeof(struct gpart)) !=
+      0)
+    error("Impossible to allocate memory for gparts.");
   bzero(gparts, nr_gparts * sizeof(struct gpart));
 
   gparts[0].x[0] = 0.3;
@@ -73,7 +75,8 @@ int main() {
   engine.s = &space;
   space.e = &engine;
   engine.time = 0.1f;
-  engine.ti_current = 8;
+  engine.ti_current = 0;
+  engine.ti_old = 0;
   engine.max_active_bin = num_time_bins;
   engine.gravity_properties = &gravity_properties;
   engine.nr_threads = 1;
