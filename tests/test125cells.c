@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -525,9 +526,9 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 1;
-  space.dim[0] = 3.;
-  space.dim[1] = 3.;
-  space.dim[2] = 3.;
+  space.dim[0] = 5.;
+  space.dim[1] = 5.;
+  space.dim[2] = 5.;
   hydro_space_init(&space.hs, &space);
 
   struct phys_const prog_const;
@@ -668,6 +669,12 @@ int main(int argc, char *argv[]) {
       sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
+    }
+
+    /* Reset stuff */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
     }
   }
 
