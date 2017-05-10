@@ -3480,7 +3480,8 @@ void engine_unskip(struct engine *e) {
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   /* And the top level gravity FFT one */
-  if (e->s->periodic) scheduler_activate(&e->sched, e->s->grav_top_level);
+  if (e->s->periodic && (e->policy & engine_policy_self_gravity))
+    scheduler_activate(&e->sched, e->s->grav_top_level);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
