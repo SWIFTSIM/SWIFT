@@ -32,7 +32,7 @@
 #include "swift.h"
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF2 runner_doself2_force_vec_2
+#define DOSELF2 runner_doself2_force_vec_3
 #define DOPAIR2 runner_dopair2_density_vec
 #define DOSELF2_NAME "runner_doself2_force_vec_3"
 #define DOPAIR2_NAME "runner_dopair2_force_vec"
@@ -604,6 +604,9 @@ int main(int argc, char *argv[]) {
       malloc(main_cell->count * sizeof(struct solution_part));
   get_solution(main_cell, solution, rho, vel, press, size);
 
+  ticks timings[27];
+  for (int i = 0; i < 27; i++) timings[i] = 0;
+
   /* Start the test */
   ticks time = 0;
   ticks self_force_time = 0;
@@ -614,6 +617,12 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j)
       runner_do_drift_particles(&runner, cells[j], 0);
+
+    /* Reset particles. */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
@@ -663,6 +672,7 @@ int main(int argc, char *argv[]) {
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+    int ctr = 0;
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
       for (int j = 1; j < 4; j++) {
@@ -670,14 +680,33 @@ int main(int argc, char *argv[]) {
 
           struct cell *cj = cells[i * 25 + j * 5 + k];
 
-          if (main_cell != cj) runner_dopair2_force(&runner, main_cell, cj);
+          if (main_cell != cj) {
+            
+            //double shift[3] = {0.0, 0.0, 0.0};
+            //struct cell *tempA = main_cell;
+            //struct cell *tempB = cj;
+            //const int sid = space_getsid(runner.e->s, &tempA, &tempB, shift); 
+            //
+            //if(sort_is_face(sid)) message("Face interaction: %d", ctr);
+            //else if(sort_is_edge(sid)) message("Edge interaction: %d", ctr);
+            //else if(sort_is_corner(sid)) message("Corner interaction: %d", ctr);
+
+            const ticks sub_tic = getticks();
+
+            runner_dopair2_force(&runner, main_cell, cj);
+
+            const ticks sub_toc = getticks();
+            timings[ctr++] += sub_toc - sub_tic;
+          }
         }
       }
     }
 
+#ifdef WITH_VECTORIZATION
 /* Initialise the cache. */
     runner.ci_cache.count = 0;
     cache_init(&runner.ci_cache, 512);
+#endif
 
     /* And now the self-interaction for the main cell */
     //runner_doself2_force(&runner, main_cell);
@@ -685,8 +714,8 @@ int main(int argc, char *argv[]) {
     ticks self_tic = getticks();
 
     DOSELF2(&runner, main_cell);
-
-    self_force_time += getticks() - self_tic;
+    
+    timings[26] += getticks() - self_tic;
 #endif
 
     /* Finally, give a gentle kick */
@@ -701,16 +730,33 @@ int main(int argc, char *argv[]) {
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
 
-    /* Reset stuff */
-    for (int i = 0; i < 125; ++i) {
-      for (int n = 0; n < cells[i]->count; ++n)
-        hydro_init_part(&cells[i]->parts[n], &space.hs);
-    }
+  }
+
+  for (size_t n = 0; n < 100*runs; ++n) {
+    ticks self_tic = getticks();
+
+    DOSELF2(&runner, main_cell);
+
+    self_force_time += getticks() - self_tic;
+    
   }
 
   /* Output timing */
-  message("Self calculations took       : %15lli ticks.", self_force_time / runs);
-  message("SWIFT calculation took       : %15lli ticks.", time / runs);
+  ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
+                      timings[17] + timings[19] + timings[23] + timings[25];
+
+  ticks edge_time = timings[1] + timings[3] + timings[5] + timings[7] +
+                    timings[9] + timings[11] + timings[14] + timings[16] +
+                    timings[18] + timings[20] + timings[22] + timings[24];
+
+  ticks face_time = timings[4] + timings[10] + timings[12] + timings[13] +
+                    timings[15] + timings[21];
+
+  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
+  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
+  message("Face calculations took         : %15lli ticks.", face_time / runs);
+  message("Self calculations took         : %15lli ticks.", self_force_time / 100*runs);
+  message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
