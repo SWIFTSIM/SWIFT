@@ -26,7 +26,6 @@
 
 /* Some standard headers. */
 #include <float.h>
-#include <hdf5.h>
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
