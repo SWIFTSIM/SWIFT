@@ -125,9 +125,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
       {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
       {-1, -1, -1, -1, -1, -1, -1, 12}};
-  static const float sid_scale[13] = {
-      0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
-      0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -976,9 +973,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
   const int nodeID = s->nodeID;
-  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
-                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
-                               0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
   const ticks tic = getticks();
 

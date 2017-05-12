@@ -83,6 +83,11 @@ static const int sortlistID[27] = {
     /* (  1 ,  1 ,  0 ) */ 1,
     /* (  1 ,  1 ,  1 ) */ 0};
 
+/* Ratio of particles interacting assuming a uniform distribution */
+static const float sid_scale[13] = {0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f,
+                                    0.4025f, 0.1897f, 0.4025f, 0.1897f, 0.4025f,
+                                    0.5788f, 0.4025f, 0.5788f};
+
 /**
  * @brief Determines whether a pair of cells are corner to corner.
  *
