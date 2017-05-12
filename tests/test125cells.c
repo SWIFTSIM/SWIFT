@@ -618,6 +618,12 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j)
       runner_do_drift_particles(&runner, cells[j], 0);
+    
+    /* Reset particles. */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
