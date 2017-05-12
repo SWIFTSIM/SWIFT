@@ -32,9 +32,9 @@
 #include "swift.h"
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF2 runner_doself2_force_vec_3
+#define DOSELF2 runner_doself2_force_vec
 #define DOPAIR2 runner_dopair2_density_vec
-#define DOSELF2_NAME "runner_doself2_force_vec_3"
+#define DOSELF2_NAME "runner_doself2_force_vec"
 #define DOPAIR2_NAME "runner_dopair2_force_vec"
 #endif
 
@@ -441,8 +441,6 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
-void runner_doself2_force_vec_2(struct runner *r, struct cell *ci);
-void runner_doself2_force_vec_3(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
