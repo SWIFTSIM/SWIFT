@@ -1202,8 +1202,6 @@ void scheduler_start(struct scheduler *s) {
   }
 #endif
 
-  scheduler_print_tasks(s, "tasks.dat");
-
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
