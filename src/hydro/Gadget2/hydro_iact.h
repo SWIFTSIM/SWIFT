@@ -1549,8 +1549,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   hid_inv = pow_dimension_plus_one_vec(*hi_inv);
   xi.v = r.v * hi_inv->v;
   xi_2.v = r_2.v * hi_inv->v;
-  kernel_deval_1_vec(&xi, &wi, &wi_dx);
-  kernel_deval_1_vec(&xi_2, &wi_2, &wi_dx_2);
+  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi_2, &wi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
   wi_dr_2.v = hid_inv.v * wi_dx_2.v;
 
@@ -1957,9 +1956,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   hid_inv = pow_dimension_plus_one_vec(*hi_inv);
   xi.v = r.v * hi_inv->v;
   xi_2.v = r_2.v * hi_inv->v;
-  /* TODO: kernel_deval_2_vec */
-  kernel_deval_1_vec(&xi, &wi, &wi_dx);
-  kernel_deval_1_vec(&xi_2, &wi_2, &wi_dx_2);
+  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi_2, &wi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
   wi_dr_2.v = hid_inv.v * wi_dx_2.v;
 
