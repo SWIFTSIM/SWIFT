@@ -30,26 +30,6 @@
 #ifdef WITH_VECTORIZATION
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
 
-//static void printFloatVector(vector v, char *label, int length) {
-//
-//  int i;
-//  printf("%s:[", label);
-//  for (i = 0; i < length; i++) {
-//    printf("%f, ", v.f[i]);
-//  }
-//  printf("]\n");
-//}
-
-//static void printIntVector(vector v, char *label, int length) {
-//
-//  int i;
-//  printf("%s:[", label);
-//  for (i = 0; i < length; i++) {
-//    printf("%d, ", v.i[i]);
-//  }
-//  printf("]\n");
-//}
-
 /**
  * @brief Compute the vector remainder interactions from the secondary cache.
  *
@@ -514,8 +494,6 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
   /* Flush the c2 cache if it has reached capacity. */
   if (*icount >= (C2_CACHE_SIZE - (2 * VEC_SIZE))) {
 
-    error("Flushing interaction cache...");
-
     int icount_align = *icount;
 
     /* Peform remainder interactions. */
@@ -524,24 +502,13 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
                              v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
                              &icount_align, 2);
 
-
-    vector int_mask, int_mask2;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
 
-      runner_iact_nonsym_2_vec_force(
+      runner_iact_nonsym_2_vec_force_nomask(
         &int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd], &int_cache->dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd], &int_cache->rhoq[pjd], &int_cache->grad_hq[pjd], &int_cache->pOrho2q[pjd], &int_cache->balsaraq[pjd], &int_cache->soundspeedq[pjd], &int_cache->mq[pjd], v_hi_inv, &int_cache->h_invq[pjd],
-        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2
-#ifdef HAVE_AVX512_F
-          knl_mask, knl_mask2);
-#else
-          );
-#endif
-
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum);
     }
 
     /* Reset interaction count. */
