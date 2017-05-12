@@ -30,6 +30,19 @@
 /* Local headers. */
 #include "swift.h"
 
+//#if defined(WITH_VECTORIZATION)
+//#define DOSELF2 runner_doself2_force_vec
+////#define DOPAIR2 runner_dopair2_force_vec
+//#define DOSELF2_NAME "runner_doself2_force_vec"
+//#define DOPAIR2_NAME "runner_dopair2_force"
+//#endif
+
+#ifndef DOSELF2
+#define DOSELF2 runner_doself2_force
+#define DOSELF2_NAME "runner_doself2_density"
+#define DOPAIR2_NAME "runner_dopair2_force"
+#endif
+
 enum velocity_field {
   velocity_zero,
   velocity_const,
@@ -240,7 +253,7 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
  * @param press The type of pressure field.
  */
 struct cell *make_cell(size_t n, const double offset[3], double size, double h,
-                       double density, long long *partId,
+                       double density, long long *partId, double pert,
                        enum velocity_field vel, enum pressure_field press) {
 
   const size_t count = n * n * n;
@@ -263,9 +276,15 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
-        part->x[0] = offset[0] + size * (x + 0.5) / (float)n;
-        part->x[1] = offset[1] + size * (y + 0.5) / (float)n;
-        part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
+        part->x[0] =
+            offset[0] +
+            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[1] =
+            offset[1] +
+            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[2] =
+            offset[2] +
+            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->h = size * h / (float)n;
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
@@ -354,8 +373,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   /* Write header */
   fprintf(file,
-          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s "
-          "%8s %8s %8s %8s %8s\n",
+          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
+          "%13s %8s %8s %8s %8s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
@@ -367,7 +386,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %8.5f %8.5f %8.5f %8.5f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -432,6 +451,7 @@ int main(int argc, char *argv[]) {
 
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
+  double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
@@ -462,6 +482,9 @@ int main(int argc, char *argv[]) {
       case 'r':
         sscanf(optarg, "%zu", &runs);
         break;
+      case 'd':
+        sscanf(optarg, "%lf", &perturbation);
+        break;
       case 'm':
         sscanf(optarg, "%lf", &rho);
         break;
@@ -491,6 +514,7 @@ int main(int argc, char *argv[]) {
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
+        "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
         "\n-p type (0,1,2)    - Pressure field: (constant, gradient divergent)"
@@ -566,7 +590,7 @@ int main(int argc, char *argv[]) {
 
         /* Construct it */
         cells[i * 25 + j * 5 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, vel, press);
+            make_cell(particles, offset, size, h, rho, &partId, perturbation, vel, press);
 
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
@@ -671,6 +695,15 @@ int main(int argc, char *argv[]) {
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
   }
+
+  //for (size_t n = 0; n < 100*runs; ++n) {
+  //  ticks self_tic = getticks();
+
+  //  DOSELF2(&runner, main_cell);
+
+  //  self_force_time += getticks() - self_tic;
+  //  
+  //}
 
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
