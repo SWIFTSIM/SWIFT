@@ -119,13 +119,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  */
 static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
-  /* Static constants. */
-  static const int pts[7][8] = {
-      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
-      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
-      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
-      {-1, -1, -1, -1, -1, -1, -1, 12}};
-
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -147,7 +140,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
-      const double hi = ci->dmin;
+      const double width = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -155,8 +148,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split? */
-      if (ci->split && 2.f * kernel_gamma * ci->h_max * space_stretch < hi) {
+      /* Is this cell even split and the task does not violate h ? */
+      if (ci->split && 2.f * kernel_gamma * ci->h_max * space_stretch < width) {
 
         /* Make a sub? */
         if (scheduler_dosub && /* Note division here to avoid overflow */
@@ -192,32 +185,30 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 if (ci->progeny[k] != NULL)
                   scheduler_splittask_hydro(
                       scheduler_addtask(s, task_type_pair, t->subtype,
-                                        pts[j][k], 0, ci->progeny[j],
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
                                         ci->progeny[k]),
                       s);
         }
-      }
+      } /* Cell is split */
 
       /* Otherwise, make sure the self task has a drift task */
       else {
 
         lock_lock(&ci->lock);
 
-        /* Drift parts case */
         if (ci->drift_part == NULL)
           ci->drift_part = scheduler_addtask(s, task_type_drift_part,
                                              task_subtype_none, 0, 0, ci, NULL);
         lock_unlock_blind(&ci->lock);
       }
+    } /* Self interaction */
 
-      /* Non-gravity pair interaction? */
-    } else if (t->type == task_type_pair) {
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
-      const double hi = ci->dmin;
-      const double hj = cj->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -230,10 +221,13 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       double shift[3];
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
+      const double width_i = ci->dmin;
+      const double width_j = cj->dmin;
+
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
-          2.f * kernel_gamma * space_stretch * ci->h_max < hi &&
-          2.f * kernel_gamma * space_stretch * cj->h_max < hj) {
+          2.f * kernel_gamma * space_stretch * ci->h_max < width_i &&
+          2.f * kernel_gamma * space_stretch * cj->h_max < width_j) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
@@ -625,7 +619,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         lock_unlock_blind(&ci->lock);
         scheduler_addunlock(s, ci->sorts, t);
 
-        /* Create the sort for cj. */
+        /* Create the drift and sort for cj. */
         lock_lock(&cj->lock);
         if (cj->drift_part == NULL && cj->nodeID == engine_rank)
           cj->drift_part = scheduler_addtask(s, task_type_drift_part,
@@ -648,7 +642,134 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {}
+static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split? */
+      if (ci->split) {
+
+        /* Make a sub? */
+        if (scheduler_dosub && /* Note division here to avoid overflow */
+            (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount)) {
+
+          /* convert to a self-subtask. */
+          t->type = task_type_sub_self;
+
+          /* Make sure we have a drift task (MATTHIEU temp. fix) */
+          lock_lock(&ci->lock);
+          if (ci->drift_gpart == NULL)
+            ci->drift_gpart = scheduler_addtask(
+                s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
+          lock_unlock_blind(&ci->lock);
+
+          /* Otherwise, make tasks explicitly. */
+        } else {
+
+          /* Take a step back (we're going to recycle the current task)... */
+          redo = 1;
+
+          /* Add the self tasks. */
+          int first_child = 0;
+          while (ci->progeny[first_child] == NULL) first_child++;
+          t->ci = ci->progeny[first_child];
+          for (int k = first_child + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              scheduler_splittask_gravity(
+                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                    ci->progeny[k], NULL),
+                  s);
+
+          /* Make a task for each pair of progeny */
+          if (t->subtype != task_subtype_external_grav) {
+            for (int j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                for (int k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL)
+                    scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair, t->subtype,
+                                          sub_sid_flag[j][k], 0, ci->progeny[j],
+                                          ci->progeny[k]),
+                        s);
+          }
+        }
+      } /* Cell is split */
+
+      /* Otherwise, make sure the self task has a drift task */
+      else {
+
+        lock_lock(&ci->lock);
+
+        if (ci->drift_gpart == NULL)
+          ci->drift_gpart = scheduler_addtask(
+              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
+        lock_unlock_blind(&ci->lock);
+      }
+    } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
+
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Should this task be split-up? */
+      if (ci->split && cj->split) {
+
+        // MATTHIEU: nothing here for now
+
+      } else {
+
+        /* Create the drift for ci. */
+        lock_lock(&ci->lock);
+        if (ci->drift_gpart == NULL && ci->nodeID == engine_rank)
+          ci->drift_gpart = scheduler_addtask(
+              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
+        lock_unlock_blind(&ci->lock);
+
+        /* Create the drift for cj. */
+        lock_lock(&cj->lock);
+        if (cj->drift_gpart == NULL && cj->nodeID == engine_rank)
+          cj->drift_gpart = scheduler_addtask(
+              s, task_type_drift_gpart, task_subtype_none, 0, 0, cj, NULL);
+        lock_unlock_blind(&cj->lock);
+      }
+    } /* pair interaction? */
+  }   /* iterate over the current task. */
+}
 
 /**
  * @brief Mapper function to split tasks that may be too large.
