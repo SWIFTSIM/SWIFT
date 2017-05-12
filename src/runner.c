@@ -1787,8 +1787,13 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_gradient)
             runner_doself1_gradient(r, ci);
 #endif
-          else if (t->subtype == task_subtype_force)
+          else if (t->subtype == task_subtype_force) {
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+            runner_doself2_force_vec(r, ci);
+#else
             runner_doself2_force(r, ci);
+#endif
+          }
           else if (t->subtype == task_subtype_grav)
             runner_doself_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
