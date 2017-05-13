@@ -65,6 +65,7 @@ tests/parser_output.yml
 tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test125cells.sh
+tests/test125cellsPerturbed.sh
 tests/testPair.sh
 tests/testPairPerturbed.sh
 tests/testParser.sh
