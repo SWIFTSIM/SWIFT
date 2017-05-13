@@ -374,7 +374,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   /* Write header */
   fprintf(file,
           "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
-          "%13s %8s %8s %8s %8s\n",
+          "%13s %13s %13s %8s %8s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
@@ -386,7 +386,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %13e %13e %13e %8.5f %8.5f %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -425,7 +425,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
-              "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+              "%8.5f %8.5f %13f %13f %13f %13f %13f %8.5f %8.5f\n",
               solution[pid].id, solution[pid].x[0], solution[pid].x[1],
               solution[pid].x[2], solution[pid].v[0], solution[pid].v[1],
               solution[pid].v[2], solution[pid].h, solution[pid].rho,
@@ -559,7 +559,8 @@ int main(int argc, char *argv[]) {
 
   struct hydro_props hp;
   hp.target_neighbours = pow_dimension(h) * kernel_norm;
-  hp.delta_neighbours = 2.;
+  hp.delta_neighbours = 4.;
+  hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
@@ -589,8 +590,8 @@ int main(int argc, char *argv[]) {
         const double offset[3] = {i * size, j * size, k * size};
 
         /* Construct it */
-        cells[i * 25 + j * 5 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, perturbation, vel, press);
+        cells[i * 25 + j * 5 + k] = make_cell(
+            particles, offset, size, h, rho, &partId, perturbation, vel, press);
 
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
@@ -618,7 +619,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j)
       runner_do_drift_particles(&runner, cells[j], 0);
-    
+
     /* Reset particles. */
     for (int i = 0; i < 125; ++i) {
       for (int n = 0; n < cells[i]->count; ++n)
@@ -702,13 +703,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  //for (size_t n = 0; n < 100*runs; ++n) {
+  // for (size_t n = 0; n < 100*runs; ++n) {
   //  ticks self_tic = getticks();
 
   //  DOSELF2(&runner, main_cell);
 
   //  self_force_time += getticks() - self_tic;
-  //  
+  //
   //}
 
   /* Output timing */
