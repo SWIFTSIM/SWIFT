@@ -1661,7 +1661,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
     /* Create the FFT task for this MPI rank */
     s->grav_top_level = scheduler_addtask(sched, task_type_grav_top_level,
-                                          task_type_none, 0, 0, NULL, NULL);
+                                          task_subtype_none, 0, 0, NULL, NULL);
 
     /* Create a grid of ghosts to deal with the dependencies */
     if ((ghosts = malloc(n_ghosts * sizeof(struct task *))) == 0)
@@ -1670,9 +1670,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* Make the ghosts implicit and add the dependencies */
     for (int n = 0; n < n_ghosts / 2; ++n) {
       ghosts[2 * n + 0] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_type_none, 0, 0, NULL, NULL);
+                                            task_subtype_none, 0, 0, NULL, NULL);
       ghosts[2 * n + 1] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_type_none, 0, 0, NULL, NULL);
+                                            task_subtype_none, 0, 0, NULL, NULL);
       ghosts[2 * n + 0]->implicit = 1;
       ghosts[2 * n + 1]->implicit = 1;
       scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
