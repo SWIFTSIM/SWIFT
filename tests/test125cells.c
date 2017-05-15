@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -31,12 +30,12 @@
 /* Local headers. */
 #include "swift.h"
 
-//#if defined(WITH_VECTORIZATION)
-//#define DOSELF2 runner_doself2_force_vec
-////#define DOPAIR2 runner_dopair2_force_vec
-//#define DOSELF2_NAME "runner_doself2_force_vec"
-//#define DOPAIR2_NAME "runner_dopair2_force"
-//#endif
+#if defined(WITH_VECTORIZATION)
+#define DOSELF2 runner_doself2_force_vec
+//#define DOPAIR2 runner_dopair2_force_vec
+#define DOSELF2_NAME "runner_doself2_force_vec"
+#define DOPAIR2_NAME "runner_dopair2_force"
+#endif
 
 #ifndef DOSELF2
 #define DOSELF2 runner_doself2_force
@@ -375,7 +374,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   /* Write header */
   fprintf(file,
           "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
-          "%13s %8s %8s %8s %8s\n",
+          "%13s %13s %13s %8s %8s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
@@ -387,7 +386,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %13e %13e %13e %8.5f %8.5f %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -426,7 +425,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
-              "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+              "%8.5f %8.5f %13f %13f %13f %13f %13f %8.5f %8.5f\n",
               solution[pid].id, solution[pid].x[0], solution[pid].x[1],
               solution[pid].x[2], solution[pid].v[0], solution[pid].v[1],
               solution[pid].v[2], solution[pid].h, solution[pid].rho,
@@ -553,9 +552,9 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 1;
-  space.dim[0] = 5.;
-  space.dim[1] = 5.;
-  space.dim[2] = 5.;
+  space.dim[0] = 3.;
+  space.dim[1] = 3.;
+  space.dim[2] = 3.;
   hydro_space_init(&space.hs, &space);
 
   struct phys_const prog_const;
@@ -563,7 +562,8 @@ int main(int argc, char *argv[]) {
 
   struct hydro_props hp;
   hp.target_neighbours = pow_dimension(h) * kernel_norm;
-  hp.delta_neighbours = 2.;
+  hp.delta_neighbours = 4.;
+  hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
@@ -593,8 +593,8 @@ int main(int argc, char *argv[]) {
         const double offset[3] = {i * size, j * size, k * size};
 
         /* Construct it */
-        cells[i * 25 + j * 5 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, perturbation, vel, press);
+        cells[i * 25 + j * 5 + k] = make_cell(
+            particles, offset, size, h, rho, &partId, perturbation, vel, press);
 
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
@@ -691,15 +691,6 @@ int main(int argc, char *argv[]) {
 
           if (main_cell != cj) {
             
-            //double shift[3] = {0.0, 0.0, 0.0};
-            //struct cell *tempA = main_cell;
-            //struct cell *tempB = cj;
-            //const int sid = space_getsid(runner.e->s, &tempA, &tempB, shift); 
-            //
-            //if(sort_is_face(sid)) message("Face interaction: %d", ctr);
-            //else if(sort_is_edge(sid)) message("Edge interaction: %d", ctr);
-            //else if(sort_is_corner(sid)) message("Corner interaction: %d", ctr);
-
             const ticks sub_tic = getticks();
 
             runner_dopair2_force(&runner, main_cell, cj);
@@ -717,11 +708,9 @@ int main(int argc, char *argv[]) {
     cache_init(&runner.ci_cache, 512);
 #endif
 
-    /* And now the self-interaction for the main cell */
-    //runner_doself2_force(&runner, main_cell);
-    
     ticks self_tic = getticks();
 
+    /* And now the self-interaction for the main cell */
     DOSELF2(&runner, main_cell);
     
     timings[26] += getticks() - self_tic;
@@ -738,17 +727,16 @@ int main(int argc, char *argv[]) {
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
-
   }
 
-  //for (size_t n = 0; n < 100*runs; ++n) {
-  //  ticks self_tic = getticks();
+   for (size_t n = 0; n < 100*runs; ++n) {
+    ticks self_tic = getticks();
 
-  //  DOSELF2(&runner, main_cell);
+    DOSELF2(&runner, main_cell);
 
-  //  self_force_time += getticks() - self_tic;
-  //  
-  //}
+    self_force_time += getticks() - self_tic;
+  
+  }
 
   /* Output timing */
   ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
