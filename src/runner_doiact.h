@@ -635,11 +635,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort > space_maxreldx * cj->dmin) {
-    DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
-    return;
-  }
+  if (!(cj->sorted & (1 << sid))) error("Interacting unsorted cells.");
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
@@ -911,10 +907,12 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
-    runner_do_sort(r, ci, (1 << sid), 1);
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
+  if (!(ci->sorted & (1 << sid)) ||
+      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1155,10 +1153,12 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
-    runner_do_sort(r, ci, (1 << sid), 1);
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
+  if (!(ci->sorted & (1 << sid)) ||
+      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -2063,19 +2063,16 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
   if (ci->count == 0 || cj->count == 0) return;
 
-  /* Get the cell dimensions. */
-  const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
-
   /* Get the type of pair if not specified explicitly. */
-  // if ( sid < 0 )
   double shift[3];
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
-              cj->dx_max_sort <
-          h / 2) {
+      2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
+          ci->dmin &&
+      2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
+          ci->dmin) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2279,16 +2276,16 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+    if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+      error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
         ci->dx_max_sort > ci->dmin * space_maxreldx)
-      runner_do_sort(r, ci, (1 << sid), 1);
+      error("Interacting unsorted cell.");
     if (!(cj->sorted & (1 << sid)) ||
         cj->dx_max_sort > cj->dmin * space_maxreldx)
-      runner_do_sort(r, cj, (1 << sid), 1);
+      error("Interacting unsorted cell.");
 
 /* Compute the interactions. */
 #if (DOPAIR1 == runner_dopair1_density) && defined(WITH_VECTORIZATION) && \
@@ -2333,7 +2330,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   else {
 
     /* Drift the cell to the current timestep if needed. */
-    if (!cell_is_drifted(ci, r->e)) cell_drift_particles(ci, r->e);
+    if (!cell_is_drifted(ci, r->e)) error("Interacting undrifted cell.");
 
 #if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
@@ -2370,9 +2367,6 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
   if (ci->count == 0 || cj->count == 0) return;
 
-  /* Get the cell dimensions. */
-  const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
-
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
   double shift[3];
@@ -2380,9 +2374,10 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
-              cj->dx_max_sort <
-          h / 2) {
+      2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
+          ci->dmin &&
+      2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
+          ci->dmin) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2586,16 +2581,16 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+    if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+      error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort > ci->dmin * space_maxreldx)
-      runner_do_sort(r, ci, (1 << sid), 1);
+        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
+      error("Interacting unsorted cells.");
     if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort > cj->dmin * space_maxreldx)
-      runner_do_sort(r, cj, (1 << sid), 1);
+        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
+      error("Interacting unsorted cells.");
 
     /* Compute the interactions. */
     DOPAIR2(r, ci, cj);
@@ -2647,16 +2642,21 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   TIMER_TIC;
 
+  /* Should we even bother? */
+  if (!cell_is_active(ci, e) && (cj == NULL || !cell_is_active(cj, e))) return;
+  if (ci->count == 0 || (cj != NULL && cj->count == 0)) return;
+
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
-  for (int k = 0; k < 8; k++)
-    if (ci->progeny[k] != NULL) {
-      if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
-          &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
-        sub = ci->progeny[k];
-        break;
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL) {
+        if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
+            &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
+          sub = ci->progeny[k];
+          break;
+        }
       }
-    }
 
   /* Is this a single cell? */
   if (cj == NULL) {
@@ -2681,14 +2681,12 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   /* Otherwise, it's a pair interaction. */
   else {
 
-    /* Get the cell dimensions. */
-    const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
-
     /* Recurse? */
     if (ci->split && cj->split &&
-        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max_sort +
-                cj->dx_max_sort <
-            h / 2) {
+        2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
+            ci->dmin &&
+        2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
+            ci->dmin) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -3199,26 +3197,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     /* Otherwise, compute the pair directly. */
     else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
-      /* Get the relative distance between the pairs, wrapping. */
-      double shift[3] = {0.0, 0.0, 0.0};
-      for (int k = 0; k < 3; k++) {
-        if (cj->loc[k] - ci->loc[k] < -s->dim[k] / 2)
-          shift[k] = s->dim[k];
-        else if (cj->loc[k] - ci->loc[k] > s->dim[k] / 2)
-          shift[k] = -s->dim[k];
-      }
-
-      /* Get the sorting index. */
-      int new_sid = 0;
-      for (int k = 0; k < 3; k++)
-        new_sid = 3 * new_sid +
-                  ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                       ? 0
-                       : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-      new_sid = sortlistID[new_sid];
-
       /* Do any of the cells need to be drifted first? */
-      if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+      if (!cell_is_drifted(cj, e)) error("Cell should be drifted!");
 
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
     }
