@@ -74,7 +74,7 @@ struct pcell {
 
   /* Stats on this cell's particles. */
   double h_max;
-  integertime_t ti_end_min, ti_end_max, ti_beg_max, ti_old;
+  integertime_t ti_end_min, ti_end_max, ti_beg_max, ti_old_part, ti_old_gpart;
 
   /* Number of particles in this cell. */
   int count, gcount, scount;
@@ -157,8 +157,11 @@ struct cell {
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;
 
-  /*! The drift task */
-  struct task *drift;
+  /*! The drift task for parts */
+  struct task *drift_part;
+
+  /*! The drift task for gparts */
+  struct task *drift_gpart;
 
   /*! The first kick task */
   struct task *kick1;
@@ -169,10 +172,10 @@ struct cell {
   /*! The task to compute time-steps */
   struct task *timestep;
 
-  /*! Task constructing the multipole from the particles */
-  struct task *grav_top_level;
+  /*! Task linking the FFT mesh to the rest of gravity tasks */
+  struct task *grav_ghost[2];
 
-  /*! Task constructing the multipole from the particles */
+  /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
 
   /*! Task propagating the multipole to the particles */
@@ -233,11 +236,14 @@ struct cell {
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
 
-  /*! Last (integer) time the cell's particle was drifted forward in time. */
-  integertime_t ti_old;
-
   /*! Last (integer) time the cell's sort arrays were updated. */
   integertime_t ti_sort;
+
+  /*! Last (integer) time the cell's part were drifted forward in time. */
+  integertime_t ti_old_part;
+
+  /*! Last (integer) time the cell's gpart were drifted forward in time. */
+  integertime_t ti_old_gpart;
 
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
@@ -245,11 +251,14 @@ struct cell {
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 
-  /*! Maximum particle movement in this cell since last construction. */
-  float dx_max;
-
   /*! Maximum particle movement in this cell since the last sort. */
   float dx_max_sort;
+
+  /*! Maximum part movement in this cell since last construction. */
+  float dx_max_part;
+
+  /*! Maximum gpart movement in this cell since last construction. */
+  float dx_max_gpart;
 
   /*! Nr of #part in this cell. */
   int count;
@@ -357,13 +366,15 @@ void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
-void cell_check_particle_drift_point(struct cell *c, void *data);
+void cell_check_part_drift_point(struct cell *c, void *data);
+void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
-void cell_drift_particles(struct cell *c, const struct engine *e);
+void cell_drift_part(struct cell *c, const struct engine *e);
+void cell_drift_gpart(struct cell *c, const struct engine *e);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);

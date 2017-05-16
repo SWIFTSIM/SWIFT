@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) error("Interacting undrifted cell.");
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -625,7 +625,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
