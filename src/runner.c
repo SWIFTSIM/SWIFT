@@ -63,6 +63,9 @@
 #include "timers.h"
 #include "timestep.h"
 
+size_t runner_num_ghost_redos = 0;
+size_t runner_num_things_are_bad = 0;
+
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"
@@ -315,16 +318,18 @@ void runner_check_sorts(struct cell *c, int flags) {
  * @param r The #runner.
  * @param c The #cell.
  * @param flags Cell flag.
+ * @param cleanup If true, re-build the sorts for the selected flags instead
+ *        of just adding them.
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
+void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
+                    int clock) {
 
   struct entry *finger;
   struct entry *fingers[8];
   struct part *parts = c->parts;
   struct xpart *xparts = c->xparts;
-  struct entry *sort;
   const int count = c->count;
   float buff[8];
 
@@ -344,27 +349,25 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   }
 #endif
 
-  /* Clean-up the flags, i.e. filter out what's already been sorted, but
-     only if the sorts are recent. */
-  if (c->ti_sort == r->e->ti_current) {
-    /* Ignore dimensions that have been sorted in this timestep. */
-    // flags &= ~c->sorted;
-  } else {
-    /* Clean old (stale) sorts. */
+  /* Clean-up the flags, i.e. filter out what's already been sorted unless
+     we're cleaning up. */
+  if (cleanup && c->ti_sort < r->e->ti_current) {
+    /* Re-compute old (stale) sorts. */
     flags |= c->sorted;
     c->sorted = 0;
+  } else {
+    /* Ignore dimensions that are already sorted. */
+    flags &= ~c->sorted;
   }
   if (flags == 0) return;
 
   /* start by allocating the entry arrays. */
-  if (c->sort == NULL || c->sortsize < count) {
-    if (c->sort != NULL) free(c->sort);
-    c->sortsize = count * 1.1;
-    if ((c->sort = (struct entry *)malloc(sizeof(struct entry) *
-                                          (c->sortsize + 1) * 13)) == NULL)
+  if (c->sort == NULL) {
+    if ((c->sort = (struct entry *)malloc(sizeof(struct entry) * (count + 1) *
+                                          13)) == NULL)
       error("Failed to allocate sort memory.");
   }
-  sort = c->sort;
+  struct entry *sort = c->sort;
 
   /* Does this cell have any progeny? */
   if (c->split) {
@@ -373,13 +376,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
     float dx_max_sort = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        if (flags & ~c->progeny[k]->sorted ||
-            c->progeny[k]->dx_max_sort > c->dmin * space_maxreldx)
-          runner_do_sort(r, c->progeny[k], flags, 0);
+        runner_do_sort(r, c->progeny[k], flags, cleanup, 0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->dx_max_sort);
       }
     }
-    c->dx_max_sort = dx_max_sort;
+    c->dx_max_sort_old = c->dx_max_sort = dx_max_sort;
 
     /* Loop over the 13 different sort arrays. */
     for (int j = 0; j < 13; j++) {
@@ -443,7 +444,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       sort[j * (count + 1) + count].i = 0;
 
       /* Mark as sorted. */
-      c->sorted |= (1 << j);
+      atomic_or(&c->sorted, 1 << j);
 
     } /* loop over sort arrays. */
 
@@ -453,7 +454,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   else {
 
     /* Reset the sort distance if we are in a local cell */
-    if (xparts != NULL) {
+    if (cleanup && xparts != NULL) {
       for (int k = 0; k < count; k++) {
         xparts[k].x_diff_sort[0] = 0.0f;
         xparts[k].x_diff_sort[1] = 0.0f;
@@ -479,21 +480,27 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
         sort[j * (count + 1) + count].d = FLT_MAX;
         sort[j * (count + 1) + count].i = 0;
         runner_do_sort_ascending(&sort[j * (count + 1)], count);
-        c->sorted |= (1 << j);
+        atomic_or(&c->sorted, 1 << j);
       }
 
     /* Finally, clear the dx_max_sort field of this cell. */
-    c->dx_max_sort = 0.f;
+    if (cleanup) c->dx_max_sort_old = c->dx_max_sort = 0.f;
 
     /* If this was not just an update, invalidate the sorts above this one. */
-    if (c->ti_sort < r->e->ti_current)
+    /* if (!stealth && c->ti_sort < r->e->ti_current)
       for (struct cell *finger = c->parent; finger != NULL;
-           finger = finger->parent)
+           finger = finger->parent) {
         finger->sorted = 0;
+#ifdef SWIFT_DEBUG_CHECKS
+        if (finger->requires_sorts == r->e->ti_current &&
+            (finger->sorts->skip && finger->sorts->ti_run < r->e->ti_current))
+          error("Clearing required sorts!");
+#endif
+      } */
   }
 
   /* Update the sort timer. */
-  c->ti_sort = r->e->ti_current;
+  if (cleanup) c->ti_sort = r->e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
@@ -731,6 +738,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       count = redo;
       if (count > 0) {
 
+        atomic_add(&runner_num_ghost_redos, count);
+
         /* Climb up the cell hierarchy. */
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
@@ -781,7 +790,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
 #else
     if (count)
-      message("Smoothing length failed to converge on %i particles.", count);
+      error("Smoothing length failed to converge on %i particles.", count);
 #endif
 
     /* Be clean */
@@ -1850,7 +1859,8 @@ void *runner_main(void *data) {
           break;
 
         case task_type_sort:
-          runner_do_sort(r, ci, t->flags, 1);
+          runner_do_sort(r, ci, t->flags,
+                         ci->dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           break;
         case task_type_init_grav:
           runner_do_init_grav(r, ci, 1);

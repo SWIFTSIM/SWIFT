@@ -29,6 +29,9 @@
 /* Includes. */
 #include "cache.h"
 
+extern size_t runner_num_ghost_redos;
+extern size_t runner_num_things_are_bad;
+
 struct cell;
 struct engine;
 
@@ -61,7 +64,8 @@ struct runner {
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
-void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
+void runner_do_sort(struct runner *r, struct cell *c, int flag, int cleanup,
+                    int clock);
 void runner_do_drift_particles(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
