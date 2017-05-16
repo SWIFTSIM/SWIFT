@@ -260,9 +260,6 @@ struct cell {
   /*! Nr of #spart in this cell. */
   int scount;
 
-  /*! The size of the sort array */
-  int sortsize;
-
   /*! Bit-mask indicating the sorted directions */
   unsigned int sorted;
 
@@ -317,6 +314,14 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+  /*! Values of dx_max and h_max before the drifts, used for sub-cell tasks. */
+  float dx_max_old;
+  float h_max_old;
+  float dx_max_sort_old;
+
+  /* Will this cell do anything that relies on its sorts being set correctly? */
+  integertime_t requires_sorts;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[64];
@@ -367,5 +372,8 @@ void cell_drift_particles(struct cell *c, const struct engine *e);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
+void cell_store_pre_drift_values(struct cell *c);
+void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
+                                 struct scheduler *s);
 
 #endif /* SWIFT_CELL_H */
