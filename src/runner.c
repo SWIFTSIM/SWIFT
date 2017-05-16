@@ -374,13 +374,16 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
     /* Fill in the gaps within the progeny. */
     float dx_max_sort = 0.0f;
+    float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_sort(r, c->progeny[k], flags, cleanup, 0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->dx_max_sort);
+        dx_max_sort_old = max(dx_max_sort_old, c->progeny[k]->dx_max_sort_old);
       }
     }
-    c->dx_max_sort_old = c->dx_max_sort = dx_max_sort;
+    c->dx_max_sort = dx_max_sort;
+    c->dx_max_sort_old = dx_max_sort_old;
 
     /* Loop over the 13 different sort arrays. */
     for (int j = 0; j < 13; j++) {
