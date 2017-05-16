@@ -1804,18 +1804,18 @@ void engine_count_and_link_tasks(struct engine *e) {
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
 
-    /* Link sort tasks to the next-higher sort task. */
+    /* Link sort tasks to all the higher sort task. */
     if (t->type == task_type_sort) {
-      struct cell *finger = t->ci->parent;
-      while (finger != NULL && finger->sorts == NULL) finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->sorts);
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent)
+        if (finger->sorts != NULL) scheduler_addunlock(sched, t, finger->sorts);
     }
 
-    /* Link drift tasks to the next-higher drift task. */
+    /* Link drift tasks to all the higher drift task. */
     else if (t->type == task_type_drift) {
-      struct cell *finger = ci->parent;
-      while (finger != NULL && finger->drift == NULL) finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift);
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent)
+        if (finger->drift != NULL) scheduler_addunlock(sched, t, finger->drift);
     }
 
     /* Link self tasks to cells. */
@@ -2444,6 +2444,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
+  const integertime_t ti_current = e->ti_current;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
@@ -2455,6 +2456,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Set this task's skip. */
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+
+      /* Store current values of dx_max and h_max. */
+      if (t->type == task_type_sub_self) {
+        cell_activate_subcell_tasks(t->ci, NULL, s);
+      }
     }
 
     /* Pair? */
@@ -2481,13 +2487,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->type == task_type_pair) {
         if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
           for (struct cell *finger = ci; finger != NULL;
-               finger = finger->parent)
+               finger = finger->parent) {
             finger->sorted = 0;
-        }
-        if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-          for (struct cell *finger = cj; finger != NULL;
-               finger = finger->parent)
-            finger->sorted = 0;
+            if (finger->requires_sorts == ti_current)
+              scheduler_activate(s, finger->sorts);
+          }
         }
         if (!(ci->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2497,6 +2501,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, ci->sorts);
           if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
         }
+        if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
+          for (struct cell *finger = cj; finger != NULL;
+               finger = finger->parent) {
+            finger->sorted = 0;
+            if (finger->requires_sorts == ti_current)
+              scheduler_activate(s, finger->sorts);
+          }
+        }
         if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(cj->sorts->flags & (1 << t->flags)))
@@ -2505,6 +2517,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, cj->sorts);
           if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
         }
+        ci->requires_sorts = ti_current;
+        cj->requires_sorts = ti_current;
+        ci->dx_max_sort_old = ci->dx_max_sort;
+        cj->dx_max_sort_old = cj->dx_max_sort;
+      }
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_pair) {
+        cell_activate_subcell_tasks(t->ci, t->cj, s);
       }
 
 #ifdef WITH_MPI
