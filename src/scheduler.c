@@ -112,6 +112,45 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
+ * @brief Create the drift and sort tasks for the hierarchy of cells under
+ * a sub-cell task.
+ *
+ * @param s The #scheduler.
+ * @param c A #cell.
+ * @param t The sub-cell #task that will be unlocked by the sort tasks.
+ */ 
+
+void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
+                                 struct task *t) {
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        scheduler_add_subcell_tasks(s, c->progeny[k], t);
+
+  /* Lock the cell before potentially adding tasks. */
+  lock_lock(&c->lock);
+
+  /* Add a drift task if not present. */
+  if (c->drift == NULL)
+    c->drift =
+        scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0, c, NULL);
+
+  /* Add a sort task if not present. Note that the sort flags will be
+     populated in cell_activate_subcell_tasks. */
+  if (c->sorts == NULL) {
+    c->sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+  }
+
+  /* Unlock the cell. */
+  lock_unlock_blind(&c->lock);
+
+  /* The provided task should depend on the sort. */
+  scheduler_addunlock(s, c->sorts, t);
+}
+
+/**
  * @brief Split a task if too large.
  *
  * @param t The #task
@@ -183,8 +222,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
             lock_unlock_blind(&ci->lock);
           }
 
-          /* Depend on local sorts on this cell. */
-          if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
+          /* Depend on local sorts on this cell and its sub-cells. */
+          scheduler_add_subcell_tasks(s, ci, t);
 
           /* Otherwise, make tasks explicitly. */
         } else {
@@ -262,8 +301,8 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           t->type = task_type_sub_pair;
 
           /* Depend on the sort tasks of both cells. */
-          if (ci->sorts != NULL) scheduler_addunlock(s, ci->sorts, t);
-          if (cj->sorts != NULL) scheduler_addunlock(s, cj->sorts, t);
+          scheduler_add_subcell_tasks(s, ci, t);
+          scheduler_add_subcell_tasks(s, cj, t);
 
           /* Otherwise, split it. */
         } else {
@@ -1149,14 +1188,14 @@ void scheduler_start(struct scheduler *s) {
               ci->ti_end_min);
 
         /* Special treatment for sort tasks */
-        if (ci->ti_end_min == ti_current && t->skip &&
+        /* if (ci->ti_end_min == ti_current && t->skip &&
             t->type == task_type_sort && t->flags == 0)
           error(
               "Task (type='%s/%s') should not have been skipped "
               "ti_current=%lld "
               "c->ti_end_min=%lld t->flags=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, t->flags);
+              ci->ti_end_min, t->flags); */
 
       } else { /* pair */
 
