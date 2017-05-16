@@ -2431,6 +2431,58 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   }
 }
 
+void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
+						 void *extra_data) {
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct space *s = (struct space*) extra_data;
+
+  for (int k = 0; k < nr_gparts; k++) {
+
+    /* Get the particle */
+    const struct gpart *restrict gp = &gparts[k];
+
+    if(gp->type == swift_type_dark_matter) continue;
+    
+    else if(gp->type == swift_type_gas) {
+
+      /* Get it's gassy friend */
+      struct part *p = &s->parts[-gp->id_or_neg_offset];
+      struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
+
+      /* Synchronize positions and velocities */
+      p->x[0] = gp->x[0];
+      p->x[1] = gp->x[1];
+      p->x[2] = gp->x[2];
+
+      xp->v_full[0] = gp->v_full[0];
+      xp->v_full[1] = gp->v_full[1];
+      xp->v_full[2] = gp->v_full[2];
+    }
+
+    else if(gp->type == swift_type_star) {
+
+      /* Get it's stellar friend */
+      struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
+
+      /* Synchronize positions */
+      sp->x[0] = gp->x[0];
+      sp->x[1] = gp->x[1];
+      sp->x[2] = gp->x[2];
+    }
+
+  }
+}
+
+
+void space_synchronize_particle_positions(struct space *s) {
+
+  if ((s->nr_gparts > 0 && s->nr_parts > 0) || 
+      (s->nr_gparts > 0 && s->nr_sparts > 0))  
+    threadpool_map(&s->e->threadpool, space_synchronize_particle_positions_mapper, 
+		   s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, (void*)s);
+}
+
 /**
  * @brief Initialises all the particles by setting them into a valid state
  *
