@@ -220,6 +220,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   }
 }
 
+#ifdef WITH_MPI
 /**
  * Do the exchange of one type of particles with all the other nodes.
  *
@@ -237,14 +238,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
  * @result new particle data constructed from all the exchanges with the
  *         given alignment.
  */
-#ifdef WITH_MPI
-static void *engine_do_redistribute(int *counts, void *parts,
+static void *engine_do_redistribute(int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID) {
-  /* Need a pointer with a type. */
-  char *lparts = parts;
-
   /* Allocate a new array with some extra margin */
   char *parts_new = NULL;
   if (posix_memalign(
@@ -275,14 +272,14 @@ static void *engine_do_redistribute(int *counts, void *parts,
       /* If the send is local, just copy */
       if (k == nodeID) {
         memcpy(&parts_new[offset_recv * sizeofparts],
-               &lparts[offset_send * sizeofparts],
+               &parts[offset_send * sizeofparts],
                sizeofparts * counts[ind_recv]);
         offset_send += counts[ind_send];
         offset_recv += counts[ind_recv];
 
         /* Else, emit some communications */
       } else {
-        if (MPI_Isend(&lparts[offset_send * sizeofparts], counts[ind_send],
+        if (MPI_Isend(&parts[offset_send * sizeofparts], counts[ind_send],
                       mpi_type, k, ind_send + 0, MPI_COMM_WORLD,
                       &reqs[2 * k + 0]) != MPI_SUCCESS)
           error("Failed to isend parts to node %i.", k);
@@ -665,7 +662,7 @@ void engine_redistribute(struct engine *e) {
    * under control. */
 
   /* SPH particles. */
-  void *new_parts = engine_do_redistribute(counts, (void *)s->parts, nr_parts,
+  void *new_parts = engine_do_redistribute(counts, (char *)s->parts, nr_parts,
                                            sizeof(struct part), part_align,
                                            part_mpi_type, nr_nodes, nodeID);
   free(s->parts);
@@ -674,14 +671,14 @@ void engine_redistribute(struct engine *e) {
   s->size_parts = engine_redistribute_alloc_margin * nr_parts;
 
   /* Extra SPH particle properties. */
-  new_parts = engine_do_redistribute(counts, (void *)s->xparts, nr_parts,
+  new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts,
                                      sizeof(struct xpart), xpart_align,
                                      xpart_mpi_type, nr_nodes, nodeID);
   free(s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
-  new_parts = engine_do_redistribute(g_counts, (void *)s->gparts, nr_gparts,
+  new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts,
                                      sizeof(struct gpart), gpart_align,
                                      gpart_mpi_type, nr_nodes, nodeID);
   free(s->gparts);
@@ -690,7 +687,7 @@ void engine_redistribute(struct engine *e) {
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
 
   /* Star particles. */
-  new_parts = engine_do_redistribute(s_counts, (void *)s->sparts, nr_sparts,
+  new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts,
                                      sizeof(struct spart), spart_align,
                                      spart_mpi_type, nr_nodes, nodeID);
   free(s->sparts);
