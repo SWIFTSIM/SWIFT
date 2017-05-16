@@ -356,26 +356,15 @@ void engine_redistribute(struct engine *e) {
   ticks tic = getticks();
 
   /* Allocate temporary arrays to store the counts of particles to be sent
-     and the destination of each particle */
-  int *counts, *g_counts, *s_counts;
+   * and the destination of each particle */
+  int *counts;
   if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate counts temporary buffer.");
-  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate g_gcount temporary buffer.");
-  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate s_counts temporary buffer.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
-  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
-  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
 
-  /* Allocate the destination index arrays. */
-  int *dest, *g_dest, *s_dest;
+  int *dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
-  if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
-    error("Failed to allocate g_dest temporary buffer.");
-  if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
-    error("Failed to allocate s_dest temporary buffer.");
 
   /* Get destination of each particle */
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -457,8 +446,18 @@ void engine_redistribute(struct engine *e) {
       }
     }
   }
+  free(dest);
 
   /* Get destination of each s-particle */
+  int *s_counts;
+  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate s_counts temporary buffer.");
+  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
+
+  int *s_dest;
+  if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
+    error("Failed to allocate s_dest temporary buffer.");
+
   for (size_t k = 0; k < s->nr_sparts; k++) {
 
     /* Periodic boundary conditions */
@@ -539,7 +538,18 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
+  free(s_dest);
+
   /* Get destination of each g-particle */
+  int *g_counts;
+  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate g_gcount temporary buffer.");
+  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
+
+  int *g_dest;
+  if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
+    error("Failed to allocate g_dest temporary buffer.");
+
   for (size_t k = 0; k < s->nr_gparts; k++) {
 
     /* Periodic boundary conditions */
@@ -567,6 +577,8 @@ void engine_redistribute(struct engine *e) {
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
     space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
+
+  free(g_dest);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -729,6 +741,11 @@ void engine_redistribute(struct engine *e) {
     offset_sparts += count_sparts;
   }
 
+  /* Clean up the counts now we done. */
+  free(counts);
+  free(g_counts);
+  free(s_counts);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
@@ -760,12 +777,6 @@ void engine_redistribute(struct engine *e) {
   part_verify_links(parts_new, gparts_new, sparts_new, nr_parts, nr_gparts,
                     nr_sparts, e->verbose);
 #endif
-
-  /* Clean up the temporary stuff. */
-  free(counts);
-  free(g_counts);
-  free(s_counts);
-  free(dest);
 
   /* Be verbose about what just happened. */
   if (e->verbose) {
