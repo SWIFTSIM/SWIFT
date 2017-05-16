@@ -118,7 +118,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param s The #scheduler.
  * @param c A #cell.
  * @param t The sub-cell #task that will be unlocked by the sort tasks.
- */ 
+ */
 
 void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
                                  struct task *t) {
