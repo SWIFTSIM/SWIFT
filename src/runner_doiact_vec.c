@@ -887,6 +887,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c, cell_cache);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for(int i=0; i<count; i++) {
+    pi = &c->parts[i];
+    /* Check that particles have been drifted to the current time */
+    if (pi->ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+    }
+  }
+#endif
+
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
   int icount = 0, icount_align = 0;
