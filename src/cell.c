@@ -1541,36 +1541,34 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-      for (struct cell *finger = ci; finger != NULL; finger = finger->parent)
+      for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
         finger->sorted = 0;
+        if (finger->requires_sorts == ti_current)
+          scheduler_activate(s, finger->sorts);
+      }
     }
-    if (!(ci->sorted & (1 << sid))) {
-      atomic_or(&ci->sorts->flags, 1 << sid);
+    if (!(ci->sorted & (1 << t->flags))) {
+      atomic_or(&ci->sorts->flags, (1 << t->flags));
       scheduler_activate(s, ci->sorts);
       if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
     }
-
     if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-      for (struct cell *finger = cj; finger != NULL; finger = finger->parent)
+      for (struct cell *finger = cj; finger != NULL; finger = finger->parent) {
         finger->sorted = 0;
+        if (finger->requires_sorts == ti_current)
+          scheduler_activate(s, finger->sorts);
+      }
     }
-    if (!(cj->sorted & (1 << sid))) {
-      atomic_or(&cj->sorts->flags, 1 << sid);
+    if (!(cj->sorted & (1 << t->flags))) {
+      atomic_or(&cj->sorts->flags, (1 << t->flags));
       scheduler_activate(s, cj->sorts);
       if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
     }
+    ci->requires_sorts = ti_current;
+    cj->requires_sorts = ti_current;
+    ci->dx_max_sort_old = ci->dx_max_sort;
+    cj->dx_max_sort_old = cj->dx_max_sort;
   }
-}
-
-/**
- * @brief Recursively store the values for dx_max_old and h_max_old.
- */
-void cell_store_pre_drift_values(struct cell *c) {
-  c->h_max_old = c->h_max;
-  c->dx_max_old = c->dx_max;
-  if (c->split)
-    for (int i = 0; i < 8; i++)
-      if (c->progeny[i] != NULL) cell_store_pre_drift_values(c->progeny[i]);
 }
 
 /**
