@@ -1478,7 +1478,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
   vector xi, xj;
   vector hid_inv, hjd_inv;
-  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -1491,7 +1491,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   vector pjrho_2, grad_hj_2, pjPOrho2_2, balsara_j_2, cj_2, mj_2, hj_inv_2;
   vector xi_2, xj_2;
   vector hjd_inv_2;
-  vector wi_2, wj_2, wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
+  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
   vector piax_2, piay_2, piaz_2;
   vector pih_dt_2;
   vector v_sig_2;
@@ -1549,7 +1549,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   hid_inv = pow_dimension_plus_one_vec(*hi_inv);
   xi.v = r.v * hi_inv->v;
   xi_2.v = r_2.v * hi_inv->v;
-  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi_2, &wi_2, &wi_dx_2);
+  kernel_eval_dWdx_force_vec(&xi, &wi_dx);
+  kernel_eval_dWdx_force_vec(&xi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
   wi_dr_2.v = hid_inv.v * wi_dx_2.v;
 
@@ -1560,7 +1561,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   xj_2.v = r_2.v * hj_inv_2.v;
   
   /* Calculate the kernel for two particles. */
-  kernel_deval_2_vec(&xj, &wj, &wj_dx, &xj_2, &wj_2, &wj_dx_2);
+  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
+  kernel_eval_dWdx_force_vec(&xj_2, &wj_dx_2);
   
   wj_dr.v = hjd_inv.v * wj_dx.v;
   wj_dr_2.v = hjd_inv_2.v * wj_dx_2.v;
@@ -1885,7 +1887,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
   vector xi, xj;
   vector hid_inv, hjd_inv;
-  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -1898,7 +1900,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   vector pjrho_2, grad_hj_2, pjPOrho2_2, balsara_j_2, cj_2, mj_2, hj_inv_2;
   vector xi_2, xj_2;
   vector hjd_inv_2;
-  vector wi_2, wj_2, wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
+  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
   vector piax_2, piay_2, piaz_2;
   vector pih_dt_2;
   vector v_sig_2;
@@ -1956,7 +1958,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   hid_inv = pow_dimension_plus_one_vec(*hi_inv);
   xi.v = r.v * hi_inv->v;
   xi_2.v = r_2.v * hi_inv->v;
-  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi_2, &wi_2, &wi_dx_2);
+  kernel_eval_dWdx_force_vec(&xi, &wi_dx);
+  kernel_eval_dWdx_force_vec(&xi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
   wi_dr_2.v = hid_inv.v * wi_dx_2.v;
 
@@ -1967,7 +1970,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   xj_2.v = r_2.v * hj_inv_2.v;
   
   /* Calculate the kernel for two particles. */
-  kernel_deval_2_vec(&xj, &wj, &wj_dx, &xj_2, &wj_2, &wj_dx_2);
+  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
+  kernel_eval_dWdx_force_vec(&xj_2, &wj_dx_2);
   
   wj_dr.v = hjd_inv.v * wj_dx.v;
   wj_dr_2.v = hjd_inv_2.v * wj_dx_2.v;
