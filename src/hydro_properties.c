@@ -33,7 +33,7 @@
 #include "kernel_hydro.h"
 
 #define hydro_props_default_max_iterations 30
-#define hydro_props_default_volume_change 2.0f
+#define hydro_props_default_volume_change 1.4f
 #define hydro_props_default_h_max FLT_MAX
 
 void hydro_props_init(struct hydro_props *p,
