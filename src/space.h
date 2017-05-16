@@ -45,7 +45,7 @@
 #define space_maxcount_default 10000
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
-#define space_maxreldx 0.25f
+#define space_maxreldx 0.1f
 
 /* Maximum allowed depth of cell splits. */
 #define space_cell_maxdepth 52
@@ -130,6 +130,9 @@ struct space {
   /*! The s-particle data (cells have pointers to this). */
   struct spart *sparts;
 
+  /*! The top-level FFT task */
+  struct task *grav_top_level;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
@@ -213,7 +216,10 @@ void space_init_parts(struct space *s);
 void space_init_gparts(struct space *s);
 void space_init_sparts(struct space *s);
 void space_link_cleanup(struct space *s);
-void space_check_drift_point(struct space *s, integertime_t ti_drift);
+void space_check_drift_point(struct space *s, integertime_t ti_drift,
+                             int multipole);
+void space_check_top_multipoles_drift_point(struct space *s,
+                                            integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_reset_task_counters(struct space *s);

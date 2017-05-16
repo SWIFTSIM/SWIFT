@@ -25,46 +25,33 @@
 /* Local includes */
 #include "engine.h"
 
+/* Enumerator to be used as an index into the timers and files array. To add an
+ * extra timer extend this list, before the profiler_length value.*/
+enum profiler_types {
+  profiler_engine_collect_timesteps = 0,
+  profiler_engine_drift,
+  profiler_engine_rebuild,
+  profiler_scheduler_reweight,
+  profiler_scheduler_clear_waits,
+  profiler_scheduler_re_wait,
+  profiler_scheduler_enqueue,
+  profiler_engine_stats,
+  profiler_engine_launch,
+  profiler_space_rebuild,
+  profiler_engine_maketasks,
+  profiler_engine_marktasks,
+  profiler_space_regrid,
+  profiler_space_parts_sort,
+  profiler_space_split,
+  profiler_space_parts_get_cell_id,
+  profiler_space_count_parts,
+  profiler_length
+};
+
 /* Profiler that holds file pointers and time taken in functions. */
 struct profiler {
-
-  /* File pointers for timing info. */
-  FILE *file_engine_collect_timesteps;
-  FILE *file_engine_drift;
-  FILE *file_engine_rebuild;
-  FILE *file_scheduler_reweight;
-  FILE *file_scheduler_clear_waits;
-  FILE *file_scheduler_re_wait;
-  FILE *file_scheduler_enqueue;
-  FILE *file_engine_stats;
-  FILE *file_engine_launch;
-  FILE *file_space_rebuild;
-  FILE *file_engine_maketasks;
-  FILE *file_engine_marktasks;
-  FILE *file_space_regrid;
-  FILE *file_space_parts_sort;
-  FILE *file_space_split;
-  FILE *file_space_parts_get_cell_id;
-  FILE *file_space_count_parts;
-
-  /* Time taken in functions. */
-  ticks collect_timesteps_time;
-  ticks drift_time;
-  ticks rebuild_time;
-  ticks reweight_time;
-  ticks clear_waits_time;
-  ticks re_wait_time;
-  ticks enqueue_time;
-  ticks stats_time;
-  ticks launch_time;
-  ticks space_rebuild_time;
-  ticks engine_maketasks_time;
-  ticks engine_marktasks_time;
-  ticks space_regrid_time;
-  ticks space_parts_sort_time;
-  ticks space_split_time;
-  ticks space_parts_get_cell_id_time;
-  ticks space_count_parts_time;
+  FILE *files[profiler_length];
+  ticks times[profiler_length];
 };
 
 /* Function prototypes. */

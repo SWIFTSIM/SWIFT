@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -188,8 +189,9 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
   }
 }
 
-void reset_particles(struct cell *c, enum velocity_field vel,
-                     enum pressure_field press, float size, float density) {
+void reset_particles(struct cell *c, struct hydro_space *hs,
+                     enum velocity_field vel, enum pressure_field press,
+                     float size, float density) {
 
   for (int i = 0; i < c->count; ++i) {
 
@@ -197,6 +199,8 @@ void reset_particles(struct cell *c, enum velocity_field vel,
 
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
+
+    hydro_init_part(p, hs);
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
     float volume = p->conserved.mass / density;
@@ -312,7 +316,8 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->gcount = 0;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
+  cell->dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -320,9 +325,10 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 8;
+  cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
+  cell->ti_sort = 0;
 
   // shuffle_particles(cell->parts, cell->count);
 
@@ -519,7 +525,11 @@ int main(int argc, char *argv[]) {
 
   /* Build the infrastructure */
   struct space space;
-  space.periodic = 0;
+  space.periodic = 1;
+  space.dim[0] = 5.;
+  space.dim[1] = 5.;
+  space.dim[2] = 5.;
+  hydro_space_init(&space.hs, &space);
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
@@ -582,17 +592,11 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-    /* Start with a gentle kick */
-    // runner_do_kick1(&runner, main_cell, 0);
-
-    /* And a gentle drift */
-    // runner_do_drift_particles(&runner, main_cell, 0);
+    /* Initialise the particles */
+    for (int j = 0; j < 125; ++j) runner_do_drift_part(&runner, cells[j], 0);
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
-
-    /* Initialise the particles */
-    for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
@@ -657,8 +661,6 @@ int main(int argc, char *argv[]) {
 
     /* Finally, give a gentle kick */
     runner_do_end_force(&runner, main_cell, 0);
-    // runner_do_kick2(&runner, main_cell, 0);
-
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -668,26 +670,33 @@ int main(int argc, char *argv[]) {
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
+
+    /* Reset stuff */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
   }
 
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)
-    reset_particles(cells[j], vel, press, size, rho);
+    reset_particles(cells[j], &space.hs, vel, press, size, rho);
 
   /* NOW BRUTE-FORCE CALCULATION */
 
   const ticks tic = getticks();
 
-  /* Kick the central cell */
-  // runner_do_kick1(&runner, main_cell, 0);
+/* Kick the central cell */
+// runner_do_kick1(&runner, main_cell, 0);
 
-  /* And drift it */
-  runner_do_drift_particles(&runner, main_cell, 0);
+/* And drift it */
+// runner_do_drift_particles(&runner, main_cell, 0);
 
-  /* Initialise the particles */
-  for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
+/* Initialise the particles */
+// for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
+// 0);
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))

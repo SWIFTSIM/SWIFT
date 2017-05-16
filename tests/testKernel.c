@@ -39,7 +39,7 @@ int main() {
   const float numPoints_inv = 1. / numPoints;
 
   for (int i = 0; i < numPoints; ++i) {
-    u[i] = i * 2.5f * numPoints_inv / h;
+    u[i] = i * 2.25f * numPoints_inv / h;
   }
 
   for (int i = 0; i < numPoints; ++i) {
@@ -53,20 +53,24 @@ int main() {
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
   printf("-------------\n");
 
-#ifdef WITH_VECORIZATION
+#ifdef WITH_VECTORIZATION
 
+  printf("\nVector Output for kernel_deval_1_vec\n");
+  printf("-------------\n");
+
+  /* Test vectorised kernel that uses one vector. */
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
     vector vx, vx_h;
     vector W_vec, dW_vec;
 
     for (int j = 0; j < VEC_SIZE; j++) {
-      vx.f[j] = (i + j) * 2.5f / numPoints;
+      vx.f[j] = (i + j) * 2.25f / numPoints;
     }
 
     vx_h.v = vx.v / vec_set1(h);
 
-    kernel_deval_vec(&vx_h, &W_vec, &dW_vec);
+    kernel_deval_1_vec(&vx_h, &W_vec, &dW_vec);
 
     for (int j = 0; j < VEC_SIZE; j++) {
       printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
@@ -80,6 +84,63 @@ int main() {
       if (fabsf(dW_vec.f[j] - dW[i + j]) > 2e-7) {
         printf("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
                dW_vec.f[j]);
+        return 1;
+      }
+    }
+  }
+
+  printf("\nVector Output for kernel_deval_2_vec\n");
+  printf("-------------\n");
+
+  /* Test vectorised kernel that uses two vectors. */
+  for (int i = 0; i < numPoints; i += VEC_SIZE) {
+
+    vector vx, vx_h;
+    vector W_vec, dW_vec;
+
+    vector vx_2, vx_h_2;
+    vector W_vec_2, dW_vec_2;
+
+    for (int j = 0; j < VEC_SIZE; j++) {
+      vx.f[j] = (i + j) * 2.25f / numPoints;
+      vx_2.f[j] = (i + j) * 2.25f / numPoints;
+    }
+
+    vx_h.v = vx.v / vec_set1(h);
+    vx_h_2.v = vx_2.v / vec_set1(h);
+
+    kernel_deval_2_vec(&vx_h, &W_vec, &dW_vec, &vx_h_2, &W_vec_2, &dW_vec_2);
+
+    /* Check first vector results. */
+    for (int j = 0; j < VEC_SIZE; j++) {
+      printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
+             h * kernel_gamma, vx.f[j], W_vec.f[j], dW_vec.f[j]);
+
+      if (fabsf(W_vec.f[j] - W[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", W[i + j],
+               W_vec.f[j]);
+        return 1;
+      }
+      if (fabsf(dW_vec.f[j] - dW[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
+               dW_vec.f[j]);
+        return 1;
+      }
+    }
+
+    /* Check second vector results. */
+    for (int j = 0; j < VEC_SIZE; j++) {
+      printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
+             h * kernel_gamma, vx_2.f[j], W_vec_2.f[j], dW_vec_2.f[j]);
+
+      if (fabsf(W_vec_2.f[j] - W[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", W[i + j],
+               W_vec_2.f[j]);
+        return 1;
+      }
+      if (fabsf(dW_vec_2.f[j] - dW[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
+               dW_vec_2.f[j]);
         return 1;
       }
     }

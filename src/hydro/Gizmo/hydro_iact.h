@@ -135,6 +135,53 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
+  float hi_inv, hi_inv_dim, xi, wi, wi_dx;
+  float hj_inv, hj_inv_dim, xj, wj, wj_dx;
+  float Bi[3][3], Bj[3][3];
+  float Vi, Vj;
+  float A, Anorm;
+  int k, l;
+  float r;
+
+  r = sqrtf(r2);
+
+  hi_inv = 1.0 / hi;
+  hi_inv_dim = pow_dimension(hi_inv);
+  xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+
+  /* Compute kernel of pj. */
+  hj_inv = 1.0 / hj;
+  hj_inv_dim = pow_dimension(hj_inv);
+  xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+
+  for (k = 0; k < 3; k++) {
+    for (l = 0; l < 3; l++) {
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
+      Bj[k][l] = pj->geometry.matrix_E[k][l];
+    }
+  }
+  Vi = pi->geometry.volume;
+  Vj = pj->geometry.volume;
+
+  /* Compute area */
+  /* eqn. (7) */
+  Anorm = 0.0f;
+  for (k = 0; k < 3; k++) {
+    /* we add a minus sign since dx is pi->x - pj->x */
+    A = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
+            hi_inv_dim -
+        Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
+            hj_inv_dim;
+    Anorm += A * A;
+  }
+
+  Anorm = sqrtf(Anorm);
+
+  pi->geometry.Atot += Anorm;
+  pj->geometry.Atot += Anorm;
+
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
 
@@ -154,6 +201,52 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+
+  float hi_inv, hi_inv_dim, xi, wi, wi_dx;
+  float hj_inv, hj_inv_dim, xj, wj, wj_dx;
+  float Bi[3][3], Bj[3][3];
+  float Vi, Vj;
+  float A, Anorm;
+  int k, l;
+  float r;
+
+  r = sqrtf(r2);
+
+  hi_inv = 1.0 / hi;
+  hi_inv_dim = pow_dimension(hi_inv);
+  xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+
+  /* Compute kernel of pj. */
+  hj_inv = 1.0 / hj;
+  hj_inv_dim = pow_dimension(hj_inv);
+  xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+
+  for (k = 0; k < 3; k++) {
+    for (l = 0; l < 3; l++) {
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
+      Bj[k][l] = pj->geometry.matrix_E[k][l];
+    }
+  }
+  Vi = pi->geometry.volume;
+  Vj = pj->geometry.volume;
+
+  /* Compute area */
+  /* eqn. (7) */
+  Anorm = 0.0f;
+  for (k = 0; k < 3; k++) {
+    /* we add a minus sign since dx is pi->x - pj->x */
+    A = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
+            hi_inv_dim -
+        Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
+            hj_inv_dim;
+    Anorm += A * A;
+  }
+
+  Anorm = sqrtf(Anorm);
+
+  pi->geometry.Atot += Anorm;
 
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -256,8 +349,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* The flux will be exchanged using the smallest time step of the two
    * particles */
   mindt = min(dti, dtj);
-  dti = mindt;
-  dtj = mindt;
 
   /* Compute kernel of pi. */
   hi_inv = 1.0 / hi;
@@ -385,28 +476,56 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
+  /* Flux limiter */
+  float flux_limit_factor = 1.;
+  float timefac = max(dti, dtj);
+  float areafac = max(pi->geometry.Atot, pj->geometry.Atot);
+  if (totflux[0] * areafac * timefac > pi->conserved.mass) {
+    flux_limit_factor = pi->conserved.mass / (totflux[0] * areafac * timefac);
+  }
+  if (totflux[0] * areafac * timefac > pj->conserved.mass) {
+    flux_limit_factor =
+        min(pj->conserved.mass / (totflux[0] * areafac * timefac),
+            flux_limit_factor);
+  }
+  if (totflux[4] * areafac * timefac > pi->conserved.energy) {
+    flux_limit_factor =
+        min(pi->conserved.energy / (totflux[4] * areafac * timefac),
+            flux_limit_factor);
+  }
+  if (totflux[4] * areafac * timefac > pj->conserved.energy) {
+    flux_limit_factor =
+        min(pj->conserved.energy / (totflux[4] * areafac * timefac),
+            flux_limit_factor);
+  }
+  totflux[0] *= flux_limit_factor;
+  totflux[1] *= flux_limit_factor;
+  totflux[2] *= flux_limit_factor;
+  totflux[3] *= flux_limit_factor;
+  totflux[4] *= flux_limit_factor;
+
   /* Store mass flux */
-  float mflux = dti * Anorm * totflux[0];
+  float mflux = mindt * Anorm * totflux[0];
   pi->gravity.mflux[0] += mflux * dx[0];
   pi->gravity.mflux[1] += mflux * dx[1];
   pi->gravity.mflux[2] += mflux * dx[2];
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= dti * Anorm * totflux[0];
-  pi->conserved.flux.momentum[0] -= dti * Anorm * totflux[1];
-  pi->conserved.flux.momentum[1] -= dti * Anorm * totflux[2];
-  pi->conserved.flux.momentum[2] -= dti * Anorm * totflux[3];
-  pi->conserved.flux.energy -= dti * Anorm * totflux[4];
+  pi->conserved.flux.mass -= mindt * Anorm * totflux[0];
+  pi->conserved.flux.momentum[0] -= mindt * Anorm * totflux[1];
+  pi->conserved.flux.momentum[1] -= mindt * Anorm * totflux[2];
+  pi->conserved.flux.momentum[2] -= mindt * Anorm * totflux[3];
+  pi->conserved.flux.energy -= mindt * Anorm * totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= dti * Anorm * totflux[0] * ekin;
+  pi->conserved.flux.energy += mindt * Anorm * totflux[1] * pi->primitives.v[0];
+  pi->conserved.flux.energy += mindt * Anorm * totflux[2] * pi->primitives.v[1];
+  pi->conserved.flux.energy += mindt * Anorm * totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy -= mindt * Anorm * totflux[0] * ekin;
 #endif
 
   /* here is how it works:
@@ -424,25 +543,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   if (mode == 1 || pj->force.active == 0) {
     /* Store mass flux */
-    mflux = dtj * Anorm * totflux[0];
+    mflux = mindt * Anorm * totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];
     pj->gravity.mflux[1] -= mflux * dx[1];
     pj->gravity.mflux[2] -= mflux * dx[2];
 
-    pj->conserved.flux.mass += dtj * Anorm * totflux[0];
-    pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
-    pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
-    pj->conserved.flux.momentum[2] += dtj * Anorm * totflux[3];
-    pj->conserved.flux.energy += dtj * Anorm * totflux[4];
+    pj->conserved.flux.mass += mindt * Anorm * totflux[0];
+    pj->conserved.flux.momentum[0] += mindt * Anorm * totflux[1];
+    pj->conserved.flux.momentum[1] += mindt * Anorm * totflux[2];
+    pj->conserved.flux.momentum[2] += mindt * Anorm * totflux[3];
+    pj->conserved.flux.energy += mindt * Anorm * totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += dtj * Anorm * totflux[0] * ekin;
+    pj->conserved.flux.energy -=
+        mindt * Anorm * totflux[1] * pj->primitives.v[0];
+    pj->conserved.flux.energy -=
+        mindt * Anorm * totflux[2] * pj->primitives.v[1];
+    pj->conserved.flux.energy -=
+        mindt * Anorm * totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy += mindt * Anorm * totflux[0] * ekin;
 #endif
   }
 }

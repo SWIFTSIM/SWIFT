@@ -1,0 +1,30 @@
+\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+
+\newcommand{\swift}{{\sc Swift}\xspace}
+
+%opening
+\title{FMM in SWIFT}
+\author{Matthieu Schaller}
+
+\begin{document}
+
+\maketitle
+
+We use the multi-index notation of \cite{Dehnen2014} to simplify expressions.
+
+\input{potential_softening}
+\input{gravity_derivatives}
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
+
+\appendix
+\onecolumn
+\input{potential_derivatives}
+
+
+
+\end{document}

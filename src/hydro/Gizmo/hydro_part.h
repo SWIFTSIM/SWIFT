@@ -27,6 +27,9 @@ struct xpart {
   /* Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
+  /* Offset between the current position and position at the last sort. */
+  float x_diff_sort[3];
+
   /* Velocity at the last full step. */
   float v_full[3];
 
@@ -142,6 +145,9 @@ struct part {
        gradients */
     float matrix_E[3][3];
 
+    /* Total surface area of the particle. */
+    float Atot;
+
   } geometry;
 
   /* Variables used for timestep calculation (currently not used). */
@@ -166,6 +172,9 @@ struct part {
 
     /* Particle number density. */
     float wcount;
+
+    /* Correction factor for wcount. */
+    float wcorr;
 
   } density;
 

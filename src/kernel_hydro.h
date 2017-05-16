@@ -304,6 +304,41 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
   *W = w * kernel_constant * kernel_gamma_inv_dim;
 }
 
+/**
+ * @brief Computes the kernel function derivative.
+ *
+ * The kernel function needs to be mutliplied by \f$h^{-d}\f$ and the gradient
+ * by \f$h^{-(d+1)}\f$, where \f$d\f$ is the dimensionality of the problem.
+ *
+ * Returns 0 if \f$u > \gamma = H/h\f$.
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
+ * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
+    float u, float *restrict dW_dx) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  const float x = u * kernel_gamma_inv;
+
+  /* Pick the correct branch of the kernel */
+  const int temp = (int)(x * kernel_ivals_f);
+  const int ind = temp > kernel_ivals ? kernel_ivals : temp;
+  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+
+  /* First two terms of the polynomial ... */
+  float dw_dx = ((float)kernel_degree * coeffs[0] * x) +
+                (float)(kernel_degree - 1) * coeffs[1];
+
+  /* ... and the rest of them */
+  for (int k = 2; k < kernel_degree; k++) {
+    dw_dx = dw_dx * x + (float)(kernel_degree - k) * coeffs[k];
+  }
+
+  /* Return everything */
+  *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
+}
+
 /* ------------------------------------------------------------------------- */
 
 #ifdef WITH_VECTORIZATION
@@ -362,7 +397,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
       dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
 }
 
-/* Define constant vectors for the Wendland C2 kernel coefficients. */
+/* Define constant vectors for the Wendland C2 and Cubic Spline kernel
+ * coefficients. */
 #ifdef WENDLAND_C2_KERNEL
 static const vector wendland_const_c0 = FILL_VEC(4.f);
 static const vector wendland_const_c1 = FILL_VEC(-15.f);
@@ -370,7 +406,114 @@ static const vector wendland_const_c2 = FILL_VEC(20.f);
 static const vector wendland_const_c3 = FILL_VEC(-10.f);
 static const vector wendland_const_c4 = FILL_VEC(0.f);
 static const vector wendland_const_c5 = FILL_VEC(1.f);
+
+static const vector wendland_dwdx_const_c0 = FILL_VEC(20.f);
+static const vector wendland_dwdx_const_c1 = FILL_VEC(-60.f);
+static const vector wendland_dwdx_const_c2 = FILL_VEC(60.f);
+static const vector wendland_dwdx_const_c3 = FILL_VEC(-20.f);
+#elif defined(CUBIC_SPLINE_KERNEL)
+/* First region 0 < u < 0.5 */
+static const vector cubic_1_const_c0 = FILL_VEC(3.f);
+static const vector cubic_1_const_c1 = FILL_VEC(-3.f);
+static const vector cubic_1_const_c2 = FILL_VEC(0.f);
+static const vector cubic_1_const_c3 = FILL_VEC(0.5f);
+static const vector cubic_1_dwdx_const_c0 = FILL_VEC(9.f);
+static const vector cubic_1_dwdx_const_c1 = FILL_VEC(-6.f);
+static const vector cubic_1_dwdx_const_c2 = FILL_VEC(0.f);
+
+/* Second region 0.5 <= u < 1 */
+static const vector cubic_2_const_c0 = FILL_VEC(-1.f);
+static const vector cubic_2_const_c1 = FILL_VEC(3.f);
+static const vector cubic_2_const_c2 = FILL_VEC(-3.f);
+static const vector cubic_2_const_c3 = FILL_VEC(1.f);
+static const vector cubic_2_dwdx_const_c0 = FILL_VEC(-3.f);
+static const vector cubic_2_dwdx_const_c1 = FILL_VEC(6.f);
+static const vector cubic_2_dwdx_const_c2 = FILL_VEC(-3.f);
+static const vector cond = FILL_VEC(0.5f);
 #endif
+
+/**
+ * @brief Computes the kernel function and its derivative for two particles
+ * using vectors.
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
+    vector *u, vector *w, vector *dw_dx) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  vector x;
+  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+
+#ifdef WENDLAND_C2_KERNEL
+  /* Init the iteration for Horner's scheme. */
+  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
+  dw_dx->v = wendland_const_c0.v;
+
+  /* Calculate the polynomial interleaving vector operations */
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  w->v = vec_mul(x.v, w->v); /* wendland_const_c4 is zero. */
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
+#elif defined(CUBIC_SPLINE_KERNEL)
+  vector w2, dw_dx2;
+  vector mask_reg1, mask_reg2;
+
+  /* Form a mask for each part of the kernel. */
+  mask_reg1.v = vec_cmp_lt(x.v, cond.v);  /* 0 < x < 0.5 */
+  mask_reg2.v = vec_cmp_gte(x.v, cond.v); /* 0.5 < x < 1 */
+  ;
+
+  /* Work out w for both regions of the kernel and combine the results together
+   * using masks. */
+
+  /* Init the iteration for Horner's scheme. */
+  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
+  w2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
+  dw_dx->v = cubic_1_const_c0.v;
+  dw_dx2.v = cubic_2_const_c0.v;
+
+  /* Calculate the polynomial interleaving vector operations. */
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2.v = vec_fma(dw_dx2.v, x.v, w2.v);
+  w->v = vec_mul(x.v, w->v); /* cubic_1_const_c2 is zero. */
+  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c2.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2.v = vec_fma(dw_dx2.v, x.v, w2.v);
+  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
+  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
+
+  /* Mask out unneeded values. */
+  w->v = vec_and(w->v, mask_reg1.v);
+  w2.v = vec_and(w2.v, mask_reg2.v);
+  dw_dx->v = vec_and(dw_dx->v, mask_reg1.v);
+  dw_dx2.v = vec_and(dw_dx2.v, mask_reg2.v);
+
+  /* Added both w and w2 together to form complete result. */
+  w->v = vec_add(w->v, w2.v);
+  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
+#else
+#error
+#endif
+
+  /* Return everything */
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+}
 
 /**
  * @brief Computes the kernel function and its derivative for two particles
@@ -417,8 +560,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
-  w->v = vec_fma(x.v, w->v, wendland_const_c4.v);
-  w2->v = vec_fma(x2.v, w2->v, wendland_const_c4.v);
+  w->v = vec_mul(x.v, w->v);    /* wendland_const_c4 is zero. */
+  w2->v = vec_mul(x2.v, w2->v); /* wendland_const_c4 is zero. */
 
   dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
   dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
@@ -434,34 +577,67 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
                                        kernel_gamma_inv_dim_plus_one_vec.v));
   dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
                                          kernel_gamma_inv_dim_plus_one_vec.v));
-#else
+#elif defined(CUBIC_SPLINE_KERNEL)
+  vector w_2, dw_dx_2;
+  vector w2_2, dw_dx2_2;
+  vector mask_reg1, mask_reg2, mask_reg1_v2, mask_reg2_v2;
 
-  /* Load x and get the interval id. */
-  vector ind, ind2;
-  ind.m = vec_ftoi(vec_fmin(x.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
-  ind2.m = vec_ftoi(vec_fmin(x2.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
+  /* Form a mask for each part of the kernel. */
+  mask_reg1.v = vec_cmp_lt(x.v, cond.v);     /* 0 < x < 0.5 */
+  mask_reg1_v2.v = vec_cmp_lt(x2.v, cond.v); /* 0 < x < 0.5 */
+  mask_reg2.v = vec_cmp_gte(x.v, cond.v);    /* 0.5 < x < 1 */
+  ;
+  mask_reg2_v2.v = vec_cmp_gte(x2.v, cond.v); /* 0.5 < x < 1 */
+  ;
 
-  /* load the coefficients. */
-  vector c[kernel_degree + 1], c2[kernel_degree + 1];
-  for (int k = 0; k < VEC_SIZE; k++)
-    for (int j = 0; j < kernel_degree + 1; j++) {
-      c[j].f[k] = kernel_coeffs[ind.i[k] * (kernel_degree + 1) + j];
-      c2[j].f[k] = kernel_coeffs[ind2.i[k] * (kernel_degree + 1) + j];
-    }
+  /* Work out w for both regions of the kernel and combine the results together
+   * using masks. */
 
   /* Init the iteration for Horner's scheme. */
-  w->v = (c[0].v * x.v) + c[1].v;
-  w2->v = (c2[0].v * x2.v) + c2[1].v;
-  dw_dx->v = c[0].v;
-  dw_dx2->v = c2[0].v;
+  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
+  w2->v = vec_fma(cubic_1_const_c0.v, x2.v, cubic_1_const_c1.v);
+  w_2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
+  w2_2.v = vec_fma(cubic_2_const_c0.v, x2.v, cubic_2_const_c1.v);
+  dw_dx->v = cubic_1_const_c0.v;
+  dw_dx2->v = cubic_1_const_c0.v;
+  dw_dx_2.v = cubic_2_const_c0.v;
+  dw_dx2_2.v = cubic_2_const_c0.v;
 
-  /* And we're off! */
-  for (int k = 2; k <= kernel_degree; k++) {
-    dw_dx->v = (dw_dx->v * x.v) + w->v;
-    dw_dx2->v = (dw_dx2->v * x2.v) + w2->v;
-    w->v = (x.v * w->v) + c[k].v;
-    w2->v = (x2.v * w2->v) + c2[k].v;
-  }
+  /* Calculate the polynomial interleaving vector operations. */
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  dw_dx_2.v = vec_fma(dw_dx_2.v, x.v, w_2.v);
+  dw_dx2_2.v = vec_fma(dw_dx2_2.v, x2.v, w2_2.v);
+  w->v = vec_mul(x.v, w->v);    /* cubic_1_const_c2 is zero. */
+  w2->v = vec_mul(x2.v, w2->v); /* cubic_1_const_c2 is zero. */
+  w_2.v = vec_fma(x.v, w_2.v, cubic_2_const_c2.v);
+  w2_2.v = vec_fma(x2.v, w2_2.v, cubic_2_const_c2.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, w->v);
+  dw_dx2->v = vec_fma(dw_dx2->v, x2.v, w2->v);
+  dw_dx_2.v = vec_fma(dw_dx_2.v, x.v, w_2.v);
+  dw_dx2_2.v = vec_fma(dw_dx2_2.v, x2.v, w2_2.v);
+  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
+  w2->v = vec_fma(x2.v, w2->v, cubic_1_const_c3.v);
+  w_2.v = vec_fma(x.v, w_2.v, cubic_2_const_c3.v);
+  w2_2.v = vec_fma(x2.v, w2_2.v, cubic_2_const_c3.v);
+
+  /* Mask out unneeded values. */
+  w->v = vec_and(w->v, mask_reg1.v);
+  w2->v = vec_and(w2->v, mask_reg1_v2.v);
+  w_2.v = vec_and(w_2.v, mask_reg2.v);
+  w2_2.v = vec_and(w2_2.v, mask_reg2_v2.v);
+  dw_dx->v = vec_and(dw_dx->v, mask_reg1.v);
+  dw_dx2->v = vec_and(dw_dx2->v, mask_reg1_v2.v);
+  dw_dx_2.v = vec_and(dw_dx_2.v, mask_reg2.v);
+  dw_dx2_2.v = vec_and(dw_dx2_2.v, mask_reg2_v2.v);
+
+  /* Added both w and w2 together to form complete result. */
+  w->v = vec_add(w->v, w_2.v);
+  w2->v = vec_add(w2->v, w2_2.v);
+  dw_dx->v = vec_add(dw_dx->v, dw_dx_2.v);
+  dw_dx2->v = vec_add(dw_dx2->v, dw_dx2_2.v);
+
   /* Return everything */
   w->v = w->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
   w2->v = w2->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
@@ -473,7 +649,132 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 #endif
 }
 
+/**
+ * @brief Computes the kernel function for two particles
+ * using vectors.
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
+                                                                    vector *w) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  vector x;
+  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+
+#ifdef WENDLAND_C2_KERNEL
+  /* Init the iteration for Horner's scheme. */
+  w->v = vec_fma(wendland_const_c0.v, x.v, wendland_const_c1.v);
+
+  /* Calculate the polynomial interleaving vector operations */
+  w->v = vec_fma(x.v, w->v, wendland_const_c2.v);
+  w->v = vec_fma(x.v, w->v, wendland_const_c3.v);
+  w->v = vec_mul(x.v, w->v); /* wendland_const_c4 is zero.*/
+  w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
+#elif defined(CUBIC_SPLINE_KERNEL)
+  vector w2;
+  vector mask1, mask2;
+
+  /* Form a mask for each part of the kernel. */
+  mask1.v = vec_cmp_lt(x.v, cond.v);  /* 0 < x < 0.5 */
+  mask2.v = vec_cmp_gte(x.v, cond.v); /* 0.5 < x < 1 */
+  ;
+
+  /* Work out w for both regions of the kernel and combine the results together
+   * using masks. */
+
+  /* Init the iteration for Horner's scheme. */
+  w->v = vec_fma(cubic_1_const_c0.v, x.v, cubic_1_const_c1.v);
+  w2.v = vec_fma(cubic_2_const_c0.v, x.v, cubic_2_const_c1.v);
+
+  /* Calculate the polynomial interleaving vector operations. */
+  w->v = vec_mul(x.v, w->v); /* cubic_1_const_c2 is zero */
+  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c2.v);
+
+  w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
+  w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
+
+  /* Mask out unneeded values. */
+  w->v = vec_and(w->v, mask1.v);
+  w2.v = vec_and(w2.v, mask2.v);
+
+  /* Added both w and w2 together to form complete result. */
+  w->v = vec_add(w->v, w2.v);
+#else
+#error
 #endif
+
+  /* Return everything */
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+}
+
+/**
+ * @brief Computes the kernel function derivative for two particles
+ * using vectors.
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
+    vector *u, vector *dw_dx) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  vector x;
+  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
+
+#ifdef WENDLAND_C2_KERNEL
+  /* Init the iteration for Horner's scheme. */
+  dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
+
+  /* Calculate the polynomial interleaving vector operations */
+  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
+
+  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c3.v);
+
+  dw_dx->v = vec_mul(dw_dx->v, x.v);
+
+#elif defined(CUBIC_SPLINE_KERNEL)
+  vector dw_dx2;
+  vector mask1, mask2;
+
+  /* Form a mask for each part of the kernel. */
+  mask1.v = vec_cmp_lt(x.v, cond.v);  /* 0 < x < 0.5 */
+  mask2.v = vec_cmp_gte(x.v, cond.v); /* 0.5 < x < 1 */
+  ;
+
+  /* Work out w for both regions of the kernel and combine the results together
+   * using masks. */
+
+  /* Init the iteration for Horner's scheme. */
+  dw_dx->v = vec_fma(cubic_1_dwdx_const_c0.v, x.v, cubic_1_dwdx_const_c1.v);
+  dw_dx2.v = vec_fma(cubic_2_dwdx_const_c0.v, x.v, cubic_2_dwdx_const_c1.v);
+
+  /* Calculate the polynomial interleaving vector operations. */
+  dw_dx->v = vec_mul(dw_dx->v, x.v); /* cubic_1_dwdx_const_c2 is zero. */
+  dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
+
+  /* Mask out unneeded values. */
+  dw_dx->v = vec_and(dw_dx->v, mask1.v);
+  dw_dx2.v = vec_and(dw_dx2.v, mask2.v);
+
+  /* Added both dwdx and dwdx2 together to form complete result. */
+  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
+#else
+#error
+#endif
+
+  /* Return everything */
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+}
+
+#endif /* WITH_VECTORIZATION */
 
 /* Some cross-check functions */
 void hydro_kernel_dump(int N);

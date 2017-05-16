@@ -205,21 +205,25 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
-    c->dx_max = 0.0f;
+    c->dx_max_part = 0.0f;
+    c->dx_max_gpart = 0.0f;
+    c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
     c->gcount = 0;
     c->scount = 0;
-    c->init = NULL;
+    c->init_grav = NULL;
     c->extra_ghost = NULL;
     c->ghost = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->drift = NULL;
+    c->drift_part = NULL;
+    c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
-    c->grav_top_level = NULL;
+    c->grav_ghost[0] = NULL;
+    c->grav_ghost[1] = NULL;
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
@@ -419,7 +423,8 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
-          c->ti_old = ti_old;
+          c->ti_old_part = ti_old;
+          c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
@@ -889,8 +894,9 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
-                    nr_sparts, verbose);
+  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0))
+    part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
+                      nr_sparts, verbose);
 #endif
 
   /* Hook the cells up to the parts. */
@@ -901,7 +907,8 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_old;
+    c->ti_old_part = ti_old;
+    c->ti_old_gpart = ti_old;
     c->ti_old_multipole = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
@@ -2010,7 +2017,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->count = 0;
       cp->gcount = 0;
       cp->scount = 0;
-      cp->ti_old = c->ti_old;
+      cp->ti_old_part = c->ti_old_part;
+      cp->ti_old_gpart = c->ti_old_gpart;
       cp->ti_old_multipole = c->ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
@@ -2024,8 +2032,10 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      cp->h_max = 0.0;
-      cp->dx_max = 0.f;
+      cp->h_max = 0.f;
+      cp->dx_max_part = 0.f;
+      cp->dx_max_gpart = 0.f;
+      cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
@@ -2083,16 +2093,42 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
+      double r_max = 0.;
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct cell *cp = c->progeny[k];
           const struct multipole *m = &cp->multipole->m_pole;
-          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM,
-                      s->periodic);
+
+          /* Contribution to multipole */
+          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
           gravity_multipole_add(&c->multipole->m_pole, &temp);
+
+          /* Upper limit of max CoM<->gpart distance */
+          const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
+          const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
+          const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+          const double r2 = dx * dx + dy * dy + dz * dz;
+          r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
-    }
+      /* Alternative upper limit of max CoM<->gpart distance */
+      const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                            ? c->multipole->CoM[0] - c->loc[0]
+                            : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+      const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                            ? c->multipole->CoM[1] - c->loc[1]
+                            : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+      const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                            ? c->multipole->CoM[2] - c->loc[2]
+                            : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+
+      /* Take minimum of both limits */
+      c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+      c->multipole->r_max_rebuild = c->multipole->r_max;
+      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+    } /* Deal with gravity */
   }
 
   /* Otherwise, collect the data for this cell. */
@@ -2150,7 +2186,31 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
-    if (s->gravity) gravity_P2M(c->multipole, c->gparts, c->gcount);
+    if (s->gravity) {
+      if (gcount > 0) {
+        gravity_P2M(c->multipole, c->gparts, c->gcount);
+        const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                              ? c->multipole->CoM[0] - c->loc[0]
+                              : c->loc[0] + c->width[0] - c->multipole->CoM[0];
+        const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                              ? c->multipole->CoM[1] - c->loc[1]
+                              : c->loc[1] + c->width[1] - c->multipole->CoM[1];
+        const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                              ? c->multipole->CoM[2] - c->loc[2]
+                              : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+        c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+      } else {
+        gravity_multipole_init(&c->multipole->m_pole);
+        c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+        c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+        c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+        c->multipole->r_max = 0.;
+      }
+      c->multipole->r_max_rebuild = c->multipole->r_max;
+      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
+      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
+      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+    }
   }
 
   /* Set the values for this cell. */
@@ -2819,11 +2879,27 @@ void space_link_cleanup(struct space *s) {
  *
  * @param s The #space to check.
  * @param ti_drift The (integer) time.
+ * @param multipole Are we also checking the multipoles ?
  */
-void space_check_drift_point(struct space *s, integertime_t ti_drift) {
+void space_check_drift_point(struct space *s, integertime_t ti_drift,
+                             int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
+  if (multipole)
+    space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+void space_check_top_multipoles_drift_point(struct space *s,
+                                            integertime_t ti_drift) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_check_multipole_drift_point(&s->cells_top[i], &ti_drift);
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

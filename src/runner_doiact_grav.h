@@ -23,6 +23,7 @@
 /* Includes. */
 #include "cell.h"
 #include "gravity.h"
+#include "inline.h"
 #include "part.h"
 
 /**
@@ -37,20 +38,34 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const int periodic = e->s->periodic;
+  struct gpart *gparts = c->gparts;
+  const int gcount = c->gcount;
 
   TIMER_TIC;
 
-  if (c->split) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_old_multipole != e->ti_current) error("c->multipole not drifted.");
+#endif
 
+  if (c->split) { /* Node case */
+
+    /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
       struct grav_tensor temp;
 
-      if (cp != NULL) {
+      /* Do we have a progenitor with any active g-particles ? */
+      if (cp != NULL && cell_is_active(cp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (cp->ti_old_multipole != e->ti_current)
+          error("cp->multipole not drifted.");
+#endif
 
         /* Shift the field tensor */
         gravity_L2L(&temp, &c->multipole->pot, cp->multipole->CoM,
                     c->multipole->CoM, 0 * periodic);
+
         /* Add it to this level's tensor */
         gravity_field_tensors_add(&cp->multipole->pot, &temp);
 
@@ -61,15 +76,23 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   } else { /* Leaf case */
 
-    const struct engine *e = r->e;
-    struct gpart *gparts = c->gparts;
-    const int gcount = c->gcount;
-
     /* Apply accelerations to the particles */
     for (int i = 0; i < gcount; ++i) {
+
+      /* Get a handle on the gpart */
       struct gpart *gp = &gparts[i];
-      if (gpart_is_active(gp, e))
+
+      /* Update if active */
+      if (gpart_is_active(gp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (gp->ti_drift != e->ti_current)
+          error("gpart not drifted to current time");
+#endif
+
         gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
+      }
     }
   }
 
@@ -88,6 +111,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->s->periodic;
   const struct multipole *multi_j = &cj->multipole->m_pole;
   // const float a_smooth = e->gravity_properties->a_smooth;
@@ -95,21 +119,24 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e)) return;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
 
   if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
-#endif
 
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (ci->ti_old_multipole != e->ti_current)
+    error("ci->multipole not drifted.");
+#endif
 
   /* Do we need to drift the multipole ? */
   if (cj->ti_old_multipole != e->ti_current) cell_drift_multipole(cj, e);
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, periodic * 0);
+              cj->multipole->CoM, props, periodic * 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -151,14 +178,12 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   TIMER_TIC;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
-          cj->width[0]);
-#endif
-
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  /* Let's start by drifting things */
+  if (!cell_are_gpart_drifted(ci, e)) cell_drift_gpart(ci, e);
+  if (!cell_are_gpart_drifted(cj, e)) cell_drift_gpart(cj, e);
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -184,61 +209,83 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif
 
+  /* MATTHIEU: Should we use local DP accumulators ? */
+
   /* Loop over all particles in ci... */
-  for (int pid = 0; pid < gcount_i; pid++) {
+  if (cell_is_active(ci, e)) {
+    for (int pid = 0; pid < gcount_i; pid++) {
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gpi = &gparts_i[pid];
+      /* Get a hold of the ith part in ci. */
+      struct gpart *restrict gpi = &gparts_i[pid];
 
-    if (!gpart_is_active(gpi, e)) continue;
+      if (!gpart_is_active(gpi, e)) continue;
 
-    /* Loop over every particle in the other cell. */
-    for (int pjd = 0; pjd < gcount_j; pjd++) {
+      /* Loop over every particle in the other cell. */
+      for (int pjd = 0; pjd < gcount_j; pjd++) {
 
-      /* Get a hold of the jth part in cj. */
-      const struct gpart *restrict gpj = &gparts_j[pjd];
+        /* Get a hold of the jth part in cj. */
+        const struct gpart *restrict gpj = &gparts_j[pjd];
 
-      /* Compute the pairwise distance. */
-      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                           gpi->x[1] - gpj->x[1],   // y
-                           gpi->x[2] - gpj->x[2]};  // z
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      /* Interact ! */
-      runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+        /* Compute the pairwise distance. */
+        const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                             gpi->x[1] - gpj->x[1],   // y
+                             gpi->x[2] - gpj->x[2]};  // z
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      gpi->num_interacted++;
+        /* Check that particles have been drifted to the current time */
+        if (gpi->ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+        if (gpj->ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
 #endif
+
+        /* Interact ! */
+        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gpi->num_interacted++;
+#endif
+      }
     }
   }
 
   /* Loop over all particles in cj... */
-  for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gpj = &gparts_j[pjd];
-
-    if (!gpart_is_active(gpj, e)) continue;
-
-    /* Loop over every particle in the other cell. */
-    for (int pid = 0; pid < gcount_i; pid++) {
+  if (cell_is_active(cj, e)) {
+    for (int pjd = 0; pjd < gcount_j; pjd++) {
 
       /* Get a hold of the ith part in ci. */
-      const struct gpart *restrict gpi = &gparts_i[pid];
+      struct gpart *restrict gpj = &gparts_j[pjd];
 
-      /* Compute the pairwise distance. */
-      const float dx[3] = {gpj->x[0] - gpi->x[0],   // x
-                           gpj->x[1] - gpi->x[1],   // y
-                           gpj->x[2] - gpi->x[2]};  // z
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      if (!gpart_is_active(gpj, e)) continue;
 
-      /* Interact ! */
-      runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+      /* Loop over every particle in the other cell. */
+      for (int pid = 0; pid < gcount_i; pid++) {
+
+        /* Get a hold of the ith part in ci. */
+        const struct gpart *restrict gpi = &gparts_i[pid];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {gpj->x[0] - gpi->x[0],   // x
+                             gpj->x[1] - gpi->x[1],   // y
+                             gpj->x[2] - gpi->x[2]};  // z
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      gpj->num_interacted++;
+        /* Check that particles have been drifted to the current time */
+        if (gpi->ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+        if (gpj->ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
 #endif
+
+        /* Interact ! */
+        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gpj->num_interacted++;
+#endif
+      }
     }
   }
 
@@ -270,6 +317,9 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
+  /* Do we need to start by drifting things ? */
+  if (!cell_are_gpart_drifted(c, e)) cell_drift_gpart(c, e);
+
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
 
@@ -282,6 +332,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
               c->width[0], c->gcount);
   }
 #endif
+
+  /* MATTHIEU: Should we use local DP accumulators ? */
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -300,6 +352,14 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
                      gpi->x[1] - gpj->x[1],   // y
                      gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (gpi->ti_drift != e->ti_current)
+        error("gpi not drifted to current time");
+      if (gpj->ti_drift != e->ti_current)
+        error("gpj not drifted to current time");
+#endif
 
       /* Interact ! */
       if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
@@ -353,6 +413,11 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
                         int gettimer) {
 
+  /* Some constants */
+  const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const double theta_crit_inv = props->theta_crit_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   const int gcount_i = ci->gcount;
@@ -362,26 +427,13 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   if (gcount_i == 0 || gcount_j == 0)
     error("Doing pair gravity on an empty cell !");
 
-  /* Bad stuff will happen if cell sizes are different */
-  if (ci->width[0] != cj->width[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
-          cj->width[0]);
-
   /* Sanity check */
-  if (ci == cj)
-    error(
-        "The impossible has happened: pair interaction between a cell and "
-        "itself.");
+  if (ci == cj) error("Pair interaction between a cell and itself.");
 
-  /* Are the cells direct neighbours? */
-  if (!cell_are_neighbours(ci, cj))
-    error(
-        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f "
-        "%f] "
-        "cj->width=%f",
-        ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0],
-        cj->loc[1], cj->loc[2], cj->width[0]);
-
+  if (cell_is_active(ci, e) && ci->ti_old_multipole != e->ti_current)
+    error("ci->multipole not drifted.");
+  if (cell_is_active(cj, e) && cj->ti_old_multipole != e->ti_current)
+    error("cj->multipole not drifted.");
 #endif
 
 #if ICHECK > 0
@@ -410,34 +462,71 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  /* Are both cells split ? */
-  if (ci->split && cj->split) {
+  /* Can we use M-M interactions ? */
+  if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
+                               0)) {
+    /* MATTHIEU: make a symmetric M-M interaction function ! */
+    runner_dopair_grav_mm(r, ci, cj);
+    runner_dopair_grav_mm(r, cj, ci);
+  }
+  /* We have two leaves. Go P-P. */
+  else if (!ci->split && !cj->split) {
+    runner_dopair_grav_pp(r, ci, cj);
+  }
+  /* Alright, we'll have to split and recurse. */
+  else {
 
-    for (int j = 0; j < 8; j++) {
-      if (ci->progeny[j] != NULL) {
+    const double ri_max = ci->multipole->r_max;
+    const double rj_max = cj->multipole->r_max;
 
+    /* Split the larger of the two cells and start over again */
+    if (ri_max > rj_max) {
+
+      /* Can we actually split that interaction ? */
+      if (ci->split) {
+
+        /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
-          if (cj->progeny[k] != NULL) {
-
-            if (cell_are_neighbours(ci->progeny[j], cj->progeny[k])) {
-
-              /* Recurse */
-              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k], 0);
-
-            } else {
-
-              /* Ok, here we can go for multipole-multipole interactions */
-              runner_dopair_grav_mm(r, ci->progeny[j], cj->progeny[k]);
-              runner_dopair_grav_mm(r, cj->progeny[k], ci->progeny[j]);
-            }
-          }
+          if (ci->progeny[k] != NULL)
+            runner_dopair_grav(r, ci->progeny[k], cj, 0);
         }
+
+      } else if (cj->split) {
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+        }
+
+      } else {
+        error("Fundamental error in the logic");
+      }
+    } else {
+
+      /* Can we actually split that interaction ? */
+      if (cj->split) {
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+        }
+
+      } else if (ci->split) {
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
+
+        /* Loop over ci's children */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL)
+            runner_dopair_grav(r, ci->progeny[k], cj, 0);
+        }
+
+      } else {
+        error("Fundamental error in the logic");
       }
     }
-  } else { /* Not split */
-
-    /* Compute the interactions at this level directly. */
-    runner_dopair_grav_pp(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
@@ -455,7 +544,6 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Early abort? */
   if (c->gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
@@ -500,15 +588,18 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   } else {
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!cell_are_neighbours(ci, cj))
-      error("Non-neighbouring cells in pair task !");
-#endif
-
     runner_dopair_grav(r, ci, cj, 1);
   }
 }
 
+/**
+ * @brief Performs all M-M interactions between a given top-level cell and all
+ * the other top-levels that are far enough.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param timer Are we timing this ?
+ */
 void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
 #if ICHECK > 0
@@ -524,39 +615,49 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   }
 #endif
 
+  /* Some constants */
+  const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const double theta_crit_inv = props->theta_crit_inv;
+
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  const struct engine *e = r->e;
   struct cell *cells = e->s->cells_top;
   const int nr_cells = e->s->nr_cells;
-  /* const double max_d = */
-  /*     const_gravity_a_smooth * const_gravity_r_cut * ci->width[0]; */
-  /* const double max_d2 = max_d * max_d; */
-  // const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active(ci, e)) return;  // MATTHIEU (should never happen)
 
-  /* Drift our own multipole if need be */
-  if (ci->ti_old_multipole != e->ti_current) cell_drift_multipole(ci, e);
+  /* Check multipole has been drifted */
+  if (ci->ti_old_multipole != e->ti_current)
+    error("Interacting un-drifted multipole");
 
-  /* Loop over all the cells and go for a p-m interaction if far enough but not
-   * too far */
+  /* Loop over all the top-level cells and go for a M-M interaction if
+   * well-separated */
   for (int i = 0; i < nr_cells; ++i) {
 
+    /* Handle on the top-level cell */
     struct cell *cj = &cells[i];
 
-    if (ci == cj) continue;
-    if (cj->gcount == 0) continue;
+    /* Avoid stupid cases */
+    if (ci == cj || cj->gcount == 0) continue;
 
-    /* const double dx[3] = {cj->loc[0] - pos_i[0],   // x */
-    /*                       cj->loc[1] - pos_i[1],   // y */
-    /*                       cj->loc[2] - pos_i[2]};  // z */
-    /* const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
-    /* if (r2 > max_d2) continue; */
+    /* Check the multipole acceptance criterion */
+    if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
+                                 0)) {
 
-    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_mm(r, ci, cj);
+      /* Go for a (non-symmetric) M-M calculation */
+      runner_dopair_grav_mm(r, ci, cj);
+    }
+    /* Is the criterion violated now but was OK at the last rebuild ? */
+    else if (gravity_multipole_accept(ci->multipole, cj->multipole,
+                                      theta_crit_inv, 1)) {
+
+      /* Alright, we have to take charge of that pair in a different way. */
+      // MATTHIEU: We should actually open the tree-node here and recurse.
+      runner_dopair_grav_mm(r, ci, cj);
+    }
   }
 
   if (timer) TIMER_TOC(timer_dograv_long_range);

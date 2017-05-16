@@ -61,7 +61,7 @@ nrank=$(($nrank-1))
 
 #  And process them,
 echo "Processing thread info files..."
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks_MPI.py \$0 \$2 $TIMERANGE"
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks_MPI.py --expand 1 --limit $TIMERANGE \$0 \$2 "
 
 echo "Writing output index.html file"
 #  Construct document - serial.

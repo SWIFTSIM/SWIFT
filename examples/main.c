@@ -82,6 +82,8 @@ void print_help_message() {
          "Run with an external gravitational potential.");
   printf("  %2s %8s %s\n", "-F", "", "Run with feedback.");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity.");
+  printf("  %2s %8s %s\n", "-M", "",
+         "Reconstruct the multipoles every time-step.");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
@@ -90,6 +92,7 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
+  printf("  %2s %8s %s\n", "-T", "", "Print timers every time-step.");
   printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity.");
   printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
@@ -163,14 +166,17 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
+  int with_mpole_reconstruction = 0;
   int verbose = 0;
   int nr_threads = 1;
+  int with_verbose_timers = 0;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhn:sSt:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:sSt:Tv:y:")) != -1)
+    switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -208,6 +214,9 @@ int main(int argc, char *argv[]) {
       case 'h':
         if (myrank == 0) print_help_message();
         return 0;
+      case 'M':
+        with_mpole_reconstruction = 1;
+        break;
       case 'n':
         if (sscanf(optarg, "%d", &nsteps) != 1) {
           if (myrank == 0) printf("Error parsing fixed number of steps.\n");
@@ -228,6 +237,9 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'T':
+        with_verbose_timers = 1;
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
@@ -516,6 +528,8 @@ int main(int argc, char *argv[]) {
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_drift_all) engine_policies |= engine_policy_drift_all;
+  if (with_mpole_reconstruction)
+    engine_policies |= engine_policy_reconstruct_mpoles;
   if (with_hydro) engine_policies |= engine_policy_hydro;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
@@ -601,14 +615,20 @@ int main(int argc, char *argv[]) {
            "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit());
 
+  /* File for the timers */
+  if (with_verbose_timers) timers_open_file(myrank);
+
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
 
     /* Reset timers */
-    timers_reset(timers_mask_all);
+    timers_reset_all();
 
     /* Take a step. */
     engine_step(&e);
+
+    /* Print the timers. */
+    if (with_verbose_timers) timers_print(e.step);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
@@ -714,6 +734,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Clean everything */
+  if (with_verbose_timers) timers_close_file();
   engine_clean(&e);
   free(params);
 
