@@ -424,22 +424,26 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
 #if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
   int pack = 0;
 
+  /* Invert hj. */
+  vector v_hj, v_hj_inv;
+  v_hj = vec_load(&cell_cache->h[pjd]);
+  v_hj_inv = vec_reciprocal(v_hj);
+
 #ifdef HAVE_AVX512_F
   pack += __builtin_popcount(mask);
   VEC_LEFT_PACK(v_r2->v, mask, &int_cache->r2q[*icount]);
   VEC_LEFT_PACK(v_dx->v, mask, &int_cache->dxq[*icount]);
   VEC_LEFT_PACK(v_dy->v, mask, &int_cache->dyq[*icount]);
   VEC_LEFT_PACK(v_dz->v, mask, &int_cache->dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v, mask, &int_cache->mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v, mask, &int_cache->vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v, mask, &int_cache->vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v, mask, &int_cache->vzq[*icount]);
-  
-  VEC_LEFT_PACK(v_rhoj->v, mask, &int_cache->rhoq[*icount]);
-  VEC_LEFT_PACK(v_grad_hj->v, mask, &int_cache->grad_hq[*icount]);
-  VEC_LEFT_PACK(v_pOrhoj2->v, mask, &int_cache->pOrho2q[*icount]);
-  VEC_LEFT_PACK(v_balsara_j->v, mask, &int_cache->balsaraq[*icount]);
-  VEC_LEFT_PACK(v_cj->v, mask, &int_cache->soundspeedq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->m[pjd]), mask, &int_cache->mq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vx[pjd]), mask, &int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vy[pjd]), mask, &int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vz[pjd]), mask, &int_cache->vzq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->rho[pjd]), mask, &int_cache->rhoq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->grad_h[pjd]), mask, &int_cache->grad_hq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->pOrho2[pjd]), mask, &int_cache->pOrho2q[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->balsara[pjd]), mask, &int_cache->balsaraq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->soundspeed[pjd]), mask, &int_cache->soundspeedq[*icount]);
   VEC_LEFT_PACK(v_hj_inv->v, mask, &int_cache->h_invq[*icount]);
 #else
   vector v_mask;
@@ -449,11 +453,10 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
   VEC_LEFT_PACK(v_dx->v, v_mask.m, &int_cache->dxq[*icount]);
   VEC_LEFT_PACK(v_dy->v, v_mask.m, &int_cache->dyq[*icount]);
   VEC_LEFT_PACK(v_dz->v, v_mask.m, &int_cache->dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v, v_mask.m, &int_cache->mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v, v_mask.m, &int_cache->vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v, v_mask.m, &int_cache->vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v, v_mask.m, &int_cache->vzq[*icount]);
-
+  VEC_LEFT_PACK(vec_load(&cell_cache->m[pjd]), v_mask.m, &int_cache->mq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vx[pjd]), v_mask.m, &int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vy[pjd]), v_mask.m, &int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vz[pjd]), v_mask.m, &int_cache->vzq[*icount]);
   VEC_LEFT_PACK(v_rhoj->v, v_mask.m, &int_cache->rhoq[*icount]);
   VEC_LEFT_PACK(v_grad_hj->v, v_mask.m, &int_cache->grad_hq[*icount]);
   VEC_LEFT_PACK(v_pOrhoj2->v, v_mask.m, &int_cache->pOrho2q[*icount]);
