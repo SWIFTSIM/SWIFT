@@ -2281,10 +2281,10 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort > ci->dmin * space_maxreldx)
+        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
       error("Interacting unsorted cell.");
     if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort > cj->dmin * space_maxreldx)
+        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
       error("Interacting unsorted cell.");
 
 /* Compute the interactions. */
