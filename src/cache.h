@@ -63,10 +63,19 @@ struct cache {
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
   
+  /* Particle density. */
   float *restrict rho __attribute__((aligned(CACHE_ALIGN)));
+  
+  /* Particle smoothing length gradient. */
   float *restrict grad_h __attribute__((aligned(CACHE_ALIGN)));
+  
+  /* Pressure over density squared. */
   float *restrict pOrho2 __attribute__((aligned(CACHE_ALIGN)));
+      
+  /* Balsara switch. */
   float *restrict balsara __attribute__((aligned(CACHE_ALIGN)));
+      
+  /* Particle sound speed. */
   float *restrict soundspeed __attribute__((aligned(CACHE_ALIGN)));
 
   /* Maximum distance of particles into neighbouring cell. */
