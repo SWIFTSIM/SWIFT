@@ -200,7 +200,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
   VEC_LEFT_PACK(vec_load(&cell_cache->vz[pjd]), mask, &int_cache->vzq[*icount]);
 #else
   vector v_mask;
-  VEC_FORM_PACKED_MASK(mask, v_mask, pack);
+  VEC_FORM_PACKED_MASK(mask, v_mask.m, pack);
 
   VEC_LEFT_PACK(v_r2->v, v_mask.m, &int_cache->r2q[*icount]);
   VEC_LEFT_PACK(v_dx->v, v_mask.m, &int_cache->dxq[*icount]);
@@ -255,7 +255,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
           &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
-          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
+          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0xFFFF, 0xFFFF);
     }
 
     /* Reset interaction count. */
