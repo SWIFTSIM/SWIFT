@@ -31,19 +31,6 @@
 /* Local headers. */
 #include "swift.h"
 
-//#if defined(WITH_VECTORIZATION)
-//#define DOSELF2 runner_doself2_force_vec
-////#define DOPAIR2 runner_dopair2_force_vec
-//#define DOSELF2_NAME "runner_doself2_force_vec"
-//#define DOPAIR2_NAME "runner_dopair2_force"
-//#endif
-
-#ifndef DOSELF2
-#define DOSELF2 runner_doself2_force
-#define DOSELF2_NAME "runner_doself2_density"
-#define DOPAIR2_NAME "runner_dopair2_force"
-#endif
-
 enum velocity_field {
   velocity_zero,
   velocity_const,
@@ -708,15 +695,6 @@ int main(int argc, char *argv[]) {
         hydro_init_part(&cells[i]->parts[n], &space.hs);
     }
   }
-
-  // for (size_t n = 0; n < 100*runs; ++n) {
-  //  ticks self_tic = getticks();
-
-  //  DOSELF2(&runner, main_cell);
-
-  //  self_force_time += getticks() - self_tic;
-  //
-  //}
 
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
