@@ -738,8 +738,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       count = redo;
       if (count > 0) {
 
-        atomic_add(&runner_num_ghost_redos, count);
-
         /* Climb up the cell hierarchy. */
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
