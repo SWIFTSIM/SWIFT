@@ -242,10 +242,10 @@ static void *engine_do_redistribute(int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID) {
-  /* Allocate a new array with some extra margin */
+
+  /* Allocate a new particle array with some extra margin */
   char *parts_new = NULL;
-  if (posix_memalign(
-          (void **)&parts_new, alignsize,
+  if (posix_memalign((void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
@@ -254,61 +254,94 @@ static void *engine_do_redistribute(int *counts, char *parts,
   if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) ==
       NULL)
     error("Failed to allocate MPI request list.");
-  for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
 
-  /* Emit the sends and recvs for the data. */
-  size_t offset_send = 0, offset_recv = 0;
-  for (int k = 0; k < nr_nodes; k++) {
+  /* Only send and receive only "chunk" particles per request. So we need to
+   * loop as many times as necessary here. */
+  const int chunk = 1000000; // XXX parameterise this.
+  int sent = 0;
+  int recvd = 0;
 
-    /* Indices in the count arrays of the node of interest */
-    const int ind_send = nodeID * nr_nodes + k;
-    const int ind_recv = k * nr_nodes + nodeID;
+  int activenodes = 1;
+  while (activenodes) {
 
-    /* Are we sending any data? */
-    if (counts[ind_send] > 0) {
+    for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
 
-      /* message("Sending %d part to node %d", counts[ind_send], k); */
+    /* Emit the sends and recvs for the data. */
+    size_t offset_send = sent;
+    size_t offset_recv = recvd;
+    activenodes = 0;
 
-      /* If the send is local, just copy */
-      if (k == nodeID) {
-        memcpy(&parts_new[offset_recv * sizeofparts],
-               &parts[offset_send * sizeofparts],
-               sizeofparts * counts[ind_recv]);
-        offset_send += counts[ind_send];
-        offset_recv += counts[ind_recv];
+    for (int k = 0; k < nr_nodes; k++) {
 
-        /* Else, emit some communications */
-      } else {
-        if (MPI_Isend(&parts[offset_send * sizeofparts], counts[ind_send],
-                      mpi_type, k, ind_send + 0, MPI_COMM_WORLD,
-                      &reqs[2 * k + 0]) != MPI_SUCCESS)
-          error("Failed to isend parts to node %i.", k);
-        offset_send += counts[ind_send];
+      /* Indices in the count arrays of the node of interest */
+      const int ind_send = nodeID * nr_nodes + k;
+      const int ind_recv = k * nr_nodes + nodeID;
+
+      /* Are we sending any data this loop? */
+      int sending = counts[ind_send] - sent;
+      if (sending > 0) {
+        activenodes++;
+        if (sending > chunk)
+          sending = chunk;
+
+        /* If the send and receive is local then just copy. */
+        if (k == nodeID) {
+          int receiving = counts[ind_recv] - recvd;
+          if (receiving > chunk)
+            receiving = chunk;
+          memcpy(&parts_new[offset_recv * sizeofparts],
+                 &parts[offset_send * sizeofparts],
+                 sizeofparts * receiving);
+        } else {
+          /* Otherwise send it. */
+          int res = MPI_Isend(&parts[offset_send * sizeofparts], sending,
+                              mpi_type, k, ind_send, MPI_COMM_WORLD,
+                              &reqs[2 * k + 0]);
+          if (res != MPI_SUCCESS)
+            mpi_error(res, "Failed to isend parts to node %i.", k);
+        }
       }
+
+      /* If we're sending to this node, then move past it to next. */
+      if (counts[ind_send] > 0)
+        offset_send += counts[ind_send];
+
+      /* Are we receiving any data from this node? Note already done if coming
+       * from this node. */
+      if (k != nodeID) {
+        int receiving = counts[ind_recv] - recvd;
+        if (receiving > 0) {
+          activenodes++;
+          if (receiving > chunk)
+            receiving = chunk;
+          int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts], receiving,
+                              mpi_type, k, ind_recv, MPI_COMM_WORLD,
+                              &reqs[2 * k + 1]);
+          if (res != MPI_SUCCESS)
+            mpi_error(res, "Failed to emit irecv of parts from node %i.", k);
+        }
+      }
+
+      /* If we're receiving from this node, then move past it to next. */
+      if (counts[ind_recv] > 0)
+        offset_recv += counts[ind_recv];
     }
 
-    /* Now emit the corresponding Irecv() */
-
-    /* Are we receiving any data from this node ? */
-    if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv * sizeofparts], counts[ind_recv],
-                    part_mpi_type, k, ind_recv + 0, MPI_COMM_WORLD,
-                    &reqs[2 * k + 1]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
-      offset_recv += counts[ind_recv];
+    /* Wait for all the sends and recvs to tumble in. */
+    MPI_Status stats[2 * nr_nodes];
+    int res;
+    if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 2 * nr_nodes; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
+        message("request %i has error '%s'.", k, buff);
+      }
+      error("Failed during waitall for part data.");
     }
-  }
 
-  /* Wait for all the sends and recvs to tumble in. */
-  MPI_Status stats[2 * nr_nodes];
-  int res;
-  if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
-    for (int k = 0; k < 2 * nr_nodes; k++) {
-      char buff[MPI_MAX_ERROR_STRING];
-      MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-      message("request %i has error '%s'.", k, buff);
-    }
-    error("Failed during waitall for part data.");
+    /* Move to next chunks. */
+    sent += chunk;
+    recvd += chunk;
   }
 
   /* Free temps. */
@@ -316,6 +349,7 @@ static void *engine_do_redistribute(int *counts, char *parts,
 
   /* And return new memory. */
   return parts_new;
+
 }
 #endif
 
@@ -746,32 +780,32 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
-                               parts_new[k].x[1] * iwidth[1],
-                               parts_new[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(cdim, s->parts[k].x[0] * iwidth[0],
+                               s->parts[k].x[1] * iwidth[1],
+                               s->parts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_gparts; k++) {
-    const int cid = cell_getid(cdim, gparts_new[k].x[0] * iwidth[0],
-                               gparts_new[k].x[1] * iwidth[1],
-                               gparts_new[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(cdim, s->gparts[k].x[0] * iwidth[0],
+                               s->gparts[k].x[1] * iwidth[1],
+                               s->gparts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_sparts; k++) {
-    const int cid = cell_getid(cdim, sparts_new[k].x[0] * iwidth[0],
-                               sparts_new[k].x[1] * iwidth[1],
-                               sparts_new[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(cdim, s->sparts[k].x[0] * iwidth[0],
+                               s->sparts[k].x[1] * iwidth[1],
+                               s->sparts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
 
   /* Verify that the links are correct */
-  part_verify_links(parts_new, gparts_new, sparts_new, nr_parts, nr_gparts,
+  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
                     nr_sparts, e->verbose);
 #endif
 
