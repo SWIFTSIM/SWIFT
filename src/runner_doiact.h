@@ -925,6 +925,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
+  /* TODO(pedro): disabling this check for now as the sorts are activated
+     based on dx_max_sort_old, and not dx_max_sort.
   for (int pid = 0; pid < ci->count; pid++) {
     const struct part *p = &ci->parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
@@ -942,7 +944,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
         1.0e-6 * max(fabsf(d), cj->dx_max_sort))
       error("particle shift diff exceeds dx_max_sort.");
-  }
+  } */
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1171,6 +1173,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
+  /* TODO(pedro): disabling this check for now as the sorts are activated
+     based on dx_max_sort_old, and not dx_max_sort.
   for (int pid = 0; pid < ci->count; pid++) {
     const struct part *p = &ci->parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
@@ -1188,7 +1192,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
         1.0e-6 * max(fabsf(d), cj->dx_max_sort))
       error("particle shift diff exceeds dx_max_sort.");
-  }
+  } */
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
