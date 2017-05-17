@@ -1546,6 +1546,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     cj->requires_sorts = ti_current;
     ci->dx_max_sort_old = ci->dx_max_sort;
     cj->dx_max_sort_old = cj->dx_max_sort;
+    atomic_or(&ci->sorts->flags, (1 << sid));
+    atomic_or(&cj->sorts->flags, (1 << sid));
 
     /* Activate the drifts if the cells are local. */
     if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
@@ -1559,7 +1561,6 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
       }
     }
     if (!(ci->sorted & (1 << sid))) {
-      atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
     }
     if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
@@ -1570,7 +1571,6 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
       }
     }
     if (!(cj->sorted & (1 << sid))) {
-      atomic_or(&cj->sorts->flags, (1 << sid));
       scheduler_activate(s, cj->sorts);
     }
   }
