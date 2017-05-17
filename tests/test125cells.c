@@ -237,6 +237,8 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
  * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
+ * @param pert The perturbation to apply to the particles in the cell in units
+ *of the inter-particle separation.
  * @param vel The type of velocity field.
  * @param press The type of pressure field.
  */
