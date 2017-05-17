@@ -1669,10 +1669,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
     /* Make the ghosts implicit and add the dependencies */
     for (int n = 0; n < n_ghosts / 2; ++n) {
-      ghosts[2 * n + 0] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_subtype_none, 0, 0, NULL, NULL);
-      ghosts[2 * n + 1] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 0] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 1] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
       ghosts[2 * n + 0]->implicit = 1;
       ghosts[2 * n + 1]->implicit = 1;
       scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
@@ -3063,7 +3063,7 @@ void engine_print_stats(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  if(e->nodeID == 0) message("Saving statistics at t=%e.", e->time);
+  if (e->nodeID == 0) message("Saving statistics at t=%e.", e->time);
 #else
   if (e->verbose) message("Saving statistics at t=%e.", e->time);
 #endif
