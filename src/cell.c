@@ -1293,6 +1293,7 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s) {
   const struct engine *e = s->space->e;
+  const integertime_t ti_current = e->ti_current;
 
   /* Store the current dx_max and h_max values. */
   ci->dx_max_old = ci->dx_max;
@@ -1547,8 +1548,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
           scheduler_activate(s, finger->sorts);
       }
     }
-    if (!(ci->sorted & (1 << t->flags))) {
-      atomic_or(&ci->sorts->flags, (1 << t->flags));
+    if (!(ci->sorted & (1 << sid))) {
+      atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
       if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
     }
@@ -1559,8 +1560,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
           scheduler_activate(s, finger->sorts);
       }
     }
-    if (!(cj->sorted & (1 << t->flags))) {
-      atomic_or(&cj->sorts->flags, (1 << t->flags));
+    if (!(cj->sorted & (1 << sid))) {
+      atomic_or(&cj->sorts->flags, (1 << sid));
       scheduler_activate(s, cj->sorts);
       if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
     }
