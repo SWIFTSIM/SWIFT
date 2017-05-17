@@ -113,11 +113,22 @@ struct c2_cache {
   /* z velocity of particle pj. */
   float vzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
   
+  /* Density of particle pj. */
   float rhoq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  /* Smoothing length gradient of particle pj. */
   float grad_hq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  /* Pressure over density squared of particle pj. */
   float pOrho2q[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  /* Balsara switch of particle pj. */
   float balsaraq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  
+  /* Sound speed of particle pj. */
   float soundspeedq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+
+  /* Inverse smoothing length of particle pj. */
   float h_invq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 };
 
@@ -165,7 +176,6 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
-
   error += posix_memalign((void **)&c->rho, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->grad_h, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->pOrho2, CACHE_ALIGN, sizeBytes);
