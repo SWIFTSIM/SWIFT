@@ -1541,6 +1541,16 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     double shift[3];
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
+    /* We are going to interact this pair, so store some values. */
+    ci->requires_sorts = ti_current;
+    cj->requires_sorts = ti_current;
+    ci->dx_max_sort_old = ci->dx_max_sort;
+    cj->dx_max_sort_old = cj->dx_max_sort;
+
+    /* Activate the drifts if the cells are local. */
+    if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
+    if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
+
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
       for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
         finger->sorted = 0;
@@ -1551,7 +1561,6 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     if (!(ci->sorted & (1 << sid))) {
       atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
-      if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
     }
     if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
       for (struct cell *finger = cj; finger != NULL; finger = finger->parent) {
@@ -1563,12 +1572,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     if (!(cj->sorted & (1 << sid))) {
       atomic_or(&cj->sorts->flags, (1 << sid));
       scheduler_activate(s, cj->sorts);
-      if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
     }
-    ci->requires_sorts = ti_current;
-    cj->requires_sorts = ti_current;
-    ci->dx_max_sort_old = ci->dx_max_sort;
-    cj->dx_max_sort_old = cj->dx_max_sort;
   }
 }
 
@@ -1597,6 +1601,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
+      /* Store some values. */
+      ci->requires_sorts = ti_current;
+      cj->requires_sorts = ti_current;
+      ci->dx_max_sort_old = ci->dx_max_sort;
+      cj->dx_max_sort_old = cj->dx_max_sort;
+
+      /* Check the sorts and activate them if needed. */
       if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
         for (struct cell *finger = ci; finger != NULL;
              finger = finger->parent) {
@@ -1629,10 +1640,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, cj->sorts);
         if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
       }
-      ci->requires_sorts = ti_current;
-      cj->requires_sorts = ti_current;
-      ci->dx_max_sort_old = ci->dx_max_sort;
-      cj->dx_max_sort_old = cj->dx_max_sort;
     }
     /* Store current values of dx_max and h_max. */
     else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {

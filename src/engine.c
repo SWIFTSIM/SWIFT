@@ -2485,6 +2485,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Set the correct sorting flags */
       if (t->type == task_type_pair) {
+        /* Store some values. */
+        ci->requires_sorts = ti_current;
+        cj->requires_sorts = ti_current;
+        ci->dx_max_sort_old = ci->dx_max_sort;
+        cj->dx_max_sort_old = cj->dx_max_sort;
+
+        /* Activate the sorts where needed. */
         if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
           for (struct cell *finger = ci; finger != NULL;
                finger = finger->parent) {
@@ -2517,10 +2524,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, cj->sorts);
           if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
         }
-        ci->requires_sorts = ti_current;
-        cj->requires_sorts = ti_current;
-        ci->dx_max_sort_old = ci->dx_max_sort;
-        cj->dx_max_sort_old = cj->dx_max_sort;
       }
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
