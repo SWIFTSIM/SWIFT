@@ -1262,7 +1262,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force
   xj.v = r.v * hj_inv.v;
   
   /* Calculate the kernel for two particles. */
-  kernel_deval_1_vec(&xj, &wj_dx);
+  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
   
   wj_dr.v = hjd_inv.v * wj_dx.v;
 
@@ -1377,7 +1377,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force
   xj.v = r.v * hj_inv.v;
   
   /* Calculate the kernel for two particles. */
-  kernel_deval_1_vec(&xj, &wj_dx);
+  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
   
   wj_dr.v = hjd_inv.v * wj_dx.v;
 
