@@ -53,6 +53,7 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
+#include "runner_doiact_fft.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
@@ -331,7 +332,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   TIMER_TIC;
 
   /* Check that the particles have been moved to the current time */
-  if (!cell_is_drifted(c, r->e)) error("Sorting un-drifted cell");
+  if (!cell_are_part_drifted(c, r->e)) error("Sorting un-drifted cell");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
@@ -839,19 +840,35 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   }
 }
 /**
- * @brief Drift particles in real space.
+ * @brief Drift all part in a cell.
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_drift_particles(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_particles(c, r->e);
+  cell_drift_part(c, r->e);
 
-  if (timer) TIMER_TOC(timer_drift);
+  if (timer) TIMER_TOC(timer_drift_part);
+}
+
+/**
+ * @brief Drift all gpart in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift_gpart(c, r->e);
+
+  if (timer) TIMER_TOC(timer_drift_gpart);
 }
 
 /**
@@ -1522,7 +1539,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
-  c->ti_old = ti_current;
+  c->ti_old_part = ti_current;
   c->h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_part);
@@ -1596,7 +1613,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
-  c->ti_old = ti_current;
+  c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_gpart);
 
@@ -1669,7 +1686,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
-  c->ti_old = ti_current;
+  c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
 
@@ -1727,15 +1744,18 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
       t->ti_run = e->ti_current;
 #ifndef WITH_MPI
-      if (ci == NULL && cj == NULL) {
+      if (t->type == task_type_grav_top_level) {
+        if (ci != NULL || cj != NULL)
+          error("Top-level gravity task associated with a cell");
+      } else if (ci == NULL && cj == NULL) {
 
         error("Task not associated with cells!");
-
       } else if (cj == NULL) { /* self */
 
         if (!cell_is_active(ci, e) && t->type != task_type_sort &&
             t->type != task_type_send && t->type != task_type_recv &&
-            t->type != task_type_kick1 && t->type != task_type_drift)
+            t->type != task_type_kick1 && t->type != task_type_drift_part &&
+            t->type != task_type_drift_gpart)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld",
@@ -1863,8 +1883,11 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-        case task_type_drift:
-          runner_do_drift_particles(r, ci, 1);
+        case task_type_drift_part:
+          runner_do_drift_part(r, ci, 1);
+          break;
+        case task_type_drift_gpart:
+          runner_do_drift_gpart(r, ci, 1);
           break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
@@ -1902,14 +1925,11 @@ void *runner_main(void *data) {
           }
           break;
 #endif
-        case task_type_grav_mm:
-          // runner_do_grav_mm(r, t->ci, 1);
-          break;
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_top_level:
-          // runner_do_grav_top_level(r);
+          runner_do_grav_fft(r, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);

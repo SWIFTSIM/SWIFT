@@ -130,6 +130,9 @@ struct space {
   /*! The s-particle data (cells have pointers to this). */
   struct spart *sparts;
 
+  /*! The top-level FFT task */
+  struct task *grav_top_level;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
@@ -206,6 +209,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
                                  int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
                                  int verbose);
+void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();

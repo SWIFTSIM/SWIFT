@@ -182,8 +182,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Let's start by drifting things */
-  if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-  if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+  if (!cell_are_gpart_drifted(ci, e)) cell_drift_gpart(ci, e);
+  if (!cell_are_gpart_drifted(cj, e)) cell_drift_gpart(cj, e);
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -318,7 +318,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   if (!cell_is_active(c, e)) return;
 
   /* Do we need to start by drifting things ? */
-  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+  if (!cell_are_gpart_drifted(c, e)) cell_drift_gpart(c, e);
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
@@ -429,6 +429,11 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
+
+  if (cell_is_active(ci, e) && ci->ti_old_multipole != e->ti_current)
+    error("ci->multipole not drifted.");
+  if (cell_is_active(cj, e) && cj->ti_old_multipole != e->ti_current)
+    error("cj->multipole not drifted.");
 #endif
 
 #if ICHECK > 0

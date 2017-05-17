@@ -182,6 +182,52 @@ void xmf_write_groupfooter(FILE* xmfFile, enum part_type ptype) {
 }
 
 /**
+ * @brief Returns the precision of a given dataset type
+ */
+int xmf_precision(enum IO_DATA_TYPE type) {
+  switch (type) {
+    case FLOAT:
+      return 4;
+      break;
+    case DOUBLE:
+      return 8;
+      break;
+    case ULONGLONG:
+    case LONGLONG:
+      return 8;
+      break;
+    case CHAR:
+      return 1;
+      break;
+    default:
+      error("Unsupported type");
+  }
+  return 0;
+}
+
+/**
+ * @brief Returns the Xdmf type name of a given dataset type
+ */
+const char* xmf_type(enum IO_DATA_TYPE type) {
+  switch (type) {
+    case FLOAT:
+    case DOUBLE:
+      return "Float";
+      break;
+    case ULONGLONG:
+    case LONGLONG:
+      return "Int";
+      break;
+    case CHAR:
+      return "Char";
+      break;
+    default:
+      error("Unsupported type");
+  }
+  return "";
+}
+
+/**
  * @brief Writes the lines corresponding to an array of the HDF5 output
  *
  * @param xmfFile The file in which to write
@@ -203,13 +249,15 @@ void xmf_write_line(FILE* xmfFile, const char* fileName,
           name, dim == 1 ? "Scalar" : "Vector");
   if (dim == 1)
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zu\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
+            N, xmf_type(type), xmf_precision(type), fileName, partTypeGroupName,
+            name);
   else
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zu %d\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu %d\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
+            N, dim, xmf_type(type), xmf_precision(type), fileName,
+            partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }

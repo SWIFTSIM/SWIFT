@@ -903,7 +903,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
@@ -1147,7 +1147,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
-  if (!cell_is_drifted(ci, e) || !cell_is_drifted(cj, e))
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
 
   /* Get the shift ID. */
@@ -1597,7 +1597,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) error("Interacting undrifted cell.");
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1846,7 +1846,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) error("Cell is not drifted");
+  if (!cell_are_part_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -2279,8 +2279,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+    if (!cell_are_part_drifted(ci, e)) cell_drift_part(ci, e);
+    if (!cell_are_part_drifted(cj, e)) cell_drift_part(cj, e);
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
@@ -2333,7 +2333,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   else {
 
     /* Drift the cell to the current timestep if needed. */
-    if (!cell_is_drifted(ci, r->e)) cell_drift_particles(ci, r->e);
+    if (!cell_are_part_drifted(ci, r->e)) cell_drift_part(ci, r->e);
 
 #if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
     defined(GADGET2_SPH)
@@ -2586,8 +2586,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_is_drifted(ci, e)) cell_drift_particles(ci, e);
-    if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+    if (!cell_are_part_drifted(ci, e)) cell_drift_part(ci, e);
+    if (!cell_are_part_drifted(cj, e)) cell_drift_part(cj, e);
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
@@ -3218,7 +3218,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       new_sid = sortlistID[new_sid];
 
       /* Do any of the cells need to be drifted first? */
-      if (!cell_is_drifted(cj, e)) cell_drift_particles(cj, e);
+      if (!cell_are_part_drifted(cj, e)) cell_drift_part(cj, e);
 
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
     }
