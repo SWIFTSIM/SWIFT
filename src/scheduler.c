@@ -146,7 +146,8 @@ void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
   /* Unlock the cell. */
   lock_unlock_blind(&c->lock);
 
-  /* The provided task should depend on the sort. */
+  /* The provided task should depend on both the drift and the sort. */
+  scheduler_addunlock(s, c->drift, t);
   scheduler_addunlock(s, c->sorts, t);
 }
 
