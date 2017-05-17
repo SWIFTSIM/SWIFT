@@ -63,9 +63,6 @@
 #include "timers.h"
 #include "timestep.h"
 
-size_t runner_num_ghost_redos = 0;
-size_t runner_num_things_are_bad = 0;
-
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"

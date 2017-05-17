@@ -29,9 +29,6 @@
 /* Includes. */
 #include "cache.h"
 
-extern size_t runner_num_ghost_redos;
-extern size_t runner_num_things_are_bad;
-
 struct cell;
 struct engine;
 
