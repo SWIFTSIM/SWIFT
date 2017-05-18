@@ -176,7 +176,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_viz #vector of z velocity of pi.
  */
 __attribute__((always_inline)) INLINE static void storeInteractions(
-    const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
+    const short mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
     vector *v_dz, const struct cache *const cell_cache, struct c2_cache *const int_cache,
     int *icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
     vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
@@ -624,7 +624,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
 #ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
-  int doi_mask;
   struct part *restrict pi;
   int count_align;
   int num_vec_proc = NUM_VEC_PROC;
@@ -749,36 +748,26 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
       v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
-/* Form a mask from r2 < hig2 and r2 > 0.*/
-#ifdef HAVE_AVX512_F
-      // KNL_MASK_16 doi_mask, doi_mask_check, doi_mask2, doi_mask2_check;
-      KNL_MASK_16 doi_mask_check, doi_mask2, doi_mask2_check;
-
-      doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
-      doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
-
-      doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
-
-      doi_mask = doi_mask & doi_mask_check;
-      doi_mask2 = doi_mask2 & doi_mask2_check;
-
-#else
-      vector v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
-      int doi_mask2;
+      /* Form a mask from r2 < hig2 and r2 > 0.*/
+      mask_t v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
+      short doi_mask, doi_mask2;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
-      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      v_doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
+      v_doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      v_doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
+      v_doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
 
-      /* Combine two masks and form integer mask. */
-      doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
-      doi_mask2 = vec_cmp_result(vec_and(v_doi_mask2.v, v_doi_mask2_check.v));
-#endif /* HAVE_AVX512_F */
+      /* Combine the two masks. */
+      mask_t doi_mask_combi, doi_mask2_combi;
+      doi_mask_combi = vec_mask_and(v_doi_mask, v_doi_mask_check);
+      doi_mask2_combi = vec_mask_and(v_doi_mask2, v_doi_mask2_check);
+
+      /* Form integer mask. */
+      doi_mask = vec_cmp_result(doi_mask_combi);
+      doi_mask2 = vec_cmp_result(doi_mask2_combi);
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
