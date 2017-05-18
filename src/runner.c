@@ -358,7 +358,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   }
   if (flags == 0) return;
 
-  /* Update the sort timer which represents the last time the sorts were re-set. */
+  /* Update the sort timer which represents the last time the sorts
+     were re-set. */
   if (c->sorted == 0) c->ti_sort = r->e->ti_current;
 
   /* start by allocating the entry arrays. */
@@ -377,7 +378,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
     float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_sort(r, c->progeny[k], flags, cleanup, 0);
+        /* Only propagate cleanup if the progeny is stale. */
+        runner_do_sort(r, c->progeny[k], flags,
+                       cleanup && (c->progeny[k]->dx_max_sort >
+                                   space_maxreldx * c->progeny[k]->dmin),
+                       0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->dx_max_sort);
         dx_max_sort_old = max(dx_max_sort_old, c->progeny[k]->dx_max_sort_old);
       }
@@ -486,7 +491,6 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
         runner_do_sort_ascending(&sort[j * (count + 1)], count);
         atomic_or(&c->sorted, 1 << j);
       }
-
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -730,7 +734,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Run through this cell's density interactions. */
           for (struct link *l = finger->density; l != NULL; l = l->next) {
-          
+
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
               error("Density task should have been run.");
