@@ -348,7 +348,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
   /* Clean-up the flags, i.e. filter out what's already been sorted unless
      we're cleaning up. */
-  if (cleanup && c->ti_sort < r->e->ti_current) {
+  if (cleanup && c->dx_max_sort > 0.0f) {
     /* Re-compute old (stale) sorts. */
     flags |= c->sorted;
     c->sorted = 0;
@@ -357,6 +357,9 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
     flags &= ~c->sorted;
   }
   if (flags == 0) return;
+
+  /* Update the sort timer which represents the last time the sorts were re-set. */
+  if (c->sorted == 0) c->ti_sort = r->e->ti_current;
 
   /* start by allocating the entry arrays. */
   if (c->sort == NULL) {
@@ -454,12 +457,13 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   else {
 
     /* Reset the sort distance if we are in a local cell */
-    if (cleanup && xparts != NULL) {
+    if (c->sorted == 0) {
       for (int k = 0; k < count; k++) {
         xparts[k].x_diff_sort[0] = 0.0f;
         xparts[k].x_diff_sort[1] = 0.0f;
         xparts[k].x_diff_sort[2] = 0.0f;
       }
+      c->dx_max_sort_old = c->dx_max_sort = 0.f;
     }
 
     /* Fill the sort array. */
@@ -483,24 +487,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
         atomic_or(&c->sorted, 1 << j);
       }
 
-    /* Finally, clear the dx_max_sort field of this cell. */
-    if (cleanup) c->dx_max_sort_old = c->dx_max_sort = 0.f;
-
-    /* If this was not just an update, invalidate the sorts above this one. */
-    /* if (!stealth && c->ti_sort < r->e->ti_current)
-      for (struct cell *finger = c->parent; finger != NULL;
-           finger = finger->parent) {
-        finger->sorted = 0;
-#ifdef SWIFT_DEBUG_CHECKS
-        if (finger->requires_sorts == r->e->ti_current &&
-            (finger->sorts->skip && finger->sorts->ti_run < r->e->ti_current))
-          error("Clearing required sorts!");
-#endif
-      } */
   }
-
-  /* Update the sort timer. */
-  if (cleanup) c->ti_sort = r->e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
@@ -743,6 +730,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Run through this cell's density interactions. */
           for (struct link *l = finger->density; l != NULL; l = l->next) {
+          
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Density task should have been run.");
+#endif
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
@@ -1857,6 +1849,7 @@ void *runner_main(void *data) {
           break;
 
         case task_type_sort:
+          /* Cleanup only if any of the indices went stale. */
           runner_do_sort(r, ci, t->flags,
                          ci->dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           break;
