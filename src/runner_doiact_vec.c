@@ -736,6 +736,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       vec_create_mask(v_doi_mask2_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
       vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
+      /*TODO: Convert vector masks to integers before and operation. */
       /* Combine the two masks and form an integer mask. */
       doi_mask = vec_cmp_result(vec_mask_and(v_doi_mask, v_doi_mask_check));
       doi_mask2 = vec_cmp_result(vec_mask_and(v_doi_mask2, v_doi_mask2_check));
@@ -941,40 +942,23 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
 
       /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
-#ifdef HAVE_AVX512_F
-      KNL_MASK_16 doi_mask, doi_mask_self_check;
+      mask_t v_doi_mask, v_doi_mask_self_check;
+      int doi_mask, doi_mask_self_check;
 
       /* Form r2 > 0 mask.*/
-      doi_mask_self_check = vec_cmp_gt(v_r2.v, vec_setzero());
-      
-      /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
-      vector v_h2;
-      v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
-      doi_mask = vec_cmp_lt(v_r2.v, v_h2.v);
-
-      /* Combine all 3 masks. */
-      doi_mask = doi_mask & doi_mask_self_check;
-
-#else
-      vector v_doi_mask, v_doi_mask_self_check;
-
-      /* Form r2 > 0 mask.*/
-      v_doi_mask_self_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
+      vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
 
       /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
       vector v_h2;
       v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
-      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_h2.v);
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
       /* Form integer masks. */
-      int doi_mask, doi_mask_self_check;
-      doi_mask_self_check = vec_cmp_result(v_doi_mask_self_check.v);
-      doi_mask = vec_cmp_result(v_doi_mask.v);
+      doi_mask_self_check = vec_form_int_mask(v_doi_mask_self_check);
+      doi_mask = vec_form_int_mask(v_doi_mask);
       
       /* Combine all 3 masks. */
       doi_mask = doi_mask & doi_mask_self_check;
-      
-#endif /* HAVE_AVX512_F */
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */

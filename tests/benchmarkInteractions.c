@@ -400,7 +400,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
                (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
                &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum, &wcountSum,
                &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum,
-               mask, mask2);
+               mask, mask2, 0);
     }
 
     VEC_HADD(rhoSum, piq[0]->rho);
