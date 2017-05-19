@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
         v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[*icount_align],
         &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align],
         &int_cache->mq[*icount_align], rhoSum, rho_dhSum, wcountSum,
-        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2);
+        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 1);
   }
 }
 
@@ -231,7 +231,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
           &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
-          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2);
+          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Reset interaction count. */
@@ -777,7 +777,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
           &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
-          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2);
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
