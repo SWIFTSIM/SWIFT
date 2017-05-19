@@ -66,10 +66,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
     int *icount_align) {
 
-#ifdef HAVE_AVX512_F
-  KNL_MASK_16 knl_mask, knl_mask2;
-#endif
-  vector int_mask, int_mask2;
+  mask_t int_mask, int_mask2;
 
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
@@ -78,16 +75,10 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
     *icount_align += pad;
 
-/* Initialise masks to true. */
-#ifdef HAVE_AVX512_F
-    knl_mask = 0xFFFF;
-    knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
+    /* Initialise masks to true. */
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
+
     /* Pad secondary cache so that there are no contributions in the interaction
      * function. */
     for (int i = icount; i < *icount_align; i++) {
@@ -103,19 +94,10 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
 
     /* Zero parts of mask that represent the padded values.*/
     if (pad < VEC_SIZE) {
-#ifdef HAVE_AVX512_F
-      knl_mask2 = knl_mask2 >> pad;
-#else
-      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask2.i[i] = 0;
-#endif
+      vec_pad_mask(int_mask2,pad);
     } else {
-#ifdef HAVE_AVX512_F
-      knl_mask = knl_mask >> (VEC_SIZE - rem);
-      knl_mask2 = 0;
-#else
-      for (int i = rem; i < VEC_SIZE; i++) int_mask.i[i] = 0;
-      int_mask2.v = vec_setzero();
-#endif
+      vec_pad_mask(int_mask,VEC_SIZE - rem);
+      vec_zero_mask(int_mask2);
     }
 
     /* Perform remainder interaction and remove remainder from aligned
@@ -127,13 +109,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
         v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[*icount_align],
         &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align],
         &int_cache->mq[*icount_align], rhoSum, rho_dhSum, wcountSum,
-        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask,
-        int_mask2,
-#ifdef HAVE_AVX512_F
-        knl_mask, knl_mask2);
-#else
-        0, 0);
-#endif
+        wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2);
   }
 }
 
@@ -244,9 +220,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
                         wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum,
                         v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
-    vector int_mask, int_mask2;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
 
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
@@ -255,7 +231,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
           &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
-          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0xFFFF, 0xFFFF);
+          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2);
     }
 
     /* Reset interaction count. */
@@ -750,24 +726,19 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
       /* Form a mask from r2 < hig2 and r2 > 0.*/
       mask_t v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
-      short doi_mask, doi_mask2;
+      int doi_mask, doi_mask2;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
-      v_doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
+      vec_create_mask(v_doi_mask_check, vec_cmp_gt(v_r2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      v_doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      vec_create_mask(v_doi_mask2_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
-      /* Combine the two masks. */
-      mask_t doi_mask_combi, doi_mask2_combi;
-      doi_mask_combi = vec_mask_and(v_doi_mask, v_doi_mask_check);
-      doi_mask2_combi = vec_mask_and(v_doi_mask2, v_doi_mask2_check);
-
-      /* Form integer mask. */
-      doi_mask = vec_cmp_result(doi_mask_combi);
-      doi_mask2 = vec_cmp_result(doi_mask2_combi);
+      /* Combine the two masks and form an integer mask. */
+      doi_mask = vec_cmp_result(vec_mask_and(v_doi_mask, v_doi_mask_check));
+      doi_mask2 = vec_cmp_result(vec_mask_and(v_doi_mask2, v_doi_mask2_check));
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
@@ -795,16 +766,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
-    vector int_mask, int_mask2;
-#ifdef HAVE_AVX512_F
-    KNL_MASK_16 knl_mask = 0xFFFF;
-    KNL_MASK_16 knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
@@ -813,12 +777,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
           &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
-          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
-#ifdef HAVE_AVX512_F
-          knl_mask, knl_mask2);
-#else
-          0, 0);
-#endif
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
@@ -1320,7 +1279,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        vector v_doi_mask;
+        mask_t v_doi_mask;
         int doi_mask;
 
         /* Form r2 < hig2 mask. */
@@ -1336,12 +1295,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
               &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
               &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx], &rhoSum,
               &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-              &curlvySum, &curlvzSum, v_doi_mask,
-#ifdef HAVE_AVX512_F
-              knl_mask);
-#else
-              0);
-#endif
+              &curlvySum, &curlvzSum, v_doi_mask);
 
       } /* loop over the parts in cj. */
 
@@ -1452,7 +1406,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        vector v_doj_mask;
+        mask_t v_doj_mask;
         int doj_mask;
 
         /* Form r2 < hig2 mask. */
@@ -1468,12 +1422,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
               &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
               &ci_cache->vz[ci_cache_idx], &ci_cache->m[ci_cache_idx], &rhoSum,
               &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-              &curlvySum, &curlvzSum, v_doj_mask,
-#ifdef HAVE_AVX512_F
-              knl_mask);
-#else
-              0);
-#endif
+              &curlvySum, &curlvzSum, v_doj_mask);
 
       } /* loop over the parts in ci. */
 
