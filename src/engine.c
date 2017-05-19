@@ -245,7 +245,8 @@ static void *engine_do_redistribute(int *counts, char *parts,
 
   /* Allocate a new particle array with some extra margin */
   char *parts_new = NULL;
-  if (posix_memalign((void **)&parts_new, alignsize,
+  if (posix_memalign(
+          (void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
@@ -256,8 +257,9 @@ static void *engine_do_redistribute(int *counts, char *parts,
     error("Failed to allocate MPI request list.");
 
   /* Only send and receive only "chunk" particles per request. So we need to
-   * loop as many times as necessary here. */
-  const int chunk = 1000000; // XXX parameterise this.
+   * loop as many times as necessary here. Make 2Gb/sizeofparts so we only
+   * send 2Gb packets. */
+  const int chunk = INT_MAX / sizeofparts;
   int sent = 0;
   int recvd = 0;
 
@@ -281,30 +283,26 @@ static void *engine_do_redistribute(int *counts, char *parts,
       int sending = counts[ind_send] - sent;
       if (sending > 0) {
         activenodes++;
-        if (sending > chunk)
-          sending = chunk;
+        if (sending > chunk) sending = chunk;
 
         /* If the send and receive is local then just copy. */
         if (k == nodeID) {
           int receiving = counts[ind_recv] - recvd;
-          if (receiving > chunk)
-            receiving = chunk;
+          if (receiving > chunk) receiving = chunk;
           memcpy(&parts_new[offset_recv * sizeofparts],
-                 &parts[offset_send * sizeofparts],
-                 sizeofparts * receiving);
+                 &parts[offset_send * sizeofparts], sizeofparts * receiving);
         } else {
           /* Otherwise send it. */
-          int res = MPI_Isend(&parts[offset_send * sizeofparts], sending,
-                              mpi_type, k, ind_send, MPI_COMM_WORLD,
-                              &reqs[2 * k + 0]);
+          int res =
+              MPI_Isend(&parts[offset_send * sizeofparts], sending, mpi_type, k,
+                        ind_send, MPI_COMM_WORLD, &reqs[2 * k + 0]);
           if (res != MPI_SUCCESS)
             mpi_error(res, "Failed to isend parts to node %i.", k);
         }
       }
 
       /* If we're sending to this node, then move past it to next. */
-      if (counts[ind_send] > 0)
-        offset_send += counts[ind_send];
+      if (counts[ind_send] > 0) offset_send += counts[ind_send];
 
       /* Are we receiving any data from this node? Note already done if coming
        * from this node. */
@@ -312,8 +310,7 @@ static void *engine_do_redistribute(int *counts, char *parts,
         int receiving = counts[ind_recv] - recvd;
         if (receiving > 0) {
           activenodes++;
-          if (receiving > chunk)
-            receiving = chunk;
+          if (receiving > chunk) receiving = chunk;
           int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts], receiving,
                               mpi_type, k, ind_recv, MPI_COMM_WORLD,
                               &reqs[2 * k + 1]);
@@ -323,19 +320,20 @@ static void *engine_do_redistribute(int *counts, char *parts,
       }
 
       /* If we're receiving from this node, then move past it to next. */
-      if (counts[ind_recv] > 0)
-        offset_recv += counts[ind_recv];
+      if (counts[ind_recv] > 0) offset_recv += counts[ind_recv];
     }
 
     /* Wait for all the sends and recvs to tumble in. */
     MPI_Status stats[2 * nr_nodes];
     int res;
     if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
+      fflush(stderr); fflush(stdout);
       for (int k = 0; k < 2 * nr_nodes; k++) {
         char buff[MPI_MAX_ERROR_STRING];
         MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-        message("request %i has error '%s'.", k, buff);
+        message("request from source %i, tag %i has error '%s'.", stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
       }
+      fflush(stderr);fflush(stdout);
       error("Failed during waitall for part data.");
     }
 
@@ -349,7 +347,6 @@ static void *engine_do_redistribute(int *counts, char *parts,
 
   /* And return new memory. */
   return parts_new;
-
 }
 #endif
 
@@ -780,9 +777,9 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const int cid = cell_getid(cdim, s->parts[k].x[0] * iwidth[0],
-                               s->parts[k].x[1] * iwidth[1],
-                               s->parts[k].x[2] * iwidth[2]);
+    const int cid =
+        cell_getid(cdim, s->parts[k].x[0] * iwidth[0],
+                   s->parts[k].x[1] * iwidth[1], s->parts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
@@ -1676,10 +1673,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
     /* Make the ghosts implicit and add the dependencies */
     for (int n = 0; n < n_ghosts / 2; ++n) {
-      ghosts[2 * n + 0] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_subtype_none, 0, 0, NULL, NULL);
-      ghosts[2 * n + 1] = scheduler_addtask(sched, task_type_grav_ghost,
-                                            task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 0] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 1] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
       ghosts[2 * n + 0]->implicit = 1;
       ghosts[2 * n + 1]->implicit = 1;
       scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
