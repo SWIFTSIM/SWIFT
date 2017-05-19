@@ -1283,10 +1283,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         int doi_mask;
 
         /* Form r2 < hig2 mask. */
-        v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
         /* Form integer mask. */
-        doi_mask = vec_cmp_result(v_doi_mask.v);
+        doi_mask = vec_form_int_mask(v_doi_mask);
 
         /* If there are any interactions perform them. */
         if (doi_mask)
@@ -1410,10 +1410,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         int doj_mask;
 
         /* Form r2 < hig2 mask. */
-        v_doj_mask.v = vec_cmp_lt(v_r2.v, v_hjg2.v);
+        vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
 
         /* Form integer mask. */
-        doj_mask = vec_cmp_result(v_doj_mask.v);
+        doj_mask = vec_form_int_mask(v_doj_mask);
 
         /* If there are any interactions perform them. */
         if (doj_mask)
