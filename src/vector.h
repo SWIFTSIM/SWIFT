@@ -81,6 +81,7 @@
 #define vec_form_int_mask(a) a
 #define vec_and(a, b) _mm512_and_ps(a, b)
 #define vec_mask_and(a, b) a & b
+#define vec_and_mask(a, mask) _mm512_maskz_expand_ps(mask, a)
 #define vec_init_mask(mask) mask = 0xFFFF
 #define vec_zero_mask(mask) mask = 0
 #define vec_create_mask(mask, cond) mask = cond
@@ -130,6 +131,9 @@
 #define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \
   pack += __builtin_popcount(mask);
 
+/* Finds the horizontal maximum of vector b and returns a float. */
+#define VEC_HMAX(a, b) a = _mm512_reduce_max_ps(b.v)
+
 /* Performs a left-pack on a vector based upon a mask and returns the result. */
 #define VEC_LEFT_PACK(a, mask, result) \
   _mm512_mask_compressstoreu_ps(result, mask, a)
@@ -171,6 +175,7 @@
 #define vec_form_int_mask(a) _mm256_movemask_ps(a.v) 
 #define vec_and(a, b) _mm256_and_ps(a, b)
 #define vec_mask_and(a, b) _mm256_and_ps(a.v, b.v)
+#define vec_and_mask(a, mask) vec_mask_and(a, mask)
 #define vec_init_mask(mask) mask.m = vec_setint1(0xFFFFFFFF)
 #define vec_create_mask(mask, cond) mask.v = cond
 #define vec_zero_mask(mask) mask.v = vec_setzero()
@@ -201,13 +206,10 @@
   b += a.f[0] + a.f[4];
 
 /* Performs a horizontal maximum on the vector and takes the maximum of the result with a float, b. */
-#define VEC_HMAX(a, b)                                                                            \
-{                                                                                                 \
-__m256 y = _mm256_permute2f128_ps(a.v, a.v, 1); /* Permute 128-bit values, y = [a.high, a.low] */ \
-__m256 m1 = _mm256_max_ps(a.v, y); /* m1[0] = max(x[0], x[3]), m1[1] = max(x[1], x[4]), etc. */   \
-__m256 m2 = _mm256_permute_ps(m1, 177); /* Set m2[0] = m1[1], m2[1] = m1[0], m2[2] = m1[3] etc. */\
-__m256 m = _mm256_max_ps(m1, m2); /* m[0] and m[7] contain maximums of each part of vector. */    \
-  b = fmaxf(fmaxf(b,m[0]),m[7]);                                                                  \
+#define VEC_HMAX(a, b)        \
+{                             \
+ for(int k=0; k<VEC_SIZE; k++) \
+      b = max(b, a.f[k]);      \
 }
 
 /* Returns the lower 128-bits of the 256-bit vector. */

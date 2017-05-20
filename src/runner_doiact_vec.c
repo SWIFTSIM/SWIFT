@@ -276,10 +276,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     vector *v_rhoi, vector *v_grad_hi, vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci,
     int *icount_align, int num_vec_proc) {
 
-#ifdef HAVE_AVX512_F
-  KNL_MASK_16 knl_mask, knl_mask2;
-#endif
-  vector int_mask, int_mask2;
+  mask_t int_mask, int_mask2;
 
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
@@ -288,16 +285,10 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     int pad = (num_vec_proc * VEC_SIZE) - rem;
     *icount_align += pad;
 
-/* Initialise masks to true. */
-#ifdef HAVE_AVX512_F
-    knl_mask = 0xFFFF;
-    knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
+    /* Initialise masks to true. */
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
+
     /* Pad secondary cache so that there are no contributions in the interaction
      * function. */
     for (int i = icount; i < *icount_align; i++) {
@@ -319,19 +310,10 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
 
     /* Zero parts of mask that represent the padded values.*/
     if (pad < VEC_SIZE) {
-#ifdef HAVE_AVX512_F
-      knl_mask2 = knl_mask2 >> pad;
-#else
-      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask2.i[i] = 0;
-#endif
+      vec_pad_mask(int_mask2,pad);
     } else {
-#ifdef HAVE_AVX512_F
-      knl_mask = knl_mask >> (VEC_SIZE - rem);
-      knl_mask2 = 0;
-#else
-      for (int i = rem; i < VEC_SIZE; i++) int_mask.i[i] = 0;
-      int_mask2.v = vec_setzero();
-#endif
+      vec_pad_mask(int_mask,VEC_SIZE - rem);
+      vec_zero_mask(int_mask2);
     }
 
     /* Perform remainder interaction and remove remainder from aligned
@@ -341,12 +323,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     runner_iact_nonsym_2_vec_force(
         &int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[*icount_align], &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align], &int_cache->rhoq[*icount_align], &int_cache->grad_hq[*icount_align], &int_cache->pOrho2q[*icount_align], &int_cache->balsaraq[*icount_align], &int_cache->soundspeedq[*icount_align], &int_cache->mq[*icount_align], v_hi_inv, &int_cache->h_invq[*icount_align],
-        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2
-#ifdef HAVE_AVX512_F
-        ,knl_mask, knl_mask2);
-#else
-        );
-#endif
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2);
   }
 }
 
@@ -992,8 +969,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(h_dtSum, pi->force.h_dt);
-    for(int k=0; k<VEC_SIZE; k++)
-      pi->force.v_sig = max(pi->force.v_sig, v_sigSum.f[k]);
+    VEC_HMAX(v_sigSum, pi->force.v_sig);
     VEC_HADD(entropy_dtSum, pi->entropy_dt);
 
     /* Reset interaction count. */

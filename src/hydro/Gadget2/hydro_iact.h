@@ -1142,7 +1142,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #ifdef WITH_VECTORIZATION
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force(
     float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
-    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, vector mask) {
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1372,7 +1372,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_1_vec_force
 
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force(
     float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy, vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2, vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector *hi_inv, float *Hj_inv, 
-    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, vector mask, vector mask_2) {
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum, vector *entropy_dtSum, mask_t mask, mask_t mask_2) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1527,18 +1527,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_2_vec_force
   entropy_dt_2.v = mj_2.v * visc_term_2.v * dvdr_2.v;
 
   /* Store the forces back on the particles. */
-  a_hydro_xSum->v -= vec_and(piax.v, mask.v);
-  a_hydro_xSum->v -= vec_and(piax_2.v, mask_2.v);
-  a_hydro_ySum->v -= vec_and(piay.v, mask.v);
-  a_hydro_ySum->v -= vec_and(piay_2.v, mask_2.v);
-  a_hydro_zSum->v -= vec_and(piaz.v, mask.v);
-  a_hydro_zSum->v -= vec_and(piaz_2.v, mask_2.v);
-  h_dtSum->v -= vec_and(pih_dt.v, mask.v);
-  h_dtSum->v -= vec_and(pih_dt_2.v, mask_2.v);
-  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and(v_sig.v, mask.v));
-  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and(v_sig_2.v, mask_2.v));
-  entropy_dtSum->v += vec_and(entropy_dt.v,mask.v);
-  entropy_dtSum->v += vec_and(entropy_dt_2.v,mask_2.v);
+  a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
+  a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax_2.v, mask_2);
+  a_hydro_ySum->v = vec_mask_sub(a_hydro_ySum->v, piay.v, mask);
+  a_hydro_ySum->v = vec_mask_sub(a_hydro_ySum->v, piay_2.v, mask_2);
+  a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz.v, mask);
+  a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz_2.v, mask_2);
+  h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt.v, mask);
+  h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt_2.v, mask_2);
+  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig, mask));
+  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig_2, mask_2));
+  entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt.v, mask);
+  entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt_2.v, mask_2);
 
 #else
 
