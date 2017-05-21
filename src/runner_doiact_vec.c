@@ -363,7 +363,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
 #if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
   /* Invert hj. */
   vector v_hj, v_hj_inv;
-  v_hj = vec_load(&cell_cache->h[pjd]);
+  v_hj.v = vec_load(&cell_cache->h[pjd]);
   v_hj_inv = vec_reciprocal(v_hj);
 
   mask_t packed_mask;
@@ -382,7 +382,7 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
   VEC_LEFT_PACK(vec_load(&cell_cache->pOrho2[pjd]), packed_mask, &int_cache->pOrho2q[*icount]);
   VEC_LEFT_PACK(vec_load(&cell_cache->balsara[pjd]), packed_mask, &int_cache->balsaraq[*icount]);
   VEC_LEFT_PACK(vec_load(&cell_cache->soundspeed[pjd]), packed_mask, &int_cache->soundspeedq[*icount]);
-  VEC_LEFT_PACK(v_hj_inv->v, packed_mask, &int_cache->h_invq[*icount]);
+  VEC_LEFT_PACK(v_hj_inv.v, packed_mask, &int_cache->h_invq[*icount]);
   
   /* Increment interaction count by number of bits set in mask. */
   (*icount) += __builtin_popcount(mask);

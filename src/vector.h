@@ -241,7 +241,7 @@
 
 /* Performs a left-pack on a vector based upon a mask and returns the result. */
 #define VEC_LEFT_PACK(a, mask, result) \
-  vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask), result)
+  vec_unaligned_store(_mm256_permutevar8x32_ps(a, mask.m), result)
 #endif /* HAVE_AVX2 */
 
 /* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
