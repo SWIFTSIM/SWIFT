@@ -323,7 +323,7 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     runner_iact_nonsym_2_vec_force(
         &int_cache->r2q[*icount_align], &int_cache->dxq[*icount_align], &int_cache->dyq[*icount_align], &int_cache->dzq[*icount_align], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[*icount_align], &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align], &int_cache->rhoq[*icount_align], &int_cache->grad_hq[*icount_align], &int_cache->pOrho2q[*icount_align], &int_cache->balsaraq[*icount_align], &int_cache->soundspeedq[*icount_align], &int_cache->mq[*icount_align], v_hi_inv, &int_cache->h_invq[*icount_align],
-        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2);
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2, 1);
   }
 }
 
@@ -458,13 +458,19 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
                              v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
                              &icount_align, 2);
 
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
+
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
 
-      runner_iact_nonsym_2_vec_force_nomask(
+      runner_iact_nonsym_2_vec_force(
         &int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd], &int_cache->dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
         &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd], &int_cache->rhoq[pjd], &int_cache->grad_hq[pjd], &int_cache->pOrho2q[pjd], &int_cache->balsaraq[pjd], &int_cache->soundspeedq[pjd], &int_cache->mq[pjd], v_hi_inv, &int_cache->h_invq[pjd],
-        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum);
+        a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum, int_mask, int_mask2, 0);
     }
 
     /* Reset interaction count. */
@@ -956,12 +962,18 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
                              &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
                              &icount_align, 2);
 
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
+
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
-      runner_iact_nonsym_2_vec_force_nomask(
+      runner_iact_nonsym_2_vec_force(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd], &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
         &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], &v_hi_inv, &int_cache.h_invq[pjd],
-        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum);
+        &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum,int_mask, int_mask2, 0);
 
     }
     
