@@ -807,11 +807,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
   vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
 
-  // TIMER_TIC
+  TIMER_TIC
 
   if (!cell_is_active(c, e)) return;
 
-  if (!cell_is_drifted(c, e)) cell_drift_particles(c, e);
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */

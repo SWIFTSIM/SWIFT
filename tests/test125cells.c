@@ -635,12 +635,6 @@ int main(int argc, char *argv[]) {
         hydro_init_part(&cells[i]->parts[n], &space.hs);
     }
 
-    /* Reset particles. */
-    for (int i = 0; i < 125; ++i) {
-      for (int n = 0; n < cells[i]->count; ++n)
-        hydro_init_part(&cells[i]->parts[n], &space.hs);
-    }
-
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
 
@@ -734,12 +728,6 @@ int main(int argc, char *argv[]) {
       sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
-    }
-
-    /* Reset stuff */
-    for (int i = 0; i < 125; ++i) {
-      for (int n = 0; n < cells[i]->count; ++n)
-        hydro_init_part(&cells[i]->parts[n], &space.hs);
     }
   }
 
