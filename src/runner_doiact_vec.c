@@ -703,21 +703,27 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
       /* Form a mask from r2 < hig2 and r2 > 0.*/
-      mask_t v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
-      int doi_mask, doi_mask2;
+      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2, v_doi_mask2_self_check;
+      int doi_mask, doi_mask_self_check, doi_mask2, doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      vec_create_mask(v_doi_mask_check, vec_cmp_gt(v_r2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
       vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      vec_create_mask(v_doi_mask2_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2_self_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
       vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
-      /*TODO: Convert vector masks to integers before and operation. */
-      /* Combine the two masks and form an integer mask. */
-      doi_mask = vec_cmp_result(vec_mask_and(v_doi_mask, v_doi_mask_check));
-      doi_mask2 = vec_cmp_result(vec_mask_and(v_doi_mask2, v_doi_mask2_check));
+      /* Form integer masks. */
+      doi_mask_self_check = vec_form_int_mask(v_doi_mask_self_check);
+      doi_mask = vec_form_int_mask(v_doi_mask);
+
+      doi_mask2_self_check = vec_form_int_mask(v_doi_mask2_self_check);
+      doi_mask2 = vec_form_int_mask(v_doi_mask2);
+      
+      /* Combine the two masks. */
+      doi_mask = doi_mask & doi_mask_self_check;
+      doi_mask2 = doi_mask2 & doi_mask2_self_check;
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
