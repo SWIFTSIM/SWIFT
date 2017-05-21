@@ -126,10 +126,10 @@
     for (int i = 0; i < VEC_SIZE; i++) b += a.f[i]; \
   }
 #endif
-/* Calculates the number of set bits in the mask and adds the result to an int.
- */
-#define VEC_FORM_PACKED_MASK(mask, v_mask, pack) \
-  pack += __builtin_popcount(mask);
+
+/* Do nothing in the case of AVX-512 as there are already 
+ * instructions for left-packing.*/
+#define VEC_FORM_PACKED_MASK(mask, packed_mask)
 
 /* Finds the horizontal maximum of vector b and returns a float. */
 #define VEC_HMAX(a, b) a = _mm512_reduce_max_ps(b.v)
@@ -230,14 +230,13 @@
 /* Takes an integer mask and forms a left-packed integer vector
  * containing indices of the set bits in the integer mask.
  * Also returns the total number of bits set in the mask. */
-#define VEC_FORM_PACKED_MASK(mask, v_mask, pack)                               \
+#define VEC_FORM_PACKED_MASK(mask, packed_mask)                                \
   {                                                                            \
     unsigned long expanded_mask = _pdep_u64(mask, 0x0101010101010101);         \
     expanded_mask *= 0xFF;                                                     \
     unsigned long wanted_indices = _pext_u64(identity_indices, expanded_mask); \
     __m128i bytevec = _mm_cvtsi64_si128(wanted_indices);                       \
-    v_mask = _mm256_cvtepu8_epi32(bytevec);                                    \
-    pack += __builtin_popcount(mask);                                          \
+    packed_mask.m = _mm256_cvtepu8_epi32(bytevec);                             \
   }
 
 /* Performs a left-pack on a vector based upon a mask and returns the result. */
