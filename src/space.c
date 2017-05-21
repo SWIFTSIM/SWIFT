@@ -205,7 +205,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
-    c->dx_max = 0.0f;
+    c->dx_max_part = 0.0f;
+    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
@@ -217,10 +218,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->drift = NULL;
+    c->drift_part = NULL;
+    c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
-    c->grav_top_level = NULL;
+    c->grav_ghost[0] = NULL;
+    c->grav_ghost[1] = NULL;
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
@@ -420,7 +423,8 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
-          c->ti_old = ti_old;
+          c->ti_old_part = ti_old;
+          c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
@@ -890,8 +894,9 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
-                    nr_sparts, verbose);
+  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0))
+    part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
+                      nr_sparts, verbose);
 #endif
 
   /* Hook the cells up to the parts. */
@@ -902,7 +907,8 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old = ti_old;
+    c->ti_old_part = ti_old;
+    c->ti_old_gpart = ti_old;
     c->ti_old_multipole = ti_old;
     c->parts = finger;
     c->xparts = xfinger;
@@ -2011,7 +2017,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->count = 0;
       cp->gcount = 0;
       cp->scount = 0;
-      cp->ti_old = c->ti_old;
+      cp->ti_old_part = c->ti_old_part;
+      cp->ti_old_gpart = c->ti_old_gpart;
       cp->ti_old_multipole = c->ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
@@ -2025,8 +2032,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      cp->h_max = 0.0;
-      cp->dx_max = 0.f;
+      cp->h_max = 0.f;
+      cp->dx_max_part = 0.f;
+      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -2421,6 +2429,58 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
+}
+
+void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
+                                                 void *extra_data) {
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct space *s = (struct space *)extra_data;
+
+  for (int k = 0; k < nr_gparts; k++) {
+
+    /* Get the particle */
+    const struct gpart *restrict gp = &gparts[k];
+
+    if (gp->type == swift_type_dark_matter)
+      continue;
+
+    else if (gp->type == swift_type_gas) {
+
+      /* Get it's gassy friend */
+      struct part *p = &s->parts[-gp->id_or_neg_offset];
+      struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
+
+      /* Synchronize positions and velocities */
+      p->x[0] = gp->x[0];
+      p->x[1] = gp->x[1];
+      p->x[2] = gp->x[2];
+
+      xp->v_full[0] = gp->v_full[0];
+      xp->v_full[1] = gp->v_full[1];
+      xp->v_full[2] = gp->v_full[2];
+    }
+
+    else if (gp->type == swift_type_star) {
+
+      /* Get it's stellar friend */
+      struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
+
+      /* Synchronize positions */
+      sp->x[0] = gp->x[0];
+      sp->x[1] = gp->x[1];
+      sp->x[2] = gp->x[2];
+    }
+  }
+}
+
+void space_synchronize_particle_positions(struct space *s) {
+
+  if ((s->nr_gparts > 0 && s->nr_parts > 0) ||
+      (s->nr_gparts > 0 && s->nr_sparts > 0))
+    threadpool_map(&s->e->threadpool,
+                   space_synchronize_particle_positions_mapper, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), 1000, (void *)s);
 }
 
 /**
@@ -2877,7 +2937,8 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Recursively check all cells */
-  space_map_cells_pre(s, 1, cell_check_particle_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else

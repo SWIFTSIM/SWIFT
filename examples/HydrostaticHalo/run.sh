@@ -1,11 +1,14 @@
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-echo "Generating initial conditions for the isothermal potential box example..."
-python makeIC.py 100000
+if [ ! -e Hydrostatic.hdf5 ]
+then
+    echo "Generating initial conditions for the isothermal potential box example..."
+    python makeIC.py 100000
+fi
 
 # Run for 10 dynamical times
-../swift -g -s -t 2 hydrostatic.yml 2>&1 | tee output.log
+../swift -g -s -t 1 hydrostatic.yml 2>&1 | tee output.log
 
 echo "Plotting density profiles"
 mkdir plots

@@ -133,6 +133,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int periodic = e->s->periodic;
   const int is_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
@@ -168,18 +169,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_long_range = scheduler_addtask(
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
-        /* Gravity top-level periodic calculation */
-        c->grav_top_level = scheduler_addtask(s, task_type_grav_top_level,
-                                              task_subtype_none, 0, 0, c, NULL);
-
         /* Gravity recursive down-pass */
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
+        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
-        scheduler_addunlock(s, c->init_grav, c->grav_top_level);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
-        scheduler_addunlock(s, c->grav_top_level, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
@@ -1049,10 +1045,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* Drift before you send */
-      if (ci->drift == NULL)
-        ci->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
-                                      0, ci, NULL);
-      scheduler_addunlock(s, ci->drift, t_xv);
+      if (ci->drift_part == NULL)
+        ci->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                           task_subtype_none, 0, 0, ci, NULL);
+      scheduler_addunlock(s, ci->drift_part, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1651,41 +1647,98 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
+                             s->cdim[2] / 4 + 1};
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
+  struct task **ghosts = NULL;
+  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
-  for (int cid = 0; cid < nr_cells; ++cid) {
+  /* Create the top-level task if periodic */
+  if (periodic) {
 
-    struct cell *ci = &cells[cid];
+    /* Create the FFT task for this MPI rank */
+    s->grav_top_level = scheduler_addtask(sched, task_type_grav_top_level,
+                                          task_subtype_none, 0, 0, NULL, NULL);
 
-    /* Skip cells without gravity particles */
-    if (ci->gcount == 0) continue;
+    /* Create a grid of ghosts to deal with the dependencies */
+    if ((ghosts = malloc(n_ghosts * sizeof(struct task *))) == 0)
+      error("Error allocating memory for gravity fft ghosts");
 
-    /* Is that cell local ? */
-    if (ci->nodeID != nodeID) continue;
-
-    /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
-
-    /* Loop over every other cell */
-    for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
-
-      struct cell *cj = &cells[cjd];
-
-      /* Skip cells without gravity particles */
-      if (cj->gcount == 0) continue;
-
-      /* Is that neighbour local ? */
-      if (cj->nodeID != nodeID) continue;  // MATTHIEU
-
-      /* Are the cells to close for a MM interaction ? */
-      if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                    theta_crit_inv, 1))
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
-                          cj);
+    /* Make the ghosts implicit and add the dependencies */
+    for (int n = 0; n < n_ghosts / 2; ++n) {
+      ghosts[2 * n + 0] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 1] = scheduler_addtask(
+          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
+      ghosts[2 * n + 0]->implicit = 1;
+      ghosts[2 * n + 1]->implicit = 1;
+      scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
+      scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
     }
   }
+
+  /* Run through the higher level cells */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell */
+        const int cid = cell_getid(cdim, i, j, k);
+        struct cell *ci = &cells[cid];
+
+        /* Skip cells without gravity particles */
+        if (ci->gcount == 0) continue;
+
+        /* Is that cell local ? */
+        if (ci->nodeID != nodeID) continue;
+
+        /* If the cells is local build a self-interaction */
+        scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+                          NULL);
+
+        /* Deal with periodicity dependencies */
+        const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
+        if (ghost_id > n_ghosts) error("Invalid ghost_id");
+        if (periodic) {
+          ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
+          ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
+        }
+
+        /* Loop over every other cell */
+        for (int ii = 0; ii < cdim[0]; ii++) {
+          for (int jj = 0; jj < cdim[1]; jj++) {
+            for (int kk = 0; kk < cdim[2]; kk++) {
+
+              /* Get the cell */
+              const int cjd = cell_getid(cdim, ii, jj, kk);
+              struct cell *cj = &cells[cjd];
+
+              /* Avoid duplicates */
+              if (cid <= cjd) continue;
+
+              /* Skip cells without gravity particles */
+              if (cj->gcount == 0) continue;
+
+              /* Is that neighbour local ? */
+              if (cj->nodeID != nodeID) continue;  // MATTHIEU
+
+              /* Are the cells to close for a MM interaction ? */
+              if (!gravity_multipole_accept(ci->multipole, cj->multipole,
+                                            theta_crit_inv, 1)) {
+
+                scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0,
+                                  0, ci, cj);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (periodic) free(ghosts);
 }
 
 void engine_make_external_gravity_tasks(struct engine *e) {
@@ -1812,10 +1865,19 @@ void engine_count_and_link_tasks(struct engine *e) {
     }
 
     /* Link drift tasks to the next-higher drift task. */
-    else if (t->type == task_type_drift) {
+    else if (t->type == task_type_drift_part) {
       struct cell *finger = ci->parent;
-      while (finger != NULL && finger->drift == NULL) finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift);
+      while (finger != NULL && finger->drift_part == NULL)
+        finger = finger->parent;
+      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_part);
+    }
+
+    /* Link drift tasks to the next-higher drift task. */
+    else if (t->type == task_type_drift_gpart) {
+      struct cell *finger = ci->parent;
+      while (finger != NULL && finger->drift_gpart == NULL)
+        finger = finger->parent;
+      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_gpart);
     }
 
     /* Link self tasks to cells. */
@@ -1906,7 +1968,7 @@ static inline void engine_make_external_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> external gravity --> kick */
-  scheduler_addunlock(sched, c->drift, gravity);
+  scheduler_addunlock(sched, c->drift_gpart, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick2);
 }
 
@@ -1920,6 +1982,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
+  const int periodic = e->s->periodic;
 
   for (int k = 0; k < nr_tasks; k++) {
 
@@ -1930,6 +1993,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
       engine_make_self_gravity_dependencies(sched, t, t->ci);
+      if (periodic) scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
     }
 
     /* Self-interaction for external gravity ? */
@@ -1945,11 +2009,15 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
 
         engine_make_self_gravity_dependencies(sched, t, t->ci);
+        if (periodic && t->ci->super < t->cj->super)
+          scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_self_gravity_dependencies(sched, t, t->cj);
+        if (periodic && t->ci->super < t->cj->super)
+          scheduler_addunlock(sched, t->cj->super->grav_ghost[1], t);
       }
 
     }
@@ -2072,14 +2140,14 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
     /* Sort tasks depend on the drift of the cell. */
     if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
-      scheduler_addunlock(sched, t->ci->drift, t);
+      scheduler_addunlock(sched, t->ci->drift_part, t);
     }
 
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift, t);
+      scheduler_addunlock(sched, t->ci->drift_part, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -2115,9 +2183,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Make all density tasks depend on the drift. */
       if (t->ci->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->ci->drift, t);
+        scheduler_addunlock(sched, t->ci->drift_part, t);
       if (t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->drift, t);
+        scheduler_addunlock(sched, t->cj->drift_part, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2474,7 +2542,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype != task_subtype_density) continue;
 
       /* Too much particle movement? */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
+      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
+          cj->dmin)
         *rebuild_space = 1;
 
       /* Set the correct sorting flags */
@@ -2495,7 +2564,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
+          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
         }
         if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2503,7 +2572,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, cj->sorts);
-          if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
+          if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
         }
       }
 
@@ -2527,11 +2596,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift)
-          scheduler_activate(s, l->t->ci->drift);
+        if (l->t->ci->drift_part)
+          scheduler_activate(s, l->t->ci->drift_part);
         else
           error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2565,11 +2634,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift)
-          scheduler_activate(s, l->t->ci->drift);
+        if (l->t->ci->drift_part)
+          scheduler_activate(s, l->t->ci->drift_part);
         else
           error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -2586,28 +2655,35 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
       } else if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift);
-        scheduler_activate(s, cj->drift);
+        scheduler_activate(s, ci->drift_part);
+        scheduler_activate(s, cj->drift_part);
       }
 #else
       if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift);
-        scheduler_activate(s, cj->drift);
+        scheduler_activate(s, ci->drift_part);
+        scheduler_activate(s, cj->drift_part);
       }
 #endif
     }
 
-    /* Kick/Drift? */
+    /* Kick/Drift/init ? */
     else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-             t->type == task_type_drift || t->type == task_type_init_grav) {
+             t->type == task_type_drift_part ||
+             t->type == task_type_drift_gpart ||
+             t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Gravity ? */
     else if (t->type == task_type_grav_down ||
-             t->type == task_type_grav_long_range ||
-             t->type == task_type_grav_top_level) {
+             t->type == task_type_grav_long_range) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Periodic gravity ? */
+    else if (t->type == task_type_grav_top_level ||
+             t->type == task_type_grav_ghost) {
+      scheduler_activate(s, t);
     }
 
     /* Time-step? */
@@ -2987,7 +3063,7 @@ void engine_print_stats(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  message("Saving statistics at t=%e.", e->time);
+  if (e->nodeID == 0) message("Saving statistics at t=%e.", e->time);
 #else
   if (e->verbose) message("Saving statistics at t=%e.", e->time);
 #endif
@@ -3036,10 +3112,12 @@ void engine_skip_force_and_kick(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_drift || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
-        t->subtype == task_subtype_force || t->subtype == task_subtype_grav ||
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep || t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_grav ||
         t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_ghost ||
         t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
@@ -3060,8 +3138,9 @@ void engine_skip_drift(struct engine *e) {
 
     struct task *t = &tasks[i];
 
-    /* Skip everything that updates the particles */
-    if (t->type == task_type_drift) t->skip = 1;
+    /* Skip everything that moves the particles */
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart)
+      t->skip = 1;
   }
 }
 
@@ -3290,8 +3369,8 @@ void engine_step(struct engine *e) {
 
     if (e->policy & engine_policy_reconstruct_mpoles)
       engine_reconstruct_multipoles(e);
-    else
-      engine_drift_top_multipoles(e);
+    // else
+    //  engine_drift_top_multipoles(e);
   }
 
   /* Print the number of active tasks ? */
@@ -3403,8 +3482,14 @@ int engine_is_done(struct engine *e) {
 void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
+
+  /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
+  /* And the top level gravity FFT one */
+  if (e->s->periodic && (e->policy & engine_policy_self_gravity))
+    scheduler_activate(&e->sched, e->s->grav_top_level);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3429,7 +3514,10 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
     struct cell *c = &cells[ind];
     if (c != NULL && c->nodeID == e->nodeID) {
       /* Drift all the particles */
-      cell_drift_particles(c, e);
+      cell_drift_part(c, e);
+
+      /* Drift all the g-particles */
+      cell_drift_gpart(c, e);
 
       /* Drift the multipoles */
       if (e->policy & engine_policy_self_gravity)
@@ -3455,10 +3543,15 @@ void engine_drift_all(struct engine *e) {
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
+  /* Synchronize particle positions */
+  space_synchronize_particle_positions(e->s);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
   space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
 #endif
 
   if (e->verbose)
@@ -3757,7 +3850,7 @@ void engine_dump_snapshot(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  message("writing snapshot at t=%e.", e->time);
+  if (e->nodeID == 0) message("writing snapshot at t=%e.", e->time);
 #else
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 #endif
