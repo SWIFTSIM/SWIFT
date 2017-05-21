@@ -432,11 +432,12 @@ static const vector cubic_2_dwdx_const_c2 = FILL_VEC(-3.f);
 static const vector cond = FILL_VEC(0.5f);
 #endif
 
+/*TODO: Comment kernels for each region */
+
 /**
  * @brief Computes the kernel function and its derivative for two particles
- * using vectors.
- *
- * Return 0 if $u > \\gamma = H/h$
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -516,9 +517,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
 
 /**
  * @brief Computes the kernel function and its derivative for two particles
- * using interleaved vectors.
- *
- * Return 0 if $u > \\gamma = H/h$
+ * using interleaved vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -648,9 +648,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 
 /**
  * @brief Computes the kernel function for two particles
- * using vectors.
- *
- * Return 0 if $u > \\gamma = H/h$
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
@@ -710,9 +709,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
 
 /**
  * @brief Computes the kernel function derivative for two particles
- * using vectors.
- *
- * Return 0 if $u > \\gamma = H/h$
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
@@ -825,6 +823,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
 #error
 #endif
 
+  /* Mask out result for particles that lie outside of the kernel function. */
   vector mask;
   mask.v = vec_cmp_lt(x.v,vec_set1(1.f));
 
@@ -837,7 +836,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
 
 /**
  * @brief Computes the kernel function derivative for two particles
- * using vectors.
+ * using interleaved vectors.
  *
  * Return 0 if $u > \\gamma = H/h$
  *
@@ -906,6 +905,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 #error
 #endif
 
+  /* Mask out result for particles that lie outside of the kernel function. */
   vector mask, mask_2;
   mask.v = vec_cmp_lt(x.v,vec_set1(1.f));
   mask_2.v = vec_cmp_lt(x_2.v,vec_set1(1.f));
@@ -919,6 +919,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   dw_dx_2->v = vec_mul(dw_dx_2->v, vec_mul(kernel_constant_vec.v,
                                        kernel_gamma_inv_dim_plus_one_vec.v));
 }
+
 #endif /* WITH_VECTORIZATION */
 
 /* Some cross-check functions */
