@@ -793,7 +793,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   const struct engine *e = r->e;
   struct part *restrict pi;
   int count_align;
-  const int num_vec_proc = 1;  // NUM_VEC_PROC;
+  const int num_vec_proc = 1;
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -990,7 +990,7 @@ for (int pid = 0; pid < count; pid++) {
   icount = 0;
 } /* loop over all particles. */
 
-// TIMER_TOC(timer_doself_force);
+TIMER_TOC(timer_doself_force);
 #endif /* WITH_VECTORIZATION */
 }
 
