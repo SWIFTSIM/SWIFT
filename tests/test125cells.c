@@ -690,7 +690,7 @@ int main(int argc, char *argv[]) {
           struct cell *cj = cells[i * 25 + j * 5 + k];
 
           if (main_cell != cj) {
-            
+
             const ticks sub_tic = getticks();
 
             runner_dopair2_force(&runner, main_cell, cj);
@@ -703,7 +703,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef WITH_VECTORIZATION
-/* Initialise the cache. */
+    /* Initialise the cache. */
     runner.ci_cache.count = 0;
     cache_init(&runner.ci_cache, 512);
 #endif
@@ -712,7 +712,7 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction for the main cell */
     DOSELF2(&runner, main_cell);
-    
+
     timings[26] += getticks() - self_tic;
 #endif
 
@@ -729,13 +729,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
-   for (size_t n = 0; n < 100*runs; ++n) {
+  for (size_t n = 0; n < 100 * runs; ++n) {
     ticks self_tic = getticks();
 
     DOSELF2(&runner, main_cell);
 
     self_force_time += getticks() - self_tic;
-  
   }
 
   /* Output timing */
@@ -752,7 +751,8 @@ int main(int argc, char *argv[]) {
   message("Corner calculations took       : %15lli ticks.", corner_time / runs);
   message("Edge calculations took         : %15lli ticks.", edge_time / runs);
   message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.", self_force_time / 100*runs);
+  message("Self calculations took         : %15lli ticks.",
+          self_force_time / 100 * runs);
   message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)

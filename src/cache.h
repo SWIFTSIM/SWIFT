@@ -62,19 +62,19 @@ struct cache {
 
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
-  
+
   /* Particle density. */
   float *restrict rho __attribute__((aligned(CACHE_ALIGN)));
-  
+
   /* Particle smoothing length gradient. */
   float *restrict grad_h __attribute__((aligned(CACHE_ALIGN)));
-  
+
   /* Pressure over density squared. */
   float *restrict pOrho2 __attribute__((aligned(CACHE_ALIGN)));
-      
+
   /* Balsara switch. */
   float *restrict balsara __attribute__((aligned(CACHE_ALIGN)));
-      
+
   /* Particle sound speed. */
   float *restrict soundspeed __attribute__((aligned(CACHE_ALIGN)));
 
@@ -112,19 +112,19 @@ struct c2_cache {
 
   /* z velocity of particle pj. */
   float vzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* Density of particle pj. */
   float rhoq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* Smoothing length gradient of particle pj. */
   float grad_hq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* Pressure over density squared of particle pj. */
   float pOrho2q[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* Balsara switch of particle pj. */
   float balsaraq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
-  
+
   /* Sound speed of particle pj. */
   float soundspeedq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
 
@@ -213,7 +213,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     ci_cache->vx[i] = ci->parts[i].v[0];
     ci_cache->vy[i] = ci->parts[i].v[1];
     ci_cache->vz[i] = ci->parts[i].v[2];
-    
+
     ci_cache->rho[i] = ci->parts[i].rho;
     ci_cache->grad_h[i] = ci->parts[i].force.f;
     ci_cache->pOrho2[i] = ci->parts[i].force.P_over_rho2;

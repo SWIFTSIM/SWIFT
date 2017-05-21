@@ -436,7 +436,7 @@ static const vector cond = FILL_VEC(0.5f);
 
 /**
  * @brief Computes the kernel function and its derivative for two particles
- * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only
  * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
@@ -517,7 +517,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
 
 /**
  * @brief Computes the kernel function and its derivative for two particles
- * using interleaved vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * using interleaved vectors. Does not return zero if $u > \\gamma = H/h$,
+ * should only
  * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
@@ -582,9 +583,9 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
   vector mask_reg1, mask_reg2, mask_reg1_v2, mask_reg2_v2;
 
   /* Form a mask for each part of the kernel. */
-  mask_reg1.v = vec_cmp_lt(x.v, cond.v);     /* 0 < x < 0.5 */
-  mask_reg1_v2.v = vec_cmp_lt(x2.v, cond.v); /* 0 < x < 0.5 */
-  mask_reg2.v = vec_cmp_gte(x.v, cond.v);    /* 0.5 < x < 1 */
+  mask_reg1.v = vec_cmp_lt(x.v, cond.v);      /* 0 < x < 0.5 */
+  mask_reg1_v2.v = vec_cmp_lt(x2.v, cond.v);  /* 0 < x < 0.5 */
+  mask_reg2.v = vec_cmp_gte(x.v, cond.v);     /* 0.5 < x < 1 */
   mask_reg2_v2.v = vec_cmp_gte(x2.v, cond.v); /* 0.5 < x < 1 */
 
   /* Work out w for both regions of the kernel and combine the results together
@@ -648,7 +649,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 
 /**
  * @brief Computes the kernel function for two particles
- * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only
  * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
@@ -709,7 +710,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
 
 /**
  * @brief Computes the kernel function derivative for two particles
- * using vectors. Does not return zero if $u > \\gamma = H/h$, should only 
+ * using vectors. Does not return zero if $u > \\gamma = H/h$, should only
  * be called if particles are known to interact.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
@@ -825,9 +826,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
 
   /* Mask out result for particles that lie outside of the kernel function. */
   vector mask;
-  mask.v = vec_cmp_lt(x.v,vec_set1(1.f));
+  mask.v = vec_cmp_lt(x.v, vec_set1(1.f));
 
-  dw_dx->v = vec_and(dw_dx->v,mask.v);
+  dw_dx->v = vec_and(dw_dx->v, mask.v);
 
   /* Return everything */
   dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
@@ -854,7 +855,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 #ifdef WENDLAND_C2_KERNEL
   /* Init the iteration for Horner's scheme. */
   dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
-  dw_dx_2->v = vec_fma(wendland_dwdx_const_c0.v, x_2.v, wendland_dwdx_const_c1.v);
+  dw_dx_2->v =
+      vec_fma(wendland_dwdx_const_c0.v, x_2.v, wendland_dwdx_const_c1.v);
 
   /* Calculate the polynomial interleaving vector operations */
   dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
@@ -872,9 +874,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   vector mask_reg1_2, mask_reg2_2;
 
   /* Form a mask for each part of the kernel. */
-  mask_reg1.v = vec_cmp_lt(x.v, cond.v);  /* 0 < x < 0.5 */
+  mask_reg1.v = vec_cmp_lt(x.v, cond.v);      /* 0 < x < 0.5 */
   mask_reg1_2.v = vec_cmp_lt(x_2.v, cond.v);  /* 0 < x < 0.5 */
-  mask_reg2.v = vec_cmp_gte(x.v, cond.v); /* 0.5 < x < 1 */
+  mask_reg2.v = vec_cmp_gte(x.v, cond.v);     /* 0.5 < x < 1 */
   mask_reg2_2.v = vec_cmp_gte(x_2.v, cond.v); /* 0.5 < x < 1 */
 
   /* Work out w for both regions of the kernel and combine the results together
@@ -887,7 +889,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   dw_dx2_2.v = vec_fma(cubic_2_dwdx_const_c0.v, x_2.v, cubic_2_dwdx_const_c1.v);
 
   /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_mul(dw_dx->v, x.v); /* cubic_1_dwdx_const_c2 is zero. */
+  dw_dx->v = vec_mul(dw_dx->v, x.v);       /* cubic_1_dwdx_const_c2 is zero. */
   dw_dx_2->v = vec_mul(dw_dx_2->v, x_2.v); /* cubic_1_dwdx_const_c2 is zero. */
   dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
   dw_dx2_2.v = vec_fma(dw_dx2_2.v, x_2.v, cubic_2_dwdx_const_c2.v);
@@ -907,17 +909,18 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 
   /* Mask out result for particles that lie outside of the kernel function. */
   vector mask, mask_2;
-  mask.v = vec_cmp_lt(x.v,vec_set1(1.f));
-  mask_2.v = vec_cmp_lt(x_2.v,vec_set1(1.f));
+  mask.v = vec_cmp_lt(x.v, vec_set1(1.f));
+  mask_2.v = vec_cmp_lt(x_2.v, vec_set1(1.f));
 
-  dw_dx->v = vec_and(dw_dx->v,mask.v);
-  dw_dx_2->v = vec_and(dw_dx_2->v,mask_2.v);
+  dw_dx->v = vec_and(dw_dx->v, mask.v);
+  dw_dx_2->v = vec_and(dw_dx_2->v, mask_2.v);
 
   /* Return everything */
   dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
                                        kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx_2->v = vec_mul(dw_dx_2->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  dw_dx_2->v = vec_mul(
+      dw_dx_2->v,
+      vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
 }
 
 #endif /* WITH_VECTORIZATION */
