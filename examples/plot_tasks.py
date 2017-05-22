@@ -89,9 +89,10 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
-             "init_grav", "ghost", "extra_ghost", "drift", "kick1", "kick2",
-             "timestep", "send", "recv", "grav_top_level", "grav_long_range",
-             "grav_mm", "grav_down", "cooling", "sourceterms", "count"]
+             "init_grav", "ghost", "extra_ghost", "drift_part",
+             "drift_gpart", "kick1", "kick2", "timestep", "send", "recv",
+             "grav_top_level", "grav_long_range", "grav_mm", "grav_down",
+             "cooling", "sourceterms", "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
             "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
@@ -108,7 +109,7 @@ FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
 
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
            "sienna", "aquamarine", "bisque", "blue", "green", "brown",
-           "purple", "mocassin", "olivedrab", "chartreuse", "darksage",
+           "purple", "moccasin", "olivedrab", "chartreuse", "darksage",
            "darkgreen", "green", "mediumseagreen", "mediumaquamarine",
            "darkslategrey", "mediumturquoise", "black", "cadetblue", "skyblue",
            "red", "slategray", "gold", "slateblue", "blueviolet",
@@ -134,9 +135,9 @@ for task in SUBTYPES:
 #  For fiddling with colours...
 if args.verbose:
     print "#Selected colours:"
-    for task in TASKCOLOURS.keys():
+    for task in sorted(TASKCOLOURS.keys()):
         print "# " + task + ": " + TASKCOLOURS[task]
-    for task in SUBCOLOURS.keys():
+    for task in sorted(SUBCOLOURS.keys()):
         print "# " + task + ": " + SUBCOLOURS[task]
 
 #  Read input.
@@ -161,7 +162,7 @@ data = data[data[:,5] != 0]
 #  Calculate the time range, if not given.
 delta_t = delta_t * CPU_CLOCK
 if delta_t == 0:
-    dt = max(data[:,5]) - min(data[:,4])
+    dt = toc_step - tic_step
     if dt > delta_t:
         delta_t = dt
     print "Data range: ", delta_t / CPU_CLOCK, "ms"
