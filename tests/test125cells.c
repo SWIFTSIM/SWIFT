@@ -30,6 +30,19 @@
 /* Local headers. */
 #include "swift.h"
 
+#if defined(WITH_VECTORIZATION)
+#define DOSELF2 runner_doself2_force_vec
+//#define DOPAIR2 runner_dopair2_force_vec
+#define DOSELF2_NAME "runner_doself2_force_vec"
+#define DOPAIR2_NAME "runner_dopair2_force"
+#endif
+
+#ifndef DOSELF2
+#define DOSELF2 runner_doself2_force
+#define DOSELF2_NAME "runner_doself2_density"
+#define DOPAIR2_NAME "runner_dopair2_force"
+#endif
+
 enum velocity_field {
   velocity_zero,
   velocity_const,
@@ -240,7 +253,7 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
  * @param press The type of pressure field.
  */
 struct cell *make_cell(size_t n, const double offset[3], double size, double h,
-                       double density, long long *partId,
+                       double density, long long *partId, double pert,
                        enum velocity_field vel, enum pressure_field press) {
 
   const size_t count = n * n * n;
@@ -263,9 +276,15 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
-        part->x[0] = offset[0] + size * (x + 0.5) / (float)n;
-        part->x[1] = offset[1] + size * (y + 0.5) / (float)n;
-        part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
+        part->x[0] =
+            offset[0] +
+            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[1] =
+            offset[1] +
+            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[2] =
+            offset[2] +
+            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->h = size * h / (float)n;
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
@@ -354,8 +373,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   /* Write header */
   fprintf(file,
-          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s "
-          "%8s %8s %8s %8s %8s\n",
+          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
+          "%13s %13s %13s %8s %8s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
@@ -367,7 +386,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -406,7 +425,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
-              "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+              "%8.5f %8.5f %13f %13f %13f %13f %13f %8.5f %8.5f\n",
               solution[pid].id, solution[pid].x[0], solution[pid].x[1],
               solution[pid].x[2], solution[pid].v[0], solution[pid].v[1],
               solution[pid].v[2], solution[pid].h, solution[pid].rho,
@@ -426,12 +445,14 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
+void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
 
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
+  double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
@@ -462,6 +483,9 @@ int main(int argc, char *argv[]) {
       case 'r':
         sscanf(optarg, "%zu", &runs);
         break;
+      case 'd':
+        sscanf(optarg, "%lf", &perturbation);
+        break;
       case 'm':
         sscanf(optarg, "%lf", &rho);
         break;
@@ -491,6 +515,7 @@ int main(int argc, char *argv[]) {
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
+        "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
         "\n-p type (0,1,2)    - Pressure field: (constant, gradient divergent)"
@@ -500,6 +525,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("DOSELF2 function called: %s", DOSELF2_NAME);
+  message("DOPAIR2 function called: %s", DOPAIR2_NAME);
   message("Adiabatic index: ga = %f", hydro_gamma);
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
@@ -535,7 +562,8 @@ int main(int argc, char *argv[]) {
 
   struct hydro_props hp;
   hp.target_neighbours = pow_dimension(h) * kernel_norm;
-  hp.delta_neighbours = 2.;
+  hp.delta_neighbours = 4.;
+  hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
@@ -565,8 +593,8 @@ int main(int argc, char *argv[]) {
         const double offset[3] = {i * size, j * size, k * size};
 
         /* Construct it */
-        cells[i * 25 + j * 5 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, vel, press);
+        cells[i * 25 + j * 5 + k] = make_cell(
+            particles, offset, size, h, rho, &partId, perturbation, vel, press);
 
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
@@ -585,8 +613,12 @@ int main(int argc, char *argv[]) {
       malloc(main_cell->count * sizeof(struct solution_part));
   get_solution(main_cell, solution, rho, vel, press, size);
 
+  ticks timings[27];
+  for (int i = 0; i < 27; i++) timings[i] = 0;
+
   /* Start the test */
   ticks time = 0;
+  ticks self_force_time = 0;
   for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
@@ -594,6 +626,12 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j)
       runner_do_drift_particles(&runner, cells[j], 0);
+
+    /* Reset particles. */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
@@ -643,6 +681,7 @@ int main(int argc, char *argv[]) {
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+    int ctr = 0;
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
       for (int j = 1; j < 4; j++) {
@@ -650,13 +689,31 @@ int main(int argc, char *argv[]) {
 
           struct cell *cj = cells[i * 25 + j * 5 + k];
 
-          if (main_cell != cj) runner_dopair2_force(&runner, main_cell, cj);
+          if (main_cell != cj) {
+
+            const ticks sub_tic = getticks();
+
+            runner_dopair2_force(&runner, main_cell, cj);
+
+            const ticks sub_toc = getticks();
+            timings[ctr++] += sub_toc - sub_tic;
+          }
         }
       }
     }
 
+#ifdef WITH_VECTORIZATION
+    /* Initialise the cache. */
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+#endif
+
+    ticks self_tic = getticks();
+
     /* And now the self-interaction for the main cell */
-    runner_doself2_force(&runner, main_cell);
+    DOSELF2(&runner, main_cell);
+
+    timings[26] += getticks() - self_tic;
 #endif
 
     /* Finally, give a gentle kick */
@@ -672,8 +729,31 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  for (size_t n = 0; n < 100 * runs; ++n) {
+    ticks self_tic = getticks();
+
+    DOSELF2(&runner, main_cell);
+
+    self_force_time += getticks() - self_tic;
+  }
+
   /* Output timing */
-  message("SWIFT calculation took       : %15lli ticks.", time / runs);
+  ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
+                      timings[17] + timings[19] + timings[23] + timings[25];
+
+  ticks edge_time = timings[1] + timings[3] + timings[5] + timings[7] +
+                    timings[9] + timings[11] + timings[14] + timings[16] +
+                    timings[18] + timings[20] + timings[22] + timings[24];
+
+  ticks face_time = timings[4] + timings[10] + timings[12] + timings[13] +
+                    timings[15] + timings[21];
+
+  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
+  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
+  message("Face calculations took         : %15lli ticks.", face_time / runs);
+  message("Self calculations took         : %15lli ticks.",
+          self_force_time / 100 * runs);
+  message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
