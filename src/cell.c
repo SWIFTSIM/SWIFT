@@ -99,7 +99,8 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->h_max = pc->h_max;
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
-  c->ti_old = pc->ti_old;
+  c->ti_old_part = pc->ti_old_part;
+  c->ti_old_gpart = pc->ti_old_gpart;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
@@ -128,7 +129,8 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
-      temp->dx_max = 0.f;
+      temp->dx_max_part = 0.f;
+      temp->dx_max_gpart = 0.f;
       temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -239,7 +241,8 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->h_max = c->h_max;
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
-  pc->ti_old = c->ti_old;
+  pc->ti_old_part = c->ti_old_part;
+  pc->ti_old_gpart = c->ti_old_gpart;
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
@@ -1018,7 +1021,7 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
- * @brief Checks that the particles in a cell are at the
+ * @brief Checks that the #part in a cell are at the
  * current point in time
  *
  * Calls error() if the cell is not at the current time.
@@ -1026,7 +1029,7 @@ void cell_clean_links(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
-void cell_check_particle_drift_point(struct cell *c, void *data) {
+void cell_check_part_drift_point(struct cell *c, void *data) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1035,14 +1038,40 @@ void cell_check_particle_drift_point(struct cell *c, void *data) {
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
 
-  if (c->ti_old != ti_drift)
-    error("Cell in an incorrect time-zone! c->ti_old=%lld ti_drift=%lld",
-          c->ti_old, ti_drift);
+  if (c->ti_old_part != ti_drift)
+    error("Cell in an incorrect time-zone! c->ti_old_part=%lld ti_drift=%lld",
+          c->ti_old_part, ti_drift);
 
   for (int i = 0; i < c->count; ++i)
     if (c->parts[i].ti_drift != ti_drift)
       error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
             c->parts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the #gpart and #spart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_gpart_drift_point(struct cell *c, void *data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  if (c->ti_old_gpart != ti_drift)
+    error("Cell in an incorrect time-zone! c->ti_old_gpart=%lld ti_drift=%lld",
+          c->ti_old_gpart, ti_drift);
 
   for (int i = 0; i < c->gcount; ++i)
     if (c->gparts[i].ti_drift != ti_drift)
@@ -1327,7 +1356,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, ci->sorts);
-        if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
+        if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
       }
       if (!(cj->sorted & (1 << t->flags))) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1335,7 +1364,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           error("bad flags in sort task.");
 #endif
         scheduler_activate(s, cj->sorts);
-        if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
+        if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
       }
     }
 
@@ -1344,7 +1373,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
+      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
+          cj->dmin)
         rebuild = 1;
 
 #ifdef WITH_MPI
@@ -1367,11 +1397,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift)
-          scheduler_activate(s, l->t->ci->drift);
+        if (l->t->ci->drift_part)
+          scheduler_activate(s, l->t->ci->drift_part);
         else
           error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1405,11 +1435,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift)
-          scheduler_activate(s, l->t->ci->drift);
+        if (l->t->ci->drift_part)
+          scheduler_activate(s, l->t->ci->drift_part);
         else
           error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift);
+        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -1425,13 +1455,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, l->t);
         }
       } else if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift);
-        scheduler_activate(s, cj->drift);
+        scheduler_activate(s, ci->drift_part);
+        scheduler_activate(s, cj->drift_part);
       }
 #else
       if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift);
-        scheduler_activate(s, cj->drift);
+        scheduler_activate(s, ci->drift_part);
+        scheduler_activate(s, cj->drift_part);
       }
 #endif
     }
@@ -1447,13 +1477,15 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
-  if (c->drift != NULL) scheduler_activate(s, c->drift);
+  if (c->drift_part != NULL) scheduler_activate(s, c->drift_part);
+  if (c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
   if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+  if (c->grav_ghost[0] != NULL) scheduler_activate(s, c->grav_ghost[0]);
+  if (c->grav_ghost[1] != NULL) scheduler_activate(s, c->grav_ghost[1]);
   if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
   if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
-  if (c->grav_top_level != NULL) scheduler_activate(s, c->grav_top_level);
   if (c->cooling != NULL) scheduler_activate(s, c->cooling);
   if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
 
@@ -1481,30 +1513,28 @@ void cell_set_super(struct cell *c, struct cell *super) {
 }
 
 /**
- * @brief Recursively drifts particles of all kinds in a cell hierarchy.
+ * @brief Recursively drifts the #part in a cell hierarchy.
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  */
-void cell_drift_particles(struct cell *c, const struct engine *e) {
+void cell_drift_part(struct cell *c, const struct engine *e) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
-  const integertime_t ti_old = c->ti_old;
+  const integertime_t ti_old_part = c->ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
-  struct spart *const sparts = c->sparts;
 
   /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old) * timeBase;
+  const double dt = (ti_current - ti_old_part) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
 
   /* Check that we are actually going to move forward. */
-  if (ti_current < ti_old) error("Attempt to drift to the past");
+  if (ti_current < ti_old_part) error("Attempt to drift to the past");
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1515,37 +1545,15 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
 
         /* Collect */
-        cell_drift_particles(cp, e);
+        cell_drift_part(cp, e);
 
         /* Update */
-        dx_max = max(dx_max, cp->dx_max);
+        dx_max = max(dx_max, cp->dx_max_part);
         dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         cell_h_max = max(cell_h_max, cp->h_max);
       }
 
-  } else if (ti_current > ti_old) {
-
-    /* Loop over all the g-particles in the cell */
-    const size_t nr_gparts = c->gcount;
-    for (size_t k = 0; k < nr_gparts; k++) {
-
-      /* Get a handle on the gpart. */
-      struct gpart *const gp = &gparts[k];
-
-      /* Drift... */
-      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
-
-      /* Compute (square of) motion since last cell construction */
-      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                        gp->x_diff[1] * gp->x_diff[1] +
-                        gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = max(dx2_max, dx2);
-
-      /* Init gravity force fields. */
-      if (gpart_is_active(gp, e)) {
-        gravity_init_gpart(gp);
-      }
-    }
+  } else if (ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
@@ -1556,7 +1564,7 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       struct xpart *const xp = &xparts[k];
 
       /* Drift... */
-      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+      drift_part(p, xp, dt, timeBase, ti_old_part, ti_current);
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -1580,6 +1588,86 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       }
     }
 
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+    dx_max_sort = sqrtf(dx2_max_sort);
+
+  } else {
+
+    cell_h_max = c->h_max;
+    dx_max = c->dx_max_part;
+    dx_max_sort = c->dx_max_sort;
+  }
+
+  /* Store the values */
+  c->h_max = cell_h_max;
+  c->dx_max_part = dx_max;
+  c->dx_max_sort = dx_max_sort;
+
+  /* Update the time of the last drift */
+  c->ti_old_part = ti_current;
+}
+
+/**
+ * @brief Recursively drifts the #gpart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ */
+void cell_drift_gpart(struct cell *c, const struct engine *e) {
+
+  const double timeBase = e->timeBase;
+  const integertime_t ti_old_gpart = c->ti_old_gpart;
+  const integertime_t ti_current = e->ti_current;
+  struct gpart *const gparts = c->gparts;
+  struct spart *const sparts = c->sparts;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old_gpart) * timeBase;
+  float dx_max = 0.f, dx2_max = 0.f;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
+
+  /* Are we not in a leaf ? */
+  if (c->split) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+
+        /* Recurse */
+        cell_drift_gpart(cp, e);
+
+        /* Update */
+        dx_max = max(dx_max, cp->dx_max_gpart);
+      }
+
+  } else if (ti_current > ti_old_gpart) {
+
+    /* Loop over all the g-particles in the cell */
+    const size_t nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
+
+      /* Get a handle on the gpart. */
+      struct gpart *const gp = &gparts[k];
+
+      /* Drift... */
+      drift_gpart(gp, dt, timeBase, ti_old_gpart, ti_current);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = max(dx2_max, dx2);
+
+      /* Init gravity force fields. */
+      if (gpart_is_active(gp, e)) {
+        gravity_init_gpart(gp);
+      }
+    }
+
     /* Loop over all the star particles in the cell */
     const size_t nr_sparts = c->scount;
     for (size_t k = 0; k < nr_sparts; k++) {
@@ -1588,29 +1676,24 @@ void cell_drift_particles(struct cell *c, const struct engine *e) {
       struct spart *const sp = &sparts[k];
 
       /* Drift... */
-      drift_spart(sp, dt, timeBase, ti_old, ti_current);
+      drift_spart(sp, dt, timeBase, ti_old_gpart, ti_current);
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = sqrtf(dx2_max_sort);
 
   } else {
 
-    cell_h_max = c->h_max;
-    dx_max = c->dx_max;
-    dx_max_sort = c->dx_max_sort;
+    dx_max = c->dx_max_gpart;
   }
 
   /* Store the values */
-  c->h_max = cell_h_max;
-  c->dx_max = dx_max;
-  c->dx_max_sort = dx_max_sort;
+  c->dx_max_gpart = dx_max;
 
   /* Update the time of the last drift */
-  c->ti_old = ti_current;
+  c->ti_old_gpart = ti_current;
 }
 
 /**

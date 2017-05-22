@@ -279,7 +279,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = 0.0f;
+  p->force.v_sig = p->force.soundspeed;
 }
 
 /**

@@ -853,6 +853,7 @@ AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
+AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Save the compilation options
