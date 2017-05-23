@@ -33,9 +33,9 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF2 runner_doself2_force_vec
-//#define DOPAIR2 runner_dopair2_force_vec
+#define DOPAIR2 runner_dopair2_force_vec
 #define DOSELF2_NAME "runner_doself2_force_vec"
-#define DOPAIR2_NAME "runner_dopair2_force"
+#define DOPAIR2_NAME "runner_dopair2_force_vec"
 #endif
 
 #ifndef DOSELF2
@@ -447,6 +447,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair2_force_vec(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
@@ -683,6 +684,14 @@ int main(int argc, char *argv[]) {
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+#ifdef WITH_VECTORIZATION
+    /* Initialise the cache. */
+    runner.ci_cache.count = 0;
+    runner.cj_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    cache_init(&runner.cj_cache, 512);
+#endif
+
     int ctr = 0;
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
@@ -695,7 +704,7 @@ int main(int argc, char *argv[]) {
 
             const ticks sub_tic = getticks();
 
-            runner_dopair2_force(&runner, main_cell, cj);
+            DOPAIR2(&runner, main_cell, cj);
 
             const ticks sub_toc = getticks();
             timings[ctr++] += sub_toc - sub_tic;
@@ -703,12 +712,6 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-
-#ifdef WITH_VECTORIZATION
-    /* Initialise the cache. */
-    runner.ci_cache.count = 0;
-    cache_init(&runner.ci_cache, 512);
-#endif
 
     ticks self_tic = getticks();
 
@@ -731,13 +734,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  for (size_t n = 0; n < 100 * runs; ++n) {
-    ticks self_tic = getticks();
+  //for (size_t n = 0; n < 100 * runs; ++n) {
+  //  ticks self_tic = getticks();
 
-    DOSELF2(&runner, main_cell);
+  //  DOSELF2(&runner, main_cell);
 
-    self_force_time += getticks() - self_tic;
-  }
+  //  self_force_time += getticks() - self_tic;
+  //}
 
   /* Output timing */
   ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
