@@ -105,42 +105,45 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     p->v[0] = p->conserved.momentum[0] / p->conserved.mass;
     p->v[1] = p->conserved.momentum[1] / p->conserved.mass;
     p->v[2] = p->conserved.momentum[2] / p->conserved.mass;
+
+#ifdef GIZMO_STEER_MOTION
+
+    /* Add a correction to the velocity to keep particle positions close enough
+       to
+       the centroid of their mesh-free "cell". */
+    /* The correction term below is the same one described in Springel (2010).
+     */
+    float ds[3];
+    ds[0] = p->geometry.centroid[0];
+    ds[1] = p->geometry.centroid[1];
+    ds[2] = p->geometry.centroid[2];
+    const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+    const float R = get_radius_dimension_sphere(p->geometry.volume);
+    const float eta = 0.25;
+    const float etaR = eta * R;
+    const float xi = 1.;
+    const float soundspeed =
+        sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+    /* We only apply the correction if the offset between centroid and position
+       is
+       too large. */
+    if (d > 0.9 * etaR) {
+      float fac = xi * soundspeed / d;
+      if (d < 1.1 * etaR) {
+        fac *= 5. * (d - 0.9 * etaR) / etaR;
+      }
+      p->v[0] -= ds[0] * fac;
+      p->v[1] -= ds[1] * fac;
+      p->v[2] -= ds[2] * fac;
+    }
+
+#endif  // GIZMO_STEER_MOTION
   } else {
     /* Vacuum particles have no fluid velocity. */
     p->v[0] = 0.;
     p->v[1] = 0.;
     p->v[2] = 0.;
   }
-
-#ifdef GIZMO_STEER_MOTION
-
-  /* Add a correction to the velocity to keep particle positions close enough to
-     the centroid of their mesh-free "cell". */
-  /* The correction term below is the same one described in Springel (2010). */
-  float ds[3];
-  ds[0] = p->geometry.centroid[0];
-  ds[1] = p->geometry.centroid[1];
-  ds[2] = p->geometry.centroid[2];
-  const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-  const float R = get_radius_dimension_sphere(p->geometry.volume);
-  const float eta = 0.25;
-  const float etaR = eta * R;
-  const float xi = 1.;
-  const float soundspeed =
-      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
-  /* We only apply the correction if the offset between centroid and position is
-     too large. */
-  if (d > 0.9 * etaR) {
-    float fac = xi * soundspeed / d;
-    if (d < 1.1 * etaR) {
-      fac *= 5. * (d - 0.9 * etaR) / etaR;
-    }
-    p->v[0] -= ds[0] * fac;
-    p->v[1] -= ds[1] * fac;
-    p->v[2] -= ds[2] * fac;
-  }
-
-#endif  // GIZMO_STEER_MOTION
 
 #endif  // GIZMO_FIX_PARTICLES
 
