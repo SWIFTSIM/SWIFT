@@ -106,14 +106,14 @@ FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
 
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
-
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
-           "sienna", "aquamarine", "bisque", "blue", "green", "brown",
-           "purple", "moccasin", "olivedrab", "chartreuse", "darksage",
-           "darkgreen", "green", "mediumseagreen", "mediumaquamarine",
-           "darkslategrey", "mediumturquoise", "black", "cadetblue", "skyblue",
-           "red", "slategray", "gold", "slateblue", "blueviolet",
-           "mediumorchid", "firebrick", "magenta", "hotpink", "pink"]
+           "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
+           "brown", "purple", "moccasin", "olivedrab", "chartreuse",
+           "darksage", "darkgreen", "green", "mediumseagreen",
+           "mediumaquamarine", "darkslategrey", "mediumturquoise",
+           "black", "cadetblue", "skyblue", "red", "slategray", "gold",
+           "slateblue", "blueviolet", "mediumorchid", "firebrick",
+           "magenta", "hotpink", "pink", "orange", "lightgreen"]
 maxcolours = len(colours)
 
 #  Set colours of task/subtype.
