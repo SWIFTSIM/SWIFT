@@ -465,6 +465,144 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   }
 }
 
+/**
+ * @brief Populate caches by only reading particles that are within range of
+ * each other within the adjoining cell.Also read the particles into the cache
+ * in sorted order.
+ *
+ * @param ci The i #cell.
+ * @param cj The j #cell.
+ * @param ci_cache The #cache for cell ci.
+ * @param cj_cache The #cache for cell cj.
+ * @param sort_i The array of sorted particle indices for cell ci.
+ * @param sort_j The array of sorted particle indices for cell ci.
+ * @param shift The amount to shift the particle positions to account for BCs
+ * @param first_pi The first particle in cell ci that is in range.
+ * @param last_pj The last particle in cell cj that is in range.
+ * @param num_vec_proc Number of vectors that will be used to process the
+ * interaction.
+ */
+__attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_force(
+    const struct cell *const ci, const struct cell *const cj,
+    struct cache *const ci_cache, struct cache *const cj_cache,
+    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
+    const double *const shift, int *first_pi, int *last_pj,
+    const int num_vec_proc) {
+
+  int idx, ci_cache_idx;
+  /* Pad number of particles read to the vector size. */
+  int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
+  if (rem != 0) {
+    int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+    if (*first_pi - pad >= 0) *first_pi -= pad;
+  }
+
+  rem = *last_pj % (num_vec_proc * VEC_SIZE);
+  if (rem != 0) {
+    int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+    if (*last_pj + pad < cj->count) *last_pj += pad;
+  }
+
+  int first_pi_align = *first_pi;
+  int last_pj_align = *last_pj;
+
+/* Shift the particles positions to a local frame (ci frame) so single precision
+ * can be
+ * used instead of double precision. Also shift the cell ci, particles positions
+ * due to BCs but leave cell cj. */
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
+#pragma vector aligned
+#endif
+  for (int i = first_pi_align; i < ci->count; i++) {
+    /* Make sure ci_cache is filled from the first element. */
+    ci_cache_idx = i - first_pi_align;
+    idx = sort_i[i].i;
+    ci_cache->x[ci_cache_idx] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
+    ci_cache->y[ci_cache_idx] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
+    ci_cache->z[ci_cache_idx] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
+    ci_cache->h[ci_cache_idx] = ci->parts[idx].h;
+
+    ci_cache->m[ci_cache_idx] = ci->parts[idx].mass;
+    ci_cache->vx[ci_cache_idx] = ci->parts[idx].v[0];
+    ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
+    ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
+    
+    ci_cache->rho[ci_cache_idx] = ci->parts[idx].rho;
+    ci_cache->grad_h[ci_cache_idx] = ci->parts[idx].force.f;
+    ci_cache->pOrho2[ci_cache_idx] = ci->parts[idx].force.P_over_rho2;
+    ci_cache->balsara[ci_cache_idx] = ci->parts[idx].force.balsara;
+    ci_cache->soundspeed[ci_cache_idx] = ci->parts[idx].force.soundspeed;
+  }
+
+  /* Pad cache with fake particles that exist outside the cell so will not
+   * interact.*/
+  float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
+  for (int i = ci->count - first_pi_align;
+       i < ci->count - first_pi_align + VEC_SIZE; i++) {
+    ci_cache->x[i] = fake_pix;
+    ci_cache->y[i] = 1.f;
+    ci_cache->z[i] = 1.f;
+    ci_cache->h[i] = 1.f;
+
+    ci_cache->m[i] = 1.f;
+    ci_cache->vx[i] = 1.f;
+    ci_cache->vy[i] = 1.f;
+    ci_cache->vz[i] = 1.f;
+    
+    ci_cache->rho[i] = 1.f;
+    ci_cache->grad_h[i] = 1.f;
+    ci_cache->pOrho2[i] = 1.f;
+    ci_cache->balsara[i] = 1.f;
+    ci_cache->soundspeed[i] = 1.f;
+  }
+
+#if defined(WITH_VECTORIZATION) && defined(__ICC)
+#pragma vector aligned
+#endif
+  for (int i = 0; i <= last_pj_align; i++) {
+    idx = sort_j[i].i;
+    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
+    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
+    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
+    cj_cache->h[i] = cj->parts[idx].h;
+
+    cj_cache->m[i] = cj->parts[idx].mass;
+    cj_cache->vx[i] = cj->parts[idx].v[0];
+    cj_cache->vy[i] = cj->parts[idx].v[1];
+    cj_cache->vz[i] = cj->parts[idx].v[2];
+    
+    cj_cache->rho[i] = cj->parts[idx].rho;
+    cj_cache->grad_h[i] = cj->parts[idx].force.f;
+    cj_cache->pOrho2[i] = cj->parts[idx].force.P_over_rho2;
+    cj_cache->balsara[i] = cj->parts[idx].force.balsara;
+    cj_cache->soundspeed[i] = cj->parts[idx].force.soundspeed;
+  }
+
+  /* Pad cache with fake particles that exist outside the cell so will not
+   * interact.*/
+  float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
+  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
+    cj_cache->x[i] = fake_pjx;
+    cj_cache->y[i] = 1.f;
+    cj_cache->z[i] = 1.f;
+    cj_cache->h[i] = 1.f;
+
+    cj_cache->m[i] = 1.f;
+    cj_cache->vx[i] = 1.f;
+    cj_cache->vy[i] = 1.f;
+    cj_cache->vz[i] = 1.f;
+    
+    cj_cache->rho[i] = 1.f;
+    cj_cache->grad_h[i] = 1.f;
+    cj_cache->pOrho2[i] = 1.f;
+    cj_cache->balsara[i] = 1.f;
+    cj_cache->soundspeed[i] = 1.f;
+
+  }
+}
+
 /* @brief Clean the memory allocated by a #cache object.
  *
  * @param c The #cache to clean.

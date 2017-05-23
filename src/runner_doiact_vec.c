@@ -1424,3 +1424,464 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #endif /* WITH_VECTORIZATION */
 }
+
+/**
+ * @brief Compute the force interactions between a cell pair (non-symmetric)
+ * using vector intrinsics.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+                                struct cell *cj) {
+
+#ifdef WITH_VECTORIZATION
+  const struct engine *restrict e = r->e;
+
+  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
+  vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    error("Interacting undrifted cells.");
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
+
+  /* Get the cutoff shift. */
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
+  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
+        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
+      error("particle shift diff exceeds dx_max_sort.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  /* Get some other useful values. */
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  //const double hi_max = ci->h_max * kernel_gamma - rshift;
+  //const double hj_max = cj->h_max * kernel_gamma;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+  //const double di_max = sort_i[count_i - 1].d - rshift;
+  //const double dj_min = sort_j[0].d;
+  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+
+  /* Check if any particles are active and return if there are not. */
+  //int numActive = 0;
+  //for (int pid = count_i - 1;
+  //     pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+  //  struct part *restrict pi = &parts_i[sort_i[pid].i];
+  //  if (part_is_active(pi, e)) {
+  //    numActive++;
+  //    break;
+  //  }
+  //}
+
+  //if (!numActive) {
+  //  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+  //       pjd++) {
+  //    struct part *restrict pj = &parts_j[sort_j[pjd].i];
+  //    if (part_is_active(pj, e)) {
+  //      numActive++;
+  //      break;
+  //    }
+  //  }
+  //}
+
+  //if (numActive == 0) return;
+
+  /* Get both particle caches from the runner and re-allocate
+   * them if they are not big enough for the cells. */
+  struct cache *restrict ci_cache = &r->ci_cache;
+  struct cache *restrict cj_cache = &r->cj_cache;
+
+  if (ci_cache->count < count_i) {
+    cache_init(ci_cache, count_i);
+  }
+  if (cj_cache->count < count_j) {
+    cache_init(cj_cache, count_j);
+  }
+
+  int first_pi, last_pj;
+  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+
+  max_di = r->ci_cache.max_d;
+  max_dj = r->cj_cache.max_d;
+
+  /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
+  /* Also find the first pi that interacts with any particle in cj and the last
+   * pj that interacts with any particle in ci. */
+  populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, max_di,
+                          max_dj, &first_pi, &last_pj, e);
+
+  /* Find the maximum index into cj that is required by a particle in ci. */
+  /* Find the maximum index into ci that is required by a particle in cj. */
+  float di, dj;
+  int max_ind_j = count_j - 1;
+  int max_ind_i = 0;
+
+  dj = sort_j[max_ind_j].d;
+  while (max_ind_j > 0 && max_di[count_i - 1] < dj) {
+    max_ind_j--;
+
+    dj = sort_j[max_ind_j].d;
+  }
+
+  di = sort_i[max_ind_i].d;
+  while (max_ind_i < count_i - 1 && max_dj[0] > di) {
+    max_ind_i++;
+
+    di = sort_i[max_ind_i].d;
+  }
+
+  /* Limits of the outer loops. */
+  //int first_pi_loop = first_pi;
+  //int last_pj_loop = last_pj;
+
+  /* Take the max/min of both values calculated to work out how many particles
+   * to read into the cache. */
+  last_pj = max(last_pj, max_ind_j);
+  first_pi = min(first_pi, max_ind_i);
+
+  last_pj = count_j - 1;
+  first_pi = 0;
+  
+  /* Read the needed particles into the two caches. */
+  int first_pi_align = first_pi;
+  int last_pj_align = last_pj;
+  cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
+                                      sort_j, shift, &first_pi_align,
+                                      &last_pj_align, 1);
+
+  last_pj_align = count_j - 1;
+  first_pi_align = 0;
+  
+  /* Get the number of particles read into the ci cache. */
+  int ci_cache_count = count_i - first_pi_align;
+
+  if (cell_is_active(ci, e)) {
+
+    /* Loop over the parts in ci. */
+    //for (int pid = count_i - 1; pid >= first_pi_loop && max_ind_j >= 0; pid--) {
+    for (int pid = count_i - 1; pid >= 0; pid--) {
+
+      /* Get a hold of the ith part in ci. */
+      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (!part_is_active(pi, e)) continue;
+
+      /* Determine the exit iteration of the interaction loop. */
+      //dj = sort_j[max_ind_j].d;
+      //while (max_ind_j > 0 && max_di[pid] < dj) {
+      //  max_ind_j--;
+
+      //  dj = sort_j[max_ind_j].d;
+      //}
+      //int exit_iteration = max_ind_j + 1;
+      int exit_iteration = count_j;
+
+      /* Set the cache index. */
+      int ci_cache_idx = pid - first_pi_align;
+
+      const float hi = ci_cache->h[ci_cache_idx];
+      const float hig2 = hi * hi * kernel_gamma2;
+
+      vector pix, piy, piz;
+
+      /* Fill particle pi vectors. */
+      pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
+      piy.v = vec_set1(ci_cache->y[ci_cache_idx]);
+      piz.v = vec_set1(ci_cache->z[ci_cache_idx]);
+      v_hi.v = vec_set1(hi);
+      v_vix.v = vec_set1(ci_cache->vx[ci_cache_idx]);
+      v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
+      v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
+
+      v_rhoi.v = vec_set1(ci_cache->rho[ci_cache_idx]);
+      v_grad_hi.v = vec_set1(ci_cache->grad_h[ci_cache_idx]);
+      v_pOrhoi2.v = vec_set1(ci_cache->pOrho2[ci_cache_idx]);
+      v_balsara_i.v = vec_set1(ci_cache->balsara[ci_cache_idx]);
+      v_ci.v = vec_set1(ci_cache->soundspeed[ci_cache_idx]);
+
+      v_hig2.v = vec_set1(hig2);
+
+      /* Reset cumulative sums of update vectors. */
+      vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
+             entropy_dtSum;
+      
+      /* Get the inverse of hi. */
+      vector v_hi_inv;
+      v_hi_inv = vec_reciprocal(v_hi);
+
+      a_hydro_xSum.v = vec_setzero();
+      a_hydro_ySum.v = vec_setzero();
+      a_hydro_zSum.v = vec_setzero();
+      h_dtSum.v = vec_setzero();
+      v_sigSum.v = vec_set1(pi->force.v_sig);
+      entropy_dtSum.v = vec_setzero();
+
+      /* Pad the exit iteration if there is a serial remainder. */
+      int exit_iteration_align = exit_iteration;
+      int rem = exit_iteration % VEC_SIZE;
+      if (rem != 0) {
+        int pad = VEC_SIZE - rem;
+
+        if (exit_iteration_align + pad <= last_pj_align + 1)
+          exit_iteration_align += pad;
+      }
+
+      vector pjx, pjy, pjz, hj, hjg2;
+      
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
+
+        /* Get the cache index to the jth particle. */
+        int cj_cache_idx = pjd;
+
+        vector v_dx, v_dy, v_dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0) {
+          error("Unaligned read!!! cj_cache_idx=%d", cj_cache_idx);
+        }
+#endif
+
+        /* Load 2 sets of vectors from the particle cache. */
+        pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
+        pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
+        pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
+        hj.v = vec_load(&cj_cache->h[cj_cache_idx]);
+        hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
+
+        /* Compute the pairwise distance. */
+        v_dx.v = vec_sub(pix.v, pjx.v);
+        v_dy.v = vec_sub(piy.v, pjy.v);
+        v_dz.v = vec_sub(piz.v, pjz.v);
+
+        v_r2.v = vec_mul(v_dx.v, v_dx.v);
+        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+
+        mask_t v_doi_mask;
+        int doi_mask;
+
+        /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
+        vector v_h2;
+        v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
+        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+
+        /* Form integer masks. */
+        doi_mask = vec_form_int_mask(v_doi_mask);
+
+        /* If there are any interactions perform them. */
+        if (doi_mask) {
+        
+          runner_iact_nonsym_1_vec_force(
+              &v_r2, &v_dx, &v_dy, &v_dz, &v_vix, &v_viy, &v_viz, 
+              &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci,
+              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
+              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx], 
+              &cj_cache->rho[cj_cache_idx], &cj_cache->grad_h[cj_cache_idx],
+              &cj_cache->pOrho2[cj_cache_idx], &cj_cache->balsara[cj_cache_idx],
+              &cj_cache->soundspeed[cj_cache_idx], &v_hi_inv, &hj,
+              &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+              &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
+      
+        }
+
+      } /* loop over the parts in cj. */
+
+      /* Perform horizontal adds on vector sums and store result in particle pi.
+      */
+      VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
+      VEC_HADD(a_hydro_ySum, pi->a_hydro[1]);
+      VEC_HADD(a_hydro_zSum, pi->a_hydro[2]);
+      VEC_HADD(h_dtSum, pi->force.h_dt);
+      VEC_HMAX(v_sigSum, pi->force.v_sig);
+      VEC_HADD(entropy_dtSum, pi->entropy_dt);
+      
+    } /* loop over the parts in ci. */
+  }
+
+  if (cell_is_active(cj, e)) {
+    /* Loop over the parts in cj. */
+    //for (int pjd = 0; pjd <= last_pj_loop && max_ind_i < count_i; pjd++) {
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a hold of the jth part in cj. */
+      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      if (!part_is_active(pj, e)) continue;
+
+      /* Determine the exit iteration of the interaction loop. */
+      //di = sort_i[max_ind_i].d;
+      //while (max_ind_i < count_i - 1 && max_dj[pjd] > di) {
+      //  max_ind_i++;
+
+      //  di = sort_i[max_ind_i].d;
+      //}
+      //int exit_iteration = max_ind_i;
+      int exit_iteration = 0;
+
+      /* Set the cache index. */
+      int cj_cache_idx = pjd;
+
+      const float hj = cj_cache->h[cj_cache_idx];
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      vector pjx, pjy, pjz;
+      vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
+      vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
+
+      /* Fill particle pi vectors. */
+      pjx.v = vec_set1(cj_cache->x[cj_cache_idx]);
+      pjy.v = vec_set1(cj_cache->y[cj_cache_idx]);
+      pjz.v = vec_set1(cj_cache->z[cj_cache_idx]);
+      v_hj.v = vec_set1(hj);
+      v_vjx.v = vec_set1(cj_cache->vx[cj_cache_idx]);
+      v_vjy.v = vec_set1(cj_cache->vy[cj_cache_idx]);
+      v_vjz.v = vec_set1(cj_cache->vz[cj_cache_idx]);
+
+      v_rhoj.v = vec_set1(cj_cache->rho[cj_cache_idx]);
+      v_grad_hj.v = vec_set1(cj_cache->grad_h[cj_cache_idx]);
+      v_pOrhoj2.v = vec_set1(cj_cache->pOrho2[cj_cache_idx]);
+      v_balsara_j.v = vec_set1(cj_cache->balsara[cj_cache_idx]);
+      v_cj.v = vec_set1(cj_cache->soundspeed[cj_cache_idx]);
+
+      v_hjg2.v = vec_set1(hjg2);
+
+      /* Reset cumulative sums of update vectors. */
+      vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
+             entropy_dtSum;
+
+      /* Get the inverse of hj. */
+      vector v_hj_inv;
+
+      v_hj_inv = vec_reciprocal(v_hj);
+
+      a_hydro_xSum.v = vec_setzero();
+      a_hydro_ySum.v = vec_setzero();
+      a_hydro_zSum.v = vec_setzero();
+      h_dtSum.v = vec_setzero();
+      v_sigSum.v = vec_set1(pj->force.v_sig);
+      entropy_dtSum.v = vec_setzero();
+
+      /* Convert exit iteration to cache indices. */
+      int exit_iteration_align = exit_iteration - first_pi_align;
+
+      /* Pad the exit iteration align so cache reads are aligned. */
+      int rem = exit_iteration_align % VEC_SIZE;
+      if (exit_iteration_align < VEC_SIZE) {
+        exit_iteration_align = 0;
+      } else
+        exit_iteration_align -= rem;
+
+      vector pix, piy, piz, hi, hig2;
+
+      /* Loop over the parts in ci. */
+      for (int ci_cache_idx = exit_iteration_align;
+           ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0) {
+          error("Unaligned read!!! ci_cache_idx=%d", ci_cache_idx);
+        }
+#endif
+
+        vector v_dx, v_dy, v_dz, v_r2;
+
+        /* Load 2 sets of vectors from the particle cache. */
+        pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
+        piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
+        piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
+        hi.v = vec_load(&ci_cache->h[ci_cache_idx]);
+        hig2.v = vec_mul(vec_mul(hi.v, hi.v), kernel_gamma2_vec.v);
+
+        /* Compute the pairwise distance. */
+        v_dx.v = vec_sub(pjx.v, pix.v);
+        v_dy.v = vec_sub(pjy.v, piy.v);
+        v_dz.v = vec_sub(pjz.v, piz.v);
+
+        v_r2.v = vec_mul(v_dx.v, v_dx.v);
+        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+
+        mask_t v_doj_mask;
+        int doj_mask;
+
+        /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
+        vector v_h2;
+        v_h2.v = vec_fmax(v_hjg2.v, hig2.v);
+        vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+
+        /* Form integer masks. */
+        doj_mask = vec_form_int_mask(v_doj_mask);
+
+        /* If there are any interactions perform them. */
+        if (doj_mask) {
+          
+          runner_iact_nonsym_1_vec_force(
+              &v_r2, &v_dx, &v_dy, &v_dz, &v_vjx, &v_vjy, &v_vjz, 
+              &v_rhoj, &v_grad_hj, &v_pOrhoj2, &v_balsara_j, &v_cj,
+              &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
+              &ci_cache->vz[ci_cache_idx], &ci_cache->m[ci_cache_idx], 
+              &ci_cache->rho[ci_cache_idx], &ci_cache->grad_h[ci_cache_idx],
+              &ci_cache->pOrho2[ci_cache_idx], &ci_cache->balsara[ci_cache_idx],
+              &ci_cache->soundspeed[ci_cache_idx], &v_hj_inv, &hi,
+              &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+              &h_dtSum, &v_sigSum, &entropy_dtSum, v_doj_mask);
+          
+        }
+      } /* loop over the parts in ci. */
+
+      /* Perform horizontal adds on vector sums and store result in particle pj.
+       */
+      VEC_HADD(a_hydro_xSum, pj->a_hydro[0]);
+      VEC_HADD(a_hydro_ySum, pj->a_hydro[1]);
+      VEC_HADD(a_hydro_zSum, pj->a_hydro[2]);
+      VEC_HADD(h_dtSum, pj->force.h_dt);
+      VEC_HMAX(v_sigSum, pj->force.v_sig);
+      VEC_HADD(entropy_dtSum, pj->entropy_dt);
+
+    } /* loop over the parts in cj. */
+
+    TIMER_TOC(timer_dopair_density);
+  }
+
+#endif /* WITH_VECTORIZATION */
+}

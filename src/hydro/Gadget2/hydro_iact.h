@@ -1163,18 +1163,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #ifdef WITH_VECTORIZATION
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy,
+    vector *r2, vector *dx, vector *dy, vector *dz, vector *vix, vector *viy,
     vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2,
-    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz,
+    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Mj,
     float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector *hi_inv, float *Hj_inv, vector *a_hydro_xSum,
+    vector *hi_inv, vector *hj, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
     vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
 
 #ifdef WITH_VECTORIZATION
 
-  vector r, r2, ri;
-  vector dx, dy, dz;
+  vector r, ri;
   vector vjx, vjy, vjz;
   vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
   vector xi, xj;
@@ -1187,11 +1186,6 @@ runner_iact_nonsym_1_vec_force(
   vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
 
   /* Fill vectors. */
-  r2.v = vec_load(R2);
-  dx.v = vec_load(Dx);
-  dy.v = vec_load(Dy);
-  dz.v = vec_load(Dz);
-
   vjx.v = vec_load(Vjx);
   vjy.v = vec_load(Vjy);
   vjz.v = vec_load(Vjz);
@@ -1202,7 +1196,7 @@ runner_iact_nonsym_1_vec_force(
   pjPOrho2.v = vec_load(PjPOrho2);
   balsara_j.v = vec_load(Balsara_j);
   cj.v = vec_load(Cj);
-  hj_inv.v = vec_load(Hj_inv);
+  hj_inv = vec_reciprocal(*hj);
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
@@ -1210,8 +1204,8 @@ runner_iact_nonsym_1_vec_force(
   balsara.v = balsara_i->v + balsara_j.v;
 
   /* Get the radius and inverse radius. */
-  ri = vec_reciprocal_sqrt(r2);
-  r.v = r2.v * ri.v;
+  ri = vec_reciprocal_sqrt(*r2);
+  r.v = r2->v * ri.v;
 
   /* Get the kernel for hi. */
   hid_inv = pow_dimension_plus_one_vec(*hi_inv);
@@ -1223,14 +1217,14 @@ runner_iact_nonsym_1_vec_force(
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   xj.v = r.v * hj_inv.v;
 
-  /* Calculate the kernel for two particles. */
+  /* Calculate the kernel. */
   kernel_eval_dWdx_force_vec(&xj, &wj_dx);
 
   wj_dr.v = hjd_inv.v * wj_dx.v;
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
-           ((viz->v - vjz.v) * dz.v);
+  dvdr.v = ((vix->v - vjx.v) * dx->v) + ((viy->v - vjy.v) * dy->v) +
+           ((viz->v - vjz.v) * dz->v);
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
@@ -1255,9 +1249,9 @@ runner_iact_nonsym_1_vec_force(
   acc.v = visc_term.v + sph_term.v;
 
   /* Use the force, Luke! */
-  piax.v = mj.v * dx.v * acc.v;
-  piay.v = mj.v * dy.v * acc.v;
-  piaz.v = mj.v * dz.v * acc.v;
+  piax.v = mj.v * dx->v * acc.v;
+  piay.v = mj.v * dy->v * acc.v;
+  piaz.v = mj.v * dz->v * acc.v;
 
   /* Get the time derivative for h. */
   pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
