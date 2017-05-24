@@ -183,10 +183,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
-      /* Generate the ghost task. */
-      if (is_hydro)
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL);
+      /* Generate the ghost tasks. */
+      if (is_hydro) {
+        c->ghost_in = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     /* implicit = */ 1, c, NULL);
+        c->ghost_out = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     /* implicit = */ 1, c, NULL);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
@@ -1041,10 +1044,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, t_rho, ci->super->kick2);
 
       /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->super->ghost, t_rho);
+      scheduler_addunlock(s, ci->super->ghost_out, t_rho);
 
       /* The send_xv task should unlock the super-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->super->ghost);
+      scheduler_addunlock(s, t_xv, ci->super->ghost_in);
 
 #endif
 
@@ -2035,8 +2038,8 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct cell *c,
                                                         int with_cooling) {
   /* density loop --> ghost --> force loop */
-  scheduler_addunlock(sched, density, c->super->ghost);
-  scheduler_addunlock(sched, c->super->ghost, force);
+  scheduler_addunlock(sched, density, c->super->ghost_in);
+  scheduler_addunlock(sched, c->super->ghost_out, force);
 
   if (with_cooling) {
     /* force loop --> cooling (--> kick2)  */

@@ -151,8 +151,9 @@ struct cell {
   /*! The multipole initialistation task */
   struct task *init_grav;
 
-  /*! The ghost task */
-  struct task *ghost;
+  /*! The ghost tasks */
+  struct task *ghost_in;
+  struct task *ghost_out;
 
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;
