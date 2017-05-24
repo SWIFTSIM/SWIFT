@@ -1251,6 +1251,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
+#ifdef SWIFT_DEBUG_CHECKS
+    t->ti_run = s->space->e->ti_current;
+#endif
+    t->skip = 1;
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
