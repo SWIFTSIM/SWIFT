@@ -59,8 +59,8 @@ SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
 #  Read input.
 data = pl.loadtxt( infile )
 
-nthread = int(max(data[:,0])) + 1
-print "Number of threads:", nthread
+maxthread = int(max(data[:,0])) + 1
+print "# Maximum thread id:", maxthread
 
 #  Recover the start and end time
 full_step = data[0,:]
@@ -77,7 +77,7 @@ data = data[data[:,5] != 0]
 
 #  Calculate the time range.
 total_t = (toc_step - tic_step)/ CPU_CLOCK
-print "Data range: ", total_t, "ms"
+print "# Data range: ", total_t, "ms"
 
 #  Correct times to relative values.
 start_t = float(tic_step)
@@ -86,7 +86,7 @@ data[:,5] -= start_t
 
 tasks = {}
 tasks[-1] = []
-for i in range(nthread):
+for i in range(maxthread):
     tasks[i] = []
 
 #  Gather into by thread data.
@@ -100,9 +100,12 @@ for line in range(num_lines):
 
     tasks[thread].append([tic,toc,tasktype,subtype])
 
-#  Sort by tic.
-for i in range(nthread):
-    tasks[i] = sorted(tasks[i], key=lambda task: task[0])
+#  Sort by tic and gather used thread ids.
+threadids = []
+for i in range(maxthread):
+    if len(tasks[i]) > 0:
+        tasks[i] = sorted(tasks[i], key=lambda task: task[0])
+        threadids.append(i)
 
 #  Times per task.
 print "# Task times:"
@@ -110,7 +113,7 @@ print "# {0:<16s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}"\
       .format("type/subtype", "count","minimum", "maximum",
               "sum", "mean", "percent")
 alltasktimes = {}
-for i in range(nthread):
+for i in threadids:
     tasktimes = {}
     for task in tasks[i]:
         key = TASKTYPES[task[2]] + "/" + SUBTYPES[task[3]]
@@ -141,7 +144,7 @@ for key in sorted(alltasktimes.keys()):
     print "{0:18s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}"\
           .format(key, len(alltasktimes[key]), taskmin, taskmax, tasksum,
                   tasksum / len(alltasktimes[key]),
-                  tasksum / (nthread * total_t) * 100.0)
+                  tasksum / (len(threadids) * total_t) * 100.0)
 print
 
 #  Dead times.
@@ -149,7 +152,7 @@ print "# Deadtimes:"
 print "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}"\
       .format("count", "minimum", "maximum", "sum", "mean", "percent")
 alldeadtimes = []
-for i in range(nthread):
+for i in threadids:
     deadtimes = []
     last = 0
     for task in tasks[i]:
@@ -173,7 +176,7 @@ deadsum = sum(alldeadtimes)
 print "all      : {0:9d} {1:9.4f} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.2f}"\
       .format(len(alldeadtimes), deadmin, deadmax, deadsum,
               deadsum / len(alldeadtimes),
-              deadsum / (nthread * total_t ) * 100.0)
+              deadsum / (len(threadids) * total_t ) * 100.0)
 print
 
 

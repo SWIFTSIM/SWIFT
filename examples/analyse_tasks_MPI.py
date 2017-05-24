@@ -67,8 +67,8 @@ if args.verbose:
 
 nranks = int(max(data[:,0])) + 1
 print "# Number of ranks:", nranks
-nthread = int(max(data[:,1])) + 1
-print "# Number of threads:", nthread
+maxthread = int(max(data[:,1])) + 1
+print "# Maximum thread id:", maxthread
 
 #  Avoid start and end times of zero.
 sdata = data[data[:,5] != 0]
@@ -101,7 +101,7 @@ for rank in range(nranks):
 
     tasks = {}
     tasks[-1] = []
-    for i in range(nthread):
+    for i in range(maxthread):
         tasks[i] = []
 
     #  Gather into by thread data.
@@ -115,9 +115,11 @@ for rank in range(nranks):
 
         tasks[thread].append([tic,toc,tasktype,subtype])
 
-    #  Sort by tic.
-    for i in range(nthread):
+    #  Sort by tic and gather used threads.
+    threadids = []
+    for i in range(maxthread):
         tasks[i] = sorted(tasks[i], key=lambda task: task[0])
+        threadids.append(i)
 
     #  Times per task.
     print "# Task times:"
@@ -125,7 +127,7 @@ for rank in range(nranks):
           .format("type/subtype", "count","minimum", "maximum",
                   "sum", "mean", "percent")
     alltasktimes = {}
-    for i in range(nthread):
+    for i in threadids:
         tasktimes = {}
         for task in tasks[i]:
             key = TASKTYPES[task[2]] + "/" + SUBTYPES[task[3]]
@@ -156,7 +158,7 @@ for rank in range(nranks):
         print "{0:18s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}"\
               .format(key, len(alltasktimes[key]), taskmin, taskmax, tasksum,
                       tasksum / len(alltasktimes[key]),
-                      tasksum / (nthread * total_t) * 100.0)
+                      tasksum / (len(threadids) * total_t) * 100.0)
     print
 
     #  Dead times.
@@ -164,7 +166,7 @@ for rank in range(nranks):
     print "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}"\
           .format("count", "minimum", "maximum", "sum", "mean", "percent")
     alldeadtimes = []
-    for i in range(nthread):
+    for i in threadids:
         deadtimes = []
         last = 0
         for task in tasks[i]:
@@ -188,7 +190,7 @@ for rank in range(nranks):
     print "all      : {0:9d} {1:9.4f} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.2f}"\
           .format(len(alldeadtimes), deadmin, deadmax, deadsum,
                   deadsum / len(alldeadtimes),
-              deadsum / (nthread * total_t ) * 100.0)
+              deadsum / (len(threadids) * total_t ) * 100.0)
     print
 
 
