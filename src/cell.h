@@ -154,6 +154,7 @@ struct cell {
   /*! The ghost tasks */
   struct task *ghost_in;
   struct task *ghost_out;
+  struct task *ghost;
 
   /*! The extra ghost task for complex hydro schemes */
   struct task *extra_ghost;

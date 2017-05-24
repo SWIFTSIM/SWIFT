@@ -120,6 +120,24 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 }
 
 /**
+ * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
+ */
+void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
+                       struct task *ghost_out) {
+  if (!c->split || c->count < engine_max_parts_per_ghost) {
+    struct scheduler *s = &e->sched;
+    c->ghost =
+        scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
+    scheduler_addunlock(s, ghost_in, c->ghost);
+    scheduler_addunlock(s, c->ghost, ghost_out);
+  } else {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_add_ghosts(e, c->progeny[k], ghost_in, ghost_out);
+  }
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks.
  *
@@ -185,10 +203,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       /* Generate the ghost tasks. */
       if (is_hydro) {
-        c->ghost_in = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     /* implicit = */ 1, c, NULL);
-        c->ghost_out = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     /* implicit = */ 1, c, NULL);
+        c->ghost_in =
+            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        c->ghost_out =
+            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
       }
 
 #ifdef EXTRA_HYDRO_LOOP

@@ -757,8 +757,8 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param cj The second cell to interact.
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags, int implicit,
-                               struct cell *ci, struct cell *cj) {
+                               enum task_subtypes subtype, int flags,
+                               int implicit, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == NULL && cj != NULL)
