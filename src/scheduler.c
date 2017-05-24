@@ -751,12 +751,13 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param type The type of the task.
  * @param subtype The sub-type of the task.
  * @param flags The flags of the task.
- * @param wait The number of unsatisfied dependencies of this task.
+ * @param implicit If true, only use this task to unlock dependencies, i.e.
+ *        this task is never enqueued.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags, int wait,
+                               enum task_subtypes subtype, int flags, int implicit,
                                struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -778,11 +779,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->type = type;
   t->subtype = subtype;
   t->flags = flags;
-  t->wait = wait;
+  t->wait = 0;
   t->ci = ci;
   t->cj = cj;
   t->skip = 1; /* Mark tasks as skip by default. */
-  t->implicit = 0;
+  t->implicit = implicit;
   t->weight = 0;
   t->rank = 0;
   t->nr_unlock_tasks = 0;
