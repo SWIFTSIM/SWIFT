@@ -284,7 +284,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     const struct cell *ci, const struct cell *cj,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const float dx_max, const float rshift, float *max_di, float *max_dj,
+    const float dx_max, const float rshift, const double hi_max, const double hj_max, 
+    const double di_max, const double dj_min, float *max_di, float *max_dj,
     int *init_pi, int *init_pj, const struct engine *e) {
 
   struct part *restrict parts_i = ci->parts;
@@ -292,10 +293,6 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   struct part *p = &parts_i[sort_i[0].i];
 
   float h, d;
-
-  /* Get the distance of the last pi and the first pj on the sorted axis.*/
-  const float di_max = sort_i[ci->count - 1].d - rshift;
-  const float dj_min = sort_j[0].d;
 
   int first_pi = 0, last_pj = cj->count - 1;
 
@@ -306,13 +303,13 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   for (int k = ci->count - 1; k >= 0; k--) {
     p = &parts_i[sort_i[k].i];
     h = p->h;
-    d = sort_i[k].d + h * kernel_gamma + dx_max - rshift;
+    d = sort_i[k].d + dx_max;
 
-    max_di[k] = d;
+    max_di[k] = d + h * kernel_gamma - rshift;
 
     /* If the particle is out of range set the index to
      * the last active particle within range. */
-    if (d < dj_min) {
+    if (d + hi_max < dj_min) {
       first_pi = active_id;
       break;
     } else {
@@ -331,13 +328,14 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   for (int k = 0; k < cj->count; k++) {
     p = &parts_j[sort_j[k].i];
     h = p->h;
-    d = sort_j[k].d - h * kernel_gamma - dx_max - rshift;
+    d = sort_j[k].d - dx_max;
 
-    max_dj[k] = d;
+    /*TODO: don't think rshift should be taken off here, waiting on Pedro. */
+    max_dj[k] = d - h * kernel_gamma - rshift;
 
     /* If the particle is out of range set the index to
      * the last active particle within range. */
-    if (d > di_max) {
+    if (d - hj_max > di_max) {
       last_pj = active_id;
       break;
     } else {
@@ -613,7 +611,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
  * @param cj The second #cell.
  */
 void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj) {
+                                struct cell *cj, const int sid, const double *shift) {
 
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
@@ -621,22 +619,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
   TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
-
-  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
-    error("Interacting undrifted cells.");
-
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-
-  /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
-    runner_do_sort(r, ci, (1 << sid), 1);
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -726,8 +708,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, max_di,
-                          max_dj, &first_pi, &last_pj, e);
+  populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, 
+                          hj_max, di_max, dj_min, max_di, max_dj, &first_pi, &last_pj, e);
 
   /* Find the maximum index into cj that is required by a particle in ci. */
   /* Find the maximum index into ci that is required by a particle in cj. */
@@ -777,6 +759,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       struct part *restrict pi = &parts_i[sort_i[pid].i];
       if (!part_is_active(pi, e)) continue;
 
+      /* Set the cache index. */
+      int ci_cache_idx = pid - first_pi_align;
+
+      const float hi = ci_cache->h[ci_cache_idx];
+      const double di_test = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+      if (di_test < dj_min) continue;
+
       /* Determine the exit iteration of the interaction loop. */
       dj = sort_j[max_ind_j].d;
       while (max_ind_j > 0 && max_di[pid] < dj) {
@@ -786,12 +775,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       }
       int exit_iteration = max_ind_j + 1;
 
-      /* Set the cache index. */
-      int ci_cache_idx = pid - first_pi_align;
-
-      const float hi = ci_cache->h[ci_cache_idx];
       const float hig2 = hi * hi * kernel_gamma2;
-
+      
       vector pix, piy, piz;
 
       /* Fill particle pi vectors. */
@@ -910,6 +895,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (!part_is_active(pj, e)) continue;
 
+      /* Set the cache index. */
+      int cj_cache_idx = pjd;
+
+      /*TODO: rshift term. */
+      const float hj = cj_cache->h[cj_cache_idx];
+      const double dj_test = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+      if (dj_test > di_max) continue;
+      
       /* Determine the exit iteration of the interaction loop. */
       di = sort_i[max_ind_i].d;
       while (max_ind_i < count_i - 1 && max_dj[pjd] > di) {
@@ -919,10 +912,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       }
       int exit_iteration = max_ind_i;
 
-      /* Set the cache index. */
-      int cj_cache_idx = pjd;
-
-      const float hj = cj_cache->h[cj_cache_idx];
       const float hjg2 = hj * hj * kernel_gamma2;
 
       vector pjx, pjy, pjz;
