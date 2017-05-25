@@ -960,7 +960,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   if (cell_is_active(ci, e)) {
 
-    /* Loop over the parts in ci. */
+    /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
@@ -968,6 +968,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       struct part *restrict pi = &parts_i[sort_i[pid].i];
       if (!part_is_active(pi, e)) continue;
       const float hi = pi->h;
+
+      /* Skip this particle if no particle in cj is within range of it. */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
@@ -1034,7 +1036,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   if (cell_is_active(cj, e)) {
 
-    /* Loop over the parts in cj. */
+    /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
 
@@ -1042,6 +1044,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (!part_is_active(pj, e)) continue;
       const float hj = pj->h;
+      
+      /* Skip this particle if no particle in ci is within range of it. */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
       if (dj > di_max) continue;
 
@@ -1232,13 +1236,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       }
   }
 
-  /* Loop over the parts in ci. */
+    /* Loop over the parts in ci until nothing is within range in cj. */
   for (int pid = count_i - 1;
        pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[sort_i[pid].i];
     const float hi = pi->h;
+      
+    /* Skip this particle if no particle in cj is within range of it. */
     const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
@@ -1392,13 +1398,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-  /* Loop over the parts in cj. */
+  /* Loop over the parts in cj until nothing is within range in ci. */
   for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
        pjd++) {
 
     /* Get a hold of the jth part in cj. */
     struct part *restrict pj = &parts_j[sort_j[pjd].i];
     const float hj = pj->h;
+      
+    /* Skip this particle if no particle in ci is within range of it. */
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
 
