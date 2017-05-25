@@ -2584,6 +2584,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, ci->recv_xv);
         if (cell_is_active(ci, e)) {
           scheduler_activate(s, ci->recv_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate(s, ci->recv_gradient);
+#endif
           scheduler_activate(s, ci->recv_ti);
         }
 
@@ -2603,11 +2606,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
 
         if (cell_is_active(cj, e)) {
+
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
             ;
           if (l == NULL) error("Missing link to send_rho task.");
           scheduler_activate(s, l->t);
+
+#ifdef EXTRA_HYDRO_LOOP
+          for (l = cj->send_gradient;
+               l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
+          scheduler_activate(s, l->t);
+#endif
 
           for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
@@ -2622,6 +2634,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, cj->recv_xv);
         if (cell_is_active(cj, e)) {
           scheduler_activate(s, cj->recv_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate(s, cj->recv_gradient);
+#endif
           scheduler_activate(s, cj->recv_ti);
         }
 
@@ -2646,6 +2661,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             ;
           if (l == NULL) error("Missing link to send_rho task.");
           scheduler_activate(s, l->t);
+
+#ifdef EXTRA_HYDRO_LOOP
+          for (l = ci->send_gradient;
+               l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
+          scheduler_activate(s, l->t);
+#endif
 
           for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
                l = l->next)
