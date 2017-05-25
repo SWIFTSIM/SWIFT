@@ -752,7 +752,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   if (cell_is_active(ci, e)) {
 
-    /* Loop over the parts in ci. */
+    /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop && max_ind_j >= 0; pid--) {
 
       /* Get a hold of the ith part in ci. */
@@ -762,6 +762,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       /* Set the cache index. */
       int ci_cache_idx = pid - first_pi_align;
 
+      /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
       const double di_test = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di_test < dj_min) continue;
@@ -888,7 +889,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   }
 
   if (cell_is_active(cj, e)) {
-    /* Loop over the parts in cj. */
+    
+    /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop && max_ind_i < count_i; pjd++) {
 
       /* Get a hold of the jth part in cj. */
@@ -899,6 +901,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int cj_cache_idx = pjd;
 
       /*TODO: rshift term. */
+      /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
       const double dj_test = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
       if (dj_test > di_max) continue;
