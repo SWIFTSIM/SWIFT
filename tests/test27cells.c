@@ -156,7 +156,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h;
+  cell->h_max = size * h / (float)n;
   cell->count = count;
   cell->dx_max_part = 0.;
   cell->dx_max_sort = 0.;
