@@ -327,13 +327,11 @@ static void *engine_do_redistribute(int *counts, char *parts,
     MPI_Status stats[2 * nr_nodes];
     int res;
     if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
-      fflush(stderr); fflush(stdout);
       for (int k = 0; k < 2 * nr_nodes; k++) {
         char buff[MPI_MAX_ERROR_STRING];
         MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
         message("request from source %i, tag %i has error '%s'.", stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
       }
-      fflush(stderr);fflush(stdout);
       error("Failed during waitall for part data.");
     }
 
