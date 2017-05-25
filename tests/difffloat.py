@@ -107,7 +107,7 @@ for i in range(n_lines_to_check):
             print ""
             error = True
 
-        if abs(data1[i,j]) + abs(data2[i,j]) < 1e-6 : continue
+        if abs(data1[i,j]) < 4e-6 and abs(data2[i,j]) < 4e-6 : continue
 
         # Ignore pathological cases with rho_dh
         if ignoreSmallRhoDh and j == 8 and abs(data1[i,j]) < 2e-4: continue

@@ -148,6 +148,9 @@ struct part {
     /* Total surface area of the particle. */
     float Atot;
 
+    /* Centroid of the "cell". */
+    float centroid[3];
+
   } geometry;
 
   /* Variables used for timestep calculation (currently not used). */
@@ -200,6 +203,8 @@ struct part {
 
     /* Previous value of the gravitational acceleration. */
     float old_a[3];
+
+    float grad_a[3][3];
 
     /* Previous value of the mass flux vector. */
     float old_mflux[3];

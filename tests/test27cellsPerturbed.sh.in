@@ -6,14 +6,24 @@ do
 
     rm -f brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat
 
+    echo "Running ./test27cells -n 6 -r 1 -d 0.1 -f perturbed -v $v -a 5e-4"
     ./test27cells -n 6 -r 1 -d 0.1 -f perturbed -v $v -a 5e-4
 
     if [ -e brute_force_27_perturbed.dat ]
     then
-	python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed.dat 6 1
+	if python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed.dat 6 1
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
     else
+	echo "Error Missing test output file"
 	exit 1
     fi
+
+    echo "------------"
 
 done
 

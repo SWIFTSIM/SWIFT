@@ -23,6 +23,8 @@
 #include "hydro_gradients.h"
 #include "riemann.h"
 
+#define GIZMO_VOLUME_CORRECTION
+
 /**
  * @brief Calculate the volume interaction between particle i and particle j
  *
@@ -62,6 +64,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (k = 0; k < 3; k++)
     for (l = 0; l < 3; l++) pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
+  pi->geometry.centroid[0] -= dx[0] * wi;
+  pi->geometry.centroid[1] -= dx[1] * wi;
+  pi->geometry.centroid[2] -= dx[2] * wi;
+
   /* Compute density of pj. */
   h_inv = 1.0 / hj;
   xj = r * h_inv;
@@ -74,6 +80,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->geometry.volume += wj;
   for (k = 0; k < 3; k++)
     for (l = 0; l < 3; l++) pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
+
+  pj->geometry.centroid[0] += dx[0] * wj;
+  pj->geometry.centroid[1] += dx[1] * wj;
+  pj->geometry.centroid[2] += dx[2] * wj;
 }
 
 /**
@@ -117,6 +127,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->geometry.volume += wi;
   for (k = 0; k < 3; k++)
     for (l = 0; l < 3; l++) pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+
+  pi->geometry.centroid[0] -= dx[0] * wi;
+  pi->geometry.centroid[1] -= dx[1] * wi;
+  pi->geometry.centroid[2] -= dx[2] * wi;
 }
 
 /**
@@ -325,14 +339,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* calculate the maximal signal velocity */
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
-#ifdef EOS_ISOTHERMAL_GAS
-    /* we use a value that is slightly higher than necessary, since the correct
-       value does not always work */
-    vmax = 2.5 * const_isothermal_soundspeed;
-#else
     vmax =
         sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
-#endif
   } else {
     vmax = 0.0f;
   }
@@ -381,23 +389,63 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* Compute area */
   /* eqn. (7) */
   Anorm = 0.0f;
-  for (k = 0; k < 3; k++) {
-    /* we add a minus sign since dx is pi->x - pj->x */
-    A[k] = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
-               hi_inv_dim -
-           Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
-               hj_inv_dim;
-    Anorm += A[k] * A[k];
+  if (pi->density.wcorr > const_gizmo_min_wcorr &&
+      pj->density.wcorr > const_gizmo_min_wcorr) {
+    /* in principle, we use Vi and Vj as weights for the left and right
+       contributions to the generalized surface vector.
+       However, if Vi and Vj are very different (because they have very
+       different
+       smoothing lengths), then the expressions below are more stable. */
+    float Xi = Vi;
+    float Xj = Vj;
+#ifdef GIZMO_VOLUME_CORRECTION
+    if (fabsf(Vi - Vj) / fminf(Vi, Vj) > 1.5 * hydro_dimension) {
+      Xi = (Vi * hj + Vj * hi) / (hi + hj);
+      Xj = Xi;
+    }
+#endif
+    for (k = 0; k < 3; k++) {
+      /* we add a minus sign since dx is pi->x - pj->x */
+      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+                 wj * hj_inv_dim -
+             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+                 wi * hi_inv_dim;
+      Anorm += A[k] * A[k];
+    }
+  } else {
+    /* ill condition gradient matrix: revert to SPH face area */
+    Anorm = -(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * ri;
+    A[0] = -Anorm * dx[0];
+    A[1] = -Anorm * dx[1];
+    A[2] = -Anorm * dx[2];
+    Anorm *= Anorm * r2;
   }
 
-  if (!Anorm) {
+  if (Anorm == 0.) {
     /* if the interface has no area, nothing happens and we return */
     /* continuing results in dividing by zero and NaN's... */
     return;
   }
 
-  /* compute the normal vector of the interface */
   Anorm = sqrtf(Anorm);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For stability reasons, we do require A and dx to have opposite
+     directions (basically meaning that the surface normal for the surface
+     always points from particle i to particle j, as it would in a real
+     moving-mesh code). If not, our scheme is no longer upwind and hence can
+     become unstable. */
+  float dA_dot_dx = A[0] * dx[0] + A[1] * dx[1] + A[2] * dx[2];
+  /* In GIZMO, Phil Hopkins reverts to an SPH integration scheme if this
+     happens. We curently just ignore this case and display a message. */
+  const float rdim = pow_dimension(r);
+  if (dA_dot_dx > 1.e-6 * rdim) {
+    message("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx,
+            Anorm, Vi, Vj, r);
+  }
+#endif
+
+  /* compute the normal vector of the interface */
   for (k = 0; k < 3; k++) n_unit[k] = A[k] / Anorm;
 
   /* Compute interface position (relative to pi, since we don't need the actual
@@ -435,43 +483,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
-
-  if (Wi[0] < 0.0f || Wj[0] < 0.0f || Wi[4] < 0.0f || Wj[4] < 0.0f) {
-    printf("mindt: %g\n", mindt);
-    printf("WL: %g %g %g %g %g\n", pi->primitives.rho, pi->primitives.v[0],
-           pi->primitives.v[1], pi->primitives.v[2], pi->primitives.P);
-#ifdef USE_GRADIENTS
-    printf("dWL: %g %g %g %g %g\n", dWi[0], dWi[1], dWi[2], dWi[3], dWi[4]);
-#endif
-    printf("gradWL[0]: %g %g %g\n", pi->primitives.gradients.rho[0],
-           pi->primitives.gradients.rho[1], pi->primitives.gradients.rho[2]);
-    printf("gradWL[1]: %g %g %g\n", pi->primitives.gradients.v[0][0],
-           pi->primitives.gradients.v[0][1], pi->primitives.gradients.v[0][2]);
-    printf("gradWL[2]: %g %g %g\n", pi->primitives.gradients.v[1][0],
-           pi->primitives.gradients.v[1][1], pi->primitives.gradients.v[1][2]);
-    printf("gradWL[3]: %g %g %g\n", pi->primitives.gradients.v[2][0],
-           pi->primitives.gradients.v[2][1], pi->primitives.gradients.v[2][2]);
-    printf("gradWL[4]: %g %g %g\n", pi->primitives.gradients.P[0],
-           pi->primitives.gradients.P[1], pi->primitives.gradients.P[2]);
-    printf("WL': %g %g %g %g %g\n", Wi[0], Wi[1], Wi[2], Wi[3], Wi[4]);
-    printf("WR: %g %g %g %g %g\n", pj->primitives.rho, pj->primitives.v[0],
-           pj->primitives.v[1], pj->primitives.v[2], pj->primitives.P);
-#ifdef USE_GRADIENTS
-    printf("dWR: %g %g %g %g %g\n", dWj[0], dWj[1], dWj[2], dWj[3], dWj[4]);
-#endif
-    printf("gradWR[0]: %g %g %g\n", pj->primitives.gradients.rho[0],
-           pj->primitives.gradients.rho[1], pj->primitives.gradients.rho[2]);
-    printf("gradWR[1]: %g %g %g\n", pj->primitives.gradients.v[0][0],
-           pj->primitives.gradients.v[0][1], pj->primitives.gradients.v[0][2]);
-    printf("gradWR[2]: %g %g %g\n", pj->primitives.gradients.v[1][0],
-           pj->primitives.gradients.v[1][1], pj->primitives.gradients.v[1][2]);
-    printf("gradWR[3]: %g %g %g\n", pj->primitives.gradients.v[2][0],
-           pj->primitives.gradients.v[2][1], pj->primitives.gradients.v[2][2]);
-    printf("gradWR[4]: %g %g %g\n", pj->primitives.gradients.P[0],
-           pj->primitives.gradients.P[1], pj->primitives.gradients.P[2]);
-    printf("WR': %g %g %g %g %g\n", Wj[0], Wj[1], Wj[2], Wj[3], Wj[4]);
-    error("Negative density or pressure!\n");
-  }
 
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);

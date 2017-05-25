@@ -28,7 +28,6 @@ int main() { return 0; }
 #else
 
 /* Some standard headers. */
-#include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -40,9 +39,6 @@ int main() {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
-
-  /* Choke on FP-exceptions */
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   /* Make one particle */
   int nr_gparts = 1;

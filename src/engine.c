@@ -1876,6 +1876,14 @@ void engine_count_and_link_tasks(struct engine *e) {
       if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_part);
     }
 
+    /* Link drift tasks to the next-higher drift task. */
+    else if (t->type == task_type_drift_gpart) {
+      struct cell *finger = ci->parent;
+      while (finger != NULL && finger->drift_gpart == NULL)
+        finger = finger->parent;
+      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_gpart);
+    }
+
     /* Link self tasks to cells. */
     else if (t->type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
@@ -2580,6 +2588,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, ci->recv_xv);
         if (cell_is_active(ci, e)) {
           scheduler_activate(s, ci->recv_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate(s, ci->recv_gradient);
+#endif
           scheduler_activate(s, ci->recv_ti);
         }
 
@@ -2599,11 +2610,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
 
         if (cell_is_active(cj, e)) {
+
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
             ;
           if (l == NULL) error("Missing link to send_rho task.");
           scheduler_activate(s, l->t);
+
+#ifdef EXTRA_HYDRO_LOOP
+          for (l = cj->send_gradient;
+               l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
+          scheduler_activate(s, l->t);
+#endif
 
           for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
@@ -2618,6 +2638,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, cj->recv_xv);
         if (cell_is_active(cj, e)) {
           scheduler_activate(s, cj->recv_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate(s, cj->recv_gradient);
+#endif
           scheduler_activate(s, cj->recv_ti);
         }
 
@@ -2642,6 +2665,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             ;
           if (l == NULL) error("Missing link to send_rho task.");
           scheduler_activate(s, l->t);
+
+#ifdef EXTRA_HYDRO_LOOP
+          for (l = ci->send_gradient;
+               l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
+          scheduler_activate(s, l->t);
+#endif
 
           for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
                l = l->next)
@@ -3059,7 +3090,7 @@ void engine_print_stats(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  message("Saving statistics at t=%e.", e->time);
+  if (e->nodeID == 0) message("Saving statistics at t=%e.", e->time);
 #else
   if (e->verbose) message("Saving statistics at t=%e.", e->time);
 #endif
@@ -3539,10 +3570,15 @@ void engine_drift_all(struct engine *e) {
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
+  /* Synchronize particle positions */
+  space_synchronize_particle_positions(e->s);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
   space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
 #endif
 
   if (e->verbose)
@@ -3841,7 +3877,7 @@ void engine_dump_snapshot(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  message("writing snapshot at t=%e.", e->time);
+  if (e->nodeID == 0) message("writing snapshot at t=%e.", e->time);
 #else
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 #endif

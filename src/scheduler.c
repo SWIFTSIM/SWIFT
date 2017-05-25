@@ -1379,7 +1379,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                           MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
         } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho) {
+                   t->subtype == task_subtype_rho ||
+                   t->subtype == task_subtype_gradient) {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "receiving %i parts with tag=%i from %i to %i." ,
@@ -1414,7 +1415,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                           MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
         } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho) {
+                   t->subtype == task_subtype_rho ||
+                   t->subtype == task_subtype_gradient) {
 #ifdef SWIFT_DEBUG_CHECKS
           for (int k = 0; k < t->ci->count; k++)
             if (t->ci->parts[k].ti_drift != s->space->e->ti_current)

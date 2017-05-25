@@ -37,6 +37,8 @@
 #include "space.h"
 #include "timers.h"
 
+#ifdef HAVE_FFTW
+
 /**
  * @brief Returns 1D index of a 3D NxNxN array using row-major style.
  *
@@ -136,6 +138,8 @@ __attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
   m->pot.F_000 += pot[row_major_id(i + 1, j + 1, k + 0, N)] * dx * dy * tz;
   m->pot.F_000 += pot[row_major_id(i + 1, j + 1, k + 1, N)] * dx * dy * dz;
 }
+
+#endif
 
 /**
  * @brief Computes the potential on the top multipoles using a Fourier transform

@@ -47,6 +47,8 @@ tests/brute_force_27_perturbed.dat
 tests/swift_dopair_27_perturbed.dat
 tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
+tests/brute_force_125_perturbed.dat
+tests/swift_dopair_125_perturbed.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
@@ -65,6 +67,7 @@ tests/parser_output.yml
 tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test125cells.sh
+tests/test125cellsPerturbed.sh
 tests/testPair.sh
 tests/testPairPerturbed.sh
 tests/testParser.sh
