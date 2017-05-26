@@ -1892,12 +1892,13 @@ void engine_count_and_link_tasks(struct engine *e) {
     else if (t->type == task_type_drift_part) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
            finger = finger->parent)
-        if (finger->drift_part != NULL) scheduler_addunlock(sched, t, finger->drift_part);
-    }
-    else if (t->type == task_type_drift_gpart) {
+        if (finger->drift_part != NULL)
+          scheduler_addunlock(sched, t, finger->drift_part);
+    } else if (t->type == task_type_drift_gpart) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
            finger = finger->parent)
-        if (finger->drift_gpart != NULL) scheduler_addunlock(sched, t, finger->drift_gpart);
+        if (finger->drift_gpart != NULL)
+          scheduler_addunlock(sched, t, finger->drift_gpart);
     }
 
     /* Link self tasks to cells. */
@@ -2568,7 +2569,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype != task_subtype_density) continue;
 
       /* Too much particle movement? */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin)
+      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
+          cj->dmin)
         *rebuild_space = 1;
 
       /* Set the correct sorting flags */
@@ -2594,7 +2596,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             error("bad flags in sort task.");
 #endif
           scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
+          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
         }
         if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
           for (struct cell *finger = cj; finger != NULL;
@@ -3203,7 +3205,7 @@ void engine_skip_drift(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that updates the particles */
-    if (t->type == task_type_drift) t->skip = 1;
+    if (t->type == task_type_drift_part) t->skip = 1;
   }
 }
 

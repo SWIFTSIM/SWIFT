@@ -1325,10 +1325,10 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
   const integertime_t ti_current = e->ti_current;
 
   /* Store the current dx_max and h_max values. */
-  ci->dx_max_old = ci->dx_max;
+  ci->dx_max_old = ci->dx_max_part;
   ci->h_max_old = ci->h_max;
   if (cj != NULL) {
-    cj->dx_max_old = cj->dx_max;
+    cj->dx_max_old = cj->dx_max_part;
     cj->h_max_old = cj->h_max;
   }
 
@@ -1348,7 +1348,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
         }
 
       /* Activate drift task, if it is present. */
-      if (ci->drift != NULL) scheduler_activate(s, ci->drift);
+      if (ci->drift_part != NULL) scheduler_activate(s, ci->drift_part);
     }
   }
 
@@ -1579,8 +1579,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     atomic_or(&cj->sorts->flags, (1 << sid));
 
     /* Activate the drifts if the cells are local. */
-    if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift);
-    if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift);
+    if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
+    if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
 
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
       for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
