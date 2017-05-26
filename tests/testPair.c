@@ -84,7 +84,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->split = 0;
   cell->h_max = h;
   cell->count = count;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
+  cell->dx_max_sort = 0.;
   cell->width[0] = n;
   cell->width[1] = n;
   cell->width[2] = n;
@@ -92,7 +93,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 8;
+  cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
 

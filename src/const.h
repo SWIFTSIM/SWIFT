@@ -52,7 +52,42 @@
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
 //#define GIZMO_FIX_PARTICLES
+/* Try to keep cells regular by adding a correction velocity. */
+#define GIZMO_STEER_MOTION
 //#define GIZMO_TOTAL_ENERGY
+
+/* Options to control handling of unphysical values (GIZMO_SPH only). */
+/* In GIZMO, mass and energy (and hence density and pressure) can in principle
+   become negative, which will cause unwanted behaviour that can make the code
+   crash.
+   If no options are selected below, we assume (and pray) that this will not
+   happen, and add no restrictions to how these variables are treated. */
+/* Check for unphysical values and crash if they occur. */
+//#define GIZMO_UNPHYSICAL_ERROR
+/* Check for unphysical values and reset them to safe values. */
+#define GIZMO_UNPHYSICAL_RESCUE
+/* Show a warning message if an unphysical value was reset (only works if
+   GIZMO_UNPHYSICAL_RESCUE is also selected). */
+//#define GIZMO_UNPHYSICAL_WARNING
+
+/* Parameters that control how GIZMO handles pathological particle
+   configurations. */
+/* Show a warning message if a pathological configuration has been detected. */
+//#define GIZMO_PATHOLOGICAL_WARNING
+/* Crash if a pathological configuration has been detected. */
+//#define GIZMO_PATHOLOGICAL_ERROR
+/* Maximum allowed gradient matrix condition number. If the condition number of
+   the gradient matrix (defined in equation C1 in Hopkins, 2015) is larger than
+   this value, we artificially increase the number of neighbours to get a more
+   homogeneous sampling. */
+#define const_gizmo_max_condition_number 100.0f
+/* Correction factor applied to the particle wcount to force more neighbours if
+   the condition number is too large. */
+#define const_gizmo_w_correction_factor 0.9f
+/* Lower limit on the wcount correction factor. If the condition number is still
+   too high after this wcount correction has been applied, we give up on the
+   gradient matrix and use SPH gradients instead. */
+#define const_gizmo_min_wcorr 0.5f
 
 /* Types of gradients to use for SHADOWFAX_SPH */
 /* If no option is chosen, no gradients are used (first order scheme) */

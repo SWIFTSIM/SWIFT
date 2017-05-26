@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -236,11 +237,13 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
  * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
+ * @param pert The perturbation to apply to the particles in the cell in units
+ *of the inter-particle separation.
  * @param vel The type of velocity field.
  * @param press The type of pressure field.
  */
 struct cell *make_cell(size_t n, const double offset[3], double size, double h,
-                       double density, long long *partId,
+                       double density, long long *partId, double pert,
                        enum velocity_field vel, enum pressure_field press) {
 
   const size_t count = n * n * n;
@@ -263,9 +266,15 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
-        part->x[0] = offset[0] + size * (x + 0.5) / (float)n;
-        part->x[1] = offset[1] + size * (y + 0.5) / (float)n;
-        part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
+        part->x[0] =
+            offset[0] +
+            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[1] =
+            offset[1] +
+            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[2] =
+            offset[2] +
+            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->h = size * h / (float)n;
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
@@ -315,7 +324,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->gcount = 0;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
   cell->dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
@@ -324,7 +333,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old = 8;
+  cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
   cell->ti_sort = 0;
@@ -354,8 +363,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   /* Write header */
   fprintf(file,
-          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s "
-          "%8s %8s %8s %8s %8s\n",
+          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
+          "%13s %13s %13s %8s %8s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
@@ -367,7 +376,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -406,7 +415,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
-              "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n",
+              "%8.5f %8.5f %13f %13f %13f %13f %13f %8.5f %8.5f\n",
               solution[pid].id, solution[pid].x[0], solution[pid].x[1],
               solution[pid].x[2], solution[pid].v[0], solution[pid].v[1],
               solution[pid].v[2], solution[pid].h, solution[pid].rho,
@@ -432,6 +441,7 @@ int main(int argc, char *argv[]) {
 
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
+  double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
@@ -462,6 +472,9 @@ int main(int argc, char *argv[]) {
       case 'r':
         sscanf(optarg, "%zu", &runs);
         break;
+      case 'd':
+        sscanf(optarg, "%lf", &perturbation);
+        break;
       case 'm':
         sscanf(optarg, "%lf", &rho);
         break;
@@ -491,6 +504,7 @@ int main(int argc, char *argv[]) {
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
+        "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
         "\n-p type (0,1,2)    - Pressure field: (constant, gradient divergent)"
@@ -525,9 +539,9 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 1;
-  space.dim[0] = 3.;
-  space.dim[1] = 3.;
-  space.dim[2] = 3.;
+  space.dim[0] = 5.;
+  space.dim[1] = 5.;
+  space.dim[2] = 5.;
   hydro_space_init(&space.hs, &space);
 
   struct phys_const prog_const;
@@ -535,7 +549,8 @@ int main(int argc, char *argv[]) {
 
   struct hydro_props hp;
   hp.target_neighbours = pow_dimension(h) * kernel_norm;
-  hp.delta_neighbours = 2.;
+  hp.delta_neighbours = 4.;
+  hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
@@ -565,8 +580,8 @@ int main(int argc, char *argv[]) {
         const double offset[3] = {i * size, j * size, k * size};
 
         /* Construct it */
-        cells[i * 25 + j * 5 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, vel, press);
+        cells[i * 25 + j * 5 + k] = make_cell(
+            particles, offset, size, h, rho, &partId, perturbation, vel, press);
 
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
@@ -592,8 +607,13 @@ int main(int argc, char *argv[]) {
     const ticks tic = getticks();
 
     /* Initialise the particles */
-    for (int j = 0; j < 125; ++j)
-      runner_do_drift_particles(&runner, cells[j], 0);
+    for (int j = 0; j < 125; ++j) runner_do_drift_part(&runner, cells[j], 0);
+
+    /* Reset particles. */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
@@ -669,6 +689,12 @@ int main(int argc, char *argv[]) {
       sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
+    }
+
+    /* Reset stuff */
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
     }
   }
 

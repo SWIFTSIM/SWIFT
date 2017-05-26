@@ -107,6 +107,12 @@ DiscPatchPotential:
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
 
+# Sine Wave potential
+SineWavePotential:
+  amplitude:        10.     # Amplitude of the sine wave (internal units)
+  timestep_limit:   1.      # Time-step dimensionless pre-factor.
+  growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
+ 
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function

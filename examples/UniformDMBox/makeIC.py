@@ -26,7 +26,7 @@ from numpy import *
 # with a density of 1
 
 # Parameters
-periodic= 0           # 1 For periodic box
+periodic= 1           # 1 For periodic box
 boxSize = 1.
 rho = 1.
 L = int(sys.argv[1])  # Number of particles along one axis

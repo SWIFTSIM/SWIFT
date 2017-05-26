@@ -22,7 +22,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
         testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
-        testParser.sh testSPHStep test125cells.sh testFFT \
+        testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
         testMatrixInversion testThreadpool testDump testLogger \
         testVoronoi1D testVoronoi2D testVoronoi3D
@@ -92,6 +92,8 @@ testLogger_SOURCES = testLogger.c
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
 	     test27cells.sh test27cellsPerturbed.sh testParser.sh \
-	     test125cells.sh testParserInput.yaml difffloat.py \
-	     tolerance_125.dat tolerance_27_normal.dat tolerance_27_perturbed.dat \
-	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat
+	     test125cells.sh test125cellsPerturbed.sh testParserInput.yaml difffloat.py \
+	     tolerance_125_normal.dat tolerance_125_perturbed.dat \
+             tolerance_27_normal.dat tolerance_27_perturbed.dat \
+	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat \
+	     fft_params.yml

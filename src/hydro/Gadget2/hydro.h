@@ -293,7 +293,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->force.v_sig = 0.0f;
+  p->force.v_sig = p->force.soundspeed;
 }
 
 /**
