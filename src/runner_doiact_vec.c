@@ -305,7 +305,8 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     h = p->h;
     d = sort_i[k].d + dx_max;
 
-    max_di[k] = d + h * kernel_gamma - rshift;
+    //max_di[k] = d + h * kernel_gamma - rshift;
+    max_di[k] = d + hi_max;
 
     /* If the particle is out of range set the index to
      * the last active particle within range. */
@@ -331,7 +332,8 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     d = sort_j[k].d - dx_max;
 
     /*TODO: don't think rshift should be taken off here, waiting on Pedro. */
-    max_dj[k] = d - h * kernel_gamma - rshift;
+    //max_dj[k] = d - h * kernel_gamma - rshift;
+    max_dj[k] = d - hj_max;
 
     /* If the particle is out of range set the index to
      * the last active particle within range. */
