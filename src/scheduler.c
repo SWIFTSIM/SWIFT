@@ -651,8 +651,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           ci->drift_part = scheduler_addtask(s, task_type_drift_part,
                                              task_subtype_none, 0, 0, ci, NULL);
         if (ci->sorts == NULL)
-          ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
-                                        1 << sid, 0, ci, NULL);
+          ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
+                                        0, ci, NULL);
         else
           ci->sorts->flags |= (1 << sid);
         lock_unlock_blind(&ci->lock);
@@ -664,8 +664,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           cj->drift_part = scheduler_addtask(s, task_type_drift_part,
                                              task_subtype_none, 0, 0, cj, NULL);
         if (cj->sorts == NULL)
-          cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
-                                        1 << sid, 0, cj, NULL);
+          cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
+                                        0, cj, NULL);
         else
           cj->sorts->flags |= (1 << sid);
         lock_unlock_blind(&cj->lock);

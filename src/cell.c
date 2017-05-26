@@ -1575,8 +1575,6 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     cj->requires_sorts = ti_current;
     ci->dx_max_sort_old = ci->dx_max_sort;
     cj->dx_max_sort_old = cj->dx_max_sort;
-    atomic_or(&ci->sorts->flags, (1 << sid));
-    atomic_or(&cj->sorts->flags, (1 << sid));
 
     /* Activate the drifts if the cells are local. */
     if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
@@ -1584,22 +1582,28 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
 
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
       for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
-        finger->sorted = 0;
-        if (finger->requires_sorts == ti_current)
+        if (finger->requires_sorts == ti_current) {
+          atomic_or(&finger->sorts->flags, finger->sorted);
           scheduler_activate(s, finger->sorts);
+        }
+        finger->sorted = 0;
       }
     }
     if (!(ci->sorted & (1 << sid))) {
+      atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
     }
     if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
       for (struct cell *finger = cj; finger != NULL; finger = finger->parent) {
-        finger->sorted = 0;
-        if (finger->requires_sorts == ti_current)
+        if (finger->requires_sorts == ti_current) {
+          atomic_or(&finger->sorts->flags, finger->sorted);
           scheduler_activate(s, finger->sorts);
+        }
+        finger->sorted = 0;
       }
     }
     if (!(cj->sorted & (1 << sid))) {
+      atomic_or(&cj->sorts->flags, (1 << sid));
       scheduler_activate(s, cj->sorts);
     }
   }
@@ -1640,32 +1644,30 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
         for (struct cell *finger = ci; finger != NULL;
              finger = finger->parent) {
-          finger->sorted = 0;
-          if (finger->requires_sorts == ti_current)
+          if (finger->requires_sorts == ti_current) {
+            atomic_or(&finger->sorts->flags, finger->sorted);
             scheduler_activate(s, finger->sorts);
+          }
+          finger->sorted = 0;
         }
       }
       if (!(ci->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(ci->sorts->flags & (1 << t->flags)))
-          error("bad flags in sort task.");
-#endif
+        atomic_or(&ci->sorts->flags, (1 << t->flags));
         scheduler_activate(s, ci->sorts);
         if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
       }
       if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
         for (struct cell *finger = cj; finger != NULL;
              finger = finger->parent) {
-          finger->sorted = 0;
-          if (finger->requires_sorts == ti_current)
+          if (finger->requires_sorts == ti_current) {
+            atomic_or(&finger->sorts->flags, finger->sorted);
             scheduler_activate(s, finger->sorts);
+          }
+          finger->sorted = 0;
         }
       }
       if (!(cj->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(cj->sorts->flags & (1 << t->flags)))
-          error("bad flags in sort task.");
-#endif
+        atomic_or(&cj->sorts->flags, (1 << t->flags));
         scheduler_activate(s, cj->sorts);
         if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
       }

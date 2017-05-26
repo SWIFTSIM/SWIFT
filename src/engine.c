@@ -2585,32 +2585,30 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
           for (struct cell *finger = ci; finger != NULL;
                finger = finger->parent) {
-            finger->sorted = 0;
-            if (finger->requires_sorts == ti_current)
+            if (finger->requires_sorts == ti_current) {
+              atomic_or(&finger->sorts->flags, finger->sorted);
               scheduler_activate(s, finger->sorts);
+            }
+            finger->sorted = 0;
           }
         }
         if (!(ci->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (!(ci->sorts->flags & (1 << t->flags)))
-            error("bad flags in sort task.");
-#endif
+          atomic_or(&ci->sorts->flags, (1 << t->flags));
           scheduler_activate(s, ci->sorts);
           if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
         }
         if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
           for (struct cell *finger = cj; finger != NULL;
                finger = finger->parent) {
-            finger->sorted = 0;
-            if (finger->requires_sorts == ti_current)
+            if (finger->requires_sorts == ti_current) {
+              atomic_or(&finger->sorts->flags, finger->sorted);
               scheduler_activate(s, finger->sorts);
+            }
+            finger->sorted = 0;
           }
         }
         if (!(cj->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (!(cj->sorts->flags & (1 << t->flags)))
-            error("bad flags in sort task.");
-#endif
+          atomic_or(&cj->sorts->flags, (1 << t->flags));
           scheduler_activate(s, cj->sorts);
           if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
         }
