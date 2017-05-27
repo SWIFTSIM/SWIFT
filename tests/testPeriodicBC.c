@@ -449,14 +449,17 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Test cell location. */
+  const int loc_i = 0, loc_j = dim - 1, loc_k = 0;
+  
   /* Store the main cell for future use */
-  main_cell = cells[0];
+  main_cell = cells[loc_i * (dim*dim) + loc_j * dim + loc_k];
 
   /* Zero the fields */
   for (int j = 0; j < 512; ++j) zero_particle_fields(cells[j]);
 
   /* Run all the pairs */
-  int i = 0, j = 0, k = 0;
+
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
@@ -470,13 +473,13 @@ int main(int argc, char *argv[]) {
   /* Now loop over all the neighbours of this cell 
    * and perform the pair interactions. */
   for (int ii = -1; ii < 2; ii++) {
-    int iii = i + ii;
+    int iii = loc_i + ii;
     iii = (iii + dim) % dim;
     for (int jj = -1; jj < 2; jj++) {
-      int jjj = j + jj;
+      int jjj = loc_j + jj;
       jjj = (jjj + dim) % dim;
       for (int kk = -1; kk < 2; kk++) {
-        int kkk = k + kk;
+        int kkk = loc_k + kk;
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
@@ -512,18 +515,16 @@ int main(int argc, char *argv[]) {
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
-  i = 0, j = 0, k = 0;
-  
   /* Now loop over all the neighbours of this cell 
    * and perform the pair interactions. */
   for (int ii = -1; ii < 2; ii++) {
-    int iii = i + ii;
+    int iii = loc_i + ii;
     iii = (iii + dim) % dim;
     for (int jj = -1; jj < 2; jj++) {
-      int jjj = j + jj;
+      int jjj = loc_j + jj;
       jjj = (jjj + dim) % dim;
       for (int kk = -1; kk < 2; kk++) {
-        int kkk = k + kk;
+        int kkk = loc_k + kk;
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
