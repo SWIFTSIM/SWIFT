@@ -350,8 +350,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   /* Clean-up the flags, i.e. filter out what's already been sorted unless
      we're cleaning up. */
   if (cleanup && c->dx_max_sort > 0.0f) {
-    /* Re-compute old (stale) sorts. */
-    flags |= c->sorted;
+    /* Clear stale sorts. */
     c->sorted = 0;
   } else {
     /* Ignore dimensions that are already sorted. */
