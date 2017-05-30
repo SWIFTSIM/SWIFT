@@ -62,12 +62,13 @@ enum velocity_types {
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
  * @param h The smoothing length of the particles in units of the inter-particle
- *separation.
+ * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
  * @param pert The perturbation to apply to the particles in the cell in units
- *of the inter-particle separation.
+ * of the inter-particle separation.
  * @param vel The type of velocity field (0, random, divergent, rotating)
+ * @param h_pert The perturbation to apply to the smoothing length.
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
@@ -120,8 +121,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
             part->v[2] = 0.f;
             break;
         }
-        if(h_pert)
-          part->h = size * h * random_uniform(1.f,1.1f) / (float)n;
+        if (h_pert)
+          part->h = size * h * random_uniform(1.f, 1.1f) / (float)n;
         else
           part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
@@ -294,7 +295,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_branch_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -415,8 +417,9 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
-                                             &partId, perturbation, vel, h_pert);
+        cells[i * 9 + j * 3 + k] =
+            make_cell(particles, offset, size, h, rho, &partId, perturbation,
+                      vel, h_pert);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
