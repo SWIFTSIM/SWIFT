@@ -66,7 +66,8 @@ struct external_potential {
  * @brief Computes the time-step from the acceleration due to a hydrostatic
  * disc.
  *
- * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
+ * equations 17 and 20.
  *
  * @param time The current time.
  * @param potential The properties of the potential.
@@ -156,7 +157,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * disc patch potential.
  *
  * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
- * equation 24.
+ * equation 22.
  *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
