@@ -40,5 +40,7 @@ DiscPatchPotential:
   surface_density: 10.
   scale_height:    100.
   z_disc:          400.
+  z_trunc:         300.
+  z_max:           380.
   timestep_mult:   0.03
   growth_time:     5.
