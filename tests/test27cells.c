@@ -125,7 +125,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
           part->h = size * h * random_uniform(1.f, 1.1f) / (float)n;
         else
           part->h = size * h / (float)n;
-        h_max = fmax(h_max, part->h);
+        h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)

@@ -40,7 +40,7 @@ do
 
     if [ -e brute_force_27_standard.dat ]
     then
-	if python @srcdir@/difffloat.py brute_force_27_standard.dat swift_dopair_27_standard.dat @srcdir@/tolerance_27_normal.dat 6
+	if python @srcdir@/difffloat.py brute_force_27_standard.dat swift_dopair_27_standard.dat @srcdir@/tolerance_27_perturbed_h.dat 6
 	then
 	    echo "Accuracy test passed"
 	else
