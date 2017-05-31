@@ -38,6 +38,7 @@
 #include "hydro.h"
 #include "part.h"
 #include "runner.h"
+#include "periodic.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -182,16 +183,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
 
-  const struct engine *restrict e = r->e;
-  
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-  
-  /* Get the cutoff shift. */
-  double rshift = 0.0;
-  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
-  
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
 
@@ -206,7 +197,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
-        dx[k] = (ci->parts[i].x[k] - shift[k]) - cj->parts[j].x[k];
+        dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], r->e->s->dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -233,7 +225,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
-        dx[k] = (cj->parts[j].x[k] + shift[k]) - ci->parts[i].x[k];
+        dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], r->e->s->dim[k]);
         r2 += dx[k] * dx[k];
       }
 
