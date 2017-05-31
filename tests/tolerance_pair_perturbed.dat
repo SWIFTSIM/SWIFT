@@ -1,3 +1,4 @@
 #   ID      pos_x      pos_y      pos_z        v_x        v_y        v_z           rho        rho_dh        wcount     wcount_dh         div_v       curl_vx       curl_vy       curl_vz
     0	    1e-6       1e-6	  1e-6 	       1e-6 	  1e-6	     1e-6	   1e-5	      1e-5	    2e-5       3e-2		 1e-5	     1e-5	   1e-5		 1e-5
     0	    1e-6       1e-6	  1e-6 	       1e-6 	  1e-6	     1e-6	   1e-3	      4e-4	    8e-3       2e-2		 1e-4	     1.6e-4	   1.6e-4	 1.6e-4
+    0	    1e-6       1e-6	  1e-6 	       1e-6 	  1e-6	     1e-6	   1e-6	      1e-6	    1e-6       1e-6		 1e-6	     1e-6	   1e-6		 1e-6
