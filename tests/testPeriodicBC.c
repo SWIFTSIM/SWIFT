@@ -211,7 +211,8 @@ void end_calculation(struct cell *c) {
 /**
  * @brief Dump all the particles to a file
  */
-void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j, int k) {
+void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
+                          int k) {
   FILE *file = fopen(fileName, "a");
 
   /* Write header */
@@ -221,7 +222,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j, 
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
           "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
 
-  fprintf(file, "# Centre cell at (i,j,k)=(%d, %d, %d) ---------------------\n", i,j,k);
+  fprintf(file, "# Centre cell at (i,j,k)=(%d, %d, %d) ---------------------\n",
+          i, j, k);
 
   /* Write main cell */
   for (int pid = 0; pid < main_cell->count; pid++) {
@@ -369,7 +371,8 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   end_calculation(main_cell);
 
   /* Dump */
-  dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j, loc_k);
+  dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
+                       loc_k);
 }
 
 /* And go... */
