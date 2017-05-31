@@ -20,7 +20,7 @@
 ##
 # This script plots the Disc-Patch_*.hdf5 snapshots.
 # It takes two (optional) parameters: the counter value of the first and last
-# snapshot to plot (default: 0 81).
+# snapshot to plot (default: 0 21).
 ##
 
 import numpy as np
@@ -34,12 +34,12 @@ import sys
 # Parameters
 surface_density = 10.
 scale_height = 100.
-z_disc = 200.
-utherm = 20.2615290634
+z_disc = 400.
+utherm = 20.2678457288
 gamma = 5. / 3.
 
 start = 0
-stop = 81
+stop = 21
 if len(sys.argv) > 1:
   start = int(sys.argv[1])
 if len(sys.argv) > 2:
