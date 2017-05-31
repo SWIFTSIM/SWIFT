@@ -45,7 +45,7 @@
 #endif
 
 #ifndef DOPAIR1
-#define DOPAIR1 runner_dopair1_density
+#define DOPAIR1 runner_dopair1_branch_density
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 

@@ -868,7 +868,9 @@ touch src/version.c
 AC_OUTPUT
 
 # Report general configuration.
-AC_MSG_RESULT([
+AC_MSG_RESULT([ 
+ ------- Summary --------
+   
    Compiler        : $CC
     - vendor       : $ax_cv_c_compiler_vendor
     - version      : $ax_cv_c_compiler_version
@@ -899,4 +901,5 @@ AC_MSG_RESULT([
    Task debugging    : $enable_task_debugging
    Debugging checks  : $enable_debugging_checks
    Gravity checks    : $gravity_force_checks
-])
+
+ ------------------------])
