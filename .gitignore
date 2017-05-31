@@ -37,6 +37,8 @@ examples/*/gravity_checks_*.dat
 tests/testPair
 tests/brute_force_periodic_BC_standard.dat
 tests/swift_periodic_BC_standard.dat
+tests/brute_force_periodic_BC_pertrubed.dat
+tests/swift_periodic_BC_perturbed.dat
 tests/brute_force_standard.dat
 tests/swift_dopair_standard.dat
 tests/brute_force_perturbed.dat
@@ -67,6 +69,8 @@ tests/testMaths
 tests/testThreadpool
 tests/testParser
 tests/parser_output.yml
+tests/testPeriodicBC.sh
+tests/testPeriodicBCPerturbed.sh
 tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test125cells.sh
