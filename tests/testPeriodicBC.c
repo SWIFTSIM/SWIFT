@@ -511,7 +511,9 @@ int main(int argc, char *argv[]) {
   /* Delete files if they already exist. */
   remove(swiftOutputFileName);
   remove(bruteForceOutputFileName);
-  
+ 
+  const int half_dim = (dim - 1) / 2;
+
   /* Test the periodic boundary conditions for each of the 8 corners. */
   test_boundary_conditions(cells, runner, 0, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
   test_boundary_conditions(cells, runner, dim - 1, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
@@ -523,12 +525,28 @@ int main(int argc, char *argv[]) {
   test_boundary_conditions(cells, runner, dim - 1, dim - 1, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
 
   /* Test the boundary conditions for cells at the centre of each face of the box. */
-  test_boundary_conditions(cells, runner, (dim - 1) / 2, (dim - 1) / 2, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, (dim - 1) / 2, (dim - 1) / 2, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, (dim - 1) / 2, (dim - 1) / 2, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, (dim - 1) / 2, (dim - 1) / 2, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, (dim - 1) / 2, 0, (dim - 1) / 2, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, (dim - 1) / 2, dim - 1, (dim - 1) / 2, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, half_dim, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+
+  /* Test the boundary conditions for cells at the centre of each edge of the box. */
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  
+  test_boundary_conditions(cells, runner, 0, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  
+  test_boundary_conditions(cells, runner, half_dim, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, 0, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 512; ++i) clean_up(cells[i]);
