@@ -42,11 +42,6 @@ if len(sys.argv) >= 4:
 if len(sys.argv) >= 5:
     number_to_check = int(sys.argv[4])
 
-if len(sys.argv) == 6:
-    ignoreSmallRhoDh = int(sys.argv[5])
-else:
-    ignoreSmallRhoDh = 0
-
 # Get the particle properties being compared from the header.
 with open(file1, 'r') as f:
   line = f.readline()
@@ -69,7 +64,7 @@ n_lines = shape(data1)[0]
 n_columns = shape(data1)[1]
 
 if fileTol != "":
-    if n_linesTol != 2:
+    if n_linesTol != 3:
         print "Incorrect number of lines in tolerance file '%s'."%fileTol
     if n_columnsTol != n_columns:
         print "Incorrect number of columns in tolerance file '%s'."%fileTol
@@ -79,10 +74,12 @@ if fileTol == "":
     print "Relative difference tolerance:", rel_tol
     absTol = ones(n_columns) * abs_tol
     relTol = ones(n_columns) * rel_tol
+    limTol = zeros(n_columns)
 else:
     print "Tolerances read from file"
     absTol = dataTol[0,:]
     relTol = dataTol[1,:]
+    limTol = dataTol[2,:]
 
 n_lines_to_check = 0
 if number_to_check > 0:
@@ -113,11 +110,8 @@ for i in range(n_lines_to_check):
             print ""
             error = True
 
-        if abs(data1[i,j]) < 4e-6 and abs(data2[i,j]) < 4e-6 : continue
+        if abs(data1[i,j]) + abs(data2[i,j]) < limTol[j] : continue
 
-        # Ignore pathological cases with rho_dh
-        if ignoreSmallRhoDh and j == 8 and abs(data1[i,j]) < 2e-4: continue
-        
         if( rel_diff > 1.1*relTol[j]):
             print "Relative difference larger than tolerance (%e) for particle %d, column %s:"%(relTol[j], data1[i,0], part_props[j])
             print "%10s:           a = %e"%("File 1", data1[i,j])

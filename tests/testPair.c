@@ -45,7 +45,6 @@
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
-
 /* n is both particles per axis and box size:
  * particles are generated on a mesh with unit spacing
  */

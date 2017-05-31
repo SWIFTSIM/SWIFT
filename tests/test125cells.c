@@ -623,7 +623,7 @@ int main(int argc, char *argv[]) {
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
-    /* Initialise the particle cache. */
+/* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
     runner.ci_cache.count = 0;
     cache_init(&runner.ci_cache, 512);

@@ -1822,7 +1822,7 @@ void *runner_main(void *data) {
             runner_dopair1_branch_density(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dopair1_gradient(r, ci, cj);
+            runner_dopair1_branch_gradient(r, ci, cj);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
