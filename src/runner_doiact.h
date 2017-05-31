@@ -1125,9 +1125,9 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Have the cells been sorted? */
   if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
-    runner_do_sort(r, ci, (1 << sid), 1);
+    error("Interacting unsorted cells.");
   if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
+    error("Interacting unsorted cells.");
 
   /* Have the cells been sorted? */
   if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
@@ -2672,8 +2672,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
-  if (ci->split)
-    for (int k = 0; k < 8; k++)
+  if (ci->split) {
+    for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
         if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
             &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
@@ -2682,6 +2682,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         }
       }
     }
+  }
 
   /* Is this a single cell? */
   if (cj == NULL) {
