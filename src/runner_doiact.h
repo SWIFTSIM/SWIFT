@@ -884,8 +884,11 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param sid The direction of the pair
+ * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
+             const double *shift) {
 
   const struct engine *restrict e = r->e;
 
@@ -899,22 +902,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif
 
   TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
-
-  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
-    error("Interacting undrifted cells.");
-
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-
-  /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
-    runner_do_sort(r, ci, (1 << sid), 1);
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
-    runner_do_sort(r, cj, (1 << sid), 1);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1114,6 +1101,51 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif
 
   TIMER_TOC(TIMER_DOPAIR);
+}
+
+/**
+ * @brief Determine which version of DOPAIR1 needs to be called depending on the
+ * orientation of the cells or whether DOPAIR1 needs to be called at all.
+ *
+ * @param r #runner
+ * @param ci #cell ci
+ * @param cj #cell cj
+ *
+ */
+void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    error("Interacting undrifted cells.");
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+    runner_do_sort(r, ci, (1 << sid), 1);
+  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+    runner_do_sort(r, cj, (1 << sid), 1);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
+    error("Trying to interact unsorted cells.");
+
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+    (DOPAIR1_BRANCH == runner_dopair1_density_branch)
+  if (!sort_is_corner(sid))
+    runner_dopair1_density_vec(r, ci, cj, sid, shift);
+  else
+    DOPAIR1(r, ci, cj, sid, shift);
+#else
+  DOPAIR1(r, ci, cj, sid, shift);
+#endif
 }
 
 /**
@@ -2290,13 +2322,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
         cj->dx_max_sort > cj->dmin * space_maxreldx)
       runner_do_sort(r, cj, (1 << sid), 1);
 
-/* Compute the interactions. */
-#if (DOPAIR1 == runner_dopair1_density) && defined(WITH_VECTORIZATION) && \
-    defined(GADGET2_SPH)
-    runner_dopair1_density_vec(r, ci, cj);
-#else
-    DOPAIR1(r, ci, cj);
-#endif
+    /* Compute the interactions. */
+    DOPAIR1_BRANCH(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
