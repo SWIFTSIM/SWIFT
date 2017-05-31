@@ -46,7 +46,13 @@ if len(sys.argv) == 6:
     ignoreSmallRhoDh = int(sys.argv[5])
 else:
     ignoreSmallRhoDh = 0
-    
+
+# Get the particle properties being compared from the header.
+with open(file1, 'r') as f:
+  line = f.readline()
+  if 'ID' in line:
+    part_props = line.split()[1:]
+
 data1 = loadtxt(file1)
 data2 = loadtxt(file2)
 if fileTol != "":
@@ -100,7 +106,7 @@ for i in range(n_lines_to_check):
             rel_diff = 0.
 
         if( abs_diff > 1.1*absTol[j]):
-            print "Absolute difference larger than tolerance (%e) for particle %d, column %d:"%(absTol[j], i,j)
+            print "Absolute difference larger than tolerance (%e) for particle %d, column %s:"%(absTol[j], data1[i,0], part_props[j])
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s:       |a-b| = %e"%("Difference", abs_diff)
@@ -113,7 +119,7 @@ for i in range(n_lines_to_check):
         if ignoreSmallRhoDh and j == 8 and abs(data1[i,j]) < 2e-4: continue
         
         if( rel_diff > 1.1*relTol[j]):
-            print "Relative difference larger than tolerance (%e) for particle %d, column %d:"%(relTol[j], i,j)
+            print "Relative difference larger than tolerance (%e) for particle %d, column %s:"%(relTol[j], data1[i,0], part_props[j])
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s: |a-b|/|a+b| = %e"%("Difference", rel_diff)
