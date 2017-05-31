@@ -72,15 +72,15 @@ enum velocity_types {
  * @param vel The type of velocity field (0, random, divergent, rotating)
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
-    double density, long long *partId, double pert,
-    enum velocity_types vel) {
+                       double density, long long *partId, double pert,
+                       enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   struct cell *cell = malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
-        count * sizeof(struct part)) != 0) {
+                     count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->parts, count * sizeof(struct part));
@@ -93,14 +93,14 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
         part->x[0] =
-          offset[0] +
-          size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+            offset[0] +
+            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->x[1] =
-          offset[1] +
-          size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+            offset[1] +
+            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->x[2] =
-          offset[2] +
-          size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+            offset[2] +
+            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         switch (vel) {
           case velocity_zero:
             part->v[0] = 0.f;
@@ -216,39 +216,39 @@ void dump_particle_fields(char *fileName, struct cell *main_cell) {
 
   /* Write header */
   fprintf(file,
-      "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
-      "%13s %13s %13s\n",
-      "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
-      "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
+          "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
+          "%13s %13s %13s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
+          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
-        "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-        "%13e %13e %13e\n",
-        main_cell->parts[pid].id, main_cell->parts[pid].x[0],
-        main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
-        main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-        main_cell->parts[pid].v[2],
-        hydro_get_density(&main_cell->parts[pid]),
+            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%13e %13e %13e\n",
+            main_cell->parts[pid].id, main_cell->parts[pid].x[0],
+            main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
+            main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
+            main_cell->parts[pid].v[2],
+            hydro_get_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
-        0.f,
+            0.f,
 #else
-        main_cell->parts[pid].density.rho_dh,
+            main_cell->parts[pid].density.rho_dh,
 #endif
-        main_cell->parts[pid].density.wcount,
-        main_cell->parts[pid].density.wcount_dh,
+            main_cell->parts[pid].density.wcount,
+            main_cell->parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
-        main_cell->parts[pid].density.div_v,
-        main_cell->parts[pid].density.rot_v[0],
-        main_cell->parts[pid].density.rot_v[1],
-        main_cell->parts[pid].density.rot_v[2]
+            main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].density.rot_v[0],
+            main_cell->parts[pid].density.rot_v[1],
+            main_cell->parts[pid].density.rot_v[2]
 #else
-          0., 0., 0., 0.
+            0., 0., 0., 0.
 #endif
-          );
+            );
   }
   fclose(file);
 }
@@ -265,7 +265,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell) {
  * @return Non-zero value if difference found, 0 otherwise
  */
 int check_results(struct part *serial_parts, struct part *vec_parts, int count,
-    double threshold) {
+                  double threshold) {
   int result = 0;
 
   for (int i = 0; i < count; i++)
@@ -279,17 +279,20 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-    struct cell *cj);
+                                struct cell *cj);
 
-void test_boundary_conditions(struct cell **cells, struct runner runner, const int loc_i, const int loc_j, const int loc_k, const int dim, char *swiftOutputFileName, char *bruteForceOutputFileName) {
+void test_boundary_conditions(struct cell **cells, struct runner runner,
+                              const int loc_i, const int loc_j, const int loc_k,
+                              const int dim, char *swiftOutputFileName,
+                              char *bruteForceOutputFileName) {
 
   /* Store the main cell for future use */
-  struct cell *main_cell = cells[loc_i * (dim*dim) + loc_j * dim + loc_k];
+  struct cell *main_cell = cells[loc_i * (dim * dim) + loc_j * dim + loc_k];
 
   /* Zero the fields */
   for (int j = 0; j < 512; ++j) zero_particle_fields(cells[j]);
 
-  /* Run all the pairs */
+/* Run all the pairs */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 #ifdef WITH_VECTORIZATION
@@ -299,7 +302,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner, const i
   cache_init(&runner.cj_cache, 512);
 #endif
 
-  /* Now loop over all the neighbours of this cell 
+  /* Now loop over all the neighbours of this cell
    * and perform the pair interactions. */
   for (int ii = -1; ii < 2; ii++) {
     int iii = loc_i + ii;
@@ -312,10 +315,9 @@ void test_boundary_conditions(struct cell **cells, struct runner runner, const i
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
-        struct cell *cj = cells[iii * (dim*dim) + jjj * dim + kkk];
+        struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
         if (cj != main_cell) DOPAIR1(&runner, main_cell, cj);
-        
       }
     }
   }
@@ -339,7 +341,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner, const i
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
-  /* Now loop over all the neighbours of this cell 
+  /* Now loop over all the neighbours of this cell
    * and perform the pair interactions. */
   for (int ii = -1; ii < 2; ii++) {
     int iii = loc_i + ii;
@@ -352,10 +354,9 @@ void test_boundary_conditions(struct cell **cells, struct runner runner, const i
         kkk = (kkk + dim) % dim;
 
         /* Get the neighbouring cell */
-        struct cell *cj = cells[iii * (dim*dim) + jjj * dim + kkk];
+        struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
         if (cj != main_cell) pairs_all_density(&runner, main_cell, cj);
-        
       }
     }
   }
@@ -492,61 +493,90 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < dim; ++j) {
       for (int k = 0; k < dim; ++k) {
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * (dim*dim) + j * dim + k] = make_cell(particles, offset, size, h, rho,
-            &partId, perturbation, vel);
+        cells[i * (dim * dim) + j * dim + k] = make_cell(
+            particles, offset, size, h, rho, &partId, perturbation, vel);
 
-        runner_do_drift_part(&runner, cells[i * (dim*dim) + j * dim + k], 0);
+        runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_sort(&runner, cells[i * (dim*dim) + j * dim + k], 0x1FFF, 0);
+        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF,
+                       0);
       }
     }
   }
 
   /* Create output file names. */
   sprintf(swiftOutputFileName, "swift_periodic_BC_%s.dat",
-      outputFileNameExtension);
+          outputFileNameExtension);
   sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%s.dat",
-      outputFileNameExtension);
+          outputFileNameExtension);
 
   /* Delete files if they already exist. */
   remove(swiftOutputFileName);
   remove(bruteForceOutputFileName);
- 
+
   const int half_dim = (dim - 1) / 2;
 
   /* Test the periodic boundary conditions for each of the 8 corners. */
-  test_boundary_conditions(cells, runner, 0, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, 0, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, 0, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, dim - 1, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, dim - 1, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, dim - 1, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, dim - 1, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, 0, 0, dim, swiftOutputFileName,
+                           bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, 0, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, 0, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, 0, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, dim - 1, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, dim - 1, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, dim - 1, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, dim - 1, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
 
-  /* Test the boundary conditions for cells at the centre of each face of the box. */
-  test_boundary_conditions(cells, runner, half_dim, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, half_dim, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, half_dim, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, half_dim, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, half_dim, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, half_dim, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  /* Test the boundary conditions for cells at the centre of each face of the
+   * box. */
+  test_boundary_conditions(cells, runner, half_dim, half_dim, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, half_dim, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, half_dim, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, 0, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
 
-  /* Test the boundary conditions for cells at the centre of each edge of the box. */
-  test_boundary_conditions(cells, runner, half_dim, dim - 1, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, half_dim, dim - 1, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, dim - 1, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  
-  test_boundary_conditions(cells, runner, 0, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, half_dim, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, half_dim, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  
-  test_boundary_conditions(cells, runner, half_dim, 0, 0, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, dim - 1, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, half_dim, 0, dim - 1, dim, swiftOutputFileName, bruteForceOutputFileName);
-  test_boundary_conditions(cells, runner, 0, 0, half_dim, dim, swiftOutputFileName, bruteForceOutputFileName);
+  /* Test the boundary conditions for cells at the centre of each edge of the
+   * box. */
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, dim - 1, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, dim - 1, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, dim - 1, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+
+  test_boundary_conditions(cells, runner, 0, half_dim, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, half_dim, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, half_dim, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+
+  test_boundary_conditions(cells, runner, half_dim, 0, 0, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, dim - 1, 0, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, half_dim, 0, dim - 1, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
+  test_boundary_conditions(cells, runner, 0, 0, half_dim, dim,
+                           swiftOutputFileName, bruteForceOutputFileName);
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 512; ++i) clean_up(cells[i]);

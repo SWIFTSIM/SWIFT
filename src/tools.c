@@ -37,8 +37,8 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "part.h"
-#include "runner.h"
 #include "periodic.h"
+#include "runner.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -182,6 +182,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -198,7 +199,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
-        dx[k] = nearest(dx[k], r->e->s->dim[k]);
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -226,7 +227,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
-        dx[k] = nearest(dx[k], r->e->s->dim[k]);
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -244,6 +245,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -262,6 +264,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -291,6 +294,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
