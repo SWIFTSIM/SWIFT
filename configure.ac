@@ -861,6 +861,12 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
+# Make sure the latest git revision string gets included
+touch src/version.c
+
+# Generate output.
+AC_OUTPUT
+
 # Report general configuration.
 AC_MSG_RESULT([
    Compiler        : $CC
@@ -894,9 +900,3 @@ AC_MSG_RESULT([
    Debugging checks  : $enable_debugging_checks
    Gravity checks    : $gravity_force_checks
 ])
-
-# Make sure the latest git revision string gets included
-touch src/version.c
-
-# Generate output.
-AC_OUTPUT

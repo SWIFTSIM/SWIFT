@@ -34,7 +34,7 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
-#define DOPAIR1 runner_dopair1_density_vec
+#define DOPAIR1 runner_dopair1_branch_density
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
@@ -277,9 +277,8 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 /* Just a forward declaration... */
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 
 void test_boundary_conditions(struct cell **cells, struct runner runner,
                               const int loc_i, const int loc_j, const int loc_k,
