@@ -4,7 +4,7 @@ for v in {0..3}
 do
     echo ""
 	
-    rm -f brute_force_periodic_BC_standard.dat swift_periodic _BC_standard.dat
+    rm -f brute_force_periodic_BC_standard.dat swift_periodic_BC_standard.dat
 
     echo "Running ./testPeriodicBC -n 6 -r 1 -d 0 -f standard -v $v"
     ./testPeriodicBC -n 6 -r 1 -d 0 -f standard -v $v
