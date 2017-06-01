@@ -210,9 +210,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   const float irho = 1.f / p->rho;
 
-  /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
-
   /* Finish calculation of the velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
   p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
@@ -220,6 +217,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * irho;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  /* Re-set problematic values */
+  p->rho_dh = 0.f;
+  p->density.wcount_dh = 0.f;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -248,6 +263,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float u = p->u;
   const float fc = p->force.soundspeed =
       sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
+
+  /* Compute the derivative term */
+  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh / p->rho);
 
   /* Compute the P/Omega/rho2. */
   xp->omega = 1.0f + hydro_dimension_inv * h * p->rho_dh / p->rho;

@@ -367,6 +367,19 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 }
 
 /**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part* restrict p, struct xpart* restrict xp) {
+
+  /* Re-set problematic values */
+  p->density.wcount_dh = 0.f;
+}
+
+/**
  * @brief Prepare a particle for the gradient calculation.
  *
  * The name of this method is confusing, as this method is really called after

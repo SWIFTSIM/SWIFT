@@ -708,6 +708,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (p->density.wcount == kernel_root * kernel_norm)
+              hydro_part_has_no_neighbours(p, xp);
           }
         }
 
