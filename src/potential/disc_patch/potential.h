@@ -191,7 +191,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
     /* Acc. 2 pi sigma tanh(z/b) [1/2 + 1/2cos((z-zmax)/(pi z_trans))] */
     a_z = reduction_factor * norm_over_G * tanhf(abs_dz * b_inv) *
-          (0.5f + 0.5f * cosf((abs_dz - z_trunc) * z_trans_inv));
+      (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dz - z_trunc) * z_trans_inv));
   } else {
 
     /* Acc. 0 */
@@ -310,7 +310,7 @@ static INLINE void potential_init_backend(
   potential->z_trans = potential->z_max - potential->z_trunc;
 
   if (potential->z_trans != 0.f)
-    potential->z_trans_inv = 1. / (M_PI * potential->z_trans);
+    potential->z_trans_inv = 1. / potential->z_trans;
   else
     potential->z_trans_inv = FLT_MAX;
 
