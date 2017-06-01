@@ -461,12 +461,16 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   /* Otherwise, just sort. */
   else {
 
-    /* Reset the sort distance if we are in a local cell */
+    /* Reset the sort distance */
     if (c->sorted == 0) {
-      for (int k = 0; k < count; k++) {
-        xparts[k].x_diff_sort[0] = 0.0f;
-        xparts[k].x_diff_sort[1] = 0.0f;
-        xparts[k].x_diff_sort[2] = 0.0f;
+
+      /* And the individual sort distances if we are a local cell */
+      if (xparts != NULL) {
+        for (int k = 0; k < count; k++) {
+          xparts[k].x_diff_sort[0] = 0.0f;
+          xparts[k].x_diff_sort[1] = 0.0f;
+          xparts[k].x_diff_sort[2] = 0.0f;
+        }
       }
       c->dx_max_sort_old = c->dx_max_sort = 0.f;
     }
