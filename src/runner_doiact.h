@@ -1124,14 +1124,12 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || ci->dx_max_sort > space_maxreldx * ci->dmin)
+  if (!(ci->sorted & (1 << sid)) ||
+      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) || cj->dx_max_sort > space_maxreldx * cj->dmin)
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
-
-  /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid)))
-    error("Trying to interact unsorted cells.");
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (DOPAIR1_BRANCH == runner_dopair1_density_branch)
