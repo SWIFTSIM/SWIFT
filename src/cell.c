@@ -1359,7 +1359,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                ci->dmin &&
            2.f * kernel_gamma * space_stretch *
                    (cj->h_max_old + cj->dx_max_old) <
-               ci->dmin) {
+               cj->dmin) {
 
     /* Get the type of pair if not specified explicitly. */
     double shift[3];
