@@ -2100,7 +2100,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
           ci->dmin &&
       2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
-          ci->dmin) {
+          cj->dmin) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2399,7 +2399,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
           ci->dmin &&
       2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
-          ci->dmin) {
+          cj->dmin) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2710,7 +2710,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         2.f * kernel_gamma * space_stretch * (ci->h_max_old + ci->dx_max_old) <
             ci->dmin &&
         2.f * kernel_gamma * space_stretch * (cj->h_max_old + cj->dx_max_old) <
-            ci->dmin) {
+            cj->dmin) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};
