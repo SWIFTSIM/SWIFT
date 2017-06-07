@@ -46,7 +46,7 @@ SPH:
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  max_volume_change:     2.       # (Optional) Maximal allowed change of kernel volume over one time-step
+  max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 # Parameters for the self-gravity scheme
