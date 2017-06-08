@@ -1317,6 +1317,19 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 }
 
 /**
+ * @brief Can a task recurse to a lower level based on the staus of the particles
+ * in the cell.
+ *
+ * @param c The #cell.
+ */
+int cell_can_recurse_in_pair_task(const struct cell *c) {
+
+  return c->split &&
+         (2.f * kernel_gamma * space_stretch * (c->h_max_old + c->dx_max_old) <
+          c->dmin);
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the sort tasks along the way.
  */
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
@@ -1353,13 +1366,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, pair interation, recurse? */
-  else if (ci->split && cj->split &&
-           2.f * kernel_gamma * space_stretch *
-                   (ci->h_max_old + ci->dx_max_old) <
-               ci->dmin &&
-           2.f * kernel_gamma * space_stretch *
-                   (cj->h_max_old + cj->dx_max_old) <
-               cj->dmin) {
+  else if (cell_can_recurse_in_pair_task(ci) &&
+           cell_can_recurse_in_pair_task(cj)) {
 
     /* Get the type of pair if not specified explicitly. */
     double shift[3];

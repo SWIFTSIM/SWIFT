@@ -388,5 +388,5 @@ void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s);
-
+int cell_can_recurse_in_pair_task(const struct cell *c);
 #endif /* SWIFT_CELL_H */
