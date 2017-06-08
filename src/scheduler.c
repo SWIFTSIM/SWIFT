@@ -180,7 +180,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
-      const double width = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -189,7 +188,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split and the task does not violate h ? */
-      if (ci->split && 2.f * kernel_gamma * ci->h_max * space_stretch < width) {
+      if (cell_can_split_task(ci)) {
 
         /* Make a sub? */
         if (scheduler_dosub && /* Note division here to avoid overflow */
@@ -260,13 +259,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       double shift[3];
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
-      const double width_i = ci->dmin;
-      const double width_j = cj->dmin;
-
       /* Should this task be split-up? */
-      if (ci->split && cj->split &&
-          2.f * kernel_gamma * space_stretch * ci->h_max < width_i &&
-          2.f * kernel_gamma * space_stretch * cj->h_max < width_j) {
+      if (cell_can_split_task(ci) && cell_can_split_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&

@@ -2569,9 +2569,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype != task_subtype_density) continue;
 
       /* Too much particle movement? */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
-          cj->dmin)
-        *rebuild_space = 1;
+      if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
 
       /* Set the correct sorting flags */
       if (t->type == task_type_pair) {

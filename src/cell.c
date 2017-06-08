@@ -1317,16 +1317,44 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 }
 
 /**
- * @brief Can a task recurse to a lower level based on the staus of the particles
+ * @brief Can a task recurse to a lower level based on the staus of the
+ * particles
  * in the cell.
  *
  * @param c The #cell.
  */
 int cell_can_recurse_in_pair_task(const struct cell *c) {
 
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
   return c->split &&
-         (2.f * kernel_gamma * space_stretch * (c->h_max_old + c->dx_max_old) <
-          c->dmin);
+         ((kernel_gamma * c->h_max_old + c->dx_max_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a task associated with a cell be split into smaller sub-tasks.
+ *
+ * @param c The #cell.
+ */
+int cell_can_split_task(const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are build after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+int cell_need_rebuild_for_pair(const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  return (kernel_gamma * max(ci->h_max, cj->h_max) + ci->dx_max_part +
+              cj->dx_max_part >
+          cj->dmin);
 }
 
 /**
@@ -1690,9 +1718,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
-          cj->dmin)
-        rebuild = 1;
+      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv flags. */
