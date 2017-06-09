@@ -1805,7 +1805,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
-  if (c->drift_part != NULL) scheduler_activate(s, c->drift_part);
   if (c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
