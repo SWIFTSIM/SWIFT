@@ -389,7 +389,9 @@ void cell_store_pre_drift_values(struct cell *c);
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s);
 int cell_can_recurse_in_pair_task(const struct cell *c);
-int cell_can_split_task(const struct cell *c);
+int cell_can_recurse_in_self_task(const struct cell *c);
+int cell_can_split_pair_task(const struct cell *c);
+int cell_can_split_self_task(const struct cell *c);
 int cell_need_rebuild_for_pair(const struct cell *ci, const struct cell *cj);
 
 #endif /* SWIFT_CELL_H */

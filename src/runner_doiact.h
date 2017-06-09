@@ -2333,7 +2333,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_task(ci)) {
+  if (cell_can_recurse_in_self_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2628,7 +2628,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_task(ci)) {
+  if (cell_can_recurse_in_self_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2678,7 +2678,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (cj == NULL) {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_task(ci)) {
+    if (cell_can_recurse_in_self_task(ci)) {
 
       /* Loop over all progeny. */
       DOSUB_SUBSET(r, sub, parts, ind, count, NULL, -1, 0);
