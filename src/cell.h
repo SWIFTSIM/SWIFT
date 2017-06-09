@@ -31,15 +31,16 @@
 
 /* Local includes. */
 #include "align.h"
+#include "kernel_hydro.h"
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "space.h"
 #include "task.h"
 #include "timeline.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
-struct space;
 struct scheduler;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
@@ -388,10 +389,91 @@ void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s);
-int cell_can_recurse_in_pair_task(const struct cell *c);
-int cell_can_recurse_in_self_task(const struct cell *c);
-int cell_can_split_pair_task(const struct cell *c);
-int cell_can_split_self_task(const struct cell *c);
-int cell_need_rebuild_for_pair(const struct cell *ci, const struct cell *cj);
+
+/* Inlined functions (for speed). */
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split &&
+         ((kernel_gamma * c->h_max_old + c->dx_max_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* operations will be executed. So no need for the particle to be at exactly
+   */
+  /* the right place. */
+  return c->split;
+}
+
+/**
+ * @brief Can a pair task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are create after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* tasks will be created. So no need to check for h_max */
+  return c->split;
+}
+
+/**
+ * @brief Have particles in a pair of cells moved too much and require a rebuild
+ * ?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
+    const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  return (kernel_gamma * max(ci->h_max, cj->h_max) + ci->dx_max_part +
+              cj->dx_max_part >
+          cj->dmin);
+}
 
 #endif /* SWIFT_CELL_H */

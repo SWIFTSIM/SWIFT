@@ -30,12 +30,14 @@
 #include <stddef.h>
 
 /* Includes. */
-#include "cell.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
 #include "space.h"
+
+/* Avoid cyclic inclusions */
+struct cell;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
