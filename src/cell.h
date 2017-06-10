@@ -455,7 +455,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_task(
   /* Is the cell split ? */
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
-  return c->split;
+  return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
 }
 
 /**
