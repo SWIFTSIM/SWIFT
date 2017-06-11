@@ -1338,17 +1338,21 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     if (!cell_is_active(ci, e)) return;
 
     /* Recurse? */
-    if (ci->split) {
-      for (int j = 0; j < 8; j++)
+    if (cell_can_recurse_in_self_task(ci)) {
+
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
           cell_activate_subcell_tasks(ci->progeny[j], NULL, s);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               cell_activate_subcell_tasks(ci->progeny[j], ci->progeny[k], s);
         }
+      }
+    } else {
 
-      /* Activate drift task, if it is present. */
-      if (ci->drift_part != NULL) scheduler_activate(s, ci->drift_part);
+      /* We have reached the bottom of the tree: activate drift */
+      scheduler_activate(s, ci->drift_part);
     }
   }
 
@@ -1558,7 +1562,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
 
   }
 
-  /* Otherwise, activate the sorts. */
+  /* Otherwise, activate the sorts and drifts. */
   else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
 
     /* Get the type of pair if not specified explicitly. */
@@ -1575,7 +1579,10 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
     if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
 
+    /* Do we need to sort ci ? */
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
+
+      /* Climb up the tree to active the sorts in that direction */
       for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
         if (finger->requires_sorts == ti_current) {
           atomic_or(&finger->sorts->flags, finger->sorted);
@@ -1588,7 +1595,11 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
       atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
     }
+
+    /* Do we need to sort cj ? */
     if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
+
+      /* Climb up the tree to active the sorts in that direction */
       for (struct cell *finger = cj; finger != NULL; finger = finger->parent) {
         if (finger->requires_sorts == ti_current) {
           atomic_or(&finger->sorts->flags, finger->sorted);
