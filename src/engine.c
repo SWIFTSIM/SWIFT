@@ -2547,7 +2547,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
 
       /* Store current values of dx_max and h_max. */
-      if (t->type == task_type_sub_self) {
+      if (t->type == task_type_sub_self && t->subtype == task_subtype_density) {
         cell_activate_subcell_tasks(t->ci, NULL, s);
       }
     }
