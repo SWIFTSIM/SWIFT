@@ -634,8 +634,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
-  /* Have the cells been sorted? */
-  if (!(cj->sorted & (1 << sid))) error("Interacting unsorted cells.");
+  /* Has the cell cj been sorted? */
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
