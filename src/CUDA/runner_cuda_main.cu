@@ -1,6 +1,7 @@
 
 #include "queue_cuda.h"
 #include "task_cuda.h"
+#include "../kernel_hydro.h":
 
 /*Definition of particle structures (SoA on GPU) */
 struct particle_arrays{
@@ -64,6 +65,16 @@ __device__ struct unload_queue;
 /* Array of tasks on the device */
 __device__ struct task_cuda *tasks;
 
+/* Simulation constants */
+__constant__ integertime_t ti_current;
+__constant__ double dim[3];
+
+/* Density kernel function */
+__constant__ cuda_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
+
+__device__ int cuda_cell_is_active( struct cell_cuda *c ) {
+  return (c->ti_end_min == e->ti_current);
+}
 
 
 __device__ void load_cell(int cell_index)
@@ -226,6 +237,141 @@ __device__ void unload_cell( int cell_index ) {
     current->time_bin = cuda_parts.time_bin[start+i];
   }
 
+}
+
+/* Task function to execute a density task. Uses naive n^2 algorithm without symmetry*/
+/* To do density between Cell i and cell j this needs to be called twice. */
+__device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
+ 
+ /* Are these cells active? */
+  if( !cell_is_active(ci) && !cell_is_active(cj) ) return;
+
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  int part_i = ci->first_part;
+  int part_j = cj->first_part;
+  float rho, rho_dh, div_v, wcount, wcount_dh;
+  float3 rot_v;
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  /* Deal with periodicity concerns. */
+  for(int k = 0; k < 3; k++ ) {
+    if( cj->loc[k] - ci->loc[k] < dim[k] / 2)
+      shift[k] = dim[k];
+    else if( cj->loc[k] - ci->loc[k] > dim[k] / 2 )
+      shift[k] = dim[k]
+  }
+
+  /* Loop over the parts in cell ci */
+  for( int pid = part_i + threadidx.x; pid < part_i+count_i; pid += blockDim.x ){
+
+    const float hi = cuda_parts.h[pid];
+    
+    double pix[3];
+    pix[0] = cuda_parts.x_x[pid] - shift[0];
+    pix[1] = cuda_parts.x_y[pid] - shift[1];
+    pix[2] = cuda_parts.x_z[pid] - shift[2];
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Reset local values. */
+    rho = 0.0f; rho_dh = 0.0f; div_v = 0.0f; wcount = 0.0f; wcount_dh = 0.0f;
+    rot_v.x = 0.0f; rot_v.y = 0.0f; rot_v;z = 0.0f;
+
+
+    /* Loop over the parts in cj. */
+    /* TODO May be possible to optimize this loop ordering.*/
+    for( int pjd = 0; pjd < count_j; pjd++ ) {
+
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      dx[0] = pix[0] - cuda_parts.x_x[pjd];
+      r2 += dx[0] * dx[0];
+      dx[1] = pix[1] - cuda_parts.x_y[pjd];
+      r2 += dx[1] * dx[1];
+      dx[2] = pix[2] - cuda_parts.x_z[pjd];
+      r2 += dx[2] * dx[2];
+
+      /* If in range then interact. */
+      if( r2 < hig2 ) {
+        float wi, wi_dx;
+        float dv[3], curlvr[3];
+
+        /* Load mass on particle pj. */
+        const float mj = cuda_parts.mass[pjd];
+
+        /* Get r and 1/r */
+        const float r = sqrtf(r2);
+        const float ri = 1.0f / r;
+
+        /* Compute the kernel function */
+        const float hi_inv = 1.0f / hi;
+        const float ui = r * hi_inv;
+        
+        /* Go to the range [0,1] from [0,H] */
+        const float x = ui * kernel_gamma_inv;
+
+        /* Pick the correct branch of the kernel */
+        const int temp = (int)(x* kernel_ivals_f);
+        const int ind = temp > kernel_ivals ? kernel_ivals : temp;
+        *float coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+
+        /* First two terms of the polynomial */
+        float w = coeffs[0] * x + coeffs[1];
+        float dw_dx = coeffs[0];
+
+        /* Compute the rest of the polynomial */
+        for( int k = 2; k < kernel_degree; k++) {
+          dw_dx = dw_dx * x + w;
+          w = x * w + coeffs[k];
+        }
+        /* Complete kernel computation. */
+        w = w * kernel_constant * kernel_gamma_inv_dim;
+        dw_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
+
+        /* Compute contribution to the density. */
+        rho += mj * w;
+        rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
+
+        /* Compute contribution to the number of neighbours */
+        wcount += w;
+        wcount_dh -= ui * dw_dx
+
+        const float fac = mj * dw_dx * ri;
+
+        /* Compute dv dot r */
+        float3 piv, pjv;
+        piv = cuda_parts.v[pid];
+        pjv = cuda_parts.v[pjd];
+        dv[0] = piv.x - pjv.x;
+        dv[1] = piv.y - pjv.y;
+        dv[2] = piv.z - pjv.z;
+        const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+        div_v -= fac*dvdr;
+
+        curlvr[0] = dx[1] * dx[2] - dv[2] * dx[1];
+        curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+        curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+        rot_v.x += fac*curlvr[0];
+        rot_v.y += fac*curlvr[1];
+        rot_v.z += fac*curlvr[2];
+        
+        //TODO Interact.
+      } 
+    }//Loop over cj.
+    /* Write data for particle pid back to global stores. */
+    atomicAdd( &cuda_parts.rho[pid], rho);
+    atomicAdd( &cuda_parts.rho_dh[pid], rho_dh);
+    atomicAdd( &cuda_parts.wcount[pid], wcount);
+    atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
+    atomicAdd( &cuda_parts.div_v[pid], div_v);
+    atomic_add( &cuda_parts.rot_v[pid].x, rot_v.x);
+    atomic_add( &cuda_parts.rot_v[pid].y, rot_v.y);
+    atomic_add( &cuda_parts.rot_v[pid].z, rot_v.z);
+
+  }//Loop over ci.
 }
 
 /* Runner function to retrieve a task index from a queue. */
