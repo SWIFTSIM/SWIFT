@@ -41,6 +41,9 @@ struct task_cuda {
   /* Pointer to the CPU task used for initialisation */
   struct task *task;
 
+  /* Size of unlock array during initialisation. */
+  int size_unlocks;
+
 }
 
 
