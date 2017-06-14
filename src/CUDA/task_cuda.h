@@ -38,6 +38,9 @@ struct task_cuda {
   /* Is this task implicit (may not need on GPU?) */
   char implicit;
 
+  /* Pointer to the CPU task used for initialisation */
+  struct task *task;
+
 }
 
 

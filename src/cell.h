@@ -334,6 +334,14 @@ struct cell {
   char subtasks_executed[64];
 #endif
 
+#ifdef WITH_CUDA
+  /* Gives the cells a unique indentifier (slash index). */
+  int cuda_ID;
+
+  /* ID of the cells' load and unload task used for dependencies. */
+  int load_task, unload_task;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */

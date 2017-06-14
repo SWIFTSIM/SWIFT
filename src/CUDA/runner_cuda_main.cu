@@ -1,4 +1,5 @@
 
+#include "runner_cuda_main.h"
 #include "queue_cuda.h"
 #include "task_cuda.h"
 #include "../kernel_hydro.h"
@@ -66,9 +67,18 @@ __device__ struct unload_queue;
 /* Array of tasks on the device */
 __device__ struct task_cuda *tasks;
 
+/* Array of cuda tasks on the host */
+struct task_cuda *tasks_host;
+
+/* Array of unlocks on the device*/
+__device__ int *cuda_unlocks;
+
+/* Array of unlocks on the host. */
+int *host_unlocks;
+
 /* Simulation constants */
-__constant__ integertime_t ti_current;
-__constant__ double dim[3];
+__device__ __constant__ integertime_t ti_current;
+__device__ __constant__ double dim[3];
 
 /* Density kernel function */
 __constant__ cuda_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
@@ -621,3 +631,343 @@ __global__ void swift_device_kernel( )
 
 }
 
+/* Host function to check cuda functions don't return errors */
+__host__ inline void cudaErrCheck( cudaError_t status)
+{
+  if(status != cudaSuccess)
+  {
+    error(cudaGetErrorString(status);
+  }
+}
+
+/* Host function to give all the cells the IDs required for CUDA order and tasks. */
+__host__ void cell_IDs(struct cell *c, int *k){
+  int i;
+  c->cudaID = *k;
+  *k = *k + 1;
+  if(c->split){
+    for(i = 0; i < 8; i++)
+    {
+      if(c->progeny[i] != NULL){
+        cell_IDs(&c->progeny[i], k);
+      }
+    }
+  }
+
+}
+
+/* Host function to create the load, unload and implicit tasks */
+__host__ void create_transfer_tasks(struct cell *c, int *k, int parent_load_task, int parent_unload_task)
+{
+  tasks_host[*k].unlocks = malloc(sizeof(int) * 9); //For now we create CPU storage for these unlocks for each task. No task should have more than 9 unlocks to other transfer tasks.
+  tasks_host[*k].nr_unlock_tasks = 0;
+  tasks_host[*k].size_unlocks = 9;
+  if(c->split){
+
+    /* If the task is split we create implicit tasks to deal with dependencies. */
+    tasks_host[*k].type = type_implicit_load;
+    tasks_host[*k].ci = c->cuda_ID;
+    tasks_host[*k].cj = -1; //These tasks operate on a single cell.
+    tasks_host[*k].weight = c->count;
+    tasks_host[*k].wait = 0;
+    tasks_host[*k].subtype = task_subtype_none;
+    tasks_host[*k].skip = 0;
+    tasks_host[*k].implicit = 0;
+    tasks_host[*k].task = NULL;
+    /* The load implicit tasks unlocks the parent's task */
+    if(parent_load_task >= 0){
+      tasks_host[*k].unlocks[tasks_host[*k].nr_unlock_tasks++] = parent_load_task;
+    }
+    c->load_task = *k;
+    *k = *k + 1;
+
+    /* Create the implicit unload task. */
+    tasks_host[*k].unlocks = malloc(sizeof(int) * 9); //For now we create CPU storage for these unlocks for each task. No task should have more than 9 unlocks to other transfer tasks.
+    tasks_host[*k].nr_unlock_tasks = 0;
+    tasks_host[*k].size_unlocks = 9;
+    tasks_host[*k].type = type_implicit_unload;
+    tasks_host[*k].ci = c->cuda_ID;
+    tasks_host[*k].cj = -1; //These tasks operate on a single cell.
+    tasks_host[*k].weight = c->count;
+    tasks_host[*k].wait = 0;
+    tasks_host[*k].subtype = task_subtype_none;
+    tasks_host[*k].skip = 0;
+    tasks_host[*k].implicit = 0;
+    tasks_host[*k].task = NULL;
+    
+    /* The unload implicit task is unlocked by the parent task */
+    if( parent_unload_task >= 0 ){
+      tasks_host[parent_unload_task].unlocks[tasks_host[parent_unload_task].nr_unlock_tasks++] = *k;
+    }
+    c->unload_task = *k;
+    *k = *k + 1;
+
+    /* Recurse down the tree. */
+    int load = *k-2;
+    int unload = *k-1;
+    for(int i = 0; i < 8; i++ )
+    {
+      if(c->progeny[i] != NULL)
+        create_transfer_tasks( &c->progeny[i] , k, load, unload);
+    }
+
+  }else{
+    /* Create the load task*/
+    tasks_host[*k].type = type_load;
+    tasks_host[*k].ci = c->cuda_ID;
+    tasks_host[*k].cj = -1; //These tasks operate on a single cell.
+    tasks_host[*k].weight = c->count;
+    tasks_host[*k].wait = 0;
+    tasks_host[*k].subtype = task_subtype_none;
+    tasks_host[*k].skip = 0;
+    tasks_host[*k].implicit = 0;
+    tasks_host[*k].task = NULL;
+    /* This load task unlocks the parent's task. */
+    if(parent_load_task >= 0){
+      tasks_host[*k].unlocks[tasks_host[*k].nr_unlock_tasks++] = parent_load_task;
+    }
+    c->load_task = *k;
+    *k = *k + 1;
+
+    /* Create the unload task */
+    tasks_host[*k].unlocks = NULL; //unload tasks never unlock anything, end of tree.
+    tasks_host[*k].nr_unlock_tasks = 0;
+    tasks_host[*k].type = type_unload;
+    tasks_host[*k].ci = c->cuda_ID;
+    tasks_host[*k].cj = -1; //These tasks operate on a single cell.
+    tasks_host[*k].weight = c->count;
+    tasks_host[*k].wait = 0;
+    tasks_host[*k].subtype = task_subtype_none;
+    tasks_host[*k].skip = 0;
+    tasks_host[*k].implicit = 0;
+    tasks_host[*k].task = NULL;
+    /* The unload task is unlocked by the parent task */
+    if(parent_unload_task >= 0){
+      tasks_host[parent_unload_task].unlocks[tasks_host[parent_unload_task].nr_unlock_tasks++] =  *k;
+    }
+    c->unload_task = *k;
+    *k = *k + 1;
+  }
+}
+
+/* Host function to create the GPU tasks. Should be called whenever the tasks are recreated */
+__host__ void create_tasks(struct engine *e){
+
+  struct scheduler *sched = &e->sched;
+  struct space *s = &e->s;
+  int num_gpu_tasks = 0;
+  int i, k;
+  struct cell *c;
+  static int firstrun = 0;
+
+  /* We only create density, ghost and force tasks on the device at current. */
+  for(i = 0; i < sched->nr_tasks; i++)
+  {
+    if(sched->tasks[i].subtype == task_subtype_density || sched->tasks[i].subtype == task_subtype_force ||
+        sched->tasks[i].type == task_type_ghost )
+        num_gpu_tasks++;
+  }
+
+  /* We also create a load and unload task for every cell in the system */
+  num_gpu_tasks += s->tot_cells * 2;
+
+  /* Allocate page-locked memory for the host version of the GPU tasks. */
+  cudaErrCheck( cudaMallocHost( (void**) &tasks_host, num_gpu_tasks * sizeof(struct task_cuda ) ) );
+
+  k = 0;
+  /* Loop through the cells and give them all an ID. */
+  for(i = 0; i < cdim[0]*cdim[1]*cdim[2]; i++)
+  {
+    c = &s->cells_top[i];
+    cell_IDs(c, &k);
+  } 
+
+  k = 0
+  /* Create the tasks. */
+  for(i = 0; i < sched->nr_tasks; i++){
+
+    if(sched->tasks[i].subtype == task_subtype_density || sched->tasks[i].subtype == task_subtype_force ||
+        sched->tasks[i].type == task_type_ghost ){
+      /* Copy the data to the CUDA task. */
+      struct task *t = &sched->tasks[i];
+      tasks_host[k].flags = t->flags;
+      tasks_host[k].rank = t->rank;
+      tasks_host[k].weight = t->weight;
+      tasks_host[k].nr_unlock_tasks = (int) t->nr_unlock_tasks;
+      tasks_host[k].type = t->type;
+      tasks_host[k].subtype = t->subtype;
+      tasks_host[k].skip = t->skip;
+      tasks_host[k].implicit = t->implicit;
+      tasks_host[*k].size_unlocks = 0;
+
+      tasks_host[k].ci = t->ci->cuda_ID;
+      tasks_host[k].cj = t->cj->cuda_ID;
+
+      /* We have a double linked structure because its easier to create. */
+      tasks_host[k].task = t;
+      t->cuda_task = k;
+      k++;
+    }
+  }
+
+  /* Create the data transfer tasks. */
+  for(i = 0; i < cdim[0]*cdim[1]*cdim[2]; i++)
+  {
+    c = &s->cells_top[i];
+    create_transfer_tasks( c , k, -1, -1);
+  } 
+
+  /*TODO Check we got this right initially.. */
+  if(k != num_gpu_tasks){
+    error("We created a different number of GPU tasks than expected");
+  }
+
+  /* Now we have the tasks, time to start working on the dependencies. */
+  
+  /* Loop through the tasks */
+  for(i = 0; i < num_gpu_tasks; i++)
+  {
+    /* The transfer tasks dependencies are done anyway so skip them. */
+    if(tasks_host[i].type == type_load || tasks_host[i].type == type_unload || 
+       tasks_host[i].type == type_implicit_load || tasks_host[i].type == type_implicit_unload )
+        continue;
+
+    /* Get the task. */
+    struct task_cuda t = &tasks_host[i];
+
+    /* How many dependencies did the CPU task have. */
+    int deps = t->task->nr_unlock_tasks;
+
+    /* If it is a force task then it also unlocks the unload tasks. */ 
+    if(t->subtype == task_subtype_force){
+      deps++;
+      /* If its a pair force task then it needs 2 unlocks. */
+      if( t->type == task_type_pair ){
+        deps++;
+      }
+    }
+
+    /* Allocate some CPU memory for the unlocks. */
+    t->unlocks = malloc( sizeof(int) * deps );
+    t->size_unlocks = deps;
+
+    /* Copy the dependencies */
+    for(int j = 0; j < t->task->nr_unlock_tasks; j++){
+      t->unlocks[t->nr_unlock_tasks++] = t->task->unlocks[j]->cuda_task;
+    }
+
+    /* If it is a force task then add the unload tasks.*/
+    if(t->subtype == task_subtype_force){
+      t->unlocks[t->nr_unlock_tasks++] = t->task->ci->unload_task;
+      if(t->type == task_type_pair ){
+        t->unlocks[t->nr_unlock_tasks++] = t->task->cj->unload_task;
+      }
+    }
+
+    /* If it is a density task then it is unlocked by the load task. */
+    if(t->subtype == task_subtype_density){
+      /* We may need to stretch the load task's unlocks */
+      if(tasks_host[t->ci->load_task].nr_unlock_tasks == 
+        tasks_host[t->ci->load_task].size_unlocks){
+      
+        int *temp = malloc(sizeof(int) * tasks_host[t->ci->lock_task].size_unlocks * 2);
+        memcpy(temp, tasks_host[t->ci->load_task].unlocks,
+           sizeof(int) * tasks_host[t->ci->load_task].nr_unlock_tasks );
+        free(tasks_host[t->ci->load_task].unlocks);
+        tasks_host[t->ci->load_task].unlocks = temp;
+
+      }
+      tasks_host[t->ci->load_task].unlock[tasks_host[t->ci->load_task].nr_unlock_tasks++] = i;
+
+      if( t->type == task_type_pair ){
+        /* We may need to stretch the load task's unlocks */
+        if(tasks_host[t->cj->load_task].nr_unlock_tasks == 
+          tasks_host[t->cj->load_task].size_unlocks){
+        
+          int *temp = malloc(sizeof(int) * tasks_host[t->cj->lock_task].size_unlocks * 2);
+          memcpy(temp, tasks_host[t->cj->load_task].unlocks,
+             sizeof(int) * tasks_host[t->cj->load_task].nr_unlock_tasks );
+          free(tasks_host[t->cj->load_task].unlocks);
+          tasks_host[t->cj->load_task].unlocks = temp;
+  
+        }
+        tasks_host[t->cj->load_task].unlock[tasks_host[t->cj->load_task].nr_unlock_tasks++] = i;
+
+      }//If is pair task.
+
+    }//Load to density task dependencies.
+
+  } //Loop over the tasks.
+
+
+  /* Now we have the dependencies we need to squash them into a single array. */
+
+  /* First we count how many there are.*/
+  int num_deps = 0;
+  for(i = 0; i < num_gpu_tasks; i++){
+    num_deps += tasks_host[i].nr_unlock_tasks;
+  }
+
+  /* Create a storage location for the dependency array. */
+  int *host_dependencies = malloc(sizeof(int) * num_deps);
+  int deps_filled = 0;
+
+  /* Add the arrays, update the pointers, remove the small arrays. */ 
+  for(i = 0; i < num_gpu_tasks; i++){
+    memcpy(&host_dependencies[deps_filled], tasks_host[i].unlocks, tasks_host[i].nr_unlock_tasks);
+    free(tasks_host[i].unlocks);
+    tasks_host[i].unlocks = &host_dependencies[deps_filled];
+    deps_filled += tasks_host[i].nr_unlock_tasks;
+  }
+
+  /* Allocate storage for the dependencies on the GPU.*/
+  int *gpu_dependencies = NULL;
+  if(firstrun){
+    /* If we already have an array for this we need to remove it. */
+    cudaErrCheck(cudaMemcpyFromSymbol( gpu_dependencies, &cuda_unlocks, sizeof(int *) ) );
+    cudaFree(gpu_dependencies);
+    gpu_dependencies = NULL;
+  }
+  cudaErrCheck( cudaMalloc((void**) &gpu_dependencies, sizeof(int) * num_deps ));
+  
+  /* Start copying the dependency array to the device */ 
+  cudaErrCheck( cudaMemcpyAsync(gpu_dependencies, host_dependencies, sizeof(int) * num_deps,
+       cudaMemcpyHostToDevice ) );
+
+  /* We need the task's unlock pointers to point at the device stuff, which we do with pointer maths */
+  for(i = 0; i < num_gpu_tasks; i++){
+    int *temp_p = gpu_dependencies + (tasks_host[i].unlocks - host_dependencies);
+    tasks_host[i].unlocks = temp_p;
+  }
+
+  /* Wait for the transfer to complete.*/
+  cudaErrCheck(cudaDeviceSynchronize());
+  /* Host dependency array has been copied now, so time to remove it.*/
+  free(host_dependencies);
+  host_dependencies = NULL;
+
+  /* Copy the new device array to where it will be visible. */
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_unlocks, gpu_dependencies, sizeof(int *) ) );
+  
+  /* Copy the tasks to the device. */
+  struct task_cuda *gpu_tasks= NULL;
+  if(firstrun){
+    cudaErrCheck( cudaMemcpyFromSymbol(gpu_tasks, &tasks, sizeof(struct task_cuda *) ) );
+    cudaFree(gpu_tasks);
+    gpu_tasks = NULL;
+  }
+  cudaErrCheck( cudaMalloc((void**) &gpu_tasks, sizeof(struct task_cuda) * num_gpu_tasks) );
+  
+  cudaErrCheck( cudaMemcpy(gpu_tasks, tasks_host, sizeof(struct task_cuda) * num_gpu_tasks,
+        cudaMemcpyHostToDevice ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( tasks, gpu_tasks, sizeof(struct task_cuda *) ) )
+
+
+
+
+
+
+  /* This is no longer the first run. */
+  firstrun = 1;
+}

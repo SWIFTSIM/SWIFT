@@ -171,6 +171,11 @@ struct task {
   integertime_t ti_run;
 #endif /* SWIFT_DEBUG_CHECKS */
 
+#ifdef WITH_CUDA
+/* Index of the CUDA task in initial array. */
+  int cuda_task;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */

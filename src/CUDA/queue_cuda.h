@@ -28,7 +28,8 @@
 /* Task types for reserved tasks */
 #define type_load -101
 #define type_unload -102
-#define type_implicit -103
+#define type_implicit_load -103
+#define type_implicit_unload -104
 
 /* Queue constant data required to be set on the CPU */
 __constant__ int cuda_queue_size;
