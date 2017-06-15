@@ -33,7 +33,6 @@
 
 /* Queue constant data required to be set on the CPU */
 __constant__ int cuda_queue_size;
-__constant__ int cuda_nrqueues;
 __constant__ int cuda_numtasks;
 __constant__ int median_cost; //Used for priority queues.
 __device__ int tot_num_tasks;

@@ -1083,7 +1083,82 @@ __host__ int find_priority_cutoff( struct task_cuda *tasks, int count ){
   return result;
 }
 
+/* Host function to update the GPU tasks and set skips and dependencies. */
+__host__ void update_tasks(struct engine *e){
+
+  struct scheduler *sched = &e->sched;
+  struct space *s = &e->s;
+  int nr_gpu_tasks, cut; 
+
+  /* Download the cuda_tasks from the GPU. */
+  cudaErrCheck( cudaMemcpyFromSymbol( &nr_gpu_tasks, cuda_numtasks, sizeof(int) ) );
+  struct task_cuda *gpu_pointer = NULL;
+  cudaErrCheck( cudaMemcpyFromSymbol( gpu_pointer, tasks_cuda, sizeof(struct task_cuda *) ) );//TODO check.
+  struct task_cuda *host_tasks = NULL;
+  host_tasks = (struct task_cuda *) malloc( sizeof(struct task_cuda) * nr_gpu_tasks );
+  cudaErrCheck( cudaMemcpy( host_tasks, gpu_pointer, sizeof(struct task_cuda *) * nr_gpu_tasks ) );
+
+  for(int i = 0; i < nr_gpu_tasks; i++)
+  {
+    //Update the skip flag and reset the wait to 0.
+    host_tasks[i].wait = 0;
+    if(host_tasks[i].type > type_load)
+      host_tasks[i].skip = host_tasks[i].task->skip;
+    else
+      host_tasks[i].skip = 0;
+  }
+
+  /* Reset the waits. */
+  for(int i = 0; i < nr_gpu_tasks; i++)
+  {
+    if(!host_tasks[i].skip){
+      struct task_cuda *temp_t = &host_tasks[i];
+      for(int ii = 0; ii < temp_t->nr_unlock_tasks; ii++) {
+        host_tasks[ temp_t->unlocks[ii]].wait++;
+      }
+    }
+  }
+
+  /* TODO Reset the queue data.*/
+  int qsize;
+  cudaErrCheck( cudaMemcpyFromSymbol( &qsize, cuda_queue_size, sizeof(int) ) );
+  /* TODO Download the priority value from the GPU. */
+  cudaErrCheck( cudaMemcpyFromSymbol( &cut, median_cost, sizeof(int) ) );
+
+  /* Remake the data array for the unload q and copy it*/
+  /* Download the unload queue. */
+  struct queue_cuda unload_host;
+  cudaErrCheck( cudaMemcpyFromSymbol( &unload_host, unload_queue, sizeof(struct queue_cuda) ) );
+  
+  int *data = malloc(sizeof(int) * cuda_queue_size);
+  int nr_unload;
+  unload_host.count = 0;
+  for(int i = 0; i < nr_gpu_tasks; i++)
+  {
+    if(host_tasks[i].type <= type_unload && host_tasks[i].type >= type_implicit_unload 
+        && !host_tasks[i].skip){
+      if(host_tasks[i].wait ==0)
+      {
+        data[unload_host.count++] = i;
+      }
+      nr_unload++;
+    }
+  } 
+
+  /* TODO Remake the data array for the load q and copy it */
+  /* TODO Remake the data array for queue[0] and copy it */
+  /* TODO Remake the data array for queue[1] and copy it */
+
+
+  /* Copy the queue data and the tasks back to the GPU. */
+
+  /* Clean up */
+  free(host_tasks)
+}
+
 /* Host function to create the GPU tasks. Should be called whenever the tasks are recreated */
+/* This function ignores skips but should work. Call update_tasks to ensure skips are set and */
+/* waits are set correctly for the skips. */
 __host__ void create_tasks(struct engine *e){
 
   struct scheduler *sched = &e->sched;
@@ -1489,6 +1564,12 @@ __host__ void create_tasks(struct engine *e){
   /* Copy the work queues to the GPU */
   cudaErrCheck( cudaMemcpyToSymbol( cuda_queues, &work_host , sizeof(struct queue_cuda) * 2 ) ); 
 
+
+  /* Set some other values needed for scheduling. */
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_queue_size, &qsize, sizeof(int) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_numtasks , &num_gpu_tasks, sizeof(int) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( tot_num_tasks, &num_gpu_tasks, sizeof(int) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( median_cost, &cut, sizeof(int) ) );
 
   /* This is no longer the first run. */
   firstrun = 1;
