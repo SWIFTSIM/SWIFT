@@ -76,9 +76,10 @@ __device__ int *cuda_unlocks;
 /* Array of unlocks on the host. */
 int *host_unlocks;
 
-/* Simulation constants */
+/* Simulation constants TODO CURRENTLY UNSET */
 __device__ __constant__ integertime_t ti_current;
 __device__ __constant__ double dim[3];
+__device__ __constant__ timebin_t max_active_bin;
 
 /* Density kernel function */
 __constant__ cuda_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
@@ -99,6 +100,11 @@ __device__ float cuda_pow_dimension_plus_one( float x ) {
   printf("The dimension is not defined!");
   return 0.f;
 #endif
+}
+
+__device__ __inline__ int  cuda_part_is_active( int pid ) {
+
+  return ( cuda_parts.part_bin[pid]  <= max_active_bin );
 }
 
 
@@ -264,12 +270,111 @@ __device__ void unload_cell( int cell_index ) {
 
 }
 
+/* Task function to execute a self-density task. */
+__device__ void doself_density( struct cell_cuda *ci ) {
+
+  /* Is the cell active? */
+  if( !cuda_cell_is_active(ci) ) return;
+
+  const int count_i = ci->count;
+  int part_i = ci->first_part;
+  float rho, rho_dh, div_v, wcount, wcount_dh;
+  float3 rot_v;
+
+  for( int pid = part_i + threadIdx.x; pid < part_i + count_i; pid += blockDim.x ) {
+    double pix[3];
+    pix[0] = cuda_parts.x_x[pid];
+    pix[1] = cuda_parts.x_y[pid];
+    pix[2] = cuda_parts.x_z[pid];
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Reset local values. */
+    rho = 0.0f; rho_dh = 0.0f; div_v = 0.0f; wcount = 0.0f; wcount_dh = 0.0f;
+    rot_v.x = 0.0f; rot_v.y = 0.0f; rot_v;z = 0.0f;
+
+    /* If the particle isn't active skip it. */
+    if(!cuda_part_is_active( pid ) ) 
+      continue;
+
+    /* Search for the neighbours! */
+    for( int pjd = part_i; pjd < part_i + count_i; pjd ++ ) {
+      /* Particles don't interact with themselves */
+      if( pid == pjd )
+        continue;
+      dx[0] = pix[0] - cuda_parts.x_x[pjd];
+      r2 += dx[0] * dx[0];
+      dx[1] = pix[1] - cuda_parts.x_y[pjd];
+      r2 += dx[1] * dx[1];
+      dx[2] = pix[2] - cuda_parts.x_z[pjd];
+      r2 += dx[2] * dx[2];
+
+      /* If in range then interact. */
+      if( r2 < hig2 ) {
+        float wi, wi_dx;
+        float dv[3], curlvr[3];
+
+        /* Load mass on particle pj. */
+        const float mj = cuda_parts.mass[pjd];
+
+        /* Get r and 1/r */
+        const float r = sqrtf(r2);
+        const float ri = 1.0f / r;
+
+        /* Compute the kernel function */
+        const float hi_inv = 1.0f / hi;
+        const float ui = r * hi_inv;
+        
+        cuda_kernel_deval(ui, &w, &dw_dx);
+
+        /* Compute contribution to the density. */
+        rho += mj * w;
+        rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
+
+        /* Compute contribution to the number of neighbours */
+        wcount += w;
+        wcount_dh -= ui * dw_dx
+
+        const float fac = mj * dw_dx * ri;
+
+        /* Compute dv dot r */
+        float3 piv, pjv;
+        piv = cuda_parts.v[pid];
+        pjv = cuda_parts.v[pjd];
+        dv[0] = piv.x - pjv.x;
+        dv[1] = piv.y - pjv.y;
+        dv[2] = piv.z - pjv.z;
+        const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+        div_v -= fac*dvdr;
+
+        curlvr[0] = dx[1] * dx[2] - dv[2] * dx[1];
+        curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+        curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+        rot_v.x += fac*curlvr[0];
+        rot_v.y += fac*curlvr[1];
+        rot_v.z += fac*curlvr[2];
+        
+      } 
+    }//Loop over cj.
+    /* Write data for particle pid back to global stores. */
+    atomicAdd( &cuda_parts.rho[pid], rho);
+    atomicAdd( &cuda_parts.rho_dh[pid], rho_dh);
+    atomicAdd( &cuda_parts.wcount[pid], wcount);
+    atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
+    atomicAdd( &cuda_parts.div_v[pid], div_v);
+    atomic_add( &cuda_parts.rot_v[pid].x, rot_v.x);
+    atomic_add( &cuda_parts.rot_v[pid].y, rot_v.y);
+  }
+
+}
+
 /* Task function to execute a density task. Uses naive n^2 algorithm without symmetry*/
 /* To do density between Cell i and cell j this needs to be called twice. */
 __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
  
  /* Are these cells active? */
-  if( !cell_is_active(ci) && !cell_is_active(cj) ) return;
+  if( !cuda_cell_is_active(ci) && !cuda_cell_is_active(cj) ) return;
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -297,6 +402,9 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
     pix[1] = cuda_parts.x_y[pid] - shift[1];
     pix[2] = cuda_parts.x_z[pid] - shift[2];
     const float hig2 = hi * hi * kernel_gamma2;
+
+    if(!part_is_active( pid ) )
+      continue;
 
     /* Reset local values. */
     rho = 0.0f; rho_dh = 0.0f; div_v = 0.0f; wcount = 0.0f; wcount_dh = 0.0f;
@@ -404,12 +512,163 @@ __device__ __inline__ void cuda_kernel_deval( float u, float *restrict W, float 
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
 }
 
+/* Task function to perform a self force task. No symmetry */
+__device__ void doself_force( struct celL_cuda *ci )
+{
+  /* Is the cell active? */
+  if( !cuda_cell_is_active(ci) ) return;
+
+  const int count_i = ci->count;
+  int part_i = ci->first_part;
+
+  float3 a_hydro;
+  float h_dt, v_sig_stor, entropy_dt;
+
+  /* Loop over the particles */
+  for( int pid = part_i + threadIdx.x; pid < part_i + count_i; pid += blockDim.x ){
+
+    const float hi = cuda_parts.h[pid];
+    if( !cuda_part_is_active( pid ) )
+      continue;
+    /* Reset the values. */
+    a_hydro.x = 0.0f; a_hydro.y = 0.0f; a_hydro.z = 0.0f;
+    h_dt = 0.0f; v_sig_stor = cuda_parts.v_sig[pid]; entropy_dt = 0.0f;
+
+    double pix[3];
+    pix[0] = cuda_parts.x_x[pid];
+    pix[1] = cuda_parts.x_y[pid];
+    pix[2] = cuda_parts.x_z[pid];
+
+    const float hig2 = hi * hi * kernel_gamma2;
+
+    /* Loop over the particles in cj. */
+    for( int pjd = part_i; pjd < part_i + count_i; pid++ ) {
+    
+      if(pid == pjd)
+        continue;
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      dx[0] = pix[0] - cuda_parts.x_x[pjd];
+      r2 += dx[0] * dx[0];
+      dx[1] = pix[1] - cuda_parts.x_y[pjd];
+      r2 += dx[1] * dx[1];
+      dx[2] = pix[2] - cuda_parts.x_z[pjd];
+      r2 += dx[2] * dx[2];
+
+      const float hj = cuda_parts.h[pjd];
+      if(r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+        float wi, wj, wi_dx, wj_dx;
+        const float fac_mu = 1.f; 
+
+        const float r = sqrtf(r2);
+        const float r_inv = 1.0f / r;
+
+        /* Load some data.*/
+        const float mj = cuda_parts.mass[pjd];
+        const float rhoi = cuda_parts.rho[pid];
+        const float rhoj = cuda_parts.rho[pjd];
+
+        /* Get the kernel for hi. */
+        const float hi_inv = 1.0f/hi;
+        const float hid_inv = cuda_pow_dimension_plus_one(hi_inv);
+        const float ui = r * hi_inv;
+        cuda_kernel_deval(ui, &wi, &wi_dx)
+        const float wi_dr = hid_inv * wi_dx;
+
+        /* Get the kernel for hj. */
+        const float hj_inv = 1.0f/hj;
+        const float hjd_inv = cuda_pow_dimension_plus_one(hj_inv);
+        const float xj = r * hj_inv;
+        cuda_kernel_deval(xj, &wj, &wj_dx);
+        const float wj_dr = hjd_inv * wj_dx;
+
+        /* Compute h-gradient terms */
+        const float f_i = cuda_parts.f[pid];
+        const float f_j = cuda_parts.f[pjd];
+
+        /* Compute pressure terms */
+        const float P_over_rho2_i = cuda_parts.P_over_rho2[pid];
+        const float P_over_rho2_j = cuda_parts.P_over_rho2[pjd];
+
+        /* Compute sound speeds*/
+        const float ci = cuda_parts.soundspeed[pid];
+        const float cj = cuda_parts.soundspeed[pjd];
+
+        /* Compute dv dot r. */
+        const float dvdr = (cuda_parts.v[pid].x - cuda_parts.v[pjd].x) * dx[0] + 
+                            cuda_parts.v[pid].y - cuda_parts.v[pjd].y) * dx[1] + 
+                            cuda_parts.v[pid].z - cuda_parts.v[pjd].z) * dx[2];
+
+        /* Balsara term */
+        const float balsara_i = cuda_parts.balsara[pid];
+        const float balsara_j = cuda_parts.balsara[pjd];
+
+        /* Are the particles moving towards each other? */
+        const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
+        const float mu_ij = fac_mu * r_inv * omega_id;
+
+        /* Signal velocity */
+        const float v_sig = ci + cj - 3.f * mu_ij;
+
+        /* Now construct the full viscosity term */
+        const float rho_ij = 0.5f* (rhoi+rhoj);
+        const float visc = -0.25 * const_viscosity_alpha * v_sig * mu_id * 
+                           (balsara_i + balsara_j) / rho_ij;
+
+        /* Now convolce with the kernel */
+        const float visc_term = 0.5f* visc * (wi_dr + wj_dr) * r_inv;
+        const float sph_term = 
+          (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
+
+        /* Compute the acceleration */
+        const float acc = visc_term + sph_term;
+
+        /* Compute the force */
+        a_hydro.x -= mj * acc * dx[0];
+        a_hydro.y -= mj * acc * dx[1];
+        a_hydro.z -= mj * acc * dx[2];
+
+        /* Get the time derivative for h. */
+        h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+
+        /* Update the signal velocity. */
+        v_sig_stor = (v_sig_stor > v_sig ) ? v_sig_stor : v_sig;
+
+        /* Change in entropy */
+        entropy_dt += mj * visc_term * dvdr;
+      }
+
+    } //Inner loop
+
+    /* Flush to global stores.*/
+    atomicAdd(&cuda_parts.a_hydro[pid].x, a_hydro.x);
+    atomicAdd(&cuda_parts.a_hydro[pid].y, a_hydro.y);
+    atomicAdd(&cuda_parts.a_hydro[pid].z, a_hydro.z);
+    atomicAdd(&cuda_parts.h_dt[pid], h_dt);
+    atomicAdd(&cuda_parts.entropy_dt[pid], entropy_dt);
+
+    /* Update the signal velocity */
+    float global_vsig = cuda_parts.v_sig[pid];
+    int * address_as_int = (int*)&cuda_parts.v_sig[pid];
+    int old = *address_as_int;
+    int assumed;
+    do{
+      global_vsig = cuda_parts.v_sig[pid];
+      assumed = old;
+      if( v_sig_stor > global_vsig )
+        old = atomicCAS(address_as_int, assumed, __float_as_int(global_vsig) );
+    }while( assumed != old && v_sig_stor > global_vsig );
+    
+  } // Outer loop
+}
+
 /* Task function to execute a force task. Uses naive n^2 algorithm without symmetry*/
 /* To do force between Cell i and cell j this needs to be called twice. */
 __device__ void dopair_force( struct cell_cuda *ci, struct cell_cuda *cj) {
 
  /* Are these cells active? */
-  if( !cell_is_active(ci) && !cell_is_active(cj) ) return;
+  if( !cuda_cell_is_active(ci) && !cuda_cell_is_active(cj) ) return;
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -428,10 +687,11 @@ __device__ void dopair_force( struct cell_cuda *ci, struct cell_cuda *cj) {
   }
 
   /* Loop over the parts in cell ci */
-  for( int pid = part_i + threadidx.x; pid < part_i+count_i; pid += blockDim.x ){
+  for( int pid = part_i + threadIdx.x; pid < part_i+count_i; pid += blockDim.x ){
 
     const float hi = cuda_parts.h[pid];
-
+    if( !cuda_part_is_active( pid ) )
+      continue;
     /* Reset the values. */
     a_hydro.x = 0.0f; a_hydro.y = 0.0f; a_hydro.z = 0.0f;
     h_dt = 0.0f; v_sig_stor = cuda_parts.v_sig[pid]; entropy_dt = 0.0f;
@@ -445,7 +705,7 @@ __device__ void dopair_force( struct cell_cuda *ci, struct cell_cuda *cj) {
 
     /* Loop over the particles in cj. */
     for( int pjd = part_j; pjd < part_j + count_j; pjd++ ) {
-      
+     
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -551,6 +811,15 @@ __device__ void dopair_force( struct cell_cuda *ci, struct cell_cuda *cj) {
 
     /* Update the signal velocity */
     float global_vsig = cuda_parts.v_sig[pid];
+    int * address_as_int = (int*)&cuda_parts.v_sig[pid];
+    int old = *address_as_int;
+    int assumed;
+    do{
+      global_vsig = cuda_parts.v_sig[pid];
+      assumed = old;
+      if( v_sig_stor > global_vsig )
+        old = atomicCAS(address_as_int, assumed, __float_as_int(global_vsig) );
+    }while( assumed != old && v_sig_stor > global_vsig );
     
 
   }//Loop over cell ci.
