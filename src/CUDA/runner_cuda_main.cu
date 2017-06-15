@@ -6,7 +6,7 @@
 #include "../dimension.h"
 
 /*Definition of particle structures (SoA on GPU) */
-struct particle_arrays{
+__device__ struct particle_arrays{
 /* Device array containing the particle ID */
 __device__ long long int *id;
 /*Device array containing the particle positions. */
@@ -364,7 +364,6 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
         rot_v.y += fac*curlvr[1];
         rot_v.z += fac*curlvr[2];
         
-        //TODO Interact.
       } 
     }//Loop over cj.
     /* Write data for particle pid back to global stores. */
@@ -750,6 +749,71 @@ __host__ void create_transfer_tasks(struct cell *c, int *k, int parent_load_task
   }
 }
 
+/* Recursive function to create the cell structures require for the GPU.*/
+__host__ void create_cells( struct cell *c, struct cell_cuda *cell_host, struct cell **host_pointers, struct part *parts){
+
+  /* Set the host pointer. */
+  host_ponters[c->cuda_ID] = c;
+  struct cell_cuda *c2 = &cell_host[c->cuda_ID];
+
+  c2->loc[0] = c->loc[0];
+  c2->loc[1] = c->loc[1];
+  c2->loc[2] = c->loc[2];
+  c2->width[0] = c->width[0];
+  c2->width[1] = c->width[1];
+  c2->width[2] = c->width[2];
+  c2->h_max = c->h_max;
+  c2->first_part = c->first_part - parts;
+  c2->part_count = c->part_count;
+  c2->parent = c->parent->cuda_ID;
+  c2->super = c->super->cuda_ID;
+  c2->ti_end_min = c->ti_end_min;
+  c2->ti_end_max = c->ti_end_max;
+  c2->dmin = c->dmin;
+
+  for(int i = 0; i < 8; i++)
+  {
+    /* Set progeny and recurse. */
+    c2->progeny[i] = c->progeny[i]->cuda_ID;
+    create_cells(c->progeny[i], cell_host, host_pointers, parts);
+  }
+
+}
+
+/* Host function to perform quickselect */
+__host__ int select(int* list, int left, int right, int n){
+    static int value = -1;
+    if(value < 0)
+        value = right;
+    if(left == right)
+        return list[left];
+    int pivotIndex = left + floor(r2() * (right-left+1));
+    pivotIndex = partition(list, left, right, pivotIndex);
+    if(n == pivotIndex)
+        return list[n];
+    else if ( n < pivotIndex){
+        return select(list, left, pivotIndex-1, n);
+    }else{
+        return select(list, pivotIndex+1, right, n );
+    }
+}
+
+/* Host function used for priority cutoff */
+#define PERCENTILE 0.8
+__host__ int find_priority_cutoff( struct task_cuda *tasks, int count ){
+
+  int nr_work_tasks = 0;
+  int *costs = malloc( sizeof(int) * count);
+  for(i = 0; i < count; i++){
+    if(tasks[i].type >= type_load){
+      costs[nr_work_tasks++] = tasks[i].weight;
+    }
+  }
+  int result = select(costs, 0, nr_work_tasks-1, (int) ((float)( nr_work_tasks-1 ) * 0.8f  ) );
+  free(costs);
+  return result;
+}
+
 /* Host function to create the GPU tasks. Should be called whenever the tasks are recreated */
 __host__ void create_tasks(struct engine *e){
 
@@ -817,7 +881,7 @@ __host__ void create_tasks(struct engine *e){
     create_transfer_tasks( c , k, -1, -1);
   } 
 
-  /*TODO Check we got this right initially.. */
+  /* Check we got this right initially.. */
   if(k != num_gpu_tasks){
     error("We created a different number of GPU tasks than expected");
   }
@@ -942,9 +1006,6 @@ __host__ void create_tasks(struct engine *e){
 
   /* Wait for the transfer to complete.*/
   cudaErrCheck(cudaDeviceSynchronize());
-  /* Host dependency array has been copied now, so time to remove it.*/
-  free(host_dependencies);
-  host_dependencies = NULL;
 
   /* Copy the new device array to where it will be visible. */
   cudaErrCheck( cudaMemcpyToSymbol( cuda_unlocks, gpu_dependencies, sizeof(int *) ) );
@@ -961,13 +1022,218 @@ __host__ void create_tasks(struct engine *e){
   cudaErrCheck( cudaMemcpy(gpu_tasks, tasks_host, sizeof(struct task_cuda) * num_gpu_tasks,
         cudaMemcpyHostToDevice ) );
 
-  cudaErrCheck( cudaMemcpyToSymbol( tasks, gpu_tasks, sizeof(struct task_cuda *) ) )
+  cudaErrCheck( cudaMemcpyToSymbol( tasks, gpu_tasks, sizeof(struct task_cuda *) ) );
 
 
+  /* Create the cuda_cells on the CPU. */
+  struct cell_cuda *cell_host = malloc(sizeof(struct cell_cuda) * s->tot_cells); 
+  struct cell **host_pointers = malloc(sizeof(struct *cell) * s->tot_cells);
+  k = 0;
+  for(int i = 0; i < nr_cells; i++)
+  {
+    c = &s->cells_top[i];
+    /*Create cells recursively. */
+    create_cells(c, cell_host, host_pointers, s->parts);
+  }
+
+  /* Allocate space on the device for the cells. */
+  struct cell_cuda *cell_device = NULL;
+  struct cell **pointers_device = NULL;
+  if(firstrun){
+    /* If we already have an array for this we need to remove it. */
+    cudaErrCheck(cudaMemcpyFromSymbol( cell_device, &cells, sizeof(struct cell_cuda *) ) );
+    cudaFree(cell_device);
+    cudaErrCheck(cudaMemcpyFromSymbol( pointers_device, &cpu_cells, sizeof(struct cell **) ) );
+    cudaFree(pointers_device);
+    cell_device = NULL;
+    pointers_device = NULL;
+  }
+  cudaErrCheck( cudaMalloc((void**) &cell_device, sizeof(struct cell_cuda ) * s->tot_cells ) );
+  cudaErrCheck( cudaMalloc((void**)) &pointers_device, sizof(struct cell *) * s->tot_cells ) );
+ 
+  /* Copy the cells and pointers to the device and set up the symbol. */
+  cudaErrCheck( cudaMemcpy(cell_device, cell_host, sizeof(struct cell_cuda) * s->tot_cells,
+        cudaMemcpyHostToDevice ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( cells, cell_device, sizeof(struct cell_cuda *) ) );
+
+  cudaErrCheck( cudaMemcpy( pointers_device, host_pointers, sizeof(struct cell *) * s->tot_cells, 
+       cudaMemcpyHostToDevice );
+
+  cudaErrCheck( cudaMemcpyToSymbol( cpu_cells, pointers_device, sizeof(struct cell **) ) );
+
+  /* Setup the queues. */
+  /* We have 4 queues, one containing unload & implicit tasks. */
+  /* One containing load tasks only. */
+  /* One containing high priority work tasks.*/
+  /* Last one containing all other tasks. */
+  struct queue_cuda load_host;
+  struct queue_cuda unload_host;
+  struct queue_cuda work_host[cuda_numqueues];
+  int nr_load=0, nr_unload=0, nr_high=0, nr_low=0;
+
+  /* Compute the 80th percentile for the work priorities.*/
+  int cut = priority_cutoff( tasks_host,  num_gpu_tasks );
+
+  /* cuda_queue_size is lazily set to fix all of the tasks in for now. If this becomes an issue
+     it can be reduced */
+  int qsize = max( num_gpu_tasks, 256 );
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_queue_size, &qsize, sizeof(int) ) );
+
+  /* TODO Set the waits! */
+  for(i = 0; i < num_gpu_tasks; i++ ) {
+    tasks_host[i].wait = 0;
+  }
+  for(i = 0; i < num_gpu_tasks; i++) {
+    struct task_cuda *temp_t = &tasks_host[i];
+    for(int ii = 0; ii < temp_t->nr_unlock_tasks; ii++)
+    {
+      tasks_host[ temp_t->unlocks[ii]].wait++;
+    }
+  }
+
+  /* Create the queues */
+
+  /* Create the buffers used to initialised the data and rec_data arrays. */
+  int *data, data2;
+
+  if( ( data = (int*) malloc(sizeof(int) * qsize ) ) == NULL )
+    error("Failed to allocate the data buffer on the host.");
+  if( ( data2 = (int*) malloc(sizeof(int) * qsize ) ) == NULL )
+    error("Failed to allocate the rec_data buffer on the host.");
+
+  load_host.count = 0;
+  /* Find the load tasks */
+  for( i = 0; i < num_gpu_tasks; i++ ) {
+    if( tasks_host[i].type == type_load ) {
+      if( tasks_host[i].wait == 0) {
+        data[load_host.count] = i;
+        data2[load_host.count++] = -1;
+      }
+      nr_load++;
+    }
+  }
+
+  for(i = load_host.count; i < qsize; i++){
+    data[i] = -1;
+    data2[i] = -1;
+  }
+
+  /* Allocate and copy the data to the device. */
+  cudaErrCheck( cudaMalloc( &load_host.data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) load_host.data, data, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  cudaErrCheck( cudaMalloc( &load_host.rec_data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) load_host.rec_data, data2, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  load_host.first = 0;
+  load_host.last = load_host.count;
+  load_host.rec_count = 0;
+  load_host.nr_avail_tasks = load_host.count;
+  load_host.count = nr_load;
+
+  /* Copy the queue to the device */
+  cudaErrCheck( cudaMemcpyToSymbol( load_queue, &load_host , sizeof(struct queue_cuda) ) );
+ 
+ /* Create the unload queue. */
+  unload_host.count = 0;
+  for( i = 0; i < num_gpu_tasks; i++ ){
+    if( tasks_host[i].type <= type_unload && tasks_host[i].type >= type_implicit_unload ){
+      if( tasks_host[i].wait == 0 ) {
+        data[unload_host.count] = i;
+        data2[unload_host.count++] = -1;
+      }
+      nr_unload++;
+    }
+  }
+  for(i = unload_host.count; i < qsize; i++){
+    data[i] = -1;
+    data2[i] = -1;
+  }
+
+  /* Allocate and copy the data to the device. */
+  cudaErrCheck( cudaMalloc( &unload_host.data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) unload_host.data, data, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  cudaErrCheck( cudaMalloc( &unload_host.rec_data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) unload_host.rec_data, data2, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  unload_host.first = 0;
+  unload_host.last = unload_host.count;
+  unload_host.rec_count = 0;
+  unload_host.nr_avail_tasks = unload_host.count;
+  unload_host.count = nr_unload;
+
+  /* Copy the queue to the device */
+  cudaErrCheck( cudaMemcpyToSymbol( unload_queue, &unload_host , sizeof(struct queue_cuda) ) );
 
 
+  /* Create the high priority queue. */
+
+  work_host[0].count = 0;
+  for( i = 0; i < num_gpu_tasks; i++ )
+  {
+    if(tasks_host[i].type > type_load && tasks_host[i].weight >= cut){ 
+      if(tasks_host[i].wait == 0) {
+        data[work_host[0].count] = i;
+        data2[work_host[0].count++] = -1;
+      }
+      nr_high++;
+    }
+  }
+  for(i = work_host[0].count; i < qsize; i++){
+    data[i] = -1;
+    data2[i] = -1;
+  }
+
+  /* Allocate and copy the data to the device. */
+  cudaErrCheck( cudaMalloc( &work_host[0].data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) work_host[0].data, data, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  cudaErrCheck( cudaMalloc( &work_host[0].rec_data, sizeof(int) * qsize ) );
+  cudaErrCheck( cudaMemcpy( (void*) work_host[0].rec_data, data2, sizeof(int) * qsize, 
+       cudaMemcpyHostToDevice ) );
+  work_host[0].first = 0;
+  work_host[0].last = work_host[0].count;
+  work_host[0].rec_count = 0;
+  work_host[0].nr_avail_tasks = work_host[0].count;
+  work_host[0].count = nr_high;
+
+  /* Create the low priority queue. */
+  work_host[1].count = 0;
+  for(i = 0; i < num_gpu_tasks; i++ )
+  {
+    if(tasks_host[i].type > type_load && tasks_host[i].weight < cut){
+      if(tasks_host[i].wait == 0) {
+        data[work_host[0].count] = i;
+        data2[work_host[0].count++] = -1;
+      }
+      nr_low++;
+    }
+  }
+  work_host[1].first = 0;
+  work_host[1].last = work_host[0].count;
+  work_host[1].rec_count = 0;
+  work_host[1].nr_avail_tasks = work_host[1].count;
+  work_host[1].count = nr_low;
+
+  /* Copy the work queues to the GPU */
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_queues, &work_host , sizeof(struct queue_cuda) * 2 ) ); 
 
 
   /* This is no longer the first run. */
   firstrun = 1;
+  /* TODO Make sure we free everything we made here otherwise leaky code. */
+  /* Free the tasks_host array. */
+  cudaErrCheck( cudaFreeHost( tasks_host ) );
+  tasks_host = NULL;
+  /* Free the data and data 2 arrays.*/
+  free(data); data = NULL;
+  free(data2); data2=NULL;
+  /* Host dependency array has been copied now, so time to remove it.*/
+  free(host_dependencies);
+  host_dependencies = NULL;
+  /* Free cell_host and host_pointers */
+  free(cell_host); cell_host = NULL;
+  free(host_pointers); host_pointers = NULL;
 }

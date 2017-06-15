@@ -38,6 +38,10 @@
  * Be sure to update the taskID_names array in tasks.c if you modify this list!
  */
 enum task_types {
+  task_type_load = -101,
+  task_type_unload = -102,
+  task_type_implicit_load = -103,
+  task_type_implicit_unload = -104,
   task_type_none = 0,
   task_type_sort,
   task_type_self,

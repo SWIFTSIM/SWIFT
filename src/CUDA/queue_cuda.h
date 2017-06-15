@@ -25,11 +25,11 @@
 /* The number of blocks to perform load tasks. */
 #define cuda_numloaders 12
 
-/* Task types for reserved tasks */
-#define type_load -101
-#define type_unload -102
-#define type_implicit_load -103
-#define type_implicit_unload -104
+/* GPU types, references the types declared in task.h.*/
+#define type_load task_type_load
+#define type_unload task_type_unload
+#define type_implicit_load task_type_implicit_load
+#define type_implicit_unload task_type_implicit_unload
 
 /* Queue constant data required to be set on the CPU */
 __constant__ int cuda_queue_size;
