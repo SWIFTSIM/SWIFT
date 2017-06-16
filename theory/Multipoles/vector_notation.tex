@@ -1,0 +1,34 @@
+\section{Multi-index notation}
+\label{sec:multi_index_notation}
+
+We define a multi-index $\mathbf{n}$ as a triplet of integers
+non-negative integers:
+\begin{equation}
+  \mathbf{n} \equiv \left(n_x, n_y, n_z\right), \qquad n_i \in \mathbb{N},
+\end{equation}
+with a norm $n$ given by
+\begin{equation}
+  n = |\mathbf{n}| \equiv n_x + n_y + n_z. 
+\end{equation}
+We also define the exponentiation of a vector
+$\mathbf{r}=(r_x,r_y,r_z)$ by a multi-index $\mathbf{n}$ as
+\begin{equation}
+  \mathbf{r}^\mathbf{n} \equiv r_x^{n_x} \cdot r_y^{n_y} \cdot r_z^{n_z},
+\end{equation}
+which for a scalar $\alpha$ reduces to
+\begin{equation}
+  \alpha^\mathbf{n} = \alpha^{n}.
+\end{equation}
+Finally, the factiorial of a multi-index is defined to be
+\begin{equation}
+  \mathbf{n}! \equiv n_x! \cdot n_y! \cdot n_z!,
+\end{equation}
+which leads to a simple expression for the binomial coefficients of
+two multi-indices entering Taylor expansions:
+\begin{equation}
+  \binom{\mathbf{n}}{\mathbf{k}} = \binom{n_x}{k_x}\binom{n_y}{k_y}\binom{n_z}{k_z}.
+\end{equation}
+When appearing as the index in a sum, a multi-index represents all
+values that the triplet can take up to a given norm. For instance,
+$\sum_{\mathbf{n}}^{p}$ indicates that the sum runs over all possible
+multi-indices whose norm is $\leq p$.
