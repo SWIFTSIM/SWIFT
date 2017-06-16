@@ -87,6 +87,8 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
+  printf("  %2s %8s %s\n", "-P", "{sec:par:val}",
+         "Set parameter value, can be used more than once.");
   printf("  %2s %8s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %8s %s\n", "-S", "", "Run with stars.");
   printf("  %2s %8s %s\n", "-t", "{int}",
@@ -170,12 +172,14 @@ int main(int argc, char *argv[]) {
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
+  int nparams = 0;
+  char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:sSt:Tv:y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:")) != -1)
     switch (c) {
       case 'a':
         with_aff = 1;
@@ -223,6 +227,10 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'P':
+        cmdparams[nparams] = optarg;
+        nparams++;
         break;
       case 's':
         with_hydro = 1;
@@ -351,6 +359,13 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", paramFileName);
     parser_read_file(paramFileName, params);
+
+    /* Handle any command-line overrides. */
+    if (nparams > 0)
+      for (int k = 0; k < nparams; k++)
+        parser_set_param(params, cmdparams[k]);
+
+    /* And dump the parameters as used. */
     // parser_print_params(&params);
     parser_write_params_to_file(params, "used_parameters.yml");
   }
