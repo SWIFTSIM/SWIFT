@@ -31,6 +31,10 @@
 #define type_implicit_load task_type_implicit_load
 #define type_implicit_unload task_type_implicit_unload
 
+const int num_gpu_types = 5;
+const int gpu_work_task_array[num_gpu_types] = {task_type_self, task_type_pair, task_type_sub_self,
+                                                task_type_sub_pair, task_type_ghost};
+
 /* Queue constant data required to be set on the CPU */
 __constant__ int cuda_queue_size;
 __constant__ int cuda_numtasks;
@@ -63,6 +67,7 @@ struct queue_cuda {
     };
 
 
-int cuda_queue_gettask( struct queue_cuda *q)
+__device__ int cuda_queue_gettask( struct queue_cuda *q);
+__device__ void cuda_queue_puttask( struct queue_cuda *q, int tid );
 
 #endif /* SWIFT_CUDA_QUEUE_H */

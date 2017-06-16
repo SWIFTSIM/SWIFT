@@ -26,3 +26,20 @@ __device__ int cuda_queue_gettask( struct queue_cuda *q ) {
   /* Return the acquired task ID */
   return tid;
 }
+
+/* Queue function to add task index tid to the queue*/
+__device__ void cuda_queue_puttask( struct queue_cuda *q, int tid ) {
+
+     int ind;
+
+    /* Get the index of the next task. */
+    ind = atomicAdd( &q->last , 1 ) % cuda_queue_size;
+
+    /* Wait for the slot in the queue to be empty. */
+    while ( q->data[ind] != -1 );
+
+    /* Write the task back to the queue. */
+    q->data[ind] = tid;
+
+    atomicAdd((int*)&q->nr_avail_tasks, 1);
+}
