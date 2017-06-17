@@ -4,27 +4,45 @@
 \usepackage{times}
 
 \newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\nbody}{$N$-body\xspace}
 
 %opening
 \title{FMM in SWIFT}
 \author{Matthieu Schaller}
-
 \begin{document}
+
+\date{\today}
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}} \pubyear{2014}
 
 \maketitle
 
-We use the multi-index notation of \cite{Dehnen2014} to simplify expressions.
+\label{firstpage}
+
+\begin{abstract}
+Making gravity great again.
+\end{abstract}
+
+\begin{keywords}
+\end{keywords}
+
+\section{Gravity in \swift}
+\label{sec:gravity}
 
 \input{potential_softening}
+\input{fmm_summary}
 \input{gravity_derivatives}
+\input{mesh_summary}
 
 \bibliographystyle{mnras}
 \bibliography{./bibliography.bib}
 
 \appendix
+\input{vector_notation}
 \onecolumn
 \input{potential_derivatives}
 
 
+\label{lastpage}
 
 \end{document}
