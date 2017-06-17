@@ -111,10 +111,10 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
   /* Name is part until second colon. */
   char *p1 = strchr(namevalue, ':');
   if (p1 != NULL) {
-    char *p2 = strchr(p1+1, ':');
+    char *p2 = strchr(p1 + 1, ':');
     if (p2 != NULL) {
-      memcpy(name, namevalue, p2-namevalue);
-      name[p2-namevalue] = '\0';
+      memcpy(name, namevalue, p2 - namevalue);
+      name[p2 - namevalue] = '\0';
 
       /* Value is rest after second colon. */
       p2++;
@@ -124,8 +124,10 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
 
   /* Sanity check. */
   if (strlen(name) == 0 || strlen(value) == 0 || strchr(value, ':') != NULL)
-    error("Cannot parse compressed parameter string: '%s', check syntax "
-          "should be section:parameter:value", namevalue);
+    error(
+        "Cannot parse compressed parameter string: '%s', check syntax "
+        "should be section:parameter:value",
+        namevalue);
 
   /* And update or set. */
   int updated = 0;
@@ -772,7 +774,6 @@ void parser_write_params_to_file(const struct swift_params *params,
 
   fclose(file);
 }
-
 
 #if defined(HAVE_HDF5)
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {

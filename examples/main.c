@@ -57,50 +57,51 @@ void print_help_message() {
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
-  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity.");
-  printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration.");
-  printf("  %2s %8s %s\n", "-C", "", "Run with cooling.");
+  printf("  %2s %14s %s\n", "-a", "", "Pin runners using processor affinity.");
+  printf("  %2s %14s %s\n", "-c", "",
+         "Run with cosmological time integration.");
+  printf("  %2s %14s %s\n", "-C", "", "Run with cooling.");
   printf(
-      "  %2s %8s %s\n", "-d", "",
+      "  %2s %14s %s\n", "-d", "",
       "Dry run. Read the parameter file, allocate memory but does not read ");
   printf(
-      "  %2s %8s %s\n", "", "",
+      "  %2s %14s %s\n", "", "",
       "the particles from ICs and exit before the start of time integration.");
-  printf("  %2s %8s %s\n", "", "",
+  printf("  %2s %14s %s\n", "", "",
          "Allows user to check validy of parameter and IC files as well as "
          "memory limits.");
-  printf("  %2s %8s %s\n", "-D", "",
+  printf("  %2s %14s %s\n", "-D", "",
          "Always drift all particles even the ones far from active particles. "
          "This emulates");
-  printf("  %2s %8s %s\n", "", "",
+  printf("  %2s %14s %s\n", "", "",
          "Gadget-[23] and GIZMO's default behaviours.");
-  printf("  %2s %8s %s\n", "-e", "",
+  printf("  %2s %14s %s\n", "-e", "",
          "Enable floating-point exceptions (debugging mode).");
-  printf("  %2s %8s %s\n", "-f", "{int}",
+  printf("  %2s %14s %s\n", "-f", "{int}",
          "Overwrite the CPU frequency (Hz) to be used for time measurements.");
-  printf("  %2s %8s %s\n", "-g", "",
+  printf("  %2s %14s %s\n", "-g", "",
          "Run with an external gravitational potential.");
-  printf("  %2s %8s %s\n", "-F", "", "Run with feedback.");
-  printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity.");
-  printf("  %2s %8s %s\n", "-M", "",
+  printf("  %2s %14s %s\n", "-G", "", "Run with self-gravity.");
+  printf("  %2s %14s %s\n", "-M", "",
          "Reconstruct the multipoles every time-step.");
-  printf("  %2s %8s %s\n", "-n", "{int}",
+  printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
-  printf("  %2s %8s %s\n", "-P", "{sec:par:val}",
-         "Set parameter value, can be used more than once.");
-  printf("  %2s %8s %s\n", "-s", "", "Run with hydrodynamics.");
-  printf("  %2s %8s %s\n", "-S", "", "Run with stars.");
-  printf("  %2s %8s %s\n", "-t", "{int}",
+  printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
+         "Set parameter value and overwrites values read from the parameters "
+         "file. Can be used more than once.");
+  printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
+  printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
+  printf("  %2s %14s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
-  printf("  %2s %8s %s\n", "-T", "", "Print timers every time-step.");
-  printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity.");
-  printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
-  printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
-  printf("  %2s %8s %s\n", "-y", "{int}",
+  printf("  %2s %14s %s\n", "-T", "", "Print timers every time-step.");
+  printf("  %2s %14s %s\n", "-v", "[12]", "Increase the level of verbosity:");
+  printf("  %2s %14s %s\n", "", "", "1: MPI-rank 0 writes,");
+  printf("  %2s %14s %s\n", "", "", "2: All MPI-ranks write.");
+  printf("  %2s %14s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped.");
-  printf("  %2s %8s %s\n", "-h", "", "Print this help message and exit.");
+  printf("  %2s %14s %s\n", "-h", "", "Print this help message and exit.");
   printf(
       "\nSee the file parameter_example.yml for an example of "
       "parameter file.\n");
@@ -362,8 +363,7 @@ int main(int argc, char *argv[]) {
 
     /* Handle any command-line overrides. */
     if (nparams > 0)
-      for (int k = 0; k < nparams; k++)
-        parser_set_param(params, cmdparams[k]);
+      for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
 
     /* And dump the parameters as used. */
     // parser_print_params(&params);
