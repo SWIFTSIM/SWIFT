@@ -2179,12 +2179,10 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
  * @param lb The #grav_tensor to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
- * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_L2L(struct grav_tensor *la,
                                const struct grav_tensor *lb,
-                               const double pos_a[3], const double pos_b[3],
-                               int periodic) {
+                               const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
   gravity_field_tensors_init(la);
