@@ -1669,8 +1669,10 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
- * interactions.
+ * and long-range gravity interactions.
  *
+ * - One FTT task per MPI rank.
+ * - Multiple gravity ghosts for dependencies.
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
@@ -1683,6 +1685,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
                              s->cdim[2] / 4 + 1};
@@ -1734,7 +1737,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
         scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                           NULL);
 
-        /* Deal with periodicity dependencies */
+        /* Deal with dependencies of the FFT mesh calculation */
         const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
         if (ghost_id > n_ghosts) error("Invalid ghost_id");
         if (periodic) {
@@ -1761,8 +1764,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
               if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
               /* Are the cells to close for a MM interaction ? */
-              if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                            theta_crit_inv, 1)) {
+              if (!gravity_multipole_accept_rebuild(
+                      ci->multipole, cj->multipole, theta_crit_inv, periodic,
+                      dim)) {
 
                 scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0,
                                   0, ci, cj);
@@ -1776,6 +1780,11 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   if (periodic) free(ghosts);
 }
 
+/**
+ * @brief Constructs the top-level tasks for the external gravity.
+ *
+ * @param e The #engine.
+ */
 void engine_make_external_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
