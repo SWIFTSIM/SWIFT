@@ -36,8 +36,10 @@
  */
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
+  /* Some constants */
   const struct engine *e = r->e;
-  const int periodic = e->s->periodic;
+
+  /* Cell properties */
   struct gpart *gparts = c->gparts;
   const int gcount = c->gcount;
 
@@ -52,7 +54,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
-      struct grav_tensor temp;
 
       /* Do we have a progenitor with any active g-particles ? */
       if (cp != NULL && cell_is_active(cp, e)) {
@@ -61,13 +62,14 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         if (cp->ti_old_multipole != e->ti_current)
           error("cp->multipole not drifted.");
 #endif
+        struct grav_tensor shifted_tensor;
 
         /* Shift the field tensor */
-        gravity_L2L(&temp, &c->multipole->pot, cp->multipole->CoM,
-                    c->multipole->CoM, 0 * periodic);
+        gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
+                    c->multipole->CoM);
 
         /* Add it to this level's tensor */
-        gravity_field_tensors_add(&cp->multipole->pot, &temp);
+        gravity_field_tensors_add(&cp->multipole->pot, &shifted_tensor);
 
         /* Recurse */
         runner_do_grav_down(r, cp, 0);
@@ -91,6 +93,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           error("gpart not drifted to current time");
 #endif
 
+        /* Apply the kernel */
         gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
       }
     }
@@ -173,13 +176,19 @@ void runner_dopair_grav_pm(const struct runner *r,
  */
 void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
+  /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const float a_smooth = e->gravity_properties->a_smooth;
+  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
+
+  /* Cell properties */
   const int gcount_i = ci->gcount;
   const int gcount_j = cj->gcount;
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
-  const float a_smooth = e->gravity_properties->a_smooth;
-  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
 
@@ -214,6 +223,14 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif
 
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  if (periodic) {
+    shift[0] = nearest(cj->loc[0] - ci->loc[0], dim[0]);
+    shift[1] = nearest(cj->loc[1] - ci->loc[1], dim[1]);
+    shift[2] = nearest(cj->loc[2] - ci->loc[2], dim[2]);
+  }
+
   /* MATTHIEU: Should we use local DP accumulators ? */
 
   /* Loop over all particles in ci... */
@@ -225,6 +242,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
       if (!gpart_is_active(gpi, e)) continue;
 
+      /* Apply boundary condition */
+      const double pix[3] = {gpi->x[0] - shift[0], gpi->x[1] - shift[1],
+                             gpi->x[2] - shift[2]};
+
       /* Loop over every particle in the other cell. */
       for (int pjd = 0; pjd < gcount_j; pjd++) {
 
@@ -232,9 +253,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
         const struct gpart *restrict gpj = &gparts_j[pjd];
 
         /* Compute the pairwise distance. */
-        const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                             gpi->x[1] - gpj->x[1],   // y
-                             gpi->x[2] - gpj->x[2]};  // z
+        const float dx[3] = {pix[0] - gpj->x[0],   // x
+                             pix[1] - gpj->x[1],   // y
+                             pix[2] - gpj->x[2]};  // z
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -264,6 +285,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
       if (!gpart_is_active(gpj, e)) continue;
 
+      /* Apply boundary condition */
+      const double pjx[3] = {gpj->x[0] + shift[0], gpj->x[1] + shift[1],
+                             gpj->x[2] + shift[2]};
+
       /* Loop over every particle in the other cell. */
       for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -271,9 +296,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
         const struct gpart *restrict gpi = &gparts_i[pid];
 
         /* Compute the pairwise distance. */
-        const float dx[3] = {gpj->x[0] - gpi->x[0],   // x
-                             gpj->x[1] - gpi->x[1],   // y
-                             gpj->x[2] - gpi->x[2]};  // z
+        const float dx[3] = {pjx[0] - gpi->x[0],   // x
+                             pjx[1] - gpi->x[1],   // y
+                             pjx[2] - gpi->x[2]};  // z
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -307,11 +332,14 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
  */
 void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
+  /* Some constants */
   const struct engine *e = r->e;
-  const int gcount = c->gcount;
-  struct gpart *restrict gparts = c->gparts;
   const float a_smooth = e->gravity_properties->a_smooth;
   const float rlr_inv = 1. / (a_smooth * c->super->width[0]);
+
+  /* Cell properties */
+  const int gcount = c->gcount;
+  struct gpart *restrict gparts = c->gparts;
 
   TIMER_TIC;
 
