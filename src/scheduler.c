@@ -682,7 +682,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
 
-          /* Make sure we have a drift task (MATTHIEU temp. fix) */
+          /* Make sure we have a drift task */
           lock_lock(&ci->lock);
           if (ci->drift_gpart == NULL)
             ci->drift_gpart = scheduler_addtask(
