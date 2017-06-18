@@ -1498,23 +1498,28 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param pos_a The position of the multipole.
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
  */
 INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
-                               const struct gravity_props *props,
-                               int periodic) {
+                               const struct gravity_props *props, int periodic,
+                               const double dim[3]) {
 
   /* Recover some constants */
   const double eps2 = props->epsilon2;
 
   /* Compute distance vector */
-  const double dx =
-      periodic ? box_wrap(pos_b[0] - pos_a[0], 0., 1.) : pos_b[0] - pos_a[0];
-  const double dy =
-      periodic ? box_wrap(pos_b[1] - pos_a[1], 0., 1.) : pos_b[1] - pos_a[1];
-  const double dz =
-      periodic ? box_wrap(pos_b[2] - pos_a[2], 0., 1.) : pos_b[2] - pos_a[2];
+  double dx = pos_b[0] - pos_a[0];
+  double dy = pos_b[1] - pos_a[1];
+  double dz = pos_b[2] - pos_a[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
 
   /* Compute distance */
   const double r2 = dx * dx + dy * dy + dz * dz;
