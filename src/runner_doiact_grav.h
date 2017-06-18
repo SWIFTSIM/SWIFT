@@ -110,10 +110,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
+  /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
-  const int periodic = e->s->periodic;
-  const struct multipole *multi_j = &cj->multipole->m_pole;
   // const float a_smooth = e->gravity_properties->a_smooth;
   // const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
@@ -121,6 +123,9 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
+
+  /* Short-cut to the multipole */
+  const struct multipole *multi_j = &cj->multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
@@ -136,7 +141,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, props, periodic * 0);
+              cj->multipole->CoM, props, periodic, dim);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
