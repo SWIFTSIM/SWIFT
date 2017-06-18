@@ -141,7 +141,7 @@ plot([epsilon, epsilon], [-10, 10], 'k-', alpha=0.5, lw=0.5)
 plot([epsilon/plummer_equivalent_factor, epsilon/plummer_equivalent_factor], [0, 10], 'k-', alpha=0.5, lw=0.5)
 
 ylim(0, 2.3)
-ylabel("$\\phi(r)$", labelpad=1)
+ylabel("$\\varphi(r)$", labelpad=1)
 #yticks([0., 0.5, 1., 1.5, 2., 2.5], ["$%.1f$"%(0.*epsilon), "$%.1f$"%(0.5*epsilon), "$%.1f$"%(1.*epsilon), "$%.1f$"%(1.5*epsilon), "$%.1f$"%(2.*epsilon)])
 
 xlim(0,r_max_plot)
@@ -163,6 +163,6 @@ xticks([0., 0.5, 1., 1.5, 2., 2.5], ["$%.1f$"%(0./epsilon), "", "$%.1f$"%(1./eps
 xlabel("$r/H$", labelpad=-7)
 
 ylim(0, 0.95)
-ylabel("$|\\overrightarrow{\\nabla}\\phi(r)|$", labelpad=0)
+ylabel("$|\\overrightarrow{\\nabla}\\varphi(r)|$", labelpad=0)
 
 savefig("potential.pdf")
