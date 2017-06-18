@@ -415,6 +415,9 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit_inv = props->theta_crit_inv;
 
@@ -464,7 +467,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Can we use M-M interactions ? */
   if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
-                               0)) {
+                               periodic, dim)) {
+
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
     runner_dopair_grav_mm(r, cj, ci);
@@ -617,6 +621,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit_inv = props->theta_crit_inv;
 
@@ -627,7 +634,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const int nr_cells = e->s->nr_cells;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;  // MATTHIEU (should never happen)
+  if (!cell_is_active(ci, e)) return;
 
   /* Check multipole has been drifted */
   if (ci->ti_old_multipole != e->ti_current)
@@ -645,14 +652,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
     /* Check the multipole acceptance criterion */
     if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
-                                 0)) {
+                                 periodic, dim)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
     }
     /* Is the criterion violated now but was OK at the last rebuild ? */
-    else if (gravity_multipole_accept(ci->multipole, cj->multipole,
-                                      theta_crit_inv, 1)) {
+    else if (gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
+                                              theta_crit_inv, periodic, dim)) {
 
       /* Alright, we have to take charge of that pair in a different way. */
       // MATTHIEU: We should actually open the tree-node here and recurse.
