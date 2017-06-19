@@ -190,8 +190,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   } else if (abs_dz < z_max) {
 
     /* Acc. 2 pi sigma tanh(z/b) [1/2 + 1/2cos((z-zmax)/(pi z_trans))] */
-    a_z = reduction_factor * norm_over_G * tanhf(abs_dz * b_inv) *
-      (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dz - z_trunc) * z_trans_inv));
+    a_z =
+        reduction_factor * norm_over_G * tanhf(abs_dz * b_inv) *
+        (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dz - z_trunc) * z_trans_inv));
   } else {
 
     /* Acc. 0 */

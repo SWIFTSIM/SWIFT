@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
+ *               2017 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -55,6 +56,7 @@ void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name);
+void parser_set_param(struct swift_params *params, const char *desc);
 
 char parser_get_param_char(const struct swift_params *params, const char *name);
 int parser_get_param_int(const struct swift_params *params, const char *name);
