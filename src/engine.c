@@ -2590,7 +2590,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             finger->sorted = 0;
           }
         }
-        if (!(ci->sorted & (1 << t->flags))) {
+        if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
           scheduler_activate(s, ci->sorts);
           if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
@@ -2605,7 +2605,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             finger->sorted = 0;
           }
         }
-        if (!(cj->sorted & (1 << t->flags))) {
+        if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
           atomic_or(&cj->sorts->flags, (1 << t->flags));
           scheduler_activate(s, cj->sorts);
           if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
