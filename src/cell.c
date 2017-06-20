@@ -1591,7 +1591,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
         finger->sorted = 0;
       }
     }
-    if (!(ci->sorted & (1 << sid))) {
+    if (!(ci->sorted & (1 << sid)) || ci->nodeID != engine_rank) {
       atomic_or(&ci->sorts->flags, (1 << sid));
       scheduler_activate(s, ci->sorts);
     }
@@ -1608,7 +1608,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
         finger->sorted = 0;
       }
     }
-    if (!(cj->sorted & (1 << sid))) {
+    if (!(cj->sorted & (1 << sid)) || cj->nodeID != engine_rank) {
       atomic_or(&cj->sorts->flags, (1 << sid));
       scheduler_activate(s, cj->sorts);
     }
@@ -1657,7 +1657,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           finger->sorted = 0;
         }
       }
-      if (!(ci->sorted & (1 << t->flags))) {
+      if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
         atomic_or(&ci->sorts->flags, (1 << t->flags));
         scheduler_activate(s, ci->sorts);
         if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
@@ -1672,7 +1672,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           finger->sorted = 0;
         }
       }
-      if (!(cj->sorted & (1 << t->flags))) {
+      if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
         atomic_or(&cj->sorts->flags, (1 << t->flags));
         scheduler_activate(s, cj->sorts);
         if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
@@ -1718,7 +1718,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         else
           error("Drift task missing !");
         if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
-
+        
         if (cell_is_active(cj, e)) {
 
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1870,9 +1870,15 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank)
+    error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
+#endif  // SWIFT_DEBUG_CHECKS
 
   /* Are we not in a leaf ? */
   if (c->split) {
