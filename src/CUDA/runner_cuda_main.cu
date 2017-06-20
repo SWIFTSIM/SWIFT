@@ -2282,3 +2282,7 @@ __host__ void create_tasks(struct engine *e){
   free(cell_host); cell_host = NULL;
   free(host_pointers); host_pointers = NULL;
 }
+
+__host__ run_cuda(){
+  swift_device_kernel<<<num_blocks, num_threads>>>();
+}
