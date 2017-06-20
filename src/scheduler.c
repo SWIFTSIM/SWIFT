@@ -132,7 +132,7 @@ void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
   lock_lock(&c->lock);
 
   /* Add a drift task if not present. */
-  if (c->drift_part == NULL)
+  if (c->drift_part == NULL && c->nodeID == engine_rank)
     c->drift_part = scheduler_addtask(s, task_type_drift_part,
                                       task_subtype_none, 0, 0, c, NULL);
 
@@ -147,7 +147,7 @@ void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
   lock_unlock_blind(&c->lock);
 
   /* The provided task should depend on both the drift and the sort. */
-  scheduler_addunlock(s, c->drift_part, t);
+  if (c->drift_part != NULL) scheduler_addunlock(s, c->drift_part, t);
   scheduler_addunlock(s, c->sorts, t);
 }
 
