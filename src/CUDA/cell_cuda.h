@@ -1,6 +1,8 @@
 #ifndef SWIFT_CUDA_CELL_H
 #define SWIFT_CUDA_CELL_H
 
+#define CUDA_MAX_LINKS 27
+
 struct cell_cuda {
   /* The cell location on the grid. */
   double loc[3];
@@ -35,7 +37,11 @@ struct cell_cuda {
   /* Minimum dimension of this cell */
   float dmin;
 
-  
+  /* Need the density links only, maximum of 27 */
+  int links[CUDA_MAX_LINKS];
+
+  /* Number of links */  
+  int nr_links;
 }
 
 #endif /* SWIFT_CUDA_CELL_H */

@@ -383,6 +383,33 @@ AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
+# Check for CUDA
+AC_ARG_WITH([cuda], 
+            [AS_HELP_STRING([--with-cuda=PATH],[prefix where cuda is installed @<:@default=no@:>@])],
+            [if test "x$with_cuda" != "xno"
+             then
+               if test "x$with_cuda" != "xyes"
+               then
+                 CUDA_CFLAGS="-I$with_cuda/include"
+                 CUDA_LIBS="-L$with_cuda/lib -L$with_Cuda/lib64 -lcudart"
+                 NVCC="$with_cuda/bin/nvcc"
+              else
+                AC_CHECK_PROG([NVCC],nvcc)
+                if test -n "$NVCC"
+                then
+                  CUDA_CFLAGS="-I/usr/local/cuda/include"
+                  CUDA_LIBS="-L/usr/local/cuda/lib -L/usr/local/cuda/lib64 -lcudart"
+                fi
+              fi
+              if test -n "$NVCC"; then
+                AC_DEFINE([HAVE_CUDA], [true], [The cuda compiler is installed.])
+                fi
+              fi])
+AC_SUBST(CUDA_CFLAGS)
+AC_SUBST(CUDA_LIBS)
+AC_SUBST(NVCC)
+AM_CONDITIONAL([HAVECUDA],[test -n "$NVCC"])
+
 #  Check for tcmalloc a fast malloc that is part of the gperftools.
 have_tcmalloc="no"
 AC_ARG_WITH([tcmalloc],

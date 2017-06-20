@@ -327,7 +327,7 @@ __device__ void doself_density( struct cell_cuda *ci ) {
 
       /* If in range then interact. */
       if( r2 < hig2 ) {
-        float wi, wi_dx;
+        float w, dw_dx;
         float dv[3], curlvr[3];
 
         /* Load mass on particle pj. */
@@ -355,8 +355,8 @@ __device__ void doself_density( struct cell_cuda *ci ) {
 
         /* Compute dv dot r */
         float3 piv, pjv;
-        piv = cuda_parts.v[pid];
-        pjv = cuda_parts.v[pjd];
+        piv = cuda_parts[pid].v;
+        pjv = cuda_parts[pjd].v;
         dv[0] = piv.x - pjv.x;
         dv[1] = piv.y - pjv.y;
         dv[2] = piv.z - pjv.z;
@@ -364,7 +364,7 @@ __device__ void doself_density( struct cell_cuda *ci ) {
 
         div_v -= fac*dvdr;
 
-        curlvr[0] = dx[1] * dx[2] - dv[2] * dx[1];
+        curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
         curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
         curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
@@ -380,8 +380,8 @@ __device__ void doself_density( struct cell_cuda *ci ) {
     atomicAdd( &cuda_parts.wcount[pid], wcount);
     atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
     atomicAdd( &cuda_parts.div_v[pid], div_v);
-    atomic_add( &cuda_parts.rot_v[pid].x, rot_v.x);
-    atomic_add( &cuda_parts.rot_v[pid].y, rot_v.y);
+    atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
+    atomicAdd( &cuda_parts.rot_v[pid].y, rot_v.y);
   }
 
 }
@@ -444,7 +444,7 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
 
       /* If in range then interact. */
       if( r2 < hig2 ) {
-        float wi, wi_dx;
+        float w, dw_dx;
         float dv[3], curlvr[3];
 
         /* Load mass on particle pj. */
@@ -481,7 +481,7 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
 
         div_v -= fac*dvdr;
 
-        curlvr[0] = dx[1] * dx[2] - dv[2] * dx[1];
+        curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
         curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
         curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
@@ -614,8 +614,8 @@ __device__ void doself_force( struct celL_cuda *ci )
 
         /* Compute dv dot r. */
         const float dvdr = (cuda_parts.v[pid].x - cuda_parts.v[pjd].x) * dx[0] + 
-                            cuda_parts.v[pid].y - cuda_parts.v[pjd].y) * dx[1] + 
-                            cuda_parts.v[pid].z - cuda_parts.v[pjd].z) * dx[2];
+                           (cuda_parts.v[pid].y - cuda_parts.v[pjd].y) * dx[1] + 
+                           (cuda_parts.v[pid].z - cuda_parts.v[pjd].z) * dx[2];
 
         /* Balsara term */
         const float balsara_i = cuda_parts.balsara[pid];
@@ -774,8 +774,8 @@ __device__ void dopair_force( struct cell_cuda *ci, struct cell_cuda *cj) {
 
         /* Compute dv dot r. */
         const float dvdr = (cuda_parts.v[pid].x - cuda_parts.v[pjd].x) * dx[0] + 
-                            cuda_parts.v[pid].y - cuda_parts.v[pjd].y) * dx[1] + 
-                            cuda_parts.v[pid].z - cuda_parts.v[pjd].z) * dx[2];
+                           (cuda_parts.v[pid].y - cuda_parts.v[pjd].y) * dx[1] + 
+                           (cuda_parts.v[pid].z - cuda_parts.v[pjd].z) * dx[2];
 
         /* Balsara term */
         const float balsara_i = cuda_parts.balsara[pid];
@@ -952,6 +952,176 @@ __device__ void cuda_hydro_prepare_force(int pid){
 
 }
 
+__device__ void cuda_doself_subset_density( int pid, int cell ){
+
+  /* Loop over the particles in the cell and interact them with pid. */
+  /* This is an inner loop. */
+  int parts = cells[cell].first_part;
+  int count = cells[cell].part_count;
+  const double pix[3];
+  pix[0] = cuda_parts.x_x[pid];
+  pix[1] = cuda_parts.x_y[pid];
+  pix[2] = cuda_parts.x_z[pid];
+  const float hi = cuda_parts.h[pid];
+  const float hig2 = hi * hi * kernel_gamma2;
+  float rho = 0.0f, rho_dh = 0.0f, div_v = 0.0f, wcount = 0.0f, wcount_dh = 0.0f;
+  for(int j = parts; j < parts+count; j++){
+    if(j == pid) continue;
+    float r2 = 0.0f;
+    float dx[3];
+    dx[0] = pix[0] - cuda_parts[j].x_x;
+    r2 += dx[0] * dx[0];
+    dx[1] = pix[1] - cuda_parts[j].x_y;
+    r2 += dx[1] * dx[1];
+    dx[2] = pix[2] - cuda_parts[j].x_z;
+    r2 += dx[2] * dx[2];
+    if( r2 < hig2 ) {
+      float w, dw_dx;
+      float dv[3], curlvr[3];
+
+      /* Load mass for particle pj. */
+      const float mj = cuda_parts.mass[j];
+
+      /* Get r and 1/r */
+      const float r = sqrtf(r2);
+      const float ri = 1.0f / r;
+
+      /* Compute the kernel function */
+      const float hi_inv = 1.0f / hi;
+      const float ui = r * hi_inv;
+      
+      cuda_kernel_deval(ui, &w, &dw_dx);
+
+      /* Compute contribution to the density */
+      rho += mj * w;
+      rho_dh -= mj * (hydro_dimension * w + ui * dx_dw);
+
+      /* Compute condtribution to the number of neighbours */
+      wcount += w;
+      wcount_dh -= ui * dw_dx;
+
+      const float fav = mj * dw_dx * ri;
+
+      float3 piv, pjv;
+      piv = cuda_parts[pid].v;
+      pjv = cuda_parts[j].v;
+      dv[0] = piv.x - pjv.x;
+      dx[1] = piv.y - pjv.y;
+      dx[2] = piv.z - pjv.z;
+      const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+      div_v -= fac * dvdr;
+
+      curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+      curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+      curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+     
+      rot_v.x += fac*curlvr[0];
+      rot_v.y += fac*curlvr[1];
+      rot_v.z += fac*curlvr[2];
+
+    }
+  }
+
+  /* Write the data for particle pid */
+    atomicAdd( &cuda_parts.rho[pid], rho);
+    atomicAdd( &cuda_parts.rho_dh[pid], rho_dh);
+    atomicAdd( &cuda_parts.wcount[pid], wcount);
+    atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
+    atomicAdd( &cuda_parts.div_v[pid], div_v);
+    atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
+    atomicAdd( &cuda_parts.rot_v[pid].y, rot_v.y);
+
+}
+
+__device__ void cuda_dopair_subset_density( int pid, int cell , int pid_cell){
+  
+  /* Loop over the particles in the cell and interact them with pid. */
+  /* This is an inner loop. */
+  int parts = cells[cell].first_part;
+  int count = cells[cell].part_count;
+  const double pix[3];
+  const float hi = cuda_parts.h[pid];
+  const float hig2 = hi * hi * kernel_gamma2;
+  float rho = 0.0f, rho_dh = 0.0f, div_v = 0.0f, wcount = 0.0f, wcount_dh = 0.0f;
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  /* Deal with periodicity concerns. */
+  for(int k = 0; k < 3; k++ ) {
+    if( cj->loc[k] - ci->loc[k] < dim[k] / 2)
+      shift[k] = dim[k];
+    else if( cj->loc[k] - ci->loc[k] > dim[k] / 2 )
+      shift[k] = dim[k]
+  }
+  pix[0] = cuda_parts.x_x[pid] - shift[0];
+  pix[1] = cuda_parts.x_y[pid] - shift[1];
+  pix[2] = cuda_parts.x_z[pid] - shift[2];
+  for(int j = parts; j < parts+count; j++){
+    float r2 = 0.0f;
+    float dx[3];
+    dx[0] = pix[0] - cuda_parts[j].x_x;
+    r2 += dx[0] * dx[0];
+    dx[1] = pix[1] - cuda_parts[j].x_y;
+    r2 += dx[1] * dx[1];
+    dx[2] = pix[2] - cuda_parts[j].x_z;
+    r2 += dx[2] * dx[2];
+    if( r2 < hig2 ) {
+      float w, dw_dx;
+      float dv[3], curlvr[3];
+
+      /* Load mass for particle pj. */
+      const float mj = cuda_parts.mass[j];
+
+      /* Get r and 1/r */
+      const float r = sqrtf(r2);
+      const float ri = 1.0f / r;
+
+      /* Compute the kernel function */
+      const float hi_inv = 1.0f / hi;
+      const float ui = r * hi_inv;
+      
+      cuda_kernel_deval(ui, &w, &dw_dx);
+
+      /* Compute contribution to the density */
+      rho += mj * w;
+      rho_dh -= mj * (hydro_dimension * w + ui * dx_dw);
+
+      /* Compute condtribution to the number of neighbours */
+      wcount += w;
+      wcount_dh -= ui * dw_dx;
+
+      const float fav = mj * dw_dx * ri;
+
+      float3 piv, pjv;
+      piv = cuda_parts[pid].v;
+      pjv = cuda_parts[j].v;
+      dv[0] = piv.x - pjv.x;
+      dx[1] = piv.y - pjv.y;
+      dx[2] = piv.z - pjv.z;
+      const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+      div_v -= fac * dvdr;
+
+      curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+      curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+      curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+     
+      rot_v.x += fac*curlvr[0];
+      rot_v.y += fac*curlvr[1];
+      rot_v.z += fac*curlvr[2];
+
+    }
+  }
+
+  /* Write the data for particle pid */
+    atomicAdd( &cuda_parts.rho[pid], rho);
+    atomicAdd( &cuda_parts.rho_dh[pid], rho_dh);
+    atomicAdd( &cuda_parts.wcount[pid], wcount);
+    atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
+    atomicAdd( &cuda_parts.div_v[pid], div_v);
+    atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
+}
+
 /* Device function to fix a single particle that was messed up in the density loop. */
 /* This interacts a single particle because the method used on the CPU will not work here*/
 /* Its probably super inefficient but it should work at least...*/
@@ -967,7 +1137,24 @@ __device__ void cuda_hydro_fix_particle( int pid, struct cell_cuda *c ){
   cuda_parts[pid].rot_v.y = 0.f;
   cuda_parts[pid].rot_v.z = 0.f;
 
- //TODO Fix the particle!
+  /* Climb up the cell hierarchy. */
+  struct cell_cuda *c2 = c;
+  for(int cell = (c - cells) ; cell >= 0; cell = c->parent){
+    c2 = &cells[cell];
+
+    for(int l = 0; l < c->nr_links; l++){
+      if(tasks[l].type == task_type_self || tasks[l].type == task_type_sub_self)
+        cuda_deoself_subset_density( pid, cell );
+      else if(tasks[l].type == task_type_pair || tasks[l].type = task_type_sub_pair){
+        if(tasks[l].ci == cell){
+          cuda_dopair_subset_density( pid, tasks[l].cj, cell );
+        }else{
+          cuda_dopair_subset_density( pid, tasks[l].ci, cell );
+        }
+        //dopair_subset_density
+      }
+    }
+  }
 }
 
 /* During ghost work only this block will be accessing the thread, no need for atomics. */
@@ -986,7 +1173,7 @@ __device__ void do_ghost( struct cell_cuda *c ){
   }else{
 
     /* Loop over the particles in the cell. */
-    for(int i = threadIdx.x; i < part_i + count_i; i++)
+    for(int i = part_i + threadIdx.x; i < part_i + count_i; i++)
     {
       if(!cuda_part_is_active(i)) continue;
 
@@ -1012,10 +1199,10 @@ __device__ void do_ghost( struct cell_cuda *c ){
         /* Correct the value of h */
         cuda_parts[i].h += h_corr;
 
-        //TODO If below absolute max try again
-        //TODO else give up...
+        //If below absolute max try again
+        //else give up...
         if(cuda_parts[i].h < hydro_h_max) {
-
+          cuda_hydro_fix_particle(i, c);
         }else{
           /* The particle is a lost cause */
           cuda_parts[i].h = hydro_h_max;
@@ -1322,11 +1509,29 @@ __host__ void create_transfer_tasks(struct cell *c, int *k, int parent_load_task
   }
 }
 
+/* Recursive function to initialise the links required for the ghosts.  */
+__host__ void init_links( struct cell *c, struct cell_cuda *cell_host ){
+
+  struct link *l = c->density;
+  struct cell_cuda *c2 = &cell_host[c->cuda_ID];
+  while(l != NULL){
+   c2->links[nr_links++] = l->t->cuda_task;
+   l = l->next;
+  }
+
+  for(int i = 0; i < 8; i++){
+    /* Recurse */
+    if(c->progeny[i] != NULL){
+      init_links(c->progeny[i], cell_host);
+    }
+  }
+}
+
 /* Recursive function to create the cell structures require for the GPU.*/
 __host__ void create_cells( struct cell *c, struct cell_cuda *cell_host, struct cell **host_pointers, struct part *parts){
 
   /* Set the host pointer. */
-  host_ponters[c->cuda_ID] = c;
+  host_pointers[c->cuda_ID] = c;
   struct cell_cuda *c2 = &cell_host[c->cuda_ID];
 
   c2->loc[0] = c->loc[0];
@@ -1343,12 +1548,14 @@ __host__ void create_cells( struct cell *c, struct cell_cuda *cell_host, struct 
   c2->ti_end_min = c->ti_end_min;
   c2->ti_end_max = c->ti_end_max;
   c2->dmin = c->dmin;
+  c2->nr_links = 0;
 
-  for(int i = 0; i < 8; i++)
-  {
+  for(int i = 0; i < 8; i++){
     /* Set progeny and recurse. */
-    c2->progeny[i] = c->progeny[i]->cuda_ID;
-    create_cells(c->progeny[i], cell_host, host_pointers, parts);
+    if(c->progency[i] != NULL){
+      c2->progeny[i] = c->progeny[i]->cuda_ID;
+      create_cells(c->progeny[i], cell_host, host_pointers, parts);
+    }
   }
 
 }
@@ -1795,11 +2002,16 @@ __host__ void create_tasks(struct engine *e){
   struct cell_cuda *cell_host = malloc(sizeof(struct cell_cuda) * s->tot_cells); 
   struct cell **host_pointers = malloc(sizeof(struct *cell) * s->tot_cells);
   k = 0;
-  for(int i = 0; i < nr_cells; i++)
-  {
+  for(int i = 0; i < nr_cells; i++){
     c = &s->cells_top[i];
     /*Create cells recursively. */
     create_cells(c, cell_host, host_pointers, s->parts);
+  }
+
+  /* Need to setup the links */
+  for(int i = 0; i < nr_cells; i++){
+    c = &s->cells_top[i];
+    init_links(c, cell_host);
   }
 
   /* Allocate space on the device for the cells. */
