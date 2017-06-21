@@ -392,7 +392,7 @@ AC_ARG_WITH([cuda],
                then
                  CUDA_CFLAGS="-I$with_cuda/include"
                  CUDA_LIBS="-L$with_cuda/lib -L$with_cuda/lib64 -lcudart"
-                 NVCC="$with_cuda/bin/nvcc"
+                 NVCC="$with_cuda/"
               else
                 AC_CHECK_PROG([NVCC],nvcc)
                 if test -n "$NVCC"
