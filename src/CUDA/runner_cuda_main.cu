@@ -889,10 +889,10 @@ __device__ void cuda_hydro_part_has_no_neighbours(int pid){
 }
 
 __device__ float cuda_pow_gamma( float x ){
-#if define(HYDRO_GAMMA_5_3)
+#if defined(HYDRO_GAMMA_5_3)
   const float cbrt = cbrtf(x);
   return cbrt * cbrt * x;
-#elif define(HYDRO_GAMMA_7_5)
+#elif defined(HYDRO_GAMMA_7_5)
   return powf(x, 1.4f);
 #elif defined(HYDRO_GAMMA_4_3)
   return cbrtf(x) * x;

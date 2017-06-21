@@ -384,27 +384,34 @@ AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for CUDA
-AC_ARG_WITH([cuda], 
-            [AS_HELP_STRING([--with-cuda=PATH],[prefix where cuda is installed @<:@default=no@:>@])],
-            [if test "x$with_cuda" != "xno"
-             then
-               if test "x$with_cuda" != "xyes"
-               then
-                 CUDA_CFLAGS="-I$with_cuda/include"
-                 CUDA_LIBS="-L$with_cuda/lib -L$with_cuda/lib64 -lcudart"
-                 NVCC="$with_cuda/"
-              else
-                AC_CHECK_PROG([NVCC],nvcc)
-                if test -n "$NVCC"
-                then
-                  CUDA_CFLAGS="-I/usr/local/cuda/include"
-                  CUDA_LIBS="-L/usr/local/cuda/lib -L/usr/local/cuda/lib64 -lcudart"
-                fi
-              fi
-              if test -n "$NVCC"; then
-                AC_DEFINE([HAVE_CUDA], [true], [The cuda compiler is installed.])
-                fi
-              fi])
+have_cuda="no"
+AC_ARG_WITH([cuda],
+    [AS_HELP_STRING([--with-cuda=PATH],
+       [root directory where CUDA is installed @<:@yes/no@:>@]
+    )],
+    [],
+    [with_cuda="no"]
+)
+if test "x$with_cuda" != "xno"; then
+   if test "x$with_cuda" != "xyes"; then
+      CUDA_CFLAGS="-I$with_cuda/include"
+      CUDA_LIBS="-L$with_cuda/lib -L$with_cuda/lib64 -lcudart"
+      NVCC="$with_cuda/bin/nvcc"
+      have_cuda="yes"
+   else
+      AC_PATH_PROG([NVCC],[nvcc])
+      echo "Found nvcc = $NVCC"
+      if test -n "$NVCC"; then
+         CUDA_ROOT="`dirname $NVCC`/.."
+         CUDA_CFLAGS="-I${CUDA_ROOT}/include"
+         CUDA_LIBS="-L${CUDA_ROOT}/lib -L${CUDA_ROOT}/lib64 -lcudart"
+         have_cuda="yes"
+      fi
+   fi
+   if test "x$have_cuda" != "xno"; then
+      AC_DEFINE([HAVE_CUDA], 1, [The CUDA compiler is installed.])
+   fi
+fi
 AC_SUBST(CUDA_CFLAGS)
 AC_SUBST(CUDA_LIBS)
 AC_SUBST(NVCC)
@@ -874,6 +881,7 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([src/CUDA/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
 AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
@@ -906,6 +914,7 @@ AC_MSG_RESULT([
    HDF5 enabled    : $with_hdf5
     - parallel     : $have_parallel_hdf5
    Metis enabled   : $have_metis
+   CUDA enabled    : $have_cuda
    FFTW3 enabled   : $have_fftw3
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc

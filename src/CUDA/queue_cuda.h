@@ -19,6 +19,8 @@
 #ifndef SWIFT_CUDA_QUEUE_H
 #define SWIFT_CUDA_QUEUE_H
 
+#include "task.h"
+
 /* The number of priority queues. Only 2 is supported at the moment. */
 #define cuda_numqueues 2
 
