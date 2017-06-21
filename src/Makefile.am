@@ -27,6 +27,9 @@ GIT_CMD = @GIT_CMD@
 # Additional dependencies for shared libraries.
 EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS)
 
+#subdir
+SUBDIR = CUDA
+
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
 MPI_FLAGS = -DWITH_MPI $(METIS_INCS)

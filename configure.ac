@@ -391,7 +391,7 @@ AC_ARG_WITH([cuda],
                if test "x$with_cuda" != "xyes"
                then
                  CUDA_CFLAGS="-I$with_cuda/include"
-                 CUDA_LIBS="-L$with_cuda/lib -L$with_Cuda/lib64 -lcudart"
+                 CUDA_LIBS="-L$with_cuda/lib -L$with_cuda/lib64 -lcudart"
                  NVCC="$with_cuda/bin/nvcc"
               else
                 AC_CHECK_PROG([NVCC],nvcc)
