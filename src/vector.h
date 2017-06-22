@@ -24,6 +24,9 @@
 #ifndef VEC_MACRO
 
 #include "../config.h"
+#ifdef WITH_CUDA
+#undef WITH_VECTORIZATION
+#endif
 
 #ifdef WITH_VECTORIZATION
 

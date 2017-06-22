@@ -111,6 +111,7 @@ extern int engine_rank;
  * @brief Assertion macro compatible with MPI
  *
  */
+#ifndef WITH_CUDA
 #ifdef WITH_MPI
 extern int engine_rank;
 #define assert(expr)                                                          \
@@ -133,6 +134,7 @@ extern int engine_rank;
       abort();                                                                \
     }                                                                         \
   })
+#endif
 #endif
 
 #endif /* SWIFT_ERROR_H */
