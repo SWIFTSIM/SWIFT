@@ -418,6 +418,8 @@ int main(int argc, char *argv[]) {
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
   const int replicate =
       parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
+  const int clean_h_values =
+      parser_get_opt_param_int(params, "InitialConditions:cleanup_h", 0);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
@@ -619,7 +621,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialise the particles */
-  engine_init_particles(&e, flag_entropy_ICs);
+  engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
 
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);

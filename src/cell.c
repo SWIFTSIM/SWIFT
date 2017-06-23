@@ -941,53 +941,52 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
  * @brief Sanitizes the smoothing length values of cells by setting large
  * outliers to more sensible values.
  *
- * We compute the mean and standard deviation of the smoothing lengths in
- * logarithmic space and limit values to mean + 4 sigma.
+ * Each cell with <1000 part will be processed. We limit h to be the size of
+ * the cell and replace 0s with a good estimate.
  *
  * @param c The cell.
+ * @param treated Has the cell already been sanitized at this level ?
  */
-void cell_sanitize(struct cell *c) {
+void cell_sanitize(struct cell *c, int treated) {
 
   const int count = c->count;
   struct part *parts = c->parts;
+  float h_max = 0.f;
 
-  /* First collect some statistics */
-  float h_mean = 0.f, h_mean2 = 0.f;
-  float h_min = FLT_MAX, h_max = 0.f;
-  for (int i = 0; i < count; ++i) {
+  /* Treat cells will <1000 particles */
+  if (count < 1000 && !treated) {
 
-    const float h = logf(parts[i].h);
-    h_mean += h;
-    h_mean2 += h * h;
-    h_max = max(h_max, h);
-    h_min = min(h_min, h);
+    /* Get an upper bound on h */
+    const float upper_h_max = c->dmin / (1.2f * kernel_gamma);
+
+    /* Apply it */
+    for (int i = 0; i < count; ++i) {
+      if (parts[i].h == 0.f || parts[i].h > upper_h_max)
+        parts[i].h = upper_h_max;
+    }
   }
-  h_mean /= count;
-  h_mean2 /= count;
-  const float h_var = h_mean2 - h_mean * h_mean;
-  const float h_std = (h_var > 0.f) ? sqrtf(h_var) : 0.1f * h_mean;
 
-  /* Choose a cut */
-  const float h_limit = expf(h_mean + 4.f * h_std);
+  /* Recurse and gather the new h_max values */
+  if (c->split) {
 
-  /* Be verbose this is not innocuous */
-  message("Cell properties: h_min= %f h_max= %f geometric mean= %f.",
-          expf(h_min), expf(h_max), expf(h_mean));
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
 
-  if (c->h_max > h_limit) {
+        /* Recurse */
+        cell_sanitize(c->progeny[k], (count < 1000));
 
-    message("Smoothing lengths will be limited to (mean + 4sigma)= %f.",
-            h_limit);
-
-    /* Apply the cut */
-    for (int i = 0; i < count; ++i) parts->h = min(parts[i].h, h_limit);
-
-    c->h_max = h_limit;
-
+        /* And collect */
+        h_max = max(h_max, c->progeny[k]->h_max);
+      }
+    }
   } else {
 
-    message("Smoothing lengths will not be limited.");
+    /* Get the new value of h_max */
+    for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
   }
+
+  /* Record the change */
+  c->h_max = h_max;
 }
 
 /**
