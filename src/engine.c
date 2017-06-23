@@ -498,7 +498,7 @@ void engine_redistribute(struct engine *e) {
                    sparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for spart %zu at [%.3e,%.3e,%.3e].", cid, k,
             sparts[k].x[0], sparts[k].x[1], sparts[k].x[2]);
 #endif
 
@@ -590,7 +590,7 @@ void engine_redistribute(struct engine *e) {
                    gparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for gpart %zu at [%.3e,%.3e,%.3e].", cid, k,
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
 #endif
 
@@ -604,7 +604,6 @@ void engine_redistribute(struct engine *e) {
   if (s->nr_gparts > 0)
     space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
 
-  free(g_dest);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -621,7 +620,8 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
-      error("gpart's new node index not matching sorted index.");
+        error("gpart's new node index not matching sorted index (%d != %d).",
+              g_dest[k], new_node);
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
@@ -629,6 +629,8 @@ void engine_redistribute(struct engine *e) {
       error("gpart not sorted into the right top-level cell!");
   }
 #endif
+
+  free(g_dest);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
