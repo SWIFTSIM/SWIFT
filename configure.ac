@@ -829,10 +829,10 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravitational field expansion @<:@ default: 3@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 4@:>@]
    )],
    [with_multipole_order="$withval"],
-   [with_multipole_order="3"]
+   [with_multipole_order="4"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
@@ -854,13 +854,23 @@ AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
+AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
+# Make sure the latest git revision string gets included
+touch src/version.c
+
+# Generate output.
+AC_OUTPUT
+
 # Report general configuration.
-AC_MSG_RESULT([
+AC_MSG_RESULT([ 
+ ------- Summary --------
+   
    Compiler        : $CC
     - vendor       : $ax_cv_c_compiler_vendor
     - version      : $ax_cv_c_compiler_version
@@ -891,10 +901,5 @@ AC_MSG_RESULT([
    Task debugging    : $enable_task_debugging
    Debugging checks  : $enable_debugging_checks
    Gravity checks    : $gravity_force_checks
-])
 
-# Make sure the latest git revision string gets included
-touch src/version.c
-
-# Generate output.
-AC_OUTPUT
+ ------------------------])

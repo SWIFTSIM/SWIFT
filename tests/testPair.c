@@ -16,13 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Local headers. */
 #include "swift.h"
+
+#if defined(WITH_VECTORIZATION)
+#define DOSELF1 runner_doself1_density_vec
+#define DOPAIR1 runner_dopair1_branch_density
+#define DOSELF1_NAME "runner_doself1_density_vec"
+#define DOPAIR1_NAME "runner_dopair1_density_vec"
+#endif
+
+#ifndef DOSELF1
+#define DOSELF1 runner_doself1_density
+#define DOSELF1_NAME "runner_doself1_density"
+#endif
+
+#ifndef DOPAIR1
+#define DOPAIR1 runner_dopair1_branch_density
+#define DOPAIR1_NAME "runner_dopair1_density"
+#endif
 
 /* n is both particles per axis and box size:
  * particles are generated on a mesh with unit spacing
@@ -187,6 +208,9 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_doself1_density_vec(struct runner *r, struct cell *ci);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
@@ -205,6 +229,9 @@ int main(int argc, char *argv[]) {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
+
+  /* Choke on FP-exceptions */
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   srand(0);
 
@@ -276,7 +303,7 @@ int main(int argc, char *argv[]) {
 
 #if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
     /* Run the test */
-    runner_dopair1_density(&runner, ci, cj);
+    DOPAIR1(&runner, ci, cj);
 #endif
 
     toc = getticks();

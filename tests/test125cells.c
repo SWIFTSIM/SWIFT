@@ -432,6 +432,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
@@ -621,6 +623,14 @@ int main(int argc, char *argv[]) {
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+/* Initialise the particle cache. */
+#ifdef WITH_VECTORIZATION
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    runner.cj_cache.count = 0;
+    cache_init(&runner.cj_cache, 512);
+#endif
+
     /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
@@ -643,7 +653,7 @@ int main(int argc, char *argv[]) {
 
                 struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
 
-                if (cj > ci) runner_dopair1_density(&runner, ci, cj);
+                if (cj > ci) runner_dopair1_branch_density(&runner, ci, cj);
               }
             }
           }

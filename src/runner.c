@@ -708,6 +708,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (p->density.wcount == kernel_root * kernel_norm)
+              hydro_part_has_no_neighbours(p, xp);
           }
         }
 
@@ -1818,16 +1822,11 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pair:
-          if (t->subtype == task_subtype_density) {
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
-            runner_dopair1_density_vec(r, ci, cj);
-#else
-            runner_dopair1_density(r, ci, cj);
-#endif
-          }
+          if (t->subtype == task_subtype_density)
+            runner_dopair1_branch_density(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dopair1_gradient(r, ci, cj);
+            runner_dopair1_branch_gradient(r, ci, cj);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
