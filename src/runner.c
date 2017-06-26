@@ -877,7 +877,7 @@ void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_part(c, r->e);
+  cell_drift_part(c, r->e, 0);
 
   if (timer) TIMER_TOC(timer_drift_part);
 }
