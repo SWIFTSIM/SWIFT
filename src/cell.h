@@ -333,10 +333,10 @@ struct cell {
 
   /* Will this cell do anything that relies on its sorts being set correctly? */
   integertime_t requires_sorts;
-  
+
   /*! Does this cell need to be drifted? */
   char do_drift;
-  
+
   /*! Does any of this cell's sub-cells need to be drifted? */
   char do_sub_drift;
 
@@ -387,7 +387,7 @@ void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
-void cell_drift_part(struct cell *c, const struct engine *e);
+void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);

@@ -1791,7 +1791,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-      } 
+      }
 
       else if (t->type == task_type_pair) { /* ci and cj on same node */
         scheduler_activate(s, ci->drift_part);
@@ -1857,8 +1857,9 @@ void cell_set_super(struct cell *c, struct cell *super) {
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_part(struct cell *c, const struct engine *e) {
+void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
@@ -1873,6 +1874,9 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
 
+  /* Drift irrespective of cell flags? */
+  force |= c->do_drift;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
   if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
@@ -1882,7 +1886,7 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Are we not in a leaf ? */
-  if (c->split) {
+  if (c->split && (force || c->do_sub_drift)) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++)
@@ -1890,7 +1894,7 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
 
         /* Collect */
-        cell_drift_part(cp, e);
+        cell_drift_part(cp, e, force);
 
         /* Update */
         dx_max = max(dx_max, cp->dx_max_part);
@@ -1898,7 +1902,15 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
         cell_h_max = max(cell_h_max, cp->h_max);
       }
 
-  } else if (ti_current > ti_old_part) {
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
+
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
+    
+  } else if (force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
@@ -1937,20 +1949,14 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
 
-  } else {
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
 
-    cell_h_max = c->h_max;
-    dx_max = c->dx_max_part;
-    dx_max_sort = c->dx_max_sort;
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
   }
-
-  /* Store the values */
-  c->h_max = cell_h_max;
-  c->dx_max_part = dx_max;
-  c->dx_max_sort = dx_max_sort;
-
-  /* Update the time of the last drift */
-  c->ti_old_part = ti_current;
 }
 
 /**
