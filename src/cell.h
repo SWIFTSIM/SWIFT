@@ -333,6 +333,12 @@ struct cell {
 
   /* Will this cell do anything that relies on its sorts being set correctly? */
   integertime_t requires_sorts;
+  
+  /*! Does this cell need to be drifted? */
+  char do_drift;
+  
+  /*! Does any of this cell's sub-cells need to be drifted? */
+  char do_sub_drift;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! The list of tasks that have been executed on this cell */
