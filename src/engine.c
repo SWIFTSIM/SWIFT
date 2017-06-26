@@ -3534,7 +3534,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
     struct cell *c = &cells[ind];
     if (c != NULL && c->nodeID == e->nodeID) {
       /* Drift all the particles */
-      cell_drift_part(c, e, 0);
+      cell_drift_part(c, e, 1);
 
       /* Drift all the g-particles */
       cell_drift_gpart(c, e);
