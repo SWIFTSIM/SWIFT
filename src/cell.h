@@ -395,6 +395,7 @@ void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s);
+void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 
 /* Inlined functions (for speed). */
 

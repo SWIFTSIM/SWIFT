@@ -2591,7 +2591,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
           scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
         }
         if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
           for (struct cell *finger = cj; finger != NULL;
@@ -2606,7 +2606,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
           atomic_or(&cj->sorts->flags, (1 << t->flags));
           scheduler_activate(s, cj->sorts);
-          if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
+          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
         }
       }
       /* Store current values of dx_max and h_max. */
@@ -2637,11 +2637,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(l->t->ci, s);
+        if (t->type == task_type_pair) cell_activate_drift_part(cj, s);
 
         if (cell_is_active(cj, e)) {
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2686,11 +2683,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
+        cell_activate_drift_part(l->t->ci, s);
+        if (t->type == task_type_pair) cell_activate_drift_part(ci, s);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -2715,13 +2709,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
       } else if (t->type == task_type_pair) { /* ci and cj on same node */
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(cj, s);
       }
 #else
       if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(cj, s);
       }
 #endif
     }
