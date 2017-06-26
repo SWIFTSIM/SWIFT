@@ -20,7 +20,7 @@
 ##
 # This script plots the Disc-Patch_*.hdf5 snapshots.
 # It takes two (optional) parameters: the counter value of the first and last
-# snapshot to plot (default: 0 81).
+# snapshot to plot (default: 0 21).
 ##
 
 import numpy as np
@@ -34,12 +34,14 @@ import sys
 # Parameters
 surface_density = 10.
 scale_height = 100.
-z_disc = 200.
-utherm = 20.2615290634
+z_disc = 400.
+z_trunc = 300.
+z_max = 350.
+utherm = 20.2678457288
 gamma = 5. / 3.
 
 start = 0
-stop = 81
+stop = 21
 if len(sys.argv) > 1:
   start = int(sys.argv[1])
 if len(sys.argv) > 2:
@@ -78,22 +80,37 @@ for f in sorted(glob.glob("Disc-Patch_*.hdf5")):
 
   print "processing", f, "..."
 
-  zrange = np.linspace(0., 400., 1000)
+  zrange = np.linspace(0., 2. * z_disc, 1000)
   time, z, rho, P, v = get_data(f)
 
   fig, ax = pl.subplots(3, 1, sharex = True)
 
   ax[0].plot(z, rho, "r.")
   ax[0].plot(zrange, get_analytic_density(zrange), "k-")
+  ax[0].plot([z_disc - z_max, z_disc - z_max], [0, 10], "k--", alpha=0.5)
+  ax[0].plot([z_disc + z_max, z_disc + z_max], [0, 10], "k--", alpha=0.5)
+  ax[0].plot([z_disc - z_trunc, z_disc - z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[0].plot([z_disc + z_trunc, z_disc + z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[0].set_ylim(0., 1.2 * get_analytic_density(z_disc))
   ax[0].set_ylabel("density")
 
   ax[1].plot(z, v, "r.")
   ax[1].plot(zrange, np.zeros(len(zrange)), "k-")
+  ax[1].plot([z_disc - z_max, z_disc - z_max], [0, 10], "k--", alpha=0.5)
+  ax[1].plot([z_disc + z_max, z_disc + z_max], [0, 10], "k--", alpha=0.5)
+  ax[1].plot([z_disc - z_trunc, z_disc - z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[1].plot([z_disc + z_trunc, z_disc + z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[1].set_ylim(-0.5, 10.)
   ax[1].set_ylabel("velocity norm")
 
   ax[2].plot(z, P, "r.")
   ax[2].plot(zrange, get_analytic_pressure(zrange), "k-")
-  ax[2].set_xlim(0., 400.)
+  ax[2].plot([z_disc - z_max, z_disc - z_max], [0, 10], "k--", alpha=0.5)
+  ax[2].plot([z_disc + z_max, z_disc + z_max], [0, 10], "k--", alpha=0.5)
+  ax[2].plot([z_disc - z_trunc, z_disc - z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[2].plot([z_disc + z_trunc, z_disc + z_trunc], [0, 10], "k--", alpha=0.5)
+  ax[2].set_xlim(0., 2. * z_disc)
+  ax[2].set_ylim(0., 1.2 * get_analytic_pressure(z_disc))
   ax[2].set_xlabel("z")
   ax[2].set_ylabel("pressure")
 

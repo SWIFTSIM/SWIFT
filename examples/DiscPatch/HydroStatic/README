@@ -18,3 +18,5 @@ output to 'Disc-Patch-dynamic.hdf5'. These are now the ICs for the actual test.
 
 When running SWIFT with the parameters from 'disc-patch.yml' and an
 ideal gas EoS on these ICs the disc should stay in equilibrium.
+
+The solution can be checked using the 'plotSolution.py' script.

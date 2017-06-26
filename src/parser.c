@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
+ *               2017 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -87,6 +88,62 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   }
 
   fclose(file);
+}
+
+/**
+ * @brief Set or update a parameter using a compressed format.
+ *
+ * The compressed format allows a value to be given as a single
+ * string and has the format "section:parameter:value", with all
+ * names as would be given in the parameter file.
+ *
+ * @param params Structure that holds the parameters.
+ * @param namevalue the parameter name and value as described.
+ */
+void parser_set_param(struct swift_params *params, const char *namevalue) {
+
+  /* Get the various parts. */
+  char name[PARSER_MAX_LINE_SIZE];
+  char value[PARSER_MAX_LINE_SIZE];
+  name[0] = '\0';
+  value[0] = '\0';
+
+  /* Name is part until second colon. */
+  char *p1 = strchr(namevalue, ':');
+  if (p1 != NULL) {
+    char *p2 = strchr(p1 + 1, ':');
+    if (p2 != NULL) {
+      memcpy(name, namevalue, p2 - namevalue);
+      name[p2 - namevalue] = '\0';
+
+      /* Value is rest after second colon. */
+      p2++;
+      strcpy(value, p2);
+    }
+  }
+
+  /* Sanity check. */
+  if (strlen(name) == 0 || strlen(value) == 0 || strchr(value, ':') != NULL)
+    error(
+        "Cannot parse compressed parameter string: '%s', check syntax "
+        "should be section:parameter:value",
+        namevalue);
+
+  /* And update or set. */
+  int updated = 0;
+  for (int i = 0; i < params->paramCount; i++) {
+    if (strcmp(name, params->data[i].name) == 0) {
+      strcpy(params->data[i].value, value);
+      updated = 1;
+    }
+  }
+  if (!updated) {
+    strcpy(params->data[params->paramCount].name, name);
+    strcpy(params->data[params->paramCount].value, value);
+    params->paramCount++;
+    if (params->paramCount == PARSER_MAX_NO_OF_PARAMS)
+      error("Too many parameters, current maximum is %d.", params->paramCount);
+  }
 }
 
 /**
@@ -238,7 +295,7 @@ static void parse_value(char *line, struct swift_params *params) {
 
   /* Check for more than one value on the same line. */
   if (count_char(line, PARSER_VALUE_CHAR) > 1) {
-    error("Inavlid line:%d '%s', only one value allowed per line.", lineNumber,
+    error("Invalid line:%d '%s', only one value allowed per line.", lineNumber,
           line);
   }
 

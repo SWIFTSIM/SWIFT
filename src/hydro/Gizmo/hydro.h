@@ -375,7 +375,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
     struct part* restrict p, struct xpart* restrict xp) {
-  error("To be implemented");
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.wcount_dh = 0.f;
 }
 
 /**

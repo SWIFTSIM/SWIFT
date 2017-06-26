@@ -76,22 +76,23 @@
 /* Particle cache size. */
 #define CACHE_SIZE 512
 
-const char *engine_policy_names[16] = {"none",
-                                       "rand",
-                                       "steal",
-                                       "keep",
-                                       "block",
-                                       "cpu_tight",
-                                       "mpi",
-                                       "numa_affinity",
-                                       "hydro",
-                                       "self_gravity",
-                                       "external_gravity",
-                                       "cosmology_integration",
-                                       "drift_all",
-                                       "cooling",
-                                       "sourceterms",
-                                       "stars"};
+const char *engine_policy_names[] = {"none",
+                                     "rand",
+                                     "steal",
+                                     "keep",
+                                     "block",
+                                     "cpu_tight",
+                                     "mpi",
+                                     "numa_affinity",
+                                     "hydro",
+                                     "self_gravity",
+                                     "external_gravity",
+                                     "cosmology_integration",
+                                     "drift_all",
+                                     "reconstruct_mpoles",
+                                     "cooling",
+                                     "sourceterms",
+                                     "stars"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -4461,7 +4462,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 1; k < 32; k++)
+    for (int k = 0; k <= engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -4469,7 +4470,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 1; k < 31; k++)
+  for (int k = 0; k <= engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
