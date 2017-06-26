@@ -1317,6 +1317,14 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 }
 
 /**
+ * @brief Clear the drift flags on the given cell.
+ */
+void cell_clear_drift_flags(struct cell *c, void *data) {
+  c->do_drift = 0;
+  c->do_sub_drift = 0;
+}
+
+/**
  * @brief Activate the drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
@@ -1358,8 +1366,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
       if (finger->requires_sorts == ti_current) {
         atomic_or(&finger->sorts->flags, finger->sorted);
-        scheduler_activate(s, finger->sorts);
         if (finger->nodeID == engine_rank) cell_activate_drift_part(finger, s);
+        scheduler_activate(s, finger->sorts);
       }
       finger->sorted = 0;
     }
@@ -1896,10 +1904,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
 
-    /* Clear the drift flags. */
-    c->do_drift = 0;
-    c->do_sub_drift = 0;
-
   } else if (force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
@@ -1946,11 +1950,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
-
-    /* Clear the drift flags. */
-    c->do_drift = 0;
-    c->do_sub_drift = 0;
   }
+
+  /* Clear the drift flags. */
+  c->do_drift = 0;
+  c->do_sub_drift = 0;
 }
 
 /**
