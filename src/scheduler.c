@@ -112,7 +112,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief Create the drift and sort tasks for the hierarchy of cells under
+ * @brief Create the sort tasks for the hierarchy of cells under
  * a sub-cell task.
  *
  * @param s The #scheduler.
@@ -131,11 +131,6 @@ void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
   /* Lock the cell before potentially adding tasks. */
   lock_lock(&c->lock);
 
-  /* Add a drift task if not present. */
-  if (c->drift_part == NULL && c->nodeID == engine_rank)
-    c->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                      task_subtype_none, 0, 0, c, NULL);
-
   /* Add a sort task if not present. Note that the sort flags will be
      populated in cell_activate_subcell_tasks. */
   if (c->sorts == NULL) {
@@ -146,8 +141,7 @@ void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
   /* Unlock the cell. */
   lock_unlock_blind(&c->lock);
 
-  /* The provided task should depend on both the drift and the sort. */
-  if (c->drift_part != NULL) scheduler_addunlock(s, c->drift_part, t);
+  /* The provided task should depend on the sort. */
   scheduler_addunlock(s, c->sorts, t);
 }
 
@@ -230,15 +224,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         }
       } /* Cell is split */
 
-      /* Otherwise, make sure the self task has a drift task */
-      else {
-        lock_lock(&ci->lock);
-
-        if (ci->drift_part == NULL)
-          ci->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                             task_subtype_none, 0, 0, ci, NULL);
-        lock_unlock_blind(&ci->lock);
-      }
     } /* Self interaction */
 
     /* Pair interaction? */
@@ -641,9 +626,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
         /* Create the drift and sort for ci. */
         lock_lock(&ci->lock);
-        if (ci->drift_part == NULL && ci->nodeID == engine_rank)
-          ci->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                             task_subtype_none, 0, 0, ci, NULL);
         if (ci->sorts == NULL)
           ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
                                         0, ci, NULL);
@@ -654,9 +636,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
         /* Create the drift and sort for cj. */
         lock_lock(&cj->lock);
-        if (cj->drift_part == NULL && cj->nodeID == engine_rank)
-          cj->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                             task_subtype_none, 0, 0, cj, NULL);
         if (cj->sorts == NULL)
           cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
                                         0, cj, NULL);
