@@ -2578,36 +2578,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         cj->dx_max_sort_old = cj->dx_max_sort;
 
         /* Activate the sorts where needed. */
-        if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-          for (struct cell *finger = ci; finger != NULL;
-               finger = finger->parent) {
-            if (finger->requires_sorts == ti_current) {
-              atomic_or(&finger->sorts->flags, finger->sorted);
-              scheduler_activate(s, finger->sorts);
-            }
-            finger->sorted = 0;
-          }
-        }
-        if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
-          atomic_or(&ci->sorts->flags, (1 << t->flags));
-          scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        }
-        if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-          for (struct cell *finger = cj; finger != NULL;
-               finger = finger->parent) {
-            if (finger->requires_sorts == ti_current) {
-              atomic_or(&finger->sorts->flags, finger->sorted);
-              scheduler_activate(s, finger->sorts);
-            }
-            finger->sorted = 0;
-          }
-        }
-        if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
-          atomic_or(&cj->sorts->flags, (1 << t->flags));
-          scheduler_activate(s, cj->sorts);
-          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-        }
+        cell_activate_sorts(ci, t->flags, s);
+        cell_activate_sorts(cj, t->flags, s);
       }
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
