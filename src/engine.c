@@ -2717,7 +2717,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, l->t);
         }
 
-      } else if (t->type == task_type_pair) {
+      } else if (t->type == task_type_pair) { /* ci and cj on same node */
         scheduler_activate(s, ci->drift_part);
         scheduler_activate(s, cj->drift_part);
       }
