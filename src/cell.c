@@ -1317,6 +1317,29 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 }
 
 /**
+ * @brief Activate the drifts on the given cell.
+ */
+void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->do_drift) return;
+
+  /* Mark this cell for drifting. */
+  c->do_drift = 1;
+
+  /* Set the do_sub_drifts all the way up and activate the super drift
+     if this has not yet been done. */
+  for (struct cell *parent = c->parent; parent != NULL && !parent->do_sub_drift;
+       parent = parent->parent) {
+    parent->do_sub_drift = 1;
+    if (parent == c->super) {
+      scheduler_activate(s, parent->drift_part);
+      break;
+    }
+  }
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the sort tasks along the way.
  */
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
@@ -1576,8 +1599,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     cj->dx_max_sort_old = cj->dx_max_sort;
 
     /* Activate the drifts if the cells are local. */
-    if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
-    if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
+    if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+    if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
     /* Do we need to sort ci ? */
     if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
@@ -1660,7 +1683,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
         atomic_or(&ci->sorts->flags, (1 << t->flags));
         scheduler_activate(s, ci->sorts);
-        if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       }
       if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
         for (struct cell *finger = cj; finger != NULL;
@@ -1675,7 +1698,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
         atomic_or(&cj->sorts->flags, (1 << t->flags));
         scheduler_activate(s, cj->sorts);
-        if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
       }
     }
     /* Store current values of dx_max and h_max. */
@@ -1713,11 +1736,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(l->t->ci, s);
+        if (t->type == task_type_pair) cell_activate_drift_part(cj, s);
 
         if (cell_is_active(cj, e)) {
 
@@ -1763,11 +1783,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, l->t);
 
         /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
+        cell_activate_drift_part(l->t->ci, s);
+        if (t->type == task_type_pair) cell_activate_drift_part(ci, s);
 
         if (cell_is_active(ci, e)) {
 
@@ -1794,13 +1811,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       }
 
       else if (t->type == task_type_pair) { /* ci and cj on same node */
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(cj, s);
       }
 #else
       if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(cj, s);
       }
 #endif
     }
@@ -1909,11 +1926,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
-    
+
     /* Clear the drift flags. */
     c->do_drift = 0;
     c->do_sub_drift = 0;
-    
+
   } else if (force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
@@ -1960,10 +1977,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
-    
+
     /* Clear the drift flags. */
     c->do_drift = 0;
-    c->do_sub_drift = 0;
   }
 }
 
