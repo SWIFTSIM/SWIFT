@@ -163,10 +163,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-    
+
       /* Add the drift task. */
-      c->drift_part = scheduler_addtask(s, task_type_drift_part, task_subtype_none,
-                                        0, 0, c, NULL);
+      c->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                        task_subtype_none, 0, 0, c, NULL);
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
@@ -1074,9 +1074,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* Drift before you send */
-      if (ci->super->drift_part == NULL)
-        ci->super->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                           task_subtype_none, 0, 0, ci, NULL);
       scheduler_addunlock(s, ci->super->drift_part, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
