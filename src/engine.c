@@ -163,6 +163,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+    
+      /* Add the drift task. */
+      c->drift_part = scheduler_addtask(s, task_type_drift_part, task_subtype_none,
+                                        0, 0, c, NULL);
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
@@ -1070,10 +1074,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
 #endif
 
       /* Drift before you send */
-      if (ci->drift_part == NULL)
-        ci->drift_part = scheduler_addtask(s, task_type_drift_part,
+      if (ci->super->drift_part == NULL)
+        ci->super->drift_part = scheduler_addtask(s, task_type_drift_part,
                                            task_subtype_none, 0, 0, ci, NULL);
-      scheduler_addunlock(s, ci->drift_part, t_xv);
+      scheduler_addunlock(s, ci->super->drift_part, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1889,19 +1893,6 @@ void engine_count_and_link_tasks(struct engine *e) {
         if (finger->sorts != NULL) scheduler_addunlock(sched, t, finger->sorts);
     }
 
-    /* Link drift tasks to all the higher drift task. */
-    else if (t->type == task_type_drift_part) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent)
-        if (finger->drift_part != NULL)
-          scheduler_addunlock(sched, t, finger->drift_part);
-    } else if (t->type == task_type_drift_gpart) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent)
-        if (finger->drift_gpart != NULL)
-          scheduler_addunlock(sched, t, finger->drift_gpart);
-    }
-
     /* Link self tasks to cells. */
     else if (t->type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
@@ -2162,14 +2153,14 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
     /* Sort tasks depend on the drift of the cell. */
     if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
-      scheduler_addunlock(sched, t->ci->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
     }
 
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -2205,9 +2196,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Make all density tasks depend on the drift. */
       if (t->ci->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->ci->drift_part, t);
-      if (t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->drift_part, t);
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      if (t->ci->super != t->cj->super && t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->super->drift_part, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2260,6 +2251,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
+      /* Make all density tasks depend on the drift. */
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -2301,6 +2295,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair &&
              t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      if (t->ci->super != t->cj->super && t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->super->drift_part, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -3576,7 +3576,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
     struct cell *c = &cells[ind];
     if (c != NULL && c->nodeID == e->nodeID) {
       /* Drift all the particles */
-      cell_drift_part(c, e);
+      cell_drift_part(c, e, 0);
 
       /* Drift all the g-particles */
       cell_drift_gpart(c, e);
