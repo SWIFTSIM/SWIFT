@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= xj * wj_dx;
+  pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;

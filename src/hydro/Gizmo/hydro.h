@@ -225,14 +225,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float ih = 1.0f / h;
+  const float ihdim = pow_dimension(ih);
+  const float ihdim_plus_one = ihdim * ih;
 
   /* Final operation on the density. */
   p->density.wcount += kernel_root;
-  p->density.wcount *= kernel_norm;
+  p->density.wcount *= ihdim;
 
-  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
-
-  const float ihdim = pow_dimension(ih);
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
+  p->density.wcount_dh *= ihdim_plus_one;
 
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
@@ -364,6 +365,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      the geometry matrix is close to singular) */
   p->density.wcount *= p->density.wcorr;
   p->density.wcount_dh *= p->density.wcorr;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part* restrict p, struct xpart* restrict xp) {
+  error("To be implemented");
 }
 
 /**

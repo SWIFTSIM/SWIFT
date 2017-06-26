@@ -263,7 +263,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.rot_v[2] = 0.f;
 }
 
-
 /**
  * @brief Prepare a particle for the force calculation.
  *
