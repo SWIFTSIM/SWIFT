@@ -1375,7 +1375,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     } else {
 
       /* We have reached the bottom of the tree: activate drift */
-      scheduler_activate(s, ci->drift_part);
+      cell_activate_drift_part(ci, s);
     }
   }
 
