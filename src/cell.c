@@ -1672,6 +1672,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       ci->dx_max_sort_old = ci->dx_max_sort;
       cj->dx_max_sort_old = cj->dx_max_sort;
 
+      /* Activate the drift tasks. */
+      cell_activate_drift_part(ci, s);
+      cell_activate_drift_part(cj, s);
+
       /* Check the sorts and activate them if needed. */
       cell_activate_sorts(ci, t->flags, s);
       cell_activate_sorts(cj, t->flags, s);
@@ -1783,16 +1787,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-      }
-
-      else if (t->type == task_type_pair) { /* ci and cj on same node */
-        cell_activate_drift_part(ci, s);
-        cell_activate_drift_part(cj, s);
-      }
-#else
-      if (t->type == task_type_pair) {
-        cell_activate_drift_part(ci, s);
-        cell_activate_drift_part(cj, s);
       }
 #endif
     }
@@ -1955,6 +1949,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Clear the drift flags. */
     c->do_drift = 0;
+    c->do_sub_drift = 0;
   }
 }
 

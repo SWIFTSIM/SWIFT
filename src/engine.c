@@ -2577,6 +2577,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         ci->dx_max_sort_old = ci->dx_max_sort;
         cj->dx_max_sort_old = cj->dx_max_sort;
 
+        /* Activate the drift tasks. */
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(cj, s);
+
         /* Activate the sorts where needed. */
         cell_activate_sorts(ci, t->flags, s);
         cell_activate_sorts(cj, t->flags, s);
@@ -2679,21 +2683,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-
-      } else if (t->type == task_type_pair) { /* ci and cj on same node */
-        cell_activate_drift_part(ci, s);
-        cell_activate_drift_part(cj, s);
-      }
-#else
-      if (t->type == task_type_pair) {
-        cell_activate_drift_part(ci, s);
-        cell_activate_drift_part(cj, s);
       }
 #endif
     }
 
     /* Kick/Drift/init ? */
-    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+    if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
              t->type == task_type_drift_part ||
              t->type == task_type_drift_gpart ||
              t->type == task_type_init_grav) {
