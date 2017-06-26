@@ -1344,6 +1344,35 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
+
+  /* Do we need to re-sort? */
+  if (c->dx_max_sort > space_maxreldx * c->dmin) {
+
+    const struct engine *e = s->space->e;
+    const integertime_t ti_current = e->ti_current;
+
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->requires_sorts == ti_current) {
+        atomic_or(&finger->sorts->flags, finger->sorted);
+        scheduler_activate(s, finger->sorts);
+        if (finger->nodeID == engine_rank) cell_activate_drift_part(finger, s);
+      }
+      finger->sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->sorts->flags, (1 << sid));
+    scheduler_activate(s, c->sorts);
+  }
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the sort tasks along the way.
  */
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
@@ -1606,39 +1635,9 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
     if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
-    /* Do we need to sort ci ? */
-    if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-
-      /* Climb up the tree to active the sorts in that direction */
-      for (struct cell *finger = ci; finger != NULL; finger = finger->parent) {
-        if (finger->requires_sorts == ti_current) {
-          atomic_or(&finger->sorts->flags, finger->sorted);
-          scheduler_activate(s, finger->sorts);
-        }
-        finger->sorted = 0;
-      }
-    }
-    if (!(ci->sorted & (1 << sid)) || ci->nodeID != engine_rank) {
-      atomic_or(&ci->sorts->flags, (1 << sid));
-      scheduler_activate(s, ci->sorts);
-    }
-
-    /* Do we need to sort cj ? */
-    if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-
-      /* Climb up the tree to active the sorts in that direction */
-      for (struct cell *finger = cj; finger != NULL; finger = finger->parent) {
-        if (finger->requires_sorts == ti_current) {
-          atomic_or(&finger->sorts->flags, finger->sorted);
-          scheduler_activate(s, finger->sorts);
-        }
-        finger->sorted = 0;
-      }
-    }
-    if (!(cj->sorted & (1 << sid)) || cj->nodeID != engine_rank) {
-      atomic_or(&cj->sorts->flags, (1 << sid));
-      scheduler_activate(s, cj->sorts);
-    }
+    /* Do we need to sort the cells? */
+    cell_activate_sorts(ci, sid, s);
+    cell_activate_sorts(cj, sid, s);
   }
 }
 
@@ -1674,36 +1673,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       cj->dx_max_sort_old = cj->dx_max_sort;
 
       /* Check the sorts and activate them if needed. */
-      if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-        for (struct cell *finger = ci; finger != NULL;
-             finger = finger->parent) {
-          if (finger->requires_sorts == ti_current) {
-            atomic_or(&finger->sorts->flags, finger->sorted);
-            scheduler_activate(s, finger->sorts);
-          }
-          finger->sorted = 0;
-        }
-      }
-      if (!(ci->sorted & (1 << t->flags)) || ci->nodeID != engine_rank) {
-        atomic_or(&ci->sorts->flags, (1 << t->flags));
-        scheduler_activate(s, ci->sorts);
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-      }
-      if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-        for (struct cell *finger = cj; finger != NULL;
-             finger = finger->parent) {
-          if (finger->requires_sorts == ti_current) {
-            atomic_or(&finger->sorts->flags, finger->sorted);
-            scheduler_activate(s, finger->sorts);
-          }
-          finger->sorted = 0;
-        }
-      }
-      if (!(cj->sorted & (1 << t->flags)) || cj->nodeID != engine_rank) {
-        atomic_or(&cj->sorts->flags, (1 << t->flags));
-        scheduler_activate(s, cj->sorts);
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-      }
+      cell_activate_sorts(ci, t->flags, s);
+      cell_activate_sorts(cj, t->flags, s);
     }
     /* Store current values of dx_max and h_max. */
     else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
