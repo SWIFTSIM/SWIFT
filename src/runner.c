@@ -622,11 +622,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const float hydro_h_max = e->hydro_properties->h_max;
-  const float target_wcount = e->hydro_properties->target_neighbours;
-  const float max_wcount =
-      target_wcount + e->hydro_properties->delta_neighbours;
-  const float min_wcount =
-      target_wcount - e->hydro_properties->delta_neighbours;
+  const float eps = e->hydro_properties->h_tolerance;
+  const float hydro_eta_dim =
+      pow_dimension(e->hydro_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
@@ -670,28 +668,47 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
 #endif
 
-        /* Finish the density calculation */
-        hydro_end_density(p);
+        /* Get some useful values */
+        const float h_old = p->h;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+        float h_new;
 
-        /* Did we get the right number of neighbours? */
-        if (p->density.wcount > max_wcount || p->density.wcount < min_wcount) {
+        if (p->density.wcount == 0.f) { /* No neighbours case */
 
-          float h_corr = 0.f;
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+        } else {
 
-          /* If no derivative, double the smoothing length. */
-          if (p->density.wcount_dh == 0.0f) h_corr = p->h;
+          /* Finish the density calculation */
+          hydro_end_density(p);
 
-          /* Otherwise, compute the smoothing length update (Newton step). */
-          else {
-            h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = p->density.wcount * h_old_dim;
+          const float n_target = hydro_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              p->density.wcount_dh * h_old_dim +
+              hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-            /* Truncate to the range [ -p->h/2 , p->h ]. */
-            h_corr = (h_corr < p->h) ? h_corr : p->h;
-            h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
-          }
+          h_new = h_old - f / f_prime;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+            error(
+                "Smoothing length correction not going in the right direction");
+#endif
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+        }
+
+        /* Check whether the particle has an inappropriate smoothing length */
+        if (fabsf(h_new - h_old) > eps * h_old) {
 
           /* Ok, correct then */
-          p->h += h_corr;
+          p->h = h_new;
 
           /* If below the absolute maximum, try again */
           if (p->h < hydro_h_max) {
@@ -709,6 +726,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (p->density.wcount == kernel_root * kernel_norm)
+              hydro_part_has_no_neighbours(p, xp);
           }
         }
 

@@ -4266,7 +4266,7 @@ void engine_init(struct engine *e, struct space *s,
             "Version: %s \n# "
             "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
             "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-            "+/- %.2f\n# Eta: %f\n",
+            "+/- %.4f\n# Eta: %f\n",
             hostname(), git_branch(), git_revision(), compiler_name(),
             compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
             kernel_name, e->hydro_properties->target_neighbours,

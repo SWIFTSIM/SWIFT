@@ -1718,7 +1718,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         else
           error("Drift task missing !");
         if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
-        
+
         if (cell_is_active(cj, e)) {
 
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1870,11 +1870,10 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
-  if (c->nodeID != engine_rank)
-    error("Drifting a foreign cell is nope.");
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
