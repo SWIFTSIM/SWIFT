@@ -219,12 +219,34 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->rho += p->mass * kernel_root;
   p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= kernel_norm;
-  p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  p->rho = p->mass * kernel_root * h_inv_dim;
+  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.rho_dh = 0.f;
+  p->density.wcount_dh = 0.f;
 }
 
 /**
