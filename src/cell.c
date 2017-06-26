@@ -1910,6 +1910,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
     
+    /* Clear the drift flags. */
+    c->do_drift = 0;
+    c->do_sub_drift = 0;
+    
   } else if (force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
@@ -1956,6 +1960,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
+    
+    /* Clear the drift flags. */
+    c->do_drift = 0;
+    c->do_sub_drift = 0;
   }
 }
 
