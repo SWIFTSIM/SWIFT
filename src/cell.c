@@ -1329,12 +1329,16 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 
   /* Set the do_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
-  for (struct cell *parent = c->parent; parent != NULL && !parent->do_sub_drift;
-       parent = parent->parent) {
-    parent->do_sub_drift = 1;
-    if (parent == c->super) {
-      scheduler_activate(s, parent->drift_part);
-      break;
+  if (c == c->super) {
+    scheduler_activate(s, c->drift_part);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->do_sub_drift; parent = parent->parent) {
+      parent->do_sub_drift = 1;
+      if (parent == c->super) {
+        scheduler_activate(s, parent->drift_part);
+        break;
+      }
     }
   }
 }
