@@ -1352,27 +1352,30 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 }
 
 /**
- * @brief Activate the sorts on a given cell, if needed.
+ * @brief Activate the sorts up a cell hierarchy.
  */
-void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
-  void cell_activate_sorts_up(struct cell * c, struct scheduler * s) {
-    if (c == c->super) {
-      scheduler_activate(s, c->sorts);
-      if (c->nodeID == engine_rank) scheduler_activate(s, c->drift_part);
-    } else {
-      for (struct cell *parent = c->parent;
-           parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
-        parent->do_sub_sort = 1;
-        if (parent == c->super) {
-          scheduler_activate(s, parent->sorts);
-          if (parent->nodeID == engine_rank)
-            scheduler_activate(s, parent->drift_part);
-          break;
-        }
+void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
+  if (c == c->super) {
+    scheduler_activate(s, c->sorts);
+    if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
+      parent->do_sub_sort = 1;
+      if (parent == c->super) {
+        scheduler_activate(s, parent->sorts);
+        if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
+        break;
       }
     }
   }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
   /* Do we need to re-sort? */
   if (c->dx_max_sort > space_maxreldx * c->dmin) {
