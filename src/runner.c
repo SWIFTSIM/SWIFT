@@ -512,6 +512,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   }
 #endif
 
+  /* Clear the cell's sort flags. */
+  c->do_sort = 0;
+  c->do_sub_sort = 0;
+  c->requires_sorts = 0;
+
   if (clock) TIMER_TOC(timer_dosort);
 }
 
