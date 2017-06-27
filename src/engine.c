@@ -2531,7 +2531,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
-  const integertime_t ti_current = e->ti_current;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
@@ -2572,8 +2571,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Set the correct sorting flags */
       if (t->type == task_type_pair) {
         /* Store some values. */
-        ci->requires_sorts = ti_current;
-        cj->requires_sorts = ti_current;
+        atomic_or(&ci->requires_sorts, 1 << t->flags);
+        atomic_or(&cj->requires_sorts, 1 << t->flags);
         ci->dx_max_sort_old = ci->dx_max_sort;
         cj->dx_max_sort_old = cj->dx_max_sort;
 

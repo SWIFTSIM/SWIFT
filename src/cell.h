@@ -331,8 +331,8 @@ struct cell {
   float h_max_old;
   float dx_max_sort_old;
 
-  /* Will this cell do anything that relies on its sorts being set correctly? */
-  integertime_t requires_sorts;
+  /* Bit mask of sort directions that will be needed in the next timestep. */
+  unsigned int requires_sorts;
 
   /*! Does this cell need to be drifted? */
   char do_drift;

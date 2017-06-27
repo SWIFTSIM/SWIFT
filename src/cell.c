@@ -1356,18 +1356,31 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
+  void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
+    if (c == c->super) {
+      scheduler_activate(s, c->sorts);
+      if (c->nodeID == engine_rank) scheduler_activate(s, c->drift_part);
+    } else {
+      for (struct cell *parent = c->parent;
+           parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
+        parent->do_sub_sort = 1;
+        if (parent == c->super) {
+          scheduler_activate(s, parent->sorts);
+          if (parent->nodeID == engine_rank) scheduler_activate(s, parent->drift_part);
+          break;
+        }
+      }
+    }
+  }
+
   /* Do we need to re-sort? */
   if (c->dx_max_sort > space_maxreldx * c->dmin) {
 
-    const struct engine *e = s->space->e;
-    const integertime_t ti_current = e->ti_current;
-
     /* Climb up the tree to active the sorts in that direction */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-      if (finger->requires_sorts == ti_current) {
-        atomic_or(&finger->sorts->flags, finger->sorted);
-        if (finger->nodeID == engine_rank) cell_activate_drift_part(finger, s);
-        scheduler_activate(s, finger->sorts);
+      if (finger->requires_sorts) {
+        atomic_or(&finger->do_sort, finger->requires_sorts);
+        cell_activate_sorts_up(finger, s);
       }
       finger->sorted = 0;
     }
@@ -1375,8 +1388,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->sorted & (1 << sid)) || c->nodeID != engine_rank) {
-    atomic_or(&c->sorts->flags, (1 << sid));
-    scheduler_activate(s, c->sorts);
+    atomic_or(&c->do_sort, (1 << sid));
+    cell_activate_sorts_up(c, s);
   }
 }
 
@@ -1386,7 +1399,6 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s) {
   const struct engine *e = s->space->e;
-  const integertime_t ti_current = e->ti_current;
 
   /* Store the current dx_max and h_max values. */
   ci->dx_max_old = ci->dx_max_part;
@@ -1634,8 +1646,8 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* We are going to interact this pair, so store some values. */
-    ci->requires_sorts = ti_current;
-    cj->requires_sorts = ti_current;
+    atomic_or(&ci->requires_sorts, 1 << sid);
+    atomic_or(&cj->requires_sorts, 1 << sid);
     ci->dx_max_sort_old = ci->dx_max_sort;
     cj->dx_max_sort_old = cj->dx_max_sort;
 
@@ -1660,8 +1672,9 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
  */
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
+#ifdef WITH_MPI
   struct engine *e = s->space->e;
-  const integertime_t ti_current = e->ti_current;
+#endif
 
   int rebuild = 0;
 
@@ -1675,8 +1688,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
       /* Store some values. */
-      ci->requires_sorts = ti_current;
-      cj->requires_sorts = ti_current;
+      atomic_or(&ci->requires_sorts, 1 << t->flags);
+      atomic_or(&cj->requires_sorts, 1 << t->flags);
       ci->dx_max_sort_old = ci->dx_max_sort;
       cj->dx_max_sort_old = cj->dx_max_sort;
 
