@@ -337,8 +337,14 @@ struct cell {
   /*! Does this cell need to be drifted? */
   char do_drift;
 
-  /*! Does any of this cell's sub-cells need to be drifted? */
+  /*! Do any of this cell's sub-cells need to be drifted? */
   char do_sub_drift;
+  
+  /*! Bit mask of sorts that need to be computed for this cell. */
+  int do_sort;
+  
+  /*! Do any of this cell's sub-cells need to be sorted? */
+  char do_sub_sort;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! The list of tasks that have been executed on this cell */
