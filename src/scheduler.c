@@ -112,40 +112,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief Create the sort tasks for the hierarchy of cells under
- * a sub-cell task.
- *
- * @param s The #scheduler.
- * @param c A #cell.
- * @param t The sub-cell #task that will be unlocked by the sort tasks.
- */
-
-void scheduler_add_subcell_tasks(struct scheduler *s, struct cell *c,
-                                 struct task *t) {
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        scheduler_add_subcell_tasks(s, c->progeny[k], t);
-
-  /* Lock the cell before potentially adding tasks. */
-  lock_lock(&c->lock);
-
-  /* Add a sort task if not present. Note that the sort flags will be
-     populated in cell_activate_subcell_tasks. */
-  if (c->sorts == NULL) {
-    c->sorts =
-        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
-  }
-
-  /* Unlock the cell. */
-  lock_unlock_blind(&c->lock);
-
-  /* The provided task should depend on the sort. */
-  scheduler_addunlock(s, c->sorts, t);
-}
-
-/**
  * @brief Split a hydrodynamic task if too large.
  *
  * @param t The #task
@@ -190,9 +156,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
-
-          /* Depend on local sorts on this cell and its sub-cells. */
-          scheduler_add_subcell_tasks(s, ci, t);
 
           /* Otherwise, make tasks explicitly. */
         } else {
@@ -254,10 +217,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* Make this task a sub task. */
           t->type = task_type_sub_pair;
-
-          /* Depend on the sort tasks of both cells. */
-          scheduler_add_subcell_tasks(s, ci, t);
-          scheduler_add_subcell_tasks(s, cj, t);
 
           /* Otherwise, split it. */
         } else {
@@ -621,28 +580,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
 
-        /* Otherwise, if not spilt, stitch-up the sorting. */
-      } else {
-
-        /* Create the drift and sort for ci. */
-        lock_lock(&ci->lock);
-        if (ci->sorts == NULL)
-          ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
-                                        0, ci, NULL);
-        else
-          ci->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&ci->lock);
-        scheduler_addunlock(s, ci->sorts, t);
-
-        /* Create the drift and sort for cj. */
-        lock_lock(&cj->lock);
-        if (cj->sorts == NULL)
-          cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0,
-                                        0, cj, NULL);
-        else
-          cj->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&cj->lock);
-        scheduler_addunlock(s, cj->sorts, t);
       }
     } /* pair interaction? */
   }   /* iterate over the current task. */
@@ -1197,11 +1134,6 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
     if (t->wait < 0)
       error("Task unlocked by more than %d tasks!",
             (1 << (8 * sizeof(t->wait) - 1)) - 1);
-
-    /* Skip sort tasks that have already been performed */
-    if (t->type == task_type_sort && t->flags == 0) {
-      error("Empty sort task encountered.");
-    }
 #endif
 
     /* Sets the waits of the dependances */
