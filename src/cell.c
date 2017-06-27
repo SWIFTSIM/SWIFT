@@ -1356,7 +1356,7 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
-  void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
+  void cell_activate_sorts_up(struct cell * c, struct scheduler * s) {
     if (c == c->super) {
       scheduler_activate(s, c->sorts);
       if (c->nodeID == engine_rank) scheduler_activate(s, c->drift_part);
@@ -1366,7 +1366,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
         parent->do_sub_sort = 1;
         if (parent == c->super) {
           scheduler_activate(s, parent->sorts);
-          if (parent->nodeID == engine_rank) scheduler_activate(s, parent->drift_part);
+          if (parent->nodeID == engine_rank)
+            scheduler_activate(s, parent->drift_part);
           break;
         }
       }

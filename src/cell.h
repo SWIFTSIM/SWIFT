@@ -339,10 +339,10 @@ struct cell {
 
   /*! Do any of this cell's sub-cells need to be drifted? */
   char do_sub_drift;
-  
+
   /*! Bit mask of sorts that need to be computed for this cell. */
   unsigned int do_sort;
-  
+
   /*! Do any of this cell's sub-cells need to be sorted? */
   char do_sub_sort;
 

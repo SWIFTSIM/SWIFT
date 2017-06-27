@@ -332,13 +332,14 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   float buff[8];
 
   TIMER_TIC;
-  
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->do_sort;
   if (flags == 0 && !c->do_sub_sort) return;
 
   /* Check that the particles have been moved to the current time */
-  if (flags && !cell_are_part_drifted(c, r->e)) error("Sorting un-drifted cell");
+  if (flags && !cell_are_part_drifted(c, r->e))
+    error("Sorting un-drifted cell");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
