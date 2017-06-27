@@ -161,16 +161,16 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->super == c) {
 
+    /* Add the sort task. */
+    c->sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
       /* Add the drift task. */
       c->drift_part = scheduler_addtask(s, task_type_drift_part,
                                         task_subtype_none, 0, 0, c, NULL);
-
-      /* Add the sort task. */
-      c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
-                                   c, NULL);
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
