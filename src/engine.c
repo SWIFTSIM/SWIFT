@@ -221,6 +221,134 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   }
 }
 
+#ifdef WITH_MPI
+/**
+ * Do the exchange of one type of particles with all the other nodes.
+ *
+ * @param counts 2D array with the counts of particles to exchange with
+ *               each other node.
+ * @param parts the particle data to exchange
+ * @param new_nr_parts the number of particles this node will have after all
+ *                     exchanges have completed.
+ * @param sizeofparts sizeof the particle struct.
+ * @param alignsize the memory alignment required for this particle type.
+ * @param mpi_type the MPI_Datatype for these particles.
+ * @param nr_nodes the number of nodes to exchange with.
+ * @param nodeID the id of this node.
+ *
+ * @result new particle data constructed from all the exchanges with the
+ *         given alignment.
+ */
+static void *engine_do_redistribute(int *counts, char *parts,
+                                    size_t new_nr_parts, size_t sizeofparts,
+                                    size_t alignsize, MPI_Datatype mpi_type,
+                                    int nr_nodes, int nodeID) {
+
+  /* Allocate a new particle array with some extra margin */
+  char *parts_new = NULL;
+  if (posix_memalign(
+          (void **)&parts_new, alignsize,
+          sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
+    error("Failed to allocate new particle data.");
+
+  /* Prepare MPI requests for the asynchronous communications */
+  MPI_Request *reqs;
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) ==
+      NULL)
+    error("Failed to allocate MPI request list.");
+
+  /* Only send and receive only "chunk" particles per request. So we need to
+   * loop as many times as necessary here. Make 2Gb/sizeofparts so we only
+   * send 2Gb packets. */
+  const int chunk = INT_MAX / sizeofparts;
+  int sent = 0;
+  int recvd = 0;
+
+  int activenodes = 1;
+  while (activenodes) {
+
+    for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+
+    /* Emit the sends and recvs for the data. */
+    size_t offset_send = sent;
+    size_t offset_recv = recvd;
+    activenodes = 0;
+
+    for (int k = 0; k < nr_nodes; k++) {
+
+      /* Indices in the count arrays of the node of interest */
+      const int ind_send = nodeID * nr_nodes + k;
+      const int ind_recv = k * nr_nodes + nodeID;
+
+      /* Are we sending any data this loop? */
+      int sending = counts[ind_send] - sent;
+      if (sending > 0) {
+        activenodes++;
+        if (sending > chunk) sending = chunk;
+
+        /* If the send and receive is local then just copy. */
+        if (k == nodeID) {
+          int receiving = counts[ind_recv] - recvd;
+          if (receiving > chunk) receiving = chunk;
+          memcpy(&parts_new[offset_recv * sizeofparts],
+                 &parts[offset_send * sizeofparts], sizeofparts * receiving);
+        } else {
+          /* Otherwise send it. */
+          int res =
+              MPI_Isend(&parts[offset_send * sizeofparts], sending, mpi_type, k,
+                        ind_send, MPI_COMM_WORLD, &reqs[2 * k + 0]);
+          if (res != MPI_SUCCESS)
+            mpi_error(res, "Failed to isend parts to node %i.", k);
+        }
+      }
+
+      /* If we're sending to this node, then move past it to next. */
+      if (counts[ind_send] > 0) offset_send += counts[ind_send];
+
+      /* Are we receiving any data from this node? Note already done if coming
+       * from this node. */
+      if (k != nodeID) {
+        int receiving = counts[ind_recv] - recvd;
+        if (receiving > 0) {
+          activenodes++;
+          if (receiving > chunk) receiving = chunk;
+          int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts], receiving,
+                              mpi_type, k, ind_recv, MPI_COMM_WORLD,
+                              &reqs[2 * k + 1]);
+          if (res != MPI_SUCCESS)
+            mpi_error(res, "Failed to emit irecv of parts from node %i.", k);
+        }
+      }
+
+      /* If we're receiving from this node, then move past it to next. */
+      if (counts[ind_recv] > 0) offset_recv += counts[ind_recv];
+    }
+
+    /* Wait for all the sends and recvs to tumble in. */
+    MPI_Status stats[2 * nr_nodes];
+    int res;
+    if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 2 * nr_nodes; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
+        message("request from source %i, tag %i has error '%s'.", stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall for part data.");
+    }
+
+    /* Move to next chunks. */
+    sent += chunk;
+    recvd += chunk;
+  }
+
+  /* Free temps. */
+  free(reqs);
+
+  /* And return new memory. */
+  return parts_new;
+}
+#endif
+
 /**
  * @brief Redistribute the particles amongst the nodes according
  *      to their cell's node IDs.
@@ -250,32 +378,20 @@ void engine_redistribute(struct engine *e) {
   const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   struct part *parts = s->parts;
-  struct xpart *xparts = s->xparts;
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   ticks tic = getticks();
 
   /* Allocate temporary arrays to store the counts of particles to be sent
-     and the destination of each particle */
-  int *counts, *g_counts, *s_counts;
+   * and the destination of each particle */
+  int *counts;
   if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate counts temporary buffer.");
-  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate g_gcount temporary buffer.");
-  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
-    error("Failed to allocate s_counts temporary buffer.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
-  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
-  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
 
-  /* Allocate the destination index arrays. */
-  int *dest, *g_dest, *s_dest;
+  int *dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
-  if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
-    error("Failed to allocate g_dest temporary buffer.");
-  if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
-    error("Failed to allocate s_dest temporary buffer.");
 
   /* Get destination of each particle */
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -357,8 +473,18 @@ void engine_redistribute(struct engine *e) {
       }
     }
   }
+  free(dest);
 
   /* Get destination of each s-particle */
+  int *s_counts;
+  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate s_counts temporary buffer.");
+  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
+
+  int *s_dest;
+  if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
+    error("Failed to allocate s_dest temporary buffer.");
+
   for (size_t k = 0; k < s->nr_sparts; k++) {
 
     /* Periodic boundary conditions */
@@ -373,7 +499,7 @@ void engine_redistribute(struct engine *e) {
                    sparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for spart %zu at [%.3e,%.3e,%.3e].", cid, k,
             sparts[k].x[0], sparts[k].x[1], sparts[k].x[2]);
 #endif
 
@@ -439,7 +565,18 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
+  free(s_dest);
+
   /* Get destination of each g-particle */
+  int *g_counts;
+  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate g_gcount temporary buffer.");
+  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
+
+  int *g_dest;
+  if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
+    error("Failed to allocate g_dest temporary buffer.");
+
   for (size_t k = 0; k < s->nr_gparts; k++) {
 
     /* Periodic boundary conditions */
@@ -454,7 +591,7 @@ void engine_redistribute(struct engine *e) {
                    gparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for gpart %zu at [%.3e,%.3e,%.3e].", cid, k,
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
 #endif
 
@@ -467,6 +604,7 @@ void engine_redistribute(struct engine *e) {
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
     space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -483,7 +621,8 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
-      error("gpart's new node index not matching sorted index.");
+        error("gpart's new node index not matching sorted index (%d != %d).",
+              g_dest[k], new_node);
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
@@ -491,6 +630,8 @@ void engine_redistribute(struct engine *e) {
       error("gpart not sorted into the right top-level cell!");
   }
 #endif
+
+  free(g_dest);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -539,10 +680,9 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
-  /* Each node knows how many parts, sparts and gparts will be transferred
-     to every other node. We can start preparing to receive data */
-
-  /* Get the new number of parts and gparts for this node */
+  /* Now each node knows how many parts, sparts and gparts will be transferred
+   * to every other node.
+   * Get the new numbers of particles for this node. */
   size_t nr_parts = 0, nr_gparts = 0, nr_sparts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
@@ -550,162 +690,42 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++)
     nr_sparts += s_counts[k * nr_nodes + nodeID];
 
-  /* Allocate the new arrays with some extra margin */
-  struct part *parts_new = NULL;
-  struct xpart *xparts_new = NULL;
-  struct gpart *gparts_new = NULL;
-  struct spart *sparts_new = NULL;
-  if (posix_memalign((void **)&parts_new, part_align,
-                     sizeof(struct part) * nr_parts *
-                         engine_redistribute_alloc_margin) != 0)
-    error("Failed to allocate new part data.");
-  if (posix_memalign((void **)&xparts_new, xpart_align,
-                     sizeof(struct xpart) * nr_parts *
-                         engine_redistribute_alloc_margin) != 0)
-    error("Failed to allocate new xpart data.");
-  if (posix_memalign((void **)&gparts_new, gpart_align,
-                     sizeof(struct gpart) * nr_gparts *
-                         engine_redistribute_alloc_margin) != 0)
-    error("Failed to allocate new gpart data.");
-  if (posix_memalign((void **)&sparts_new, spart_align,
-                     sizeof(struct spart) * nr_sparts *
-                         engine_redistribute_alloc_margin) != 0)
-    error("Failed to allocate new spart data.");
+  /* Now exchange the particles, type by type to keep the memory required
+   * under control. */
 
-  /* Prepare MPI requests for the asynchronous communications */
-  MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 8 * nr_nodes)) ==
-      NULL)
-    error("Failed to allocate MPI request list.");
-  for (int k = 0; k < 8 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+  /* SPH particles. */
+  void *new_parts = engine_do_redistribute(counts, (char *)s->parts, nr_parts,
+                                           sizeof(struct part), part_align,
+                                           part_mpi_type, nr_nodes, nodeID);
+  free(s->parts);
+  s->parts = (struct part *)new_parts;
+  s->nr_parts = nr_parts;
+  s->size_parts = engine_redistribute_alloc_margin * nr_parts;
 
-  /* Emit the sends and recvs for the particle and gparticle data. */
-  size_t offset_send = 0, offset_recv = 0;
-  size_t g_offset_send = 0, g_offset_recv = 0;
-  size_t s_offset_send = 0, s_offset_recv = 0;
-  for (int k = 0; k < nr_nodes; k++) {
+  /* Extra SPH particle properties. */
+  new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts,
+                                     sizeof(struct xpart), xpart_align,
+                                     xpart_mpi_type, nr_nodes, nodeID);
+  free(s->xparts);
+  s->xparts = (struct xpart *)new_parts;
 
-    /* Indices in the count arrays of the node of interest */
-    const int ind_send = nodeID * nr_nodes + k;
-    const int ind_recv = k * nr_nodes + nodeID;
+  /* Gravity particles. */
+  new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts,
+                                     sizeof(struct gpart), gpart_align,
+                                     gpart_mpi_type, nr_nodes, nodeID);
+  free(s->gparts);
+  s->gparts = (struct gpart *)new_parts;
+  s->nr_gparts = nr_gparts;
+  s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
 
-    /* Are we sending any part/xpart ? */
-    if (counts[ind_send] > 0) {
-
-      /* message("Sending %d part to node %d", counts[ind_send], k); */
-
-      /* If the send is to the same node, just copy */
-      if (k == nodeID) {
-        memcpy(&parts_new[offset_recv], &s->parts[offset_send],
-               sizeof(struct part) * counts[ind_recv]);
-        memcpy(&xparts_new[offset_recv], &s->xparts[offset_send],
-               sizeof(struct xpart) * counts[ind_recv]);
-        offset_send += counts[ind_send];
-        offset_recv += counts[ind_recv];
-
-        /* Else, emit some communications */
-      } else {
-        if (MPI_Isend(&s->parts[offset_send], counts[ind_send], part_mpi_type,
-                      k, 4 * ind_send + 0, MPI_COMM_WORLD,
-                      &reqs[8 * k + 0]) != MPI_SUCCESS)
-          error("Failed to isend parts to node %i.", k);
-        if (MPI_Isend(&s->xparts[offset_send], counts[ind_send], xpart_mpi_type,
-                      k, 4 * ind_send + 1, MPI_COMM_WORLD,
-                      &reqs[8 * k + 1]) != MPI_SUCCESS)
-          error("Failed to isend xparts to node %i.", k);
-        offset_send += counts[ind_send];
-      }
-    }
-
-    /* Are we sending any gpart ? */
-    if (g_counts[ind_send] > 0) {
-
-      /* message("Sending %d gpart to node %d", g_counts[ind_send], k); */
-
-      /* If the send is to the same node, just copy */
-      if (k == nodeID) {
-        memcpy(&gparts_new[g_offset_recv], &s->gparts[g_offset_send],
-               sizeof(struct gpart) * g_counts[ind_recv]);
-        g_offset_send += g_counts[ind_send];
-        g_offset_recv += g_counts[ind_recv];
-
-        /* Else, emit some communications */
-      } else {
-        if (MPI_Isend(&s->gparts[g_offset_send], g_counts[ind_send],
-                      gpart_mpi_type, k, 4 * ind_send + 2, MPI_COMM_WORLD,
-                      &reqs[8 * k + 2]) != MPI_SUCCESS)
-          error("Failed to isend gparts to node %i.", k);
-        g_offset_send += g_counts[ind_send];
-      }
-    }
-
-    /* Are we sending any spart ? */
-    if (s_counts[ind_send] > 0) {
-
-      /* message("Sending %d spart to node %d", s_counts[ind_send], k); */
-
-      /* If the send is to the same node, just copy */
-      if (k == nodeID) {
-        memcpy(&sparts_new[s_offset_recv], &s->sparts[s_offset_send],
-               sizeof(struct spart) * s_counts[ind_recv]);
-        s_offset_send += s_counts[ind_send];
-        s_offset_recv += s_counts[ind_recv];
-
-        /* Else, emit some communications */
-      } else {
-        if (MPI_Isend(&s->sparts[s_offset_send], s_counts[ind_send],
-                      spart_mpi_type, k, 4 * ind_send + 3, MPI_COMM_WORLD,
-                      &reqs[8 * k + 3]) != MPI_SUCCESS)
-          error("Failed to isend gparts to node %i.", k);
-        s_offset_send += s_counts[ind_send];
-      }
-    }
-
-    /* Now emit the corresponding Irecv() */
-
-    /* Are we receiving any part/xpart from this node ? */
-    if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], part_mpi_type, k,
-                    4 * ind_recv + 0, MPI_COMM_WORLD,
-                    &reqs[8 * k + 4]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
-      if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv], xpart_mpi_type,
-                    k, 4 * ind_recv + 1, MPI_COMM_WORLD,
-                    &reqs[8 * k + 5]) != MPI_SUCCESS)
-        error("Failed to emit irecv of xparts from node %i.", k);
-      offset_recv += counts[ind_recv];
-    }
-
-    /* Are we receiving any gpart from this node ? */
-    if (k != nodeID && g_counts[ind_recv] > 0) {
-      if (MPI_Irecv(&gparts_new[g_offset_recv], g_counts[ind_recv],
-                    gpart_mpi_type, k, 4 * ind_recv + 2, MPI_COMM_WORLD,
-                    &reqs[8 * k + 6]) != MPI_SUCCESS)
-        error("Failed to emit irecv of gparts from node %i.", k);
-      g_offset_recv += g_counts[ind_recv];
-    }
-
-    /* Are we receiving any spart from this node ? */
-    if (k != nodeID && s_counts[ind_recv] > 0) {
-      if (MPI_Irecv(&sparts_new[s_offset_recv], s_counts[ind_recv],
-                    spart_mpi_type, k, 4 * ind_recv + 3, MPI_COMM_WORLD,
-                    &reqs[8 * k + 7]) != MPI_SUCCESS)
-        error("Failed to emit irecv of sparts from node %i.", k);
-      s_offset_recv += s_counts[ind_recv];
-    }
-  }
-
-  /* Wait for all the sends and recvs to tumble in. */
-  MPI_Status stats[8 * nr_nodes];
-  int res;
-  if ((res = MPI_Waitall(8 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
-    for (int k = 0; k < 8 * nr_nodes; k++) {
-      char buff[MPI_MAX_ERROR_STRING];
-      MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-      message("request %i has error '%s'.", k, buff);
-    }
-    error("Failed during waitall for part data.");
-  }
+  /* Star particles. */
+  new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts,
+                                     sizeof(struct spart), spart_align,
+                                     spart_mpi_type, nr_nodes, nodeID);
+  free(s->sparts);
+  s->sparts = (struct spart *)new_parts;
+  s->nr_sparts = nr_sparts;
+  s->size_sparts = engine_redistribute_alloc_margin * nr_sparts;
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
@@ -723,25 +743,25 @@ void engine_redistribute(struct engine *e) {
     for (size_t k = offset_gparts; k < offset_gparts + count_gparts; ++k) {
 
       /* Does this gpart have a gas partner ? */
-      if (gparts_new[k].type == swift_type_gas) {
+      if (s->gparts[k].type == swift_type_gas) {
 
         const ptrdiff_t partner_index =
-            offset_parts - gparts_new[k].id_or_neg_offset;
+            offset_parts - s->gparts[k].id_or_neg_offset;
 
         /* Re-link */
-        gparts_new[k].id_or_neg_offset = -partner_index;
-        parts_new[partner_index].gpart = &gparts_new[k];
+        s->gparts[k].id_or_neg_offset = -partner_index;
+        s->parts[partner_index].gpart = &s->gparts[k];
       }
 
       /* Does this gpart have a star partner ? */
-      if (gparts_new[k].type == swift_type_star) {
+      if (s->gparts[k].type == swift_type_star) {
 
         const ptrdiff_t partner_index =
-            offset_sparts - gparts_new[k].id_or_neg_offset;
+            offset_sparts - s->gparts[k].id_or_neg_offset;
 
         /* Re-link */
-        gparts_new[k].id_or_neg_offset = -partner_index;
-        sparts_new[partner_index].gpart = &gparts_new[k];
+        s->gparts[k].id_or_neg_offset = -partner_index;
+        s->sparts[partner_index].gpart = &s->gparts[k];
       }
     }
 
@@ -750,58 +770,42 @@ void engine_redistribute(struct engine *e) {
     offset_sparts += count_sparts;
   }
 
+  /* Clean up the counts now we done. */
+  free(counts);
+  free(g_counts);
+  free(s_counts);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
-                               parts_new[k].x[1] * iwidth[1],
-                               parts_new[k].x[2] * iwidth[2]);
+    const int cid =
+        cell_getid(cdim, s->parts[k].x[0] * iwidth[0],
+                   s->parts[k].x[1] * iwidth[1], s->parts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_gparts; k++) {
-    const int cid = cell_getid(cdim, gparts_new[k].x[0] * iwidth[0],
-                               gparts_new[k].x[1] * iwidth[1],
-                               gparts_new[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(cdim, s->gparts[k].x[0] * iwidth[0],
+                               s->gparts[k].x[1] * iwidth[1],
+                               s->gparts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_sparts; k++) {
-    const int cid = cell_getid(cdim, sparts_new[k].x[0] * iwidth[0],
-                               sparts_new[k].x[1] * iwidth[1],
-                               sparts_new[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(cdim, s->sparts[k].x[0] * iwidth[0],
+                               s->sparts[k].x[1] * iwidth[1],
+                               s->sparts[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
 
   /* Verify that the links are correct */
-  part_verify_links(parts_new, gparts_new, sparts_new, nr_parts, nr_gparts,
+  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
                     nr_sparts, e->verbose);
 #endif
-
-  /* Set the new part data, free the old. */
-  free(parts);
-  free(xparts);
-  free(gparts);
-  free(sparts);
-  s->parts = parts_new;
-  s->xparts = xparts_new;
-  s->gparts = gparts_new;
-  s->sparts = sparts_new;
-  s->nr_parts = nr_parts;
-  s->nr_gparts = nr_gparts;
-  s->nr_sparts = nr_sparts;
-  s->size_parts = engine_redistribute_alloc_margin * nr_parts;
-  s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
-  s->size_sparts = engine_redistribute_alloc_margin * nr_sparts;
-
-  /* Clean up the temporary stuff. */
-  free(reqs);
-  free(counts);
-  free(dest);
 
   /* Be verbose about what just happened. */
   if (e->verbose) {
