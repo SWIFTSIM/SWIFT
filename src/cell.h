@@ -341,7 +341,7 @@ struct cell {
   char do_sub_drift;
   
   /*! Bit mask of sorts that need to be computed for this cell. */
-  int do_sort;
+  unsigned int do_sort;
   
   /*! Do any of this cell's sub-cells need to be sorted? */
   char do_sub_sort;
