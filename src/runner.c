@@ -332,9 +332,13 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   float buff[8];
 
   TIMER_TIC;
+  
+  /* We need to do the local sorts plus whatever was requested further up. */
+  flags |= c->do_sort;
+  if (flags == 0 && !c->do_sub_sort) return;
 
   /* Check that the particles have been moved to the current time */
-  if (!cell_are_part_drifted(c, r->e)) error("Sorting un-drifted cell");
+  if (flags && !cell_are_part_drifted(c, r->e)) error("Sorting un-drifted cell");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
@@ -346,17 +350,6 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
     if (finger->sorted & ~c->sorted) error("Inconsistent sort flags (upward).");
   }
 #endif
-
-  /* Clean-up the flags, i.e. filter out what's already been sorted unless
-     we're cleaning up. */
-  if (cleanup && c->dx_max_sort > 0.0f) {
-    /* Clear stale sorts. */
-    c->sorted = 0;
-  } else {
-    /* Ignore dimensions that are already sorted. */
-    flags &= ~c->sorted;
-  }
-  if (flags == 0) return;
 
   /* Update the sort timer which represents the last time the sorts
      were re-set. */
