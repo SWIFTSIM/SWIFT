@@ -579,7 +579,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
-
       }
     } /* pair interaction? */
   }   /* iterate over the current task. */
