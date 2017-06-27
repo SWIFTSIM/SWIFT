@@ -168,6 +168,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       c->drift_part = scheduler_addtask(s, task_type_drift_part,
                                         task_subtype_none, 0, 0, c, NULL);
 
+      /* Add the sort task. */
+      c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
+                                   c, NULL);
+
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
@@ -2156,8 +2160,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
+      /* Make all density tasks depend on the drift and the sorts. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -2191,11 +2196,15 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
+      /* Make all density tasks depend on the drift and the sorts. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super->drift_part, t);
-      if (t->ci->super != t->cj->super && t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2248,8 +2257,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
+      /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2296,8 +2306,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* Make all density tasks depend on the drift. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super->drift_part, t);
-      if (t->ci->super != t->cj->super && t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
 
