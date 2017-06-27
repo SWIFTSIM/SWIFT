@@ -294,6 +294,14 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) print_help_message();
     return 1;
   }
+  if (with_stars && !with_external_gravity && !with_self_gravity) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot run with stars but without gravity, -g or -G must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
 
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
