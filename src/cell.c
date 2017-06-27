@@ -1681,8 +1681,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       cj->dx_max_sort_old = cj->dx_max_sort;
 
       /* Activate the drift tasks. */
-      cell_activate_drift_part(ci, s);
-      cell_activate_drift_part(cj, s);
+      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
       /* Check the sorts and activate them if needed. */
       cell_activate_sorts(ci, t->flags, s);

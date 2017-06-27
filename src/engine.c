@@ -2578,8 +2578,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         cj->dx_max_sort_old = cj->dx_max_sort;
 
         /* Activate the drift tasks. */
-        cell_activate_drift_part(ci, s);
-        cell_activate_drift_part(cj, s);
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
         /* Activate the sorts where needed. */
         cell_activate_sorts(ci, t->flags, s);
