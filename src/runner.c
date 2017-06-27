@@ -1790,7 +1790,7 @@ void *runner_main(void *data) {
 
         /* Special case for sorts */
         if (!cell_is_active(ci, e) && t->type == task_type_sort &&
-            t->flags == 0)
+            !(ci->do_sort || ci->do_sub_sort))
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%lld "
               "c->ti_end_min=%lld t->flags=%d",
