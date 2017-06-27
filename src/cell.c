@@ -1718,7 +1718,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
-      /* Activate the send/recv flags. */
+      /* Activate the send/recv tasks. */
       if (ci->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
@@ -1739,10 +1739,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent, i.e.
-           drift the cell specified in the send task (l->t) itself. */
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
         cell_activate_drift_part(l->t->ci, s);
-        if (t->type == task_type_pair) cell_activate_drift_part(cj, s);
 
         if (cell_is_active(cj, e)) {
 
@@ -1787,10 +1786,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent, i.e.
-           drift the cell specified in the send task (l->t) itself. */
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
         cell_activate_drift_part(l->t->ci, s);
-        if (t->type == task_type_pair) cell_activate_drift_part(ci, s);
 
         if (cell_is_active(ci, e)) {
 
