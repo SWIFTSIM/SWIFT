@@ -297,7 +297,7 @@ int main(int argc, char *argv[]) {
   if (with_stars && !with_external_gravity && !with_self_gravity) {
     if (myrank == 0)
       printf(
-          "Error: Cannot run with stars but without gravity, -g or -G must be "
+          "Error: Cannot process stars without gravity, -g or -G must be "
           "chosen.\n");
     if (myrank == 0) print_help_message();
     return 1;
