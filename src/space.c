@@ -962,28 +962,33 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
 }
 
 /**
- * @brief Runs through the top-level cells and checks whether tasks associated
- * with them can be split. If not, try to sanitize the cells.
+ * @brief #threadpool mapper function to sanitize the cells
+ *
+ * @param map_data Pointers towards the top-level cells.
+ * @param num_cells The number of top-level cells.
+ * @param extra_data Unused parameters.
+ */
+void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
+  /* Unpack the inputs. */
+  struct cell *cells_top = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[ind];
+    cell_sanitize(c, 0);
+  }
+}
+
+/**
+ * @brief Runs through the top-level cells and sanitize their h values
  *
  * @param s The #space to act upon.
  */
 void space_sanitize(struct space *s) {
 
-  s->sanitized = 1;
+  if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
-  for (int k = 0; k < s->nr_cells; k++) {
-
-    struct cell *c = &s->cells_top[k];
-    const double min_width = c->dmin;
-
-    /* Do we have a problem ? */
-    if (c->h_max * kernel_gamma * space_stretch > min_width * 0.5 &&
-        c->count > space_maxcount) {
-
-      /* Ok, clean-up the mess */
-      cell_sanitize(c);
-    }
-  }
+  threadpool_map(&s->e->threadpool, space_sanitize_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 1, NULL);
 }
 
 /**
@@ -2630,7 +2635,6 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
-  s->sanitized = 0;
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;

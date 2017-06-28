@@ -2795,8 +2795,10 @@ void engine_print_task_counts(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
+ * @param clean_h_values Are we cleaning up the values of h before building
+ * the tasks ?
  */
-void engine_rebuild(struct engine *e) {
+void engine_rebuild(struct engine *e, int clean_h_values) {
 
   const ticks tic = getticks();
 
@@ -2807,7 +2809,7 @@ void engine_rebuild(struct engine *e) {
   space_rebuild(e->s, e->verbose);
 
   /* Initial cleaning up session ? */
-  if (e->s->sanitized == 0) space_sanitize(e->s);
+  if (clean_h_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
@@ -2861,7 +2863,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerepart) engine_repartition(e);
 
   /* Do we need rebuilding ? */
-  if (e->forcerebuild) engine_rebuild(e);
+  if (e->forcerebuild) engine_rebuild(e, 0);
 
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
@@ -3223,9 +3225,12 @@ void engine_launch(struct engine *e, int nr_runners) {
  *
  * @param e The #engine
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
- *contain entropy ?
+ * contain entropy ?
+ * @param clean_h_values Are we cleaning up the values of h before building
+ * the tasks ?
  */
-void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
+void engine_init_particles(struct engine *e, int flag_entropy_ICs,
+                           int clean_h_values) {
 
   struct space *s = e->s;
 
@@ -3242,7 +3247,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   }
 
   /* Construct all cells and tasks to start everything */
-  engine_rebuild(e);
+  engine_rebuild(e, clean_h_values);
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
