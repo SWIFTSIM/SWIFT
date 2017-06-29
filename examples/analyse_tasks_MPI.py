@@ -56,14 +56,25 @@ TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
             "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
 
+SIDS = ["(-1,-1,-1)", "(-1,-1, 0)", "(-1,-1, 1)", "(-1, 0,-1)",
+        "(-1, 0, 0)", "(-1, 0, 1)", "(-1, 1,-1)", "(-1, 1, 0)",
+        "(-1, 1, 1)", "( 0,-1,-1)", "( 0,-1, 0)", "( 0,-1, 1)",
+        "( 0, 0,-1)"]
+
 #  Read input.
 data = pl.loadtxt( infile )
 
 #  Get the CPU clock to convert ticks into milliseconds.
 full_step = data[0,:]
+updates = int(full_step[7])
+g_updates = int(full_step[8])
+s_updates = int(full_step[9])
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
     print "# CPU frequency:", CPU_CLOCK * 1000.0
+print "#   updates:", updates
+print "# g_updates:", g_updates
+print "# s_updates:", s_updates
 
 nranks = int(max(data[:,0])) + 1
 print "# Number of ranks:", nranks
@@ -92,6 +103,7 @@ for rank in range(nranks):
     #  Calculate the time range.
     total_t = (toc_step - tic_step)/ CPU_CLOCK
     print "# Data range: ", total_t, "ms"
+    print
 
     #  Correct times to relative values.
     start_t = float(tic_step)
@@ -105,15 +117,16 @@ for rank in range(nranks):
         tasks[i] = []
 
     #  Gather into by thread data.
-    num_lines = pl.size(data) / 12
+    num_lines = pl.shape(data)[0]
     for line in range(num_lines):
         thread = int(data[line,1])
         tic = int(data[line,5]) / CPU_CLOCK
         toc = int(data[line,6]) / CPU_CLOCK
         tasktype = int(data[line,2])
         subtype = int(data[line,3])
+        sid = int(data[line, -1])
 
-        tasks[thread].append([tic,toc,tasktype,subtype])
+        tasks[thread].append([tic,toc,tasktype,subtype, sid])
 
     #  Sort by tic and gather used threads.
     threadids = []
@@ -124,10 +137,12 @@ for rank in range(nranks):
     #  Times per task.
     print "# Task times:"
     print "# -----------"
-    print "# {0:<16s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}"\
+    print "# {0:<17s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}"\
           .format("type/subtype", "count","minimum", "maximum",
                   "sum", "mean", "percent")
+
     alltasktimes = {}
+    sidtimes = {}
     for i in threadids:
         tasktimes = {}
         for task in tasks[i]:
@@ -140,13 +155,19 @@ for rank in range(nranks):
             if not key in alltasktimes:
                 alltasktimes[key] = []
             alltasktimes[key].append(dt)
+            
+            my_sid = task[4]
+            if my_sid > -1:
+                if not my_sid in sidtimes:
+                    sidtimes[my_sid] = []
+                sidtimes[my_sid].append(dt)
 
         print "# Thread : ", i
         for key in sorted(tasktimes.keys()):
             taskmin = min(tasktimes[key])
             taskmax = max(tasktimes[key])
             tasksum = sum(tasktimes[key])
-            print "{0:18s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}"\
+            print "{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}"\
                   .format(key, len(tasktimes[key]), taskmin, taskmax, tasksum,
                           tasksum / len(tasktimes[key]), tasksum / total_t * 100.0)
         print
@@ -160,6 +181,30 @@ for rank in range(nranks):
               .format(key, len(alltasktimes[key]), taskmin, taskmax, tasksum,
                       tasksum / len(alltasktimes[key]),
                       tasksum / (len(threadids) * total_t) * 100.0)
+    print
+
+    # For pairs, show stuf sorted by SID
+    print "# By SID (all threads): "
+    print "# {0:<17s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}"\
+        .format("Pair/Sub-pair SID", "count","minimum", "maximum",
+                "sum", "mean", "percent")
+
+    for sid in range(0,13):
+        if sid in sidtimes:
+            sidmin = min(sidtimes[sid])
+            sidmax = max(sidtimes[sid])
+            sidsum = sum(sidtimes[sid])
+            sidcount = len(sidtimes[sid])
+            sidmean = sidsum / sidcount
+        else:
+            sidmin = 0.
+            sidmax = 0.
+            sidsum = 0.
+            sidcount = 0
+            sidmean = 0.
+        print "{0:3d} {1:15s}: {2:7d} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.4f} {7:9.2f}"\
+            .format(sid, SIDS[sid], sidcount, sidmin, sidmax, sidsum,
+                    sidmean, sidsum / (len(threadids) * total_t) * 100.0)   
     print
 
     #  Dead times.

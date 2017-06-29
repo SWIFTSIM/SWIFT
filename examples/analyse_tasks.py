@@ -176,13 +176,21 @@ print "# {0:<17s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}"\
             "sum", "mean", "percent")
 
 for sid in range(0,13):
-    sidmin = min(sidtimes[sid])
-    sidmax = max(sidtimes[sid])
-    sidsum = sum(sidtimes[sid])
+    if sid in sidtimes:
+        sidmin = min(sidtimes[sid])
+        sidmax = max(sidtimes[sid])
+        sidsum = sum(sidtimes[sid])
+        sidcount = len(sidtimes[sid])
+        sidmean = sidsum / sidcount
+    else:
+        sidmin = 0.
+        sidmax = 0.
+        sidsum = 0.
+        sidcount = 0
+        sidmean = 0.
     print "{0:3d} {1:15s}: {2:7d} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.4f} {7:9.2f}"\
-        .format(sid, SIDS[sid], len(sidtimes[sid]), sidmin, sidmax, sidsum,
-                sidsum / len(sidtimes[sid]),
-                sidsum / (len(threadids) * total_t) * 100.0)   
+        .format(sid, SIDS[sid], sidcount, sidmin, sidmax, sidsum,
+                sidmean, sidsum / (len(threadids) * total_t) * 100.0)   
 print
 
 #  Dead times.

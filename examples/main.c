@@ -681,13 +681,14 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
-                  e.tic_step, e.toc_step, cpufreq);
+          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli %zi %zi %zi 0 0 %lli\n", myrank,
+                  e.tic_step, e.toc_step, e.updates, e.g_updates,
+		  e.s_updates, cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
-                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
+                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n",
                   myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
@@ -699,7 +700,7 @@ int main(int argc, char *argv[]) {
                                                 : 0,
                   (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
                                                 : 0,
-                  e.sched.tasks[l].flags);
+                  e.sched.tasks[l].flags, e.sched.tasks[l].sid);
             }
             fflush(stdout);
             count++;
