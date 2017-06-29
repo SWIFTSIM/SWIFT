@@ -78,7 +78,7 @@ PLOT_PARAMS = {"axes.labelsize": 10,
                "figure.figsize" : (args.width, args.height),
                "figure.subplot.left" : 0.03,
                "figure.subplot.right" : 0.995,
-               "figure.subplot.bottom" : 0.1,
+               "figure.subplot.bottom" : 0.09,
                "figure.subplot.top" : 0.99,
                "figure.subplot.wspace" : 0.,
                "figure.subplot.hspace" : 0.,
@@ -243,21 +243,21 @@ for i in range(nthread):
 #  Legend and room for it.
 nrow = len(typesseen) / 5
 if not args.nolegend:
-    if len(typesseen) * 5 < nrow:
-        nrow = nrow + 1
     ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
-    ax.set_ylim(0, nthread + nrow + 1)
-    ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
-
+    ax.set_ylim(0, nthread + 0.5)
+    ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
+    
 # Start and end of time-step
 ax.plot([0, 0], [0, nthread + nrow + 1], 'k--', linewidth=1)
 ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
 
-ax.set_xlabel("Wall clock time [ms]")
+ax.set_xlabel("Wall clock time [ms]", labelpad=0.)
 if expand == 1:
-    ax.set_ylabel("Thread ID" )
+    ax.set_ylabel("Thread ID", labelpad=0 )
 else:
-    ax.set_ylabel("Thread ID * " + str(expand) )
+    ax.set_ylabel("Thread ID * " + str(expand), labelpad=0 )
 ax.set_yticks(pl.array(range(nthread)), True)
 
 loc = plticker.MultipleLocator(base=expand)
