@@ -331,7 +331,8 @@ static void *engine_do_redistribute(int *counts, char *parts,
       for (int k = 0; k < 2 * nr_nodes; k++) {
         char buff[MPI_MAX_ERROR_STRING];
         MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-        message("request from source %i, tag %i has error '%s'.", stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+        message("request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
       }
       error("Failed during waitall for part data.");
     }
@@ -605,7 +606,6 @@ void engine_redistribute(struct engine *e) {
   if (s->nr_gparts > 0)
     space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
 
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < s->nr_gparts; k++) {
@@ -621,8 +621,8 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
-        error("gpart's new node index not matching sorted index (%d != %d).",
-              g_dest[k], new_node);
+      error("gpart's new node index not matching sorted index (%d != %d).",
+            g_dest[k], new_node);
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||

@@ -162,6 +162,9 @@ struct task {
   /*! ID of the queue or runner owning this task */
   short int rid;
 
+  /*! Information about the direction of the pair task */
+  short int sid;
+
   /*! Start and end time of this task */
   ticks tic, toc;
 #endif

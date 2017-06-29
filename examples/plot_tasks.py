@@ -183,7 +183,7 @@ ecounter = []
 for i in range(nthread):
     ecounter.append(0)
 
-num_lines = pl.size(data) / 10
+num_lines = pl.size(data) / pl.size(full_step)
 for line in range(num_lines):
     thread = int(data[line,0])
 

@@ -1739,9 +1739,19 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-/* Mark the thread we run on */
 #ifdef SWIFT_DEBUG_TASKS
+      /* Mark the thread we run on */
       t->rid = r->cpuid;
+
+      /* And recover the pair direction */
+      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+        struct cell *ci_temp = ci;
+        struct cell *cj_temp = cj;
+        double shift[3];
+        t->sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+      } else {
+        t->sid = -1;
+      }
 #endif
 
 /* Check that we haven't scheduled an inactive task */
