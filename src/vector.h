@@ -129,10 +129,10 @@
 
 /* Do nothing in the case of AVX-512 as there are already
  * instructions for left-packing.*/
-#define VEC_FORM_PACKED_MASK(mask, packed_mask)
+#define VEC_FORM_PACKED_MASK(mask, packed_mask) packed_mask = mask
 
 /* Finds the horizontal maximum of vector b and returns a float. */
-#define VEC_HMAX(a, b) a = _mm512_reduce_max_ps(b.v)
+#define VEC_HMAX(a, b) b = _mm512_reduce_max_ps(a.v)
 
 /* Performs a left-pack on a vector based upon a mask and returns the result. */
 #define VEC_LEFT_PACK(a, mask, result) \
