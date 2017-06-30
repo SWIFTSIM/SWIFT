@@ -1518,6 +1518,11 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
+#endif
+
   /* Clear this cell's sorted mask. */
   if (clear_sorts) c->sorted = 0;
 
@@ -1597,6 +1602,11 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
+#endif
+
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 
@@ -1669,6 +1679,11 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   integertime_t ti_end_max = 0;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
+#endif
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
