@@ -42,6 +42,9 @@ parser.add_argument("input", help="Thread data file (-y output)")
 parser.add_argument("-v", "--verbose", dest="verbose",
                     help="Verbose output (default: False)",
                     default=False, action="store_true")
+parser.add_argument("-r", "--rank", dest="rank",
+                    help="Rank to process (default: all)",
+                    default="all", action="store")
 
 args = parser.parse_args()
 infile = args.input
@@ -78,6 +81,14 @@ print "# s_updates:", s_updates
 
 nranks = int(max(data[:,0])) + 1
 print "# Number of ranks:", nranks
+if args.rank == "all":
+    ranks = range(nranks)
+else:
+    ranks = [int(args.rank)]
+    if ranks[0] >= nranks:
+        print "Error: maximum rank is " + str(nranks - 1)
+        sys.exit(1)
+
 maxthread = int(max(data[:,1])) + 1
 print "# Maximum thread id:", maxthread
 
@@ -85,8 +96,8 @@ print "# Maximum thread id:", maxthread
 sdata = data[data[:,5] != 0]
 sdata = data[data[:,6] != 0]
 
-#  Now we process all the ranks.
-for rank in range(nranks):
+#  Now we process the required ranks.
+for rank in ranks:
     print "# Rank", rank
     data = sdata[sdata[:,0] == rank]
 
