@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0)
     printf("[0000] [00000.0] main: MPI is up and running with %i node(s).\n\n",
-	   nr_nodes);
+           nr_nodes);
   if (nr_nodes == 1) {
     message("WARNING: you are running with one MPI rank.");
     message("WARNING: you should use the non-MPI version of this program.");
