@@ -891,13 +891,14 @@ void engine_repartition_trigger(struct engine *e) {
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
    * a repartition step. */
-  if (e->step - e->last_repartition > 2) {
+  if (e->step - e->last_repartition >= 2) {
 
     /* Old style if trigger is >1 or this is the second step (want an early
      * repartition following the initial repartition). */
     if (e->reparttype->trigger > 1 || e->step == 2) {
       if (e->reparttype->trigger > 1) {
-        if (e->step % (int)e->reparttype->trigger == 2) e->forcerepart = 1;
+        if ((e->step % (int)e->reparttype->trigger) == 0)
+          e->forcerepart = 1;
       } else {
         e->forcerepart = 1;
       }
@@ -4064,7 +4065,7 @@ void engine_init(struct engine *e, struct space *s,
   e->parameter_file = params;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
-  e->last_repartition = -1;
+  e->last_repartition = 0;
 #endif
   engine_rank = nodeID;
 

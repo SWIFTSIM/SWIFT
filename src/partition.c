@@ -1070,6 +1070,9 @@ void partition_init(struct partition *partition,
       parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
   if (repartition->trigger <= 0)
     error("Invalid DomainDecomposition:trigger, must be greater than zero");
+  if (repartition->trigger < 2 && repartition->trigger >= 1)
+    error("Invalid DomainDecomposition:trigger, must be 2 or greater or less"
+          " than 1");
 
   /* Fraction of particles that should be updated before a repartition
    * based on CPU time is considered. */
