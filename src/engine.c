@@ -2417,17 +2417,31 @@ void engine_maketasks(struct engine *e) {
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
-  /* Allocate the list of cell-task links. The maximum number of links is the
-   * number of cells (s->tot_cells) times the number of neighbours (26) times
-   * the number of interaction types, so 26 * 3 (density, force, grav) pairs
-   * and 4 (density, force, grav, ext_grav) self.
-   */
+  /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
+  e->size_links = 0;
+
+/* The maximum number of links is the
+ * number of cells (s->tot_cells) times the number of neighbours (26) times
+ * the number of interaction types, so 26 * 2 (density, force) pairs
+ * and 2 (density, force) self.
+ */
 #ifdef EXTRA_HYDRO_LOOP
-  e->size_links = s->tot_cells * (26 * 4 + 4);
+  const int hydro_tasks_per_cell = 27 * 3;
 #else
-  e->size_links = s->tot_cells * (26 * 3 + 4);
+  const int hydro_tasks_per_cell = 27 * 2;
 #endif
+  const int self_grav_tasks_per_cell = 27 * 2;
+  const int ext_grav_tasks_per_cell = 1;
+
+  if (e->policy & engine_policy_hydro)
+    e->size_links += s->tot_cells * hydro_tasks_per_cell;
+  if (e->policy & engine_policy_external_gravity)
+    e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
+  if (e->policy & engine_policy_self_gravity)
+    e->size_links += s->tot_cells * self_grav_tasks_per_cell;
+
+  /* Allocate the new list */
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
