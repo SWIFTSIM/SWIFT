@@ -44,7 +44,7 @@ struct task_cuda {
   /* Size of unlock array during initialisation. */
   int size_unlocks;
 
-}
+};
 
 
 #endif /* SWIFT_CUDA_TASK_H */
