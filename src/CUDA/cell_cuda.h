@@ -8,7 +8,7 @@ struct cell_cuda {
   double loc[3];
 
   /* The cell dimensions. */
-  double width[3]
+  double width[3];
 
   /* Max smoothing length in this cell. */
   double h_max;
@@ -42,6 +42,10 @@ struct cell_cuda {
 
   /* Number of links */  
   int nr_links;
-}
+
+  /* IS split? */
+  int split;
+
+};
 
 #endif /* SWIFT_CUDA_CELL_H */
