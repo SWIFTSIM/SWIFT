@@ -8,7 +8,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 # CUDA sources
 if HAVECUDA
     SOURCES_CUDA = runner_cuda_main.cu queue_cuda.cu
-    CUDA_MYFLAGS = -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA
+    CUDA_MYFLAGS = -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -dc
 #.cu: cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
 .cu.o: 
 	$(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $< -o $@

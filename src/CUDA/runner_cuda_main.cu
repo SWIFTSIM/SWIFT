@@ -109,6 +109,11 @@ __device__ __constant__ float hydro_h_max;
 /* Density kernel function */
 __constant__ float cuda_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
 
+#define cuda_kernel_root                                          \
+  ((float)(cuda_kernel_coeffs[kernel_degree]) * kernel_constant * \
+   kernel_gamma_inv_dim)
+
+
 __device__ int cuda_cell_is_active( struct cell_cuda *c ) {
   return (c->ti_end_min == ti_current);
 }
@@ -148,7 +153,7 @@ __device__ __inline__ void cuda_kernel_deval( float u, float *restrict W, float 
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x*kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
-  const float *coeffs = &kernel_coeffs[ind*(kernel_degree+1)];
+  const float *coeffs = &cuda_kernel_coeffs[ind*(kernel_degree+1)];
 
   /* First two terms of the polynomial*/
   float w = coeffs[0] * x + coeffs[1];
@@ -876,10 +881,10 @@ __device__ void hydro_end_density( int pid ){
   const float h_inv_dim_plus_one = h_inv_dim * h_inv;
 
   /* Final operation on the density (self-contribution) */
-  float temp = cuda_parts.mass[pid] * kernel_root;
+  float temp = cuda_parts.mass[pid] * cuda_kernel_root;
   cuda_parts.rho[pid] += temp;
   cuda_parts.rho_dh[pid] -= hydro_dimension * temp;
-  cuda_parts.wcount[pid] += kernel_root;
+  cuda_parts.wcount[pid] += cuda_kernel_root;
 
   /* Finish the calculation by inser4ting the missing h-factors */
   cuda_parts.rho[pid] *= h_inv_dim;
@@ -903,8 +908,8 @@ __device__ void cuda_hydro_part_has_no_neighbours(int pid){
   const float h_inv = 1.0f / h;
   const float h_inv_dim = cuda_pow_dimension(h_inv);
 
-  cuda_parts.rho[pid] =  cuda_parts.mass[pid] * kernel_root * h_inv_dim;
-  cuda_parts.wcount[pid] = kernel_root * kernel_norm * h_inv_dim;
+  cuda_parts.rho[pid] =  cuda_parts.mass[pid] * cuda_kernel_root * h_inv_dim;
+  cuda_parts.wcount[pid] = cuda_kernel_root * kernel_norm * h_inv_dim;
   cuda_parts.rho_dh[pid] = 0.f;
   cuda_parts.wcount_dh[pid] = 0.f;
   cuda_parts.div_v[pid] = 0.f;
@@ -1239,7 +1244,7 @@ __device__ void do_ghost( struct cell_cuda *c ){
           cuda_parts.h[i] = hydro_h_max;
 
           /* Do some damage control if no neighbours were found */
-          if(cuda_parts.wcount[i] == kernel_root * kernel_norm)
+          if(cuda_parts.wcount[i] == cuda_kernel_root * kernel_norm)
             cuda_hydro_part_has_no_neighbours( i );
         }
 
@@ -1698,7 +1703,7 @@ __host__ void update_tasks(struct engine *e){
   struct queue_cuda unload_host;
   cudaErrCheck( cudaMemcpyFromSymbol( &unload_host, unload_queue, sizeof(struct queue_cuda) ) );
   
-  int *data = (int *) malloc(sizeof(int) * cuda_queue_size);
+  int *data = (int *) malloc(sizeof(int) * qsize);
   int nr_unload;
   unload_host.count = 0;
   for(int i = 0; i < nr_gpu_tasks; i++)

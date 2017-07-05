@@ -1,3 +1,13 @@
+#ifdef WITH_CUDA
+#ifndef static
+#define static
+#endif
+#ifndef restrict
+#define restrict __restrict__
+#endif
+#endif
+
+
 #include "queue_cuda.h"
 
 /* Queue function to search for a task index from a specific queue. */
@@ -43,3 +53,8 @@ __device__ void cuda_queue_puttask( struct queue_cuda *q, int tid ) {
 
     atomicAdd((int*)&q->nr_avail_tasks, 1);
 }
+
+#ifdef WITH_CUDA
+#undef static
+#undef restrict
+#endif
