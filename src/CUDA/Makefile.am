@@ -1,29 +1,36 @@
+SOURCES_CUDA = runner_cuda_main.cu queue_cuda.cu
+include_HEADERS = cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
+EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 
-# Add the debug flag to the whole thing
+if HAVECUDA
+
 AM_CFLAGS = -I.. $(HDF5_CPPFLAGS)
+CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -dc
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 
-# CUDA sources
-if HAVECUDA
-    SOURCES_CUDA = runner_cuda_main.cu queue_cuda.cu
-    CUDA_MYFLAGS = -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -dc
-#.cu: cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
+# Rules to compile CUDA code.
 .cu.o: 
 	$(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $< -o $@
 .cu.lo:
-	$(top_srcdir)/cudalt.py $@ $(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $<
-else
-    SOURCES_CUDA =
-endif
+	PATH=$(top_srcdir):$(PATH) && cudalt.py $@ $(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $<
 
-if HAVECUDA
-lib_LTLIBRARIES = libswiftCUDA.la
-endif
+# The library. Dummy C library so that we get libtool linking setup.
+lib_LTLIBRARIES = libswiftCUDA.la libswiftdummy.la
 
-include_HEADERS = cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
+# Special link command to avoid including CFLAGS which are not understood.
+libswiftCUDA_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+        $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+        $(libswiftCUDA_la_LDFLAGS) \
+        $(LDFLAGS) -o $@
 
 libswiftCUDA_la_SOURCES = $(SOURCES_CUDA)
 libswiftCUDA_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS)
-libswiftCUDA_la_LDFLAGS = $(AM_LDFLAGS) $(CUDA_MYFLAGS)
+libswiftCUDA_la_LDFLAGS = $(AM_LDFLAGS)
+
+libswiftdummy_la_SOURCES = dummy.c
+libswiftdummy_la_CFLAGS = $(AM_CFLAGS)
+libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
+
+endif

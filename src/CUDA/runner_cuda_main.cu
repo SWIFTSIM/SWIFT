@@ -8,6 +8,9 @@
 #endif
 #endif
 
+extern "C" {
+#include <string.h>
+}
 #include "runner_cuda_main.h"
 #include "queue_cuda.h"
 #include "task_cuda.h"
