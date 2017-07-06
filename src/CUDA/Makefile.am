@@ -1,4 +1,4 @@
-SOURCES_CUDA = runner_cuda_main.cu queue_cuda.cu
+SOURCES_CUDA = runner_cuda_main.cu #queue_cuda.cu
 include_HEADERS = cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
 EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 
