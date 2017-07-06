@@ -359,7 +359,7 @@ void space_regrid(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-    message("re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
+    message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     fflush(stdout);
 #endif
 
@@ -912,14 +912,16 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_old;
     c->ti_old_gpart = ti_old;
     c->ti_old_multipole = ti_old;
-    c->parts = finger;
-    c->xparts = xfinger;
-    c->gparts = gfinger;
-    c->sparts = sfinger;
-    finger = &finger[c->count];
-    xfinger = &xfinger[c->count];
-    gfinger = &gfinger[c->gcount];
-    sfinger = &sfinger[c->scount];
+    if (c->nodeID == engine_rank) {
+      c->parts = finger;
+      c->xparts = xfinger;
+      c->gparts = gfinger;
+      c->sparts = sfinger;
+      finger = &finger[c->count];
+      xfinger = &xfinger[c->count];
+      gfinger = &gfinger[c->gcount];
+      sfinger = &sfinger[c->scount];
+    }
   }
   // message( "hooking up cells took %.3f %s." ,
   // clocks_from_ticks(getticks() - tic), clocks_getunit());
