@@ -1921,7 +1921,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     /* Update the time of the last drift */
     c->ti_old_part = ti_current;
 
-  } else if (force && ti_current > ti_old_part) {
+  } else if (!c->split && force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
