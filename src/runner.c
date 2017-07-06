@@ -1523,8 +1523,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
   float h_max = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(c->nodeID == engine_rank)
-    error("Updating a local cell!");
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1604,8 +1603,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_max = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(c->nodeID == engine_rank)
-    error("Updating a local cell!");
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1682,8 +1680,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_max = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(c->nodeID == engine_rank)
-    error("Updating a local cell!");
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
 
   /* If this cell is a leaf, collect the particle data. */
