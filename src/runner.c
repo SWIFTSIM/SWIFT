@@ -335,6 +335,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->do_sort;
+  if (cleanup) {
+    c->sorted = 0;
+  } else {
+    flags &= ~c->sorted;
+  }
   if (flags == 0 && !c->do_sub_sort) return;
 
   /* Check that the particles have been moved to the current time */
@@ -466,7 +471,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
           xparts[k].x_diff_sort[2] = 0.0f;
         }
       }
-      c->dx_max_sort_old = c->dx_max_sort = 0.f;
+      c->dx_max_sort_old = 0.f;
+      c->dx_max_sort = 0.f;
     }
 
     /* Fill the sort array. */
