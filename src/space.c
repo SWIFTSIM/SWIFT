@@ -229,6 +229,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
+    c->parts = NULL;
+    c->xparts = NULL;
+    c->gparts = NULL;
+    c->sparts = NULL;
     if (c->sort != NULL) {
       free(c->sort);
       c->sort = NULL;
