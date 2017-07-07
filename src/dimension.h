@@ -33,6 +33,7 @@
 #include "vector.h"
 
 #include <math.h>
+#include "math_constants.h"
 
 /* First define some constants */
 #if defined(HYDRO_DIMENSION_3D)
