@@ -1504,9 +1504,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
+void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
+                         int timer) {
 
 #ifdef WITH_MPI
 
@@ -1523,8 +1525,12 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
   float h_max = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank) error("Updating a local cell!");
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
 #endif
+
+  /* Clear this cell's sorted mask. */
+  if (clear_sorts) c->sorted = 0;
 
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
@@ -1551,7 +1557,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int timer) {
   else {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        runner_do_recv_part(r, c->progeny[k], 0);
+        runner_do_recv_part(r, c->progeny[k], clear_sorts, 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
         h_max = max(h_max, c->progeny[k]->h_max);
@@ -1603,7 +1609,8 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_max = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank) error("Updating a local cell!");
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
 #endif
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1680,7 +1687,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   timebin_t time_bin_max = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank) error("Updating a local cell!");
+  if(c->nodeID == engine_rank)
+    error("Updating a local cell!");
 #endif
 
   /* If this cell is a leaf, collect the particle data. */
@@ -1949,11 +1957,11 @@ void *runner_main(void *data) {
             cell_unpack_ti_ends(ci, t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
-            runner_do_recv_part(r, ci, 1);
+            runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_rho) {
-            runner_do_recv_part(r, ci, 1);
+            runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
-            runner_do_recv_part(r, ci, 1);
+            runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
