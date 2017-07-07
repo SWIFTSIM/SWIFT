@@ -263,21 +263,6 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 # Add libtool support (now that CC is defined).
 LT_INIT
 
-# Need C11 upport.
-if test "$ax_cv_c_compiler_vendor" = "gnu"; then               
-
-   # GCC case
-   CFLAGS="$CFLAGS -std=c11"
-   AC_DEFINE([asm],__asm__, [Define asm.])
-
-elif test "$ax_cv_c_compiler_vendor" = "intel"; then		
-
-   # ICC case
-   CFLAGS="$CFLAGS -std=c11"
-   AC_DEFINE([asm],__asm__, [Define asm.])
-
-fi
-
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
    #  Show inlined functions.
