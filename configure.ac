@@ -101,6 +101,40 @@ if test "$with_logger" = "yes"; then
 fi
 AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
+# Need C11 support.
+if test "$ax_cv_c_compiler_vendor" = "gnu"; then               
+
+   # GCC case
+   CFLAGS="$CFLAGS -std=c11"
+   AC_DEFINE([asm],__asm__, [Define asm.])
+
+elif test "$ax_cv_c_compiler_vendor" = "clang"; then		
+
+   # clang case
+   CFLAGS="$CFLAGS -std=c11"
+   AC_DEFINE([asm],__asm__, [Define asm.])
+
+elif test "$ax_cv_c_compiler_vendor" = "intel"; then		
+
+   # ICC case
+   CFLAGS="$CFLAGS -std=c11"
+   AC_DEFINE([asm],__asm__, [Define asm.])
+
+fi
+
+# Make sure we support inline functions
+AC_C_INLINE
+
+# Look for C11 atomics support. This is optional in C11, but we require it.
+# Note we make no attempt to force C11 mode, so any special CFLAGS will
+# need to be set in the environment. Other C11 features could also be
+# tested if this isn't also a strong test of C11 support.
+AC_CHECK_HEADERS([stdatomic.h],[have_stdatomic=yes],[have_stdatomic=no])
+if test "x$have_stdatomic" = "xno"; then
+   AC_MSG_ERROR([C11 atomics support is required (stdatomic.h), cannot proceed])
+fi
+
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
@@ -140,8 +174,7 @@ if test "$enable_ipo" = "yes"; then
    fi
 fi
 
-# Check for MPI. Need to do this before characterising the compiler (C99 mode),
-# as this changes the compiler.
+# Check for MPI.
 # We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
 # whole applications. There are issues with mixing compilers when using this
 # macro. See
@@ -219,21 +252,6 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Add libtool support (now that CC is defined).
 LT_INIT
-
-# Need C11 upport.
-if test "$ax_cv_c_compiler_vendor" = "gnu"; then               
-
-   # GCC case
-   CFLAGS="$CFLAGS -std=c11"
-   AC_DEFINE([asm],__asm__, [Define asm.])
-
-elif test "$ax_cv_c_compiler_vendor" = "intel"; then		
-
-   # ICC case
-   CFLAGS="$CFLAGS -std=c11"
-   AC_DEFINE([asm],__asm__, [Define asm.])
-
-fi
 
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
