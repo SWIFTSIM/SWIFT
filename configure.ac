@@ -120,6 +120,11 @@ elif test "$ax_cv_c_compiler_vendor" = "intel"; then
    CFLAGS="$CFLAGS -std=c11"
    AC_DEFINE([asm],__asm__, [Define asm.])
 
+elif test "$ax_cv_c_compiler_vendor" = "cray"; then		
+
+   # Cray compiler case
+   CFLAGS="$CFLAGS -h std=c11"
+
 fi
 
 # Make sure we support inline functions
