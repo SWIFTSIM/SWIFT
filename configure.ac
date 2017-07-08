@@ -125,6 +125,11 @@ elif test "$ax_cv_c_compiler_vendor" = "cray"; then
    # Cray compiler case
    CFLAGS="$CFLAGS -h std=c11"
 
+elif test "$ax_cv_c_compiler_vendor" = "portland"; then		
+
+   # Cray compiler case
+   CFLAGS="$CFLAGS -c11"
+
 fi
 
 # Make sure we support inline functions
