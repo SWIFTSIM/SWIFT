@@ -462,6 +462,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
     /* Reset the sort distance */
     if (c->sorted == 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (xparts != NULL && c->nodeID != engine_rank)
+         error("Have non-NULL xparts in foreign cell");
+#endif
 
       /* And the individual sort distances if we are a local cell */
       if (xparts != NULL) {
