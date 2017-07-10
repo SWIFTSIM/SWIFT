@@ -897,8 +897,7 @@ void engine_repartition_trigger(struct engine *e) {
      * repartition following the initial repartition). */
     if (e->reparttype->trigger > 1 || e->step == 2) {
       if (e->reparttype->trigger > 1) {
-        if ((e->step % (int)e->reparttype->trigger) == 0)
-          e->forcerepart = 1;
+        if ((e->step % (int)e->reparttype->trigger) == 0) e->forcerepart = 1;
       } else {
         e->forcerepart = 1;
       }
