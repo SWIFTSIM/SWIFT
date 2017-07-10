@@ -396,7 +396,11 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.s = &space;
