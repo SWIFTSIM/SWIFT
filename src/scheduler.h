@@ -133,8 +133,8 @@ void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags, int wait,
-                               struct cell *ci, struct cell *cj);
+                               enum task_subtypes subtype, int flags,
+                               int implicit, struct cell *ci, struct cell *cj);
 void scheduler_splittasks(struct scheduler *s);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);

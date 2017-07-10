@@ -121,6 +121,24 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 }
 
 /**
+ * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
+ */
+void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
+                       struct task *ghost_out) {
+  if (!c->split || c->count < engine_max_parts_per_ghost) {
+    struct scheduler *s = &e->sched;
+    c->ghost =
+        scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
+    scheduler_addunlock(s, ghost_in, c->ghost);
+    scheduler_addunlock(s, c->ghost, ghost_out);
+  } else {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_add_ghosts(e, c->progeny[k], ghost_in, ghost_out);
+  }
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks.
  *
@@ -143,8 +161,16 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->super == c) {
 
+    /* Add the sort task. */
+    c->sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                        task_subtype_none, 0, 0, c, NULL);
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
@@ -180,10 +206,16 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
-      /* Generate the ghost task. */
-      if (is_hydro)
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL);
+      /* Generate the ghost tasks. */
+      if (is_hydro) {
+        c->ghost_in =
+            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        c->ghost_out =
+            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
@@ -1042,18 +1074,15 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, t_rho, ci->super->kick2);
 
       /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->super->ghost, t_rho);
+      scheduler_addunlock(s, ci->super->ghost_out, t_rho);
 
       /* The send_xv task should unlock the super-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->super->ghost);
+      scheduler_addunlock(s, t_xv, ci->super->ghost_in);
 
 #endif
 
       /* Drift before you send */
-      if (ci->drift_part == NULL)
-        ci->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                           task_subtype_none, 0, 0, ci, NULL);
-      scheduler_addunlock(s, ci->drift_part, t_xv);
+      scheduler_addunlock(s, ci->super->drift_part, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1862,27 +1891,11 @@ void engine_count_and_link_tasks(struct engine *e) {
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
 
-    /* Link sort tasks to the next-higher sort task. */
+    /* Link sort tasks to all the higher sort task. */
     if (t->type == task_type_sort) {
-      struct cell *finger = t->ci->parent;
-      while (finger != NULL && finger->sorts == NULL) finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->sorts);
-    }
-
-    /* Link drift tasks to the next-higher drift task. */
-    else if (t->type == task_type_drift_part) {
-      struct cell *finger = ci->parent;
-      while (finger != NULL && finger->drift_part == NULL)
-        finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_part);
-    }
-
-    /* Link drift tasks to the next-higher drift task. */
-    else if (t->type == task_type_drift_gpart) {
-      struct cell *finger = ci->parent;
-      while (finger != NULL && finger->drift_gpart == NULL)
-        finger = finger->parent;
-      if (finger != NULL) scheduler_addunlock(sched, t, finger->drift_gpart);
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent)
+        if (finger->sorts != NULL) scheduler_addunlock(sched, t, finger->sorts);
     }
 
     /* Link self tasks to cells. */
@@ -2108,8 +2121,8 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct cell *c,
                                                         int with_cooling) {
   /* density loop --> ghost --> force loop */
-  scheduler_addunlock(sched, density, c->super->ghost);
-  scheduler_addunlock(sched, c->super->ghost, force);
+  scheduler_addunlock(sched, density, c->super->ghost_in);
+  scheduler_addunlock(sched, c->super->ghost_out, force);
 
   if (with_cooling) {
     /* force loop --> cooling (--> kick2)  */
@@ -2145,14 +2158,15 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
     /* Sort tasks depend on the drift of the cell. */
     if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
-      scheduler_addunlock(sched, t->ci->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
     }
 
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
-      scheduler_addunlock(sched, t->ci->drift_part, t);
+      /* Make all density tasks depend on the drift and the sorts. */
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop */
@@ -2186,11 +2200,15 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift. */
+      /* Make all density tasks depend on the drift and the sorts. */
       if (t->ci->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->ci->drift_part, t);
-      if (t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->drift_part, t);
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second and third hydro loop */
@@ -2243,6 +2261,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
+      /* Make all density tasks depend on the drift and sorts. */
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -2284,6 +2306,16 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair &&
              t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2542,6 +2574,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Set this task's skip. */
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+
+      /* Store current values of dx_max and h_max. */
+      if (t->type == task_type_sub_self && t->subtype == task_subtype_density) {
+        cell_activate_subcell_tasks(t->ci, NULL, s);
+      }
     }
 
     /* Pair? */
@@ -2561,38 +2598,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype != task_subtype_density) continue;
 
       /* Too much particle movement? */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
-          cj->dmin)
-        *rebuild_space = 1;
+      if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
 
       /* Set the correct sorting flags */
       if (t->type == task_type_pair) {
-        if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-          for (struct cell *finger = ci; finger != NULL;
-               finger = finger->parent)
-            finger->sorted = 0;
-        }
-        if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-          for (struct cell *finger = cj; finger != NULL;
-               finger = finger->parent)
-            finger->sorted = 0;
-        }
-        if (!(ci->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (!(ci->sorts->flags & (1 << t->flags)))
-            error("bad flags in sort task.");
-#endif
-          scheduler_activate(s, ci->sorts);
-          if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
-        }
-        if (!(cj->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (!(cj->sorts->flags & (1 << t->flags)))
-            error("bad flags in sort task.");
-#endif
-          scheduler_activate(s, cj->sorts);
-          if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
-        }
+        /* Store some values. */
+        atomic_or(&ci->requires_sorts, 1 << t->flags);
+        atomic_or(&cj->requires_sorts, 1 << t->flags);
+        ci->dx_max_sort_old = ci->dx_max_sort;
+        cj->dx_max_sort_old = cj->dx_max_sort;
+
+        /* Activate the drift tasks. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+        /* Activate the sorts where needed. */
+        cell_activate_sorts(ci, t->flags, s);
+        cell_activate_sorts(cj, t->flags, s);
+      }
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_pair) {
+        cell_activate_subcell_tasks(t->ci, t->cj, s);
       }
 
 #ifdef WITH_MPI
@@ -2617,15 +2643,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
+        cell_activate_drift_part(l->t->ci, s);
 
         if (cell_is_active(cj, e)) {
-
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
             ;
@@ -2667,12 +2689,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
+        cell_activate_drift_part(l->t->ci, s);
 
         if (cell_is_active(ci, e)) {
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -2695,24 +2714,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-
-      } else if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
-      }
-#else
-      if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
       }
 #endif
     }
 
     /* Kick/Drift/init ? */
-    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-             t->type == task_type_drift_part ||
-             t->type == task_type_drift_gpart ||
-             t->type == task_type_init_grav) {
+    if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -3166,6 +3175,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }
+
+  /* Run through the cells and clear some flags. */
+  space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
 }
 
 /**
@@ -3182,10 +3194,12 @@ void engine_skip_drift(struct engine *e) {
 
     struct task *t = &tasks[i];
 
-    /* Skip everything that moves the particles */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart)
-      t->skip = 1;
+    /* Skip everything that updates the particles */
+    if (t->type == task_type_drift_part) t->skip = 1;
   }
+
+  /* Run through the cells and clear some flags. */
+  space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
 }
 
 /**
@@ -3561,7 +3575,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
     struct cell *c = &cells[ind];
     if (c != NULL && c->nodeID == e->nodeID) {
       /* Drift all the particles */
-      cell_drift_part(c, e);
+      cell_drift_part(c, e, 1);
 
       /* Drift all the g-particles */
       cell_drift_gpart(c, e);
@@ -4252,7 +4266,7 @@ void engine_init(struct engine *e, struct space *s,
             "Version: %s \n# "
             "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
             "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-            "+/- %.2f\n# Eta: %f\n",
+            "+/- %.4f\n# Eta: %f\n",
             hostname(), git_branch(), git_revision(), compiler_name(),
             compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
             kernel_name, e->hydro_properties->target_neighbours,

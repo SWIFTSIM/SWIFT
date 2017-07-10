@@ -1316,6 +1316,355 @@ int cell_is_drift_needed(struct cell *c, const struct engine *e) {
 }
 
 /**
+ * @brief Clear the drift flags on the given cell.
+ */
+void cell_clear_drift_flags(struct cell *c, void *data) {
+  c->do_drift = 0;
+  c->do_sub_drift = 0;
+}
+
+/**
+ * @brief Activate the drifts on the given cell.
+ */
+void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->do_drift) return;
+
+  /* Mark this cell for drifting. */
+  c->do_drift = 1;
+
+  /* Set the do_sub_drifts all the way up and activate the super drift
+     if this has not yet been done. */
+  if (c == c->super) {
+    scheduler_activate(s, c->drift_part);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->do_sub_drift; parent = parent->parent) {
+      parent->do_sub_drift = 1;
+      if (parent == c->super) {
+        scheduler_activate(s, parent->drift_part);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts up a cell hierarchy.
+ */
+
+void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
+  if (c == c->super) {
+    scheduler_activate(s, c->sorts);
+    if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
+      parent->do_sub_sort = 1;
+      if (parent == c->super) {
+        scheduler_activate(s, parent->sorts);
+        if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
+
+  /* Do we need to re-sort? */
+  if (c->dx_max_sort > space_maxreldx * c->dmin) {
+
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->requires_sorts) {
+        atomic_or(&finger->do_sort, finger->requires_sorts);
+        cell_activate_sorts_up(finger, s);
+      }
+      finger->sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->do_sort, (1 << sid));
+    cell_activate_sorts_up(c, s);
+  }
+}
+
+/**
+ * @brief Traverse a sub-cell task and activate the sort tasks along the way.
+ */
+void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
+                                 struct scheduler *s) {
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->dx_max_old = ci->dx_max_part;
+  ci->h_max_old = ci->h_max;
+  if (cj != NULL) {
+    cj->dx_max_old = cj->dx_max_part;
+    cj->h_max_old = cj->h_max;
+  }
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (!cell_is_active(ci, e)) return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_task(ci)) {
+
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_tasks(ci->progeny[j], NULL, s);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_tasks(ci->progeny[j], ci->progeny[k], s);
+        }
+      }
+    } else {
+
+      /* We have reached the bottom of the tree: activate drift */
+      cell_activate_drift_part(ci, s);
+    }
+  }
+
+  /* Otherwise, pair interation, recurse? */
+  else if (cell_can_recurse_in_pair_task(ci) &&
+           cell_can_recurse_in_pair_task(cj)) {
+
+    /* Get the type of pair if not specified explicitly. */
+    double shift[3];
+    int sid = space_getsid(s->space, &ci, &cj, shift);
+
+    /* Different types of flags. */
+    switch (sid) {
+
+      /* Regular sub-cell interactions of a single cell. */
+      case 0: /* (  1 ,  1 ,  1 ) */
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        break;
+
+      case 1: /* (  1 ,  1 ,  0 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+        break;
+
+      case 2: /* (  1 ,  1 , -1 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        break;
+
+      case 3: /* (  1 ,  0 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+        break;
+
+      case 4: /* (  1 ,  0 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[0], s);
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[1], s);
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[2], s);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+        if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[1], s);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[3], s);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[2], s);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[3], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+        if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[3], s);
+        break;
+
+      case 5: /* (  1 ,  0 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[1], s);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[3], s);
+        break;
+
+      case 6: /* (  1 , -1 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+        break;
+
+      case 7: /* (  1 , -1 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[2], s);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[3], s);
+        break;
+
+      case 8: /* (  1 , -1 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+        break;
+
+      case 9: /* (  0 ,  1 ,  1 ) */
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+        break;
+
+      case 10: /* (  0 ,  1 ,  0 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[0], s);
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[1], s);
+        if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[4], s);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[5], s);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+        if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[1], s);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+        if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[5], s);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[4], s);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[5], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+        if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[5], s);
+        break;
+
+      case 11: /* (  0 ,  1 , -1 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[1], s);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[5], s);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[5], s);
+        break;
+
+      case 12: /* (  0 ,  0 ,  1 ) */
+        if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[0], s);
+        if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[2], s);
+        if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[4], s);
+        if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[6], s);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+        if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[2], s);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+        if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[6], s);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+        if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[4], s);
+        if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[6], s);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+        if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
+          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[6], s);
+        break;
+    }
+
+  }
+
+  /* Otherwise, activate the sorts and drifts. */
+  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+
+    /* Get the type of pair if not specified explicitly. */
+    double shift[3];
+    int sid = space_getsid(s->space, &ci, &cj, shift);
+
+    /* We are going to interact this pair, so store some values. */
+    atomic_or(&ci->requires_sorts, 1 << sid);
+    atomic_or(&cj->requires_sorts, 1 << sid);
+    ci->dx_max_sort_old = ci->dx_max_sort;
+    cj->dx_max_sort_old = cj->dx_max_sort;
+
+    /* Activate the drifts if the cells are local. */
+    if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+    if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+    /* Do we need to sort the cells? */
+    cell_activate_sorts(ci, sid, s);
+    cell_activate_sorts(cj, sid, s);
+  }
+}
+
+/**
  * @brief Un-skips all the tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -1341,30 +1690,23 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
-      if (ci->dx_max_sort > space_maxreldx * ci->dmin) {
-        for (struct cell *finger = ci; finger != NULL; finger = finger->parent)
-          finger->sorted = 0;
-      }
-      if (cj->dx_max_sort > space_maxreldx * cj->dmin) {
-        for (struct cell *finger = cj; finger != NULL; finger = finger->parent)
-          finger->sorted = 0;
-      }
-      if (!(ci->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(ci->sorts->flags & (1 << t->flags)))
-          error("bad flags in sort task.");
-#endif
-        scheduler_activate(s, ci->sorts);
-        if (ci->nodeID == engine_rank) scheduler_activate(s, ci->drift_part);
-      }
-      if (!(cj->sorted & (1 << t->flags))) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(cj->sorts->flags & (1 << t->flags)))
-          error("bad flags in sort task.");
-#endif
-        scheduler_activate(s, cj->sorts);
-        if (cj->nodeID == engine_rank) scheduler_activate(s, cj->drift_part);
-      }
+      /* Store some values. */
+      atomic_or(&ci->requires_sorts, 1 << t->flags);
+      atomic_or(&cj->requires_sorts, 1 << t->flags);
+      ci->dx_max_sort_old = ci->dx_max_sort;
+      cj->dx_max_sort_old = cj->dx_max_sort;
+
+      /* Activate the drift tasks. */
+      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+      /* Check the sorts and activate them if needed. */
+      cell_activate_sorts(ci, t->flags, s);
+      cell_activate_sorts(cj, t->flags, s);
+    }
+    /* Store current values of dx_max and h_max. */
+    else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+      cell_activate_subcell_tasks(t->ci, t->cj, s);
     }
 
     /* Only interested in pair interactions as of here. */
@@ -1372,12 +1714,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (max(ci->h_max, cj->h_max) + ci->dx_max_part + cj->dx_max_part >
-          cj->dmin)
-        rebuild = 1;
+      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
-      /* Activate the send/recv flags. */
+      /* Activate the send/recv tasks. */
       if (ci->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
@@ -1398,12 +1738,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, cj->drift_part);
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
+        cell_activate_drift_part(l->t->ci, s);
 
         if (cell_is_active(cj, e)) {
 
@@ -1448,12 +1785,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         if (l == NULL) error("Missing link to send_xv task.");
         scheduler_activate(s, l->t);
 
-        /* Drift both cells, the foreign one at the level which it is sent. */
-        if (l->t->ci->drift_part)
-          scheduler_activate(s, l->t->ci->drift_part);
-        else
-          error("Drift task missing !");
-        if (t->type == task_type_pair) scheduler_activate(s, ci->drift_part);
+        /* Drift the cell which will be sent at the level at which it is sent,
+           i.e. drift the cell specified in the send task (l->t) itself. */
+        cell_activate_drift_part(l->t->ci, s);
 
         if (cell_is_active(ci, e)) {
 
@@ -1477,14 +1811,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
-      } else if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
-      }
-#else
-      if (t->type == task_type_pair) {
-        scheduler_activate(s, ci->drift_part);
-        scheduler_activate(s, cj->drift_part);
       }
 #endif
     }
@@ -1498,9 +1824,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   for (struct link *l = c->grav; l != NULL; l = l->next)
     scheduler_activate(s, l->t);
   if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
+  if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
+  if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
   if (c->ghost != NULL) scheduler_activate(s, c->ghost);
   if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
-  if (c->drift_part != NULL) scheduler_activate(s, c->drift_part);
   if (c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
   if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
   if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
@@ -1540,8 +1867,9 @@ void cell_set_super(struct cell *c, struct cell *super) {
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_part(struct cell *c, const struct engine *e) {
+void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const double timeBase = e->timeBase;
@@ -1556,11 +1884,19 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
 
+  /* Drift irrespective of cell flags? */
+  force |= c->do_drift;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
+#endif  // SWIFT_DEBUG_CHECKS
 
   /* Are we not in a leaf ? */
-  if (c->split) {
+  if (c->split && (force || c->do_sub_drift)) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++)
@@ -1568,7 +1904,7 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
         struct cell *cp = c->progeny[k];
 
         /* Collect */
-        cell_drift_part(cp, e);
+        cell_drift_part(cp, e, force);
 
         /* Update */
         dx_max = max(dx_max, cp->dx_max_part);
@@ -1576,7 +1912,15 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
         cell_h_max = max(cell_h_max, cp->h_max);
       }
 
-  } else if (ti_current > ti_old_part) {
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
+
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
+
+  } else if (!c->split && force && ti_current > ti_old_part) {
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
@@ -1615,20 +1959,18 @@ void cell_drift_part(struct cell *c, const struct engine *e) {
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
 
-  } else {
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
 
-    cell_h_max = c->h_max;
-    dx_max = c->dx_max_part;
-    dx_max_sort = c->dx_max_sort;
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
   }
 
-  /* Store the values */
-  c->h_max = cell_h_max;
-  c->dx_max_part = dx_max;
-  c->dx_max_sort = dx_max_sort;
-
-  /* Update the time of the last drift */
-  c->ti_old_part = ti_current;
+  /* Clear the drift flags. */
+  c->do_drift = 0;
+  c->do_sub_drift = 0;
 }
 
 /**

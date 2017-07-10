@@ -82,6 +82,7 @@ extern const char *engine_policy_names[];
 #define engine_redistribute_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_max_parts_per_ghost 1000
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
