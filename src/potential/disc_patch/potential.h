@@ -30,6 +30,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
+#include "minmax.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
