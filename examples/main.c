@@ -27,6 +27,7 @@
 
 /* Some standard headers. */
 #include <fenv.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -632,6 +633,21 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the particles */
   engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
+
+  /* Check if output directory exists */
+  char dir[200];
+  int test;
+  /* get output directory */
+  strcpy(dir, e.snapshotBaseName);
+  dirname(dir);
+  /* test if directory is current directory and update name if yes */
+  test = strchr(e.snapshotBaseName, '/') == NULL;
+  if (test) strcpy(dir, "./");
+  /* Check if user has write permission */
+  test = access(dir, W_OK);
+  if (-1 == test)
+    error("Directory %s does not exist or you do not have write permission",
+          dir);
 
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);

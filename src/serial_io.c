@@ -738,7 +738,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%03i.hdf5", baseName,
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
            outputCount);
 
   /* Compute offset in the file and total number of particles */

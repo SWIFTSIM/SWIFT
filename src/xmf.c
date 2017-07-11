@@ -135,7 +135,7 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
   fprintf(xmfFile,
-          "\n</Grid> <!-- End of meta-data for output=%03i, time=%f -->\n",
+          "\n</Grid> <!-- End of meta-data for output=%04i, time=%f -->\n",
           output, time);
   fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
   fprintf(xmfFile, "</Domain>\n");
