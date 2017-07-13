@@ -26,6 +26,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <errno.h>
 #include <fenv.h>
 #include <libgen.h>
 #include <stdio.h>
@@ -385,6 +386,16 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Check that we can write the snapshots by testing if the output
+   * directory exists and is writable. */
+  char basename[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "Snapshots:basename", basename);
+  const char *dirp = dirname(basename);
+  if (access(dirp, W_OK) != 0) {
+      error("Cannot write snapshots in directory %s (%s)", dirp,
+            strerror(errno));
+  }
+
   /* Prepare the domain decomposition scheme */
   struct repartition reparttype;
 #ifdef WITH_MPI
@@ -633,21 +644,6 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the particles */
   engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
-
-  /* Check if output directory exists */
-  char dir[200];
-  int test;
-  /* get output directory */
-  strcpy(dir, e.snapshotBaseName);
-  dirname(dir);
-  /* test if directory is current directory and update name if yes */
-  test = strchr(e.snapshotBaseName, '/') == NULL;
-  if (test) strcpy(dir, "./");
-  /* Check if user has write permission */
-  test = access(dir, W_OK);
-  if (-1 == test)
-    error("Directory %s does not exist or you do not have write permission",
-          dir);
 
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);
