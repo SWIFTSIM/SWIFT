@@ -157,7 +157,7 @@ struct engine {
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
   integertime_t ti_nextSnapshot;
-  char snapshotBaseName[200];
+  char snapshotBaseName[PARSER_MAX_LINE_SIZE];
   int snapshotCompression;
   struct unit_system *snapshotUnits;
 

@@ -58,7 +58,7 @@ snap = int(sys.argv[1])
 
 
 # Read the simulation data
-sim = h5py.File("noh_%03d.hdf5"%snap, "r")
+sim = h5py.File("noh_%04d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]

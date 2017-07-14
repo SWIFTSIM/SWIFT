@@ -26,7 +26,9 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <errno.h>
 #include <fenv.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -383,6 +385,17 @@ int main(int argc, char *argv[]) {
   /* Broadcast the parameter file */
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
+
+  /* Check that we can write the snapshots by testing if the output
+   * directory exists and is searchable and writable. */
+  char basename[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "Snapshots:basename", basename);
+  const char *dirp = dirname(basename);
+  message("dirp = %s", dirp);
+  if (access(dirp, W_OK|X_OK) != 0) {
+      error("Cannot write snapshots in directory %s (%s)", dirp,
+            strerror(errno));
+  }
 
   /* Prepare the domain decomposition scheme */
   struct repartition reparttype;
