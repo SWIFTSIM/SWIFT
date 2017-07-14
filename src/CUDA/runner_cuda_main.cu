@@ -2422,7 +2422,7 @@ __global__ void test_27_kernel(){
       dopair_density(&cells_cuda[i], &cells_cuda[13]);
   }
   /* Compute the self task. */
-  dopair_self(&cells_cuda[13]);
+  doself_density(&cells_cuda[13]);
 
   /* Unload the particle data. */
   for(int i = 0; i < 27; i++){
@@ -2474,9 +2474,9 @@ __host__ void test_27_cells(struct cell *cells, struct cell *main_cell, struct p
   cudaErrCheck( cudaMemcpyToSymbol( cuda_nr_parts, &num_part_host, sizeof(int) ) );
 
   /* Create the cells for the device. */
-  struct cell_cuda *cell_host = (struct cell_cuda *) malloc(sizeof(struct cell_cuda) * s->tot_cells); 
-  struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * s->tot_cells);
-  k = 0;
+  struct cell_cuda *cell_host = (struct cell_cuda *) malloc(sizeof(struct cell_cuda) * 27); 
+  struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * 27);
+  int k = 0;
   for(int i = 0; i < 27; i++){
     struct cell *c = &cells[i];
     /*Create cells recursively. */
@@ -2485,16 +2485,16 @@ __host__ void test_27_cells(struct cell *cells, struct cell *main_cell, struct p
   /* Allocate space on the device for the cells. */
   struct cell_cuda *cell_device = NULL;
   struct cell **pointers_device = NULL;
-  cudaErrCheck( cudaMalloc((void**) &cell_device, sizeof(struct cell_cuda ) * s->tot_cells ) );
-  cudaErrCheck( cudaMalloc((void**) &pointers_device, sizeof(struct cell *) * s->tot_cells ) );
+  cudaErrCheck( cudaMalloc((void**) &cell_device, sizeof(struct cell_cuda ) * 27 ) );
+  cudaErrCheck( cudaMalloc((void**) &pointers_device, sizeof(struct cell *) * 27 ) );
  
   /* Copy the cells and pointers to the device and set up the symbol. */
-  cudaErrCheck( cudaMemcpy(cell_device, cell_host, sizeof(struct cell_cuda) * s->tot_cells,
+  cudaErrCheck( cudaMemcpy(cell_device, cell_host, sizeof(struct cell_cuda) * 27,
         cudaMemcpyHostToDevice ) );
 
   cudaErrCheck( cudaMemcpyToSymbol( cells_cuda, cell_device, sizeof(struct cell_cuda *) ) );
 
-  cudaErrCheck( cudaMemcpy( pointers_device, host_pointers, sizeof(struct cell *) * s->tot_cells, 
+  cudaErrCheck( cudaMemcpy( pointers_device, host_pointers, sizeof(struct cell *) * 27, 
        cudaMemcpyHostToDevice ) );
 
   cudaErrCheck( cudaMemcpyToSymbol( cpu_cells, pointers_device, sizeof(struct cell **) ) );

@@ -504,6 +504,25 @@ int main(int argc, char *argv[]) {
   message("Self calculations took         : %15lli ticks.", timings[13] / runs);
   message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
+
+  /* Run the GPU code */
+  for (size_t i = 0; i < runs; ++i) {
+    /* Zero the fields */
+    for (int j = 0; j < 27; ++j) zero_particle_fields(cells[j]);
+    /* Call GPU code */
+    test_27_cells(cells, main_cell, parts );
+    /* Let's get physical ! */
+    end_calculation(main_cell);
+
+    /* Dump if necessary */
+    if (i % 50 == 0) {
+      sprintf(outputFileName, "swift_dopair_27_gpu_%s.dat",
+              outputFileNameExtension);
+      dump_particle_fields(outputFileName, main_cell, cells);
+    }
+
+  }
+
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
