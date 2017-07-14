@@ -151,8 +151,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       if (cell_can_split_self_task(ci)) {
 
         /* Make a sub? */
-        if (scheduler_dosub && /* Note division here to avoid overflow */
-            (ci->count > 0 && ci->count < space_subsize / ci->count)) {
+        if (scheduler_dosub && ci->count < space_subsize_self) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -211,8 +210,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       if (cell_can_split_pair_task(ci) && cell_can_split_pair_task(cj)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub &&
-            ci->count * sid_scale[sid] < space_subsize / cj->count &&
+        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+            ci->count * sid_scale[sid] < space_subsize_pair / cj->count &&
             !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
@@ -624,8 +623,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && /* Note division here to avoid overflow */
-            (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount)) {
+        if (scheduler_dosub && ci->gcount < space_subsize_self) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;

@@ -60,9 +60,9 @@
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
-int space_subsize = space_subsize_default;
+int space_subsize_pair = space_subsize_pair_default;
+int space_subsize_self = space_subsize_self_default;
 int space_maxsize = space_maxsize_default;
-int space_maxcount = space_maxcount_default;
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.
@@ -2697,15 +2697,18 @@ void space_init(struct space *s, const struct swift_params *params,
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
                                            space_maxsize_default);
-  space_subsize = parser_get_opt_param_int(params, "Scheduler:cell_sub_size",
-                                           space_subsize_default);
+  space_subsize_pair = parser_get_opt_param_int(
+      params, "Scheduler:cell_sub_size_pair", space_subsize_pair_default);
+  space_subsize_self = parser_get_opt_param_int(
+      params, "Scheduler:cell_sub_size_self", space_subsize_self_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
-  space_maxcount = parser_get_opt_param_int(params, "Scheduler:cell_max_count",
-                                            space_maxcount_default);
+
   if (verbose)
-    message("max_size set to %d, sub_size set to %d, split_size set to %d",
-            space_maxsize, space_subsize, space_splitsize);
+    message(
+        "max_size set to %d, sub_size_pair set to %d, sub_size_self set to %d, "
+        "split_size set to %d",
+        space_maxsize, space_subsize_pair, space_subsize_self, space_splitsize);
 
   /* Apply h scaling */
   const double scaling =
