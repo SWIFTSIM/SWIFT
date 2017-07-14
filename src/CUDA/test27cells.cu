@@ -1,7 +1,19 @@
+
+#ifdef WITH_CUDA
+#ifndef static
+#define static
+#endif
+#ifndef restrict
+#define restrict __restrict__
+#endif
+#endif
+
+
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
- *
+ *               2017 Aidan Chalk (aidan.chalk@stfc.ac.uk).
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -28,7 +40,14 @@
 #include <unistd.h>
 
 /* Local headers. */
-#include "swift.h"
+//#include "swift.h"
+#include "runner_cuda_main.h"
+#include "../part.h"
+#include "../cell.h"
+#include "../runner.h"
+#include "../tools.h"
+#include "../hydro/Gadget2/hydro.h"
+
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
@@ -558,3 +577,10 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+
+#ifdef WITH_CUDA
+#undef static
+#undef restrict
+#endif
+

@@ -1,4 +1,4 @@
-SOURCES_CUDA = runner_cuda_main.cu #queue_cuda.cu
+SOURCES_CUDA = runner_cuda_main.cu
 include_HEADERS = cell_cuda.h queue_cuda.h runner_cuda_main.h task_cuda.h
 EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 
@@ -9,6 +9,8 @@ CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
+
+bin_PROGRAMS = test_27_cells
 
 # Rules to compile CUDA code.
 .cu.o: 
@@ -32,5 +34,9 @@ libswiftCUDA_la_LDFLAGS = $(AM_LDFLAGS)
 libswiftdummy_la_SOURCES = dummy.c
 libswiftdummy_la_CFLAGS = $(AM_CFLAGS)
 libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
+
+test_27_cells_SOURCES=test27cells.cu
+test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA
+test_27_cells_LDADD= libswiftCUDA.a ../libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 endif
