@@ -3360,9 +3360,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_collect_timestep_and_rebuild(e, 1);
 
   /* Check if any particles have the same position and see if we need to
-   * correct the cell h_max to match possible particle updates in the ghost
-   * tasks. */
-  if (s->cells_top != NULL) {
+   * correct the top-level cell h_max to match possible particle updates in
+   * the ghost tasks. Note this must be followed by a rebuild as sub-cells
+   * will not be updated until that is done. */
+  if (s->cells_top != NULL && s->nr_parts > 0) {
 
     /* Sorting should put the same positions next to each other... */
     int failed = 0;
@@ -3378,7 +3379,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       prev_x = s->parts[k].x;
     }
     if (failed)
-      error("Cannot have particles with the same positions");
+      error("Cannot have particles with the same locations");
 
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
