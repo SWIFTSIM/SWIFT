@@ -3359,38 +3359,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep_and_rebuild(e, 1);
 
-  /* Check if any particles have the same position and see if we need to
-   * correct the cell h_max to match possible particle updates in the ghost
-   * tasks. */
-  if (s->cells_top != NULL) {
-
-    /* Sorting should put the same positions next to each other... */
-    int failed = 0;
-    double *prev_x = s->parts[0].x;
-    for (size_t k = 1; k < s->nr_parts; k++) {
-      if (prev_x[0] == s->parts[k].x[0] &&
-          prev_x[1] == s->parts[k].x[1] &&
-          prev_x[2] == s->parts[k].x[2]) {
-        message("Two particles occupy location: %f %f %f",
-              prev_x[0], prev_x[1], prev_x[2]);
-        failed = 1;
-      }
-      prev_x = s->parts[k].x;
-    }
-    if (failed)
-      error("Cannot have particles with the same positions");
-
-    for (int i = 0; i < s->nr_cells; i++) {
-      struct cell *c = &s->cells_top[i];
-      if (c->nodeID == engine_rank) {
-        float part_h_max = c->parts[0].h;
-        for (int k = 1; k < c->count; k++) {
-          if (c->parts[k].h > part_h_max) part_h_max = c->parts[k].h;
-        }
-        c->h_max = max(part_h_max, c->h_max);
-      }
-    }
-  }
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS
