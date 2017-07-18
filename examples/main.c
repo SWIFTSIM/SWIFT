@@ -391,9 +391,8 @@ int main(int argc, char *argv[]) {
   char basename[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(params, "Snapshots:basename", basename);
   const char *dirp = dirname(basename);
-  if (access(dirp, W_OK|X_OK) != 0) {
-      error("Cannot write snapshots in directory %s (%s)", dirp,
-            strerror(errno));
+  if (access(dirp, W_OK | X_OK) != 0) {
+    error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }
 
   /* Prepare the domain decomposition scheme */
