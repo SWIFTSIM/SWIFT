@@ -3360,11 +3360,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep_and_rebuild(e, 1);
 
-  /* Check if any particles have the same position and see if we need to
-   * correct the top-level cell h_max to match possible particle updates in
-   * the ghost tasks. Note this must be followed by a rebuild as sub-cells
-   * will not be updated until that is done. */
-  if (s->cells_top != NULL && s->nr_parts > 0) {
+  /* Check if any particles have the same position. This is not
+   * allowed (/0) so we abort.*/
+  if (s->nr_parts > 0) {
 
     /* Sorting should put the same positions next to each other... */
     int failed = 0;
@@ -3373,15 +3371,44 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       if (prev_x[0] == s->parts[k].x[0] &&
           prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
-        message("Two particles occupy location: %f %f %f",
-              prev_x[0], prev_x[1], prev_x[2]);
-        failed = 1;
+        if (e->verbose)
+          message("Two particles occupy location: %f %f %f",
+                  prev_x[0], prev_x[1], prev_x[2]);
+        failed++;
       }
       prev_x = s->parts[k].x;
     }
-    if (failed)
-      error("Cannot have particles with the same locations");
+    if (failed > 0)
+      error("Have %d particle pairs with the same locations.\n"
+            "Cannot continue", failed);
+  }
 
+  /* Also check any gparts. This is not supposed to be fatal so only warn. */
+  if (s->nr_gparts > 0) {
+    int failed = 0;
+    double *prev_x = s->gparts[0].x;
+    for (size_t k = 1; k < s->nr_gparts; k++) {
+      if (prev_x[0] == s->gparts[k].x[0] &&
+          prev_x[1] == s->gparts[k].x[1] &&
+          prev_x[2] == s->gparts[k].x[2]) {
+        if (e->verbose)
+          message("Two gparts occupy location: %f %f %f / %f %f %f",
+                  prev_x[0], prev_x[1], prev_x[2],
+                  s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2] );
+        failed++;
+      }
+      prev_x = s->gparts[k].x;
+    }
+    if (failed > 0)
+      message("WARNING: found %d gpart pairs at the same location. "
+              "That is not optimal", failed);
+  }
+
+  /* Check the top-level cell h_max matches the particles as these can be
+   * updated in the the ghost tasks (only a problem if the ICs estimates for h
+   * are too small). Note this must be followed by a rebuild as sub-cells will
+   * not be updated until that is done. */
+  if (s->cells_top != NULL && s->nr_parts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank) {
@@ -3393,6 +3420,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       }
     }
   }
+
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS
