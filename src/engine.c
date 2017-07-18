@@ -907,7 +907,8 @@ void engine_repartition(struct engine *e) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
-  error("SWIFT was not compiled with MPI and METIS support.");
+  if (e->reparttype->type != REPART_NONE)
+    error("SWIFT was not compiled with MPI and METIS support.");
 #endif
 }
 
