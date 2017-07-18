@@ -907,7 +907,8 @@ void engine_repartition(struct engine *e) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
-  error("SWIFT was not compiled with MPI and METIS support.");
+  if (e->reparttype->type != REPART_NONE)
+    error("SWIFT was not compiled with MPI and METIS support.");
 #endif
 }
 
@@ -1064,10 +1065,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, t_rho, ci->super->extra_ghost);
 
       /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->super->ghost, t_rho);
+      scheduler_addunlock(s, ci->super->ghost_out, t_rho);
 
       /* The send_xv task should unlock the super-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->super->ghost);
+      scheduler_addunlock(s, t_xv, ci->super->ghost_in);
 
 #else
       /* The send_rho task should unlock the super-cell's kick task. */
@@ -2090,8 +2091,8 @@ static inline void engine_make_hydro_loops_dependencies(
 
   /* density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop  */
-  scheduler_addunlock(sched, density, c->super->ghost);
-  scheduler_addunlock(sched, c->super->ghost, gradient);
+  scheduler_addunlock(sched, density, c->super->ghost_in);
+  scheduler_addunlock(sched, c->super->ghost_out, gradient);
   scheduler_addunlock(sched, gradient, c->super->extra_ghost);
   scheduler_addunlock(sched, c->super->extra_ghost, force);
 

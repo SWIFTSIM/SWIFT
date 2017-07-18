@@ -42,12 +42,11 @@
  * @param hdfFileName
  * @return the basename part of hdfFileName.
  */
-static const char *xmf_basename(const char *hdfFileName) {
+static const char* xmf_basename(const char* hdfFileName) {
   static char buffer[FILENAME_BUFFER_SIZE];
   strcpy(buffer, hdfFileName);
   return basename(buffer);
 }
-
 
 /**
  * @brief Prepare the XMF file corresponding to a snapshot.
@@ -277,7 +276,7 @@ void xmf_write_line(FILE* xmfFile, const char* fileName,
     fprintf(xmfFile,
             "<DataItem Dimensions=\"%zu %d\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, dim, xmf_type(type), xmf_precision(type),
-            xmf_basename(fileName), partTypeGroupName, name);
+            N, dim, xmf_type(type), xmf_precision(type), xmf_basename(fileName),
+            partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }
