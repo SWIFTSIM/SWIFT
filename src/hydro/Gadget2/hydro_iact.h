@@ -1270,7 +1270,7 @@ runner_iact_nonsym_1_vec_force(
   a_hydro_ySum->v = vec_mask_sub(a_hydro_ySum->v, piay.v, mask);
   a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz.v, mask);
   h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt.v, mask);
-  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig, mask));
+  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig.v, mask));
   entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt.v, mask);
 
 #else
@@ -1455,8 +1455,8 @@ runner_iact_nonsym_2_vec_force(
     a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz_2.v, mask_2);
     h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt.v, mask);
     h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt_2.v, mask_2);
-    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig, mask));
-    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig_2, mask_2));
+    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig.v, mask));
+    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig_2.v, mask_2));
     entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt.v, mask);
     entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt_2.v, mask_2);
   } else {
