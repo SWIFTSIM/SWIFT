@@ -161,6 +161,13 @@
 #define vec_cmp_gte(a, b) _mm256_cmp_ps(a, b, _CMP_GE_OQ)
 #define vec_cmp_result(a) _mm256_movemask_ps(a)
 #define vec_and(a, b) _mm256_and_ps(a, b)
+#define vec_mask_and(a, b) _mm256_and_ps(a.v, b.v)
+#define vec_and_mask(a, mask) _mm256_and_ps(a, mask.v)
+#define vec_init_mask(mask) mask.m = vec_setint1(0xFFFFFFFF)
+#define vec_create_mask(mask, cond) mask.v = cond
+#define vec_zero_mask(mask) mask.v = vec_setzero()
+#define vec_pad_mask(mask, pad) \
+  for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
 #define vec_todbl_lo(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 0))
 #define vec_todbl_hi(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 1))
 #define vec_dbl_tofloat(a, b) _mm256_insertf128(_mm256_castps128_ps256(a), b, 1)
