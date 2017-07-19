@@ -63,11 +63,8 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
     int *icount_align) {
 
-#ifdef HAVE_AVX512_F
-  KNL_MASK_16 knl_mask, knl_mask2;
-#endif
-  vector int_mask, int_mask2;
-
+  mask_t int_mask, int_mask2;
+  
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
   int rem = icount % (NUM_VEC_PROC * VEC_SIZE);
@@ -76,15 +73,9 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     *icount_align += pad;
 
 /* Initialise masks to true. */
-#ifdef HAVE_AVX512_F
-    knl_mask = 0xFFFF;
-    knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
+
     /* Pad secondary cache so that there are no contributions in the interaction
      * function. */
     for (int i = icount; i < *icount_align; i++) {
@@ -100,19 +91,10 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
 
     /* Zero parts of mask that represent the padded values.*/
     if (pad < VEC_SIZE) {
-#ifdef HAVE_AVX512_F
-      knl_mask2 = knl_mask2 >> pad;
-#else
-      for (int i = VEC_SIZE - pad; i < VEC_SIZE; i++) int_mask2.i[i] = 0;
-#endif
+      vec_pad_mask(int_mask2, pad);
     } else {
-#ifdef HAVE_AVX512_F
-      knl_mask = knl_mask >> (VEC_SIZE - rem);
-      knl_mask2 = 0;
-#else
-      for (int i = rem; i < VEC_SIZE; i++) int_mask.i[i] = 0;
-      int_mask2.v = vec_setzero();
-#endif
+      vec_pad_mask(int_mask, VEC_SIZE - rem);
+      vec_zero_mask(int_mask2);
     }
 
     /* Perform remainder interaction and remove remainder from aligned
@@ -125,12 +107,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
         &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align],
         &int_cache->mq[*icount_align], rhoSum, rho_dhSum, wcountSum,
         wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask,
-        int_mask2,
-#ifdef HAVE_AVX512_F
-        knl_mask, knl_mask2);
-#else
-        0, 0);
-#endif
+        int_mask2, 1);
   }
 }
 
@@ -174,44 +151,33 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  */
 __attribute__((always_inline)) INLINE static void storeInteractions(
     const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
-    vector *v_dz, vector *v_mj, vector *v_vjx, vector *v_vjy, vector *v_vjz,
-    const struct cache *const cell_cache, struct c2_cache *const int_cache,
-    int *icount, vector *rhoSum, vector *rho_dhSum, vector *wcountSum,
-    vector *wcount_dhSum, vector *div_vSum, vector *curlvxSum,
-    vector *curlvySum, vector *curlvzSum, vector v_hi_inv, vector v_vix,
-    vector v_viy, vector v_viz) {
+    vector *v_dz, const struct cache *const cell_cache,
+    struct c2_cache *const int_cache, int *icount, vector *rhoSum,
+    vector *rho_dhSum, vector *wcountSum, vector *wcount_dhSum,
+    vector *div_vSum, vector *curlvxSum, vector *curlvySum, vector *curlvzSum,
+    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask.
  */
 #if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
-  int pack = 0;
+  mask_t packed_mask;
+  VEC_FORM_PACKED_MASK(mask, packed_mask);
 
-#ifdef HAVE_AVX512_F
-  pack += __builtin_popcount(mask);
-  VEC_LEFT_PACK(v_r2->v, mask, &int_cache->r2q[*icount]);
-  VEC_LEFT_PACK(v_dx->v, mask, &int_cache->dxq[*icount]);
-  VEC_LEFT_PACK(v_dy->v, mask, &int_cache->dyq[*icount]);
-  VEC_LEFT_PACK(v_dz->v, mask, &int_cache->dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v, mask, &int_cache->mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v, mask, &int_cache->vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v, mask, &int_cache->vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v, mask, &int_cache->vzq[*icount]);
-#else
-  vector v_mask;
-  VEC_FORM_PACKED_MASK(mask, v_mask.m, pack);
+  VEC_LEFT_PACK(v_r2->v, packed_mask, &int_cache->r2q[*icount]);
+  VEC_LEFT_PACK(v_dx->v, packed_mask, &int_cache->dxq[*icount]);
+  VEC_LEFT_PACK(v_dy->v, packed_mask, &int_cache->dyq[*icount]);
+  VEC_LEFT_PACK(v_dz->v, packed_mask, &int_cache->dzq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->m[pjd]), packed_mask,
+                &int_cache->mq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vx[pjd]), packed_mask,
+                &int_cache->vxq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vy[pjd]), packed_mask,
+                &int_cache->vyq[*icount]);
+  VEC_LEFT_PACK(vec_load(&cell_cache->vz[pjd]), packed_mask,
+                &int_cache->vzq[*icount]);
 
-  VEC_LEFT_PACK(v_r2->v, v_mask.m, &int_cache->r2q[*icount]);
-  VEC_LEFT_PACK(v_dx->v, v_mask.m, &int_cache->dxq[*icount]);
-  VEC_LEFT_PACK(v_dy->v, v_mask.m, &int_cache->dyq[*icount]);
-  VEC_LEFT_PACK(v_dz->v, v_mask.m, &int_cache->dzq[*icount]);
-  VEC_LEFT_PACK(v_mj->v, v_mask.m, &int_cache->mq[*icount]);
-  VEC_LEFT_PACK(v_vjx->v, v_mask.m, &int_cache->vxq[*icount]);
-  VEC_LEFT_PACK(v_vjy->v, v_mask.m, &int_cache->vyq[*icount]);
-  VEC_LEFT_PACK(v_vjz->v, v_mask.m, &int_cache->vzq[*icount]);
-
-#endif /* HAVE_AVX512_F */
-
-  (*icount) += pack;
+  /* Increment interaction count by number of bits set in mask. */
+  (*icount) += __builtin_popcount(mask);
 #else
   /* Quicker to do it serially in AVX rather than use intrinsics. */
   for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
@@ -242,9 +208,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
                         wcount_dhSum, div_vSum, curlvxSum, curlvySum, curlvzSum,
                         v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
-    vector int_mask, int_mask2;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
 
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
@@ -253,7 +219,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
           &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
-          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0, 0);
+          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Reset interaction count. */
@@ -367,7 +333,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
 #ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
-  int doi_mask;
   struct part *restrict pi;
   int count_align;
   int num_vec_proc = NUM_VEC_PROC;
@@ -459,9 +424,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     }
 
     vector pjx, pjy, pjz;
-    vector pjvx, pjvy, pjvz, mj;
     vector pjx2, pjy2, pjz2;
-    vector pjvx2, pjvy2, pjvz2, mj2;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -471,18 +434,10 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       pjx.v = vec_load(&cell_cache->x[pjd]);
       pjy.v = vec_load(&cell_cache->y[pjd]);
       pjz.v = vec_load(&cell_cache->z[pjd]);
-      pjvx.v = vec_load(&cell_cache->vx[pjd]);
-      pjvy.v = vec_load(&cell_cache->vy[pjd]);
-      pjvz.v = vec_load(&cell_cache->vz[pjd]);
-      mj.v = vec_load(&cell_cache->m[pjd]);
 
       pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
       pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
       pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
-      pjvx2.v = vec_load(&cell_cache->vx[pjd + VEC_SIZE]);
-      pjvy2.v = vec_load(&cell_cache->vy[pjd + VEC_SIZE]);
-      pjvz2.v = vec_load(&cell_cache->vz[pjd + VEC_SIZE]);
-      mj2.v = vec_load(&cell_cache->m[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
       vector v_dx_tmp, v_dy_tmp, v_dz_tmp;
@@ -502,52 +457,44 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       v_r2.v = vec_fma(v_dz_tmp.v, v_dz_tmp.v, v_r2.v);
       v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
-/* Form a mask from r2 < hig2 and r2 > 0.*/
-#ifdef HAVE_AVX512_F
-      // KNL_MASK_16 doi_mask, doi_mask_check, doi_mask2, doi_mask2_check;
-      KNL_MASK_16 doi_mask_check, doi_mask2, doi_mask2_check;
-
-      doi_mask_check = vec_cmp_gt(v_r2.v, vec_setzero());
-      doi_mask = vec_cmp_lt(v_r2.v, v_hig2.v);
-
-      doi_mask2_check = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      doi_mask2 = vec_cmp_lt(v_r2_2.v, v_hig2.v);
-
-      doi_mask = doi_mask & doi_mask_check;
-      doi_mask2 = doi_mask2 & doi_mask2_check;
-
-#else
-      vector v_doi_mask, v_doi_mask_check, v_doi_mask2, v_doi_mask2_check;
-      int doi_mask2;
+      /* Form a mask from r2 < hig2 and r2 > 0.*/
+      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2, v_doi_mask2_self_check;
+      int doi_mask, doi_mask_self_check, doi_mask2, doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask_check.v = vec_cmp_gt(v_r2.v, vec_setzero());
-      v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+      vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      v_doi_mask2_check.v = vec_cmp_gt(v_r2_2.v, vec_setzero());
-      v_doi_mask2.v = vec_cmp_lt(v_r2_2.v, v_hig2.v);
+      vec_create_mask(v_doi_mask2_self_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
-      /* Combine two masks and form integer mask. */
-      doi_mask = vec_cmp_result(vec_and(v_doi_mask.v, v_doi_mask_check.v));
-      doi_mask2 = vec_cmp_result(vec_and(v_doi_mask2.v, v_doi_mask2_check.v));
-#endif /* HAVE_AVX512_F */
+      /* Form integer masks. */
+      doi_mask_self_check = vec_form_int_mask(v_doi_mask_self_check);
+      doi_mask = vec_form_int_mask(v_doi_mask);
+
+      doi_mask2_self_check = vec_form_int_mask(v_doi_mask2_self_check);
+      doi_mask2 = vec_form_int_mask(v_doi_mask2);
+      
+      /* Combine the two masks. */
+      doi_mask = doi_mask & doi_mask_self_check;
+      doi_mask2 = doi_mask2 & doi_mask2_self_check;
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
         storeInteractions(doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp,
-                          &mj, &pjvx, &pjvy, &pjvz, cell_cache, &int_cache,
+                          cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum,
+                          &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
+                          &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy,
+                          v_viz);
+      }
+      if (doi_mask2) {
+        storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2,
+                          &v_dy_tmp2, &v_dz_tmp2, cell_cache, &int_cache,
                           &icount, &rhoSum, &rho_dhSum, &wcountSum,
                           &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
                           &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
-      }
-      if (doi_mask2) {
-        storeInteractions(
-            doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_tmp2, &v_dy_tmp2,
-            &v_dz_tmp2, &mj2, &pjvx2, &pjvy2, &pjvz2, cell_cache, &int_cache,
-            &icount, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
-            &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
     }
 
@@ -559,16 +506,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
-    vector int_mask, int_mask2;
-#ifdef HAVE_AVX512_F
-    KNL_MASK_16 knl_mask = 0xFFFF;
-    KNL_MASK_16 knl_mask2 = 0xFFFF;
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#else
-    int_mask.m = vec_setint1(0xFFFFFFFF);
-    int_mask2.m = vec_setint1(0xFFFFFFFF);
-#endif
+    mask_t int_mask, int_mask2;
+    vec_init_mask(int_mask);
+    vec_init_mask(int_mask2);
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
@@ -578,11 +518,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
           &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
           &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
-#ifdef HAVE_AVX512_F
-          knl_mask, knl_mask2);
-#else
-          0, 0);
-#endif
+          0);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
@@ -866,14 +802,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        vector v_doi_mask;
+        mask_t v_doi_mask;
         int doi_mask;
 
         /* Form r2 < hig2 mask. */
-        v_doi_mask.v = vec_cmp_lt(v_r2.v, v_hig2.v);
+        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
         /* Form integer mask. */
-        doi_mask = vec_cmp_result(v_doi_mask.v);
+        doi_mask = vec_form_int_mask(v_doi_mask);
 
         /* If there are any interactions perform them. */
         if (doi_mask)
@@ -882,12 +818,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
               &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
               &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx], &rhoSum,
               &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-              &curlvySum, &curlvzSum, v_doi_mask,
-#ifdef HAVE_AVX512_F
-              knl_mask);
-#else
-              0);
-#endif
+              &curlvySum, &curlvzSum, v_doi_mask);
 
       } /* loop over the parts in cj. */
 
@@ -1005,14 +936,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        vector v_doj_mask;
+        mask_t v_doj_mask;
         int doj_mask;
 
         /* Form r2 < hig2 mask. */
-        v_doj_mask.v = vec_cmp_lt(v_r2.v, v_hjg2.v);
+        vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
 
         /* Form integer mask. */
-        doj_mask = vec_cmp_result(v_doj_mask.v);
+        doj_mask = vec_form_int_mask(v_doj_mask);
 
         /* If there are any interactions perform them. */
         if (doj_mask)
@@ -1021,12 +952,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
               &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
               &ci_cache->vz[ci_cache_idx], &ci_cache->m[ci_cache_idx], &rhoSum,
               &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-              &curlvySum, &curlvzSum, v_doj_mask,
-#ifdef HAVE_AVX512_F
-              knl_mask);
-#else
-              0);
-#endif
+              &curlvySum, &curlvzSum, v_doj_mask);
 
       } /* loop over the parts in ci. */
 
