@@ -493,15 +493,10 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
   w->v = vec_fma(x.v, w->v, cubic_1_const_c3.v);
   w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
 
-  /* Mask out unneeded values. */
-  w->v = vec_and_mask(w->v, mask_reg1);
-  w2.v = vec_and_mask(w2.v, mask_reg2);
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx2.v = vec_and_mask(dw_dx2.v, mask_reg2);
+  /* Blend both kernel regions into one vector (mask out unneeded values). */
+  w->v = vec_blend(mask_reg2, w->v, w2.v);
+  dw_dx->v = vec_blend(mask_reg2, dw_dx->v, dw_dx2.v);
 
-  /* Added both w and w2 together to form complete result. */
-  w->v = vec_add(w->v, w2.v);
-  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
 #else
 #error "Vectorisation not supported for this kernel!!!"
 #endif
@@ -618,22 +613,12 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
   w_2.v = vec_fma(x.v, w_2.v, cubic_2_const_c3.v);
   w2_2.v = vec_fma(x2.v, w2_2.v, cubic_2_const_c3.v);
 
-  /* Mask out unneeded values. */
-  w->v = vec_and_mask(w->v, mask_reg1);
-  w2->v = vec_and_mask(w2->v, mask_reg1_v2);
-  w_2.v = vec_and_mask(w_2.v, mask_reg2);
-  w2_2.v = vec_and_mask(w2_2.v, mask_reg2_v2);
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx2->v = vec_and_mask(dw_dx2->v, mask_reg1_v2);
-  dw_dx_2.v = vec_and_mask(dw_dx_2.v, mask_reg2);
-  dw_dx2_2.v = vec_and_mask(dw_dx2_2.v, mask_reg2_v2);
-
-  /* Added both w and w2 together to form complete result. */
-  w->v = vec_add(w->v, w_2.v);
-  w2->v = vec_add(w2->v, w2_2.v);
-  dw_dx->v = vec_add(dw_dx->v, dw_dx_2.v);
-  dw_dx2->v = vec_add(dw_dx2->v, dw_dx2_2.v);
-
+  /* Blend both kernel regions into one vector (mask out unneeded values). */
+  w->v = vec_blend(mask_reg2, w->v, w_2.v);
+  w2->v = vec_blend(mask_reg2_v2, w2->v, w2_2.v);
+  dw_dx->v = vec_blend(mask_reg2, dw_dx->v, dw_dx_2.v);
+  dw_dx2->v = vec_blend(mask_reg2_v2, dw_dx2->v, dw_dx2_2.v);
+  
   /* Return everything */
   w->v = vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
   w2->v = vec_mul(w2->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
@@ -693,11 +678,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
   w2.v = vec_fma(x.v, w2.v, cubic_2_const_c3.v);
 
   /* Mask out unneeded values. */
-  w->v = vec_and_mask(w->v, mask_reg1);
-  w2.v = vec_and_mask(w2.v, mask_reg2);
+  w->v = vec_blend(mask_reg2, w->v, w2.v);
 
-  /* Added both w and w2 together to form complete result. */
-  w->v = vec_add(w->v, w2.v);
 #else
 #error "Vectorisation not supported for this kernel!!!"
 #endif
@@ -754,11 +736,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
   dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
 
   /* Mask out unneeded values. */
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx2.v = vec_and_mask(dw_dx2.v, mask_reg2);
+  dw_dx->v = vec_blend(mask_reg2, dw_dx->v, dw_dx2.v);
 
-  /* Added both dwdx and dwdx2 together to form complete result. */
-  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
 #else
 #error "Vectorisation not supported for this kernel!!!"
 #endif
