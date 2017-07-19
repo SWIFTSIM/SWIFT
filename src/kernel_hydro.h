@@ -709,66 +709,6 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
 
 /**
  * @brief Computes the kernel function derivative for two particles
- * using vectors. Does not return zero if $u > \\gamma = H/h$, should only
- * be called if particles are known to interact.
- *
- * @param u The ratio of the distance to the smoothing length $u = x/h$.
- * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
- */
-__attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
-    vector *u, vector *dw_dx) {
-
-  /* Go to the range [0,1[ from [0,H[ */
-  vector x;
-  x.v = vec_mul(u->v, kernel_gamma_inv_vec.v);
-
-#ifdef WENDLAND_C2_KERNEL
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(wendland_dwdx_const_c0.v, x.v, wendland_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations */
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c2.v);
-
-  dw_dx->v = vec_fma(dw_dx->v, x.v, wendland_dwdx_const_c3.v);
-
-  dw_dx->v = vec_mul(dw_dx->v, x.v);
-
-#elif defined(CUBIC_SPLINE_KERNEL)
-  vector dw_dx2;
-  mask_t mask_reg1, mask_reg2;
-
-  /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));  /* 0 < x < 0.5 */
-  vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-
-  /* Work out w for both regions of the kernel and combine the results together
-   * using masks. */
-
-  /* Init the iteration for Horner's scheme. */
-  dw_dx->v = vec_fma(cubic_1_dwdx_const_c0.v, x.v, cubic_1_dwdx_const_c1.v);
-  dw_dx2.v = vec_fma(cubic_2_dwdx_const_c0.v, x.v, cubic_2_dwdx_const_c1.v);
-
-  /* Calculate the polynomial interleaving vector operations. */
-  dw_dx->v = vec_mul(dw_dx->v, x.v); /* cubic_1_dwdx_const_c2 is zero. */
-  dw_dx2.v = vec_fma(dw_dx2.v, x.v, cubic_2_dwdx_const_c2.v);
-
-  /* Mask out unneeded values. */
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx2.v = vec_and_mask(dw_dx2.v, mask_reg2);
-
-  /* Added both dwdx and dwdx2 together to form complete result. */
-  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
-#else
-#error "Vectorisation not supported for this kernel!!!"
-#endif
-
-  /* Return everything */
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
-                                       kernel_gamma_inv_dim_plus_one_vec.v));
-}
-
-/**
- * @brief Computes the kernel function derivative for two particles
  * using vectors.
  *
  * Return 0 if $u > \\gamma = H/h$
