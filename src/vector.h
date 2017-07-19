@@ -259,7 +259,6 @@
 #define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
 #endif
 
-#define vec_fnma(a, b, c) _mm512_fnmadd_ps(a, b, c)
 /* Form a packed mask without intrinsics if AVX2 is not present. */
 #ifndef VEC_FORM_PACKED_MASK
 
