@@ -432,14 +432,16 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
   curlvry.v = vec_mul(curlvry.v, ri.v);
   curlvrz.v = vec_mul(curlvrz.v, ri.v);
 
+  vector scaleFactor;
+  scaleFactor.v = vec_fma(vec_set1(hydro_dimension), wi.v,
+                                          vec_mul(ui.v, wi_dx.v));
+
 /* Mask updates to intermediate vector sums for particle pi. */
   rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj.v, wi.v), mask);
   rho_dhSum->v = vec_mask_sub(
-      rho_dhSum->v, vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                          vec_mul(ui.v, wi_dx.v))),
-      mask);
+      rho_dhSum->v, vec_mul(mj.v, scaleFactor.v), mask);
   wcountSum->v = vec_mask_add(wcountSum->v, wi.v, mask);
-  wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, vec_mul(ui.v, wi_dx.v), mask);
+  wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, scaleFactor.v, mask);
   div_vSum->v =
       vec_mask_sub(div_vSum->v, vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask);
   curlvxSum->v = vec_mask_add(curlvxSum->v,
@@ -540,25 +542,25 @@ runner_iact_nonsym_2_vec_density(
   curlvrz.v = vec_mul(curlvrz.v, ri.v);
   curlvrz2.v = vec_mul(curlvrz2.v, ri2.v);
 
+  vector scaleFactor, scaleFactor2;
+  scaleFactor.v = vec_fma(vec_set1(hydro_dimension), wi.v,
+                                          vec_mul(ui.v, wi_dx.v));
+  scaleFactor2.v = vec_fma(vec_set1(hydro_dimension), wi2.v,
+                                          vec_mul(ui2.v, wi_dx2.v));
+
   /* Mask updates to intermediate vector sums for particle pi. */
   /* Mask only when needed. */
   if (mask_cond) {
     rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj.v, wi.v), mask);
     rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj2.v, wi2.v), mask2);
     rho_dhSum->v = vec_mask_sub(
-        rho_dhSum->v, vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                            vec_mul(ui.v, wi_dx.v))),
-        mask);
+        rho_dhSum->v, vec_mul(mj.v, scaleFactor.v), mask);
     rho_dhSum->v = vec_mask_sub(
-        rho_dhSum->v, vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
-                                             vec_mul(ui2.v, wi_dx2.v))),
-        mask2);
+        rho_dhSum->v, vec_mul(mj2.v, scaleFactor2.v), mask2);
     wcountSum->v = vec_mask_add(wcountSum->v, wi.v, mask);
     wcountSum->v = vec_mask_add(wcountSum->v, wi2.v, mask2);
-    wcount_dhSum->v =
-        vec_mask_sub(wcount_dhSum->v, vec_mul(ui.v, wi_dx.v), mask);
-    wcount_dhSum->v =
-        vec_mask_sub(wcount_dhSum->v, vec_mul(ui2.v, wi_dx2.v), mask2);
+    wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, scaleFactor.v, mask);
+    wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, scaleFactor2.v, mask2);
     div_vSum->v = vec_mask_sub(div_vSum->v,
                                vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask);
     div_vSum->v = vec_mask_sub(
@@ -578,14 +580,12 @@ runner_iact_nonsym_2_vec_density(
   } else {
     rhoSum->v = vec_add(rhoSum->v, vec_mul(mj.v, wi.v));
     rhoSum->v = vec_add(rhoSum->v, vec_mul(mj2.v, wi2.v));
-    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(
-        mj.v, vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(ui.v, wi_dx.v))));
-    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
-                                           vec_mul(ui2.v, wi_dx2.v))));
+    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(mj.v, scaleFactor.v));
+    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(mj2.v, scaleFactor2.v));
     wcountSum->v = vec_add(wcountSum->v, wi.v);
     wcountSum->v = vec_add(wcountSum->v, wi2.v);
-    wcount_dhSum->v = vec_sub(wcount_dhSum->v, vec_mul(ui.v, wi_dx.v));
-    wcount_dhSum->v = vec_sub(wcount_dhSum->v, vec_mul(ui2.v, wi_dx2.v));
+    wcount_dhSum->v = vec_sub(wcount_dhSum->v, scaleFactor.v);
+    wcount_dhSum->v = vec_sub(wcount_dhSum->v, scaleFactor2.v);
     div_vSum->v = vec_sub(div_vSum->v, vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
     div_vSum->v = vec_sub(div_vSum->v, vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)));
     curlvxSum->v = vec_add(curlvxSum->v, vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)));
