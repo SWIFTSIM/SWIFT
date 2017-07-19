@@ -467,10 +467,9 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
   w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
 #elif defined(CUBIC_SPLINE_KERNEL)
   vector w2, dw_dx2;
-  mask_t mask_reg1, mask_reg2;
+  mask_t mask_reg2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));  /* 0 < x < 0.5 */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
 
   /* Work out w for both regions of the kernel and combine the results together
@@ -573,11 +572,9 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 #elif defined(CUBIC_SPLINE_KERNEL)
   vector w_2, dw_dx_2;
   vector w2_2, dw_dx2_2;
-  mask_t mask_reg1, mask_reg2, mask_reg1_v2, mask_reg2_v2;
+  mask_t mask_reg2, mask_reg2_v2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));      /* 0 < x < 0.5 */
-  vec_create_mask(mask_reg1_v2, vec_cmp_lt(x2.v, cond.v));  /* 0 < x < 0.5 */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v));     /* 0.5 < x < 1 */
   vec_create_mask(mask_reg2_v2, vec_cmp_gte(x2.v, cond.v)); /* 0.5 < x < 1 */
 
@@ -657,10 +654,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
   w->v = vec_fma(x.v, w->v, wendland_const_c5.v);
 #elif defined(CUBIC_SPLINE_KERNEL)
   vector w2;
-  mask_t mask_reg1, mask_reg2;
+  mask_t mask_reg2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));  /* 0 < x < 0.5 */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
   
   /* Work out w for both regions of the kernel and combine the results together
@@ -718,10 +714,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
 
 #elif defined(CUBIC_SPLINE_KERNEL)
   vector dw_dx2;
-  mask_t mask_reg1, mask_reg2;
+  mask_t mask_reg2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));  /* 0 < x < 0.5 */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
 
   /* Work out w for both regions of the kernel and combine the results together
@@ -788,14 +783,12 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 
 #elif defined(CUBIC_SPLINE_KERNEL)
   vector dw_dx2, dw_dx2_2;
-  mask_t mask_reg1, mask_reg2;
-  mask_t mask_reg1_2, mask_reg2_2;
+  mask_t mask_reg2;
+  mask_t mask_reg2_v2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg1, vec_cmp_lt(x.v, cond.v));      /* 0 < x < 0.5 */
-  vec_create_mask(mask_reg1_2, vec_cmp_lt(x_2.v, cond.v));  /* 0 < x < 0.5 */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v));     /* 0.5 < x < 1 */
-  vec_create_mask(mask_reg2_2, vec_cmp_gte(x_2.v, cond.v)); /* 0.5 < x < 1 */
+  vec_create_mask(mask_reg2_v2, vec_cmp_gte(x_2.v, cond.v)); /* 0.5 < x < 1 */
   
   /* Work out w for both regions of the kernel and combine the results together
    * using masks. */
@@ -813,14 +806,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   dw_dx2_2.v = vec_fma(dw_dx2_2.v, x_2.v, cubic_2_dwdx_const_c2.v);
 
   /* Mask out unneeded values. */
-  dw_dx->v = vec_and_mask(dw_dx->v, mask_reg1);
-  dw_dx_2->v = vec_and_mask(dw_dx_2->v, mask_reg1_2);
-  dw_dx2.v = vec_and_mask(dw_dx2.v, mask_reg2);
-  dw_dx2_2.v = vec_and_mask(dw_dx2_2.v, mask_reg2_2);
+  dw_dx->v = vec_blend(mask_reg2, dw_dx->v, dw_dx2.v);
+  dw_dx_2->v = vec_blend(mask_reg2_v2, dw_dx_2->v, dw_dx2_2.v);
 
-  /* Added both dwdx and dwdx2 together to form complete result. */
-  dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
-  dw_dx_2->v = vec_add(dw_dx_2->v, dw_dx2_2.v);
 #else
 #error "Vectorisation not supported for this kernel!!!"
 #endif
