@@ -185,6 +185,7 @@
 #define vec_zero_mask(mask) mask.v = vec_setzero()
 #define vec_pad_mask(mask, pad) \
   for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
+#define vec_blend(mask, a, b) _mm256_blendv_ps(a, b, mask.v)
 #define vec_todbl_lo(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 0))
 #define vec_todbl_hi(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 1))
 #define vec_dbl_tofloat(a, b) _mm256_insertf128(_mm256_castps128_ps256(a), b, 1)
