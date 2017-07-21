@@ -543,6 +543,8 @@ if test "$enable_opt" = "yes" ; then
    fi
 
    if test "$enable_vec" = "no"; then
+
+      # Add the flags that explicitely switch off vectorization
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
       	 AC_MSG_RESULT([disabled Intel vectorization])
