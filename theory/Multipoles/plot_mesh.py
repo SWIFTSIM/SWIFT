@@ -67,16 +67,36 @@ phi_newton = 1. / r
 phit_newton = 1. / k**2
 
 def smoothstep(x): #S_2(x)
-    ret = 6*x**5 - 15*x**4 + 10*x**3#3*x**2 - 2*x**3
+    ret = 6*x**5 - 15*x**4 + 10*x**3
+    #ret = 3*x**2 - 2*x**3
     ret[x < 0] = 0.
     ret[x > 1] = 1.
     return ret
+
+def sigmoid(x):
+    return 1. / (1. + exp(-x))
+    #return x / sqrt(1. + x**2)
     
-# Correcction in real space
+def swift_corr(x):
+    #return 2. * smoothstep(x/4. + 1./2.) - 1.
+    #return sigmoid(4. * x)
+    return 2 * sigmoid( 4 * x ) - 1
+
+figure()
+x = linspace(-4, 4, 100)
+plot(x, special.erf(x), '-', color=colors[0])
+plot(x, swift_corr(x), '-', color=colors[1])
+plot(x, x, '-', color=colors[2])
+ylim(-1.1, 1.1)
+xlim(-4.1, 4.1)
+savefig("temp.pdf")
+
+# Correction in real space
 corr_short_gadget2 = special.erf(r / (2.*r_s))
 corr_long_gadget2 = exp(-k**2*r_s**2)
-corr_short_swift = smoothstep(r / (2.*r_s))
-corr_long_swift = 0.5 * (90 * r_s * k * np.cos(k * r_s)**2 + (r_s**2 * k**2 - 3) * np.sin(2*r_s*k))/ (r_s**5 * k**7) 
+corr_short_swift = swift_corr(r / (2.*r_s)) 
+#corr_long_swift = (-15. / 1024.) * (12. * r_s * k * cos(4. * r_s * k) + (16. * r_s**2 * k**2 - 3.) * sin(4. * r_s * k)) / (k**5 * r_s**5)
+corr_long_swift = k * r_s * math.pi / (2. * sinh(0.5 * math.pi * r_s * k))
 
 # Shortrange term
 phi_short_gadget2 = (1.  / r ) * (1. - corr_short_gadget2)
@@ -105,17 +125,19 @@ ylabel("$\\varphi_s(r)$", labelpad=-3)
 legend(loc="upper right", frameon=True, handletextpad=0.1, handlelength=3.2, fontsize=8)
 
 # Correction
-subplot(312, xscale="log", yscale="linear")
+subplot(312, xscale="log", yscale="log")
 #plot(r_rs, np.ones(np.size(r)), '--', lw=1.4, color=colors[0])
 plot(r_rs, 1. - corr_short_gadget2, '-', lw=1.4, color=colors[2])
 plot(r_rs, 1. - corr_short_swift, '-', lw=1.4, color=colors[3])
-plot(r_rs, np.zeros(np.size(r)), 'k--', alpha=0.5, lw=0.5)
+#plot(r_rs, np.zeros(np.size(r)), 'k--', alpha=0.5, lw=0.5)
 plot(r_rs, np.ones(np.size(r)), 'k--', alpha=0.5, lw=0.5)
+plot(r_rs, np.ones(np.size(r))*0.01, 'k--', alpha=0.5, lw=0.5)
 plot([1., 1.], [-1e5, 1e5], 'k-', alpha=0.5, lw=0.5)
 
+yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlim(1.1*r_min/r_s, 0.9*r_max/r_s)
-ylim(-0.1, 1.1)
-ylabel("$\\chi_s(r)$", labelpad=2)
+ylim(3e-3, 1.5)
+ylabel("$\\chi_s(r)$", labelpad=-3)
 
 subplot(313, xscale="log", yscale="log")
 
@@ -150,13 +172,14 @@ subplot(211, xscale="log", yscale="log")
 plot(k_rs, phit_newton, '--', lw=1.4, label="${\\rm Newtonian}$", color=colors[0])
 plot(k_rs, phit_long_gadget2, '-', lw=1.4, label="${\\rm Gadget}$", color=colors[2])
 plot(k_rs, phit_long_swift, '-', lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
+plot(k_rs, -phit_long_swift, ':', lw=1.4, color=colors[3])
 plot([1., 1.], [1e-5, 1e5], 'k-', alpha=0.5, lw=0.5)
 
 legend(loc="lower left", frameon=True, handletextpad=0.1, handlelength=3.2, fontsize=8)
 
 xlim(1.1*r_min/ r_s, 0.9*r_max / r_s)
 ylim(1.1/r_max**2, 0.9/r_min**2)
-ylabel("$\\tilde\\varphi_l(k)$", labelpad=-3)
+ylabel("$\\tilde{\\varphi_l}(k)$", labelpad=-3)
 
 
 subplot(212, xscale="log", yscale="log")
@@ -165,12 +188,13 @@ subplot(212, xscale="log", yscale="log")
 plot(k_rs, phit_newton * k**2, '--', lw=1.4, label="${\\rm Newtonian}$", color=colors[0])
 plot(k_rs, phit_long_gadget2 * k**2, '-', lw=1.4, label="${\\rm Gadget}$", color=colors[2])
 plot(k_rs, phit_long_swift * k**2, '-', lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
+plot(k_rs, -phit_long_swift * k**2, ':', lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
 plot([1., 1.], [1e-5, 1e5], 'k-', alpha=0.5, lw=0.5)
 plot(r_rs, np.ones(np.size(r))*0.01, 'k--', alpha=0.5, lw=0.5)
 
 xlim(1.1*r_min/ r_s, 0.9*r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$k^2 \\times \\tilde\\varphi_l(k)$", labelpad=-3)
+ylabel("$k^2 \\times \\tilde{\\varphi_l}(k)$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlabel("$k \\times r_s$", labelpad=0)
 
