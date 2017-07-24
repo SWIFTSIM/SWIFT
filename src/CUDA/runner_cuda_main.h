@@ -9,9 +9,14 @@ void create_tasks(struct engine *e);
 void create_cells_and_data_tasks(struct engine *e);
 void run_cuda();
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void test_27_cells(struct cell **cells, struct cell *main_cell, struct part *parts );
 void allocate_cells(void *parts, int particles);
-
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif
