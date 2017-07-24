@@ -267,7 +267,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif
 
         /* Interact ! */
-        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj, periodic);
 
 #ifdef SWIFT_DEBUG_CHECKS
         gpi->num_interacted++;
@@ -310,7 +310,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif
 
         /* Interact ! */
-        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+        runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi, periodic);
 
 #ifdef SWIFT_DEBUG_CHECKS
         gpj->num_interacted++;
@@ -334,6 +334,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
   const float a_smooth = e->gravity_properties->a_smooth;
   const float rlr_inv = 1. / (a_smooth * c->super->width[0]);
 
@@ -397,7 +399,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
       /* Interact ! */
       if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
 
-        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
+        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj, periodic);
 
 #ifdef SWIFT_DEBUG_CHECKS
         gpi->num_interacted++;
@@ -408,7 +410,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
         if (gpart_is_active(gpi, e)) {
 
-          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj, periodic);
 
 #ifdef SWIFT_DEBUG_CHECKS
           gpi->num_interacted++;
@@ -419,7 +421,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
-          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi, periodic);
 
 #ifdef SWIFT_DEBUG_CHECKS
           gpj->num_interacted++;
