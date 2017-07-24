@@ -5,7 +5,8 @@ EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 if HAVECUDA
 
 AM_CFLAGS = -I.. $(HDF5_CPPFLAGS)
-CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -dc
+CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA
+#-dc
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -13,7 +14,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 bin_PROGRAMS = test_27_cells
 
 # Rules to compile CUDA code.
-.cu.o: 
+.cu.o:
 	$(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $< -o $@
 .cu.lo:
 	PATH=$(top_srcdir):$(PATH) && cudalt.py $@ $(NVCC) -c $(NVCCFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) $<
@@ -36,8 +37,8 @@ libswiftdummy_la_CFLAGS = $(AM_CFLAGS)
 libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
 
 test_27_cells_SOURCES=test27cells.c
-test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA -B../../cudalt.py
-test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim_mpi.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
-test_27_cells_LDFLAGS = $(AM_LDFLAGS) 
+test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA
+test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim.la ../libswiftsim_mpi.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
+test_27_cells_LDFLAGS = $(AM_LDFLAGS)
 
 endif

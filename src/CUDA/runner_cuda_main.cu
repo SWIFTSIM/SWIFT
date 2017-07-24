@@ -2476,7 +2476,6 @@ __host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct 
   /* Create the cells for the device. */
   struct cell_cuda *cell_host = (struct cell_cuda *) malloc(sizeof(struct cell_cuda) * 27); 
   struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * 27);
-  int k = 0;
   for(int i = 0; i < 27; i++){
     struct cell *c = cells[i];
     /*Create cells recursively. */

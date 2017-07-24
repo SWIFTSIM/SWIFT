@@ -1,7 +1,9 @@
 #ifndef SWIFT_CUDA_TASK_H 
 #define SWIFT_CUDA_TASK_H
 
+extern "C" {
 #include "../task.h"
+}
 
 struct task_cuda {
 
