@@ -32,7 +32,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
     float rlr_inv, float r2, const float *dx, struct gpart *gpi,
-    struct gpart *gpj) {
+    struct gpart *gpj, int periodic) {
 
   /* Apply the gravitational acceleration. */
   const float r = sqrtf(r2);
@@ -49,7 +49,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
 #endif
 
   /* Get long-range correction */
-  kernel_long_grav_eval(u, &f_lr);
+  if (periodic)
+    kernel_long_grav_eval(u, &f_lr);
+  else
+    f_lr = 1.f;
 
   if (r >= hi) {
 
@@ -101,7 +104,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
     float rlr_inv, float r2, const float *dx, struct gpart *gpi,
-    const struct gpart *gpj) {
+    const struct gpart *gpj, int periodic) {
 
   /* Apply the gravitational acceleration. */
   const float r = sqrtf(r2);
@@ -116,7 +119,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
 #endif
 
   /* Get long-range correction */
-  kernel_long_grav_eval(u, &f_lr);
+  if (periodic)
+    kernel_long_grav_eval(u, &f_lr);
+  else
+    f_lr = 1.f;
 
   if (r >= hi) {
 
