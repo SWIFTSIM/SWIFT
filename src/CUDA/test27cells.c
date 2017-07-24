@@ -41,12 +41,14 @@
 
 /* Local headers. */
 //#include "swift.h"
-#include "runner_cuda_main.h"
 #include "../part.h"
 #include "../cell.h"
 #include "../runner.h"
 #include "../tools.h"
 #include "../hydro/Gadget2/hydro.h"
+#include "../engine.h"
+#include "../hydro.h"
+#include "runner_cuda_main.h"
 
 
 #if defined(WITH_VECTORIZATION)
@@ -95,7 +97,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell*) malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
   cell->parts = parts;
 
@@ -422,11 +424,12 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
-  struct part *parts;
-  if (cudaMallocHost((void **)&parts, count * 27 * sizeof(struct part)) != cudaSuccess) {
-    error("couldn't allocate particles, no. of particles: %d", (int)count);
-  }
-  bzero(parts, count * 27 * sizeof(struct part));
+  struct part *parts=NULL;
+  allocate_cells(parts, particles);
+/*  if (cudaMallocHost((void **)&parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
+    error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
+  }*/
+  bzero(parts, particles*particles*particles * 27 * sizeof(struct part));
 
   /* Construct some cells */
   struct cell *cells[27];

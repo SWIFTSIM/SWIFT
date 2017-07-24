@@ -2430,13 +2430,13 @@ __global__ void test_27_kernel(){
   }
 }
 
-__host__ void test_27_cells(struct cell *cells, struct cell *main_cell, struct part *parts){
+__host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct part *parts){
 
   /* Compute the particle count. */  
   int num_part_host = 0;
   for(int i = 0; i < 27; i++){
-     num_part_host += cells[i].count;
-     cells[i].cuda_ID = i;
+     num_part_host += cells[i]->count;
+     cells[i]->cuda_ID = i;
   }
 
   /* Allocate particle arrays on the device. */
@@ -2478,7 +2478,7 @@ __host__ void test_27_cells(struct cell *cells, struct cell *main_cell, struct p
   struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * 27);
   int k = 0;
   for(int i = 0; i < 27; i++){
-    struct cell *c = &cells[i];
+    struct cell *c = cells[i];
     /*Create cells recursively. */
     create_cells(c, cell_host, host_pointers, parts);
   }
@@ -2506,6 +2506,13 @@ __host__ void test_27_cells(struct cell *cells, struct cell *main_cell, struct p
   //Clean up
   cudaDeviceReset();
   free(cell_host); free(host_pointers);
+}
+
+__host__ void allocate_cells(void *parts, int particles)
+{
+  if (cudaMallocHost((void **)&parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
+    error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
+  }
 }
 #ifdef WITH_CUDA
 #undef static

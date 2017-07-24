@@ -35,8 +35,9 @@ libswiftdummy_la_SOURCES = dummy.c
 libswiftdummy_la_CFLAGS = $(AM_CFLAGS)
 libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
 
-test_27_cells_SOURCES=test27cells.cu
-test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA
-test_27_cells_LDADD= libswiftCUDA.a ../libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
+test_27_cells_SOURCES=test27cells.c
+test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA -B../../cudalt.py
+test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim_mpi.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
+test_27_cells_LDFLAGS = $(AM_LDFLAGS) 
 
 endif

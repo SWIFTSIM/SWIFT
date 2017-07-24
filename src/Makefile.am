@@ -27,8 +27,6 @@ GIT_CMD = @GIT_CMD@
 # Additional dependencies for shared libraries.
 EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS)
 
-#subdir
-SUBDIRS = CUDA
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -132,6 +130,8 @@ libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
+#subdir
+SUBDIRS = . CUDA
 
 # Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.
