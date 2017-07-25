@@ -35,6 +35,9 @@
 #include "error.h"
 
 #ifdef SWIFT_DEBUG_THREADPOOL
+/**
+ * @breif Store a log entry of the given chunk.
+ */
 void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
                     ticks tic, ticks toc) {
 
@@ -75,6 +78,9 @@ void *threadpool_runner(void *data) {
 
     /* Let the controller know that this thread is waiting. */
     pthread_mutex_lock(&tp->thread_mutex);
+#ifdef  SWIFT_DEBUG_THREADPOOL
+    const int tid = tp->num_threads_waiting;
+#endif
     tp->num_threads_waiting += 1;
     if (tp->num_threads_waiting == tp->num_threads) {
       pthread_cond_signal(&tp->control_cond);
@@ -104,8 +110,14 @@ void *threadpool_runner(void *data) {
         chunk_size = tp->map_data_size - task_ind;
 
       /* Call the mapper function. */
+      #ifdef SWIFT_DEBUG_THREADPOOL
+        ticks tic = getticks();
+      #endif
       tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                        chunk_size, tp->map_extra_data);
+      #ifdef SWIFT_DEBUG_THREADPOOL
+      threadpool_log(tp, tid, chunk_size, tic, getticks());
+      #endif
     }
   }
 }
