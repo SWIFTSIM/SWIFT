@@ -179,11 +179,12 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   // error("Top-level multipole %d not drifted", i);
 
   /* Allocates some memory for the density mesh */
-  double* restrict rho = fftw_alloc_real(N * N * N);
+  double* restrict rho = fftw_malloc(sizeof(double) * N * N * N);
   if (rho == NULL) error("Error allocating memory for density mesh");
 
   /* Allocates some memory for the mesh in Fourier space */
-  fftw_complex* restrict frho = fftw_alloc_complex(N * N * (N_half + 1));
+  fftw_complex* restrict frho =
+      fftw_malloc(sizeof(fftw_complex) * N * N * (N_half + 1));
   if (frho == NULL)
     error("Error allocating memory for transform of density mesh");
 
