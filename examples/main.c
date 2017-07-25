@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
+  int dump_threadpool = 0;
   int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
@@ -184,7 +185,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
         with_aff = 1;
@@ -272,6 +273,21 @@ int main(int argc, char *argv[]) {
           error(
               "Task dumping is only possible if SWIFT was configured with the "
               "--enable-task-debugging option.");
+        }
+#endif
+        break;
+      case 'Y':
+        if (sscanf(optarg, "%d", &dump_threadpool) != 1) {
+          if (myrank == 0) printf("Error parsing dump_threadpool (-Y). \n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
+#ifndef SWIFT_DEBUG_THREADPOOL
+        if (dump_threadpool) {
+          error(
+              "Threadpool dumping is only possible if SWIFT was configured "
+              "with the "
+              "--enable-threadpool-debugging option.");
         }
 #endif
         break;
@@ -753,6 +769,17 @@ int main(int argc, char *argv[]) {
 #endif  // WITH_MPI
     }
 #endif  // SWIFT_DEBUG_TASKS
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+    /* Dump the task data using the given frequency. */
+    if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
+      char dumpfile[40];
+      snprintf(dumpfile, 30, "threadpool_info-step%d.dat", j + 1);
+      threadpool_dump_log(&e.threadpool, dumpfile, 1);
+    } else {
+      threadpool_reset_log(&e.threadpool);
+    }
+#endif  // SWIFT_DEBUG_THREADPOOL
   }
 
 /* Print the values of the runner histogram. */
