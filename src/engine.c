@@ -3411,7 +3411,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (s->cells_top != NULL && s->nr_parts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
-      if (c->nodeID == engine_rank) {
+      if (c->nodeID == engine_rank && c->count > 0) {
         float part_h_max = c->parts[0].h;
         for (int k = 1; k < c->count; k++) {
           if (c->parts[k].h > part_h_max) part_h_max = c->parts[k].h;
