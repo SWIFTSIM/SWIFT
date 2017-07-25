@@ -180,9 +180,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const int periodic = s->periodic;
+  const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const float a_smooth = e->gravity_properties->a_smooth;
-  const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
+  const float rlr_inv = 1. / (a_smooth * cell_width);
 
   /* Cell properties */
   const int gcount_i = ci->gcount;
@@ -336,8 +337,9 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const int periodic = s->periodic;
+  const double cell_width = s->width[0];
   const float a_smooth = e->gravity_properties->a_smooth;
-  const float rlr_inv = 1. / (a_smooth * c->super->width[0]);
+  const float rlr_inv = 1. / (a_smooth * cell_width);
 
   /* Cell properties */
   const int gcount = c->gcount;

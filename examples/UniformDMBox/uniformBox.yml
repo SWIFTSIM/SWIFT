@@ -28,7 +28,8 @@ Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration. 
   theta:                 0.7      # Opening angle (Multipole acceptance criterion)
   epsilon:               0.00001  # Softening length (in internal units).
-  
+  a_smooth:              1.25     # PM smoothing scale in top-level cell-size units
+  r_cut:                 4.5      # Distance beyong wwhich FMM forces are zero in top-level cell-size un  
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
