@@ -25,9 +25,31 @@
 /* Some standard headers. */
 #include <pthread.h>
 
+/* Local includes. */
+#include "cycle.h"
+
+/* Local defines. */
+#define threadpool_log_initial_size 1000
+
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
                                         void *extra_data);
+                                        
+/* Data for threadpool logging. */
+struct mapper_log_entry {
+
+  /* ID of the thread executing the chunk. */
+  int tid;
+  
+  /* Size of the chunk processed. */
+  int chunk_size;
+  
+  /* Pointer to the mapper function. */
+  threadpool_map_function map_function;
+  
+  /*! Start and end time of this task */
+  ticks tic, toc;
+};  
 
 /* Data of a threadpool. */
 struct threadpool {
@@ -50,6 +72,20 @@ struct threadpool {
 
   /* Counter for the number of threads that are done. */
   volatile int num_threads_waiting, num_threads_running;
+  
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Log of threadpool mapper calls. */
+  struct mapper_log_entry *log;
+  
+  /* Size of the allocated log. */
+  int log_size;
+  
+  /* Number of entries in the log. */
+  int log_count;
+  
+  /* Mutex for log access/reallocation. */
+  pthread_mutex_t log_mutex;
+#endif
 };
 
 /* Function prototypes. */
@@ -58,5 +94,8 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
 void threadpool_clean(struct threadpool *tp);
+#ifdef SWIFT_DEBUG_THREADPOOL
+void threadpool_reset_log(struct threadpool *tp);
+#endif
 
 #endif /* SWIFT_THREADPOOL_H */

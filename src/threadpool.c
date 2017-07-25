@@ -34,6 +34,37 @@
 #include "atomic.h"
 #include "error.h"
 
+#ifdef SWIFT_DEBUG_THREADPOOL
+void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+                    ticks tic, ticks toc) {
+
+  /* Only one cell logs at a time. */
+  pthread_mutex_lock(&tp->log_mutex);
+
+  /* Check if we need to re-allocate the log buffer. */
+  if (tp->log_count == tp->log_size) {
+    tp->log_size *= 2;
+    struct mapper_log_entry *new_log;
+    if ((new_log = (struct mapper_log_entry *)malloc(
+             sizeof(struct mapper_log_entry) * tp->log_size)) == NULL)
+      error("Failed to re-allocate mapper log.");
+    memcpy(new_log, tp->log, sizeof(struct mapper_log_entry) * tp->log_count);
+  }
+
+  /* Store the new entry. */
+  struct mapper_log_entry *entry = &tp->log[tp->log_count];
+  entry->tid = tid;
+  entry->chunk_size = chunk_size;
+  entry->tic = tic;
+  entry->toc = toc;
+  entry->map_function = tp->map_function;
+  tp->log_count++;
+
+  /* Release the logging mutex. */
+  pthread_mutex_unlock(&tp->log_mutex);
+}
+#endif  // SWIFT_DEBUG_THREADPOOL
+
 void *threadpool_runner(void *data) {
 
   /* Our threadpool. */
@@ -109,6 +140,14 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->map_data_chunk = 0;
   tp->map_function = NULL;
 
+#ifdef SWIFT_DEBUG_THREADPOOL
+  tp->log_size = threadpool_log_initial_size;
+  tp->log_count = 0;
+  if ((tp->log = (struct mapper_log_entry *)malloc(
+           sizeof(struct mapper_log_entry) * tp->log_size)) == NULL)
+    error("Failed to allocate mapper log.");
+#endif
+
   /* Allocate the threads. */
   if ((tp->threads = (pthread_t *)malloc(sizeof(pthread_t) * num_threads)) ==
       NULL) {
@@ -179,6 +218,20 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 }
 
 /**
+ * @brief Re-sets the log for this #threadpool.
+ */
+#ifdef SWIFT_DEBUG_THREADPOOL
+void threadpool_reset_log(struct threadpool *tp) { 
+  tp->log_count = 0;
+}
+#endif
+
+/**
  * @brief Frees up the memory allocated for this #threadpool.
  */
-void threadpool_clean(struct threadpool *tp) { free(tp->threads); }
+void threadpool_clean(struct threadpool *tp) { 
+  free(tp->threads);
+#ifdef SWIFT_DEBUG_THREADPOOL
+  free(tp->log);
+#endif
+}
