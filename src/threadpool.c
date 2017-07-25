@@ -26,6 +26,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef SWIFT_DEBUG_THREADPOOL
+#include <dlfcn.h>
+#endif
 
 /* This object's header. */
 #include "threadpool.h"
@@ -52,6 +55,8 @@ void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
              sizeof(struct mapper_log_entry) * tp->log_size)) == NULL)
       error("Failed to re-allocate mapper log.");
     memcpy(new_log, tp->log, sizeof(struct mapper_log_entry) * tp->log_count);
+    free(tp->log);
+    tp->log = new_log;
   }
 
   /* Store the new entry. */
@@ -66,6 +71,58 @@ void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
   /* Release the logging mutex. */
   pthread_mutex_unlock(&tp->log_mutex);
 }
+
+void threadpool_dump_log(struct threadpool *tp, const char *filename,
+                         int reset) {
+
+  /* Open the output file. */
+  FILE *fd;
+  if ((fd = fopen(filename, "w")) == NULL)
+    error("Failed to create log file '%s'.", filename);
+
+  /* Create a buffer of function names. */
+  const int max_names = 100;
+  struct name_entry {
+    threadpool_map_function map_function;
+    const char *name;
+  };
+  struct name_entry names[max_names];
+  bzero(names, sizeof(struct name_entry) * max_names);
+
+  /* Write a header. */
+  fprintf(fd, "# map_function thread_id chunk_size tic toc\n");
+
+  /* Loop over the log entries and dump them. */
+  for (int i = 0; i < tp->log_count; i++) {
+
+    struct mapper_log_entry *entry = &tp->log[i];
+
+    /* Look for the function pointer in the buffer. */
+    int nid = 0;
+    while (nid < max_names && names[nid].map_function != entry->map_function)
+      nid++;
+
+    /* If the name was not found, make a new entry. */
+    if (nid == max_names) {
+      for (int j = 1; j < max_names; j++) names[j - 1] = names[j];
+      names[0].map_function = entry->map_function;
+      Dl_info dl_info;
+      dladdr(entry->map_function, &dl_info);
+      names[0].name = dl_info.dli_sname;
+      nid = 0;
+    }
+
+    /* Log a line to the file. */
+    fprintf(fd, "%s %i %i %lli %lli\n", names[nid].name, entry->tid,
+            entry->chunk_size, entry->tic, entry->toc);
+  }
+
+  /* Clear the log if requested. */
+  if (reset) tp->log_count = 0;
+
+  /* Close the file. */
+  fclose(fd);
+}
 #endif  // SWIFT_DEBUG_THREADPOOL
 
 void *threadpool_runner(void *data) {
@@ -78,7 +135,7 @@ void *threadpool_runner(void *data) {
 
     /* Let the controller know that this thread is waiting. */
     pthread_mutex_lock(&tp->thread_mutex);
-#ifdef  SWIFT_DEBUG_THREADPOOL
+#ifdef SWIFT_DEBUG_THREADPOOL
     const int tid = tp->num_threads_waiting;
 #endif
     tp->num_threads_waiting += 1;
@@ -109,15 +166,15 @@ void *threadpool_runner(void *data) {
       if (task_ind + chunk_size > tp->map_data_size)
         chunk_size = tp->map_data_size - task_ind;
 
-      /* Call the mapper function. */
-      #ifdef SWIFT_DEBUG_THREADPOOL
-        ticks tic = getticks();
-      #endif
+/* Call the mapper function. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+      ticks tic = getticks();
+#endif
       tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                        chunk_size, tp->map_extra_data);
-      #ifdef SWIFT_DEBUG_THREADPOOL
+#ifdef SWIFT_DEBUG_THREADPOOL
       threadpool_log(tp, tid, chunk_size, tic, getticks());
-      #endif
+#endif
     }
   }
 }
@@ -140,7 +197,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Init the threadpool mutexes. */
   if (pthread_mutex_init(&tp->thread_mutex, NULL) != 0)
-    error("Failed to initialize mutexex.");
+    error("Failed to initialize mutex.");
   if (pthread_cond_init(&tp->control_cond, NULL) != 0 ||
       pthread_cond_init(&tp->thread_cond, NULL) != 0)
     error("Failed to initialize condition variables.");
@@ -155,6 +212,8 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 #ifdef SWIFT_DEBUG_THREADPOOL
   tp->log_size = threadpool_log_initial_size;
   tp->log_count = 0;
+  if (pthread_mutex_init(&tp->log_mutex, NULL) != 0)
+    error("Failed to initialize log mutex.");
   if ((tp->log = (struct mapper_log_entry *)malloc(
            sizeof(struct mapper_log_entry) * tp->log_size)) == NULL)
     error("Failed to allocate mapper log.");
@@ -233,15 +292,13 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
  * @brief Re-sets the log for this #threadpool.
  */
 #ifdef SWIFT_DEBUG_THREADPOOL
-void threadpool_reset_log(struct threadpool *tp) { 
-  tp->log_count = 0;
-}
+void threadpool_reset_log(struct threadpool *tp) { tp->log_count = 0; }
 #endif
 
 /**
  * @brief Frees up the memory allocated for this #threadpool.
  */
-void threadpool_clean(struct threadpool *tp) { 
+void threadpool_clean(struct threadpool *tp) {
   free(tp->threads);
 #ifdef SWIFT_DEBUG_THREADPOOL
   free(tp->log);
