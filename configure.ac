@@ -199,6 +199,7 @@ AC_ARG_ENABLE([threadpool-debugging],
 )
 if test "$enable_threadpool_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
+   LDFLAGS="$LDFLAGS -rdynamic"
 fi
 
 # Check if the general timers are switched on.
