@@ -58,7 +58,15 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   } else {
     const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
                              hydro_dimension_inv);
-    return 2. * CFL_condition * psize / fabsf(p->timestepvars.vmax);
+    float vrel[3];
+    vrel[0] = p->primitives.v[0] - xp->v_full[0];
+    vrel[1] = p->primitives.v[1] - xp->v_full[1];
+    vrel[2] = p->primitives.v[2] - xp->v_full[2];
+    float vmax =
+        sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+        sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+    vmax = max(vmax, p->timestepvars.vmax);
+    return CFL_condition * psize / vmax;
   }
 }
 

@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
             (Wi[3] - Wj[3]) * dx[2];
-  if (dvdotdx > 0.) {
+  if (dvdotdx < 0.) {
     vmax -= dvdotdx / r;
   }
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
