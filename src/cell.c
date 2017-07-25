@@ -1684,6 +1684,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
+    /* Only activate tasks that involve a local active cell. */
     if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
         (cj != NULL && cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
       scheduler_activate(s, t);
@@ -1721,9 +1722,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the send/recv tasks. */
       if (ci->nodeID != engine_rank) {
 
+        /* If the local cell is active, receive data from the foreign cell. */
         if (cell_is_active(cj, e)) {
-
-          /* Activate the tasks to recv foreign cell ci's data. */
           scheduler_activate(s, ci->recv_xv);
           if (cell_is_active(ci, e)) {
             scheduler_activate(s, ci->recv_rho);
@@ -1732,6 +1732,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
+        /* If the foreign cell is active, we want its ti_end values. */
         if (cell_is_active(ci, e)) scheduler_activate(s, ci->recv_ti);
 
         /* Look for the local cell cj's send tasks. */
@@ -1765,8 +1767,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-        /* We always need to send the new end time irrespective of active status
-         */
+        /* If the local cell is active, send its ti_end values. */
         if (cell_is_active(cj, e)) {
           struct link *l = NULL;
           for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -1775,9 +1776,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_ti task.");
           scheduler_activate(s, l->t);
         }
+
       } else if (cj->nodeID != engine_rank) {
 
-        /* Activate the tasks to recv foreign cell cj's data. */
+        /* If the local cell is active, receive data from the foreign cell. */
         if (cell_is_active(ci, e)) {
           scheduler_activate(s, cj->recv_xv);
           if (cell_is_active(cj, e)) {
@@ -1787,6 +1789,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+
+        /* If the foreign cell is active, we want its ti_end values. */
         if (cell_is_active(cj, e)) scheduler_activate(s, cj->recv_ti);
 
         /* Look for the local cell ci's send tasks. */
@@ -1820,8 +1824,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
-        /* We always need to send the new end time irrespective of active status
-         */
+
+        /* If the local cell is active, send its ti_end values. */
         if (cell_is_active(ci, e)) {
           struct link *l = NULL;
           for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
