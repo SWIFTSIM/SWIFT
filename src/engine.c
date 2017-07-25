@@ -2589,134 +2589,164 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      /* Set this task's skip, otherwise nothing to do. */
-      if (cell_is_active(t->ci, e) || cell_is_active(t->cj, e))
-        scheduler_activate(s, t);
-      else
-        continue;
-
-      /* If this is not a density task, we don't have to do any of the below. */
-      if (t->subtype != task_subtype_density) continue;
+      /* If this task does not involve any active cells, skip it. */
+      if (!cell_is_active(t->ci, e) && !cell_is_active(t->cj, e)) continue;
 
       /* Too much particle movement? */
       if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
 
-      /* Set the correct sorting flags */
-      if (t->type == task_type_pair) {
-        /* Store some values. */
-        atomic_or(&ci->requires_sorts, 1 << t->flags);
-        atomic_or(&cj->requires_sorts, 1 << t->flags);
-        ci->dx_max_sort_old = ci->dx_max_sort;
-        cj->dx_max_sort_old = cj->dx_max_sort;
+      /* Only activate tasks that involve a local active cell. */
+      if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
+          (cj != NULL && cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
+        scheduler_activate(s, t);
 
-        /* Activate the drift tasks. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        /* Set the correct sorting flags */
+        if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+          /* Store some values. */
+          atomic_or(&ci->requires_sorts, 1 << t->flags);
+          atomic_or(&cj->requires_sorts, 1 << t->flags);
+          ci->dx_max_sort_old = ci->dx_max_sort;
+          cj->dx_max_sort_old = cj->dx_max_sort;
 
-        /* Activate the sorts where needed. */
-        cell_activate_sorts(ci, t->flags, s);
-        cell_activate_sorts(cj, t->flags, s);
+          /* Activate the drift tasks. */
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+          /* Check the sorts and activate them if needed. */
+          cell_activate_sorts(ci, t->flags, s);
+          cell_activate_sorts(cj, t->flags, s);
+        }
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_pair &&
+                 t->subtype == task_subtype_density) {
+          cell_activate_subcell_tasks(t->ci, t->cj, s);
+        }
       }
-      /* Store current values of dx_max and h_max. */
-      else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_tasks(t->ci, t->cj, s);
-      }
+
+      /* Only interested in density tasks as of here. */
+      if (t->subtype == task_subtype_density) {
 
 #ifdef WITH_MPI
-      /* Activate the send/recv flags. */
-      if (ci->nodeID != engine_rank) {
+        /* Activate the send/recv tasks. */
+        if (ci->nodeID != engine_rank) {
 
-        /* Activate the tasks to recv foreign cell ci's data. */
-        scheduler_activate(s, ci->recv_xv);
-        if (cell_is_active(ci, e)) {
-          scheduler_activate(s, ci->recv_rho);
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (cell_is_active(cj, e)) {
+            scheduler_activate(s, ci->recv_xv);
+            if (cell_is_active(ci, e)) {
+              scheduler_activate(s, ci->recv_rho);
 #ifdef EXTRA_HYDRO_LOOP
-          scheduler_activate(s, ci->recv_gradient);
+              scheduler_activate(s, ci->recv_gradient);
 #endif
-          scheduler_activate(s, ci->recv_ti);
-        }
+            }
+          }
 
-        /* Look for the local cell cj's send tasks. */
-        struct link *l = NULL;
-        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_xv task.");
-        scheduler_activate(s, l->t);
+          /* If the foreign cell is active, we want its ti_end values. */
+          if (cell_is_active(ci, e)) scheduler_activate(s, ci->recv_ti);
 
-        /* Drift the cell which will be sent at the level at which it is sent,
-           i.e. drift the cell specified in the send task (l->t) itself. */
-        cell_activate_drift_part(l->t->ci, s);
+          /* Look for the local cell cj's send tasks. */
+          if (cell_is_active(ci, e)) {
+            struct link *l = NULL;
+            for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+                 l = l->next)
+              ;
+            if (l == NULL) error("Missing link to send_xv task.");
+            scheduler_activate(s, l->t);
 
-        if (cell_is_active(cj, e)) {
-          for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_rho task.");
-          scheduler_activate(s, l->t);
+            /* Drift the cell which will be sent at the level at which it is
+               sent,
+               i.e. drift the cell specified in the send task (l->t) itself. */
+            cell_activate_drift_part(l->t->ci, s);
 
-#ifdef EXTRA_HYDRO_LOOP
-          for (l = cj->send_gradient;
-               l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_gradient task.");
-          scheduler_activate(s, l->t);
-#endif
-
-          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_ti task.");
-          scheduler_activate(s, l->t);
-        }
-
-      } else if (cj->nodeID != engine_rank) {
-
-        /* Activate the tasks to recv foreign cell cj's data. */
-        scheduler_activate(s, cj->recv_xv);
-        if (cell_is_active(cj, e)) {
-          scheduler_activate(s, cj->recv_rho);
-#ifdef EXTRA_HYDRO_LOOP
-          scheduler_activate(s, cj->recv_gradient);
-#endif
-          scheduler_activate(s, cj->recv_ti);
-        }
-
-        /* Look for the local cell ci's send tasks. */
-        struct link *l = NULL;
-        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_xv task.");
-        scheduler_activate(s, l->t);
-
-        /* Drift the cell which will be sent at the level at which it is sent,
-           i.e. drift the cell specified in the send task (l->t) itself. */
-        cell_activate_drift_part(l->t->ci, s);
-
-        if (cell_is_active(ci, e)) {
-          for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_rho task.");
-          scheduler_activate(s, l->t);
+            if (cell_is_active(cj, e)) {
+              struct link *l = NULL;
+              for (l = cj->send_rho;
+                   l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
+                ;
+              if (l == NULL) error("Missing link to send_rho task.");
+              scheduler_activate(s, l->t);
 
 #ifdef EXTRA_HYDRO_LOOP
-          for (l = ci->send_gradient;
-               l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_gradient task.");
-          scheduler_activate(s, l->t);
+              for (l = cj->send_gradient;
+                   l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
+                ;
+              if (l == NULL) error("Missing link to send_gradient task.");
+              scheduler_activate(s, l->t);
 #endif
+            }
+          }
 
-          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_ti task.");
-          scheduler_activate(s, l->t);
+          /* If the local cell is active, send its ti_end values. */
+          if (cell_is_active(cj, e)) {
+            struct link *l = NULL;
+            for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+                 l = l->next)
+              ;
+            if (l == NULL) error("Missing link to send_ti task.");
+            scheduler_activate(s, l->t);
+          }
+
+        } else if (cj->nodeID != engine_rank) {
+
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (cell_is_active(ci, e)) {
+            scheduler_activate(s, cj->recv_xv);
+            if (cell_is_active(cj, e)) {
+              scheduler_activate(s, cj->recv_rho);
+#ifdef EXTRA_HYDRO_LOOP
+              scheduler_activate(s, cj->recv_gradient);
+#endif
+            }
+          }
+
+          /* If the foreign cell is active, we want its ti_end values. */
+          if (cell_is_active(cj, e)) scheduler_activate(s, cj->recv_ti);
+
+          /* Look for the local cell ci's send tasks. */
+          if (cell_is_active(cj, e)) {
+            struct link *l = NULL;
+            for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+                 l = l->next)
+              ;
+            if (l == NULL) error("Missing link to send_xv task.");
+            scheduler_activate(s, l->t);
+
+            /* Drift the cell which will be sent at the level at which it is
+               sent,
+               i.e. drift the cell specified in the send task (l->t) itself. */
+            cell_activate_drift_part(l->t->ci, s);
+
+            if (cell_is_active(ci, e)) {
+
+              struct link *l = NULL;
+              for (l = ci->send_rho;
+                   l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
+                ;
+              if (l == NULL) error("Missing link to send_rho task.");
+              scheduler_activate(s, l->t);
+
+#ifdef EXTRA_HYDRO_LOOP
+              for (l = ci->send_gradient;
+                   l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
+                ;
+              if (l == NULL) error("Missing link to send_gradient task.");
+              scheduler_activate(s, l->t);
+#endif
+            }
+          }
+
+          /* If the local cell is active, send its ti_end values. */
+          if (cell_is_active(ci, e)) {
+            struct link *l = NULL;
+            for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+                 l = l->next)
+              ;
+            if (l == NULL) error("Missing link to send_ti task.");
+            scheduler_activate(s, l->t);
+          }
         }
+#endif
       }
-#endif
     }
 
     /* Kick/Drift/init ? */
@@ -3368,19 +3398,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     int failed = 0;
     double *prev_x = s->parts[0].x;
     for (size_t k = 1; k < s->nr_parts; k++) {
-      if (prev_x[0] == s->parts[k].x[0] &&
-          prev_x[1] == s->parts[k].x[1] &&
+      if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
-          message("Two particles occupy location: %f %f %f",
-                  prev_x[0], prev_x[1], prev_x[2]);
+          message("Two particles occupy location: %f %f %f", prev_x[0],
+                  prev_x[1], prev_x[2]);
         failed++;
       }
       prev_x = s->parts[k].x;
     }
     if (failed > 0)
-      error("Have %d particle pairs with the same locations.\n"
-            "Cannot continue", failed);
+      error(
+          "Have %d particle pairs with the same locations.\n"
+          "Cannot continue",
+          failed);
   }
 
   /* Also check any gparts. This is not supposed to be fatal so only warn. */
@@ -3388,20 +3419,21 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     int failed = 0;
     double *prev_x = s->gparts[0].x;
     for (size_t k = 1; k < s->nr_gparts; k++) {
-      if (prev_x[0] == s->gparts[k].x[0] &&
-          prev_x[1] == s->gparts[k].x[1] &&
+      if (prev_x[0] == s->gparts[k].x[0] && prev_x[1] == s->gparts[k].x[1] &&
           prev_x[2] == s->gparts[k].x[2]) {
         if (e->verbose)
-          message("Two gparts occupy location: %f %f %f / %f %f %f",
-                  prev_x[0], prev_x[1], prev_x[2],
-                  s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2] );
+          message("Two gparts occupy location: %f %f %f / %f %f %f", prev_x[0],
+                  prev_x[1], prev_x[2], s->gparts[k].x[0], s->gparts[k].x[1],
+                  s->gparts[k].x[2]);
         failed++;
       }
       prev_x = s->gparts[k].x;
     }
     if (failed > 0)
-      message("WARNING: found %d gpart pairs at the same location. "
-              "That is not optimal", failed);
+      message(
+          "WARNING: found %d gpart pairs at the same location. "
+          "That is not optimal",
+          failed);
   }
 
   /* Check the top-level cell h_max matches the particles as these can be
