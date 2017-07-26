@@ -1,15 +1,4 @@
 
-#ifdef WITH_CUDA
-#ifndef static
-#define static
-#endif
-#ifndef restrict
-#define restrict __restrict__
-#endif
-#endif
-
-
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -41,6 +30,7 @@
 
 /* Local headers. */
 //#include "swift.h"
+#include "../cycle.h"
 #include "../part.h"
 #include "../cell.h"
 #include "../runner.h"
@@ -97,7 +87,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = (struct cell*) malloc(sizeof(struct cell));
+  struct cell *cell;
+  allocate_cell((void**) &cell);
+//  cudaErrCheck(cudaMallocHost(&cell,sizeof(struct cell)));
   bzero(cell, sizeof(struct cell));
   cell->parts = parts;
 
@@ -142,7 +134,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         else
           part->h = size * h / (float)n;
         h_max = fmaxf(h_max, part->h);
-        part->id = ++(*partId);
+        part->id = (*partId)++;
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
@@ -202,9 +194,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
   free(ci->sort);
-  free(ci);
+  free_cell(ci);
 }
 
 /**
@@ -425,24 +416,25 @@ int main(int argc, char *argv[]) {
   struct runner runner;
   runner.e = &engine;
   struct part *parts=NULL;
-  allocate_cells(parts, particles);
+  allocate_cells((void**) &parts, particles);
 /*  if (cudaMallocHost((void **)&parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
     error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
   }*/
+  printf("parts = %p\n", parts);
   bzero(parts, particles*particles*particles * 27 * sizeof(struct part));
 
   /* Construct some cells */
   struct cell *cells[27];
   struct cell *main_cell;
   static long long partId = 0;
+  const int part3 = particles*particles*particles;
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] =
             make_cell(particles, offset, size, h, rho, &partId, perturbation,
-                      vel, h_pert, &parts[27*(i*9+j*3+k)]);
-
+                      vel, h_pert, &parts[part3*(i*9+j*3+k)]);
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
         runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
@@ -478,7 +470,7 @@ int main(int argc, char *argv[]) {
         const ticks sub_tic = getticks();
 
         DOPAIR1(&runner, main_cell, cells[j]);
-
+    printf("parts[104].curlvr[2]=%f\n", parts[104].density.rot_v[2]);
         const ticks sub_toc = getticks();
         timings[j] += sub_toc - sub_tic;
       }
@@ -488,6 +480,7 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
     DOSELF1(&runner, main_cell);
+    printf("parts[104].curlvr[2]=%f\n", parts[104].density.rot_v[2]);
 
     const ticks self_toc = getticks();
 
@@ -577,13 +570,9 @@ int main(int argc, char *argv[]) {
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
+  free_parts(parts);
 
   return 0;
 }
 
-
-#ifdef WITH_CUDA
-#undef static
-#undef restrict
-#endif
 

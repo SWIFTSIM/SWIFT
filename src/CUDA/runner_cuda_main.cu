@@ -207,7 +207,6 @@ __device__ __inline__ void cuda_kernel_deval( float u, float *restrict W, float 
   /* First two terms of the polynomial*/
   float w = coeffs[0] * x + coeffs[1];
   float dw_dx = coeffs[0];
-
   /* and the rest of them*/
   for(int k = 2; k <= kernel_degree; k++)
   {
@@ -391,9 +390,14 @@ __device__ void unload_cell( int cell_index ) {
 __device__ void doself_density( struct cell_cuda *ci ) {
 
   /* Is the cell active? */
-  if( !cuda_cell_is_active(ci) ) return;
+  if( !cuda_cell_is_active(ci) ){
+//c->ti_end_min == ti_current)
+  printf("Cell isn't active..., ti_end_min=%i, ti_current=%i, max_active_bin=%i\n", ci->ti_end_min, ti_current, max_active_bin);
+  return;
+  }
 
   const int count_i = ci->part_count;
+  if(threadIdx.x==0) printf("count_i=%i\n", count_i);
   int part_i = ci->first_part;
   float rho, rho_dh, div_v, wcount, wcount_dh;
   float3 rot_v;
@@ -411,8 +415,10 @@ __device__ void doself_density( struct cell_cuda *ci ) {
     rot_v.x = 0.0f; rot_v.y = 0.0f; rot_v.z = 0.0f;
 
     /* If the particle isn't active skip it. */
-    if(!cuda_part_is_active( pid ) ) 
+    if(!cuda_part_is_active( pid ) ){
+    printf("Particle %i isn't active\n", pid);
       continue;
+    }
 
     /* Search for the neighbours! */
     for( int pjd = part_i; pjd < part_i + count_i; pjd ++ ) {
@@ -431,7 +437,6 @@ __device__ void doself_density( struct cell_cuda *ci ) {
       if( r2 < hig2 ) {
         float w, dw_dx;
         float dv[3], curlvr[3];
-
         /* Load mass on particle pj. */
         const float mj = cuda_parts.mass[pjd];
 
@@ -444,7 +449,6 @@ __device__ void doself_density( struct cell_cuda *ci ) {
         const float ui = r * hi_inv;
         
         cuda_kernel_deval(ui, &w, &dw_dx);
-
         /* Compute contribution to the density. */
         rho += mj * w;
         rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
@@ -470,6 +474,7 @@ __device__ void doself_density( struct cell_cuda *ci ) {
         curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
         curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
+        if( (cuda_parts.id[pid] == 104 && cuda_parts.id[pjd] == 108 ) || (cuda_parts.id[pjd] == 104 && cuda_parts.id[pid] == 108) ) printf("curlvr[2] = %f\n", curlvr[2]);
         rot_v.x += fac*curlvr[0];
         rot_v.y += fac*curlvr[1];
         rot_v.z += fac*curlvr[2];
@@ -484,6 +489,7 @@ __device__ void doself_density( struct cell_cuda *ci ) {
     atomicAdd( &cuda_parts.div_v[pid], div_v);
     atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
     atomicAdd( &cuda_parts.rot_v[pid].y, rot_v.y);
+    atomicAdd( &cuda_parts.rot_v[pid].z, rot_v.z);
   }
 
 }
@@ -586,10 +592,12 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
         curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
         curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
         curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+        if( (cuda_parts.id[pid] == 104 && cuda_parts.id[pjd] == 100 ) || (cuda_parts.id[pjd] == 104 && cuda_parts.id[pid] == 100) ) printf("curlvr[2] = %f\n", curlvr[2]);
 
         rot_v.x += fac*curlvr[0];
         rot_v.y += fac*curlvr[1];
         rot_v.z += fac*curlvr[2];
+//        printf("%i Interacting %i, %i, %f\n", threadIdx.x, pid, pjd, w);
         
       } 
     }//Loop over cj.
@@ -597,6 +605,7 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
     atomicAdd( &cuda_parts.rho[pid], rho);
     atomicAdd( &cuda_parts.rho_dh[pid], rho_dh);
     atomicAdd( &cuda_parts.wcount[pid], wcount);
+//    printf("Part %i wcount = %f\n", pid, cuda_parts.wcount[pid]);
     atomicAdd( &cuda_parts.wcount_dh[pid], wcount_dh);
     atomicAdd( &cuda_parts.div_v[pid], div_v);
     atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
@@ -1433,13 +1442,67 @@ __global__ void swift_device_kernel( )
       }
     }
 
-
   } // End of main loop
 
 
   /* Don't need to do any cleanup, all the dependencies and skips and queues are set by CPU. */
 }
 
+/* Task function to unload a specific cell with density data instead of force. */
+__device__ void test_27_unload_cell( int cell_index ) {
+
+  /* Get the pointer to the relevant cells. */
+  struct cell *cpu_cell = &cpu_cells[cell_index];
+  struct cell_cuda *cell = &cells_cuda[cell_index];
+  struct part *parts = cpu_cell->parts;
+  int i;
+  /* Get the index to copy the data for the 0th particle in this cell to.*/
+  int start = cell->first_part;
+
+  for(i = threadIdx.x; i < cell->part_count; i+= blockDim.x )
+  { 
+    struct part *current = &parts[i];
+
+    /* Copy back the ID and position.*/
+    current->id = cuda_parts.id[start+i];
+    current->x[0] = cuda_parts.x_x[start+i];
+    current->x[1] = cuda_parts.x_y[start+i];
+    current->x[2] = cuda_parts.x_z[start+i];
+
+    /* Copy back the velocity*/
+    float3 local_v = cuda_parts.v[start+i];
+    current->v[0] = local_v.x;
+    current->v[1] = local_v.y;
+    current->v[2] = local_v.z;
+
+    /* Copy back the acceleration */
+    float3 local_a_hydro = cuda_parts.a_hydro[start+i];
+    current->a_hydro[0] = local_a_hydro.x;
+    current->a_hydro[1] = local_a_hydro.y;
+    current->a_hydro[2] = local_a_hydro.z;
+
+    /* Copy back the cutoff, mass, density, entropy and entropy_dt*/
+    current->h = cuda_parts.h[start+i];
+    current->mass = cuda_parts.mass[start+i];
+    current->rho = cuda_parts.rho[start+i];
+    current->entropy = cuda_parts.entropy[start+i];
+    current->entropy_dt = cuda_parts.entropy_dt[start+i];
+
+    /* Copy back the density union (needed for tests) */
+    current->density.wcount = cuda_parts.wcount[start+i];
+    current->density.wcount_dh = cuda_parts.wcount_dh[start+i];
+    current->density.rho_dh = cuda_parts.rho_dh[start+i];
+    current->density.rot_v[0] = cuda_parts.rot_v[start+i].x;
+    current->density.rot_v[1] = cuda_parts.rot_v[start+i].y;
+    current->density.rot_v[2] = cuda_parts.rot_v[start+i].z;
+    current->density.div_v = cuda_parts.div_v[start+i];
+
+
+    /* Copy back the timebin. */
+    current->time_bin = cuda_parts.time_bin[start+i];
+  }
+
+}
 /*
  _____          _      
 |  ___|        | |     
@@ -1629,8 +1692,16 @@ __host__ void create_cells( struct cell *c, struct cell_cuda *cell_host, struct 
   c2->h_max = c->h_max;
   c2->first_part = c->parts - parts;
   c2->part_count = c->count;
+  if(c->parent != NULL){
   c2->parent = c->parent->cuda_ID;
-  c2->super = c->super->cuda_ID;
+  }else{
+    c2->parent = -1;
+  }
+  if(c->super != NULL){
+    c2->super = c->super->cuda_ID;
+  }else{
+    c2->super = -1;
+  }
   c2->ti_end_min = c->ti_end_min;
   c2->ti_end_max = c->ti_end_max;
   c2->dmin = c->dmin;
@@ -2384,6 +2455,18 @@ __host__ void create_tasks(struct engine *e){
   cudaErrCheck( cudaMemcpyToSymbol( cuda_parts, &host_particles, sizeof(struct particle_arrays) ) ); 
 
   cudaErrCheck( cudaMemcpyToSymbol( cuda_nr_parts, &e->total_nr_parts, sizeof(int) ) );
+
+  if(!firstrun)
+  {
+    float host_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
+    for(int a = 0; a < (kernel_degree+1)*(kernel_ivals+1); a++)
+    {
+      host_kernel_coeffs[a] = kernel_coeffs[a];
+    }
+    cudaErrCheck( cudaMemcpyToSymbol( cuda_kernel_coeffs, &host_kernel_coeffs, sizeof(float) * (kernel_degree+1)*(kernel_ivals+1) ));
+  }
+
+
   /* This is no longer the first run. */
   firstrun = 1;
   /* Make sure we free everything we made here otherwise leaky code. */
@@ -2419,14 +2502,16 @@ __global__ void test_27_kernel(){
   for(int i = 0; i < 27; i++){
     if(i == 13) continue;
       dopair_density(&cells_cuda[13], &cells_cuda[i]);
-      dopair_density(&cells_cuda[i], &cells_cuda[13]);
+//      dopair_density(&cells_cuda[i], &cells_cuda[13]);
+   if(threadIdx.x==0)printf("cuda_parts[104].rot_v[2]=%f\n",cuda_parts.rot_v[104].z); 
   }
   /* Compute the self task. */
   doself_density(&cells_cuda[13]);
+   if(threadIdx.x==0)printf("cuda_parts[104].rot_v[2]=%f\n",cuda_parts.rot_v[104].z); 
 
   /* Unload the particle data. */
   for(int i = 0; i < 27; i++){
-    unload_cell(i);
+    test_27_unload_cell(i);
   }
 }
 
@@ -2468,13 +2553,42 @@ __host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct 
 
   cudaErrCheck( cudaMalloc( &host_particles.time_bin, sizeof(timebin_t) * num_part_host ) );
 
+/* 
+  struct engine engine;
+  engine.s = &space;
+  engine.time = 0.1f;
+  engine.ti_current = 8;
+  engine.max_active_bin = num_time_bins;
+  engine.hydro_properties = &hp;
+/* Simulation constants 
+__device__ __constant__ integertime_t ti_current;
+__device__ __constant__ double dim[3];
+__device__ __constant__ timebin_t max_active_bin;
+__device__ __constant__ float delta_neighbours;
+__device__ __constant__ float target_neighbours;
+__device__ __constant__ float hydro_h_max;
+ cuda_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
+*/
+  float host_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
+  for(int a = 0; a < (kernel_degree+1)*(kernel_ivals+1); a++)
+  {
+    host_kernel_coeffs[a] = kernel_coeffs[a];
+  }
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_kernel_coeffs, &host_kernel_coeffs, sizeof(float) * (kernel_degree+1)*(kernel_ivals+1) ));
+  integertime_t current = 8;
+  cudaErrCheck( cudaMemcpyToSymbol( ti_current, &current, sizeof(integertime_t) ) );
+  printf("Copied ti_current\n");
+  timebin_t current2 = 56; 
+  cudaErrCheck( cudaMemcpyToSymbol( max_active_bin, &current2, sizeof(timebin_t) ) );
+  printf("Copied max_active_bin\n");
 
   cudaErrCheck( cudaMemcpyToSymbol( cuda_parts, &host_particles, sizeof(struct particle_arrays) ) ); 
 
   cudaErrCheck( cudaMemcpyToSymbol( cuda_nr_parts, &num_part_host, sizeof(int) ) );
 
   /* Create the cells for the device. */
-  struct cell_cuda *cell_host = (struct cell_cuda *) malloc(sizeof(struct cell_cuda) * 27); 
+  struct cell_cuda *cell_host;
+  cudaErrCheck(cudaMallocHost((void**)&cell_host,sizeof(struct cell_cuda) * 27)); 
   struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * 27);
   for(int i = 0; i < 27; i++){
     struct cell *c = cells[i];
@@ -2491,7 +2605,7 @@ __host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct 
   cudaErrCheck( cudaMemcpy(cell_device, cell_host, sizeof(struct cell_cuda) * 27,
         cudaMemcpyHostToDevice ) );
 
-  cudaErrCheck( cudaMemcpyToSymbol( cells_cuda, cell_device, sizeof(struct cell_cuda *) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( cells_cuda, &cell_device, sizeof(struct cell_cuda *) ) );
 
   cudaErrCheck( cudaMemcpy( pointers_device, host_pointers, sizeof(struct cell *) * 27, 
        cudaMemcpyHostToDevice ) );
@@ -2503,16 +2617,34 @@ __host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct 
   test_27_kernel<<<1, 128>>>(); //Single block.
   cudaDeviceSynchronize();
   //Clean up
-  cudaDeviceReset();
-  free(cell_host); free(host_pointers);
+  printf("cell_host=%p\n", cell_host);
+  cudaErrCheck(cudaFreeHost(cell_host)); 
+  free(host_pointers);
 }
 
-__host__ void allocate_cells(void *parts, int particles)
+__host__ void allocate_cells(void **parts, int particles)
 {
-  if (cudaMallocHost((void **)&parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
+  if (cudaMallocHost((void **)parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
     error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
   }
+  printf("parts = %p\n", *parts);
 }
+
+__host__ void allocate_cell( void **cell )
+{
+  cudaErrCheck(cudaMallocHost(cell, sizeof(struct cell) ) );
+}
+
+__host__ void free_parts(void *parts)
+{
+  cudaErrCheck(cudaFreeHost(parts));
+}
+
+__host__ void free_cell( void *cell )
+{
+  cudaErrCheck(cudaFreeHost(cell));
+}
+
 #ifdef WITH_CUDA
 #undef static
 #undef restrict

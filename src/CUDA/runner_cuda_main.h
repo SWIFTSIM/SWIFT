@@ -13,7 +13,10 @@ void run_cuda();
 extern "C" {
 #endif
 void test_27_cells(struct cell **cells, struct cell *main_cell, struct part *parts );
-void allocate_cells(void *parts, int particles);
+void allocate_cells(void **parts, int particles);
+void allocate_cell( void **cell );
+void free_parts(void *parts);
+void free_cell( void *cell );
 #ifdef __cplusplus
 }
 #endif
