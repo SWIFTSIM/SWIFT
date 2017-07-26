@@ -108,6 +108,8 @@ __device__ __constant__ timebin_t max_active_bin;
 __device__ __constant__ float delta_neighbours;
 __device__ __constant__ float target_neighbours;
 __device__ __constant__ float hydro_h_max;
+__device__ __constant__ float cuda_h_tolerance;
+__device__ __constant__ float cuda_eta_neighbours; 
 
 /* Queue function to search for a task index from a specific queue. */
 __device__ int cuda_queue_gettask( struct queue_cuda *q ) {
@@ -173,7 +175,7 @@ __device__ float cuda_pow_dimension( float x ) {
   return x*x*x;
 #elif defined(HYDRO_DIMENSION_2D)
   return x*x;
-#elif defined(HYDRO_DIMENSION_3D)
+#elif defined(HYDRO_DIMENSION_1D)
   return x;
 #else
   printf("The dimension is not defined!");
@@ -187,12 +189,26 @@ __device__ float cuda_pow_dimension_plus_one( float x ) {
   return x2*x2;
 #elif defined(HYDRO_DIMENSION_2D)
   return x*x*x;
-#elif defined(HYDRO_DIMENSION_3D)
+#elif defined(HYDRO_DIMENSION_1D)
   return x*x;
 #else
   printf("The dimension is not defined!");
   return 0.f;
 #endif
+}
+
+__device__ float cuda_pow_dimension_minus_one( float x ) {
+#if defined(HYDRO_DIMENSION_3D)
+  return x*x;
+#elif defined(HYDRO_DIMENSION_2D)
+  return x;
+#elif defined(HYDRO_DIMENSION_1D)
+  return 1.f;
+#else
+  printf("The dimension is not defined!");
+  return 0.f;
+#endif
+
 }
 
 __device__ __inline__ void cuda_kernel_deval( float u, float *restrict W, float *restrict dW_dx) {
@@ -456,7 +472,7 @@ __device__ void doself_density( struct cell_cuda *ci ) {
 
         /* Compute contribution to the number of neighbours */
         wcount += w;
-        wcount_dh -= ui * dw_dx;
+        wcount_dh -= (hydro_dimension * w + ui * dw_dx);
 
         const float fac = mj * dw_dx * ri;
 
@@ -575,7 +591,7 @@ __device__ void dopair_density( struct cell_cuda *ci, struct cell_cuda *cj ) {
 
         /* Compute contribution to the number of neighbours */
         wcount += w;
-        wcount_dh -= ui * dw_dx;
+        wcount_dh -= (hydro_dimension * w + ui * dw_dx);
 
         const float fac = mj * dw_dx * ri;
 
@@ -944,12 +960,13 @@ __device__ void hydro_end_density( int pid ){
   cuda_parts.rho[pid] += temp;
   cuda_parts.rho_dh[pid] -= hydro_dimension * temp;
   cuda_parts.wcount[pid] += cuda_kernel_root;
+  cuda_parts.wcount_dh[pid] -= hydro_dimension * cuda_kernel_root;
 
   /* Finish the calculation by inser4ting the missing h-factors */
   cuda_parts.rho[pid] *= h_inv_dim;
   cuda_parts.rho_dh[pid] *= h_inv_dim_plus_one;
   cuda_parts.wcount[pid] *= kernel_norm;
-  cuda_parts.wcount_dh[pid] *= h_inv * kernel_gamma * kernel_norm;
+  cuda_parts.wcount_dh[pid] *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.0 / cuda_parts.rho[pid];
 
@@ -1089,7 +1106,7 @@ __device__ void cuda_doself_subset_density( int pid, int cell ){
 
       /* Compute condtribution to the number of neighbours */
       wcount += w;
-      wcount_dh -= ui * dw_dx;
+      wcount_dh -= (hydro_dimension * w + ui * dw_dx);
 
       const float fac = mj * dw_dx * ri;
 
@@ -1181,7 +1198,7 @@ __device__ void cuda_dopair_subset_density( int pid, int cell , int pid_cell){
 
       /* Compute condtribution to the number of neighbours */
       wcount += w;
-      wcount_dh -= ui * dw_dx;
+      wcount_dh -= (hydro_dimension * w + ui * dw_dx);
 
       const float fac = mj * dw_dx * ri;
 
@@ -1255,9 +1272,12 @@ __device__ void do_ghost( struct cell_cuda *c ){
 
   int part_i = c->first_part;
   int count_i = c->part_count;
-  const float target_wcount = target_neighbours;
-  const float max_wcount = target_wcount + delta_neighbours;
-  const float min_wcount = target_wcount - delta_neighbours;
+//  const float target_wcount = target_neighbours;
+//  const float max_wcount = target_wcount + delta_neighbours;
+ // const float min_wcount = target_wcount - delta_neighbours;
+  const float hydro_eta_dim = cuda_eta_neighbours;
+  const float eps = cuda_h_tolerance;
+
   /* Is the cell active? */
   if(!cuda_cell_is_active(c)) return;
 
@@ -1271,29 +1291,35 @@ __device__ void do_ghost( struct cell_cuda *c ){
     /* Loop over the particles in the cell. */
     for(int i = part_i + threadIdx.x; i < part_i + count_i; i++)
     {
+      float h_new;
+      const float h_old = cuda_parts.h[i]; 
+      const float h_old_dim = cuda_pow_dimension(h_old);
+      const float h_old_dim_minus_one = cuda_pow_dimension_minus_one(h_old);
+
       if(!cuda_part_is_active(i)) continue;
+       
+      if(cuda_parts.wcount[i] == 0.f) {
+        h_new = 2.f * h_old;  
+      }else{
+          /* Finish the density calculation. */
+          hydro_end_density(i);
 
-      /* Finish the density calculation. */
-      hydro_end_density(i);
+          /* Compute a step of the Newton-Raphson scheme */
+          const float n_sum = cuda_parts.wcount[i] * h_old_dim;
+          const float n_target = hydro_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime = cuda_parts.wcount_dh[i] * h_old_dim + hydro_dimension * cuda_parts.wcount[i] * h_old_dim_minus_one;
 
+          h_new = h_old - f / f_prime;
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+      }
       /* Did we get the right number of neighbours? */
-      if( cuda_parts.wcount[i] > max_wcount || cuda_parts.wcount[i] < min_wcount) {
-        
-        float h_corr = 0.f;
-
-        /* If no derivative, double the smoothing length. */
-        if(cuda_parts.wcount_dh[i] == 0.0f) 
-          h_corr = cuda_parts.h[i];
-        else{
-          /* Otherwise, compute the smoothing length update (Newton step). */
-          h_corr = (target_wcount - cuda_parts.wcount[i]) / cuda_parts.wcount_dh[i];
-
-          h_corr = (h_corr < cuda_parts.h[i]) ? h_corr : cuda_parts.h[i];
-          h_corr = (h_corr > -0.5f * cuda_parts.h[i]) ? h_corr : -0.5f * cuda_parts.h[i];
-        }
-
-        /* Correct the value of h */
-        cuda_parts.h[i] += h_corr;
+      if( fabsf( h_new - h_old ) > eps * h_old ) {
+      
+        cuda_parts.h[i] = h_new;  
 
         //If below absolute max try again
         //else give up...
@@ -1960,7 +1986,8 @@ __device__ __constant__ timebin_t max_active_bin; */
   cudaErrCheck( cudaMemcpyToSymbol( delta_neighbours, &e->hydro_properties->delta_neighbours, sizeof(float) ) );
   cudaErrCheck( cudaMemcpyToSymbol( target_neighbours, &e->hydro_properties->target_neighbours, sizeof(float) ) );
   cudaErrCheck( cudaMemcpyToSymbol( hydro_h_max, &e->hydro_properties->h_max, sizeof(float) ) );
-
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_h_tolerance, &e->hydro_properties->h_tolerance, sizeof(float) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_eta_neighbours, &e->hydro_properties->eta_neighbours, sizeof(float) ) );
   /* Clean up */
   free(host_tasks);
   free(data);

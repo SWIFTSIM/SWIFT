@@ -345,7 +345,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   cell->sorted = 0;
   cell->sort = NULL;
-  cell->sortsize = 0;
+//  cell->sortsize = 0;
 
   return cell;
 }
@@ -624,7 +624,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* First, sort stuff */
-    for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
+    for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0, 0);
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
