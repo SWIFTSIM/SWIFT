@@ -153,7 +153,8 @@ int main(int argc, char *argv[]) {
 
 /* Let's pin the main thread */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if (((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
+  if (((ENGINE_POLICY) & engine_policy_setaffinity) ==
+      engine_policy_setaffinity)
     engine_pin();
 #endif
 
@@ -774,7 +775,12 @@ int main(int argc, char *argv[]) {
     /* Dump the task data using the given frequency. */
     if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
       char dumpfile[40];
+#ifdef WITH_MPI
+      snprintf(dumpfile, 30, "threadpool_info-rank%d-step%d.dat", engine_rank,
+               j + 1);
+#else
       snprintf(dumpfile, 30, "threadpool_info-step%d.dat", j + 1);
+#endif  // WITH_MPI
       threadpool_dump_log(&e.threadpool, dumpfile, 1);
     } else {
       threadpool_reset_log(&e.threadpool);
