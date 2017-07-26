@@ -64,7 +64,7 @@ struct cache {
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
 
   /* Maximum distance of particles into neighbouring cell. */
-  float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
+  int *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
