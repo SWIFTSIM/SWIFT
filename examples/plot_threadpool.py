@@ -99,6 +99,17 @@ colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
            "magenta", "hotpink", "pink", "orange", "lightgreen"]
 maxcolours = len(colours)
 
+#  Read header. First two lines.
+with open(infile) as infid:
+    head = [next(infid) for x in xrange(2)]
+header = head[1][2:].strip()
+header = eval(header)
+nthread = int(header['num_threads'])
+CPU_CLOCK = float(header['cpufreq']) / 1000.0
+print "Number of threads: ", nthread
+if args.verbose:
+    print "CPU frequency:", CPU_CLOCK * 1000.0
+
 #  Read input.
 data = pl.genfromtxt(infile, dtype=None, delimiter=" ")
 
@@ -121,17 +132,12 @@ funcs = pl.array(funcs)
 threads = pl.array(threads)
 chunks = pl.array(chunks)
 
-nthread = int(max(threads)) + 1
-print "Number of threads:", nthread
 
 #  Recover the start and end time
 tic_step = min(tics)
 toc_step = max(tocs)
 
 #   Not known.
-CPU_CLOCK = 2200067.0
-if args.verbose:
-    print "CPU frequency:", CPU_CLOCK * 1000.0
 
 #  Calculate the time range, if not given.
 delta_t = delta_t * CPU_CLOCK
