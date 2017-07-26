@@ -2792,7 +2792,7 @@ int engine_marktasks(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 10000, extra_data);
+                 sizeof(struct task), 0, extra_data);
   rebuild_space = extra_data[1];
 
   if (e->verbose)
@@ -3640,7 +3640,7 @@ void engine_unskip(struct engine *e) {
 
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+                 e->s->nr_cells, sizeof(struct cell), 0, e);
 
   /* And the top level gravity FFT one */
   if (e->s->periodic && (e->policy & engine_policy_self_gravity))
@@ -3696,7 +3696,7 @@ void engine_drift_all(struct engine *e) {
 #endif
 
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+                 e->s->nr_cells, sizeof(struct cell), 0, e);
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
@@ -3748,7 +3748,7 @@ void engine_drift_top_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
@@ -3786,7 +3786,7 @@ void engine_reconstruct_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

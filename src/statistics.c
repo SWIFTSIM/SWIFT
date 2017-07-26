@@ -271,12 +271,12 @@ void stats_collect(const struct space *s, struct statistics *stats) {
   /* Run parallel collection of statistics for parts */
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, stats_collect_part_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 10000, &extra_data);
+                   s->nr_parts, sizeof(struct part), 0, &extra_data);
 
   /* Run parallel collection of statistics for gparts */
   if (s->nr_gparts > 0)
     threadpool_map(&s->e->threadpool, stats_collect_gpart_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 10000, &extra_data);
+                   s->nr_gparts, sizeof(struct gpart), 0, &extra_data);
 }
 
 /**
