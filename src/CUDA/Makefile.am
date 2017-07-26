@@ -4,14 +4,14 @@ EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 
 if HAVECUDA
 
-AM_CFLAGS = -I.. $(HDF5_CPPFLAGS)
-CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA
+AM_CFLAGS = -I.. $(HDF5_CPPFLAGS) -g
+CUDA_MYFLAGS = -D_FORCE_INLINES -O0 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -G
 #-dc
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 
-bin_PROGRAMS = test_27_cells
+bin_PROGRAMS = test_27_cells test_125_cells
 
 # Rules to compile CUDA code.
 .cu.o:
@@ -40,5 +40,11 @@ test_27_cells_SOURCES=test27cells.c
 test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA
 test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim.la ../libswiftsim_mpi.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
 test_27_cells_LDFLAGS = $(AM_LDFLAGS)
+
+test_125_cells_SOURCES=test125cells.c
+test_125_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA
+test_125_cells_LDADD= libswiftCUDA.la ../libswiftsim.la ../libswiftsim_mpi.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
+test_125_cells_LDFLAGS = $(AM_LDFLAGS)
+
 
 endif

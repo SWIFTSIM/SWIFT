@@ -367,6 +367,7 @@ __device__ void unload_cell( int cell_index ) {
 
     /* Copy back the cutoff, mass, density, entropy and entropy_dt*/
     current->h = cuda_parts.h[start+i];
+    if(start+i == 498) printf("cuda_parts.h[498]= %f\n", cuda_parts.h[498]);
     current->mass = cuda_parts.mass[start+i];
     current->rho = cuda_parts.rho[start+i];
     current->entropy = cuda_parts.entropy[start+i];
@@ -646,7 +647,7 @@ __device__ void doself_force( struct cell_cuda *ci )
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Loop over the particles in cj. */
-    for( int pjd = part_i; pjd < part_i + count_i; pid++ ) {
+    for( int pjd = part_i; pjd < part_i + count_i; pjd++ ) {
     
       if(pid == pjd)
         continue;
@@ -1121,6 +1122,7 @@ __device__ void cuda_doself_subset_density( int pid, int cell ){
     atomicAdd( &cuda_parts.div_v[pid], div_v);
     atomicAdd( &cuda_parts.rot_v[pid].x, rot_v.x);
     atomicAdd( &cuda_parts.rot_v[pid].y, rot_v.y);
+    atomicAdd( &cuda_parts.rot_v[pid].z, rot_v.z);
 
 }
 
@@ -2515,6 +2517,176 @@ __global__ void test_27_kernel(){
   }
 }
 
+__global__ void  test_125_kernel(){
+  /* Load the particle data. */
+  for(int i = 0; i < 125; i++){
+    load_cell(i);
+  }
+  if(threadIdx.x == 0) printf("cuda_parts.h[498] = %f\n", cuda_parts.h[498]);
+
+/* Run all the pairs (only once !)*/
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        for (int k = 0; k < 5; k++) {
+
+          struct cell_cuda *ci = &cells_cuda[i * 25 + j * 5 + k];
+
+          for (int ii = -1; ii < 2; ii++) {
+            int iii = i + ii;
+            if (iii < 0 || iii >= 5) continue;
+            iii = (iii + 5) % 5;
+            for (int jj = -1; jj < 2; jj++) {
+              int jjj = j + jj;
+              if (jjj < 0 || jjj >= 5) continue;
+              jjj = (jjj + 5) % 5;
+              for (int kk = -1; kk < 2; kk++) {
+                int kkk = k + kk;
+                if (kkk < 0 || kkk >= 5) continue;
+                kkk = (kkk + 5) % 5;
+
+                struct cell_cuda *cj = &cells_cuda[iii * 25 + jjj * 5 + kkk];
+
+                if (cj > ci) dopair_density(ci, cj);
+                if (cj > ci) dopair_density(cj, ci);
+              }
+            }
+          }
+        }
+      }
+    }
+/* And now the self-interaction for the central cells*/
+  for(int i = 1; i < 4; i++){
+    for(int j = 1; j < 4; j++){
+      for(int k = 1; k < 4; k++){
+        doself_density(&cells_cuda[i*25 + j*5 + k]);
+      }
+    }
+  }
+
+/* And now the ghost interaction for the central cells*/
+  for(int i = 1; i < 4; i++){
+    for(int j = 1; j < 4; j++){
+      for(int k = 1; k < 4; k++){
+        do_ghost(&cells_cuda[i*25 + j*5 + k]);
+      }
+    }
+  }
+
+/* And now the force pair interaction for the central cells*/
+  for(int i = 1; i < 4; i++){
+    for(int j = 1; j < 4; j++){
+      for(int k = 1; k < 4; k++){
+        dopair_force(&cells_cuda[62], &cells_cuda[i*25 + j*5 + k]);
+        dopair_force(&cells_cuda[i*25 + j*5 + k], &cells_cuda[62]);
+      }
+    }
+  }
+
+/* Force self interaction for the central cell */
+  doself_force(&cells_cuda[62]);
+
+  for(int i = 0; i < 125; i++){
+    unload_cell(i);
+  }
+
+}
+
+__host__ void test_125_cells( struct cell **cells, struct cell *main_cell, struct part *parts, struct engine *e){
+  /* Compute the particle count. */
+  int num_part_host = 0;
+  for(int i = 0; i < 125; i++){
+     num_part_host += cells[i]->count;
+     cells[i]->cuda_ID = i;
+  }
+  printf("Num parts = %i\n", num_part_host);
+  /* Allocate particle arrays on the device. */
+  struct particle_arrays host_particles;
+  cudaErrCheck( cudaMalloc( &host_particles.id, sizeof(long long int) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.x_x, sizeof(double) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.x_y, sizeof(double) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.x_z, sizeof(double) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.v, sizeof(float3) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.a_hydro, sizeof(float3) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.h, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.mass, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.rho, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.entropy, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.entropy_dt, sizeof(float) * num_part_host ) );
+
+  cudaErrCheck( cudaMalloc( &host_particles.wcount, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.wcount_dh, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.rho_dh, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.rot_v, sizeof(float3) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.div_v, sizeof(float) * num_part_host ) );
+
+  cudaErrCheck( cudaMalloc( &host_particles.balsara, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.f, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.P_over_rho2, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.soundspeed, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.v_sig, sizeof(float) * num_part_host ) );
+  cudaErrCheck( cudaMalloc( &host_particles.h_dt, sizeof(float) * num_part_host ) );
+
+  cudaErrCheck( cudaMalloc( &host_particles.time_bin, sizeof(timebin_t) * num_part_host ) );
+  float host_kernel_coeffs[(kernel_degree+1)*(kernel_ivals+1)];
+  for(int a = 0; a < (kernel_degree+1)*(kernel_ivals+1); a++)
+  {
+    host_kernel_coeffs[a] = kernel_coeffs[a];
+  }
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_kernel_coeffs, &host_kernel_coeffs, sizeof(float) * (kernel_degree+1)*(kernel_ivals+1) ));
+  integertime_t current = 8;
+  cudaErrCheck( cudaMemcpyToSymbol( ti_current, &current, sizeof(integertime_t) ) );
+  printf("Copied ti_current\n");
+  timebin_t current2 = 56;
+  cudaErrCheck( cudaMemcpyToSymbol( max_active_bin, &current2, sizeof(timebin_t) ) );
+  printf("Copied max_active_bin\n");
+
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_parts, &host_particles, sizeof(struct particle_arrays) ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( cuda_nr_parts, &num_part_host, sizeof(int) ) );
+
+  /* Create the cells for the device. */
+  struct cell_cuda *cell_host;
+  cudaErrCheck(cudaMallocHost((void**)&cell_host,sizeof(struct cell_cuda) * 125));
+  struct cell **host_pointers = (struct cell **) malloc(sizeof(struct cell *) * 125);
+  for(int i = 0; i < 125; i++){
+    struct cell *c = cells[i];
+    /*Create cells recursively. */
+    create_cells(c, cell_host, host_pointers, parts);
+  }
+  /* Allocate space on the device for the cells. */
+  struct cell_cuda *cell_device = NULL;
+  struct cell **pointers_device = NULL;
+  cudaErrCheck( cudaMalloc((void**) &cell_device, sizeof(struct cell_cuda ) * 125 ) );
+  cudaErrCheck( cudaMalloc((void**) &pointers_device, sizeof(struct cell *) * 125 ) );
+
+  /* Copy the cells and pointers to the device and set up the symbol. */
+  cudaErrCheck( cudaMemcpy(cell_device, cell_host, sizeof(struct cell_cuda) * 125,
+        cudaMemcpyHostToDevice ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( cells_cuda, &cell_device, sizeof(struct cell_cuda *) ) );
+
+  cudaErrCheck( cudaMemcpy( pointers_device, host_pointers, sizeof(struct cell *) * 125,
+       cudaMemcpyHostToDevice ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( cpu_cells, pointers_device, sizeof(struct cell **) ) );
+
+  cudaErrCheck( cudaMemcpyToSymbol( ti_current, &e->ti_current, sizeof(integertime_t) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( dim, &e->s->dim, sizeof(double) * 3 ) );
+  cudaErrCheck( cudaMemcpyToSymbol( max_active_bin, &e->max_active_bin, sizeof(timebin_t) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( delta_neighbours, &e->hydro_properties->delta_neighbours, sizeof(float) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( target_neighbours, &e->hydro_properties->target_neighbours, sizeof(float) ) );
+  cudaErrCheck( cudaMemcpyToSymbol( hydro_h_max, &e->hydro_properties->h_max, sizeof(float) ) );
+  /* We copied the cells and cpu pointers to the GPU, setup the cells and create the particle arrays. */
+  /* Time to launch the kernel. */
+  test_125_kernel<<<1, 128>>>(); //Single block.
+  cudaDeviceSynchronize();
+  //Clean up
+  cudaErrCheck(cudaFreeHost(cell_host));
+  free(host_pointers);
+
+}
+
+
 __host__ void test_27_cells(struct cell **cells, struct cell *main_cell, struct part *parts){
 
   /* Compute the particle count. */  
@@ -2622,9 +2794,9 @@ __device__ __constant__ float hydro_h_max;
   free(host_pointers);
 }
 
-__host__ void allocate_cells(void **parts, int particles)
+__host__ void allocate_cells(void **parts, int particles, int cells)
 {
-  if (cudaMallocHost((void **)parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
+  if (cudaMallocHost((void **)parts, particles * particles * particles * cells * sizeof(struct part)) != cudaSuccess) {
     error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
   }
   printf("parts = %p\n", *parts);

@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) {
   struct runner runner;
   runner.e = &engine;
   struct part *parts=NULL;
-  allocate_cells((void**) &parts, particles);
+  allocate_cells((void**) &parts, particles, 27);
 /*  if (cudaMallocHost((void **)&parts, particles * particles * particles * 27 * sizeof(struct part)) != cudaSuccess) {
     error("couldn't allocate particles, no. of particles: %d", (int)particles * particles * particles);
   }*/
