@@ -1180,7 +1180,7 @@ void scheduler_start(struct scheduler *s) {
   }
 
 /* Check we have not missed an active task */
-#if 0 //SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 
   const integertime_t ti_current = s->space->e->ti_current;
 
