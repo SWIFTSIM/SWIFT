@@ -56,8 +56,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
       sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
-  return CFL_condition *
-         min(0.5 * p->timestepvars.rmin / vmax, p->timestepvars.dt_min);
+  const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
+  return CFL_condition * min(psize / vmax, p->timestepvars.dt_min);
 }
 
 /**
@@ -420,7 +421,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Initialize time step criterion variables */
   p->timestepvars.dt_min = FLT_MAX;
-  p->timestepvars.rmin = FLT_MAX;
 
   /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);

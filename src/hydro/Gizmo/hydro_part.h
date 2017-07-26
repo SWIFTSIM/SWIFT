@@ -159,9 +159,6 @@ struct part {
     /* Minimum non-normalized timestep based on the neighbours. */
     float dt_min;
 
-    /* Minimum distance between the particle and any of its neighbours. */
-    float rmin;
-
   } timestepvars;
 
   /* Quantities used during the volume (=density) loop. */

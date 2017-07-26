@@ -351,10 +351,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   dt_min = r / vmax;
   pi->timestepvars.dt_min = min(pi->timestepvars.dt_min, dt_min);
-  pi->timestepvars.rmin = min(pi->timestepvars.rmin, r);
   if (mode == 1) {
     pj->timestepvars.dt_min = min(pj->timestepvars.dt_min, dt_min);
-    pj->timestepvars.rmin = min(pj->timestepvars.rmin, r);
   }
 
   /* The flux will be exchanged using the smallest time step of the two
