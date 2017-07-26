@@ -970,7 +970,7 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
   const ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
-                 sizeof(struct cell), 1, s);
+                 sizeof(struct cell), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1187,7 +1187,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
   data.ind = ind;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, &data);
+                 s->nr_parts, sizeof(struct part), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
