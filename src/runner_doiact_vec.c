@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
     const float dx_max, const float rshift, const double hi_max,
     const double hj_max, const double di_max, const double dj_min,
-    float *max_di, float *max_dj, int *init_pi, int *init_pj,
+    int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
     const struct engine *e) {
 
   const struct part *restrict parts_i = ci->parts;
@@ -267,54 +267,191 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   /* Find the first active particle in ci to interact with any particle in cj.
    */
   /* Populate max_di with distances. */
-  int active_id = ci->count - 1;
-  for (int k = ci->count - 1; k >= 0; k--) {
-    const struct part *pi = &parts_i[sort_i[k].i];
-    const float d = sort_i[k].d + dx_max;
+  //int active_id = ci->count - 1;
+  //for (int k = ci->count - 1; k >= 0; k--) {
+  //  const struct part *pi = &parts_i[sort_i[k].i];
+  //  const float d = sort_i[k].d + dx_max;
 
-    // max_di[k] = d + h * kernel_gamma - rshift;
-    max_di[k] = d + hi_max;
+  //  //max_di[k] = d + hi_max;
 
-    /* If the particle is out of range set the index to
-     * the last active particle within range. */
-    if (d + hi_max < dj_min) {
-      first_pi = active_id;
-      break;
-    } else {
-      if (part_is_active(pi, e)) active_id = k;
+  //  /* If the particle is out of range set the index to
+  //   * the last active particle within range. */
+  //  if (d + hi_max < dj_min) {
+  //    if (part_is_active(pi, e)) {
+  //      first_pi = k;
+  //    }
+  //    else {
+  //      first_pi = active_id;
+  //    }
+  //    break;
+  //  } else {
+  //    if (part_is_active(pi, e)) active_id = k;
+  //  }
+  //}
+
+  //for(int i=0; i<ci->count; i++) max_index_i[i] = FLT_MAX;
+  //for(int i=0; i<cj->count; i++) max_index_j[i] = FLT_MAX;
+  
+  float di, dj;
+
+  first_pi = ci->count - 1;
+  di = sort_i[first_pi].d + dx_max;
+
+  while(first_pi >= 0 && di + hi_max > dj_min) {
+    first_pi--;
+    di = sort_i[first_pi].d + dx_max;
+  }
+
+  first_pi++;
+
+  int temp = 0;
+  
+  const struct part *pi = &parts_i[sort_i[first_pi].i];
+
+  di = sort_i[first_pi].d + dx_max;
+
+  while(di + (pi->h * kernel_gamma - rshift) > sort_j[temp].d) {
+    temp++;
+  }
+
+  max_index_i[first_pi] = temp;
+
+  for(int i = first_pi + 1; i<ci->count; i++) {
+    temp = max_index_i[i - 1];
+
+    di = sort_i[i].d + dx_max;
+    
+    while(di + (pi->h * kernel_gamma - rshift) > sort_j[temp].d) {
+      temp++;
     }
+
+    max_index_i[i] = temp;
+
+    //message("first_pi: %d, max_index_i: %d", first_pi, max_index_i[i]);
   }
 
   /* Find the maximum distance of pi particles into cj.*/
-  for (int k = first_pi + 1; k < ci->count; k++) {
-    max_di[k] = fmaxf(max_di[k - 1], max_di[k]);
-  }
+  //int first_pj = 0;
+  //const struct part *pi = &parts_i[sort_i[first_pi].i];
+  //float dj = sort_j[first_pj].d;
+
+  //while (sort_i[first_pi].d + dx_max + pi->h > dj) {
+  //  first_pj++;
+  //  dj = sort_j[first_pj].d;
+  //}
+
+  //max_index_i[first_pi] = first_pj;
+
+  //for (int i = first_pi + 1; i < ci->count; i++) {
+  //  int temp = max_index_i[i - 1];
+  //  pi = &parts_i[sort_i[i].i];
+  //  dj = sort_j[temp].d;
+
+  //  while (sort_i[i].d + dx_max + pi->h > dj) {
+  //    temp++;
+  //    dj = sort_j[temp].d;
+  //  }
+
+  //  max_index_i[i] = temp;
+  //}
 
   /* Find the last particle in cj to interact with any particle in ci. */
   /* Populate max_dj with distances. */
-  active_id = 0;
-  for (int k = 0; k < cj->count; k++) {
-    const struct part *pj = &parts_j[sort_j[k].i];
-    const float d = sort_j[k].d - dx_max;
+  //active_id = 0;
+  //for (int k = 0; k < cj->count; k++) {
+  //  const struct part *pj = &parts_j[sort_j[k].i];
+  //  const float d = sort_j[k].d - dx_max;
 
-    /*TODO: don't think rshift should be taken off here, waiting on Pedro. */
-    // max_dj[k] = d - h * kernel_gamma - rshift;
-    max_dj[k] = d - hj_max;
+  //  /*TODO: don't think rshift should be taken off here, waiting on Pedro. */
+  //  // max_dj[k] = d - h * kernel_gamma - rshift;
+  //  //max_dj[k] = d - hj_max;
 
-    /* If the particle is out of range set the index to
-     * the last active particle within range. */
-    if (d - hj_max > di_max) {
-      last_pj = active_id;
-      break;
-    } else {
-      if (part_is_active(pj, e)) active_id = k;
+  //  /* If the particle is out of range set the index to
+  //   * the last active particle within range. */
+  //  if (d - hj_max > di_max) {
+  //    if (part_is_active(pj, e)) {
+  //      last_pj = k;
+  //    }
+  //    else {
+  //      last_pj = active_id;
+  //    }
+  //    break;
+  //  } else {
+  //    if (part_is_active(pj, e)) active_id = k;
+  //  }
+  //}
+
+  //last_pj = 0;
+  //dj = sort_j[last_pj].d - dx_max;
+
+  //while(dj - hj_max < di_max) {
+  //  last_pj++;
+  //  dj = sort_j[last_pj].d - dx_max;
+  //} 
+  //
+  ///* Find the maximum distance of pj particles into ci.*/
+  //int last_pi = ci->count - 1;
+  //  
+  //const struct part *pj = &parts_j[sort_j[last_pj].i];
+  //di = sort_i[last_pi].d;
+
+  //while (sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) < di) {
+  //  last_pi--;
+  //  di = sort_i[last_pi].d;
+  //}
+
+  //max_index_j[last_pj] = last_pi;
+
+  //for (int i = last_pj - 1; i >= 0; i--) {
+  //  int temp = max_index_j[i + 1];
+  //  pj = &parts_j[sort_j[i].i];
+  //  di = sort_i[temp].d;
+
+  //  while (sort_j[i].d - dx_max - (pj->h * kernel_gamma) < di) {
+  //    temp--;
+  //    di = sort_i[temp].d;
+  //  }
+
+  //  max_index_j[last_pj] = temp;
+  //}
+
+  last_pj = 0;
+  dj = sort_j[last_pj].d - dx_max;
+
+  while(last_pj < cj->count && dj - hi_max < di_max) {
+    last_pj++;
+    dj = sort_j[last_pj].d - dx_max;
+  }
+
+  last_pj--;
+
+  temp = ci->count - 1;
+  
+  const struct part *pj = &parts_j[sort_j[last_pj].i];
+
+  dj = sort_j[last_pj].d - dx_max;
+
+  while(dj - (pj->h * kernel_gamma) < sort_i[temp].d) {
+    temp--;
+  }
+
+  max_index_j[last_pj] = temp;
+
+  for(int i = last_pj - 1; i>=0; i--) {
+    temp = max_index_j[i + 1];
+
+    dj = sort_j[i].d - dx_max;
+    
+    while(dj - (pj->h * kernel_gamma) < sort_i[temp].d) {
+      temp--;
     }
-  }
 
-  /* Find the maximum distance of pj particles into ci.*/
-  for (int k = 1; k <= last_pj; k++) {
-    max_dj[k] = fmaxf(max_dj[k - 1], max_dj[k]);
+    max_index_j[i] = temp;
+
+    //message("first_pi: %d, max_index_i: %d", first_pi, max_index_i[i]);
   }
+  //for(int i=0; i<ci->count; i++) max_index_i[i] = cj->count - 1;//temp;
+  //for(int i=0; i<cj->count; i++) max_index_j[i] = 0;//temp;
 
   *init_pi = first_pi;
   *init_pj = last_pj;
@@ -561,6 +698,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
+  //static int intCount = 0;
+
   /* Get the cutoff shift. */
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -650,38 +789,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   }
 
   int first_pi, last_pj;
-  float *max_di __attribute__((aligned(sizeof(float) * VEC_SIZE)));
-  float *max_dj __attribute__((aligned(sizeof(float) * VEC_SIZE)));
+  int *max_index_i __attribute__((aligned(sizeof(int) * VEC_SIZE)));
+  int *max_index_j __attribute__((aligned(sizeof(int) * VEC_SIZE)));
 
-  max_di = r->ci_cache.max_d;
-  max_dj = r->cj_cache.max_d;
+  max_index_i = r->ci_cache.max_d;
+  max_index_j = r->cj_cache.max_d;
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
-                          hj_max, di_max, dj_min, max_di, max_dj, &first_pi,
+                          hj_max, di_max, dj_min, max_index_i, max_index_j, &first_pi,
                           &last_pj, e);
-
-  /* Find the maximum index into cj that is required by a particle in ci. */
-  /* Find the maximum index into ci that is required by a particle in cj. */
-  float di, dj;
-  int max_ind_j = count_j - 1;
-  int max_ind_i = 0;
-
-  dj = sort_j[max_ind_j].d;
-  while (max_ind_j > 0 && max_di[count_i - 1] < dj) {
-    max_ind_j--;
-
-    dj = sort_j[max_ind_j].d;
-  }
-
-  di = sort_i[max_ind_i].d;
-  while (max_ind_i < count_i - 1 && max_dj[0] > di) {
-    max_ind_i++;
-
-    di = sort_i[max_ind_i].d;
-  }
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -689,8 +808,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
-  last_pj = max(last_pj, max_ind_j);
-  first_pi = min(first_pi, max_ind_i);
+  last_pj = max(last_pj, max_index_i[count_i - 1]);
+  first_pi = min(first_pi, max_index_j[0]);
 
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
@@ -705,7 +824,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
-    for (int pid = count_i - 1; pid >= first_pi_loop && max_ind_j >= 0; pid--) {
+    //for (int pid = count_i - 1; pid >= first_pi_loop && max_index_i[pid] >= 0; pid--) {
+    for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -721,13 +841,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      dj = sort_j[max_ind_j].d;
-      while (max_ind_j > 0 && max_di[pid] < dj) {
-        max_ind_j--;
-
-        dj = sort_j[max_ind_j].d;
-      }
-      int exit_iteration = max_ind_j + 1;
+      int exit_iteration = max_index_i[pid];
 
       const float hig2 = hi * hi * kernel_gamma2;
 
@@ -811,6 +925,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form integer mask. */
         doi_mask = vec_form_int_mask(v_doi_mask);
 
+        //intCount += __builtin_popcount(doi_mask);
+        
         /* If there are any interactions perform them. */
         if (doi_mask)
           runner_iact_nonsym_1_vec_density(
@@ -839,7 +955,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(cj, e)) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop && max_ind_i < count_i; pjd++) {
+    //for (int pjd = 0; pjd <= last_pj_loop && max_index_j[pjd] < count_i; pjd++) {
+    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -856,13 +973,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      di = sort_i[max_ind_i].d;
-      while (max_ind_i < count_i - 1 && max_dj[pjd] > di) {
-        max_ind_i++;
-
-        di = sort_i[max_ind_i].d;
-      }
-      int exit_iteration = max_ind_i;
+      int exit_iteration = max_index_j[pjd];
 
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -945,6 +1056,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form integer mask. */
         doj_mask = vec_form_int_mask(v_doj_mask);
 
+        //intCount += __builtin_popcount(doj_mask);
+
         /* If there are any interactions perform them. */
         if (doj_mask)
           runner_iact_nonsym_1_vec_density(
@@ -971,6 +1084,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
     TIMER_TOC(timer_dopair_density);
   }
+
+  //message("Interaction Count: %d", intCount);
 
 #endif /* WITH_VECTORIZATION */
 }
