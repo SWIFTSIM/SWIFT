@@ -35,6 +35,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "clocks.h"
 #include "error.h"
 #include "minmax.h"
 
@@ -92,6 +93,8 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 
   /* Write a header. */
   fprintf(fd, "# map_function thread_id chunk_size tic toc\n");
+  fprintf(fd, "# {'num_threads': %i, 'cpufreq': %lli}\n", tp->num_threads,
+          clocks_get_cpufreq());
 
   /* Loop over the log entries and dump them. */
   for (int i = 0; i < tp->log_count; i++) {
