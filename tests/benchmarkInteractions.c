@@ -373,7 +373,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
         curlvySum, curlvzSum;
-    mask_t mask, mask2;
+    mask_t mask;
 
     rhoSum.v = vec_set1(0.f);
     rho_dhSum.v = vec_set1(0.f);
@@ -391,8 +391,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
     hi_inv_vec = vec_reciprocal(hi_vec);
     vec_init_mask(mask);
+#if (NUM_VEC_PROC_INT == 2)
+    mask_t mask2;
     vec_init_mask(mask2);
-
+#endif
     const ticks vec_tic = getticks();
 
     for (size_t i = 0; i < count; i += NUM_VEC_PROC_INT * VEC_SIZE) {
