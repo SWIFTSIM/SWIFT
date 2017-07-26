@@ -195,6 +195,19 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->num_threads = num_threads;
   tp->num_threads_waiting = 0;
 
+#ifdef SWIFT_DEBUG_THREADPOOL
+  if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
+                                              num_threads)) == NULL)
+    error("Failed to allocate mapper logs.");
+  for (int k = 0; k < num_threads; k++) {
+    tp->logs[k].size = threadpool_log_initial_size;
+    tp->logs[k].count = 0;
+    if ((tp->logs[k].log = (struct mapper_log_entry *)malloc(
+             sizeof(struct mapper_log_entry) * tp->logs[k].size)) == NULL)
+      error("Failed to allocate mapper log.");
+  }
+#endif
+
   /* If there is only a single thread, do nothing more as of here as
      we will just do work in the (blocked) calling thread. */
   if (num_threads == 1) return;
@@ -212,19 +225,6 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->map_data_stride = 0;
   tp->map_data_chunk = 0;
   tp->map_function = NULL;
-
-#ifdef SWIFT_DEBUG_THREADPOOL
-  if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
-                                              num_threads)) == NULL)
-    error("Failed to allocate mapper logs.");
-  for (int k = 0; k < num_threads; k++) {
-    tp->logs[k].size = threadpool_log_initial_size;
-    tp->logs[k].count = 0;
-    if ((tp->logs[k].log = (struct mapper_log_entry *)malloc(
-             sizeof(struct mapper_log_entry) * tp->logs[k].size)) == NULL)
-      error("Failed to allocate mapper log.");
-  }
-#endif
 
   /* Allocate the threads. */
   if ((tp->threads = (pthread_t *)malloc(sizeof(pthread_t) * num_threads)) ==
@@ -268,7 +268,13 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 
   /* If we just have a single thread, call the map function directly. */
   if (tp->num_threads == 1) {
+#ifdef SWIFT_DEBUG_THREADPOOL
+      ticks tic = getticks();
+#endif
     map_function(map_data, N, extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+      threadpool_log(tp, 0, N, tic, getticks());
+#endif
     return;
   }
 
