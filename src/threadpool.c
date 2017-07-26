@@ -136,9 +136,6 @@ void *threadpool_runner(void *data) {
 
     /* Let the controller know that this thread is waiting. */
     pthread_mutex_lock(&tp->thread_mutex);
-#ifdef SWIFT_DEBUG_THREADPOOL
-    const int tid = tp->num_threads_waiting;
-#endif
     tp->num_threads_waiting += 1;
     if (tp->num_threads_waiting == tp->num_threads) {
       pthread_cond_signal(&tp->control_cond);
@@ -147,6 +144,9 @@ void *threadpool_runner(void *data) {
     /* Wait for the controller. */
     pthread_cond_wait(&tp->thread_cond, &tp->thread_mutex);
     tp->num_threads_waiting -= 1;
+#ifdef SWIFT_DEBUG_THREADPOOL
+    const int tid = tp->num_threads_running;
+#endif
     tp->num_threads_running += 1;
     if (tp->num_threads_running == tp->num_threads) {
       pthread_cond_signal(&tp->control_cond);
