@@ -52,6 +52,17 @@ struct mapper_log_entry {
   ticks tic, toc;
 };
 
+struct mapper_log {
+  /* Log of threadpool mapper calls. */
+  struct mapper_log_entry *log;
+
+  /* Size of the allocated log. */
+  int size;
+
+  /* Number of entries in the log. */
+  int count;
+};
+
 /* Data of a threadpool. */
 struct threadpool {
 
@@ -75,17 +86,7 @@ struct threadpool {
   volatile int num_threads_waiting, num_threads_running;
 
 #ifdef SWIFT_DEBUG_THREADPOOL
-  /* Log of threadpool mapper calls. */
-  struct mapper_log_entry *log;
-
-  /* Size of the allocated log. */
-  int log_size;
-
-  /* Number of entries in the log. */
-  int log_count;
-
-  /* Mutex for log access/reallocation. */
-  pthread_mutex_t log_mutex;
+  struct mapper_log *logs;
 #endif
 };
 
