@@ -306,7 +306,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float Bj[3][3];
   float Vi, Vj;
   float xij_i[3], xfac, xijdotdx;
-  float vmax, dvdotdx;
+  float vmax, dvdotdx, dt_min;
   float vi[3], vj[3], vij[3];
   float Wi[5], Wj[5];
   float dti, dtj, mindt;
@@ -349,9 +349,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (dvdotdx < 0.) {
     vmax -= dvdotdx / r;
   }
-  pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
+  dt_min = r / vmax;
+  pi->timestepvars.dt_min = min(pi->timestepvars.dt_min, dt_min);
+  pi->timestepvars.rmin = min(pi->timestepvars.rmin, r);
   if (mode == 1) {
-    pj->timestepvars.vmax = max(pj->timestepvars.vmax, vmax);
+    pj->timestepvars.dt_min = min(pj->timestepvars.dt_min, dt_min);
+    pj->timestepvars.rmin = min(pj->timestepvars.rmin, r);
   }
 
   /* The flux will be exchanged using the smallest time step of the two

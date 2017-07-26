@@ -153,11 +153,14 @@ struct part {
 
   } geometry;
 
-  /* Variables used for timestep calculation (currently not used). */
+  /* Variables used for timestep calculation. */
   struct {
 
-    /* Maximum fluid velocity among all neighbours. */
-    float vmax;
+    /* Minimum non-normalized timestep based on the neighbours. */
+    float dt_min;
+
+    /* Minimum distance between the particle and any of its neighbours. */
+    float rmin;
 
   } timestepvars;
 

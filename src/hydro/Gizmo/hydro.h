@@ -49,25 +49,15 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   return CFL_condition;
 #endif
 
-  if (p->timestepvars.vmax == 0.) {
-    /* vmax can be zero in vacuum cells that only have vacuum neighbours */
-    /* in this case, the time step should be limited by the maximally
-       allowed time step. Since we do not know what that value is here, we set
-       the time step to a very large value */
-    return FLT_MAX;
-  } else {
-    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                             hydro_dimension_inv);
-    float vrel[3];
-    vrel[0] = p->primitives.v[0] - xp->v_full[0];
-    vrel[1] = p->primitives.v[1] - xp->v_full[1];
-    vrel[2] = p->primitives.v[2] - xp->v_full[2];
-    float vmax =
-        sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
-        sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
-    vmax = max(vmax, p->timestepvars.vmax);
-    return CFL_condition * psize / vmax;
-  }
+  float vrel[3];
+  vrel[0] = p->primitives.v[0] - xp->v_full[0];
+  vrel[1] = p->primitives.v[1] - xp->v_full[1];
+  vrel[2] = p->primitives.v[2] - xp->v_full[2];
+  const float vmax =
+      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  return CFL_condition *
+         min(0.5 * p->timestepvars.rmin / vmax, p->timestepvars.dt_min);
 }
 
 /**
@@ -429,7 +419,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp) {
 
   /* Initialize time step criterion variables */
-  p->timestepvars.vmax = 0.0f;
+  p->timestepvars.dt_min = FLT_MAX;
+  p->timestepvars.rmin = FLT_MAX;
 
   /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);
