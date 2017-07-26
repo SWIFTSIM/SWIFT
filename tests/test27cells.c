@@ -180,7 +180,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->sorted = 0;
   cell->sort = NULL;
-  cell->sortsize = 0;
 
   return cell;
 }
@@ -397,7 +396,11 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.s = &space;
@@ -423,7 +426,7 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
+        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }

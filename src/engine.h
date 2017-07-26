@@ -71,7 +71,7 @@ enum engine_policy {
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15)
 };
-
+#define engine_maxpolicy 15
 extern const char *engine_policy_names[];
 
 #define engine_queue_scale 1.2
@@ -82,6 +82,7 @@ extern const char *engine_policy_names[];
 #define engine_redistribute_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_max_parts_per_ghost 1000
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -156,7 +157,7 @@ struct engine {
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
   integertime_t ti_nextSnapshot;
-  char snapshotBaseName[200];
+  char snapshotBaseName[PARSER_MAX_LINE_SIZE];
   int snapshotCompression;
   struct unit_system *snapshotUnits;
 
@@ -272,7 +273,8 @@ void engine_init(struct engine *e, struct space *s,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners);
 void engine_prepare(struct engine *e);
-void engine_init_particles(struct engine *e, int flag_entropy_ICs);
+void engine_init_particles(struct engine *e, int flag_entropy_ICs,
+                           int clean_h_values);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
@@ -281,7 +283,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_gpart, size_t *Ngpart,
                             size_t offset_sparts, int *ind_spart,
                             size_t *Nspart);
-void engine_rebuild(struct engine *e);
+void engine_rebuild(struct engine *e, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);

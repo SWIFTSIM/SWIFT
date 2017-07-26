@@ -897,27 +897,7 @@ void partition_initial_partition(struct partition *initial_partition,
       bzero(weights, sizeof(int) * s->nr_cells);
 
       /* Check each particle and accumilate the counts per cell. */
-      struct part *parts = s->parts;
-      int *cdim = s->cdim;
-      double iwidth[3], dim[3];
-      iwidth[0] = s->iwidth[0];
-      iwidth[1] = s->iwidth[1];
-      iwidth[2] = s->iwidth[2];
-      dim[0] = s->dim[0];
-      dim[1] = s->dim[1];
-      dim[2] = s->dim[2];
-      for (size_t k = 0; k < s->nr_parts; k++) {
-        for (int j = 0; j < 3; j++) {
-          if (parts[k].x[j] < 0.0)
-            parts[k].x[j] += dim[j];
-          else if (parts[k].x[j] >= dim[j])
-            parts[k].x[j] -= dim[j];
-        }
-        const int cid =
-            cell_getid(cdim, parts[k].x[0] * iwidth[0],
-                       parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
-        weights[cid]++;
-      }
+      accumulate_counts(s, weights);
 
       /* Get all the counts from all the nodes. */
       if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT, MPI_SUM,
@@ -1090,6 +1070,10 @@ void partition_init(struct partition *partition,
       parser_get_opt_param_float(params, "DomainDecomposition:trigger", 0.05f);
   if (repartition->trigger <= 0)
     error("Invalid DomainDecomposition:trigger, must be greater than zero");
+  if (repartition->trigger < 2 && repartition->trigger >= 1)
+    error(
+        "Invalid DomainDecomposition:trigger, must be 2 or greater or less"
+        " than 1");
 
   /* Fraction of particles that should be updated before a repartition
    * based on CPU time is considered. */

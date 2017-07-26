@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *                    Peter W. Draper   (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +22,9 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <libgen.h>
 #include <stdio.h>
+#include <string.h>
 
 /* This object's header. */
 #include "xmf.h"
@@ -29,6 +32,21 @@
 /* Local headers. */
 #include "common_io.h"
 #include "error.h"
+
+/**
+ * @brief Return the basename of an HDF5 path.
+ *
+ * Need basename as XML paths are relative to the container, and XMF file is
+ * written with the same baseName as the HDF5 snapshots.
+ *
+ * @param hdfFileName
+ * @return the basename part of hdfFileName.
+ */
+static const char* xmf_basename(const char* hdfFileName) {
+  static char buffer[FILENAME_BUFFER_SIZE];
+  strcpy(buffer, hdfFileName);
+  return basename(buffer);
+}
 
 /**
  * @brief Prepare the XMF file corresponding to a snapshot.
@@ -135,7 +153,7 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
   fprintf(xmfFile,
-          "\n</Grid> <!-- End of meta-data for output=%03i, time=%f -->\n",
+          "\n</Grid> <!-- End of meta-data for output=%04i, time=%f -->\n",
           output, time);
   fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
   fprintf(xmfFile, "</Domain>\n");
@@ -154,6 +172,7 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
  */
 void xmf_write_groupheader(FILE* xmfFile, char* hdfFileName, size_t N,
                            enum part_type ptype) {
+
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
           part_type_names[ptype]);
   fprintf(xmfFile,
@@ -163,7 +182,7 @@ void xmf_write_groupheader(FILE* xmfFile, char* hdfFileName, size_t N,
           "<DataItem Dimensions=\"%zu 3\" NumberType=\"Double\" "
           "Precision=\"8\" "
           "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
-          N, hdfFileName, (int)ptype);
+          N, xmf_basename(hdfFileName), (int)ptype);
   fprintf(xmfFile,
           "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
           "list -->\n",
@@ -251,13 +270,13 @@ void xmf_write_line(FILE* xmfFile, const char* fileName,
     fprintf(xmfFile,
             "<DataItem Dimensions=\"%zu\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, xmf_type(type), xmf_precision(type), fileName, partTypeGroupName,
-            name);
+            N, xmf_type(type), xmf_precision(type), xmf_basename(fileName),
+            partTypeGroupName, name);
   else
     fprintf(xmfFile,
             "<DataItem Dimensions=\"%zu %d\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, dim, xmf_type(type), xmf_precision(type), fileName,
+            N, dim, xmf_type(type), xmf_precision(type), xmf_basename(fileName),
             partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }

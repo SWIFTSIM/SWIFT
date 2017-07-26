@@ -642,8 +642,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-6 * max(fabsf(d), ci->dx_max_sort))
-      error("particle shift diff exceeds dx_max_sort.");
+        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
+      error(
+          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
+          "ci->dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
+          ci->dx_max_sort_old);
   }
   for (int pjd = 0; pjd < cj->count; pjd++) {
     const struct part *p = &cj->parts[sort_j[pjd].i];
@@ -651,8 +656,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-6 * max(fabsf(d), cj->dx_max_sort))
-      error("particle shift diff exceeds dx_max_sort.");
+        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
+      error(
+          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
+          "cj->dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
+          cj->dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 

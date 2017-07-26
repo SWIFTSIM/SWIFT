@@ -26,7 +26,9 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <errno.h>
 #include <fenv.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -138,7 +140,9 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
-  if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
+  if (myrank == 0)
+    printf("[0000] [00000.0] main: MPI is up and running with %i node(s).\n\n",
+           nr_nodes);
   if (nr_nodes == 1) {
     message("WARNING: you are running with one MPI rank.");
     message("WARNING: you should use the non-MPI version of this program.");
@@ -294,6 +298,14 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) print_help_message();
     return 1;
   }
+  if (with_stars && !with_external_gravity && !with_self_gravity) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot process stars without gravity, -g or -G must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
 
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
@@ -374,6 +386,15 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Check that we can write the snapshots by testing if the output
+   * directory exists and is searchable and writable. */
+  char basename[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "Snapshots:basename", basename);
+  const char *dirp = dirname(basename);
+  if (access(dirp, W_OK | X_OK) != 0) {
+    error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
+  }
+
   /* Prepare the domain decomposition scheme */
   struct repartition reparttype;
 #ifdef WITH_MPI
@@ -418,6 +439,8 @@ int main(int argc, char *argv[]) {
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
   const int replicate =
       parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
+  const int clean_h_values =
+      parser_get_opt_param_int(params, "InitialConditions:cleanup_h", 0);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   fflush(stdout);
 
@@ -619,7 +642,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialise the particles */
-  engine_init_particles(&e, flag_entropy_ICs);
+  engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
 
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);
@@ -671,14 +694,16 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
-                  e.tic_step, e.toc_step, cpufreq);
+          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli %zi %zi %zi 0 0 %lli\n",
+                  myrank, e.tic_step, e.toc_step, e.updates, e.g_updates,
+                  e.s_updates, cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
-                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
-                  myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                  file_thread,
+                  " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n", myrank,
+                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
                   (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
@@ -689,7 +714,7 @@ int main(int argc, char *argv[]) {
                                                 : 0,
                   (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
                                                 : 0,
-                  e.sched.tasks[l].flags);
+                  e.sched.tasks[l].flags, e.sched.tasks[l].sid);
             }
             fflush(stdout);
             count++;
@@ -707,19 +732,21 @@ int main(int argc, char *argv[]) {
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
-      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
-              1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
+      fprintf(file_thread, " %i %i %i %i %lli %lli %zi %zi %zi %i %lli\n", -2,
+              -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
+              e.s_updates, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++) {
         if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
           fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
+              file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
               e.sched.tasks[l].rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
               (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
-              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount,
+              e.sched.tasks[l].sid);
         }
       }
       fclose(file_thread);

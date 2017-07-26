@@ -179,7 +179,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->sorted = 0;
   cell->sort = NULL;
-  cell->sortsize = 0;
 
   return cell;
 }
@@ -500,7 +499,7 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF,
+        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF, 0,
                        0);
       }
     }

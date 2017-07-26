@@ -82,7 +82,6 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
 
   cell->sorted = 0;
   cell->sort = NULL;
-  cell->sortsize = 0;
 
   return cell;
 }
