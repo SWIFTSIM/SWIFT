@@ -204,6 +204,8 @@ void zero_particle_fields(struct cell *c) {
 void end_calculation(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid]);
+    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
+    c->parts[pid].density.wcount *= kernel_norm;
   }
 }
 
