@@ -346,8 +346,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
             (Wi[3] - Wj[3]) * dx[2];
+  dvdotdx = min(dvdotdx,
+            (vi[0] - vj[0])*dx[0] + (vi[1]-vj[1])*dx[1] + (vi[2]-vj[2])*dx[2]);
   if (dvdotdx < 0.) {
-    vmax -= dvdotdx / r;
+    /* the magical factor 3 also appears in Gadget2 */
+    vmax -= 3.*dvdotdx / r;
   }
   dt_min = r / vmax;
   pi->timestepvars.dt_min = min(pi->timestepvars.dt_min, dt_min);
@@ -517,7 +520,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   totflux[4] *= flux_limit_factor;
 
   /* Store mass flux */
-  float mflux = mindt * Anorm * totflux[0];
+  float mflux = Anorm * totflux[0];
   pi->gravity.mflux[0] += mflux * dx[0];
   pi->gravity.mflux[1] += mflux * dx[1];
   pi->gravity.mflux[2] += mflux * dx[2];
@@ -555,7 +558,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   if (mode == 1 || pj->force.active == 0) {
     /* Store mass flux */
-    mflux = mindt * Anorm * totflux[0];
+    mflux = Anorm * totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];
     pj->gravity.mflux[1] -= mflux * dx[1];
     pj->gravity.mflux[2] -= mflux * dx[2];
