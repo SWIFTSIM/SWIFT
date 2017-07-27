@@ -210,7 +210,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       if (cell_can_split_pair_task(ci) && cell_can_split_pair_task(cj)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+        if (scheduler_dosub && ci->count &&
+            cj->count && /* Use division to avoid integer overflow. */
             ci->count * sid_scale[sid] < space_subsize_pair / cj->count &&
             !sort_is_corner(sid)) {
 
@@ -560,6 +561,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
         /* Otherwise, break it up if it is too large? */
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
+                 ci->count && cj->count &&
                  (ci->count > space_maxsize / cj->count)) {
 
         // message( "force splitting pair with %i and %i parts." , ci->count ,
