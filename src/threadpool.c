@@ -45,7 +45,7 @@
  */
 void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
                     ticks tic, ticks toc) {
-  struct mapper_log *log = &tp->logs[tid];
+  struct mapper_log *log = &tp->logs[tid > 0 ? tid : 0];
 
   /* Check if we need to re-allocate the log buffer. */
   if (log->count == log->size) {
@@ -266,14 +266,15 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data) {
 
+#ifdef SWIFT_DEBUG_THREADPOOL
+  ticks tic = getticks();
+#endif
+
   /* If we just have a single thread, call the map function directly. */
   if (tp->num_threads == 1) {
-#ifdef SWIFT_DEBUG_THREADPOOL
-      ticks tic = getticks();
-#endif
     map_function(map_data, N, extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
-      threadpool_log(tp, 0, N, tic, getticks());
+    threadpool_log(tp, 0, N, tic, getticks());
 #endif
     return;
   }
@@ -303,6 +304,11 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
     pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
   }
   pthread_mutex_unlock(&tp->thread_mutex);
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Log the total call time to thread id -1. */
+  threadpool_log(tp, -1, N, tic, getticks());
+#endif
 }
 
 /**
