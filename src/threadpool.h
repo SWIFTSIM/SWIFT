@@ -70,8 +70,8 @@ struct threadpool {
   pthread_t *threads;
 
   /* This is where threads go to rest. */
-  pthread_mutex_t thread_mutex;
-  pthread_cond_t control_cond, thread_cond;
+  pthread_barrier_t wait_barrier;
+  pthread_barrier_t run_barrier;
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;
@@ -83,7 +83,7 @@ struct threadpool {
   int num_threads;
 
   /* Counter for the number of threads that are done. */
-  volatile int num_threads_waiting, num_threads_running;
+  volatile int num_threads_running;
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   struct mapper_log *logs;
