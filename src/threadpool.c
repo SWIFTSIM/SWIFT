@@ -309,7 +309,9 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   }
 
   /* Do some work while I'm at it. */
+  pthread_mutex_unlock(&tp->thread_mutex);
   threadpool_chomp(tp, tp->num_threads - 1);
+  pthread_mutex_lock(&tp->thread_mutex);
 
   /* Wait for all threads to be done. */
   while (tp->num_threads_waiting < tp->num_threads - 1) {
