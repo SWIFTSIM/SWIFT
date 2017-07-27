@@ -173,7 +173,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
