@@ -104,7 +104,7 @@ with open(infile) as infid:
     head = [next(infid) for x in xrange(2)]
 header = head[1][2:].strip()
 header = eval(header)
-nthread = int(header['num_threads'])
+nthread = int(header['num_threads']) + 1
 CPU_CLOCK = float(header['cpufreq']) / 1000.0
 print "Number of threads: ", nthread
 if args.verbose:
@@ -122,7 +122,10 @@ chunks = []
 for i in data:
     if i[0] != "#":
         funcs.append(i[0])
-        threads.append(i[1])
+        if i[1] < 0:
+            threads.append(nthread-1)
+        else:
+            threads.append(i[1])
         chunks.append(i[2])
         tics.append(i[3])
         tocs.append(i[4])
