@@ -209,6 +209,18 @@ fig = pl.figure()
 ax = fig.add_subplot(1,1,1)
 ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
 ax.set_ylim(0, nthread)
+
+# Fake thread is used to colour the whole range, do that first.
+tictocs = []
+colours = []
+j = 0
+for task in tasks[nthread-1]:
+    tictocs.append((task["tic"], task["toc"] - task["tic"]))
+    colours.append(task["colour"])
+ax.broken_barh(tictocs, [0,(nthread-1)], facecolors = colours, linewidth=0, alpha=0.15)
+
+# And we don't plot the fake thread.
+nthread = nthread - 1
 for i in range(nthread):
 
     #  Collect ranges and colours into arrays.
