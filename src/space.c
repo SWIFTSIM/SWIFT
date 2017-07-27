@@ -233,10 +233,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
-    if (c->sort != NULL) {
-      free(c->sort);
-      c->sort = NULL;
-    }
+    for (int i = 0; i < 13; i++)
+      if (c->sort[i] != NULL) {
+        free(c->sort[i]);
+        c->sort[i] = NULL;
+      }
 #if WITH_MPI
     c->recv_xv = NULL;
     c->recv_rho = NULL;
@@ -1804,10 +1805,11 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
  */
 void space_map_clearsort(struct cell *c, void *data) {
 
-  if (c->sort != NULL) {
-    free(c->sort);
-    c->sort = NULL;
-  }
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) {
+      free(c->sort[i]);
+      c->sort[i] = NULL;
+    }
 }
 
 /**
@@ -2305,7 +2307,8 @@ void space_recycle(struct space *s, struct cell *c) {
     error("Failed to destroy spinlocks.");
 
   /* Clear this cell's sort arrays. */
-  if (c->sort != NULL) free(c->sort);
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) free(c->sort[i]);
 
   /* Lock the space. */
   lock_lock(&s->lock);
@@ -2357,7 +2360,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
       error("Failed to destroy spinlocks.");
 
     /* Clear this cell's sort arrays. */
-    if (c->sort != NULL) free(c->sort);
+    for (int i = 0; i < 13; i++)
+      if (c->sort[i] != NULL) free(c->sort[i]);
 
     /* Count this cell. */
     count += 1;

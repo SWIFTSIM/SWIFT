@@ -1279,7 +1279,11 @@ void cell_check_multipole(struct cell *c, void *data) {
  */
 void cell_clean(struct cell *c) {
 
-  free(c->sort);
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) {
+      free(c->sort[i]);
+      c->sort[i] = NULL;
+      }
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
