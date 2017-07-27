@@ -77,7 +77,7 @@ extern const char *engine_policy_names[];
 #define engine_queue_scale 1.2
 #define engine_maxtaskspercell 96
 #define engine_maxproxies 64
-#define engine_tasksreweight 10
+#define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
 #define engine_redistribute_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
