@@ -2511,7 +2511,8 @@ void engine_maketasks(struct engine *e) {
 
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
-  for (int k = 0; k < nr_cells; k++) cell_set_super(&cells[k], NULL);
+  threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
+                 sizeof(struct cell), 0, NULL);
 
   /* Append hierarchical tasks to each cell. */
   for (int k = 0; k < nr_cells; k++)
