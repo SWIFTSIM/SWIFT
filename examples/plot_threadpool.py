@@ -214,13 +214,13 @@ ax.set_ylim(0, nthread)
 tictocs = []
 colours = []
 j = 0
-for task in tasks[nthread-1]:
+for task in tasks[nthread - expand]:
     tictocs.append((task["tic"], task["toc"] - task["tic"]))
     colours.append(task["colour"])
 ax.broken_barh(tictocs, [0,(nthread-1)], facecolors = colours, linewidth=0, alpha=0.15)
 
 # And we don't plot the fake thread.
-nthread = nthread - 1
+nthread = nthread - expand
 for i in range(nthread):
 
     #  Collect ranges and colours into arrays.
