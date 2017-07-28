@@ -2190,15 +2190,16 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  *
  * @param e The #engine.
  */
-void engine_make_extra_hydroloop_tasks(struct engine *e) {
+void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
 
+  struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
   const int nodeID = e->nodeID;
   const int with_cooling = (e->policy & engine_policy_cooling);
 
-  for (int ind = 0; ind < nr_tasks; ind++) {
-    struct task *t = &sched->tasks[ind];
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
 
     /* Sort tasks depend on the drift of the cell. */
     if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
@@ -2531,7 +2532,8 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  if (e->policy & engine_policy_hydro) engine_make_extra_hydroloop_tasks(e);
+  threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
