@@ -53,12 +53,17 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vrel[0] = p->primitives.v[0] - xp->v_full[0];
   vrel[1] = p->primitives.v[1] - xp->v_full[1];
   vrel[2] = p->primitives.v[2] - xp->v_full[2];
-  const float vmax =
+  float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
       sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  vmax = max(vmax, p->timestepvars.vmax);
   const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
                            hydro_dimension_inv);
-  return CFL_condition * min(psize / vmax, p->timestepvars.dt_min);
+  float dt = FLT_MAX;
+  if (vmax > 0.) {
+    dt = psize / vmax;
+  }
+  return CFL_condition * dt;
 }
 
 /**
@@ -420,7 +425,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp) {
 
   /* Initialize time step criterion variables */
-  p->timestepvars.dt_min = FLT_MAX;
+  p->timestepvars.vmax = 0.;
 
   /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);
@@ -637,12 +642,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
-    /* Store the gravitational acceleration for later use. */
-    /* This is used for the prediction step. */
-    p->gravity.old_a[0] = a_grav[0];
-    p->gravity.old_a[1] = a_grav[1];
-    p->gravity.old_a[2] = a_grav[2];
-
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
 
@@ -664,7 +663,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
-
   }
 
   /* reset fluxes */

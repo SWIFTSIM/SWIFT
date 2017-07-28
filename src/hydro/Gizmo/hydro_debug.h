@@ -46,7 +46,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "volume=%.3e, "
       "matrix_E=[[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e]]}, "
       "timestepvars={"
-      "dt_min=%.3e},"
+      "vmax=%.3e},"
       "density={"
       "div_v=%.3e, "
       "wcount_dh=%.3e, "
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->geometry.matrix_E[1][0], p->geometry.matrix_E[1][1],
       p->geometry.matrix_E[1][2], p->geometry.matrix_E[2][0],
       p->geometry.matrix_E[2][1], p->geometry.matrix_E[2][2],
-      p->timestepvars.dt_min, p->density.div_v, p->density.wcount_dh,
+      p->timestepvars.vmax, p->density.div_v, p->density.wcount_dh,
       p->density.curl_v[0], p->density.curl_v[1], p->density.curl_v[2],
       p->density.wcount);
 }
