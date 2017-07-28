@@ -759,7 +759,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 0, s);
+                 s->nr_tasks, sizeof(struct task), 1000, s);
 }
 
 /**
@@ -1174,7 +1174,7 @@ void scheduler_start(struct scheduler *s) {
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), 1000, s);
   } else {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
@@ -1250,7 +1250,7 @@ void scheduler_start(struct scheduler *s) {
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), 1000, s);
   } else {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
