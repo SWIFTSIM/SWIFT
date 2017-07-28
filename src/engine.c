@@ -1667,6 +1667,83 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 #endif
 }
 
+void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  struct engine *e = ((struct engine **)extra_data)[0];
+  struct task **ghosts = ((struct task ***)extra_data)[1];
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
+                             s->cdim[2] / 4 + 1};
+  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
+  struct cell *cells = s->cells_top;
+  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data + ind);
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without gravity particles */
+    if (ci->gcount == 0) continue;
+
+    /* Is that cell local ? */
+    if (ci->nodeID != nodeID) continue;
+
+    /* If the cells is local build a self-interaction */
+    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
+
+    /* Deal with periodicity dependencies */
+    const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
+    if (ghost_id > n_ghosts) error("Invalid ghost_id");
+    if (periodic) {
+      ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
+      ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
+    }
+
+    /* Loop over every other cell */
+    for (int ii = 0; ii < cdim[0]; ii++) {
+      for (int jj = 0; jj < cdim[1]; jj++) {
+        for (int kk = 0; kk < cdim[2]; kk++) {
+
+          /* Get the cell */
+          const int cjd = cell_getid(cdim, ii, jj, kk);
+          struct cell *cj = &cells[cjd];
+
+          /* Avoid duplicates */
+          if (cid <= cjd) continue;
+
+          /* Skip cells without gravity particles */
+          if (cj->gcount == 0) continue;
+
+          /* Is that neighbour local ? */
+          if (cj->nodeID != nodeID) continue;  // MATTHIEU
+
+          /* Are the cells to close for a MM interaction ? */
+          if (!gravity_multipole_accept(ci->multipole, cj->multipole,
+                                        theta_crit_inv, 1)) {
+
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+                              ci, cj);
+          }
+        }
+      }
+    }
+  }
+}
+
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
  * interactions.
@@ -1681,13 +1758,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
                              s->cdim[2] / 4 + 1};
-  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
-  struct cell *cells = s->cells_top;
   struct task **ghosts = NULL;
   const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
@@ -1715,64 +1788,12 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     }
   }
 
-  /* Run through the higher level cells */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  /* Cretae the multipole self and pair tasks. */
+  void *extra_data[2] = {e, ghosts};
+  threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
+                 s->nr_cells, 1, 0, extra_data);
 
-        /* Get the cell */
-        const int cid = cell_getid(cdim, i, j, k);
-        struct cell *ci = &cells[cid];
-
-        /* Skip cells without gravity particles */
-        if (ci->gcount == 0) continue;
-
-        /* Is that cell local ? */
-        if (ci->nodeID != nodeID) continue;
-
-        /* If the cells is local build a self-interaction */
-        scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-                          NULL);
-
-        /* Deal with periodicity dependencies */
-        const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
-        if (ghost_id > n_ghosts) error("Invalid ghost_id");
-        if (periodic) {
-          ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
-          ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
-        }
-
-        /* Loop over every other cell */
-        for (int ii = 0; ii < cdim[0]; ii++) {
-          for (int jj = 0; jj < cdim[1]; jj++) {
-            for (int kk = 0; kk < cdim[2]; kk++) {
-
-              /* Get the cell */
-              const int cjd = cell_getid(cdim, ii, jj, kk);
-              struct cell *cj = &cells[cjd];
-
-              /* Avoid duplicates */
-              if (cid <= cjd) continue;
-
-              /* Skip cells without gravity particles */
-              if (cj->gcount == 0) continue;
-
-              /* Is that neighbour local ? */
-              if (cj->nodeID != nodeID) continue;  // MATTHIEU
-
-              /* Are the cells to close for a MM interaction ? */
-              if (!gravity_multipole_accept(ci->multipole, cj->multipole,
-                                            theta_crit_inv, 1)) {
-
-                scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0,
-                                  0, ci, cj);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+  /* Clean up. */
   if (periodic) free(ghosts);
 }
 
@@ -1830,9 +1851,9 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data + ind);
-    const int i = cid / (cdim[1] * cdim[0]);
-    const int j = (cid / cdim[0]) % cdim[1];
-    const int k = cid % (cdim[0] * cdim[1]);
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
