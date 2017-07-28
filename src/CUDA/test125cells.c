@@ -683,7 +683,6 @@ int main(int argc, char *argv[]) {
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
-  printf("part[%lli].wcount == %f\n", parts[7820].id, parts[7820].h);
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 

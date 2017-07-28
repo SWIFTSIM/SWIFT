@@ -92,7 +92,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 //  cudaErrCheck(cudaMallocHost(&cell,sizeof(struct cell)));
   bzero(cell, sizeof(struct cell));
   cell->parts = parts;
-  printf("cell_>parts = %p\n", cell->parts);
 
   /* Construct the parts */
   struct part *part = cell->parts;
@@ -473,7 +472,6 @@ int main(int argc, char *argv[]) {
         const ticks sub_tic = getticks();
 
         DOPAIR1(&runner, main_cell, cells[j]);
-    printf("parts[104].curlvr[2]=%f\n", parts[104].density.rot_v[2]);
         const ticks sub_toc = getticks();
         timings[j] += sub_toc - sub_tic;
       }
@@ -483,7 +481,6 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
     DOSELF1(&runner, main_cell);
-    printf("parts[104].curlvr[2]=%f\n", parts[104].density.rot_v[2]);
 
     const ticks self_toc = getticks();
 
