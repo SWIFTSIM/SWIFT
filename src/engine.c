@@ -2402,21 +2402,6 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   /* } */
 }
 
-void engine_check_sort_tasks(struct engine *e, struct cell *c) {
-
-  /* Find the parent sort task, if any, and copy its flags. */
-  if (c->sorts != NULL) {
-    struct cell *parent = c->parent;
-    while (parent != NULL && parent->sorts == NULL) parent = parent->parent;
-    if (parent != NULL) c->sorts->flags |= parent->sorts->flags;
-  }
-
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) engine_check_sort_tasks(e, c->progeny[k]);
-}
-
 /**
  * @brief Fill the #space's task list.
  *
@@ -2494,9 +2479,6 @@ void engine_maketasks(struct engine *e) {
   /* Append hierarchical tasks to each cell. */
   for (int k = 0; k < nr_cells; k++)
     engine_make_hierarchical_tasks(e, &cells[k]);
-
-  /* Append hierarchical tasks to each cell. */
-  for (int k = 0; k < nr_cells; k++) engine_check_sort_tasks(e, &cells[k]);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -2792,7 +2774,7 @@ int engine_marktasks(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 10000, extra_data);
+                 sizeof(struct task), 0, extra_data);
   rebuild_space = extra_data[1];
 
   if (e->verbose)
@@ -3696,7 +3678,7 @@ void engine_drift_all(struct engine *e) {
 #endif
 
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+                 e->s->nr_cells, sizeof(struct cell), 0, e);
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
@@ -3748,7 +3730,7 @@ void engine_drift_top_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
@@ -3786,7 +3768,7 @@ void engine_reconstruct_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 10, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
