@@ -253,6 +253,16 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   }
 }
 
+void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+    engine_make_hierarchical_tasks(e, c);
+  }
+}
+
 #ifdef WITH_MPI
 /**
  * Do the exchange of one type of particles with all the other nodes.
@@ -2515,8 +2525,8 @@ void engine_maketasks(struct engine *e) {
                  sizeof(struct cell), 0, NULL);
 
   /* Append hierarchical tasks to each cell. */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k]);
+  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
+                 nr_cells, sizeof(struct cell), 0, e);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
