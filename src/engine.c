@@ -1908,14 +1908,15 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_count_and_link_tasks(struct engine *e) {
+void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
 
+  struct engine *e = (struct engine *)extra_data;
   struct scheduler *const sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
 
-  for (int ind = 0; ind < nr_tasks; ind++) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *const t = &((struct task *)map_data)[ind];
 
-    struct task *const t = &sched->tasks[ind];
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
 
@@ -2500,7 +2501,8 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  engine_count_and_link_tasks(e);
+  threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
