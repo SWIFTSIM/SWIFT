@@ -92,6 +92,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 //  cudaErrCheck(cudaMallocHost(&cell,sizeof(struct cell)));
   bzero(cell, sizeof(struct cell));
   cell->parts = parts;
+  printf("cell_>parts = %p\n", cell->parts);
 
   /* Construct the parts */
   struct part *part = cell->parts;
@@ -213,6 +214,8 @@ void zero_particle_fields(struct cell *c) {
 void end_calculation(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid]);
+    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
+    c->parts[pid].density.wcount *= kernel_norm;
   }
 }
 

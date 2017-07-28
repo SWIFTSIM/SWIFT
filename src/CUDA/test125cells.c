@@ -351,10 +351,10 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
+  //free(ci->parts);
   free(ci->xparts);
   free(ci->sort);
-  free(ci);
+  //free(ci);
 }
 
 /**
@@ -553,11 +553,18 @@ int main(int argc, char *argv[]) {
   prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
-  hp.target_neighbours = pow_dimension(h) * kernel_norm;
+ /* hp.target_neighbours = pow_dimension(h) * kernel_norm;
   hp.delta_neighbours = 4.;
   hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
+  */
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
+  hp.h_max = FLT_MAX;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
+
 
   struct engine engine;
   bzero(&engine, sizeof(struct engine));
@@ -673,9 +680,10 @@ int main(int argc, char *argv[]) {
 
 #endif
 
+
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
-
+  printf("part[%lli].wcount == %f\n", parts[7820].id, parts[7820].h);
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
@@ -812,15 +820,15 @@ int main(int argc, char *argv[]) {
     for (int j = 1; j < 4; j++) {
       for (int k = 1; k < 4; k++) {
 
-        struct cell *cj = cells[i * 25 + j * 5 + k];
+//        struct cell *cj = cells[i * 25 + j * 5 + k];
 
-        if (main_cell != cj) pairs_all_force(&runner, main_cell, cj);
+        //if (main_cell != cj) pairs_all_force(&runner, main_cell, cj);
       }
     }
   }
 
   /* And now the self-interaction for the main cell */
-  self_all_force(&runner, main_cell);
+//  self_all_force(&runner, main_cell);
 
 #endif
 
