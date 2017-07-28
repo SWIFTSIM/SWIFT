@@ -2402,21 +2402,6 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   /* } */
 }
 
-void engine_check_sort_tasks(struct engine *e, struct cell *c) {
-
-  /* Find the parent sort task, if any, and copy its flags. */
-  if (c->sorts != NULL) {
-    struct cell *parent = c->parent;
-    while (parent != NULL && parent->sorts == NULL) parent = parent->parent;
-    if (parent != NULL) c->sorts->flags |= parent->sorts->flags;
-  }
-
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) engine_check_sort_tasks(e, c->progeny[k]);
-}
-
 /**
  * @brief Fill the #space's task list.
  *
@@ -2494,9 +2479,6 @@ void engine_maketasks(struct engine *e) {
   /* Append hierarchical tasks to each cell. */
   for (int k = 0; k < nr_cells; k++)
     engine_make_hierarchical_tasks(e, &cells[k]);
-
-  /* Append hierarchical tasks to each cell. */
-  for (int k = 0; k < nr_cells; k++) engine_check_sort_tasks(e, &cells[k]);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
