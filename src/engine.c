@@ -1809,9 +1809,15 @@ void engine_make_external_gravity_tasks(struct engine *e) {
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
- * @param e The #engine.
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
  */
-void engine_make_hydroloop_tasks(struct engine *e) {
+void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -1819,53 +1825,53 @@ void engine_make_hydroloop_tasks(struct engine *e) {
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
 
-  /* Run through the highest level of cells and add pairs. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
 
-        /* Get the cell */
-        const int cid = cell_getid(cdim, i, j, k);
-        struct cell *ci = &cells[cid];
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data + ind);
+    const int i = cid / (cdim[1] * cdim[0]);
+    const int j = (cid / cdim[0]) % cdim[1];
+    const int k = cid % (cdim[0] * cdim[1]);
 
-        /* Skip cells without hydro particles */
-        if (ci->count == 0) continue;
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
 
-        /* If the cells is local build a self-interaction */
-        if (ci->nodeID == nodeID)
-          scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0,
-                            ci, NULL);
+    /* Skip cells without hydro particles */
+    if (ci->count == 0) continue;
 
-        /* Now loop over all the neighbours of this cell */
-        for (int ii = -1; ii < 2; ii++) {
-          int iii = i + ii;
-          if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -1; jj < 2; jj++) {
-            int jjj = j + jj;
-            if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -1; kk < 2; kk++) {
-              int kkk = k + kk;
-              if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
+    /* If the cells is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
+                        NULL);
 
-              /* Get the neighbouring cell */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk);
-              struct cell *cj = &cells[cjd];
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
 
-              /* Is that neighbour local and does it have particles ? */
-              if (cid >= cjd || cj->count == 0 ||
-                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                continue;
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
 
-              /* Construct the pair task */
-              const int sid =
-                  sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-              scheduler_addtask(sched, task_type_pair, task_subtype_density,
-                                sid, 0, ci, cj);
-            }
-          }
+          /* Is that neighbour local and does it have particles ? */
+          if (cid >= cjd || cj->count == 0 ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
+                            ci, cj);
         }
       }
     }
@@ -2170,7 +2176,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
-      /* Start by constructing the task for the second  and third hydro loop */
+      /* Start by constructing the task for the second  and third hydro loop. */
       struct task *t2 = scheduler_addtask(
           sched, task_type_self, task_subtype_gradient, 0, 0, t->ci, NULL);
       struct task *t3 = scheduler_addtask(
@@ -2419,7 +2425,10 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Construct the firt hydro loop over neighbours */
-  if (e->policy & engine_policy_hydro) engine_make_hydroloop_tasks(e);
+  if (e->policy & engine_policy_hydro) {
+    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, 0, e);
+  }
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
@@ -2636,8 +2645,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, l->t);
 
             /* Drift the cell which will be sent at the level at which it is
-               sent,
-               i.e. drift the cell specified in the send task (l->t) itself. */
+               sent, i.e. drift the cell specified in the send task (l->t)
+               itself. */
             cell_activate_drift_part(l->t->ci, s);
 
             if (cell_is_active(cj, e)) {
@@ -2694,8 +2703,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, l->t);
 
             /* Drift the cell which will be sent at the level at which it is
-               sent,
-               i.e. drift the cell specified in the send task (l->t) itself. */
+               sent, i.e. drift the cell specified in the send task (l->t)
+               itself. */
             cell_activate_drift_part(l->t->ci, s);
 
             if (cell_is_active(ci, e)) {
