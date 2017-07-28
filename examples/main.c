@@ -103,6 +103,8 @@ void print_help_message() {
   printf("  %2s %14s %s\n", "", "", "2: All MPI-ranks write.");
   printf("  %2s %14s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped.");
+  printf("  %2s %14s %s\n", "-Y", "{int}",
+         "Time-step frequency at which threadpool tasks are dumped.");
   printf("  %2s %14s %s\n", "-h", "", "Print this help message and exit.");
   printf(
       "\nSee the file parameter_example.yml for an example of "
