@@ -37,6 +37,9 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC
 
+# Rebuild tests when SWIFT is updated.
+$(check_PROGRAMS): ../src/.libs/libswiftsim.a
+
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
 

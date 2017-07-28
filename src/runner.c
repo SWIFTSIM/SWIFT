@@ -355,11 +355,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
        finger = finger->parent) {
     if (finger->sorted & ~c->sorted) error("Inconsistent sort flags (upward).");
   }
-#endif
 
   /* Update the sort timer which represents the last time the sorts
      were re-set. */
   if (c->sorted == 0) c->ti_sort = r->e->ti_current;
+#endif
 
   /* start by allocating the entry arrays. */
   if (c->sort == NULL) {
