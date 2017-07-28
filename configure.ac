@@ -189,19 +189,6 @@ if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
 fi
 
-# Check if threadpool debugging is on.
-AC_ARG_ENABLE([threadpool-debugging],
-   [AS_HELP_STRING([--enable-threadpool-debugging],
-     [Store threadpool mapper timing information and generate threadpool dump files @<:@yes/no@:>@]
-   )],
-   [enable_threadpool_debugging="$enableval"],
-   [enable_threadpool_debugging="no"]
-)
-if test "$enable_threadpool_debugging" = "yes"; then
-   AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
-   LDFLAGS="$LDFLAGS -rdynamic"
-fi
-
 # Check if the general timers are switched on.
 AC_ARG_ENABLE([timers],
    [AS_HELP_STRING([--enable-timers],
@@ -910,10 +897,9 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
-   Individual timers    : $enable_timers
-   Task debugging       : $enable_task_debugging
-   Threadpool debugging : $enable_threadpool_debugging
-   Debugging checks     : $enable_debugging_checks
-   Gravity checks       : $gravity_force_checks
+   Individual timers : $enable_timers
+   Task debugging    : $enable_task_debugging
+   Debugging checks  : $enable_debugging_checks
+   Gravity checks    : $gravity_force_checks
 
  ------------------------])
