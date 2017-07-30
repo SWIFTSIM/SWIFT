@@ -270,7 +270,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms);
-void engine_launch(struct engine *e, int nr_runners);
+void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
