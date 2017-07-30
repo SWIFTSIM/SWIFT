@@ -64,7 +64,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     int *icount_align) {
 
   mask_t int_mask, int_mask2;
-  
+
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
   int rem = icount % (NUM_VEC_PROC * VEC_SIZE);
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
     *icount_align += pad;
 
-/* Initialise masks to true. */
+    /* Initialise masks to true. */
     vec_init_mask(int_mask);
     vec_init_mask(int_mask2);
 
@@ -472,7 +472,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       v_r2_2.v = vec_fma(v_dz_tmp2.v, v_dz_tmp2.v, v_r2_2.v);
 
       /* Form a mask from r2 < hig2 and r2 > 0.*/
-      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2, v_doi_mask2_self_check;
+      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
+          v_doi_mask2_self_check;
       int doi_mask, doi_mask_self_check, doi_mask2, doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
@@ -480,7 +481,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
-      vec_create_mask(v_doi_mask2_self_check, vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2_self_check,
+                      vec_cmp_gt(v_r2_2.v, vec_setzero()));
       vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
       /* Form integer masks. */
@@ -489,7 +491,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
       doi_mask2_self_check = vec_form_int_mask(v_doi_mask2_self_check);
       doi_mask2 = vec_form_int_mask(v_doi_mask2);
-      
+
       /* Combine the two masks. */
       doi_mask = doi_mask & doi_mask_self_check;
       doi_mask2 = doi_mask2 & doi_mask2_self_check;
