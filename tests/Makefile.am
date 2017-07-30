@@ -24,7 +24,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
-        testMatrixInversion testThreadpool testDump testLogger \
+        testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh
 
@@ -101,5 +101,5 @@ EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
 	     testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
 	     difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat \
-	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat \
+	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat tolerance_testInteractions.dat \
 	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat
