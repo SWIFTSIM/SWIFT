@@ -174,6 +174,10 @@ void *threadpool_runner(void *data) {
     /* Wait for the controller. */
     pthread_barrier_wait(&tp->run_barrier);
 
+    /* If no map function is specified, just die. We use this as a mechanism
+       to shut down threads without leaving the barriers in an invalid state. */
+    if (tp->map_function == NULL) pthread_exit(NULL);
+
     /* Do actual work. */
     threadpool_chomp(tp, atomic_inc(&tp->num_threads_running));
   }
@@ -310,6 +314,22 @@ void threadpool_reset_log(struct threadpool *tp) {
  * @brief Frees up the memory allocated for this #threadpool.
  */
 void threadpool_clean(struct threadpool *tp) {
+  /* Destroy the runner threads by calling them with a NULL mapper function
+     and waiting for all the threads to terminate. This ensures that no thread
+     is still waiting at a barrier. */
+  tp->map_function = NULL;
+  pthread_barrier_wait(&tp->run_barrier);
+  for (int k = 0; k < tp->num_threads - 1; k++) {
+    void *retval;
+    pthread_join(tp->threads[k], &retval);
+  }
+
+  /* Release the barriers. */
+  if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
+      pthread_barrier_destroy(&tp->run_barrier) != 0)
+    error("Failed to destory threadpool barriers.");
+
+  /* Clean up memory. */
   free(tp->threads);
 #ifdef SWIFT_DEBUG_THREADPOOL
   for (int k = 0; k < tp->num_threads; k++) {
