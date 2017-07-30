@@ -2930,35 +2930,12 @@ void engine_prepare(struct engine *e) {
  */
 void engine_barrier(struct engine *e, int tid) {
 
-  /* First, get the barrier mutex. */
-  if (pthread_mutex_lock(&e->barrier_mutex) != 0)
-    error("Failed to get barrier mutex.");
+  /* Wait at the wait barrier. */
+  pthread_barrier_wait(&e->wait_barrier);
+  
+  /* Wait at the run barrier. */
+  pthread_barrier_wait(&e->run_barrier);
 
-  /* This thread is no longer running. */
-  e->barrier_running -= 1;
-
-  /* If all threads are in, send a signal... */
-  if (e->barrier_running == 0)
-    if (pthread_cond_broadcast(&e->barrier_cond) != 0)
-      error("Failed to broadcast barrier full condition.");
-
-  /* Wait for the barrier to open. */
-  while (e->barrier_launch == 0 || tid >= e->barrier_launchcount)
-    if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
-      error("Error waiting for barrier to close.");
-
-  /* This thread has been launched. */
-  e->barrier_running += 1;
-  e->barrier_launch -= 1;
-
-  /* If I'm the last one out, signal the condition again. */
-  if (e->barrier_launch == 0)
-    if (pthread_cond_broadcast(&e->barrier_cond) != 0)
-      error("Failed to broadcast empty barrier condition.");
-
-  /* Last but not least, release the mutex. */
-  if (pthread_mutex_unlock(&e->barrier_mutex) != 0)
-    error("Failed to get unlock the barrier mutex.");
 }
 
 /**
