@@ -3199,9 +3199,8 @@ void engine_skip_drift(struct engine *e) {
  * @brief Launch the runners.
  *
  * @param e The #engine.
- * @param nr_runners The number of #runner to let loose.
  */
-void engine_launch(struct engine *e, int nr_runners) {
+void engine_launch(struct engine *e) {
 
   const ticks tic = getticks();
 
@@ -3276,7 +3275,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now, launch the calculation */
   TIMER_TIC;
-  engine_launch(e, e->nr_threads);
+  engine_launch(e);
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
@@ -3292,7 +3291,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     if (hydro_need_extra_init_loop) {
       engine_marktasks(e);
       engine_skip_force_and_kick(e);
-      engine_launch(e, e->nr_threads);
+      engine_launch(e);
     }
   }
 
@@ -3334,7 +3333,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   /* Run the 0th time-step */
-  engine_launch(e, e->nr_threads);
+  engine_launch(e);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -3508,7 +3507,7 @@ void engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
-  engine_launch(e, e->nr_threads);
+  engine_launch(e);
   TIMER_TOC(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
