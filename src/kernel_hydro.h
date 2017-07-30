@@ -373,7 +373,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
 
   /* Load x and get the interval id. */
   vector ind;
-  ind.m = vec_ftoi(vec_fmin(vec_mul(x.v, kernel_ivals_vec.v), kernel_ivals_vec.v));
+  ind.m =
+      vec_ftoi(vec_fmin(vec_mul(x.v, kernel_ivals_vec.v), kernel_ivals_vec.v));
 
   /* load the coefficients. */
   vector c[kernel_degree + 1];
@@ -392,8 +393,10 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
   }
 
   /* Return everything */
-  w->v = vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
 }
 
 /* Define constant vectors for the Wendland C2 and Cubic Spline kernel
@@ -615,14 +618,16 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
   w2->v = vec_blend(mask_reg2_v2, w2->v, w2_2.v);
   dw_dx->v = vec_blend(mask_reg2, dw_dx->v, dw_dx_2.v);
   dw_dx2->v = vec_blend(mask_reg2_v2, dw_dx2->v, dw_dx2_2.v);
-  
+
   /* Return everything */
-  w->v = vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  w2->v = vec_mul(w2->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
-  dw_dx->v =
-      vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
-  dw_dx2->v =
-      vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_plus_one_vec.v));
+  w->v =
+      vec_mul(w->v, vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  w2->v = vec_mul(w2->v,
+                  vec_mul(kernel_constant_vec.v, kernel_gamma_inv_dim_vec.v));
+  dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
+                                       kernel_gamma_inv_dim_plus_one_vec.v));
+  dw_dx2->v = vec_mul(dw_dx2->v, vec_mul(kernel_constant_vec.v,
+                                         kernel_gamma_inv_dim_plus_one_vec.v));
 
 #endif
 }
@@ -658,7 +663,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
 
   /* Form a mask for each part of the kernel. */
   vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v)); /* 0.5 < x < 1 */
-  
+
   /* Work out w for both regions of the kernel and combine the results together
    * using masks. */
 
@@ -739,7 +744,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
 
   /* Mask out result for particles that lie outside of the kernel function. */
   mask_t mask;
-  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f)));  /* x < 1 */
+  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f))); /* x < 1 */
 
   dw_dx->v = vec_and_mask(dw_dx->v, mask);
 
@@ -787,9 +792,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   mask_t mask_reg2_v2;
 
   /* Form a mask for each part of the kernel. */
-  vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v));     /* 0.5 < x < 1 */
+  vec_create_mask(mask_reg2, vec_cmp_gte(x.v, cond.v));      /* 0.5 < x < 1 */
   vec_create_mask(mask_reg2_v2, vec_cmp_gte(x_2.v, cond.v)); /* 0.5 < x < 1 */
-  
+
   /* Work out w for both regions of the kernel and combine the results together
    * using masks. */
 
@@ -815,8 +820,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 
   /* Mask out result for particles that lie outside of the kernel function. */
   mask_t mask, mask_2;
-  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f)));  /* x < 1 */
-  vec_create_mask(mask_2, vec_cmp_lt(x_2.v, vec_set1(1.f)));  /* x < 1 */
+  vec_create_mask(mask, vec_cmp_lt(x.v, vec_set1(1.f)));     /* x < 1 */
+  vec_create_mask(mask_2, vec_cmp_lt(x_2.v, vec_set1(1.f))); /* x < 1 */
 
   dw_dx->v = vec_and_mask(dw_dx->v, mask);
   dw_dx_2->v = vec_and_mask(dw_dx_2->v, mask_2);

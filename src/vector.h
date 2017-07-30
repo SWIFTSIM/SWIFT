@@ -83,7 +83,8 @@
 #define vec_form_int_mask(a) a
 #define vec_and(a, b) _mm512_and_ps(a, b)
 #define vec_mask_and(a, b) _mm512_kand(a, b)
-#define vec_and_mask(a, mask) _mm512_maskz_expand_ps(mask, a) /* TODO: Alternative needs to be found. */
+#define vec_and_mask(a, mask) \
+  _mm512_maskz_expand_ps(mask, a) /* TODO: Alternative needs to be found. */
 #define vec_init_mask(mask) mask = 0xFFFF
 #define vec_zero_mask(mask) mask = 0
 #define vec_create_mask(mask, cond) mask = cond
