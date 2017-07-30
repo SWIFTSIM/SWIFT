@@ -2939,16 +2939,14 @@ void engine_prepare(struct engine *e) {
  * @brief Implements a barrier for the #runner threads.
  *
  * @param e The #engine.
- * @param tid The thread ID
  */
-void engine_barrier(struct engine *e, int tid) {
+void engine_barrier(struct engine *e) {
 
   /* Wait at the wait barrier. */
   pthread_barrier_wait(&e->wait_barrier);
-  
+
   /* Wait at the run barrier. */
   pthread_barrier_wait(&e->run_barrier);
-
 }
 
 /**
@@ -3229,15 +3227,10 @@ void engine_launch(struct engine *e, int nr_runners) {
   atomic_inc(&e->sched.waiting);
 
   /* Cry havoc and let loose the dogs of war. */
-  e->barrier_launch = nr_runners;
-  e->barrier_launchcount = nr_runners;
-  if (pthread_cond_broadcast(&e->barrier_cond) != 0)
-    error("Failed to broadcast barrier open condition.");
+  pthread_barrier_wait(&e->run_barrier);
 
   /* Load the tasks. */
-  pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched);
-  pthread_mutex_lock(&e->barrier_mutex);
 
   /* Remove the safeguard. */
   pthread_mutex_lock(&e->sched.sleep_mutex);
@@ -3246,9 +3239,7 @@ void engine_launch(struct engine *e, int nr_runners) {
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
   /* Sit back and wait for the runners to come home. */
-  while (e->barrier_launch || e->barrier_running)
-    if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
-      error("Error while waiting for barrier.");
+  pthread_barrier_wait(&e->wait_barrier);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4431,15 +4422,9 @@ void engine_init(struct engine *e, struct space *s,
   threadpool_init(&e->threadpool, e->nr_threads);
 
   /* First of all, init the barrier and lock it. */
-  if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)
-    error("Failed to initialize barrier mutex.");
-  if (pthread_cond_init(&e->barrier_cond, NULL) != 0)
-    error("Failed to initialize barrier condition variable.");
-  if (pthread_mutex_lock(&e->barrier_mutex) != 0)
-    error("Failed to lock barrier mutex.");
-  e->barrier_running = 0;
-  e->barrier_launch = 0;
-  e->barrier_launchcount = 0;
+  if (pthread_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
+      pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
+    error("Failed to initialize barrier.");
 
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
@@ -4453,7 +4438,6 @@ void engine_init(struct engine *e, struct space *s,
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
-    e->barrier_running += 1;
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
@@ -4516,9 +4500,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   /* Wait for the runner threads to be in place. */
-  while (e->barrier_running || e->barrier_launch)
-    if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
-      error("Error while waiting for runner threads to get in place.");
+  pthread_barrier_wait(&e->wait_barrier);
 }
 
 /**
