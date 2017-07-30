@@ -64,7 +64,7 @@ struct cache {
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
 
   /* Maximum distance of particles into neighbouring cell. */
-  float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
+  int *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
@@ -114,6 +114,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
   unsigned int sizeBytes = (count + pad) * sizeof(float);
+  unsigned int sizeIntBytes = (count + pad) * sizeof(int);
   int error = 0;
 
   /* Free memory if cache has already been allocated. */
@@ -137,7 +138,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeIntBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
