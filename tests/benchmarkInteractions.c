@@ -373,7 +373,6 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
         curlvySum, curlvzSum;
-    mask_t mask;
 
     rhoSum.v = vec_set1(0.f);
     rho_dhSum.v = vec_set1(0.f);
@@ -390,6 +389,8 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     viz_vec.v = vec_load(&vizq[0]);
 
     hi_inv_vec = vec_reciprocal(hi_vec);
+
+    mask_t mask;
     vec_init_mask(mask);
 #if (NUM_VEC_PROC_INT == 2)
     mask_t mask2;
@@ -398,8 +399,8 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     const ticks vec_tic = getticks();
 
     for (size_t i = 0; i < count; i += NUM_VEC_PROC_INT * VEC_SIZE) {
-      
-      /* Interleave two vectors for interaction. */
+
+/* Interleave two vectors for interaction. */
 #if (NUM_VEC_PROC_INT == 2)
       IACT_VEC(&(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (hi_inv_vec),
                (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
@@ -413,11 +414,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
       dy.v = vec_load(&(dyq[i]));
       dz.v = vec_load(&(dzq[i]));
 
-      IACT_VEC(&r2, &dx, &dy, &dz, (hi_inv_vec),
-               (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
-               &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum, &wcountSum,
-               &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum,
-               mask);
+      IACT_VEC(&r2, &dx, &dy, &dz, (hi_inv_vec), (vix_vec), (viy_vec),
+               (viz_vec), &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]),
+               &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+               &curlvxSum, &curlvySum, &curlvzSum, mask);
 #endif
     }
 
