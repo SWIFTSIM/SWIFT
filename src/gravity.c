@@ -207,7 +207,7 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
   data.const_G = e->physical_constants->const_newton_G;
 
   threadpool_map(&s->e->threadpool, gravity_exact_force_compute_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
 
   message("Computed exact gravity for %d gparts (took %.3f %s). ",
           data.counter_global, clocks_from_ticks(getticks() - tic),

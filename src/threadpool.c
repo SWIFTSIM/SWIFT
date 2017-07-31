@@ -41,7 +41,7 @@
 
 #ifdef SWIFT_DEBUG_THREADPOOL
 /**
- * @breif Store a log entry of the given chunk.
+ * @brief Store a log entry of the given chunk.
  */
 void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
                     ticks tic, ticks toc) {
