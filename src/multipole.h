@@ -2651,8 +2651,8 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param dim The dimensions of the box.
  */
 __attribute__((always_inline)) INLINE static int
-gravity_multipole_accept_rebuild(const struct gravity_tensors *ma,
-                                 const struct gravity_tensors *mb,
+gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
+                                 const struct gravity_tensors *const mb,
                                  double theta_crit_inv, int periodic,
                                  const double dim[3]) {
 
@@ -2692,8 +2692,9 @@ gravity_multipole_accept_rebuild(const struct gravity_tensors *ma,
  * @param dim The dimensions of the box.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
-    const struct gravity_tensors *ma, const struct gravity_tensors *mb,
-    double theta_crit_inv, int periodic, const double dim[3]) {
+    const struct gravity_tensors *const ma,
+    const struct gravity_tensors *const mb, double theta_crit_inv, int periodic,
+    const double dim[3]) {
 
   const double r_crit_a = ma->r_max * theta_crit_inv;
   const double r_crit_b = mb->r_max * theta_crit_inv;

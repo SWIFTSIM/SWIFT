@@ -666,7 +666,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const double theta_crit_inv = props->theta_crit_inv;
   const double max_distance = props->a_smooth * props->r_cut * cell_width;
   const double max_distance2 = max_distance * max_distance;
-  struct gravity_tensors *mi = ci->multipole;
+  struct gravity_tensors *const mi = ci->multipole;
   const double CoM[3] = {mi->CoM[0], mi->CoM[1], mi->CoM[2]};
 
   TIMER_TIC;
