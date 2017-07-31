@@ -327,7 +327,8 @@ void threadpool_clean(struct threadpool *tp) {
   /* Release the barriers. */
   if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
       pthread_barrier_destroy(&tp->run_barrier) != 0)
-    error("Failed to destory threadpool barriers.");
+    error("Failed to destroy threadpool barriers.");
+
 
   /* Clean up memory. */
   free(tp->threads);

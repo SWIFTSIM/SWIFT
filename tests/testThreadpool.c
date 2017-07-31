@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 
-include "../config.h"
+#include "../config.h"
 
 // Standard includes.
 #include <stdio.h>
