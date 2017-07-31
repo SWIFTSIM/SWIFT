@@ -279,7 +279,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     const struct part *pi = &parts_i[sort_i[first_pi].i];
 
     /* Loop through particles in cell j until they are not in range of pi. */
-    while(temp <= cj->count && sort_i[first_pi].d + (pi->h * kernel_gamma + dx_max - rshift) > sort_j[temp].d)
+    while(temp <= cj->count && (sort_i[first_pi].d + (pi->h * kernel_gamma + dx_max - rshift) > sort_j[temp].d))
       temp++;
 
     max_index_i[first_pi] = temp;
@@ -288,12 +288,16 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     for(int i = first_pi + 1; i<ci->count; i++) {
       temp = max_index_i[i - 1];
 
-      while(temp <= cj->count && sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) > sort_j[temp].d)
+      while(temp <= cj->count && (sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) > sort_j[temp].d))
         temp++;
 
       max_index_i[i] = temp;
 
     }
+  }
+  else {
+    /* Make sure that max index is set to first particle in cj.*/
+    max_index_i[ci->count - 1] = 0;
   }
 
   /* Find the rightmost particle in cell j that interacts with any particle in cell i. */
@@ -328,6 +332,10 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
       max_index_j[i] = temp;
 
     }
+  }
+  else {
+    /* Make sure that max index is set to last particle in ci.*/
+    max_index_j[0] = ci->count - 1; 
   }
 
   *init_pi = first_pi;
@@ -577,8 +585,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-  //static int intCount = 0;
-
   /* Get the cutoff shift. */
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -804,8 +810,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form integer mask. */
         doi_mask = vec_form_int_mask(v_doi_mask);
 
-        //intCount += __builtin_popcount(doi_mask);
-        
         /* If there are any interactions perform them. */
         if (doi_mask)
           runner_iact_nonsym_1_vec_density(
@@ -934,8 +938,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
         /* Form integer mask. */
         doj_mask = vec_form_int_mask(v_doj_mask);
-
-        //intCount += __builtin_popcount(doj_mask);
 
         /* If there are any interactions perform them. */
         if (doj_mask)
