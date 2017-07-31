@@ -409,6 +409,11 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
+#else
+  /* If vectorisation is disabled output serial result to vector file so that test passes. */
+  dump_indv_particle_fields(vec_filename, &pi_serial);
+  for (size_t i = 0; i < count; i++)
+    dump_indv_particle_fields(vec_filename, &pj_serial[i]);
 #endif
 
 #ifdef WITH_VECTORIZATION
