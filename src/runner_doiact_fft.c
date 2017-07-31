@@ -20,9 +20,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <pthread.h>
-
 #ifdef HAVE_FFTW
 #include <fftw3.h>
 #endif
@@ -33,6 +30,7 @@
 /* Local includes. */
 #include "engine.h"
 #include "error.h"
+#include "kernel_long_gravity.h"
 #include "runner.h"
 #include "space.h"
 #include "timers.h"
@@ -242,7 +240,9 @@ void runner_do_grav_fft(struct runner* r, int timer) {
         if (k2 == 0.) continue;
 
         /* Green function */
-        const double green_cor = green_fac * exp(-k2 * a_smooth2) / k2;
+        double W;
+        fourier_kernel_long_grav_eval(k2 * a_smooth2, &W);
+        const double green_cor = green_fac * W / k2;
 
         /* Deconvolution of CIC */
         const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;

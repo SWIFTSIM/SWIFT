@@ -36,4 +36,17 @@ __attribute__((always_inline)) INLINE static float approx_expf(float x) {
   return 1.f + x * (1.f + x * (0.5f + x * (1.f / 6.f + 1.f / 24.f * x)));
 }
 
+/**
+ * @brief Approximate version of expf(x) using a 6th order Taylor expansion
+ *
+ */
+__attribute__((always_inline)) INLINE static float good_approx_expf(float x) {
+  return 1.f +
+         x * (1.f +
+              x * (0.5f +
+                   x * ((1.f / 6.f) +
+                        x * ((1.f / 24.f) +
+                             x * ((1.f / 120.f) + (1.f / 720.f) * x)))));
+}
+
 #endif /* SWIFT_APPROX_MATH_H */
