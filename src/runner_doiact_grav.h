@@ -659,10 +659,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
+  const int periodic = s->periodic;
+  const double cell_width = s->width[0];
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double theta_crit_inv = props->theta_crit_inv;
+  const double max_distance = props->a_smooth * props->r_cut * cell_width;
+  const double max_distance2 = max_distance * max_distance;
+  struct gravity_tensors *mi = ci->multipole;
+  const double CoM[3] = {mi->CoM[0], mi->CoM[1], mi->CoM[2]};
 
   TIMER_TIC;
 
@@ -681,22 +686,39 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
    * well-separated */
   for (int i = 0; i < nr_cells; ++i) {
 
-    /* Handle on the top-level cell */
+    /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[i];
+    const struct gravity_tensors *const mj = cj->multipole;
 
     /* Avoid stupid cases */
     if (ci == cj || cj->gcount == 0) continue;
 
+    /* Is this interaction part of the periodic mesh calculation ?*/
+    if (periodic) {
+
+      const double dx = nearest(CoM[0] - mj->CoM[0], dim[0]);
+      const double dy = nearest(CoM[1] - mj->CoM[1], dim[1]);
+      const double dz = nearest(CoM[2] - mj->CoM[2], dim[2]);
+      const double r2 = dx * dx + dy * dy + dz * dz;
+
+      if (r2 > max_distance2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        mi->pot.num_interacted += mj->m_pole.num_gpart;
+#endif
+        continue;
+      }
+    }
+
     /* Check the multipole acceptance criterion */
-    if (gravity_multipole_accept(ci->multipole, cj->multipole, theta_crit_inv,
-                                 periodic, dim)) {
+    if (gravity_multipole_accept(mi, mj, theta_crit_inv, periodic, dim)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
     }
     /* Is the criterion violated now but was OK at the last rebuild ? */
-    else if (gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
-                                              theta_crit_inv, periodic, dim)) {
+    else if (gravity_multipole_accept_rebuild(mi, mj, theta_crit_inv, periodic,
+                                              dim)) {
 
       /* Alright, we have to take charge of that pair in a different way. */
       // MATTHIEU: We should actually open the tree-node here and recurse.
