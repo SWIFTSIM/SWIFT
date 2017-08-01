@@ -35,6 +35,7 @@ examples/*/*/used_parameters.yml
 examples/*/gravity_checks_*.dat
 
 tests/testPair
+tests/testActivePair
 tests/brute_force_periodic_BC_standard.dat
 tests/swift_periodic_BC_standard.dat
 tests/brute_force_periodic_BC_pertrubed.dat
