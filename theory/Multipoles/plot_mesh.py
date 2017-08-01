@@ -52,7 +52,7 @@ colors=['#4477AA', '#CC6677', '#DDCC77', '#117733']
 
 # Parameters
 r_s = 2.
-r_min = 1e-2
+r_min = 3e-2
 r_max = 1.5e2
 
 # Radius
@@ -95,7 +95,7 @@ def swift_corr(x):
 # Correction in real space
 corr_short_gadget2 = special.erf(r / (2.*r_s))
 corr_short_swift = swift_corr(r / (2.*r_s)) 
-eta_short_gadget2 = special.erfc(r / 2.*r_s) + (r / (r_s * math.sqrt(math.pi))) * exp(-r**2 / (4.*r_s**2))
+eta_short_gadget2 = special.erfc(r / (2.*r_s)) + (r / (r_s * math.sqrt(math.pi))) * exp(-r**2 / (4.*r_s**2))
 eta_short_swift = 4. * (r / r_s) * d_sigmoid(2. * r / r_s) - 2. * sigmoid(2 * r / r_s) + 2.
 
 # Corection in Fourier space
@@ -161,7 +161,7 @@ ylim(3e-3, 1.5)
 #ylabel("$1 - \\chi_s(r)$", labelpad=-2)
 ylabel("$1 - \\varphi_s(r) \\times r$", labelpad=-2)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
-xlabel("$r / r_s$", labelpad=-3)
+xlabel("$r / r_s$", labelpad=1)
 
 savefig("potential_short.pdf")
 
@@ -212,7 +212,7 @@ ylim(3e-3, 1.5)
 #ylabel("$1 - \\eta_s(r)$", labelpad=-2)
 ylabel("$1 - |\\mathbf{f}_s(r)|\\times r^2$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
-xlabel("$r / r_s$", labelpad=-3)
+xlabel("$r / r_s$", labelpad=1)
 
 savefig("force_short.pdf")
 
@@ -262,6 +262,6 @@ ylim(3e-3, 1.5)
 ylabel("$1 - k^2 \\times \\tilde{\\varphi_l}(k)$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 
-xlabel("$k \\times r_s$", labelpad=0)
+xlabel("$k \\times r_s$", labelpad=1)
 
 savefig("potential_long.pdf")
