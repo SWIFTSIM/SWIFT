@@ -755,7 +755,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct gravity_props *gravity_properties, float rlr) {
 
   const float rlr_inv = 1. / rlr;
-  const float r_cut = gravity_properties->r_cut;
+  const float r_cut = gravity_properties->r_cut_max;
   const float max_d = r_cut * rlr;
   const float max_d2 = max_d * max_d;
 

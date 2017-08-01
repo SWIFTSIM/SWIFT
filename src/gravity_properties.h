@@ -34,9 +34,16 @@
  */
 struct gravity_props {
 
-  /* Tree-PM parameters */
+  /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
-  float r_cut;
+
+  /*! Distance below which the truncated mesh force is Newtonian in units of
+   * a_smooth */
+  float r_cut_min;
+
+  /*! Distance above which the truncated mesh force is negligible in units of
+   * a_smooth */
+  float r_cut_max;
 
   /*! Time integration dimensionless multiplier */
   float eta;

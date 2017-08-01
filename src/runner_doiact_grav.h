@@ -664,7 +664,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double theta_crit_inv = props->theta_crit_inv;
-  const double max_distance = props->a_smooth * props->r_cut * cell_width;
+  const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
   struct gravity_tensors *const mi = ci->multipole;
   const double CoM[3] = {mi->CoM[0], mi->CoM[1], mi->CoM[2]};
@@ -701,9 +701,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       const double dz = nearest(CoM[2] - mj->CoM[2], dim[2]);
       const double r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (r2 > max_distance2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Need to account for the interactions we missed */
         mi->pot.num_interacted += mj->m_pole.num_gpart;
 #endif
         continue;
