@@ -378,7 +378,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                     s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
+                     s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
       free(s->cells_top);
       free(s->multipoles_top);
       s->maxdepth = 0;
@@ -491,7 +491,7 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
     s->maxdepth = 0;
   }
 
@@ -970,7 +970,7 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
   const ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
-                 sizeof(struct cell), 1, s);
+                 sizeof(struct cell), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1004,7 +1004,7 @@ void space_sanitize(struct space *s) {
   if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
   threadpool_map(&s->e->threadpool, space_sanitize_mapper, s->cells_top,
-                 s->nr_cells, sizeof(struct cell), 1, NULL);
+                 s->nr_cells, sizeof(struct cell), 0, NULL);
 }
 
 /**
@@ -1187,7 +1187,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
   data.ind = ind;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, &data);
+                 s->nr_parts, sizeof(struct part), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1214,7 +1214,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
   data.ind = gind;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1241,7 +1241,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
   data.ind = sind;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
-                 s->sparts, s->nr_sparts, sizeof(struct spart), 1000, &data);
+                 s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2501,7 +2501,7 @@ void space_synchronize_particle_positions(struct space *s) {
       (s->nr_gparts > 0 && s->nr_sparts > 0))
     threadpool_map(&s->e->threadpool,
                    space_synchronize_particle_positions_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 1000, (void *)s);
+                   s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
 }
 
 /**
