@@ -909,6 +909,9 @@ void engine_repartition(struct engine *e) {
 #else
   if (e->reparttype->type != REPART_NONE)
     error("SWIFT was not compiled with MPI and METIS support.");
+
+  /* Clear the repartition flag. */
+  e->forcerepart = 0;
 #endif
 }
 
@@ -923,8 +926,9 @@ void engine_repartition_trigger(struct engine *e) {
 
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
-   * a repartition step. */
-  if (e->step - e->last_repartition >= 2) {
+   * a repartition step. Also nothing to do when requested. */
+  if (e->step - e->last_repartition >= 2 &&
+      e->reparttype->type != REPART_NONE) {
 
     /* Old style if trigger is >1 or this is the second step (want an early
      * repartition following the initial repartition). */
@@ -985,8 +989,9 @@ void engine_repartition_trigger(struct engine *e) {
     if (e->forcerepart) e->last_repartition = e->step;
   }
 
-  /* We always reset CPU time for next check. */
-  e->cputime_last_step = clocks_get_cputime_used();
+  /* We always reset CPU time for next check, unless it will not be used. */
+  if (e->reparttype->type != REPART_NONE)
+    e->cputime_last_step = clocks_get_cputime_used();
 #endif
 }
 
