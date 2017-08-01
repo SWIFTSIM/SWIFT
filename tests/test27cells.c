@@ -174,7 +174,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -205,6 +204,10 @@ void zero_particle_fields(struct cell *c) {
 void end_calculation(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid]);
+
+    /* Recover the common "Neighbour number" definition */
+    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
+    c->parts[pid].density.wcount *= kernel_norm;
   }
 }
 

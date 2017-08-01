@@ -49,17 +49,21 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   return CFL_condition;
 #endif
 
-  if (p->timestepvars.vmax == 0.) {
-    /* vmax can be zero in vacuum cells that only have vacuum neighbours */
-    /* in this case, the time step should be limited by the maximally
-       allowed time step. Since we do not know what that value is here, we set
-       the time step to a very large value */
-    return FLT_MAX;
-  } else {
-    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                             hydro_dimension_inv);
-    return 2. * CFL_condition * psize / fabsf(p->timestepvars.vmax);
+  float vrel[3];
+  vrel[0] = p->primitives.v[0] - xp->v_full[0];
+  vrel[1] = p->primitives.v[1] - xp->v_full[1];
+  vrel[2] = p->primitives.v[2] - xp->v_full[2];
+  float vmax =
+      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  vmax = max(vmax, p->timestepvars.vmax);
+  const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
+  float dt = FLT_MAX;
+  if (vmax > 0.) {
+    dt = psize / vmax;
   }
+  return CFL_condition * dt;
 }
 
 /**
@@ -421,7 +425,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp) {
 
   /* Initialize time step criterion variables */
-  p->timestepvars.vmax = 0.0f;
+  p->timestepvars.vmax = 0.;
 
   /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);
@@ -638,24 +642,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
-    /* Store the gravitational acceleration for later use. */
-    /* This is used for the prediction step. */
-    p->gravity.old_a[0] = a_grav[0];
-    p->gravity.old_a[1] = a_grav[1];
-    p->gravity.old_a[2] = a_grav[2];
-
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
 
-    /* Kick the momentum for half a time step */
-    /* Note that this also affects the particle movement, as the velocity for
-       the particles is set after this. */
-    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
-    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
-    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
-
 #if !defined(EOS_ISOTHERMAL_GAS)
-    /* This part still needs to be tested! */
+    /* If the energy needs to be updated, we need to do it before the momentum
+       is updated, as the old value of the momentum enters the equations. */
     p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
                                  p->conserved.momentum[1] * a_grav[1] +
                                  p->conserved.momentum[2] * a_grav[2]);
@@ -664,6 +656,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                                  a_grav[1] * p->gravity.mflux[1] +
                                  a_grav[2] * p->gravity.mflux[2]);
 #endif
+
+    /* Kick the momentum for half a time step */
+    /* Note that this also affects the particle movement, as the velocity for
+       the particles is set after this. */
+    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
+    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
+    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
   }
 
   /* reset fluxes */

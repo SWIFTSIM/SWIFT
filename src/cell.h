@@ -239,9 +239,6 @@ struct cell {
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
 
-  /*! Last (integer) time the cell's sort arrays were updated. */
-  integertime_t ti_sort;
-
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;
 
@@ -347,6 +344,9 @@ struct cell {
   char do_sub_sort;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /*! Last (integer) time the cell's sort arrays were updated. */
+  integertime_t ti_sort;
+
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[64];
 

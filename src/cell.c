@@ -1749,9 +1749,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_xv task.");
           scheduler_activate(s, l->t);
 
-          /* Drift the cell which will be sent at the level at which it is sent,
-             i.e. drift the cell specified in the send task (l->t) itself. */
-          cell_activate_drift_part(l->t->ci, s);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
 
           if (cell_is_active(cj, e)) {
             struct link *l = NULL;
@@ -1806,9 +1806,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_xv task.");
           scheduler_activate(s, l->t);
 
-          /* Drift the cell which will be sent at the level at which it is sent,
-             i.e. drift the cell specified in the send task (l->t) itself. */
-          cell_activate_drift_part(l->t->ci, s);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
 
           if (cell_is_active(ci, e)) {
 

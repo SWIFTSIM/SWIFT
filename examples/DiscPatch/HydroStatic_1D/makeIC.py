@@ -46,6 +46,7 @@ gas_gamma       = 5./3.
 # Parameters of the problem
 x_factor        = 2
 side_length     = 400.
+numPart         = 1000
 
 # File
 fileName = "Disc-Patch.hdf5"
@@ -105,17 +106,14 @@ print ""
 
 # Problem properties
 boxSize_x = side_length
-boxSize_y = boxSize_x
-boxSize_z = boxSize_x
 boxSize_x *= x_factor
-volume = boxSize_x * boxSize_y * boxSize_z
-M_tot = boxSize_y * boxSize_z * surface_density * \
-        math.tanh(boxSize_x / (2. * scale_height))
+volume = boxSize_x
+M_tot = surface_density * math.tanh(boxSize_x / (2. * scale_height))
 density = M_tot / volume
 entropy = (gas_gamma - 1.) * u_therm / density**(gas_gamma - 1.)
 
 print "--- Problem properties [internal units] ---"
-print "Box:        [%.1f, %.1f, %.1f]"%(boxSize_x, boxSize_y, boxSize_z)
+print "Box:        %.1f"%boxSize_x
 print "Volume:     %.5e"%volume
 print "Total mass: %.5e"%M_tot
 print "Density:    %.5e"%density
@@ -124,25 +122,13 @@ print ""
 
 ####################################################################
 
-# Read glass pre-ICs
-infile  = h5py.File('glassCube_32.hdf5', "r")
-one_glass_pos = infile["/PartType0/Coordinates"][:,:]
-one_glass_h   = infile["/PartType0/SmoothingLength"][:]
-
-# Rescale to the problem size
-one_glass_pos *= side_length
-one_glass_h   *= side_length
-
 # Now create enough copies to fill the volume in x
-pos = np.copy(one_glass_pos)
-h = np.copy(one_glass_h)
-for i in range(1, x_factor):
-    one_glass_pos[:,0] += side_length
-    pos = np.append(pos, one_glass_pos, axis=0)
-    h   = np.append(h, one_glass_h, axis=0)
+pos = np.zeros((numPart, 3))
+h = np.zeros(numPart) + 2. * boxSize_x / numPart
+for i in range(numPart):
+    pos[i, 0] = (i + 0.5) * boxSize_x / numPart
 
 # Compute further properties of ICs
-numPart = np.size(h)
 mass = M_tot / numPart
 
 print "--- Particle properties [internal units] ---"
@@ -172,7 +158,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize_x, boxSize_y, boxSize_z]
+grp.attrs["BoxSize"] = [boxSize_x, 1., 1.]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
@@ -180,7 +166,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+grp.attrs["Dimension"] = 1
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")

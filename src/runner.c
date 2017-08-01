@@ -355,11 +355,11 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
        finger = finger->parent) {
     if (finger->sorted & ~c->sorted) error("Inconsistent sort flags (upward).");
   }
-#endif
 
   /* Update the sort timer which represents the last time the sorts
      were re-set. */
   if (c->sorted == 0) c->ti_sort = r->e->ti_current;
+#endif
 
   /* start by allocating the entry arrays in the requested dimensions. */
   for (int j = 0; j < 13; j++) {
@@ -1545,11 +1545,6 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, parts[k].time_bin);
       time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].ti_drift != ti_current)
-        error("Received un-drifted particle !");
-#endif
     }
 
     /* Convert into a time */
