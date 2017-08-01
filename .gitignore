@@ -55,6 +55,11 @@ tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
+tests/brute_force_active.dat
+tests/brute_force_periodic_BC_perturbed.dat
+tests/swift_dopair_active.dat
+tests/test_nonsym_density_serial.dat
+tests/test_nonsym_density_vec.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
