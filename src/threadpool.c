@@ -314,21 +314,23 @@ void threadpool_reset_log(struct threadpool *tp) {
  * @brief Frees up the memory allocated for this #threadpool.
  */
 void threadpool_clean(struct threadpool *tp) {
-  /* Destroy the runner threads by calling them with a NULL mapper function
-     and waiting for all the threads to terminate. This ensures that no thread
-     is still waiting at a barrier. */
-  tp->map_function = NULL;
-  pthread_barrier_wait(&tp->run_barrier);
-  for (int k = 0; k < tp->num_threads - 1; k++) {
-    void *retval;
-    pthread_join(tp->threads[k], &retval);
+
+  if (tp->num_threads > 1) {
+    /* Destroy the runner threads by calling them with a NULL mapper function
+     * and waiting for all the threads to terminate. This ensures that no
+     * thread is still waiting at a barrier. */
+    tp->map_function = NULL;
+    pthread_barrier_wait(&tp->run_barrier);
+    for (int k = 0; k < tp->num_threads - 1; k++) {
+      void *retval;
+      pthread_join(tp->threads[k], &retval);
+    }
+
+    /* Release the barriers. */
+    if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
+        pthread_barrier_destroy(&tp->run_barrier) != 0)
+      error("Failed to destroy threadpool barriers.");
   }
-
-  /* Release the barriers. */
-  if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
-      pthread_barrier_destroy(&tp->run_barrier) != 0)
-    error("Failed to destroy threadpool barriers.");
-
 
   /* Clean up memory. */
   free(tp->threads);
