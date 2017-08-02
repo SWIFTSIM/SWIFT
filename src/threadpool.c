@@ -268,6 +268,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   if (tp->num_threads == 1) {
     map_function(map_data, N, extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
+    tp->map_function = map_function;
     threadpool_log(tp, 0, N, tic, getticks());
 #endif
     return;
@@ -330,10 +331,11 @@ void threadpool_clean(struct threadpool *tp) {
     if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
         pthread_barrier_destroy(&tp->run_barrier) != 0)
       error("Failed to destroy threadpool barriers.");
+
+    /* Clean up memory. */
+    free(tp->threads);
   }
 
-  /* Clean up memory. */
-  free(tp->threads);
 #ifdef SWIFT_DEBUG_THREADPOOL
   for (int k = 0; k < tp->num_threads; k++) {
     free(tp->logs[k].log);
