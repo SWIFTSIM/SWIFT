@@ -712,6 +712,9 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   }
 #endif
 
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
   TIMER_TIC;
 
   /* Can we use M-M interactions ? */
@@ -796,12 +799,18 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
  */
 void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 
+  /* Some constants */
+  const struct engine *e = r->e;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
   if (c->gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(c, e)) return;
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
