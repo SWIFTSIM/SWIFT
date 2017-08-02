@@ -123,7 +123,7 @@ struct cell {
   struct spart *sparts;
 
   /*! Pointer for the sorted indices. */
-  struct entry *sort;
+  struct entry *sort[13];
 
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
