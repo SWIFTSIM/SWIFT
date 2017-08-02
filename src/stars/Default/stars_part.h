@@ -62,6 +62,9 @@ struct spart {
 
   } density;
 
+  /* Number of time step since last output */
+  short int last_output;
+    
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

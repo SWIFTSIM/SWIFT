@@ -53,6 +53,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
+#include "logger.h"
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
@@ -2610,6 +2611,9 @@ void *runner_main(void *data) {
         case task_type_end_force:
           runner_do_end_force(r, ci, 1);
           break;
+        case task_type_logger:
+	  runner_do_logger(r, ci, 1);
+	  break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
           break;
@@ -2687,4 +2691,113 @@ void *runner_main(void *data) {
 
   /* Be kind, rewind. */
   return NULL;
+}
+
+
+/**
+ * @brief Write the required particles through the logger.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_logger(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  struct part *restrict parts = c->parts;
+  //struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
+  struct spart *restrict sparts = c->sparts;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  const int scount = c->scount;
+  //const integertime_t ti_current = e->ti_current;
+  //const double timeBase = e->timeBase;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_starting(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      //struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be kicked */
+      if (part_is_starting(p, e)) {
+
+	if (part_should_write(p, e))
+	  {
+	    /* Write particle */
+	    logger_log_part(p, logger_mask_x | logger_mask_v | logger_mask_a |
+			    logger_mask_u | logger_mask_h | logger_mask_rho |
+			    logger_mask_consts,
+			    &p->last_offset, e->logger_dump);
+	    message("Offset: %lu", p->last_offset);
+	    /* Set counter back to zero */
+	    p->last_output = 0;
+	  }
+	else
+	  /* Update counter */
+	  p->last_output += 1;
+      }
+    }
+
+    /* Loop over the gparts in this cell. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the part. */
+      struct gpart *restrict gp = &gparts[k];
+
+      /* If particle needs to be kicked */
+      if (gpart_is_starting(gp, e)) {
+
+	if (gpart_should_write(gp, e))
+	  {
+	    /* Write particle */
+	    logger_log_gpart(gp, logger_mask_x | logger_mask_v | logger_mask_a |
+			     logger_mask_h | logger_mask_consts,
+			     &gp->last_offset, e->logger_dump);
+	    /* Set counter back to zero */
+	    gp->last_output = 0;
+	  }
+	else
+	  {
+	    /* Update counter */
+	    gp->last_output += 1;
+	  }
+      }
+    }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the s-part. */
+      struct spart *restrict sp = &sparts[k];
+
+      /* If particle needs to be kicked */
+      if (spart_is_starting(sp, e)) {
+
+	if (spart_should_write(sp, e))
+	  {
+	    message("I am writing sparticle %lli", sp->id);
+	    error("Not implemented");
+	    sp->last_output = 0;
+	  }
+	else
+	  sp->last_output += 1;
+      }
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_logger);
 }

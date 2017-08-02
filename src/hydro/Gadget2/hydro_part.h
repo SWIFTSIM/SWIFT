@@ -90,6 +90,12 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
+  /* Number of time step since last output */
+  short int last_output;
+
+  /* offset at last writing */
+  size_t last_offset;
+
   union {
 
     struct {

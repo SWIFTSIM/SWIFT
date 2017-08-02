@@ -58,7 +58,8 @@ const char *taskID_names[task_type_count] = {
     "grav_mm",        "grav_down_in",   "grav_down",
     "grav_mesh",      "cooling",        "star_formation",
     "sourceterms",    "stars_ghost_in", "stars_ghost",
-    "stars_ghost_out"};
+    "stars_ghost_out","logger"
+};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -161,6 +162,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
+    case task_type_logger:
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
@@ -304,6 +306,7 @@ void task_unlock(struct task *t) {
 
     case task_type_end_force:
     case task_type_kick1:
+    case task_type_logger:
     case task_type_kick2:
     case task_type_timestep:
       cell_unlocktree(ci);
@@ -400,6 +403,7 @@ int task_lock(struct task *t) {
     case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
+    case task_type_logger:
     case task_type_timestep:
       if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;

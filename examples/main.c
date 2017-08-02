@@ -85,6 +85,8 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-g", "",
          "Run with an external gravitational potential.");
   printf("  %2s %14s %s\n", "-G", "", "Run with self-gravity.");
+  printf("  %2s %14s %s\n", "-l", "", "Use logger for the output "
+	 "(Optimized binary snapshot).");
   printf("  %2s %14s %s\n", "-M", "",
          "Reconstruct the multipoles every time-step.");
   printf("  %2s %14s %s\n", "-n", "{int}",
@@ -188,6 +190,7 @@ int main(int argc, char *argv[]) {
   int nsteps = -2;
   int restart = 0;
   int with_cosmology = 0;
+  int with_logger = 0;
   int with_external_gravity = 0;
   int with_sourceterms = 0;
   int with_cooling = 0;

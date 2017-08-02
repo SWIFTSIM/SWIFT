@@ -443,4 +443,44 @@ __attribute__((always_inline)) INLINE static int spart_is_starting(
 
   return (spart_bin <= max_active_bin);
 }
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_should_write(
+    const struct part *p, const struct engine *e) {
+
+  return (p->last_output > e->logger_max_steps);  
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param p The #gpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #gpart should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int gpart_should_write(
+    const struct gpart *p, const struct engine *e) {
+
+  return (p->last_output > e->logger_max_steps);  
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param p The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #spart should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_should_write(
+    const struct spart *p, const struct engine *e) {
+
+  return (p->last_output > e->logger_max_steps);  
+}
+
 #endif /* SWIFT_ACTIVE_H */

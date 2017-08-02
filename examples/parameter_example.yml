@@ -90,6 +90,7 @@ Snapshots:
   UnitTemp_in_cgs:     1  # (Optional) Unit system for the outputs (Kelvin)
   output_list_on:      0  # (Optional) Enable the output list
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  logger_max_steps:    10 # (Optional) Number of particle steps between two chunk writing if using logger
 
 # Parameters governing the conserved quantities statistics
 Statistics:

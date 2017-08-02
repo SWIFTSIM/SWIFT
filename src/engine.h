@@ -38,6 +38,7 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
+#include "dump.h"
 #include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
@@ -74,9 +75,10 @@ enum engine_policy {
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
-  engine_policy_feedback = (1 << 18)
+  engine_policy_feedback = (1 << 18),
+  engine_policy_logger = (1 << 19)
 };
-#define engine_maxpolicy 18
+#define engine_maxpolicy 19
 extern const char *engine_policy_names[];
 
 /**
@@ -312,6 +314,12 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
+  /* Number of particle steps between dumping a chunk of data */
+  int logger_max_steps;
+
+  /* File name of the dump file */
+  struct dump *logger_dump;
+
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
@@ -415,6 +423,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);
+void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,

@@ -80,6 +80,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
+void runner_do_logger(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data);

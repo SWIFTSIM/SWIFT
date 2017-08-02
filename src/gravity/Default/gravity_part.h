@@ -75,6 +75,14 @@ struct gpart {
   double potential_exact;
 #endif
 
+#ifdef WITH_LOGGER
+  /* Number of time step since last output */
+  short int last_output;
+  
+  /* offset at last writing */
+  size_t last_offset;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
