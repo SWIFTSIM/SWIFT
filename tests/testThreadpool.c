@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   const int N = 20;
   const int num_runs = 2;
 
-  // Create a threadpools with different numbers of threads.
+  // Create threadpools with different numbers of threads.
   for (int num_thread = 1; num_thread <= 16; num_thread *= 4) {
     printf("# Creating threadpool with %d threads\n", num_thread);
     struct threadpool tp;
