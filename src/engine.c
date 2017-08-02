@@ -57,6 +57,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "map.h"
 #include "minmax.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -876,6 +877,14 @@ void engine_repartition(struct engine *e) {
   space_check_drift_point(e->s, e->ti_old,
                           e->policy & engine_policy_self_gravity);
 #endif
+
+  /* Release all cell sorting indices so we can keep memory usage down. */
+  if (e->s->cells_top != NULL) {
+      threadpool_map(&e->threadpool, space_rebuild_recycle_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     0, e->s);
+      e->s->maxdepth = 0;
+  }
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
