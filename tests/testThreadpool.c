@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
       threadpool_map(&tp, map_function_first, data, N, sizeof(int), 2, NULL);
     }
 
-    /* If logging was enabled, dump the log. */
+/* If logging was enabled, dump the log. */
 #ifdef SWIFT_DEBUG_THREADPOOL
     char filename[80];
     sprintf(filename, "threadpool_log-%d.txt", num_thread);

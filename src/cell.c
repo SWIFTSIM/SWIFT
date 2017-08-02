@@ -1283,7 +1283,7 @@ void cell_clean(struct cell *c) {
     if (c->sort[i] != NULL) {
       free(c->sort[i]);
       c->sort[i] = NULL;
-      }
+    }
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
