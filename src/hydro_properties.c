@@ -94,7 +94,7 @@ void hydro_props_print(const struct hydro_props *p) {
   message("Hydrodynamic kernel: %s with eta=%f (%.2f neighbours).", kernel_name,
           p->eta_neighbours, p->target_neighbours);
 
-  message("Hydrodynamic tolerance in h: %.5f (+/- %.4f neighbours).",
+  message("Hydrodynamic relative tolerance in h: %.5f (+/- %.4f neighbours).",
           p->h_tolerance, p->delta_neighbours);
 
   message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
