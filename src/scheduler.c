@@ -127,7 +127,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
+        t->ci->count == 0 || (t->cj != NULL && t->cj->count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->cj = NULL;
@@ -167,7 +168,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           while (ci->progeny[first_child] == NULL) first_child++;
           t->ci = ci->progeny[first_child];
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
+            if (ci->progeny[k] != NULL && ci->progeny[k]->count)
               scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -175,9 +176,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* Make a task for each pair of progeny */
           for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL)
+            if (ci->progeny[j] != NULL && ci->progeny[j]->count)
               for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL)
+                if (ci->progeny[k] != NULL && ci->progeny[k]->count)
                   scheduler_splittask_hydro(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -569,9 +570,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         t->type = task_type_none;
 
         for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->count)
             for (int k = 0; k < 8; k++)
-              if (cj->progeny[k] != NULL) {
+              if (cj->progeny[k] != NULL && cj->progeny[k]->count) {
                 struct task *tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
