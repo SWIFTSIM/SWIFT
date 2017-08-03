@@ -1754,7 +1754,7 @@ void *runner_main(void *data) {
   while (1) {
 
     /* Wait at the barrier. */
-    engine_barrier(e, r->id);
+    engine_barrier(e);
 
     /* Re-set the pointer to the previous task, as there is none. */
     struct task *t = NULL;

@@ -176,9 +176,8 @@ struct engine {
   int count_step;
 
   /* Data for the threads' barrier. */
-  pthread_mutex_t barrier_mutex;
-  pthread_cond_t barrier_cond;
-  volatile int barrier_running, barrier_launch, barrier_launchcount;
+  pthread_barrier_t wait_barrier;
+  pthread_barrier_t run_barrier;
 
   /* ID of the node this engine lives on. */
   int nr_nodes, nodeID;
@@ -253,7 +252,7 @@ struct engine {
 };
 
 /* Function prototypes. */
-void engine_barrier(struct engine *e, int tid);
+void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
@@ -271,7 +270,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms);
-void engine_launch(struct engine *e, int nr_runners);
+void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
