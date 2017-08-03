@@ -2926,6 +2926,7 @@ void engine_prepare(struct engine *e) {
  * @brief Implements a barrier for the #runner threads.
  *
  * @param e The #engine.
+ * @param tid The thread ID
  */
 void engine_barrier(struct engine *e) {
 
