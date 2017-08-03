@@ -45,7 +45,7 @@
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
-                       double h_pert) {
+                       double h_pert, double fraction_active) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
@@ -100,8 +100,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy = 1.f;
         part->entropy_one_over_gamma = 1.f;
 #endif
-
-        part->time_bin = 1;
+        if (random_uniform(0,1.f) < fraction_active)
+            part->time_bin = 1;
+        else
+          part->time_bin = num_time_bins + 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
         part->ti_drift = 8;
@@ -171,7 +173,7 @@ void end_calculation(struct cell *c) {
  * @brief Dump all the particles to a file
  */
 void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
-  FILE *file = fopen(fileName, "w");
+  FILE *file = fopen(fileName, "a");
 
   /* Write header */
   fprintf(file,
@@ -204,26 +206,19 @@ void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 
-void test_pair_interactions(struct runner runner,
-                              struct cell **ci, struct cell **cj, char *swiftOutputFileName,
-                              char *bruteForceOutputFileName) {
+void test_pair_interactions(struct runner *runner,
+                            struct cell **ci, struct cell **cj, char *swiftOutputFileName,
+                            char *bruteForceOutputFileName) {
 
-  runner_do_sort(&runner, *ci, 0x1FFF, 0, 0);
-  runner_do_sort(&runner, *cj, 0x1FFF, 0, 0);
+  runner_do_sort(runner, *ci, 0x1FFF, 0, 0);
+  runner_do_sort(runner, *cj, 0x1FFF, 0, 0);
 
   /* Zero the fields */
   zero_particle_fields(*ci);
   zero_particle_fields(*cj);
 
-#ifdef WITH_VECTORIZATION
-  runner.ci_cache.count = 0;
-  cache_init(&runner.ci_cache, 512);
-  runner.cj_cache.count = 0;
-  cache_init(&runner.cj_cache, 512);
-#endif
-
   /* Run the test */
-  runner_dopair1_branch_density(&runner, *ci, *cj);
+  runner_dopair1_branch_density(runner, *ci, *cj);
 
   /* Let's get physical ! */
   end_calculation(*ci);
@@ -239,7 +234,7 @@ void test_pair_interactions(struct runner runner,
   zero_particle_fields(*cj);
 
   /* Run the brute-force test */
-  pairs_all_density(&runner, *ci, *cj);
+  pairs_all_density(runner, *ci, *cj);
 
   /* Let's get physical ! */
   end_calculation(*ci);
@@ -251,12 +246,12 @@ void test_pair_interactions(struct runner runner,
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, type = 0;
-  double offset[3] = {0, 0, 0}, h = 1.23485, size = 1., rho = 1.;
+  double offset1[3] = {0, 0, 0}, offset2[3] = {1., 0., 0.}, h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.1, h_pert = 1.1;
   struct cell *ci, *cj;
   struct space space;
   struct engine engine;
-  struct runner runner;
+  struct runner *runner;
   char c;
   static long long partId = 0;
   char outputFileNameExtension[200] = "";
@@ -322,7 +317,13 @@ int main(int argc, char *argv[]) {
   engine.time = 0.1f;
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
-  runner.e = &engine;
+  
+  if (posix_memalign((void **)&runner, part_align,
+                     sizeof(struct runner)) != 0) {
+    error("couldn't allocate runner");
+  }
+  
+  runner->e = &engine;
 
   /* Create output file names. */
   sprintf(swiftOutputFileName, "swift_dopair_%s.dat",
@@ -330,12 +331,77 @@ int main(int argc, char *argv[]) {
   sprintf(bruteForceOutputFileName, "brute_force_%s.dat",
           outputFileNameExtension);
   
-  ci = make_cell(particles, offset, size, h, rho, &partId, perturbation, h_pert);
-  for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
-  cj = make_cell(particles, offset, size, h, rho, &partId, perturbation, h_pert);
+  /* Delete files if they already exist. */
+  remove(swiftOutputFileName);
+  remove(bruteForceOutputFileName);
+
+  /* All active particles. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 1.);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 1.);
+
+#ifdef WITH_VECTORIZATION
+  runner->ci_cache.count = 0;
+  cache_init(&runner->ci_cache, 512);
+  runner->cj_cache.count = 0;
+  cache_init(&runner->cj_cache, 512);
+#endif
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
 
+  clean_up(ci);
+  clean_up(cj);
+
+  /* Half particles are active. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 0.5);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 0.5);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+  
+  clean_up(ci);
+  clean_up(cj);
+
+  /* All particles inactive. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 0.);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 0.);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+
+  clean_up(ci);
+  clean_up(cj);
+
+  /* 10% of particles active. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 0.1);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 0.1);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+  
+  clean_up(ci);
+  clean_up(cj);
+
+  /* One active cell one inactive cell. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 1.0);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 0.);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+  
+  clean_up(ci);
+  clean_up(cj);
+
+  /* One active cell one inactive cell. */
+  ci = make_cell(particles, offset1, size, h, rho, &partId, perturbation, h_pert, 1.0);
+  cj = make_cell(particles, offset2, size, h, rho, &partId, perturbation, h_pert, 1.0);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+  
+  clean_up(ci);
+  clean_up(cj);
+
+  /* Smaller cells, all active. */
+  ci = make_cell(2, offset1, size, h, rho, &partId, perturbation, h_pert, 1.0);
+  cj = make_cell(2, offset2, size, h, rho, &partId, perturbation, h_pert, 1.0);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName, bruteForceOutputFileName);
+  
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);
   clean_up(cj);
