@@ -1347,11 +1347,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-#ifdef SWIFT_DEBUG_CHECKS
-          for (int k = 0; k < t->ci->count; k++)
-            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
-              error("Sending un-drifted particle !");
-#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "sending %i parts with tag=%i from %i to %i." ,
