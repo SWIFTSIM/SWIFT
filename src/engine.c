@@ -1754,16 +1754,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Skip cells without gravity particles */
           if (cj->gcount == 0) continue;
 
-              /* Is that neighbour local ? */
-              if (cj->nodeID != nodeID) continue;  // MATTHIEU
+          /* Is that neighbour local ? */
+          if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
-              /* Are the cells to close for a MM interaction ? */
-              if (!gravity_multipole_accept_rebuild(
-                      ci->multipole, cj->multipole, theta_crit_inv, periodic,
-                      dim)) {
+          /* Are the cells to close for a MM interaction ? */
+          if (!gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
+                                                theta_crit_inv, periodic,
+                                                dim)) {
 
-                scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0,
-                                  0, ci, cj);
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+                              ci, cj);
           }
         }
       }
@@ -1785,9 +1785,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
                              s->cdim[2] / 4 + 1};
   struct task **ghosts = NULL;
