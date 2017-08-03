@@ -96,8 +96,15 @@ EXTRA_DIST += parameter_example.yml
 
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
+              analyse_tasks_MPI.py analyse_tasks.py \
 	      process_plot_tasks_MPI process_plot_tasks
 
+# Scripts to plot threadpool 'task' graphs
+EXTRA_DIST += analyse_threadpool_tasks.py \
+              plot_threadpool.py \
+              process_plot_threadpool
+
 # Script for scaling plot
-EXTRA_DIST += plot_scaling_results.py
+EXTRA_DIST += plot_scaling_results.py \
+              plot_scaling_results_breakdown.py
 
