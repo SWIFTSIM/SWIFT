@@ -36,6 +36,7 @@
  * @brief The different task types.
  *
  * Be sure to update the taskID_names array in tasks.c if you modify this list!
+ * Also update the python task plotting scripts!
  */
 enum task_types {
   task_type_none = 0,

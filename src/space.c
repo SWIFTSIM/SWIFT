@@ -62,6 +62,7 @@
 int space_splitsize = space_splitsize_default;
 int space_subsize_pair = space_subsize_pair_default;
 int space_subsize_self = space_subsize_self_default;
+int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_maxsize = space_maxsize_default;
 
 /**
@@ -2705,6 +2706,9 @@ void space_init(struct space *s, const struct swift_params *params,
       params, "Scheduler:cell_sub_size_pair", space_subsize_pair_default);
   space_subsize_self = parser_get_opt_param_int(
       params, "Scheduler:cell_sub_size_self", space_subsize_self_default);
+  space_subsize_self_grav =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
+                               space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
 

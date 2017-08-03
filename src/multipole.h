@@ -1498,23 +1498,28 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param pos_a The position of the multipole.
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
  */
 INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
-                               const struct gravity_props *props,
-                               int periodic) {
+                               const struct gravity_props *props, int periodic,
+                               const double dim[3]) {
 
   /* Recover some constants */
   const double eps2 = props->epsilon2;
 
   /* Compute distance vector */
-  const double dx =
-      periodic ? box_wrap(pos_b[0] - pos_a[0], 0., 1.) : pos_b[0] - pos_a[0];
-  const double dy =
-      periodic ? box_wrap(pos_b[1] - pos_a[1], 0., 1.) : pos_b[1] - pos_a[1];
-  const double dz =
-      periodic ? box_wrap(pos_b[2] - pos_a[2], 0., 1.) : pos_b[2] - pos_a[2];
+  double dx = pos_b[0] - pos_a[0];
+  double dy = pos_b[1] - pos_a[1];
+  double dz = pos_b[2] - pos_a[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
 
   /* Compute distance */
   const double r2 = dx * dx + dy * dy + dz * dz;
@@ -2174,12 +2179,10 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
  * @param lb The #grav_tensor to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
- * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_L2L(struct grav_tensor *la,
                                const struct grav_tensor *lb,
-                               const double pos_a[3], const double pos_b[3],
-                               int periodic) {
+                               const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
   gravity_field_tensors_init(la);
@@ -2636,29 +2639,76 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 
 /**
  * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
- * interaction.
+ * interaction using the CoM and cell radius at rebuild.
+ *
+ * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
+ * Issue 1, pp.27-42, equation 10.
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
- * @param rebuild Are we using the current value of CoM or the ones from
- * the last rebuild ?
+ * @param periodic Are we using periodic boundary conditions ?
+ * @param dim The dimensions of the box.
+ */
+__attribute__((always_inline)) INLINE static int
+gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
+                                 const struct gravity_tensors *const mb,
+                                 double theta_crit_inv, int periodic,
+                                 const double dim[3]) {
+
+  const double r_crit_a = ma->r_max_rebuild * theta_crit_inv;
+  const double r_crit_b = mb->r_max_rebuild * theta_crit_inv;
+
+  double dx = ma->CoM_rebuild[0] - mb->CoM_rebuild[0];
+  double dy = ma->CoM_rebuild[1] - mb->CoM_rebuild[1];
+  double dz = ma->CoM_rebuild[2] - mb->CoM_rebuild[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  // MATTHIEU: Make this mass-dependent ?
+
+  /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
+  return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));
+}
+
+/**
+ * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
+ * interaction using the CoM and cell radius at the current time.
+ *
+ * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
+ * Issue 1, pp.27-42, equation 10.
+ *
+ * @param ma The #multipole of the first #cell.
+ * @param mb The #multipole of the second #cell.
+ * @param theta_crit_inv The inverse of the critical opening angle.
+ * @param periodic Are we using periodic boundary conditions ?
+ * @param dim The dimensions of the box.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
-    const struct gravity_tensors *ma, const struct gravity_tensors *mb,
-    double theta_crit_inv, int rebuild) {
+    const struct gravity_tensors *const ma,
+    const struct gravity_tensors *const mb, double theta_crit_inv, int periodic,
+    const double dim[3]) {
 
-  const double r_crit_a =
-      (rebuild ? ma->r_max_rebuild : ma->r_max) * theta_crit_inv;
-  const double r_crit_b =
-      (rebuild ? mb->r_max_rebuild : mb->r_max) * theta_crit_inv;
+  const double r_crit_a = ma->r_max * theta_crit_inv;
+  const double r_crit_b = mb->r_max * theta_crit_inv;
 
-  const double dx = rebuild ? ma->CoM_rebuild[0] - mb->CoM_rebuild[0]
-                            : ma->CoM[0] - mb->CoM[0];
-  const double dy = rebuild ? ma->CoM_rebuild[1] - mb->CoM_rebuild[1]
-                            : ma->CoM[1] - mb->CoM[1];
-  const double dz = rebuild ? ma->CoM_rebuild[2] - mb->CoM_rebuild[2]
-                            : ma->CoM[2] - mb->CoM[2];
+  double dx = ma->CoM[0] - mb->CoM[0];
+  double dy = ma->CoM[1] - mb->CoM[1];
+  double dz = ma->CoM[2] - mb->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
 
   const double r2 = dx * dx + dy * dy + dz * dz;
 

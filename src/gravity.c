@@ -63,7 +63,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
     char line[100];
     char dummy1[10], dummy2[10];
     double epsilon, newton_G;
-    int N;
+    int N, periodic;
     /* Reads file header */
     if (fgets(line, 100, file) != line) error("Problem reading title");
     if (fgets(line, 100, file) != line) error("Problem reading G");
@@ -72,10 +72,12 @@ int gravity_exact_force_file_exits(const struct engine *e) {
     sscanf(line, "%s %s %d", dummy1, dummy2, &N);
     if (fgets(line, 100, file) != line) error("Problem reading epsilon");
     sscanf(line, "%s %s %le", dummy1, dummy2, &epsilon);
+    if (fgets(line, 100, file) != line) error("Problem reading BC");
+    sscanf(line, "%s %s %d", dummy1, dummy2, &periodic);
     fclose(file);
 
     /* Check whether it matches the current parameters */
-    if (N == SWIFT_GRAVITY_FORCE_CHECKS &&
+    if (N == SWIFT_GRAVITY_FORCE_CHECKS && periodic == e->s->periodic &&
         (fabs(epsilon - e->gravity_properties->epsilon) / epsilon < 1e-5) &&
         (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
          1e-5)) {
@@ -101,6 +103,8 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
   struct exact_force_data *data = (struct exact_force_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = data->e;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double const_G = data->const_G;
   int counter = 0;
 
@@ -124,11 +128,18 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         if (gpi == gpj) continue;
 
         /* Compute the pairwise distance. */
-        const double dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                              gpi->x[1] - gpj->x[1],   // y
-                              gpi->x[2] - gpj->x[2]};  // z
-        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        double dx = gpi->x[0] - gpj->x[0];
+        double dy = gpi->x[1] - gpj->x[1];
+        double dz = gpi->x[2] - gpj->x[2];
 
+        /* Now apply periodic BC */
+        if (periodic) {
+          dx = nearest(dx, dim[0]);
+          dy = nearest(dy, dim[1]);
+          dz = nearest(dz, dim[2]);
+        }
+
+        const double r2 = dx * dx + dy * dy + dz * dz;
         const double r = sqrt(r2);
         const double ir = 1. / r;
         const double mj = gpj->mass;
@@ -152,15 +163,11 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
           /* Get softened gravity */
           f = mj * hi_inv3 * W * f_lr;
-
-          // printf("r=%e hi=%e W=%e fac=%e\n", r, hi, W, f);
         }
 
-        const double fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
-
-        a_grav[0] -= fdx[0];
-        a_grav[1] -= fdx[1];
-        a_grav[2] -= fdx[2];
+        a_grav[0] -= f * dx;
+        a_grav[1] -= f * dy;
+        a_grav[2] -= f * dz;
       }
 
       /* Store the exact answer */
@@ -245,8 +252,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-  fprintf(file_swift, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
-  fprintf(file_swift, "# theta=%16.8e\n", e->gravity_properties->theta_crit);
+  fprintf(file_swift, "# epsilon= %16.8e\n", e->gravity_properties->epsilon);
+  fprintf(file_swift, "# periodic= %d\n", s->periodic);
+  fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",

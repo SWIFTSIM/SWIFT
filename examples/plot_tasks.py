@@ -91,17 +91,18 @@ pl.rcParams.update(PLOT_PARAMS)
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
              "init_grav", "ghost", "extra_ghost", "drift_part",
              "drift_gpart", "kick1", "kick2", "timestep", "send", "recv",
-             "grav_top_level", "grav_long_range", "grav_mm", "grav_down",
-             "cooling", "sourceterms", "count"]
+             "grav_top_level", "grav_long_range", "grav_ghost", "grav_mm",
+             "grav_down", "cooling", "sourceterms", "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
             "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
 
 #  Task/subtypes of interest.
 FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
-             "sub_self/density", "pair/force", "pair/density", "pair/grav",
-             "sub_pair/force",
-             "sub_pair/density", "recv/xv", "send/xv", "recv/rho", "send/rho",
+             "sub_self/density", "sub_self/grav", "pair/force", "pair/density",
+             "pair/grav", "sub_pair/force",
+             "sub_pair/density", "sub_pair/grav", "recv/xv", "send/xv",
+             "recv/rho", "send/rho",
              "recv/tend", "send/tend"]
 
 #  A number of colours for the various types. Recycled when there are
@@ -109,7 +110,7 @@ FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
            "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
            "brown", "purple", "moccasin", "olivedrab", "chartreuse",
-           "darksage", "darkgreen", "green", "mediumseagreen",
+           "steelblue", "darkgreen", "green", "mediumseagreen",
            "mediumaquamarine", "darkslategrey", "mediumturquoise",
            "black", "cadetblue", "skyblue", "red", "slategray", "gold",
            "slateblue", "blueviolet", "mediumorchid", "firebrick",

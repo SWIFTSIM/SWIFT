@@ -620,53 +620,36 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split? */
-      if (ci->split) {
+      /* Should we split this task? */
+      if (ci->split && ci->gcount > space_subsize_self_grav) {
 
-        /* Make a sub? */
-        if (scheduler_dosub && ci->gcount < space_subsize_self) {
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
 
-          /* convert to a self-subtask. */
-          t->type = task_type_sub_self;
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL)
+            scheduler_splittask_gravity(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
 
-          /* Make sure we have a drift task (MATTHIEU temp. fix) */
-          lock_lock(&ci->lock);
-          if (ci->drift_gpart == NULL)
-            ci->drift_gpart = scheduler_addtask(
-                s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-          lock_unlock_blind(&ci->lock);
-
-          /* Otherwise, make tasks explicitly. */
-        } else {
-
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Add the self tasks. */
-          int first_child = 0;
-          while (ci->progeny[first_child] == NULL) first_child++;
-          t->ci = ci->progeny[first_child];
-          for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
-              scheduler_splittask_gravity(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                    ci->progeny[k], NULL),
-                  s);
-
-          /* Make a task for each pair of progeny */
-          if (t->subtype != task_subtype_external_grav) {
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL)
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL)
-                    scheduler_splittask_gravity(
-                        scheduler_addtask(s, task_type_pair, t->subtype,
-                                          sub_sid_flag[j][k], 0, ci->progeny[j],
-                                          ci->progeny[k]),
-                        s);
-          }
+        /* Make a task for each pair of progeny */
+        if (t->subtype != task_subtype_external_grav) {
+          for (int j = 0; j < 8; j++)
+            if (ci->progeny[j] != NULL)
+              for (int k = j + 1; k < 8; k++)
+                if (ci->progeny[k] != NULL)
+                  scheduler_splittask_gravity(
+                      scheduler_addtask(s, task_type_pair, t->subtype,
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        ci->progeny[k]),
+                      s);
         }
-      } /* Cell is split */
+      }
 
       /* Otherwise, make sure the self task has a drift task */
       else {
@@ -694,7 +677,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (ci->split && cj->split) {
+      if (0 && ci->split && cj->split) {
 
         // MATTHIEU: nothing here for now
 
@@ -1364,6 +1347,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
+#ifdef SWIFT_DEBUG_CHECKS
+          for (int k = 0; k < t->ci->count; k++)
+            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
+              error("Sending un-drifted particle !");
+#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "sending %i parts with tag=%i from %i to %i." ,

@@ -45,6 +45,7 @@ struct cell;
 #define space_maxsize_default 8000000
 #define space_subsize_pair_default 256000000
 #define space_subsize_self_default 32000
+#define space_subsize_self_grav_default 32000
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
@@ -57,6 +58,7 @@ extern int space_splitsize;
 extern int space_maxsize;
 extern int space_subsize_pair;
 extern int space_subsize_self;
+extern int space_subsize_self_grav;
 
 /**
  * @brief The space in which the cells and particles reside.
