@@ -1,0 +1,13 @@
+ICs extracted from the EAGLE suite of simulations. 
+
+WARNING: These ICs correspond to a very small cosmological volume
+and are not representative of actual load-balancing of large runs.
+
+The particle distribution here is the snapshot 27 (z=0.1) of the 6.25Mpc
+Ref-model. h- and a- factors from the original Gadget code have been
+corrected for. Variables not used in a pure hydro & gravity code have
+been removed. 
+Everything is ready to be run without cosmological integration. 
+
+MD5 checksum of the ICs:
+a4efccd3646a60ad8600ac3a2895ea82  EAGLE_ICs_6.hdf5

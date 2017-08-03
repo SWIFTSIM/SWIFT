@@ -60,9 +60,11 @@ EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
 	     CosmoVolume/cosmoVolume.yml CosmoVolume/getIC.sh CosmoVolume/run.sh \
 	     CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
+	     EAGLE_6/eagle_6.yml EAGLE_6/getIC.sh EAGLE_6/README EAGLE_6/run.sh \
 	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
 	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
 	     EAGLE_50/eagle_50.yml EAGLE_50/getIC.sh EAGLE_50/README EAGLE_50/run.sh \
+	     EAGLE_100/eagle_100.yml EAGLE_100/getIC.sh EAGLE_100/README EAGLE_100/run.sh \
 	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/energy_plot.py \
 	     GreshoVortex_2D/getGlass.sh GreshoVortex_2D/gresho.yml GreshoVortex_2D/makeIC.py GreshoVortex_2D/plotSolution.py GreshoVortex_2D/run.sh \
 	     HydrostaticHalo/README HydrostaticHalo/hydrostatic.yml HydrostaticHalo/makeIC.py HydrostaticHalo/run.sh \
@@ -70,11 +72,17 @@ EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     IsothermalPotential/README IsothermalPotential/run.sh IsothermalPotential/energy_plot.py IsothermalPotential/isothermal.yml IsothermalPotential/makeIC.py \
 	     KelvinHelmholtz_2D/kelvinHelmholtz.yml KelvinHelmholtz_2D/makeIC.py KelvinHelmholtz_2D/plotSolution.py KelvinHelmholtz_2D/run.sh \
 	     MultiTypes/makeIC.py  MultiTypes/multiTypes.yml MultiTypes/run.sh \
+             Noh_1D/makeIC.py Noh_1D/noh.yml Noh_1D/plotSolution.py Noh_1D/run.sh \
+             Noh_2D/makeIC.py Noh_2D/noh.yml Noh_2D/plotSolution.py Noh_2D/run.sh Noh_2D/getGlass.sh \
+             Noh_3D/makeIC.py Noh_3D/noh.yml Noh_3D/plotSolution.py Noh_3D/run.sh Noh_3D/getGlass.sh \
 	     PerturbedBox_2D/makeIC.py PerturbedBox_2D/perturbedPlane.yml \
 	     PerturbedBox_3D/makeIC.py PerturbedBox_3D/perturbedBox.yml PerturbedBox_3D/run.sh \
 	     SedovBlast_1D/makeIC.py SedovBlast_1D/plotSolution.py SedovBlast_1D/run.sh SedovBlast_1D/sedov.yml \
 	     SedovBlast_2D/getGlass.sh SedovBlast_2D/makeIC.py SedovBlast_2D/plotSolution.py SedovBlast_2D/run.sh SedovBlast_2D/sedov.yml \
 	     SedovBlast_3D/getGlass.sh SedovBlast_3D/makeIC.py SedovBlast_3D/plotSolution.py SedovBlast_3D/run.sh SedovBlast_3D/sedov.yml \
+             SineWavePotential_1D/makeIC.py SineWavePotential_1D/plotSolution.py SineWavePotential_1D/run.sh SineWavePotential_1D/sineWavePotential.yml \
+             SineWavePotential_2D/makeIC.py SineWavePotential_2D/plotSolution.py SineWavePotential_2D/run.sh SineWavePotential_2D/sineWavePotential.yml \
+             SineWavePotential_3D/makeIC.py SineWavePotential_3D/plotSolution.py SineWavePotential_3D/run.sh SineWavePotential_3D/sineWavePotential.yml \
 	     SodShock_1D/makeIC.py SodShock_1D/plotSolution.py SodShock_1D/run.sh SodShock_1D/sodShock.yml \
 	     SodShock_2D/getGlass.sh SodShock_2D/makeIC.py SodShock_2D/plotSolution.py SodShock_2D/run.sh SodShock_2D/sodShock.yml \
 	     SodShock_3D/getGlass.sh SodShock_3D/makeIC.py SodShock_3D/plotSolution.py SodShock_3D/run.sh SodShock_3D/sodShock.yml \
@@ -88,8 +96,15 @@ EXTRA_DIST += parameter_example.yml
 
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
+              analyse_tasks_MPI.py analyse_tasks.py \
 	      process_plot_tasks_MPI process_plot_tasks
 
+# Scripts to plot threadpool 'task' graphs
+EXTRA_DIST += analyse_threadpool_tasks.py \
+              plot_threadpool.py \
+              process_plot_threadpool
+
 # Script for scaling plot
-EXTRA_DIST += plot_scaling_results.py
+EXTRA_DIST += plot_scaling_results.py \
+              plot_scaling_results_breakdown.py
 

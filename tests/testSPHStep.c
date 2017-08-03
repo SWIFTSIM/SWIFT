@@ -81,7 +81,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->ti_end_max = 1;
 
   cell->sorted = 0;
-  cell->sort = NULL;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
@@ -211,7 +211,8 @@ int main() {
   for (int j = 0; j < 27; ++j) {
     free(cells[j]->parts);
     free(cells[j]->xparts);
-    free(cells[j]->sort);
+    for (int k = 0; k < 13; k++)
+      if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
     free(cells[j]);
   }
 

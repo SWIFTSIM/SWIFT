@@ -38,6 +38,7 @@ Valid options are:
                     1: MPI-rank 0 writes,
                     2: All MPI-ranks write.
   -y          {int} Time-step frequency at which task graphs are dumped.
+  -Y          {int} Time-step frequency at which threadpool tasks are dumped.
   -h                Print this help message and exit.
 
 See the file parameter_example.yml for an example of parameter file.
