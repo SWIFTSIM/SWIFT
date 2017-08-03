@@ -878,14 +878,6 @@ void engine_repartition(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 #endif
 
-  /* Release all cell sorting indices so we can keep memory usage down. */
-  if (e->s->cells_top != NULL) {
-      threadpool_map(&e->threadpool, space_rebuild_recycle_mapper,
-                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     0, e->s);
-      e->s->maxdepth = 0;
-  }
-
   /* Clear the repartition flag. */
   e->forcerepart = 0;
 
@@ -896,6 +888,34 @@ void engine_repartition(struct engine *e) {
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
+
+  /* Partitioning requires copies of the particles, so we need to reduce the
+   * memory in use to the minimum, we can free the sorting indices and the
+   * tasks as these will be regenerated at the next rebuild. */
+
+  /* Sorting indices. */
+  if (e->s->cells_top != NULL) {
+      threadpool_map(&e->threadpool, space_rebuild_recycle_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     0, e->s);
+      e->s->maxdepth = 0;
+  }
+
+  /* Tasks. */
+  struct scheduler *s = &e->sched;
+  if (s->tasks != NULL) {
+      free(s->tasks);
+      s->tasks = NULL;
+  }
+  if (s->tasks_ind != NULL) {
+      free(s->tasks_ind);
+      s->tasks_ind = NULL;
+  }
+  if (s->tid_active != NULL) {
+      free(s->tid_active);
+      s->tid_active = NULL;
+  }
+  s->size = 0;
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
