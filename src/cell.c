@@ -1893,6 +1893,13 @@ void cell_set_super(struct cell *c, struct cell *super) {
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
 
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+    cell_set_super(c, NULL);
+  }
+}
+
 /**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *

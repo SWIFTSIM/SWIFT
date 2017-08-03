@@ -404,6 +404,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 
 /* Inlined functions (for speed). */
 
