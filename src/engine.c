@@ -1703,7 +1703,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the cell index. */
-    const int cid = (size_t)(map_data + ind);
+    const int cid = (size_t)(map_data) + ind;
     const int i = cid / (cdim[1] * cdim[2]);
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
@@ -1865,7 +1865,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the cell index. */
-    const int cid = (size_t)(map_data + ind);
+    const int cid = (size_t)(map_data) + ind;
     const int i = cid / (cdim[1] * cdim[2]);
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
@@ -1920,8 +1920,6 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * For each hydrodynamic and gravity task, construct the links with
  * the corresponding cell.  Similarly, construct the dependencies for
  * all the sorting tasks.
- *
- * @param e The #engine.
  */
 void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
@@ -2187,8 +2185,6 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * corresponding to the second hydro loop over neighbours.
  * With all the relevant tasks for a given cell available, we construct
  * all the dependencies for that cell.
- *
- * @param e The #engine.
  */
 void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                               void *extra_data) {
@@ -2971,7 +2967,6 @@ void engine_prepare(struct engine *e) {
  * @brief Implements a barrier for the #runner threads.
  *
  * @param e The #engine.
- * @param tid The thread ID
  */
 void engine_barrier(struct engine *e) {
 
