@@ -466,8 +466,8 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
- * @brief Repartition the cells amongst the nodes using task timings
- *        as edge weights and vertex weights also from task timings
+ * @brief Repartition the cells amongst the nodes using task costs
+ *        as edge weights and vertex weights also from task costs
  *        or particle cells counts.
  *
  * @param partweights whether particle counts will be used as vertex weights.
@@ -520,11 +520,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->type != task_type_self && t->type != task_type_pair &&
-        t->type != task_type_sub_self && t->type != task_type_sub_self &&
-        t->type != task_type_ghost && t->type != task_type_kick1 &&
-        t->type != task_type_kick2 && t->type != task_type_timestep &&
-        t->type != task_type_drift_part && t->type != task_type_drift_gpart)
+    if (t->cost == 0)
       continue;
 
     /* Get the task weight. */
@@ -558,9 +554,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     if (t->type == task_type_ghost || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_drift_part || t->type == task_type_drift_gpart) {
+
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
-
     }
 
     /* Self interaction? */
@@ -592,14 +588,15 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
-        /* Add weights to edge. */
+        /* Add weights to edge, reduced by some weight from the expected time
+         * of next interaction -- we want active cells to be clustered. */
         int kk;
         for (kk = 26 * cid; inds[kk] != cjd; kk++)
           ;
-        weights_e[kk] += w;
+        weights_e[kk] += w / get_time_bin(ci->ti_end_max);
         for (kk = 26 * cjd; inds[kk] != cid; kk++)
           ;
-        weights_e[kk] += w;
+        weights_e[kk] += w / get_time_bin(ci->ti_end_max);
       }
     }
   }
