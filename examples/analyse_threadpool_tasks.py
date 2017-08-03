@@ -69,7 +69,7 @@ threads = []
 chunks = []
 for i in data:
     if i[0] != "#":
-        funcs.append(i[0])
+        funcs.append(i[0].replace("_mapper", ""))
         if i[1] < 0:
             threads.append(nthread-1)
         else:
