@@ -24,33 +24,10 @@
 #include <unistd.h>
 #include "swift.h"
 
+#ifdef WITH_VECTORIZATION
+
 #define array_align sizeof(float) * VEC_SIZE
 #define ACC_THRESHOLD 1e-5
-
-#ifdef NONSYM_DENSITY
-#define IACT runner_iact_nonsym_density
-#define IACT_VEC runner_iact_nonsym_2_vec_density
-#define IACT_NAME "test_nonsym_density"
-#define NUM_VEC_PROC_INT 2
-#endif
-
-#ifdef SYM_DENSITY
-#define IACT runner_iact_density
-#define IACT_VEC runner_iact_vec_density
-#define IACT_NAME "test_sym_density"
-#endif
-
-#ifdef NONSYM_FORCE
-#define IACT runner_iact_nonsym_force
-#define IACT_VEC runner_iact_nonsym_vec_force
-#define IACT_NAME "test_nonsym_force"
-#endif
-
-#ifdef SYM_FORCE
-#define IACT runner_iact_force
-#define IACT_VEC runner_iact_vec_force
-#define IACT_NAME "test_sym_force"
-#endif
 
 #ifndef IACT
 #define IACT runner_iact_nonsym_density
@@ -227,9 +204,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
                        char *filePrefix, int runs, int num_vec_proc) {
 
   ticks serial_time = 0;
-#ifdef WITH_VECTORIZATION
   ticks vec_time = 0;
-#endif
 
   char serial_filename[200] = "";
   char vec_filename[200] = "";
@@ -248,7 +223,6 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float r2[count] __attribute__((aligned(array_align)));
   float dx[3 * count] __attribute__((aligned(array_align)));
 
-#ifdef WITH_VECTORIZATION
   struct part *piq[count], *pjq[count];
   for (size_t k = 0; k < count; k++) {
     piq[k] = NULL;
@@ -268,7 +242,6 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float vjxq[count] __attribute__((aligned(array_align)));
   float vjyq[count] __attribute__((aligned(array_align)));
   float vjzq[count] __attribute__((aligned(array_align)));
-#endif
 
   /* Call serial interaction a set number of times. */
   for (int k = 0; k < runs; k++) {
@@ -320,7 +293,6 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
         r2 += dx[k] * dx[k];
       }
 
-#ifdef WITH_VECTORIZATION
       r2q[i] = r2;
       dxq[i] = dx[0];
       hiq[i] = pi_vec.h;
@@ -336,11 +308,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
       vjxq[i] = pj_vec[i].v[0];
       vjyq[i] = pj_vec[i].v[1];
       vjzq[i] = pj_vec[i].v[2];
-#endif
     }
 
 /* Perform vector interaction. */
-#ifdef WITH_VECTORIZATION
     vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
         curlvySum, curlvzSum;
@@ -401,33 +371,21 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     VEC_HADD(curlvzSum, piq[0]->density.rot_v[2]);
 
     vec_time += getticks() - vec_tic;
-#endif
   }
 
-#ifdef WITH_VECTORIZATION
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
-#else
-  /* If vectorisation is disabled output serial result to vector file so that test passes. */
-  dump_indv_particle_fields(vec_filename, &pi_serial);
-  for (size_t i = 0; i < count; i++)
-    dump_indv_particle_fields(vec_filename, &pj_serial[i]);
-#endif
-
-#ifdef WITH_VECTORIZATION
+  
   /* Check serial results against the vectorised results. */
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
-#endif
 
   message("The serial interactions took     : %15lli ticks.",
           serial_time / runs);
-#ifdef WITH_VECTORIZATION
   message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
-#endif
 }
 
 /* And go... */
@@ -483,10 +441,6 @@ int main(int argc, char *argv[]) {
   struct part test_particle;
   struct part *particles = make_particles(count, offset, spacing, h, &partId);
 
-#if defined(NONSYM_FORCE) || defined(SYM_FORCE)
-  prepare_force(particles, count);
-#endif
-
   test_particle = particles[0];
   /* Call the non-sym density test. */
   message("Testing %s interaction...", IACT_NAME);
@@ -497,3 +451,9 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+#else
+
+int main() {return 1;}
+
+#endif
