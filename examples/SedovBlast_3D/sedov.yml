@@ -19,6 +19,10 @@ Snapshots:
   time_first:          0.    # Time of the first output (in internal units)
   delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
 
+# Scheduling
+Scheduler:
+  tasks_per_cell:      36    # Mean number of tasks per cell, default 27 not big enough
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-3 # Time between statistics output

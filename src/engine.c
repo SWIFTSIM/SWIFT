@@ -2473,7 +2473,7 @@ void engine_maketasks(struct engine *e) {
   const ticks tic = getticks();
 
   /* Re-set the scheduler. */
-  scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
+  scheduler_reset(sched, s->tot_cells * e->tasks_per_cell);
 
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) {
@@ -4470,8 +4470,12 @@ void engine_init(struct engine *e, struct space *s,
       pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
     error("Failed to initialize barrier.");
 
-  /* Init the scheduler with enough tasks for the initial sorting tasks. */
-  const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
+  /* Expected average for tasks per cell. */
+  e->tasks_per_cell = 
+      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 27);
+
+  /* Init the scheduler. */
+  const int nr_tasks = s->tot_cells * e->tasks_per_cell;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
                  e->nodeID, &e->threadpool);
 

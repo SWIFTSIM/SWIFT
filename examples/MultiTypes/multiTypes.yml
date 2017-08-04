@@ -28,6 +28,10 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+# Scheduling.
+Scheduler:
+  tasks_per_cell:        38       # Mean tasks per cell, default of 27 not big enough
   
 # Parameters related to the initial conditions
 InitialConditions:

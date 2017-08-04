@@ -75,7 +75,6 @@ enum engine_policy {
 extern const char *engine_policy_names[];
 
 #define engine_queue_scale 1.2
-#define engine_maxtaskspercell 96
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
@@ -221,6 +220,10 @@ struct engine {
   /* Linked list for cell-task association. */
   struct link *links;
   int nr_links, size_links;
+
+  /* Average number of tasks per cell. Used to estimate the sizes
+   * of the various task arrays. */
+  int tasks_per_cell;
 
   /* Are we talkative ? */
   int verbose;
