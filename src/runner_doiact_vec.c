@@ -265,10 +265,17 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   int first_pi = 0, last_pj = cj->count - 1;
   int temp;
 
-  /* Find the leftmost particle in cell i that interacts with any particle in cell j. */
+  /* Find the leftmost active particle in cell i that interacts with any particle in cell j. */
   first_pi = ci->count;
-  while(first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min)
+  int active_id = first_pi;
+  while(first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
     first_pi--;
+    /* Store the index of the particle if it is active. */
+    if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
+  }
+
+  /* Set the first active pi in range of any particle in cell j. */
+  first_pi = active_id;
 
   /* Find the maximum index into cell j for each particle in range in cell i. */
   if(first_pi < ci->count) {
@@ -300,10 +307,17 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     max_index_i[ci->count - 1] = 0;
   }
 
-  /* Find the rightmost particle in cell j that interacts with any particle in cell i. */
+  /* Find the rightmost active particle in cell j that interacts with any particle in cell i. */
   last_pj = 0;
-  while(last_pj < cj->count && sort_j[last_pj].d - hj_max - dx_max < di_max)
+  active_id = last_pj;
+  while(last_pj < cj->count && sort_j[last_pj].d - hj_max - dx_max < di_max) {
     last_pj++;
+    /* Store the index of the particle if it is active. */
+    if (part_is_active(&parts_j[sort_j[last_pj - 1].i], e)) active_id = last_pj - 1;
+  }
+
+  /* Set the last active pj in range of any particle in cell i. */
+  last_pj = active_id + 1;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
   if(last_pj > 0 ) {
@@ -317,7 +331,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     const struct part *pj = &parts_j[sort_j[last_pj].i];
 
     /* Loop through particles in cell i until they are not in range of pj. */
-    while(temp >= 0 && sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) < sort_i[temp].d - rshift)
+    while(temp > 0 && sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) < sort_i[temp].d - rshift)
       temp--;
 
     max_index_j[last_pj] = temp;
@@ -326,7 +340,7 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
     for(int i = last_pj - 1; i>=0; i--) {
       temp = max_index_j[i + 1];
 
-      while(temp >= 0 && sort_j[i].d - dx_max - (pj->h * kernel_gamma) < sort_i[temp].d - rshift)
+      while(temp > 0 && sort_j[i].d - dx_max - (pj->h * kernel_gamma) < sort_i[temp].d - rshift)
         temp--;
 
       max_index_j[i] = temp;
