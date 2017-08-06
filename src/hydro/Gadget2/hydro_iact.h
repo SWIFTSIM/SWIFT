@@ -1163,11 +1163,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #ifdef WITH_VECTORIZATION
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy,
-    vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2,
-    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz,
+    float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2,
+    vector balsara_i, vector ci, float *Vjx, float *Vjy, float *Vjz,
     float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector *hi_inv, float *Hj_inv, vector *a_hydro_xSum,
+    float *Mj, vector hi_inv, float *Hj_inv, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
     vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
 
@@ -1207,15 +1207,15 @@ runner_iact_nonsym_1_vec_force(
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
-  balsara.v = balsara_i->v + balsara_j.v;
+  balsara.v = balsara_i.v + balsara_j.v;
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(r2);
   r.v = r2.v * ri.v;
 
   /* Get the kernel for hi. */
-  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
-  xi.v = r.v * hi_inv->v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv);
+  xi.v = r.v * hi_inv.v;
   kernel_eval_dWdx_force_vec(&xi, &wi_dx);
   wi_dr.v = hid_inv.v * wi_dx.v;
 
@@ -1229,8 +1229,8 @@ runner_iact_nonsym_1_vec_force(
   wj_dr.v = hjd_inv.v * wj_dx.v;
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
-           ((viz->v - vjz.v) * dz.v);
+  dvdr.v = ((vix.v - vjx.v) * dx.v) + ((viy.v - vjy.v) * dy.v) +
+           ((viz.v - vjz.v) * dz.v);
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
@@ -1238,17 +1238,17 @@ runner_iact_nonsym_1_vec_force(
   mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
 
   /* Now construct the full viscosity term */
-  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
+  rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
   visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
            mu_ij.v * balsara.v / rho_ij.v;
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
   sph_term.v =
-      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
       ri.v;
 
   /* Eventually get the acceleration */
@@ -1284,11 +1284,11 @@ runner_iact_nonsym_1_vec_force(
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_2_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy,
-    vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2,
-    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz,
+    float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2,
+    vector balsara_i, vector ci, float *Vjx, float *Vjy, float *Vjz,
     float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector *hi_inv, float *Hj_inv, vector *a_hydro_xSum,
+    float *Mj, vector hi_inv, float *Hj_inv, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
     vector *v_sigSum, vector *entropy_dtSum, mask_t mask, mask_t mask_2,
     short mask_cond) {
@@ -1359,8 +1359,8 @@ runner_iact_nonsym_2_vec_force(
   hj_inv_2.v = vec_load(&Hj_inv[VEC_SIZE]);
 
   /* Load stuff. */
-  balsara.v = balsara_i->v + balsara_j.v;
-  balsara_2.v = balsara_i->v + balsara_j_2.v;
+  balsara.v = balsara_i.v + balsara_j.v;
+  balsara_2.v = balsara_i.v + balsara_j_2.v;
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(r2);
@@ -1369,9 +1369,9 @@ runner_iact_nonsym_2_vec_force(
   r_2.v = r2_2.v * ri_2.v;
 
   /* Get the kernel for hi. */
-  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
-  xi.v = r.v * hi_inv->v;
-  xi_2.v = r_2.v * hi_inv->v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv);
+  xi.v = r.v * hi_inv.v;
+  xi_2.v = r_2.v * hi_inv.v;
   kernel_eval_dWdx_force_vec(&xi, &wi_dx);
   kernel_eval_dWdx_force_vec(&xi_2, &wi_dx_2);
   wi_dr.v = hid_inv.v * wi_dx.v;
@@ -1391,10 +1391,10 @@ runner_iact_nonsym_2_vec_force(
   wj_dr_2.v = hjd_inv_2.v * wj_dx_2.v;
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
-           ((viz->v - vjz.v) * dz.v);
-  dvdr_2.v = ((vix->v - vjx_2.v) * dx_2.v) + ((viy->v - vjy_2.v) * dy_2.v) +
-             ((viz->v - vjz_2.v) * dz_2.v);
+  dvdr.v = ((vix.v - vjx.v) * dx.v) + ((viy.v - vjy.v) * dy.v) +
+           ((viz.v - vjz.v) * dz.v);
+  dvdr_2.v = ((vix.v - vjx_2.v) * dx_2.v) + ((viy.v - vjy_2.v) * dy_2.v) +
+             ((viz.v - vjz_2.v) * dz_2.v);
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
@@ -1404,12 +1404,12 @@ runner_iact_nonsym_2_vec_force(
   mu_ij_2.v = fac_mu.v * ri_2.v * omega_ij_2.v; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
-  v_sig_2.v = ci->v + cj_2.v - vec_set1(3.0f) * mu_ij_2.v;
+  v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  v_sig_2.v = ci.v + cj_2.v - vec_set1(3.0f) * mu_ij_2.v;
 
   /* Now construct the full viscosity term */
-  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
-  rho_ij_2.v = vec_set1(0.5f) * (pirho->v + pjrho_2.v);
+  rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
+  rho_ij_2.v = vec_set1(0.5f) * (pirho.v + pjrho_2.v);
   visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
            mu_ij.v * balsara.v / rho_ij.v;
   visc_2.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig_2.v *
@@ -1419,9 +1419,9 @@ runner_iact_nonsym_2_vec_force(
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
   visc_term_2.v = vec_set1(0.5f) * visc_2.v * (wi_dr_2.v + wj_dr_2.v) * ri_2.v;
   sph_term.v =
-      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
+      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
       ri.v;
-  sph_term_2.v = (grad_hi->v * piPOrho2->v * wi_dr_2.v +
+  sph_term_2.v = (grad_hi.v * piPOrho2.v * wi_dr_2.v +
                   grad_hj_2.v * pjPOrho2_2.v * wj_dr_2.v) *
                  ri_2.v;
 
