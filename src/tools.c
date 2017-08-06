@@ -32,6 +32,7 @@
 #include "tools.h"
 
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
 #include "error.h"
 #include "gravity.h"
@@ -39,7 +40,6 @@
 #include "part.h"
 #include "periodic.h"
 #include "runner.h"
-#include "active.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -194,7 +194,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     hig2 = hi * hi * kernel_gamma2;
 
     /* Skip inactive particles. */
-    if(!part_is_active(pi,e)) continue;
+    if (!part_is_active(pi, e)) continue;
 
     for (int j = 0; j < cj->count; ++j) {
 
@@ -225,8 +225,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     hjg2 = hj * hj * kernel_gamma2;
 
     /* Skip inactive particles. */
-    if(!part_is_active(pj,e)) continue;
-    
+    if (!part_is_active(pj, e)) continue;
+
     for (int i = 0; i < ci->count; ++i) {
 
       pi = &ci->parts[i];
@@ -344,14 +344,14 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2 && part_is_active(pi,e)) {
+      if (r2 < hig2 && part_is_active(pi, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && part_is_active(pj,e)) {
+      if (r2 < hjg2 && part_is_active(pj, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];

@@ -310,7 +310,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
       vjzq[i] = pj_vec[i].v[2];
     }
 
-/* Perform vector interaction. */
+    /* Perform vector interaction. */
     vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
         curlvySum, curlvzSum;
@@ -377,7 +377,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
-  
+
   /* Check serial results against the vectorised results. */
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
@@ -454,6 +454,6 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main() {return 1;}
+int main() { return 1; }
 
 #endif
