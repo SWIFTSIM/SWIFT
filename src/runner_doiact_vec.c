@@ -308,22 +308,19 @@ __attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
   }
 
   /* Find the rightmost active particle in cell j that interacts with any particle in cell i. */
-  last_pj = 0;
+  last_pj = -1;
   active_id = last_pj;
-  while(last_pj < cj->count && sort_j[last_pj].d - hj_max - dx_max < di_max) {
+  while(last_pj < cj->count && sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
     last_pj++;
     /* Store the index of the particle if it is active. */
-    if (part_is_active(&parts_j[sort_j[last_pj - 1].i], e)) active_id = last_pj - 1;
+    if (part_is_active(&parts_j[sort_j[last_pj].i], e)) active_id = last_pj;
   }
 
   /* Set the last active pj in range of any particle in cell i. */
-  last_pj = active_id + 1;
+  last_pj = active_id;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
   if(last_pj > 0 ) {
-
-    /* Decrement to make sure that we checking that correct particle. */
-    last_pj--;
 
     /* Start from the last particle in cell i. */
     temp = ci->count - 1;
