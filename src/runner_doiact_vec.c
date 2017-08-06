@@ -727,8 +727,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
-    // for (int pid = count_i - 1; pid >= first_pi_loop && max_index_i[pid] >=
-    // 0; pid--) {
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
 
       /* Get a hold of the ith part in ci. */
@@ -857,8 +855,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(cj, e)) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    // for (int pjd = 0; pjd <= last_pj_loop && max_index_j[pjd] < count_i;
-    // pjd++) {
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
 
       /* Get a hold of the jth part in cj. */
