@@ -6,8 +6,9 @@ rm -f test_nonsym_density_serial.dat test_nonsym_density_vec.dat
 
 echo "Running ./testInteractions"
 
-if ./testInteractions == 0
-then
+./testInteractions
+
+if [ $? != 0 ]; then
   echo "testInteractions is redundant when vectorisation is disabled"
 else
   if [ -e test_nonsym_density_serial.dat ]
