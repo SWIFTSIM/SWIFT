@@ -262,9 +262,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
     struct c2_cache *const int_cache, const int icount, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, vector *v_hi_inv, vector *v_vix,
-    vector *v_viy, vector *v_viz, vector *v_rhoi, vector *v_grad_hi,
-    vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci, int *icount_align,
+    vector *v_sigSum, vector *entropy_dtSum, vector v_hi_inv, vector v_vix,
+    vector v_viy, vector v_viz, vector v_rhoi, vector v_grad_hi,
+    vector v_pOrhoi2, vector v_balsara_i, vector v_ci, int *icount_align,
     int num_vec_proc) {
 
   mask_t int_mask, int_mask2;
@@ -368,9 +368,9 @@ __attribute__((always_inline)) INLINE static void storeForceInteractions(
     vector *v_dz, const struct cache *const cell_cache,
     struct c2_cache *const int_cache, int *icount, vector *a_hydro_xSum,
     vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, vector *v_hi_inv, vector *v_vix,
-    vector *v_viy, vector *v_viz, vector *v_rhoi, vector *v_grad_hi,
-    vector *v_pOrhoi2, vector *v_balsara_i, vector *v_ci) {
+    vector *v_sigSum, vector *entropy_dtSum, vector v_hi_inv, vector v_vix,
+    vector v_viy, vector v_viz, vector v_rhoi, vector v_grad_hi,
+    vector v_pOrhoi2, vector v_balsara_i, vector v_ci) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask.
  */
@@ -953,8 +953,8 @@ for (int pid = 0; pid < count; pid++) {
       storeForceInteractions(
           doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp, cell_cache,
           &int_cache, &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-          &h_dtSum, &v_sigSum, &entropy_dtSum, &v_hi_inv, &v_vix, &v_viy,
-          &v_viz, &v_rhoi, &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci);
+          &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv, v_vix, v_viy,
+          v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci);
     }
 
   } /* Loop over all other particles. */
@@ -962,8 +962,8 @@ for (int pid = 0; pid < count; pid++) {
   /* Perform padded vector remainder interactions if any are present. */
   calcRemForceInteractions(
       &int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum,
-      &v_sigSum, &entropy_dtSum, &v_hi_inv, &v_vix, &v_viy, &v_viz, &v_rhoi,
-      &v_grad_hi, &v_pOrhoi2, &v_balsara_i, &v_ci, &icount_align, 2);
+      &v_sigSum, &entropy_dtSum, v_hi_inv, v_vix, v_viy, v_viz, v_rhoi,
+      v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci, &icount_align, 2);
 
   /* Initialise masks to true in case remainder interactions have been
    * performed. */
@@ -975,12 +975,12 @@ for (int pid = 0; pid < count; pid++) {
   for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
     runner_iact_nonsym_2_vec_force(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
-        &int_cache.dzq[pjd], &v_vix, &v_viy, &v_viz, &v_rhoi, &v_grad_hi,
-        &v_pOrhoi2, &v_balsara_i, &v_ci, &int_cache.vxq[pjd],
+        &int_cache.dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
+        v_pOrhoi2, v_balsara_i, v_ci, &int_cache.vxq[pjd],
         &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd],
         &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd],
         &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd],
-        &int_cache.mq[pjd], &v_hi_inv, &int_cache.h_invq[pjd], &a_hydro_xSum,
+        &int_cache.mq[pjd], v_hi_inv, &int_cache.h_invq[pjd], &a_hydro_xSum,
         &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum,
         int_mask, int_mask2, 0);
   }
