@@ -894,28 +894,10 @@ void engine_repartition(struct engine *e) {
    * tasks as these will be regenerated at the next rebuild. */
 
   /* Sorting indices. */
-  if (e->s->cells_top != NULL) {
-      threadpool_map(&e->threadpool, space_rebuild_recycle_mapper,
-                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     0, e->s);
-      e->s->maxdepth = 0;
-  }
+  if (e->s->cells_top != NULL) space_free_cells(e->s);
 
-  /* Tasks. */
-  struct scheduler *s = &e->sched;
-  if (s->tasks != NULL) {
-      free(s->tasks);
-      s->tasks = NULL;
-  }
-  if (s->tasks_ind != NULL) {
-      free(s->tasks_ind);
-      s->tasks_ind = NULL;
-  }
-  if (s->tid_active != NULL) {
-      free(s->tid_active);
-      s->tid_active = NULL;
-  }
-  s->size = 0;
+  /* Task arrays. */
+  scheduler_free_tasks(&e->sched);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
