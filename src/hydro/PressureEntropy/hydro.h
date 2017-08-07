@@ -212,14 +212,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.pressure_dh -=
       hydro_dimension * p->mass * p->entropy_one_over_gamma * kernel_root;
   p->density.wcount += kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->rho_bar *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.pressure_dh *= h_inv_dim_plus_one;
-  p->density.wcount *= kernel_norm;
-  p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
+  p->density.wcount *= h_inv_dim;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
   const float entropy_minus_one_over_gamma = 1.f / p->entropy_one_over_gamma;
