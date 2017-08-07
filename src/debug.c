@@ -470,27 +470,31 @@ void getProcMemUse(long *size, long *resident, long *share, long *trs,
   /* Open the file. */
   FILE *file = fopen("/proc/self/statm", "r");
   if (file != NULL) {
-    fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", size, resident, share,
-           trs, lrs, drs, dt);
+    int nscan = fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", size, resident,
+                       share, trs, lrs, drs, dt);
 
-    /* Convert pages into bytes. Usually 4096, but could be 512 on some
-     * systems so take care in conversion to KB. */
-    long sz = sysconf(_SC_PAGESIZE);
-    *size *= sz;
-    *resident *= sz;
-    *share *= sz;
-    *trs *= sz;
-    *lrs *= sz;
-    *drs *= sz;
-    *dt *= sz;
+    if (nscan == 7) {
+      /* Convert pages into bytes. Usually 4096, but could be 512 on some
+       * systems so take care in conversion to KB. */
+      long sz = sysconf(_SC_PAGESIZE);
+      *size *= sz;
+      *resident *= sz;
+      *share *= sz;
+      *trs *= sz;
+      *lrs *= sz;
+      *drs *= sz;
+      *dt *= sz;
 
-    *size /= 1024;
-    *resident /= 1024;
-    *share /= 1024;
-    *trs /= 1024;
-    *lrs /= 1024;
-    *drs /= 1024;
-    *dt /= 1024;
+      *size /= 1024;
+      *resident /= 1024;
+      *share /= 1024;
+      *trs /= 1024;
+      *lrs /= 1024;
+      *drs /= 1024;
+      *dt /= 1024;
+    } else {
+      error("Failed to read sufficient fields from /proc/self/statm");
+    }
     fclose(file);
   } else {
     error("Failed to open /proc/self/statm");
