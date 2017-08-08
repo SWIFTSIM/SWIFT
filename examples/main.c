@@ -565,6 +565,11 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
+/* Initialise the table of Ewald corrections for the gravity checks */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (periodic) gravity_exact_force_ewald_init(64, dim[0]);
+#endif
+
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity)
@@ -813,6 +818,9 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   engine_clean(&e);
   free(params);
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (periodic) gravity_exact_force_ewald_free();
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

@@ -21,7 +21,9 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 /* This object's header. */
@@ -38,6 +40,152 @@ struct exact_force_data {
   int counter_global;
   double const_G;
 };
+
+float *fewald_x;
+float *fewald_y;
+float *fewald_z;
+float ewald_fac;
+
+void gravity_exact_force_ewald_init(int N, double boxSize) {
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  const ticks tic = getticks();
+  message("Computing Ewald correction table...");
+
+  /* Level of correction  (Hernquist et al. 1991)*/
+  const float alpha = 2.f;
+
+  /* some useful constants */
+  const float alpha2 = alpha * alpha;
+  const float factor_exp1 = 2.f * alpha / sqrt(M_PI);
+  const float factor_exp2 = -M_PI * M_PI / alpha2;
+  const float factor_sin = 2.f * M_PI;
+  const float boxSize_inv2 = 1.f / (boxSize * boxSize);
+
+  /* Number of elements in each direction */
+  const int EN = N + 1;
+
+  /* Ewald factor to access the table */
+  ewald_fac = (double)(2 * EN) / boxSize;
+
+  /* Zero stuff before allocation */
+  fewald_x = NULL; fewald_y = NULL; fewald_z = NULL;
+  
+  /* Allocate the correction arrays */
+  if ((posix_memalign((void **)&fewald_x, 64, EN * EN * EN * sizeof(float)) !=
+       0) ||
+      (posix_memalign((void **)&fewald_y, 64, EN * EN * EN * sizeof(float)) !=
+       0) ||
+      (posix_memalign((void **)&fewald_z, 64, EN * EN * EN * sizeof(float)) !=
+       0))
+    error("Error allocating array for Ewald correction");
+
+  /* Zero everything */
+  bzero(fewald_x, EN * EN * EN * sizeof(float));
+  bzero(fewald_y, EN * EN * EN * sizeof(float));
+  bzero(fewald_z, EN * EN * EN * sizeof(float));
+
+  /* Compute the values in one of the octants */
+  for (int i = 0; i < EN; ++i) {
+    for (int j = 0; j < EN; ++j) {
+      for (int k = 0; k < EN; ++k) {
+
+	if(i == 0 && j == 0 && k == 0) continue;
+	
+        /* Distance vector */
+        const float r_x = 0.5f * ((float)i) / N;
+        const float r_y = 0.5f * ((float)j) / N;
+        const float r_z = 0.5f * ((float)k) / N;
+
+        /* Norm of distance vector */
+        const float r2 = r_x * r_x + r_y * r_y + r_z * r_z;
+        const float r_inv = 1.f / sqrtf(r2);
+        const float r_inv3 = r_inv * r_inv * r_inv;
+
+        /* Normal gravity potential term */
+        float f_x = r_x * r_inv3;
+        float f_y = r_y * r_inv3;
+        float f_z = r_z * r_inv3;
+
+        for (int n_i = -4; n_i <= 4; ++n_i) {
+          for (int n_j = -4; n_j <= 4; ++n_j) {
+            for (int n_k = -4; n_k <= 4; ++n_k) {
+
+              const float d_x = r_x - n_i;
+              const float d_y = r_y - n_j;
+              const float d_z = r_z - n_k;
+
+              /* Discretised distance */
+              const float r_tilde2 = d_x * d_x + d_y * d_y + d_z * d_z;
+              const float r_tilde_inv = 1.f / sqrtf(r_tilde2);
+              const float r_tilde = r_tilde_inv * r_tilde2;
+              const float r_tilde_inv3 =
+                  r_tilde_inv * r_tilde_inv * r_tilde_inv;
+
+              const float val =
+                  erfcf(alpha * r_tilde) +
+                  factor_exp1 * r_tilde * expf(-alpha2 * r_tilde2);
+
+              /* First correction term */
+              const float f = val * r_tilde_inv3;
+              f_x -= f * d_x;
+              f_y -= f * d_y;
+              f_z -= f * d_z;
+            }
+          }
+        }
+
+        for (int h_i = -4; h_i <= 4; ++h_i) {
+          for (int h_j = -4; h_j <= 4; ++h_j) {
+            for (int h_k = -4; h_k <= 4; ++h_k) {
+	     
+	      const float h2 = h_i * h_i + h_j * h_j + h_k * h_k;
+
+	      const float h2_inv = 1.f / (h2 + FLT_MIN);
+	      const float h_dot_x = h_i * r_x + h_j * r_y + h_k * r_z;
+	      
+	      const float val = 2.f * h2_inv * expf(h2 * factor_exp2) *
+		sinf(factor_sin * h_dot_x);
+	      
+	      /* Second correction term */
+	      f_x -= val * h_i;
+	      f_y -= val * h_j;
+	      f_z -= val * h_k;
+
+            }
+          }
+        }
+
+        /* Apply the box-size correction */
+        f_x *= boxSize_inv2;
+        f_y *= boxSize_inv2;
+        f_z *= boxSize_inv2;
+
+        /* Save back to memory */
+        fewald_x[i * EN * EN + j * EN + k] = f_x;
+        fewald_y[i * EN * EN + j * EN + k] = f_y;
+        fewald_z[i * EN * EN + j * EN + k] = f_z;
+      }
+    }
+  }
+
+  /* Say goodbye */
+  message("Ewald correction table done (took %.3f %s). ",
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("Gravity checking function called without the corresponding flag.");
+#endif
+}
+
+void gravity_exact_force_ewald_free() {
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  free(fewald_x);
+  free(fewald_y);
+  free(fewald_z);
+#else
+  error("Gravity checking function called without the corresponding flag.");
+#endif
+}
 
 /**
  * @brief Checks whether the file containing the exact accelerations for
