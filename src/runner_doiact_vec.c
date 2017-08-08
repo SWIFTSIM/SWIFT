@@ -228,7 +228,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 }
 
 /**
- * @brief Populates the arrays max_di and max_dj with the maximum distances of
+ * @brief Populates the arrays max_index_i and max_index_j with the maximum indices of
  * particles into their neighbouring cells. Also finds the first pi that
  * interacts with any particle in cj and the last pj that interacts with any
  * particle in ci.
@@ -243,15 +243,15 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param hj_max Maximal smoothing length in cell cj
  * @param di_max Maximal position on the axis that can interact in cell ci
  * @param dj_min Minimal position on the axis that can interact in cell ci
- * @param max_di array to hold the maximum distances of pi particles into cell
+ * @param max_index_i array to hold the maximum distances of pi particles into cell
  * cj
- * @param max_dj array to hold the maximum distances of pj particles into cell
+ * @param max_index_j array to hold the maximum distances of pj particles into cell
  * cj
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
  * @param e The #engine.
  */
-__attribute__((always_inline)) INLINE static void populate_max_d_no_cache(
+__attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const struct cell *ci, const struct cell *cj,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
     const float dx_max, const float rshift, const double hi_max,
@@ -695,13 +695,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   int *max_index_i __attribute__((aligned(sizeof(int) * VEC_SIZE)));
   int *max_index_j __attribute__((aligned(sizeof(int) * VEC_SIZE)));
 
-  max_index_i = r->ci_cache.max_d;
-  max_index_j = r->cj_cache.max_d;
+  max_index_i = r->ci_cache.max_index;
+  max_index_j = r->cj_cache.max_index;
 
-  /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
+  /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
+  populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
                           hj_max, di_max, dj_min, max_index_i, max_index_j,
                           &first_pi, &last_pj, e);
 
