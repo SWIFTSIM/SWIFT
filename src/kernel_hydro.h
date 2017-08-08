@@ -761,6 +761,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ * @param u_2 The ratio of the distance to the smoothing length $u = x/h$ for second particle.
+ * @param dw_dx_2 (return) The norm of the gradient of $|\\nabla W(x,h)|$ for second particle.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
     vector *u, vector *dw_dx, vector *u_2, vector *dw_dx_2) {

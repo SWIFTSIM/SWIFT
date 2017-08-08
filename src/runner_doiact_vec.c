@@ -121,10 +121,6 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param v_dx #vector of the x separation between two particles.
  * @param v_dy #vector of the y separation between two particles.
  * @param v_dz #vector of the z separation between two particles.
- * @param v_mj #vector of the mass of particle pj.
- * @param v_vjx #vector of x velocity of pj.
- * @param v_vjy #vector of y velocity of pj.
- * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.

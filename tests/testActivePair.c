@@ -43,6 +43,7 @@
  * @param pert The perturbation to apply to the particles in the cell in units
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.
+ * @param fraction_active The fraction of particles that should be active in the cell.
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
