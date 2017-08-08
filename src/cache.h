@@ -111,10 +111,10 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
    * the vector size
    * and include 2 vector lengths for remainder operations. */
-  unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
+  size_t pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
-  unsigned int sizeBytes = (count + pad) * sizeof(float);
-  unsigned int sizeIntBytes = (count + pad) * sizeof(int);
+  size_t sizeBytes = (count + pad) * sizeof(float);
+  size_t sizeIntBytes = (count + pad) * sizeof(int);
   int error = 0;
 
   /* Free memory if cache has already been allocated. */
