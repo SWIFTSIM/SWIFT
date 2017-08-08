@@ -514,6 +514,6 @@ void printProcMemUse() {
   long dt;
   getProcMemUse(&size, &resident, &share, &trs, &lrs, &drs, &dt);
   printf("## VIRT = %ld , RES = %ld , SHR = %ld , CODE = %ld, DATA = %ld\n",
-          size, resident, share, trs, drs);
+         size, resident, share, trs, drs);
   fflush(stdout);
 }
