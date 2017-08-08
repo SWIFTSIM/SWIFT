@@ -57,6 +57,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "map.h"
 #include "minmax.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -897,6 +898,16 @@ void engine_repartition(struct engine *e) {
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
+
+  /* Partitioning requires copies of the particles, so we need to reduce the
+   * memory in use to the minimum, we can free the sorting indices and the
+   * tasks as these will be regenerated at the next rebuild. */
+
+  /* Sorting indices. */
+  if (e->s->cells_top != NULL) space_free_cells(e->s);
+
+  /* Task arrays. */
+  scheduler_free_tasks(&e->sched);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
