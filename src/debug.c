@@ -278,8 +278,9 @@ static void dumpCells_map(struct cell *c, void *data) {
   struct engine *e = (struct engine *)ldata[1];
   if (e->nodeID == c->nodeID)
     fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d"
-            " %6d\n", c->loc[0], c->loc[1], c->loc[2], c->width[0],
-            c->width[1], c->width[2], c->depth, c->nr_tasks,
+            "%10lld %6d %6d %6d %6d\n", c->loc[0], c->loc[1], c->loc[2],
+            c->width[0], c->width[1], c->width[2], c->count, c->gcount,
+            c->scount, c->depth, c->nr_tasks, c->ti_end_min,
             get_time_bin(c->ti_end_min), (c->super == c),
             cell_is_active(c, e), c->nodeID);
 }
@@ -305,9 +306,10 @@ void dumpCells(const char *prefix, struct space *s) {
   file = fopen(fname, "w");
 
   /* Header. */
-  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s\n",
-          "x", "y", "z", "xw", "yw", "zw", "depth", "tasks",
-          "timebin", "issuper", "active", "rank");
+  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%10s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw", "zw", "count",
+          "gcount", "scount", "depth", "tasks", "ti_end_min", "timebin",
+          "issuper", "active", "rank");
 
   uintptr_t data[2];
   data[0] = (size_t) file;
