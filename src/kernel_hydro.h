@@ -341,20 +341,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef WITH_VECTORIZATION
-
-static const vector kernel_gamma_inv_vec = FILL_VEC((float)kernel_gamma_inv);
-
-static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
-
-static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
-
-static const vector kernel_gamma_inv_dim_vec =
-    FILL_VEC((float)kernel_gamma_inv_dim);
-
-static const vector kernel_gamma_inv_dim_plus_one_vec =
-    FILL_VEC((float)kernel_gamma_inv_dim_plus_one);
-
+#ifdef WITH_OLD_VECTORIZATION
 /**
  * @brief Computes the kernel function and its derivative (Vectorised version).
  *
@@ -398,6 +385,21 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
   dw_dx->v = vec_mul(dw_dx->v, vec_mul(kernel_constant_vec.v,
                                        kernel_gamma_inv_dim_plus_one_vec.v));
 }
+#endif
+
+#ifdef WITH_VECTORIZATION
+
+static const vector kernel_gamma_inv_vec = FILL_VEC((float)kernel_gamma_inv);
+
+static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
+
+static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
+
+static const vector kernel_gamma_inv_dim_vec =
+    FILL_VEC((float)kernel_gamma_inv_dim);
+
+static const vector kernel_gamma_inv_dim_plus_one_vec =
+    FILL_VEC((float)kernel_gamma_inv_dim_plus_one);
 
 /* Define constant vectors for the Wendland C2 and Cubic Spline kernel
  * coefficients. */
