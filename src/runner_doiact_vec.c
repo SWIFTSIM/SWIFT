@@ -73,8 +73,8 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     *icount_align += pad;
 
     /* Initialise masks to true. */
-    vec_init_mask(int_mask);
-    vec_init_mask(int_mask2);
+    vec_init_mask_true(int_mask);
+    vec_init_mask_true(int_mask2);
 
     /* Pad secondary cache so that there are no contributions in the interaction
      * function. */
@@ -205,8 +205,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
                         v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
 
     mask_t int_mask, int_mask2;
-    vec_init_mask(int_mask);
-    vec_init_mask(int_mask2);
+    vec_init_mask_true(int_mask);
+    vec_init_mask_true(int_mask2);
 
     /* Perform interactions. */
     for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
@@ -545,8 +545,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
     mask_t int_mask, int_mask2;
-    vec_init_mask(int_mask);
-    vec_init_mask(int_mask2);
+    vec_init_mask_true(int_mask);
+    vec_init_mask_true(int_mask2);
 
     /* Perform interaction with 2 vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
