@@ -391,10 +391,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     hi_inv_vec = vec_reciprocal(hi_vec);
 
     mask_t mask;
-    vec_init_mask(mask);
+    vec_init_mask_true(mask);
 #if (NUM_VEC_PROC_INT == 2)
     mask_t mask2;
-    vec_init_mask(mask2);
+    vec_init_mask_true(mask2);
 #endif
     const ticks vec_tic = getticks();
 
