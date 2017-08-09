@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
+
 /* This object's header. */
 #include "gravity.h"
 
@@ -41,16 +45,19 @@ struct exact_force_data {
   double const_G;
 };
 
-/* Components of the Ewald correction */
-float *fewald_x;
-float *fewald_y;
-float *fewald_z;
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
 /* Size of the Ewald table */
-const int N = 64;
+#define Newald 64
+
+/* Components of the Ewald correction */
+static float fewald_x[Newald + 1][Newald + 1][Newald + 1];
+static float fewald_y[Newald + 1][Newald + 1][Newald + 1];
+static float fewald_z[Newald + 1][Newald + 1][Newald + 1];
 
 /* Factor used to normalize the access to the Ewald table */
 float ewald_fac;
+#endif
 
 /**
  * @brief Allocates the memory and computes one octant of the
@@ -78,42 +85,25 @@ void gravity_exact_force_ewald_init(double boxSize) {
   const float factor_sin = 2.f * M_PI;
   const float boxSize_inv2 = 1.f / (boxSize * boxSize);
 
-  /* Number of elements in each direction */
-  const int EN = N + 1;
-
   /* Ewald factor to access the table */
-  ewald_fac = (double)(2 * EN) / boxSize;
-
-  /* Zero stuff before allocation */
-  fewald_x = NULL;
-  fewald_y = NULL;
-  fewald_z = NULL;
-
-  /* Allocate the correction arrays */
-  if ((posix_memalign((void **)&fewald_x, 64, EN * EN * EN * sizeof(float)) !=
-       0) ||
-      (posix_memalign((void **)&fewald_y, 64, EN * EN * EN * sizeof(float)) !=
-       0) ||
-      (posix_memalign((void **)&fewald_z, 64, EN * EN * EN * sizeof(float)) !=
-       0))
-    error("Error allocating array for Ewald correction");
+  ewald_fac = (double)(2 * Newald) / boxSize;
 
   /* Zero everything */
-  bzero(fewald_x, EN * EN * EN * sizeof(float));
-  bzero(fewald_y, EN * EN * EN * sizeof(float));
-  bzero(fewald_z, EN * EN * EN * sizeof(float));
+  bzero(fewald_x, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+  bzero(fewald_y, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+  bzero(fewald_z, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
 
   /* Compute the values in one of the octants */
-  for (int i = 0; i < EN; ++i) {
-    for (int j = 0; j < EN; ++j) {
-      for (int k = 0; k < EN; ++k) {
+  for (int i = 0; i <= Newald; ++i) {
+    for (int j = 0; j <= Newald; ++j) {
+      for (int k = 0; k <= Newald; ++k) {
 
         if (i == 0 && j == 0 && k == 0) continue;
 
         /* Distance vector */
-        const float r_x = 0.5f * ((float)i) / N;
-        const float r_y = 0.5f * ((float)j) / N;
-        const float r_z = 0.5f * ((float)k) / N;
+        const float r_x = 0.5f * ((float)i) / Newald;
+        const float r_y = 0.5f * ((float)j) / Newald;
+        const float r_z = 0.5f * ((float)k) / Newald;
 
         /* Norm of distance vector */
         const float r2 = r_x * r_x + r_y * r_y + r_z * r_z;
@@ -173,18 +163,50 @@ void gravity_exact_force_ewald_init(double boxSize) {
           }
         }
 
-        /* Apply the box-size correction */
-        f_x *= boxSize_inv2;
-        f_y *= boxSize_inv2;
-        f_z *= boxSize_inv2;
-
         /* Save back to memory */
-        fewald_x[i * EN * EN + j * EN + k] = f_x;
-        fewald_y[i * EN * EN + j * EN + k] = f_y;
-        fewald_z[i * EN * EN + j * EN + k] = f_z;
+        fewald_x[i][j][k] = f_x;
+        fewald_y[i][j][k] = f_y;
+        fewald_z[i][j][k] = f_z;
       }
     }
   }
+
+  /* Dump the Ewald table to a file */
+#ifdef HAVE_HDF5
+  hid_t h_file = H5Fcreate("Ewald.hdf5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0)
+    error("Error while opening file for Ewald dump.");
+
+  /* Create dataspace */
+  hsize_t dim[3] = {Newald + 1, Newald + 1, Newald + 1};
+  hid_t h_space = H5Screate_simple(3, dim, NULL);
+  hid_t h_data;
+  h_data = H5Dcreate(h_file, "Ewald_x", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_x[0][0][0]));
+  H5Dclose(h_data);
+  h_data = H5Dcreate(h_file, "Ewald_y", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_y[0][0][0]));
+  H5Dclose(h_data);
+  h_data = H5Dcreate(h_file, "Ewald_z", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_z[0][0][0]));
+  H5Dclose(h_data);
+  H5Sclose(h_space);
+  H5Fclose(h_file);
+#endif
+
+  //message("\n\n fewald_x[2 * EN * EN + 3 * EN + 4]=%e\n\n", fewald_x[2 * EN * EN + 3 * EN + 4]);
+
+  /* Apply the box-size correction */
+  for (int i = 0; i <= Newald; ++i) {
+    for (int j = 0; j <= Newald; ++j) {
+      for (int k = 0; k <= Newald; ++k) {
+        fewald_x[i][j][k] *= boxSize_inv2;
+        fewald_y[i][j][k] *= boxSize_inv2;
+        fewald_z[i][j][k] *= boxSize_inv2;
+      }
+    }
+  }
+
 
   /* Say goodbye */
   message("Ewald correction table computed (took %.3f %s). ",
@@ -222,62 +244,62 @@ __attribute__((always_inline)) INLINE static void
 gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
                                    double corr[3]) {
 
-  const int s_x = (rx < 0.) ? 1 : -1;
-  const int s_y = (ry < 0.) ? 1 : -1;
-  const int s_z = (rz < 0.) ? 1 : -1;
+  const double s_x = (rx < 0.) ? 1. : -1.;
+  const double s_y = (ry < 0.) ? 1. : -1.;
+  const double s_z = (rz < 0.) ? 1. : -1.;
   rx = fabs(rx);
   ry = fabs(ry);
   rz = fabs(rz);
 
   int i = (int)(rx * ewald_fac);
-  if (i >= N) i = N - 1;
+  if (i >= Newald) i = Newald - 1;
   const double dx = rx * ewald_fac - i;
   const double tx = 1. - dx;
 
   int j = (int)(ry * ewald_fac);
-  if (j >= N) j = N - 1;
+  if (j >= Newald) j = Newald - 1;
   const double dy = ry * ewald_fac - j;
   const double ty = 1. - dy;
 
   int k = (int)(rz * ewald_fac);
-  if (k >= N) k = N - 1;
+  if (k >= Newald) k = Newald - 1;
   const double dz = rz * ewald_fac - k;
   const double tz = 1. - dz;
 
   /* Interpolation in X */
   corr[0] = 0.;
-  corr[0] += fewald_x[(i + 0) * N * N + (j + 0) * N + (k + 0)] * tx * ty * tz;
-  corr[0] += fewald_x[(i + 0) * N * N + (j + 0) * N + (k + 1)] * tx * ty * dz;
-  corr[0] += fewald_x[(i + 0) * N * N + (j + 1) * N + (k + 0)] * tx * dy * tz;
-  corr[0] += fewald_x[(i + 0) * N * N + (j + 1) * N + (k + 1)] * tx * dy * dz;
-  corr[0] += fewald_x[(i + 1) * N * N + (j + 0) * N + (k + 0)] * dx * ty * tz;
-  corr[0] += fewald_x[(i + 1) * N * N + (j + 0) * N + (k + 1)] * dx * ty * dz;
-  corr[0] += fewald_x[(i + 1) * N * N + (j + 1) * N + (k + 0)] * dx * dy * tz;
-  corr[0] += fewald_x[(i + 1) * N * N + (j + 1) * N + (k + 1)] * dx * dy * dz;
+  corr[0] += fewald_x[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[0] += fewald_x[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[0] += fewald_x[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[0] += fewald_x[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[0] += fewald_x[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[0] += fewald_x[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[0] += fewald_x[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[0] += fewald_x[i + 1][j + 1][k + 1] * dx * dy * dz;
   corr[0] *= s_x;
 
   /* Interpolation in Y */
   corr[1] = 0.;
-  corr[1] += fewald_y[(i + 0) * N * N + (j + 0) * N + (k + 0)] * tx * ty * tz;
-  corr[1] += fewald_y[(i + 0) * N * N + (j + 0) * N + (k + 1)] * tx * ty * dz;
-  corr[1] += fewald_y[(i + 0) * N * N + (j + 1) * N + (k + 0)] * tx * dy * tz;
-  corr[1] += fewald_y[(i + 0) * N * N + (j + 1) * N + (k + 1)] * tx * dy * dz;
-  corr[1] += fewald_y[(i + 1) * N * N + (j + 0) * N + (k + 0)] * dx * ty * tz;
-  corr[1] += fewald_y[(i + 1) * N * N + (j + 0) * N + (k + 1)] * dx * ty * dz;
-  corr[1] += fewald_y[(i + 1) * N * N + (j + 1) * N + (k + 0)] * dx * dy * tz;
-  corr[1] += fewald_y[(i + 1) * N * N + (j + 1) * N + (k + 1)] * dx * dy * dz;
+  corr[1] += fewald_y[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[1] += fewald_y[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[1] += fewald_y[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[1] += fewald_y[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[1] += fewald_y[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[1] += fewald_y[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[1] += fewald_y[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[1] += fewald_y[i + 1][j + 1][k + 1] * dx * dy * dz;
   corr[1] *= s_y;
 
   /* Interpolation in Z */
   corr[2] = 0.;
-  corr[2] += fewald_z[(i + 0) * N * N + (j + 0) * N + (k + 0)] * tx * ty * tz;
-  corr[2] += fewald_z[(i + 0) * N * N + (j + 0) * N + (k + 1)] * tx * ty * dz;
-  corr[2] += fewald_z[(i + 0) * N * N + (j + 1) * N + (k + 0)] * tx * dy * tz;
-  corr[2] += fewald_z[(i + 0) * N * N + (j + 1) * N + (k + 1)] * tx * dy * dz;
-  corr[2] += fewald_z[(i + 1) * N * N + (j + 0) * N + (k + 0)] * dx * ty * tz;
-  corr[2] += fewald_z[(i + 1) * N * N + (j + 0) * N + (k + 1)] * dx * ty * dz;
-  corr[2] += fewald_z[(i + 1) * N * N + (j + 1) * N + (k + 0)] * dx * dy * tz;
-  corr[2] += fewald_z[(i + 1) * N * N + (j + 1) * N + (k + 1)] * dx * dy * dz;
+  corr[2] += fewald_z[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[2] += fewald_z[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[2] += fewald_z[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[2] += fewald_z[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[2] += fewald_z[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[2] += fewald_z[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[2] += fewald_z[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[2] += fewald_z[i + 1][j + 1][k + 1] * dx * dy * dz;
   corr[2] *= s_z;
 }
 
@@ -419,9 +441,9 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
           double corr[3];
 	  gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
 
-          a_grav[0] += mj * corr[0] * 0.;
-          a_grav[1] += mj * corr[1] * 0.;
-          a_grav[2] += mj * corr[2] * 0.;
+          a_grav[0] += mj * corr[0];
+          a_grav[1] += mj * corr[1];
+          a_grav[2] += mj * corr[2];
         }
       }
 
