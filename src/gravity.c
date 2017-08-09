@@ -436,7 +436,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         a_grav[2] += f * dz;
 
         /* Apply Ewald correction for periodic BC */
-        if (periodic) {
+        if (periodic && r > 1e-5 * hi) {
 
           double corr[3];
 	  gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
