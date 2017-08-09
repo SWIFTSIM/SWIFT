@@ -451,6 +451,9 @@ int main(int argc, char *argv[]) {
   srand(seed);
 
   space.periodic = 0;
+  space.dim[0] = 3.;
+  space.dim[1] = 3.;
+  space.dim[2] = 3.;
 
   engine.s = &space;
   engine.time = 0.1f;
