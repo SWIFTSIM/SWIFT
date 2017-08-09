@@ -195,7 +195,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
 }
 
 /**
- * @param Free the Ewald summation tables.
+ * @brief Free the Ewald summation tables.
  */
 void gravity_exact_force_ewald_free() {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -208,7 +208,7 @@ void gravity_exact_force_ewald_free() {
 }
 
 /**
- * @param Compute the Ewald correction for a given distance vector r.
+ * @brief Compute the Ewald correction for a given distance vector r.
  *
  * We interpolate the Ewald correction tables using a tri-linear interpolation
  * similar to a CIC.
@@ -417,9 +417,11 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         if (periodic) {
 
           double corr[3];
-          a_grav[0] += mj * corr[0];
-          a_grav[1] += mj * corr[1];
-          a_grav[2] += mj * corr[2];
+	  gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
+
+          a_grav[0] += mj * corr[0] * 0.;
+          a_grav[1] += mj * corr[1] * 0.;
+          a_grav[2] += mj * corr[2] * 0.;
         }
       }
 
