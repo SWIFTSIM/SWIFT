@@ -232,6 +232,7 @@ void gravity_exact_force_ewald_free() {
 #endif
 }
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
 /**
  * @brief Compute the Ewald correction for a given distance vector r.
  *
@@ -305,6 +306,7 @@ gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
   corr[2] += fewald_z[i + 1][j + 1][k + 1] * dx * dy * dz;
   corr[2] *= s_z;
 }
+#endif
 
 /**
  * @brief Checks whether the file containing the exact accelerations for
