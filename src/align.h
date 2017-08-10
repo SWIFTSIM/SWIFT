@@ -40,7 +40,8 @@
 #define SWIFT_CACHE_ALIGN __attribute__((aligned(SWIFT_CACHE_ALIGNMENT)))
 
 /**
- * @brief Macro to tell the compiler that a given array has the specified alignment.
+ * @brief Macro to tell the compiler that a given array has the specified
+ * alignment.
  *
  * Note that this turns into a no-op but gives information to the compiler.
  *
@@ -48,15 +49,16 @@
  * @param alignment The alignment in bytes of the array.
  */
 #if defined(__ICC)
-#define swift_align_information(array, alignment)        \
+#define swift_align_information(array, alignment) \
   __assume_aligned(array, alignment);
 #elif defined(__GNUC__)
-#define swift_align_information(array, alignment)        \
+#define swift_align_information(array, alignment) \
   array = __builtin_assume_aligned(array, alignment);
 #endif
 
 /**
- * @brief Macro to tell the compiler that a given number is 0 modulo a given size.
+ * @brief Macro to tell the compiler that a given number is 0 modulo a given
+ * size.
  *
  * Note that this turns into a no-op but gives information to the compiler.
  * GCC does not have the equivalent built-in so defaults to nothing.
@@ -65,10 +67,9 @@
  * @param size The modulo of interest.
  */
 #if defined(__ICC)
-#define swift_assume_size(var, size)   \
-  __assume(var % size == 0);
+#define swift_assume_size(var, size) __assume(var % size == 0);
 #else
-#define swift_assume_size(var, size)   ;
+#define swift_assume_size(var, size) ;
 #endif
 
 #endif /* SWIFT_ALIGN_H */

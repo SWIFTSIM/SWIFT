@@ -249,5 +249,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
   gpi->a_grav[2] -= fdx[2];
 }
 
-
 #endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */
