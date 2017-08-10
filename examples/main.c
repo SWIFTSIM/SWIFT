@@ -190,7 +190,11 @@ int main(int argc, char *argv[]) {
   while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
+#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
         with_aff = 1;
+#else
+        error("Need NUMA support for thread affinity");
+#endif
         break;
       case 'c':
         with_cosmology = 1;
