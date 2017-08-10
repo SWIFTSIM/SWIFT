@@ -164,6 +164,224 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
 
   /* Some constants */
   const struct engine *const e = r->e;
+  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+
+  /* Cell properties */
+  const int gcount_i = ci->gcount;
+  const int gcount_j = cj->gcount;
+  struct gpart *restrict gparts_i = ci->gparts;
+  struct gpart *restrict gparts_j = cj->gparts;
+  const int ci_active = cell_is_active(ci, e);
+  const int cj_active = cell_is_active(cj, e);
+  
+  /* Anything to do here ?*/
+  if (!ci_active && !cj_active) return;
+
+  /* Check that we fit in cache */
+  if(gcount_i > ci_cache->count || gcount_j > cj_cache->count)
+    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", 
+	  gcount_i, gcount_j);
+
+  /* Computed the padded counts */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
+
+  /* Fill the caches */
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, ci_active, shift);
+  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j, gcount_padded_j, cj_active);
+
+  /* Ok... Here we go ! */
+
+  if(ci_active) {
+
+    /* Loop over all particles in ci... */
+    for (int pid = 0; pid < gcount_i; pid++) {
+
+      const float x_i = ci_cache->x[pid];
+      const float y_i = ci_cache->y[pid];
+      const float z_i = ci_cache->z[pid];
+      
+      /* Some powers of the softening length */
+      const float h_i = ci_cache->epsilon[pid];
+      const float h2_i = h_i * h_i;
+      const float h_inv_i = 1.f / h_i;
+      const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
+
+      /* Local accumulators for the acceleration */
+      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+
+      /* Make the compiler understand we are in happy vectorization land */
+      swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+      swift_assume_size(gcount_padded_j, VEC_SIZE);
+
+      /* Loop over every particle in the other cell. */
+      for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
+
+	/* Get info about j */
+	const float x_j = cj_cache->x[pjd];
+	const float y_j = cj_cache->y[pjd];
+	const float z_j = cj_cache->z[pjd];
+	const float mass_j = cj_cache->m[pjd];
+
+        /* Compute the pairwise (square) distance. */
+	const float dx = x_i - x_j;
+	const float dy = y_i - y_j;
+	const float dz = z_i - z_j;
+	const float r2 = dx*dx + dy*dy + dz*dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+	if (r2 == 0.f) error("Interacting particles with 0 distance");
+
+        /* Check that particles have been drifted to the current time */
+        if (gparts_i[pid].ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+        if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+#endif
+
+	/* Get the inverse distance */
+	const float r_inv = 1.f / sqrtf(r2);
+	
+	float f_ij, W_ij;
+
+	if (r2 >= h2_i) {
+	  
+	  /* Get Newtonian gravity */
+	  f_ij = mass_j * r_inv * r_inv * r_inv;
+	  
+	} else {
+	  
+	  const float r = r2 * r_inv;	  
+	  const float ui = r * h_inv_i;
+	    
+	  kernel_grav_eval(ui, &W_ij);
+	    
+	  /* Get softened gravity */
+	  f_ij = mass_j * h_inv3_i * W_ij;
+	}
+
+	/* Store it back */
+	a_x -= f_ij * dx;
+	a_y -= f_ij * dy;
+	a_z -= f_ij * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gparts_i[pid].num_interacted++;
+#endif
+
+      }
+
+      /* Store everything back in cache */
+      ci_cache->a_x[pid] += a_x;
+      ci_cache->a_y[pid] += a_y;
+      ci_cache->a_z[pid] += a_z;
+    }
+  }
+
+  /* Now do the opposite loop */
+  if(cj_active) {
+
+    /* Loop over all particles in ci... */
+    for (int pjd = 0; pjd < gcount_j; pjd++) {
+
+      const float x_j = cj_cache->x[pjd];
+      const float y_j = cj_cache->y[pjd];
+      const float z_j = cj_cache->z[pjd];
+      
+      /* Some powers of the softening length */
+      const float h_j = cj_cache->epsilon[pjd];
+      const float h2_j = h_j * h_j;
+      const float h_inv_j = 1.f / h_j;
+      const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
+
+      /* Local accumulators for the acceleration */
+      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+
+      /* Make the compiler understand we are in happy vectorization land */
+      swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+      swift_assume_size(gcount_padded_i, VEC_SIZE);
+
+      /* Loop over every particle in the other cell. */
+      for (int pid = 0; pid < gcount_padded_i; pid++) {
+
+	/* Get info about j */
+	const float x_i = ci_cache->x[pid];
+	const float y_i = ci_cache->y[pid];
+	const float z_i = ci_cache->z[pid];
+	const float mass_i = ci_cache->m[pid];
+
+        /* Compute the pairwise (square) distance. */
+	const float dx = x_j - x_i;
+	const float dy = y_j - y_i;
+	const float dz = z_j - z_i;
+	const float r2 = dx*dx + dy*dy + dz*dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+	if (r2 == 0.f) error("Interacting particles with 0 distance");
+
+        /* Check that particles have been drifted to the current time */
+        if (gparts_j[pjd].ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+        if (pid < gcount_i && gparts_i[pid].ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+#endif
+
+	/* Get the inverse distance */
+	const float r_inv = 1.f / sqrtf(r2);
+	
+	float f_ji, W_ji;
+
+	if (r2 >= h2_j) {
+	  
+	  /* Get Newtonian gravity */
+	  f_ji = mass_i * r_inv * r_inv * r_inv;
+	  
+	} else {
+	  
+	  const float r = r2 * r_inv;	  
+	  const float uj = r * h_inv_j;
+	    
+	  kernel_grav_eval(uj, &W_ji);
+	    
+	  /* Get softened gravity */
+	  f_ji = mass_i * h_inv3_j * W_ji;
+	}
+
+	/* Store it back */
+	a_x -= f_ji * dx;
+	a_y -= f_ji * dy;
+	a_z -= f_ji * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gparts_j[pjd].num_interacted++;
+#endif
+
+      }
+
+      /* Store everything back in cache */
+      cj_cache->a_x[pjd] += a_x;
+      cj_cache->a_y[pjd] += a_y;
+      cj_cache->a_z[pjd] += a_z;
+    }
+  }
+
+  /* Write back to the particles */
+  if(ci_active)
+    gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
+  if(cj_active)
+    gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
+  
+#ifdef MATTHIEU_OLD_STUFF
+
+  /* Some constants */
+  const struct engine *const e = r->e;
 
   /* Cell properties */
   const int gcount_i = ci->gcount;
@@ -258,6 +476,7 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       }
     }
   }
+#endif
 }
 
 /**
@@ -273,6 +492,241 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
 void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
                                      struct cell *cj, double shift[3]) {
 
+
+  /* Some constants */
+  const struct engine *const e = r->e;
+  const struct space *s = e->s;
+  const double cell_width = s->width[0];
+  const double a_smooth = e->gravity_properties->a_smooth;
+  const double rlr = cell_width * a_smooth;
+  const float rlr_inv = 1. / rlr;
+
+  /* Caches to play with */
+  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+
+  /* Cell properties */
+  const int gcount_i = ci->gcount;
+  const int gcount_j = cj->gcount;
+  struct gpart *restrict gparts_i = ci->gparts;
+  struct gpart *restrict gparts_j = cj->gparts;
+  const int ci_active = cell_is_active(ci, e);
+  const int cj_active = cell_is_active(cj, e);
+  
+  /* Anything to do here ?*/
+  if (!ci_active && !cj_active) return;
+
+  /* Check that we fit in cache */
+  if(gcount_i > ci_cache->count || gcount_j > cj_cache->count)
+    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", 
+	  gcount_i, gcount_j);
+
+  /* Computed the padded counts */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
+
+  /* Fill the caches */
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, ci_active, shift);
+  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j, gcount_padded_j, cj_active);
+
+  /* Ok... Here we go ! */
+
+  if(ci_active) {
+
+    /* Loop over all particles in ci... */
+    for (int pid = 0; pid < gcount_i; pid++) {
+
+      const float x_i = ci_cache->x[pid];
+      const float y_i = ci_cache->y[pid];
+      const float z_i = ci_cache->z[pid];
+      
+      /* Some powers of the softening length */
+      const float h_i = ci_cache->epsilon[pid];
+      const float h2_i = h_i * h_i;
+      const float h_inv_i = 1.f / h_i;
+      const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
+
+      /* Local accumulators for the acceleration */
+      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+
+      /* Make the compiler understand we are in happy vectorization land */
+      swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+      swift_assume_size(gcount_padded_j, VEC_SIZE);
+
+      /* Loop over every particle in the other cell. */
+      for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
+
+	/* Get info about j */
+	const float x_j = cj_cache->x[pjd];
+	const float y_j = cj_cache->y[pjd];
+	const float z_j = cj_cache->z[pjd];
+	const float mass_j = cj_cache->m[pjd];
+
+        /* Compute the pairwise (square) distance. */
+	const float dx = x_i - x_j;
+	const float dy = y_i - y_j;
+	const float dz = z_i - z_j;
+	const float r2 = dx*dx + dy*dy + dz*dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+	if (r2 == 0.f) error("Interacting particles with 0 distance");
+
+        /* Check that particles have been drifted to the current time */
+        if (gparts_i[pid].ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+        if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+#endif
+
+	/* Get the inverse distance */
+	const float r_inv = 1.f / sqrtf(r2);	
+	const float r = r2 * r_inv;	  
+
+	float f_ij, W_ij, corr_lr;
+
+	if (r2 >= h2_i) {
+	  
+	  /* Get Newtonian gravity */
+	  f_ij = mass_j * r_inv * r_inv * r_inv;
+	  
+	} else {
+	  
+	  const float ui = r * h_inv_i;
+	    
+	  kernel_grav_eval(ui, &W_ij);
+	    
+	  /* Get softened gravity */
+	  f_ij = mass_j * h_inv3_i * W_ij;
+	}
+
+	/* Get long-range correction */
+	const float u_lr = r * rlr_inv;
+	kernel_long_grav_eval(u_lr, &corr_lr);
+	f_ij *= corr_lr;
+
+	/* Store it back */
+	a_x -= f_ij * dx;
+	a_y -= f_ij * dy;
+	a_z -= f_ij * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gparts_i[pid].num_interacted++;
+#endif
+
+      }
+
+      /* Store everything back in cache */
+      ci_cache->a_x[pid] += a_x;
+      ci_cache->a_y[pid] += a_y;
+      ci_cache->a_z[pid] += a_z;
+    }
+  }
+
+  /* Now do the opposite loop */
+  if(cj_active) {
+
+    /* Loop over all particles in ci... */
+    for (int pjd = 0; pjd < gcount_j; pjd++) {
+
+      const float x_j = cj_cache->x[pjd];
+      const float y_j = cj_cache->y[pjd];
+      const float z_j = cj_cache->z[pjd];
+      
+      /* Some powers of the softening length */
+      const float h_j = cj_cache->epsilon[pjd];
+      const float h2_j = h_j * h_j;
+      const float h_inv_j = 1.f / h_j;
+      const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
+
+      /* Local accumulators for the acceleration */
+      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+
+      /* Make the compiler understand we are in happy vectorization land */
+      swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+      swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+      swift_assume_size(gcount_padded_i, VEC_SIZE);
+
+      /* Loop over every particle in the other cell. */
+      for (int pid = 0; pid < gcount_padded_i; pid++) {
+
+	/* Get info about j */
+	const float x_i = ci_cache->x[pid];
+	const float y_i = ci_cache->y[pid];
+	const float z_i = ci_cache->z[pid];
+	const float mass_i = ci_cache->m[pid];
+
+        /* Compute the pairwise (square) distance. */
+	const float dx = x_j - x_i;
+	const float dy = y_j - y_i;
+	const float dz = z_j - z_i;
+	const float r2 = dx*dx + dy*dy + dz*dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+	if (r2 == 0.f) error("Interacting particles with 0 distance");
+
+        /* Check that particles have been drifted to the current time */
+        if (gparts_j[pjd].ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+        if (pid < gcount_i && gparts_i[pid].ti_drift != e->ti_current)
+          error("gpi not drifted to current time");
+#endif
+
+	/* Get the inverse distance */
+	const float r_inv = 1.f / sqrtf(r2);
+	const float r = r2 * r_inv;	  
+	
+	float f_ji, W_ji, corr_lr;
+
+	if (r2 >= h2_j) {
+	  
+	  /* Get Newtonian gravity */
+	  f_ji = mass_i * r_inv * r_inv * r_inv;
+	  
+	} else {
+	  
+	  const float uj = r * h_inv_j;
+	    
+	  kernel_grav_eval(uj, &W_ji);
+	    
+	  /* Get softened gravity */
+	  f_ji = mass_i * h_inv3_j * W_ji;
+	}
+
+	/* Get long-range correction */
+	const float u_lr = r * rlr_inv;
+	kernel_long_grav_eval(u_lr, &corr_lr);
+	f_ji *= corr_lr;
+
+	/* Store it back */
+	a_x -= f_ji * dx;
+	a_y -= f_ji * dy;
+	a_z -= f_ji * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        gparts_j[pjd].num_interacted++;
+#endif
+
+      }
+
+      /* Store everything back in cache */
+      cj_cache->a_x[pjd] += a_x;
+      cj_cache->a_y[pjd] += a_y;
+      cj_cache->a_z[pjd] += a_z;
+    }
+  }
+
+  /* Write back to the particles */
+  if(ci_active)
+    gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
+  if(cj_active)
+    gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
+
+#ifdef MATTHIEU_OLD_STUFF
   /* Some constants */
   const struct engine *const e = r->e;
   const struct space *s = e->s;
@@ -374,6 +828,8 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
       }
     }
   }
+
+#endif
 }
 
 /**
