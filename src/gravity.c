@@ -219,19 +219,6 @@ void gravity_exact_force_ewald_init(double boxSize) {
 #endif
 }
 
-/**
- * @brief Free the Ewald summation tables.
- */
-void gravity_exact_force_ewald_free() {
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  free(fewald_x);
-  free(fewald_y);
-  free(fewald_z);
-#else
-  error("Gravity checking function called without the corresponding flag.");
-#endif
-}
-
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 /**
  * @brief Compute the Ewald correction for a given distance vector r.

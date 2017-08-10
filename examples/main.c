@@ -818,9 +818,6 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   engine_clean(&e);
   free(params);
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_free();
-#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
