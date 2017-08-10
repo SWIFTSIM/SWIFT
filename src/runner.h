@@ -27,8 +27,8 @@
 #include "../config.h"
 
 /* Includes. */
-#include "gravity_cache.h"
 #include "cache.h"
+#include "gravity_cache.h"
 
 struct cell;
 struct engine;
