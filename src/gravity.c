@@ -171,30 +171,34 @@ void gravity_exact_force_ewald_init(double boxSize) {
     }
   }
 
-  /* Dump the Ewald table to a file */
+/* Dump the Ewald table to a file */
 #ifdef HAVE_HDF5
-  hid_t h_file = H5Fcreate("Ewald.hdf5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_file < 0)
-    error("Error while opening file for Ewald dump.");
+  hid_t h_file =
+      H5Fcreate("Ewald.hdf5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file for Ewald dump.");
 
   /* Create dataspace */
   hsize_t dim[3] = {Newald + 1, Newald + 1, Newald + 1};
   hid_t h_space = H5Screate_simple(3, dim, NULL);
   hid_t h_data;
-  h_data = H5Dcreate(h_file, "Ewald_x", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_x[0][0][0]));
+  h_data = H5Dcreate(h_file, "Ewald_x", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_x[0][0][0]));
   H5Dclose(h_data);
-  h_data = H5Dcreate(h_file, "Ewald_y", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_y[0][0][0]));
+  h_data = H5Dcreate(h_file, "Ewald_y", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_y[0][0][0]));
   H5Dclose(h_data);
-  h_data = H5Dcreate(h_file, "Ewald_z", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT, &(fewald_z[0][0][0]));
+  h_data = H5Dcreate(h_file, "Ewald_z", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_z[0][0][0]));
   H5Dclose(h_data);
   H5Sclose(h_space);
   H5Fclose(h_file);
 #endif
-
-  //message("\n\n fewald_x[2 * EN * EN + 3 * EN + 4]=%e\n\n", fewald_x[2 * EN * EN + 3 * EN + 4]);
 
   /* Apply the box-size correction */
   for (int i = 0; i <= Newald; ++i) {
@@ -206,7 +210,6 @@ void gravity_exact_force_ewald_init(double boxSize) {
       }
     }
   }
-
 
   /* Say goodbye */
   message("Ewald correction table computed (took %.3f %s). ",
@@ -439,7 +442,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         if (periodic && r > 1e-5 * hi) {
 
           double corr[3];
-	  gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
+          gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
 
           a_grav[0] += mj * corr[0];
           a_grav[1] += mj * corr[1];
