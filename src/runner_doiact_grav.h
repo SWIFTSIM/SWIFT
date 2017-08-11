@@ -174,6 +174,11 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   struct gpart *restrict gparts_j = cj->gparts;
   const int ci_active = cell_is_active(ci, e);
   const int cj_active = cell_is_active(cj, e);
+  const double loc_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+  const double loc_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
+  const double loc_mean[3] = {0.5 * (loc_i[0] + loc_j[0]),
+                              0.5 * (loc_i[1] + loc_j[1]),
+                              0.5 * (loc_i[2] + loc_j[2])};
 
   /* Anything to do here ?*/
   if (!ci_active && !cj_active) return;
@@ -188,9 +193,10 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
   /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, shift);
-  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j,
-                                  gcount_padded_j);
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
+                         loc_mean);
+  gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
+                         loc_mean);
 
   /* Ok... Here we go ! */
 
@@ -516,6 +522,11 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   struct gpart *restrict gparts_j = cj->gparts;
   const int ci_active = cell_is_active(ci, e);
   const int cj_active = cell_is_active(cj, e);
+  const double loc_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+  const double loc_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
+  const double loc_mean[3] = {0.5 * (loc_i[0] + loc_j[0]),
+                              0.5 * (loc_i[1] + loc_j[1]),
+                              0.5 * (loc_i[2] + loc_j[2])};
 
   /* Anything to do here ?*/
   if (!ci_active && !cj_active) return;
@@ -530,9 +541,10 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
   /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, shift);
-  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j,
-                                  gcount_padded_j);
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
+                         loc_mean);
+  gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
+                         loc_mean);
 
   /* Ok... Here we go ! */
 
@@ -915,6 +927,9 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
   const int c_active = cell_is_active(c, e);
+  const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
+                         c->loc[1] + 0.5 * c->width[1],
+                         c->loc[2] + 0.5 * c->width[2]};
 
   /* Anything to do here ?*/
   if (!c_active) return;
@@ -926,7 +941,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate_no_shift(ci_cache, gparts, gcount, gcount_padded);
+  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
 
   /* Ok... Here we go ! */
 
@@ -1022,6 +1037,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     ci_cache->a_z[pid] += a_z;
   }
 
+  /* Write back to the particles */
   gravity_cache_write_back(ci_cache, gparts, gcount);
 
 #ifdef MATTHIEU_OLD_STUFF
@@ -1125,6 +1141,9 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
   const int c_active = cell_is_active(c, e);
+  const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
+                         c->loc[1] + 0.5 * c->width[1],
+                         c->loc[2] + 0.5 * c->width[2]};
 
   /* Anything to do here ?*/
   if (!c_active) return;
@@ -1136,7 +1155,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate_no_shift(ci_cache, gparts, gcount, gcount_padded);
+  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
 
   /* Ok... Here we go ! */
 
@@ -1237,6 +1256,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     ci_cache->a_z[pid] += a_z;
   }
 
+  /* Write back to the particles */
   gravity_cache_write_back(ci_cache, gparts, gcount);
 
 #ifdef MATTHIEU_OLD_STUFF
