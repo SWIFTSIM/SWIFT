@@ -295,5 +295,6 @@ int engine_is_done(struct engine *e);
 void engine_pin();
 void engine_unpin();
 void engine_clean(struct engine *e);
+int engine_estimate_nr_tasks(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

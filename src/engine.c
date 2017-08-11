@@ -2473,7 +2473,7 @@ void engine_maketasks(struct engine *e) {
   const ticks tic = getticks();
 
   /* Re-set the scheduler. */
-  scheduler_reset(sched, s->tot_cells * e->tasks_per_cell);
+  scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) {
@@ -2869,7 +2869,7 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[(int)tasks[k].type] += 1;
   }
-  message("Total = %d", nr_tasks);
+  message("Total = %d  (per cell = %d)", nr_tasks, nr_tasks / e->s->tot_cells);
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -2888,6 +2888,74 @@ void engine_print_task_counts(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief if necessary, estimate the number of tasks required given
+ *        the current tasks in use and the numbers of cells.
+ *
+ * If e->tasks_per_cell is set greater than 0 then that value is used
+ * as the estimate of the average number of tasks per cell,
+ * otherwise we attempt an estimate.
+ *
+ * @param e the #engine
+ *
+ * @return the estimated total number of tasks
+ */
+int engine_estimate_nr_tasks(struct engine *e) {
+
+  int tasks_per_cell = e->tasks_per_cell;
+  if (tasks_per_cell <= 0) {
+
+    /* Our guess differs depending on the types of tasks we are using, but we
+     * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
+     * Where <n1> is the expected maximum tasks per top-level/super cell, and
+     * <n2> the expected maximum tasks for all other cells. These should give
+     * a safe upper limit.
+     */
+    int n1 = 0;
+    int n2 = 0;
+    if (e->policy & engine_policy_hydro) {
+      n1 += 36;
+      n2 += 2;
+#ifdef EXTRA_HYDRO_LOOP
+      n1 += 1; /* Apparently a lot more to see... */
+#endif
+#ifdef WITH_MPI
+      n1 += 6; /* XXX check this */
+#endif
+    }
+    if (e->policy & engine_policy_self_gravity) {
+      n1 += 24;
+      n2 += 1;
+    }
+    if (e->policy & engine_policy_external_gravity) {
+      n1 += 1;
+#ifdef WITH_MPI
+      n2 += 2; /* XXX check this */
+#endif
+    }
+    if (e->policy & engine_policy_cosmology) {
+      n1 += 1;
+    }
+    if (e->policy & engine_policy_cooling) {
+      n1 += 1;
+    }
+    if (e->policy & engine_policy_sourceterms) {
+      n1 += 1;
+    }
+    if (e->policy & engine_policy_stars) {
+      n1 += 1;
+    }
+    message("n1 = %d, n2 = %d (%d/%d)", n1, n2, e->s->tot_cells, e->s->nr_cells);
+    double ntasks = n1 * e->s->nr_cells + n2 * (e->s->tot_cells - e->s->nr_cells);
+    tasks_per_cell = ceil(ntasks / e->s->tot_cells);
+    if (e->verbose)
+      message("tasks per cell estimated as: %d, maximum tasks: %d",
+              tasks_per_cell, e->s->tot_cells * tasks_per_cell);
+
+  }
+  return e->s->tot_cells * tasks_per_cell;
 }
 
 /**
@@ -3542,6 +3610,12 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+  /* Dump cells of our space. */
+  char name[15];
+  sprintf(name, "%s_%d", "cells", e->nodeID);
+  dumpCells(name, e->s);
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -4470,14 +4544,14 @@ void engine_init(struct engine *e, struct space *s,
       pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
     error("Failed to initialize barrier.");
 
-  /* Expected average for tasks per cell. */
-  e->tasks_per_cell = 
-      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 27);
+  /* Expected average for tasks per cell. If set to zero we use a heuristic
+   * guess that hopefully is large enough, but not too large. */
+  e->tasks_per_cell =
+      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
 
   /* Init the scheduler. */
-  const int nr_tasks = s->tot_cells * e->tasks_per_cell;
-  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
-                 e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
+                 scheduler_flag_steal, e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
