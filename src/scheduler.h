@@ -52,7 +52,7 @@
 
 /* Flags . */
 #define scheduler_flag_none 0
-#define scheduler_flag_steal 1
+#define scheduler_flag_steal (1 << 1)
 
 /* Data of a scheduler. */
 struct scheduler {
