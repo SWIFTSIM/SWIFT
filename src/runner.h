@@ -50,12 +50,13 @@ struct runner {
   /*! The engine owing this runner. */
   struct engine *e;
 
-#ifdef WITH_VECTORIZATION
   /*! The particle gravity_cache of cell ci. */
   struct gravity_cache ci_gravity_cache;
 
   /*! The particle gravity_cache of cell cj. */
   struct gravity_cache cj_gravity_cache;
+
+#ifdef WITH_VECTORIZATION
 
   /*! The particle cache of cell ci. */
   struct cache ci_cache;

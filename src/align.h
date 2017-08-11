@@ -54,6 +54,8 @@
 #elif defined(__GNUC__)
 #define swift_align_information(array, alignment) \
   array = __builtin_assume_aligned(array, alignment);
+#else
+#define swift_align_information(array, alignment) ;
 #endif
 
 /**

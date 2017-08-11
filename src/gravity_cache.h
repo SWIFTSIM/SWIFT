@@ -28,8 +28,11 @@
 #include "gravity.h"
 #include "vector.h"
 
-#ifdef WITH_VECTORIZATION
-
+/**
+ * @brief A SoA object for the #gpart of a cell.
+ *
+ * This is used to help vectorize the leaf-leaf gravity interactions.
+ */
 struct gravity_cache {
 
   /*! #gpart x position. */
@@ -62,12 +65,12 @@ struct gravity_cache {
 
 /**
  * @brief Frees the memory allocated in a #gravity_cache
- * 
- * @param c The #grvity_cache to free.
+ *
+ * @param c The #gravity_cache to free.
  */
 static INLINE void gravity_cache_clean(struct gravity_cache *c) {
 
-  if(c->count > 0){
+  if (c->count > 0) {
     free(c->x);
     free(c->y);
     free(c->z);
@@ -81,19 +84,21 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
 }
 
 /**
- * @brief Allocates memory for the #gpart caches used in the leaf-leaf interactions.
+ * @brief Allocates memory for the #gpart caches used in the leaf-leaf
+ * interactions.
  *
  * The cache is padded for the vector size and aligned properly
  *
  * @param c The #gravity_cache to allocate.
- * @param count The number of #gpart to allocated for (space_splitsize is a good choice).
+ * @param count The number of #gpart to allocated for (space_splitsize is a good
+ * choice).
  */
 static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
 
   /* Size of the gravity cache */
   const int padded_count = count - (count % VEC_SIZE) + VEC_SIZE;
   const size_t sizeBytes = padded_count * sizeof(float);
-  
+
   /* Delete old stuff if any */
   gravity_cache_clean(c);
 
@@ -101,7 +106,8 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
   error += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->y, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->z, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->epsilon, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->epsilon, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->m, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->a_x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->a_y, SWIFT_CACHE_ALIGNMENT, sizeBytes);
@@ -113,8 +119,20 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
   c->count = padded_count;
 }
 
-
-__attribute__((always_inline)) INLINE void gravity_cache_populate(struct gravity_cache *c, const struct gpart *restrict gparts, int gcount, int gcount_padded, int zero_output, double shift[3]) {
+/**
+ * @brief Fills a #gravity_cache structure with some #gpart and shift them.
+ *
+ * @param c The #gravity_cache to fill.
+ * @param gparts The #gpart array to read from.
+ * @param gcount The number of particles to read.
+ * @param gcount_padded The number of particle to read padded to the next
+ * multiple of the vector length.
+ * @param zero_output Do we need to zero the output caches ?
+ * @param shift A shift to apply to all the particles.
+ */
+__attribute__((always_inline)) INLINE void gravity_cache_populate(
+    struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
+    int gcount_padded, int zero_output, double shift[3]) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict x = c->x;
@@ -128,7 +146,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(struct gravity
   swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);  
+  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(a_x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(a_y, SWIFT_CACHE_ALIGNMENT);
@@ -136,7 +154,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(struct gravity
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
-  for(int i = 0; i < gcount; ++i) {
+  for (int i = 0; i < gcount; ++i) {
     x[i] = (float)(gparts[i].x[0] - shift[0]);
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
@@ -144,24 +162,40 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(struct gravity
     m[i] = gparts[i].mass;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Padded counter smaller than counter");
+#endif
+
   /* Pad the caches */
-  for(int i = gcount; i < gcount_padded; ++i) {
+  for (int i = gcount; i < gcount_padded; ++i) {
     x[i] = 0.f;
-    y[i] = 0.f; 
+    y[i] = 0.f;
     z[i] = 0.f;
     epsilon[i] = 0.f;
     m[i] = 0.f;
   }
-  
+
   /* Zero the output caches */
-  if(zero_output) {
+  if (zero_output) {
     bzero(a_x, gcount_padded * sizeof(float));
     bzero(a_y, gcount_padded * sizeof(float));
     bzero(a_z, gcount_padded * sizeof(float));
   }
 }
 
-__attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(struct gravity_cache *c, const struct gpart *restrict gparts, int gcount, int gcount_padded, int zero_output) {
+/**
+ * @brief Fills a #gravity_cache structure with some #gpart.
+ *
+ * @param c The #gravity_cache to fill.
+ * @param gparts The #gpart array to read from.
+ * @param gcount The number of particles to read.
+ * @param gcount_padded The number of particle to read padded to the next
+ * multiple of the vector length.
+ * @param zero_output Do we need to zero the output caches ?
+ */
+__attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
+    struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
+    int gcount_padded, int zero_output) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict x = c->x;
@@ -175,14 +209,14 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(struc
   swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);  
+  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(a_x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(a_y, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(a_z, SWIFT_CACHE_ALIGNMENT);
 
   /* Fill the input caches */
-  for(int i = 0; i < gcount; ++i) {
+  for (int i = 0; i < gcount; ++i) {
     x[i] = (float)(gparts[i].x[0]);
     y[i] = (float)(gparts[i].x[1]);
     z[i] = (float)(gparts[i].x[2]);
@@ -190,26 +224,36 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(struc
     m[i] = gparts[i].mass;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Padded counter smaller than counter");
+#endif
+
   /* Pad the caches */
-  for(int i = gcount; i < gcount_padded; ++i) {
+  for (int i = gcount; i < gcount_padded; ++i) {
     x[i] = 0.f;
-    y[i] = 0.f; 
+    y[i] = 0.f;
     z[i] = 0.f;
     epsilon[i] = 0.f;
     m[i] = 0.f;
   }
-  
+
   /* Zero the output caches */
-  if(zero_output) {
+  if (zero_output) {
     bzero(a_x, gcount_padded * sizeof(float));
     bzero(a_y, gcount_padded * sizeof(float));
     bzero(a_z, gcount_padded * sizeof(float));
   }
 }
 
-
-__attribute__((always_inline)) INLINE void gravity_cache_write_back(const struct gravity_cache *c,
-								    struct gpart *restrict gparts, int gcount) {
+/**
+ * @brief Write the output cache values back to the #gpart.
+ *
+ * @param c The #gravity_cache to read from.
+ * @param gparts The #gpart array to write to.
+ * @param gcount The number of particles to write.
+ */
+__attribute__((always_inline)) INLINE void gravity_cache_write_back(
+    const struct gravity_cache *c, struct gpart *restrict gparts, int gcount) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict a_x = c->a_x;
@@ -220,12 +264,11 @@ __attribute__((always_inline)) INLINE void gravity_cache_write_back(const struct
   swift_align_information(a_z, SWIFT_CACHE_ALIGNMENT);
 
   /* Write stuff back to the particles */
-  for(int i = 0; i < gcount; ++i) {
+  for (int i = 0; i < gcount; ++i) {
     gparts[i].a_grav[0] += a_x[i];
     gparts[i].a_grav[1] += a_y[i];
     gparts[i].a_grav[2] += a_z[i];
   }
 }
-#endif
 
 #endif /* SWIFT_GRAVITY_CACHE_H */
