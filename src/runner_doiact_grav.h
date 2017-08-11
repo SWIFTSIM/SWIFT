@@ -200,6 +200,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
     /* Loop over all particles in ci... */
     for (int pid = 0; pid < gcount_i; pid++) {
 
+      /* Skip inactive particles */
+      if (!gpart_is_active(&gparts_i[pid], e)) continue;
+
       const float x_i = ci_cache->x[pid];
       const float y_i = ci_cache->y[pid];
       const float z_i = ci_cache->z[pid];
@@ -272,7 +275,8 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
         a_z -= f_ij * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gparts_i[pid].num_interacted++;
+        /* Update the interaction counter if it's not a padded gpart */
+        if (pjd < gcount_j) gparts_i[pid].num_interacted++;
 #endif
       }
 
@@ -288,6 +292,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
 
     /* Loop over all particles in ci... */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
+
+      /* Skip inactive particles */
+      if (!gpart_is_active(&gparts_j[pjd], e)) continue;
 
       const float x_j = cj_cache->x[pjd];
       const float y_j = cj_cache->y[pjd];
@@ -361,7 +368,8 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
         a_z -= f_ji * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gparts_j[pjd].num_interacted++;
+        /* Update the interaction counter if it's not a padded gpart */
+        if (pid < gcount_i) gparts_j[pjd].num_interacted++;
 #endif
       }
 
@@ -535,6 +543,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
     /* Loop over all particles in ci... */
     for (int pid = 0; pid < gcount_i; pid++) {
 
+      /* Skip inactive particles */
+      if (!gpart_is_active(&gparts_i[pid], e)) continue;
+
       const float x_i = ci_cache->x[pid];
       const float y_i = ci_cache->y[pid];
       const float z_i = ci_cache->z[pid];
@@ -612,7 +623,8 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
         a_z -= f_ij * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gparts_i[pid].num_interacted++;
+        /* Update the interaction counter if it's not a padded gpart */
+        if (pjd < gcount_j) gparts_i[pid].num_interacted++;
 #endif
       }
 
@@ -628,6 +640,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
 
     /* Loop over all particles in ci... */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
+
+      /* Skip inactive particles */
+      if (!gpart_is_active(&gparts_j[pjd], e)) continue;
 
       const float x_j = cj_cache->x[pjd];
       const float y_j = cj_cache->y[pjd];
@@ -706,7 +721,8 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
         a_z -= f_ji * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        gparts_j[pjd].num_interacted++;
+        /* Update the interaction counter if it's not a padded gpart */
+        if (pid < gcount_i) gparts_j[pjd].num_interacted++;
 #endif
       }
 
