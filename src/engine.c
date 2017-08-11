@@ -2932,24 +2932,24 @@ int engine_estimate_nr_tasks(struct engine *e) {
     if (e->policy & engine_policy_self_gravity) {
       n1 += 24;
       n2 += 1;
+#ifdef WITH_MPI
+      n2 += 2;
+#endif
     }
     if (e->policy & engine_policy_external_gravity) {
       n1 += 1;
-#ifdef WITH_MPI
-      n2 += 2; /* XXX check this */
-#endif
     }
     if (e->policy & engine_policy_cosmology) {
-      n1 += 1;
+      n1 += 2;
     }
     if (e->policy & engine_policy_cooling) {
-      n1 += 1;
+      n1 += 2;
     }
     if (e->policy & engine_policy_sourceterms) {
-      n1 += 1;
+      n1 += 2;
     }
     if (e->policy & engine_policy_stars) {
-      n1 += 1;
+      n1 += 2;
     }
     message("n1 = %d, n2 = %d (%d/%d)", n1, n2, e->s->tot_cells, e->s->nr_cells);
     double ntasks = n1 * e->s->nr_cells + n2 * (e->s->tot_cells - e->s->nr_cells);
