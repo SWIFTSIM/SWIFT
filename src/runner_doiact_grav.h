@@ -188,10 +188,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
   /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         ci_active, shift);
-  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                                  cj_active);
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, shift);
+  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j,
+                                  gcount_padded_j);
 
   /* Ok... Here we go ! */
 
@@ -281,9 +280,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       }
 
       /* Store everything back in cache */
-      ci_cache->a_x[pid] += a_x;
-      ci_cache->a_y[pid] += a_y;
-      ci_cache->a_z[pid] += a_z;
+      ci_cache->a_x[pid] = a_x;
+      ci_cache->a_y[pid] = a_y;
+      ci_cache->a_z[pid] = a_z;
     }
   }
 
@@ -374,9 +373,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       }
 
       /* Store everything back in cache */
-      cj_cache->a_x[pjd] += a_x;
-      cj_cache->a_y[pjd] += a_y;
-      cj_cache->a_z[pjd] += a_z;
+      cj_cache->a_x[pjd] = a_x;
+      cj_cache->a_y[pjd] = a_y;
+      cj_cache->a_z[pjd] = a_z;
     }
   }
 
@@ -531,10 +530,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
   /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         ci_active, shift);
-  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                                  cj_active);
+  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i, shift);
+  gravity_cache_populate_no_shift(cj_cache, gparts_j, gcount_j,
+                                  gcount_padded_j);
 
   /* Ok... Here we go ! */
 
@@ -629,9 +627,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
       }
 
       /* Store everything back in cache */
-      ci_cache->a_x[pid] += a_x;
-      ci_cache->a_y[pid] += a_y;
-      ci_cache->a_z[pid] += a_z;
+      ci_cache->a_x[pid] = a_x;
+      ci_cache->a_y[pid] = a_y;
+      ci_cache->a_z[pid] = a_z;
     }
   }
 
@@ -727,9 +725,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
       }
 
       /* Store everything back in cache */
-      cj_cache->a_x[pjd] += a_x;
-      cj_cache->a_y[pjd] += a_y;
-      cj_cache->a_z[pjd] += a_z;
+      cj_cache->a_x[pjd] = a_x;
+      cj_cache->a_y[pjd] = a_y;
+      cj_cache->a_z[pjd] = a_z;
     }
   }
 

@@ -127,12 +127,11 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param gcount The number of particles to read.
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
- * @param zero_output Do we need to zero the output caches ?
  * @param shift A shift to apply to all the particles.
  */
 __attribute__((always_inline)) INLINE void gravity_cache_populate(
     struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
-    int gcount_padded, int zero_output, double shift[3]) {
+    int gcount_padded, double shift[3]) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict x = c->x;
@@ -140,17 +139,11 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
   float *restrict z = c->z;
   float *restrict m = c->m;
   float *restrict epsilon = c->epsilon;
-  float *restrict a_x = c->a_x;
-  float *restrict a_y = c->a_y;
-  float *restrict a_z = c->a_z;
   swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_z, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
@@ -174,13 +167,6 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
     epsilon[i] = 0.f;
     m[i] = 0.f;
   }
-
-  /* Zero the output caches */
-  if (zero_output) {
-    bzero(a_x, gcount_padded * sizeof(float));
-    bzero(a_y, gcount_padded * sizeof(float));
-    bzero(a_z, gcount_padded * sizeof(float));
-  }
 }
 
 /**
@@ -191,11 +177,10 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
  * @param gcount The number of particles to read.
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
- * @param zero_output Do we need to zero the output caches ?
  */
 __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
     struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
-    int gcount_padded, int zero_output) {
+    int gcount_padded) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict x = c->x;
@@ -203,17 +188,12 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
   float *restrict z = c->z;
   float *restrict m = c->m;
   float *restrict epsilon = c->epsilon;
-  float *restrict a_x = c->a_x;
-  float *restrict a_y = c->a_y;
-  float *restrict a_z = c->a_z;
   swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
   for (int i = 0; i < gcount; ++i) {
@@ -235,13 +215,6 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
     z[i] = 0.f;
     epsilon[i] = 0.f;
     m[i] = 0.f;
-  }
-
-  /* Zero the output caches */
-  if (zero_output) {
-    bzero(a_x, gcount_padded * sizeof(float));
-    bzero(a_y, gcount_padded * sizeof(float));
-    bzero(a_z, gcount_padded * sizeof(float));
   }
 }
 
