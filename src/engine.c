@@ -2918,11 +2918,15 @@ int engine_estimate_nr_tasks(struct engine *e) {
     if (e->policy & engine_policy_hydro) {
       n1 += 36;
       n2 += 2;
-#ifdef EXTRA_HYDRO_LOOP
-      n1 += 1; /* Apparently a lot more to see... */
-#endif
 #ifdef WITH_MPI
-      n1 += 6; /* XXX check this */
+      n1 += 6;
+#endif
+
+#ifdef EXTRA_HYDRO_LOOP
+      n1 += 15;
+#ifdef WITH_MPI
+      n1 += 2;
+#endif
 #endif
     }
     if (e->policy & engine_policy_self_gravity) {
@@ -2949,7 +2953,14 @@ int engine_estimate_nr_tasks(struct engine *e) {
     }
     message("n1 = %d, n2 = %d (%d/%d)", n1, n2, e->s->tot_cells, e->s->nr_cells);
     double ntasks = n1 * e->s->nr_cells + n2 * (e->s->tot_cells - e->s->nr_cells);
+
+    /* In principle we need fewer tasks per rank when using MPI, but we could
+     * have imbalances, so we don't allow for it. */
+    //if (e->nr_nodes > 1)
+    //  ntasks /= (e->nr_nodes  - 1);
+
     tasks_per_cell = ceil(ntasks / e->s->tot_cells);
+    if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
     if (e->verbose)
       message("tasks per cell estimated as: %d, maximum tasks: %d",
               tasks_per_cell, e->s->tot_cells * tasks_per_cell);
