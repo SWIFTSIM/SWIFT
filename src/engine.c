@@ -1742,13 +1742,17 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
 
-    /* Deal with periodicity dependencies */
+    /* Deal with periodicity FFT task dependencies */
     const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
     if (ghost_id > n_ghosts) error("Invalid ghost_id");
     if (periodic) {
       ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
       ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
     }
+
+    /* Recover the multipole information */
+    struct gravity_tensors *const multi_i = ci->multipole;
+    const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
     /* Loop over every other cell */
     for (int ii = 0; ii < cdim[0]; ii++) {
@@ -1768,11 +1772,27 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Is that neighbour local ? */
           if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
-          /* Are the cells to close for a MM interaction ? */
-          if (!gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
-                                                theta_crit_inv, periodic,
-                                                dim)) {
+          /* Recover the multipole information */
+          struct gravity_tensors *const multi_j = cj->multipole;
 
+          /* Get the distance between the CoMs */
+          double dx = CoM_i[0] - multi_j->CoM[0];
+          double dy = CoM_i[1] - multi_j->CoM[1];
+          double dz = CoM_i[2] - multi_j->CoM[2];
+
+          /* Apply BC */
+          if (periodic) {
+            dx = nearest(dx, dim[0]);
+            dy = nearest(dy, dim[1]);
+            dz = nearest(dz, dim[2]);
+          }
+          const double r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Are the cells too close for a MM interaction ? */
+          if (!gravity_multipole_accept_rebuild(multi_i, multi_j,
+                                                theta_crit_inv, r2)) {
+
+            /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
           }
@@ -4534,6 +4554,10 @@ void engine_init(struct engine *e, struct space *s,
     e->runners[k].cj_cache.count = 0;
     cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
     cache_init(&e->runners[k].cj_cache, CACHE_SIZE);
+    e->runners[k].ci_gravity_cache.count = 0;
+    e->runners[k].cj_gravity_cache.count = 0;
+    gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
+    gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
 #endif
 
     if (verbose) {
@@ -4620,8 +4644,12 @@ void engine_compute_next_snapshot_time(struct engine *e) {
 void engine_clean(struct engine *e) {
 
 #ifdef WITH_VECTORIZATION
-  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].ci_cache);
-  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].cj_cache);
+  for (int i = 0; i < e->nr_threads; ++i) {
+    cache_clean(&e->runners[i].ci_cache);
+    cache_clean(&e->runners[i].cj_cache);
+    gravity_cache_clean(&e->runners[i].ci_gravity_cache);
+    gravity_cache_clean(&e->runners[i].cj_gravity_cache);
+  }
 #endif
   free(e->runners);
   free(e->snapshotUnits);
