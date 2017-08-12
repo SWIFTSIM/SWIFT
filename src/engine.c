@@ -164,8 +164,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
     /* Add the sort task. */
     if (is_with_hydro) {
-      c->sorts =
-          scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+      c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
+                                   c, NULL);
     }
 
     /* Local tasks only... */
@@ -173,8 +173,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       /* Add the drift task. */
       if (is_with_hydro) {
-	c->drift_part = scheduler_addtask(s, task_type_drift_part,
-					  task_subtype_none, 0, 0, c, NULL);
+        c->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                          task_subtype_none, 0, 0, c, NULL);
       }
 
       /* Add the two half kicks */

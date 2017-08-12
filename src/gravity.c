@@ -559,7 +559,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
     fprintf(file_exact, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
-    fprintf(file_exact, "# theta=%16.8e\n", e->gravity_properties->theta_crit);
+    fprintf(file_exact, "# periodic= %d\n", s->periodic);
+    fprintf(file_exact, "# Git Branch: %s\n", git_branch());
+    fprintf(file_exact, "# Git Revision: %s\n", git_revision());
     fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s\n", "id",
             "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
             "a_exact[2]");
