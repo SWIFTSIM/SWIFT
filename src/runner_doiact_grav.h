@@ -936,7 +936,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
 
   /* Check that we fit in cache */
   if (gcount > ci_cache->count)
-    error("Not enough space in the caches! gcount_i=%d", gcount);
+    error("Not enough space in the cache! gcount=%d", gcount);
 
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
@@ -1032,9 +1032,9 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     }
 
     /* Store everything back in cache */
-    ci_cache->a_x[pid] += a_x;
-    ci_cache->a_y[pid] += a_y;
-    ci_cache->a_z[pid] += a_z;
+    ci_cache->a_x[pid] = a_x;
+    ci_cache->a_y[pid] = a_y;
+    ci_cache->a_z[pid] = a_z;
   }
 
   /* Write back to the particles */
@@ -1150,7 +1150,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
 
   /* Check that we fit in cache */
   if (gcount > ci_cache->count)
-    error("Not enough space in the caches! gcount_i=%d", gcount);
+    error("Not enough space in the caches! gcount=%d", gcount);
 
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
@@ -1251,9 +1251,9 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     }
 
     /* Store everything back in cache */
-    ci_cache->a_x[pid] += a_x;
-    ci_cache->a_y[pid] += a_y;
-    ci_cache->a_z[pid] += a_z;
+    ci_cache->a_x[pid] = a_x;
+    ci_cache->a_y[pid] = a_y;
+    ci_cache->a_z[pid] = a_z;
   }
 
   /* Write back to the particles */
