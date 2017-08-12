@@ -220,14 +220,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
         engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
-      }
 
 #ifdef EXTRA_HYDRO_LOOP
-      /* Generate the extra ghost task. */
-      if (is_hydro)
+        /* Generate the extra ghost task. */
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 #endif
+      }
 
       /* Cooling task */
       if (is_with_cooling) {
