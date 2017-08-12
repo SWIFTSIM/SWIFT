@@ -154,7 +154,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int periodic = e->s->periodic;
-  const int is_hydro = (e->policy & engine_policy_hydro);
+  const int is_with_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
@@ -163,15 +163,19 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   if (c->super == c) {
 
     /* Add the sort task. */
-    c->sorts =
-        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+    if (is_with_hydro) {
+      c->sorts =
+          scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+    }
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
       /* Add the drift task. */
-      c->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                        task_subtype_none, 0, 0, c, NULL);
+      if (is_with_hydro) {
+	c->drift_part = scheduler_addtask(s, task_type_drift_part,
+					  task_subtype_none, 0, 0, c, NULL);
+      }
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
@@ -208,7 +212,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Generate the ghost tasks. */
-      if (is_hydro) {
+      if (is_with_hydro) {
         c->ghost_in =
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
@@ -4548,16 +4552,16 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
 
-#ifdef WITH_VECTORIZATION
     /* Allocate particle caches. */
-    e->runners[k].ci_cache.count = 0;
-    e->runners[k].cj_cache.count = 0;
-    cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
-    cache_init(&e->runners[k].cj_cache, CACHE_SIZE);
     e->runners[k].ci_gravity_cache.count = 0;
     e->runners[k].cj_gravity_cache.count = 0;
     gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
     gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
+#ifdef WITH_VECTORIZATION
+    e->runners[k].ci_cache.count = 0;
+    e->runners[k].cj_cache.count = 0;
+    cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
+    cache_init(&e->runners[k].cj_cache, CACHE_SIZE);
 #endif
 
     if (verbose) {
