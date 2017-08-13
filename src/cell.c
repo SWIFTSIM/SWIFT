@@ -1328,7 +1328,7 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 }
 
 /**
- * @brief Activate the drifts on the given cell.
+ * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 
@@ -1352,6 +1352,14 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
       }
     }
   }
+}
+
+/**
+ * @brief Activate the #gpart drifts on the given cell.
+ */
+void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
+
+  scheduler_activate(s, c->super->drift_gpart);
 }
 
 /**
@@ -1843,6 +1851,25 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* Un-skip the gravity tasks involved with this cell. */
+  for (struct link *l = c->grav; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
+        (cj != NULL && cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
+      scheduler_activate(s, t);
+
+      /* Set the drifting flags */
+      if (t->type == task_type_pair) {
+        cell_activate_drift_gpart(ci, s);
+        cell_activate_drift_gpart(cj, s);
+      }
+    }
+  }
+
   /* Unskip all the other task types. */
   if (c->nodeID == engine_rank && cell_is_active(c, e)) {
 
@@ -1850,15 +1877,12 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, l->t);
     for (struct link *l = c->force; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
-    for (struct link *l = c->grav; l != NULL; l = l->next)
-      scheduler_activate(s, l->t);
 
     if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
     if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
     if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
     if (c->ghost != NULL) scheduler_activate(s, c->ghost);
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
-    if (c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);

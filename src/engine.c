@@ -156,6 +156,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   const int periodic = e->s->periodic;
   const int is_with_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int is_external_gravity = (e->policy & engine_policy_external_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
@@ -171,10 +172,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
-      /* Add the drift task. */
+      /* Add the drift tasks corresponding to the policy. */
       if (is_with_hydro) {
         c->drift_part = scheduler_addtask(s, task_type_drift_part,
                                           task_subtype_none, 0, 0, c, NULL);
+      }
+      if (is_self_gravity || is_external_gravity) {
+        c->drift_gpart = scheduler_addtask(s, task_type_drift_gpart,
+                                           task_subtype_none, 0, 0, c, NULL);
       }
 
       /* Add the two half kicks */
@@ -191,6 +196,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
+      /* Add the gravity tasks */
       if (is_self_gravity) {
 
         /* Initialisation of the multipoles */
@@ -220,14 +226,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
         engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
-      }
 
+/* Generate the extra ghost task. */
 #ifdef EXTRA_HYDRO_LOOP
-      /* Generate the extra ghost task. */
-      if (is_hydro)
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 #endif
+      }
 
       /* Cooling task */
       if (is_with_cooling) {
@@ -1840,11 +1845,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* Make the ghosts implicit and add the dependencies */
     for (int n = 0; n < n_ghosts / 2; ++n) {
       ghosts[2 * n + 0] = scheduler_addtask(
-          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
+          sched, task_type_grav_ghost, task_subtype_none, 0, 1, NULL, NULL);
       ghosts[2 * n + 1] = scheduler_addtask(
-          sched, task_type_grav_ghost, task_subtype_none, 0, 0, NULL, NULL);
-      ghosts[2 * n + 0]->implicit = 1;
-      ghosts[2 * n + 1]->implicit = 1;
+          sched, task_type_grav_ghost, task_subtype_none, 0, 1, NULL, NULL);
       scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
       scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
     }
@@ -2064,6 +2067,7 @@ static inline void engine_make_self_gravity_dependencies(
     struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> gravity --> grav_down --> kick */
+  scheduler_addunlock(sched, c->super->drift_gpart, gravity);
   scheduler_addunlock(sched, c->super->init_grav, gravity);
   scheduler_addunlock(sched, gravity, c->super->grav_down);
 }
