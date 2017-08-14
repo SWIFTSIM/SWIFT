@@ -270,21 +270,43 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 }
 
 /**
- * @brief map function for dumping cells. In MPI mode local cells only.
+ * @brief map function for dumping cells. In MPI mode locally active cells
+ * only.
  */
 static void dumpCells_map(struct cell *c, void *data) {
   uintptr_t *ldata = (uintptr_t *)data;
   FILE *file = (FILE *)ldata[0];
   struct engine *e = (struct engine *)ldata[1];
-  if (e->nodeID == c->nodeID)
-    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d "
-            "%20lld %6d %6d %6d %6d\n", c->loc[0], c->loc[1], c->loc[2],
-            c->width[0], c->width[1], c->width[2], c->count, c->gcount,
-            c->scount, c->depth, c->nr_tasks, c->ti_end_min,
+  float ntasks = c->nr_tasks;
+
+#if SWIFT_DEBUG_CHECKS
+  /* The c->nr_tasks field does not include all the tasks. So let's check this
+   * the hard way. Note pairs share the task 50/50 with the other cell. */
+  ntasks = 0.0f;
+  struct task *tasks = e->sched.tasks;
+  int nr_tasks = e->sched.nr_tasks;
+  for (int k = 0; k < nr_tasks; k++) {
+    if (tasks[k].cj == NULL) {
+      if (c == tasks[k].ci) {
+        ntasks = ntasks + 1.0f;
+      }
+    } else {
+      if (c == tasks[k].ci || c == tasks[k].cj) {
+        ntasks = ntasks + 0.5f;
+      }
+    }
+  }
+#endif
+
+  /* Only locally active cells are dumped. */
+  if (c->count > 0)
+    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d "
+            "%6.1f %20lld %6d %6d %6d %6d\n", c->loc[0], c->loc[1],
+            c->loc[2], c->width[0], c->width[1], c->width[2], c->count,
+            c->gcount, c->scount, c->depth, ntasks, c->ti_end_min,
             get_time_bin(c->ti_end_min), (c->super == c),
             cell_is_active(c, e), c->nodeID);
 }
-
 
 /**
  * @brief Dump the location, depth, task counts and timebins and active state,
@@ -306,10 +328,10 @@ void dumpCells(const char *prefix, struct space *s) {
   file = fopen(fname, "w");
 
   /* Header. */
-  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
-          "%20s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw", "zw", "count",
-          "gcount", "scount", "depth", "tasks", "ti_end_min", "timebin",
-          "issuper", "active", "rank");
+  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%20s %6s %6s %6s\n", "x", "y", "z", "xw", "yw", "zw", "count",
+          "gcount", "scount", "depth", "tasks", "ti_end_min",
+          "timebin", "issuper", "active", "rank");
 
   uintptr_t data[2];
   data[0] = (size_t) file;
@@ -317,7 +339,6 @@ void dumpCells(const char *prefix, struct space *s) {
   space_map_cells_pre(s, 1, dumpCells_map, &data);
   fclose(file);
 }
-
 
 #ifdef HAVE_METIS
 
