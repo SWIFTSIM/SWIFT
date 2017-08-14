@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = $(HDF5_CPPFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) -g
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -39,6 +39,13 @@ if HAVEMPI
 lib_LTLIBRARIES += libswiftsim_mpi.la
 endif
 
+if HAVECUDA
+lib_LTLIBRARIES += libswiftsim_cuda.la
+if HAVEMPI
+lib_LTLIBRARIES += libswiftsim_mpicuda.la
+endif
+endif
+
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
@@ -47,7 +54,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
     sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
-    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h
+    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
+		allocation.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -129,6 +137,18 @@ libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
+
+# Sources and flags for regular CUDA library
+libswiftsim_cuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_cuda_la_CFLAGS = $(AM_CFLAGS) -I/home/aidan/cuda_7.5/include
+libswiftsim_cuda_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) -L/home/aidan/cuda_7.5/lib64 -lcudart
+libswiftsim_cuda_la_SHORTNAME = cuda
+
+# Sources and flags for MPI CUDA library
+libswiftsim_mpicuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_mpicuda_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) -I/home/aidan/cuda_7.5/include
+libswiftsim_mpicuda_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) -L/home/aidan/cuda_7.5/lib64 -lcudart
+libswiftsim_mpicuda_la_SHORTNAME = mpicuda
 
 #subdir
 SUBDIRS = . CUDA

@@ -41,6 +41,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "allocation.h"
 #include "const.h"
 #include "cooling.h"
 #include "engine.h"
@@ -57,6 +58,8 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+
+
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -394,7 +397,7 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells_top, cell_align,
+    if (swift_alloc((void *)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
