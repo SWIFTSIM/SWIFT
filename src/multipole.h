@@ -213,18 +213,18 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
  */
 INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 
-  const double dx = m->m_pole.vel[0] * dt;
-  const double dy = m->m_pole.vel[1] * dt;
-  const double dz = m->m_pole.vel[2] * dt;
+  /* const double dx = m->m_pole.vel[0] * dt; */
+  /* const double dy = m->m_pole.vel[1] * dt; */
+  /* const double dz = m->m_pole.vel[2] * dt; */
 
   /* Move the whole thing according to bulk motion */
-  m->CoM[0] += dx;
-  m->CoM[1] += dy;
-  m->CoM[2] += dz;
+  /* m->CoM[0] += dx; */
+  /* m->CoM[1] += dy; */
+  /* m->CoM[2] += dz; */
 
   /* Conservative change in maximal radius containing all gpart */
   /* MATTHIEU: Use gpart->x_diff here ? */
-  m->r_max += sqrt(dx * dx + dy * dy + dz * dz);
+  /* m->r_max += sqrt(dx * dx + dy * dy + dz * dz); */
 }
 
 /**

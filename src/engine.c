@@ -2653,16 +2653,32 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     struct task *t = &tasks[ind];
 
     /* Single-cell task? */
-    if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_extra_ghost || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms || t->type == task_type_sub_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
+
+      /* Local pointer. */
+      struct cell *ci = t->ci;
+
+      if (ci->nodeID != engine_rank) error("Non-local self task found");
 
       /* Set this task's skip. */
-      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+      if (cell_is_active(ci, e)) scheduler_activate(s, t);
 
+      /* Activate the hydro drift */
+      if (t->type == task_type_self && t->subtype == task_subtype_density) {
+        cell_activate_drift_part(ci, s);
+      }
+      /* Activate the gravity drift */
+      else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
+        cell_activate_subcell_grav_tasks(t->ci, NULL, s);
+      }
       /* Store current values of dx_max and h_max. */
-      if (t->type == task_type_sub_self && t->subtype == task_subtype_density) {
-        cell_activate_subcell_tasks(t->ci, NULL, s);
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_density) {
+        cell_activate_subcell_tasks(ci, NULL, s);
+
+      } else if (t->type == task_type_sub_self &&
+                 t->subtype == task_subtype_grav) {
+        error("Invalid task sub-type encountered");
       }
     }
 
@@ -2673,34 +2689,42 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      /* If this task does not involve any active cells, skip it. */
-      if (!cell_is_active(t->ci, e) && !cell_is_active(t->cj, e)) continue;
-
       /* Only activate tasks that involve a local active cell. */
       if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
-          (cj != NULL && cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
+          (cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
         if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+
           /* Store some values. */
           atomic_or(&ci->requires_sorts, 1 << t->flags);
           atomic_or(&cj->requires_sorts, 1 << t->flags);
           ci->dx_max_sort_old = ci->dx_max_sort;
           cj->dx_max_sort_old = cj->dx_max_sort;
 
-          /* Activate the drift tasks. */
+          /* Activate the hydro drift tasks. */
           if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
           if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_sorts(ci, t->flags, s);
           cell_activate_sorts(cj, t->flags, s);
+
+        } else if (t->type == task_type_pair &&
+                   t->subtype == task_subtype_grav) {
+          /* Activate the gravity drift */
+          cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
+
         /* Store current values of dx_max and h_max. */
         else if (t->type == task_type_sub_pair &&
                  t->subtype == task_subtype_density) {
           cell_activate_subcell_tasks(t->ci, t->cj, s);
+
+        } else if (t->type == task_type_sub_pair &&
+                   t->subtype == task_subtype_grav) {
+          error("Invalid task sub-type encountered");
         }
       }
 
@@ -2833,20 +2857,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* Kick/Drift/init ? */
-    if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_init_grav) {
+    /* Kick/init ? */
+    else if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
+             t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* Gravity ? */
+    /* Hydro ghost tasks ? */
+    else if (t->type == task_type_ghost || t->type == task_type_extra_ghost) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Gravity stuff ? */
     else if (t->type == task_type_grav_down ||
              t->type == task_type_grav_long_range) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* Periodic gravity ? */
+    /* Periodic gravity stuff (Note this is not linked to a cell) ? */
     else if (t->type == task_type_grav_top_level ||
              t->type == task_type_grav_ghost) {
       scheduler_activate(s, t);
@@ -2857,6 +2885,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       t->ci->s_updated = 0;
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Subgrid tasks */
+    else if (t->type == task_type_cooling || t->type == task_type_sourceterms) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
   }
@@ -3723,7 +3756,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       cell_drift_part(c, e, 1);
 
       /* Drift all the g-particles */
-      cell_drift_gpart(c, e);
+      cell_drift_gpart(c, e, 1);
 
       /* Drift the multipoles */
       if (e->policy & engine_policy_self_gravity)
