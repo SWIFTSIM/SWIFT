@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.5.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.6.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
@@ -187,6 +187,19 @@ AC_ARG_ENABLE([task-debugging],
 )
 if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
+# Check if threadpool debugging is on.
+AC_ARG_ENABLE([threadpool-debugging],
+   [AS_HELP_STRING([--enable-threadpool-debugging],
+     [Store threadpool mapper timing information and generate threadpool dump files @<:@yes/no@:>@]
+   )],
+   [enable_threadpool_debugging="$enableval"],
+   [enable_threadpool_debugging="no"]
+)
+if test "$enable_threadpool_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
+   LDFLAGS="$LDFLAGS -rdynamic"
 fi
 
 # Check if the general timers are switched on.
@@ -905,7 +918,9 @@ AC_OUTPUT
 # Report general configuration.
 AC_MSG_RESULT([ 
  ------- Summary --------
-   
+
+   $PACKAGE_NAME v.$PACKAGE_VERSION
+
    Compiler        : $CC
     - vendor       : $ax_cv_c_compiler_vendor
     - version      : $ax_cv_c_compiler_version
@@ -933,9 +948,10 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
-   Individual timers : $enable_timers
-   Task debugging    : $enable_task_debugging
-   Debugging checks  : $enable_debugging_checks
-   Gravity checks    : $gravity_force_checks
+   Individual timers    : $enable_timers
+   Task debugging       : $enable_task_debugging
+   Threadpool debugging : $enable_threadpool_debugging
+   Debugging checks     : $enable_debugging_checks
+   Gravity checks       : $gravity_force_checks
 
  ------------------------])

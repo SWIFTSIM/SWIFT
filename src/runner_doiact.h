@@ -640,7 +640,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
     error("Interacting unsorted cells.");
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+  const struct entry *restrict sort_j = cj->sort[sid];
   const float dxj = cj->dx_max_sort;
 
   /* Parts are on the left? */
@@ -906,8 +906,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
-  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+  const struct entry *restrict sort_i = ci->sort[sid];
+  const struct entry *restrict sort_j = cj->sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper
@@ -1205,8 +1205,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
-  struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+  struct entry *restrict sort_i = ci->sort[sid];
+  struct entry *restrict sort_j = cj->sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper

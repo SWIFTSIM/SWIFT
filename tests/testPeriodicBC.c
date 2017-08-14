@@ -173,19 +173,19 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
-  cell->sort = NULL;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
   free(ci->parts);
-  free(ci->sort);
+  for (int k = 0; k < 13; k++)
+    if (ci->sort[k] != NULL) free(ci->sort[k]);
   free(ci);
 }
 

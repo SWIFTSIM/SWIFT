@@ -49,6 +49,9 @@
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
 
+/* Types of flux limiter to use (GIZMO_SPH only) */
+#define GIZMO_FLUX_LIMITER
+
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
 //#define GIZMO_FIX_PARTICLES

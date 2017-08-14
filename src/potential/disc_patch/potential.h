@@ -56,20 +56,20 @@ struct external_potential {
   /*! Inverse of disc scale-height (1/b) */
   float scale_height_inv;
 
-  /*! Position of the disc along the z-axis */
-  float z_disc;
+  /*! Position of the disc along the x-axis */
+  float x_disc;
 
   /*! Position above which the accelerations get truncated */
-  float z_trunc;
+  float x_trunc;
 
   /*! Position above which the accelerations are zero */
-  float z_max;
+  float x_max;
 
   /*! The truncated transition regime */
-  float z_trans;
+  float x_trans;
 
   /*! Inverse of the truncated transition regime */
-  float z_trans_inv;
+  float x_trans_inv;
 
   /*! Dynamical time of the system */
   float dynamical_time;
@@ -115,36 +115,36 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float norm = potential->norm;
 
   /* absolute value of height above disc */
-  const float dz = fabsf(g->x[2] - potential->z_disc);
+  const float dx = fabsf(g->x[0] - potential->x_disc);
 
   /* vertical acceleration */
-  const float z_accel = norm * tanhf(dz * b_inv);
+  const float x_accel = norm * tanhf(dx * b_inv);
 
   float dt = dt_dyn;
 
   /* demand that dt * velocity <  fraction of scale height of disc */
-  if (g->v_full[2] != 0.f) {
+  if (g->v_full[0] != 0.f) {
 
-    const float dt1 = b / fabsf(g->v_full[2]);
+    const float dt1 = b / fabsf(g->v_full[0]);
     dt = min(dt1, dt);
   }
 
   /* demand that dt^2 * acceleration < fraction of scale height of disc */
-  if (z_accel != 0.f) {
+  if (x_accel != 0.f) {
 
-    const float dt2 = b / fabsf(z_accel);
+    const float dt2 = b / fabsf(x_accel);
     if (dt2 < dt * dt) dt = sqrtf(dt2);
   }
 
   /* demand that dt^3 * jerk < fraction of scale height of disc */
-  if (g->v_full[2] != 0.f) {
+  if (g->v_full[0] != 0.f) {
 
-    const float cosh_dz_inv = 1.f / coshf(dz * b_inv);
-    const float cosh_dz_inv2 = cosh_dz_inv * cosh_dz_inv;
-    const float dz_accel_over_dt =
-        norm * cosh_dz_inv2 * b_inv * fabsf(g->v_full[2]);
+    const float cosh_dx_inv = 1.f / coshf(dx * b_inv);
+    const float cosh_dx_inv2 = cosh_dx_inv * cosh_dx_inv;
+    const float dx_accel_over_dt =
+        norm * cosh_dx_inv2 * b_inv * fabsf(g->v_full[0]);
 
-    const float dt3 = b / fabsf(dz_accel_over_dt);
+    const float dt3 = b / fabsf(dx_accel_over_dt);
     if (dt3 < dt * dt * dt) dt = cbrtf(dt3);
   }
 
@@ -152,13 +152,13 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
 }
 
 /**
- * @brief Computes the gravitational acceleration along z due to a hydrostatic
+ * @brief Computes the gravitational acceleration along x due to a hydrostatic
  * disc
  *
  * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
  * equation 17.
- * We truncate the accelerations beyond z_trunc using a 1-cos(z) function
- * that smoothly brings the accelerations to 0 at z_max.
+ * We truncate the accelerations beyond x_trunc using a 1-cos(x) function
+ * that smoothly brings the accelerations to 0 at x_max.
  *
  * @param time The current time in internal units.
  * @param potential The properties of the potential.
@@ -169,40 +169,40 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
-  const float dz = g->x[2] - potential->z_disc;
-  const float abs_dz = fabsf(dz);
+  const float dx = g->x[0] - potential->x_disc;
+  const float abs_dx = fabsf(dx);
   const float t_growth = potential->growth_time;
   const float t_growth_inv = potential->growth_time_inv;
   const float b_inv = potential->scale_height_inv;
-  const float z_trunc = potential->z_trunc;
-  const float z_max = potential->z_max;
-  const float z_trans_inv = potential->z_trans_inv;
+  const float x_trunc = potential->x_trunc;
+  const float x_max = potential->x_max;
+  const float x_trans_inv = potential->x_trans_inv;
   const float norm_over_G = potential->norm_over_G;
 
   /* Are we still growing the disc ? */
   const float reduction_factor = time < t_growth ? time * t_growth_inv : 1.f;
 
   /* Truncated or not ? */
-  float a_z;
-  if (abs_dz < z_trunc) {
+  float a_x;
+  if (abs_dx < x_trunc) {
 
-    /* Acc. 2 pi sigma tanh(z/b) */
-    a_z = reduction_factor * norm_over_G * tanhf(abs_dz * b_inv);
-  } else if (abs_dz < z_max) {
+    /* Acc. 2 pi sigma tanh(x/b) */
+    a_x = reduction_factor * norm_over_G * tanhf(abs_dx * b_inv);
+  } else if (abs_dx < x_max) {
 
-    /* Acc. 2 pi sigma tanh(z/b) [1/2 + 1/2cos((z-zmax)/(pi z_trans))] */
-    a_z =
-        reduction_factor * norm_over_G * tanhf(abs_dz * b_inv) *
-        (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dz - z_trunc) * z_trans_inv));
+    /* Acc. 2 pi sigma tanh(x/b) [1/2 + 1/2cos((x-xmax)/(pi x_trans))] */
+    a_x =
+        reduction_factor * norm_over_G * tanhf(abs_dx * b_inv) *
+        (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dx - x_trunc) * x_trans_inv));
   } else {
 
     /* Acc. 0 */
-    a_z = 0.f;
+    a_x = 0.f;
   }
 
   /* Get the correct sign. Recall G is multipiled in later on */
-  if (dz > 0) g->a_grav[2] -= a_z;
-  if (dz < 0) g->a_grav[2] += a_z;
+  if (dx > 0) g->a_grav[0] -= a_x;
+  if (dx < 0) g->a_grav[0] += a_x;
 }
 
 /**
@@ -211,8 +211,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  *
  * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948,
  * equation 22.
- * We truncate the accelerations beyond z_trunc using a 1-cos(z) function
- * that smoothly brings the accelerations to 0 at z_max.
+ * We truncate the accelerations beyond x_trunc using a 1-cos(x) function
+ * that smoothly brings the accelerations to 0 at x_max.
  *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
@@ -224,28 +224,28 @@ external_gravity_get_potential_energy(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* gp) {
 
-  const float dz = gp->x[2] - potential->z_disc;
-  const float abs_dz = fabsf(dz);
+  const float dx = gp->x[0] - potential->x_disc;
+  const float abs_dx = fabsf(dx);
   const float t_growth = potential->growth_time;
   const float t_growth_inv = potential->growth_time_inv;
   const float b = potential->scale_height;
   const float b_inv = potential->scale_height_inv;
   const float norm = potential->norm;
-  const float z_trunc = potential->z_trunc;
-  const float z_max = potential->z_max;
+  const float x_trunc = potential->x_trunc;
+  const float x_max = potential->x_max;
 
   /* Are we still growing the disc ? */
   const float reduction_factor = time < t_growth ? time * t_growth_inv : 1.f;
 
   /* Truncated or not ? */
   float pot;
-  if (abs_dz < z_trunc) {
+  if (abs_dx < x_trunc) {
 
-    /* Potential (2 pi G sigma b ln(cosh(z/b)) */
-    pot = b * logf(coshf(dz * b_inv));
-  } else if (abs_dz < z_max) {
+    /* Potential (2 pi G sigma b ln(cosh(x/b)) */
+    pot = b * logf(coshf(dx * b_inv));
+  } else if (abs_dx < x_max) {
 
-    /* Potential. At z>>b, phi(z) = norm * z / b */
+    /* Potential. At x>>b, phi(x) = norm * x / b */
     pot = 0.f;
 
   } else {
@@ -277,14 +277,14 @@ static INLINE void potential_init_backend(
       parameter_file, "DiscPatchPotential:surface_density");
   potential->scale_height = parser_get_param_double(
       parameter_file, "DiscPatchPotential:scale_height");
-  potential->z_disc =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:z_disc");
-  potential->z_trunc = parser_get_opt_param_double(
-      parameter_file, "DiscPatchPotential:z_trunc", FLT_MAX);
-  potential->z_max = parser_get_opt_param_double(
-      parameter_file, "DiscPatchPotential:z_max", FLT_MAX);
-  potential->z_disc =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:z_disc");
+  potential->x_disc =
+      parser_get_param_double(parameter_file, "DiscPatchPotential:x_disc");
+  potential->x_trunc = parser_get_opt_param_double(
+      parameter_file, "DiscPatchPotential:x_trunc", FLT_MAX);
+  potential->x_max = parser_get_opt_param_double(
+      parameter_file, "DiscPatchPotential:x_max", FLT_MAX);
+  potential->x_disc =
+      parser_get_param_double(parameter_file, "DiscPatchPotential:x_disc");
   potential->timestep_mult = parser_get_param_double(
       parameter_file, "DiscPatchPotential:timestep_mult");
   potential->growth_time = parser_get_opt_param_double(
@@ -299,22 +299,22 @@ static INLINE void potential_init_backend(
   potential->growth_time *= potential->dynamical_time;
 
   /* Some cross-checks */
-  if (potential->z_trunc > potential->z_max)
-    error("Potential truncation z larger than maximal z");
-  if (potential->z_trunc < potential->scale_height)
-    error("Potential truncation z smaller than scale height");
+  if (potential->x_trunc > potential->x_max)
+    error("Potential truncation x larger than maximal z");
+  if (potential->x_trunc < potential->scale_height)
+    error("Potential truncation x smaller than scale height");
 
   /* Compute derived quantities */
   potential->scale_height_inv = 1. / potential->scale_height;
   potential->norm =
       2. * M_PI * phys_const->const_newton_G * potential->surface_density;
   potential->norm_over_G = 2 * M_PI * potential->surface_density;
-  potential->z_trans = potential->z_max - potential->z_trunc;
+  potential->x_trans = potential->x_max - potential->x_trunc;
 
-  if (potential->z_trans != 0.f)
-    potential->z_trans_inv = 1. / potential->z_trans;
+  if (potential->x_trans != 0.f)
+    potential->x_trans_inv = 1. / potential->x_trans;
   else
-    potential->z_trans_inv = FLT_MAX;
+    potential->x_trans_inv = FLT_MAX;
 
   if (potential->growth_time != 0.)
     potential->growth_time_inv = 1. / potential->growth_time;
@@ -331,14 +331,14 @@ static INLINE void potential_print_backend(
     const struct external_potential* potential) {
 
   message(
-      "External potential is 'Disk-patch' with Sigma=%f, z_disc=%f, b=%f and "
+      "External potential is 'Disk-patch' with Sigma=%f, x_disc=%f, b=%f and "
       "dt_mult=%f.",
-      potential->surface_density, potential->z_disc, potential->scale_height,
+      potential->surface_density, potential->x_disc, potential->scale_height,
       potential->timestep_mult);
 
-  if (potential->z_max < FLT_MAX)
-    message("Potential will be truncated at z_trunc=%f and zeroed at z_max=%f",
-            potential->z_trunc, potential->z_max);
+  if (potential->x_max < FLT_MAX)
+    message("Potential will be truncated at x_trunc=%f and zeroed at x_max=%f",
+            potential->x_trunc, potential->x_max);
 
   if (potential->growth_time > 0.)
     message("Disc will grow for %f [time_units]. (%f dynamical time)",

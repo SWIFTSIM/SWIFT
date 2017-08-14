@@ -1279,7 +1279,11 @@ void cell_check_multipole(struct cell *c, void *data) {
  */
 void cell_clean(struct cell *c) {
 
-  free(c->sort);
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) {
+      free(c->sort[i]);
+      c->sort[i] = NULL;
+    }
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
@@ -1745,9 +1749,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_xv task.");
           scheduler_activate(s, l->t);
 
-          /* Drift the cell which will be sent at the level at which it is sent,
-             i.e. drift the cell specified in the send task (l->t) itself. */
-          cell_activate_drift_part(l->t->ci, s);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
 
           if (cell_is_active(cj, e)) {
             struct link *l = NULL;
@@ -1802,9 +1806,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (l == NULL) error("Missing link to send_xv task.");
           scheduler_activate(s, l->t);
 
-          /* Drift the cell which will be sent at the level at which it is sent,
-             i.e. drift the cell specified in the send task (l->t) itself. */
-          cell_activate_drift_part(l->t->ci, s);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
 
           if (cell_is_active(ci, e)) {
 
@@ -1887,6 +1891,13 @@ void cell_set_super(struct cell *c, struct cell *super) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+}
+
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+    cell_set_super(c, NULL);
+  }
 }
 
 /**

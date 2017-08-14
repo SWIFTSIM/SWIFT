@@ -99,7 +99,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   float xij_j[3];
   int k;
   float xfac;
-  float a_grav_i[3], a_grav_j[3];
 
   /* perform gradient reconstruction in space and time */
   /* space */
@@ -141,34 +140,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pj->primitives.gradients.P[1] * xij_j[1] +
            pj->primitives.gradients.P[2] * xij_j[2];
 
-  a_grav_i[0] = pi->gravity.old_a[0];
-  a_grav_i[1] = pi->gravity.old_a[1];
-  a_grav_i[2] = pi->gravity.old_a[2];
-
-  a_grav_i[0] += pi->gravity.grad_a[0][0] * xij_i[0] +
-                 pi->gravity.grad_a[0][1] * xij_i[1] +
-                 pi->gravity.grad_a[0][2] * xij_i[2];
-  a_grav_i[1] += pi->gravity.grad_a[1][0] * xij_i[0] +
-                 pi->gravity.grad_a[1][1] * xij_i[1] +
-                 pi->gravity.grad_a[1][2] * xij_i[2];
-  a_grav_i[2] += pi->gravity.grad_a[2][0] * xij_i[0] +
-                 pi->gravity.grad_a[2][1] * xij_i[1] +
-                 pi->gravity.grad_a[2][2] * xij_i[2];
-
-  a_grav_j[0] = pj->gravity.old_a[0];
-  a_grav_j[1] = pj->gravity.old_a[1];
-  a_grav_j[2] = pj->gravity.old_a[2];
-
-  a_grav_j[0] += pj->gravity.grad_a[0][0] * xij_j[0] +
-                 pj->gravity.grad_a[0][1] * xij_j[1] +
-                 pj->gravity.grad_a[0][2] * xij_j[2];
-  a_grav_j[1] += pj->gravity.grad_a[1][0] * xij_j[0] +
-                 pj->gravity.grad_a[1][1] * xij_j[1] +
-                 pj->gravity.grad_a[1][2] * xij_j[2];
-  a_grav_j[2] += pj->gravity.grad_a[2][0] * xij_j[0] +
-                 pj->gravity.grad_a[2][1] * xij_j[1] +
-                 pj->gravity.grad_a[2][2] * xij_j[2];
-
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
   /* time */
@@ -198,10 +169,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                hydro_gamma * Wi[4] * (pi->primitives.gradients.v[0][0] +
                                       pi->primitives.gradients.v[1][1] +
                                       pi->primitives.gradients.v[2][2]));
-
-    dWi[1] += 0.5 * mindt * a_grav_i[0];
-    dWi[2] += 0.5 * mindt * a_grav_i[1];
-    dWi[3] += 0.5 * mindt * a_grav_i[2];
   }
 
   if (Wj[0] > 0.0f) {
@@ -230,10 +197,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
                                       pj->primitives.gradients.v[1][1] +
                                       pj->primitives.gradients.v[2][2]));
-
-    dWj[1] += 0.5 * mindt * a_grav_j[0];
-    dWj[2] += 0.5 * mindt * a_grav_j[1];
-    dWj[3] += 0.5 * mindt * a_grav_j[2];
   }
 
   Wi[0] += dWi[0];

@@ -127,7 +127,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
+        t->ci->count == 0 || (t->cj != NULL && t->cj->count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->cj = NULL;
@@ -167,7 +168,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           while (ci->progeny[first_child] == NULL) first_child++;
           t->ci = ci->progeny[first_child];
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
+            if (ci->progeny[k] != NULL && ci->progeny[k]->count)
               scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -175,9 +176,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* Make a task for each pair of progeny */
           for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL)
+            if (ci->progeny[j] != NULL && ci->progeny[j]->count)
               for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL)
+                if (ci->progeny[k] != NULL && ci->progeny[k]->count)
                   scheduler_splittask_hydro(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -569,9 +570,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         t->type = task_type_none;
 
         for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->count)
             for (int k = 0; k < 8; k++)
-              if (cj->progeny[k] != NULL) {
+              if (cj->progeny[k] != NULL && cj->progeny[k]->count) {
                 struct task *tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
@@ -619,53 +620,36 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split? */
-      if (ci->split) {
+      /* Should we split this task? */
+      if (ci->split && ci->gcount > space_subsize_self_grav) {
 
-        /* Make a sub? */
-        if (scheduler_dosub && ci->gcount < space_subsize_self) {
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
 
-          /* convert to a self-subtask. */
-          t->type = task_type_sub_self;
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL)
+            scheduler_splittask_gravity(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
 
-          /* Make sure we have a drift task (MATTHIEU temp. fix) */
-          lock_lock(&ci->lock);
-          if (ci->drift_gpart == NULL)
-            ci->drift_gpart = scheduler_addtask(
-                s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-          lock_unlock_blind(&ci->lock);
-
-          /* Otherwise, make tasks explicitly. */
-        } else {
-
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Add the self tasks. */
-          int first_child = 0;
-          while (ci->progeny[first_child] == NULL) first_child++;
-          t->ci = ci->progeny[first_child];
-          for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
-              scheduler_splittask_gravity(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                    ci->progeny[k], NULL),
-                  s);
-
-          /* Make a task for each pair of progeny */
-          if (t->subtype != task_subtype_external_grav) {
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL)
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL)
-                    scheduler_splittask_gravity(
-                        scheduler_addtask(s, task_type_pair, t->subtype,
-                                          sub_sid_flag[j][k], 0, ci->progeny[j],
-                                          ci->progeny[k]),
-                        s);
-          }
+        /* Make a task for each pair of progeny */
+        if (t->subtype != task_subtype_external_grav) {
+          for (int j = 0; j < 8; j++)
+            if (ci->progeny[j] != NULL)
+              for (int k = j + 1; k < 8; k++)
+                if (ci->progeny[k] != NULL)
+                  scheduler_splittask_gravity(
+                      scheduler_addtask(s, task_type_pair, t->subtype,
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        ci->progeny[k]),
+                      s);
         }
-      } /* Cell is split */
+      }
 
       /* Otherwise, make sure the self task has a drift task */
       else {
@@ -693,7 +677,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (ci->split && cj->split) {
+      if (0 && ci->split && cj->split) {
 
         // MATTHIEU: nothing here for now
 
@@ -759,7 +743,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 1000, s);
+                 s->nr_tasks, sizeof(struct task), 0, s);
 }
 
 /**
@@ -982,9 +966,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   if (size > s->size) {
 
     /* Free existing task lists if necessary. */
-    if (s->tasks != NULL) free(s->tasks);
-    if (s->tasks_ind != NULL) free(s->tasks_ind);
-    if (s->tid_active != NULL) free(s->tid_active);
+    scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
     if (posix_memalign((void *)&s->tasks, task_align,
@@ -1174,7 +1156,7 @@ void scheduler_start(struct scheduler *s) {
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 1000, s);
+                   s->active_count, sizeof(int), 0, s);
   } else {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
@@ -1250,7 +1232,7 @@ void scheduler_start(struct scheduler *s) {
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 1000, s);
+                   s->active_count, sizeof(int), 0, s);
   } else {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
@@ -1363,11 +1345,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-#ifdef SWIFT_DEBUG_CHECKS
-          for (int k = 0; k < t->ci->count; k++)
-            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
-              error("Sending un-drifted particle !");
-#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "sending %i parts with tag=%i from %i to %i." ,
@@ -1665,11 +1642,29 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
  */
 void scheduler_clean(struct scheduler *s) {
 
-  free(s->tasks);
-  free(s->tasks_ind);
+  scheduler_free_tasks(s);
   free(s->unlocks);
   free(s->unlock_ind);
-  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
+}
+
+/**
+ * @brief Free the task arrays allocated by this #scheduler.
+ */
+void scheduler_free_tasks(struct scheduler *s) {
+
+  if (s->tasks != NULL) {
+    free(s->tasks);
+    s->tasks = NULL;
+  }
+  if (s->tasks_ind != NULL) {
+    free(s->tasks_ind);
+    s->tasks_ind = NULL;
+  }
+  if (s->tid_active != NULL) {
+    free(s->tid_active);
+    s->tid_active = NULL;
+  }
+  s->size = 0;
 }

@@ -123,7 +123,7 @@ struct cell {
   struct spart *sparts;
 
   /*! Pointer for the sorted indices. */
-  struct entry *sort;
+  struct entry *sort[13];
 
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
@@ -239,9 +239,6 @@ struct cell {
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
 
-  /*! Last (integer) time the cell's sort arrays were updated. */
-  integertime_t ti_sort;
-
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;
 
@@ -347,6 +344,9 @@ struct cell {
   char do_sub_sort;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /*! Last (integer) time the cell's sort arrays were updated. */
+  integertime_t ti_sort;
+
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[64];
 
@@ -412,6 +412,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 
 /* Inlined functions (for speed). */
 

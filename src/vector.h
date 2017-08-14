@@ -23,10 +23,14 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
+/* Config parameters. */
 #include "../config.h"
 #ifdef WITH_CUDA
 #undef WITH_VECTORIZATION
 #endif
+
+/* Local headers */
+#include "inline.h"
 
 #ifdef WITH_VECTORIZATION
 

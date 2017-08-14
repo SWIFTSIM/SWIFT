@@ -630,8 +630,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = &ci->sort[sid * (ci->count + 1)];
-  const struct entry *restrict sort_j = &cj->sort[sid * (cj->count + 1)];
+  const struct entry *restrict sort_i = ci->sort[sid];
+  const struct entry *restrict sort_j = cj->sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper

@@ -355,19 +355,20 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
        finger = finger->parent) {
     if (finger->sorted & ~c->sorted) error("Inconsistent sort flags (upward).");
   }
-#endif
 
   /* Update the sort timer which represents the last time the sorts
      were re-set. */
   if (c->sorted == 0) c->ti_sort = r->e->ti_current;
+#endif
 
-  /* start by allocating the entry arrays. */
-  if (c->sort == NULL) {
-    if ((c->sort = (struct entry *)malloc(sizeof(struct entry) * (count + 1) *
-                                          13)) == NULL)
-      error("Failed to allocate sort memory.");
+  /* start by allocating the entry arrays in the requested dimensions. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->sort[j] == NULL) {
+      if ((c->sort[j] = (struct entry *)malloc(sizeof(struct entry) *
+                                               (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
+    }
   }
-  struct entry *sort = c->sort;
 
   /* Does this cell have any progeny? */
   if (c->split) {
@@ -409,7 +410,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
       for (int k = 0; k < 8; k++) {
         inds[k] = k;
         if (c->progeny[k] != NULL && c->progeny[k]->count > 0) {
-          fingers[k] = &c->progeny[k]->sort[j * (c->progeny[k]->count + 1)];
+          fingers[k] = c->progeny[k]->sort[j];
           buff[k] = fingers[k]->d;
           off[k] = off[k];
         } else
@@ -426,7 +427,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
           }
 
       /* For each entry in the new sort list. */
-      finger = &sort[j * (count + 1)];
+      finger = c->sort[j];
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -447,8 +448,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
       } /* Merge. */
 
       /* Add a sentinel. */
-      sort[j * (count + 1) + count].d = FLT_MAX;
-      sort[j * (count + 1) + count].i = 0;
+      c->sort[j][count].d = FLT_MAX;
+      c->sort[j][count].i = 0;
 
       /* Mark as sorted. */
       atomic_or(&c->sorted, 1 << j);
@@ -484,19 +485,19 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
       const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
-          sort[j * (count + 1) + k].i = k;
-          sort[j * (count + 1) + k].d = px[0] * runner_shift[j][0] +
-                                        px[1] * runner_shift[j][1] +
-                                        px[2] * runner_shift[j][2];
+          c->sort[j][k].i = k;
+          c->sort[j][k].d = px[0] * runner_shift[j][0] +
+                            px[1] * runner_shift[j][1] +
+                            px[2] * runner_shift[j][2];
         }
     }
 
     /* Add the sentinel and sort. */
     for (int j = 0; j < 13; j++)
       if (flags & (1 << j)) {
-        sort[j * (count + 1) + count].d = FLT_MAX;
-        sort[j * (count + 1) + count].i = 0;
-        runner_do_sort_ascending(&sort[j * (count + 1)], count);
+        c->sort[j][count].d = FLT_MAX;
+        c->sort[j][count].i = 0;
+        runner_do_sort_ascending(c->sort[j], count);
         atomic_or(&c->sorted, 1 << j);
       }
   }
@@ -505,7 +506,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    finger = &sort[j * (count + 1)];
+    finger = c->sort[j];
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
@@ -1544,11 +1545,6 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, parts[k].time_bin);
       time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].ti_drift != ti_current)
-        error("Received un-drifted particle !");
-#endif
     }
 
     /* Convert into a time */
@@ -1758,7 +1754,7 @@ void *runner_main(void *data) {
   while (1) {
 
     /* Wait at the barrier. */
-    engine_barrier(e, r->id);
+    engine_barrier(e);
 
     /* Re-set the pointer to the previous task, as there is none. */
     struct task *t = NULL;

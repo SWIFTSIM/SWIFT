@@ -58,6 +58,7 @@
 #include "sourceterms.h"
 #include "space.h"
 #include "task.h"
+#include "threadpool.h"
 #include "timeline.h"
 #include "timers.h"
 #include "tools.h"
