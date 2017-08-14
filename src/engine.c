@@ -44,6 +44,7 @@
 #include <numa.h>
 #endif
 
+
 /* This object's header. */
 #include "engine.h"
 
@@ -73,6 +74,9 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
+#ifdef WITH_CUDA
+#include "CUDA/runner_cuda_main.h"
+#endif
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -2956,6 +2960,11 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
 
+
+
+#ifdef WITH_CUDA
+  create_tasks(e);
+#endif
 /* Print the status of the system */
 // if (e->verbose) engine_print_task_counts(e);
 
