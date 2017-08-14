@@ -140,13 +140,13 @@ libswiftsim_mpi_la_SHORTNAME = mpi
 
 # Sources and flags for regular CUDA library
 libswiftsim_cuda_la_SOURCES = $(AM_SOURCES)
-libswiftsim_cuda_la_CFLAGS = $(AM_CFLAGS) -I/home/aidan/cuda_7.5/include
+libswiftsim_cuda_la_CFLAGS = $(AM_CFLAGS) -I/home/aidan/cuda_7.5/include -DWITH_CUDA
 libswiftsim_cuda_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) -L/home/aidan/cuda_7.5/lib64 -lcudart
 libswiftsim_cuda_la_SHORTNAME = cuda
 
 # Sources and flags for MPI CUDA library
 libswiftsim_mpicuda_la_SOURCES = $(AM_SOURCES)
-libswiftsim_mpicuda_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) -I/home/aidan/cuda_7.5/include
+libswiftsim_mpicuda_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) -I/home/aidan/cuda_7.5/include -DWITH_CUDA
 libswiftsim_mpicuda_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) -L/home/aidan/cuda_7.5/lib64 -lcudart
 libswiftsim_mpicuda_la_SHORTNAME = mpicuda
 
