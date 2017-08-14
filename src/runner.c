@@ -557,7 +557,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
   cell_drift_multipole(c, e);
 
   /* Reset the gravity acceleration tensors */
-  gravity_field_tensors_init(&c->multipole->pot);
+  gravity_field_tensors_init(&c->multipole->pot, e->ti_current);
 
   /* Recurse? */
   if (c->split) {

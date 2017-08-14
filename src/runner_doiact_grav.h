@@ -47,6 +47,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->ti_old_multipole != e->ti_current) error("c->multipole not drifted.");
+  if (c->multipole->pot.ti_init != e->ti_current)
+    error("c->field tensor not initialised");
 #endif
 
   if (c->split) { /* Node case */
@@ -61,6 +63,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->ti_old_multipole != e->ti_current)
           error("cp->multipole not drifted.");
+        if (cp->multipole->pot.ti_init != e->ti_current)
+          error("cp->field tensor not initialised");
 #endif
         struct grav_tensor shifted_tensor;
 
@@ -137,8 +141,8 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 
   if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
 
-  if (ci->ti_old_multipole != e->ti_current)
-    error("ci->multipole not drifted.");
+  if (ci->multipole->pot.ti_init != e->ti_current)
+    error("ci->grav tensor not initialised.");
 #endif
 
   /* Do we need to drift the multipole ? */

@@ -96,6 +96,9 @@ struct grav_tensor {
   /* Total number of gpart this field tensor interacted with */
   long long num_interacted;
 
+  /* Last time this tensor was zeroed */
+  integertime_t ti_init;
+
 #endif
 };
 
@@ -232,9 +235,14 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
  *
  * @param l The field tensor.
  */
-INLINE static void gravity_field_tensors_init(struct grav_tensor *l) {
+INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
+                                              integertime_t ti_current) {
 
   bzero(l, sizeof(struct grav_tensor));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  l->ti_init = ti_current;
+#endif
 }
 
 /**
@@ -2185,7 +2193,7 @@ INLINE static void gravity_L2L(struct grav_tensor *la,
                                const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
-  gravity_field_tensors_init(la);
+  gravity_field_tensors_init(la, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
