@@ -2906,8 +2906,7 @@ void engine_print_task_counts(struct engine *e) {
 int engine_estimate_nr_tasks(struct engine *e) {
 
   int tasks_per_cell = e->tasks_per_cell;
-  if (tasks_per_cell > 0)
-    return e->s->tot_cells * tasks_per_cell;
+  if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
 
   /* Our guess differs depending on the types of tasks we are using, but we
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
@@ -2966,14 +2965,14 @@ int engine_estimate_nr_tasks(struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts  = c->count + c->gcount + c->scount;
+    int nparts = c->count + c->gcount + c->scount;
     if (nparts > 0) {
       ntop++;
       ncells++;
 
       /* Count cell depth until we get below the parts per cell threshold. */
       int depth = 3;
-      while ( nparts > space_splitsize) {
+      while (nparts > space_splitsize) {
         depth++;
         nparts /= 8;
         ncells += (1 << depth);
@@ -3655,12 +3654,6 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
-
-  /* Dump cells of our space. */
-  char name[15];
-  sprintf(name, "%s_%d", "cells", e->nodeID);
-  dumpCells(name, e->s);
-
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
