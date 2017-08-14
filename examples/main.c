@@ -396,8 +396,12 @@ int main(int argc, char *argv[]) {
     parser_read_file(paramFileName, params);
 
     /* Handle any command-line overrides. */
-    if (nparams > 0)
+    if (nparams > 0) {
+      message(
+          "Overwriting values read from the YAML file with command-line "
+          "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
+    }
 
     /* And dump the parameters as used. */
     // parser_print_params(&params);
