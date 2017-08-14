@@ -391,14 +391,8 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
-<<<<<<< HEAD
-      threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                     s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
-      swift_free(s->cells_top);
-=======
       space_free_cells(s);
-      free(s->cells_top);
->>>>>>> master
+      swift_free(s->cells_top);
       free(s->multipoles_top);
     }
 
