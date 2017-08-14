@@ -36,6 +36,7 @@
 #include "serial_io.h"
 
 /* Local includes. */
+#include "allocation.h"
 #include "common_io.h"
 #include "dimension.h"
 #include "engine.h"
@@ -567,7 +568,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
+    if (swift_alloc((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
         0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));

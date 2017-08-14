@@ -509,7 +509,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align,
+    if (swift_alloc((void*)parts, part_align,
                        (*Ngas) * sizeof(struct part)) != 0)
       error("Error while allocating memory for particles");
     bzero(*parts, *Ngas * sizeof(struct part));

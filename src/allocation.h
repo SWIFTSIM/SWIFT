@@ -10,22 +10,6 @@
 
 #include <stdlib.h>
 
-int swift_alloc(void ** memptr, size_t alignment, size_t size){
-
-#ifdef WITH_CUDA
-
-  int result = cudaMallocHost( memptr, size );
-  if(result != cudaSuccess)
-    result = 1;
-  else
-    result = 0;
-
-#else
-
-  int result = posix_memalign(memptr, alignment, size);
-
-#endif
-return result;
-}
-
+int swift_alloc(void ** memptr, size_t alignment, size_t size);
+void swift_free( void* memptr);
 #endif

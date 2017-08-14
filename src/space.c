@@ -237,7 +237,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gparts = NULL;
     c->sparts = NULL;
     if (c->sort != NULL) {
-      free(c->sort);
+      swift_free(c->sort);
       c->sort = NULL;
     }
 #if WITH_MPI
@@ -382,7 +382,7 @@ void space_regrid(struct space *s, int verbose) {
     if (s->cells_top != NULL) {
       threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
                      s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
-      free(s->cells_top);
+      swift_free(s->cells_top);
       free(s->multipoles_top);
       s->maxdepth = 0;
     }
@@ -1985,7 +1985,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
-      if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
+      if (swift_alloc((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * count) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < count; k++) {
@@ -2259,7 +2259,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Clean up. */
   if (allocate_buffer) {
-    if (buff != NULL) free(buff);
+    if (buff != NULL) swift_free(buff);
     if (gbuff != NULL) free(gbuff);
     if (sbuff != NULL) free(sbuff);
   }
@@ -2405,7 +2405,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
-      if (posix_memalign((void *)&s->cells_sub, cell_align,
+      if (swift_alloc((void *)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -2848,7 +2848,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
 
-  if (posix_memalign((void *)&parts, part_align,
+  if (swift_alloc((void *)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
@@ -2918,7 +2918,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   }
 
   /* Replace the content of the space */
-  free(s->parts);
+  swift_free(s->parts);
   free(s->gparts);
   free(s->sparts);
   s->parts = parts;
@@ -3023,9 +3023,9 @@ void space_reset_task_counters(struct space *s) {
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
-  free(s->cells_top);
+  swift_free(s->cells_top);
   free(s->multipoles_top);
-  free(s->parts);
+  swift_free(s->parts);
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
