@@ -2646,17 +2646,17 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
- * @param theta_crit_inv The inverse of the critical opening angle.
+ * @param theta_crit The critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int
 gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
                                  const struct gravity_tensors *const mb,
-                                 double theta_crit_inv, double r2) {
+                                 double theta_crit, double r2) {
 
-  const double r_crit_a = ma->r_max_rebuild * theta_crit_inv;
-  const double r_crit_b = mb->r_max_rebuild * theta_crit_inv;
+  const double r_crit_a = ma->r_max_rebuild * theta_crit;
+  const double r_crit_b = mb->r_max_rebuild * theta_crit;
 
   // MATTHIEU: Make this mass-dependent ?
 
@@ -2673,16 +2673,16 @@ gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
- * @param theta_crit_inv The inverse of the critical opening angle.
+ * @param theta_crit The critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
     const struct gravity_tensors *const ma,
-    const struct gravity_tensors *const mb, double theta_crit_inv, double r2) {
+    const struct gravity_tensors *const mb, double theta_crit, double r2) {
 
-  const double r_crit_a = ma->r_max * theta_crit_inv;
-  const double r_crit_b = mb->r_max * theta_crit_inv;
+  const double r_crit_a = ma->r_max * theta_crit;
+  const double r_crit_b = mb->r_max * theta_crit;
 
   // MATTHIEU: Make this mass-dependent ?
 

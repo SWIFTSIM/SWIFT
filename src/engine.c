@@ -1726,7 +1726,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
                              s->cdim[2] / 4 + 1};
-  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
+  const double theta_crit = e->gravity_properties->theta_crit;
   struct cell *cells = s->cells_top;
   const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
@@ -1782,7 +1782,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
           /* Recover the multipole information */
-          struct gravity_tensors *const multi_j = cj->multipole;
+          const struct gravity_tensors *const multi_j = cj->multipole;
 
           /* Get the distance between the CoMs */
           double dx = CoM_i[0] - multi_j->CoM[0];
@@ -1798,8 +1798,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_multipole_accept_rebuild(multi_i, multi_j,
-                                                theta_crit_inv, r2)) {
+          if (!gravity_multipole_accept_rebuild(multi_i, multi_j, theta_crit,
+                                                r2)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,

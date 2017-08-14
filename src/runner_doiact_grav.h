@@ -1408,7 +1408,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
-  const double theta_crit_inv = props->theta_crit_inv;
+  const double theta_crit = props->theta_crit;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
 
@@ -1469,7 +1469,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_multipole_accept(multi_i, multi_j, theta_crit_inv, r2)) {
+  if (gravity_multipole_accept(multi_i, multi_j, theta_crit, r2)) {
 
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1634,7 +1634,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double theta_crit_inv = props->theta_crit_inv;
+  const double theta_crit = props->theta_crit;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
 
@@ -1693,7 +1693,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     }
 
     /* Check the multipole acceptance criterion */
-    if (gravity_multipole_accept(multi_i, multi_j, theta_crit_inv, r2)) {
+    if (gravity_multipole_accept(multi_i, multi_j, theta_crit, r2)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
@@ -1716,7 +1716,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       const double r2_rebuild = dx * dx + dy * dy + dz * dz;
 
       /* Is the criterion violated now but was OK at the last rebuild ? */
-      if (gravity_multipole_accept_rebuild(multi_i, multi_j, theta_crit_inv,
+      if (gravity_multipole_accept_rebuild(multi_i, multi_j, theta_crit,
                                            r2_rebuild)) {
 
         /* Alright, we have to take charge of that pair in a different way. */
