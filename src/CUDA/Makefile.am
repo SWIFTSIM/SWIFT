@@ -37,14 +37,14 @@ libswiftdummy_la_CFLAGS = $(AM_CFLAGS)
 libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
 
 test_27_cells_SOURCES=test27cells.c
-test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA -I/home/aidan/cuda_7.5/include 
-test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -L/home/aidan/cuda_7.5/lib64/ -lcudart
-test_27_cells_LDFLAGS = $(AM_LDFLAGS) -I/home/aidan/cuda_7.5/include 
+test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA $(CUDA_CFLAGS) 
+test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart
+test_27_cells_LDFLAGS = $(AM_LDFLAGS) $(CUDA_CFLAGS)
 
 test_125_cells_SOURCES=test125cells.c
-test_125_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA -I/home/aidan/cuda_7.5/include 
+test_125_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA $(CUDA_CFLAGS)
 test_125_cells_LDADD= libswiftCUDA.la ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -L/home/aidan/cuda_7.5/lib64/ -lcudart
-test_125_cells_LDFLAGS = $(AM_LDFLAGS) -I/home/aidan/cuda_7.5/include 
+test_125_cells_LDFLAGS = $(AM_LDFLAGS) $(CUDA_CFLAGS) 
 
 
 endif

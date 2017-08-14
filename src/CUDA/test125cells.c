@@ -339,12 +339,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 0;
 
   // shuffle_particles(cell->parts, cell->count);
-
   cell->sorted = 0;
-  cell->sort = NULL;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+
 //  cell->sortsize = 0;
 
   return cell;
