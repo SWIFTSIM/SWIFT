@@ -2830,8 +2830,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Kick/Drift/init ? */
     if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_init_grav) {
+        t->type == task_type_drift_gpart || t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
