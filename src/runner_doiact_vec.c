@@ -264,8 +264,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   /* Find the leftmost active particle in cell i that interacts with any
    * particle in cell j. */
   first_pi = ci->count;
-  int active_id = first_pi;
-  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
+  int active_id = first_pi - 1;
+  while(first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
     first_pi--;
     /* Store the index of the particle if it is active. */
     if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
@@ -321,7 +321,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   last_pj = active_id;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
-  if (last_pj > 0) {
+  if(last_pj > 0) {
 
     /* Start from the last particle in cell i. */
     temp = ci->count - 1;
