@@ -21,8 +21,14 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
 
 /* This object's header. */
 #include "gravity.h"
@@ -38,6 +44,256 @@ struct exact_force_data {
   int counter_global;
   double const_G;
 };
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+/* Size of the Ewald table */
+#define Newald 64
+
+/* Components of the Ewald correction */
+static float fewald_x[Newald + 1][Newald + 1][Newald + 1];
+static float fewald_y[Newald + 1][Newald + 1][Newald + 1];
+static float fewald_z[Newald + 1][Newald + 1][Newald + 1];
+
+/* Factor used to normalize the access to the Ewald table */
+float ewald_fac;
+#endif
+
+/**
+ * @brief Allocates the memory and computes one octant of the
+ * Ewald correction table.
+ *
+ * We follow Hernquist, Bouchet & Suto, 1991, ApJS, Volume 75, p.231-240,
+ * equations (2.14a) and (2.14b) with alpha = 2. We consider all terms with
+ * |x - nL| < 4L and |h|^2 < 16.
+ *
+ * @param boxSize The side-length (L) of the volume.
+ */
+void gravity_exact_force_ewald_init(double boxSize) {
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  const ticks tic = getticks();
+  message("Computing Ewald correction table...");
+
+  /* Level of correction  (Hernquist et al. 1991)*/
+  const float alpha = 2.f;
+
+  /* some useful constants */
+  const float alpha2 = alpha * alpha;
+  const float factor_exp1 = 2.f * alpha / sqrt(M_PI);
+  const float factor_exp2 = -M_PI * M_PI / alpha2;
+  const float factor_sin = 2.f * M_PI;
+  const float boxSize_inv2 = 1.f / (boxSize * boxSize);
+
+  /* Ewald factor to access the table */
+  ewald_fac = (double)(2 * Newald) / boxSize;
+
+  /* Zero everything */
+  bzero(fewald_x, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+  bzero(fewald_y, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+  bzero(fewald_z, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+
+  /* Compute the values in one of the octants */
+  for (int i = 0; i <= Newald; ++i) {
+    for (int j = 0; j <= Newald; ++j) {
+      for (int k = 0; k <= Newald; ++k) {
+
+        if (i == 0 && j == 0 && k == 0) continue;
+
+        /* Distance vector */
+        const float r_x = 0.5f * ((float)i) / Newald;
+        const float r_y = 0.5f * ((float)j) / Newald;
+        const float r_z = 0.5f * ((float)k) / Newald;
+
+        /* Norm of distance vector */
+        const float r2 = r_x * r_x + r_y * r_y + r_z * r_z;
+        const float r_inv = 1.f / sqrtf(r2);
+        const float r_inv3 = r_inv * r_inv * r_inv;
+
+        /* Normal gravity potential term */
+        float f_x = r_x * r_inv3;
+        float f_y = r_y * r_inv3;
+        float f_z = r_z * r_inv3;
+
+        for (int n_i = -4; n_i <= 4; ++n_i) {
+          for (int n_j = -4; n_j <= 4; ++n_j) {
+            for (int n_k = -4; n_k <= 4; ++n_k) {
+
+              const float d_x = r_x - n_i;
+              const float d_y = r_y - n_j;
+              const float d_z = r_z - n_k;
+
+              /* Discretised distance */
+              const float r_tilde2 = d_x * d_x + d_y * d_y + d_z * d_z;
+              const float r_tilde_inv = 1.f / sqrtf(r_tilde2);
+              const float r_tilde = r_tilde_inv * r_tilde2;
+              const float r_tilde_inv3 =
+                  r_tilde_inv * r_tilde_inv * r_tilde_inv;
+
+              const float val =
+                  erfcf(alpha * r_tilde) +
+                  factor_exp1 * r_tilde * expf(-alpha2 * r_tilde2);
+
+              /* First correction term */
+              const float f = val * r_tilde_inv3;
+              f_x -= f * d_x;
+              f_y -= f * d_y;
+              f_z -= f * d_z;
+            }
+          }
+        }
+
+        for (int h_i = -4; h_i <= 4; ++h_i) {
+          for (int h_j = -4; h_j <= 4; ++h_j) {
+            for (int h_k = -4; h_k <= 4; ++h_k) {
+
+              const float h2 = h_i * h_i + h_j * h_j + h_k * h_k;
+
+              const float h2_inv = 1.f / (h2 + FLT_MIN);
+              const float h_dot_x = h_i * r_x + h_j * r_y + h_k * r_z;
+
+              const float val = 2.f * h2_inv * expf(h2 * factor_exp2) *
+                                sinf(factor_sin * h_dot_x);
+
+              /* Second correction term */
+              f_x -= val * h_i;
+              f_y -= val * h_j;
+              f_z -= val * h_k;
+            }
+          }
+        }
+
+        /* Save back to memory */
+        fewald_x[i][j][k] = f_x;
+        fewald_y[i][j][k] = f_y;
+        fewald_z[i][j][k] = f_z;
+      }
+    }
+  }
+
+/* Dump the Ewald table to a file */
+#ifdef HAVE_HDF5
+  hid_t h_file =
+      H5Fcreate("Ewald.hdf5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file for Ewald dump.");
+
+  /* Create dataspace */
+  hsize_t dim[3] = {Newald + 1, Newald + 1, Newald + 1};
+  hid_t h_space = H5Screate_simple(3, dim, NULL);
+  hid_t h_data;
+  h_data = H5Dcreate(h_file, "Ewald_x", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_x[0][0][0]));
+  H5Dclose(h_data);
+  h_data = H5Dcreate(h_file, "Ewald_y", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_y[0][0][0]));
+  H5Dclose(h_data);
+  h_data = H5Dcreate(h_file, "Ewald_z", H5T_NATIVE_FLOAT, h_space, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(fewald_z[0][0][0]));
+  H5Dclose(h_data);
+  H5Sclose(h_space);
+  H5Fclose(h_file);
+#endif
+
+  /* Apply the box-size correction */
+  for (int i = 0; i <= Newald; ++i) {
+    for (int j = 0; j <= Newald; ++j) {
+      for (int k = 0; k <= Newald; ++k) {
+        fewald_x[i][j][k] *= boxSize_inv2;
+        fewald_y[i][j][k] *= boxSize_inv2;
+        fewald_z[i][j][k] *= boxSize_inv2;
+      }
+    }
+  }
+
+  /* Say goodbye */
+  message("Ewald correction table computed (took %.3f %s). ",
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("Gravity checking function called without the corresponding flag.");
+#endif
+}
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+/**
+ * @brief Compute the Ewald correction for a given distance vector r.
+ *
+ * We interpolate the Ewald correction tables using a tri-linear interpolation
+ * similar to a CIC.
+ *
+ * @param rx x-coordinate of distance vector.
+ * @param ry y-coordinate of distance vector.
+ * @param rz z-coordinate of distance vector.
+ * @param corr (return) The Ewald correction.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
+                                   double corr[3]) {
+
+  const double s_x = (rx < 0.) ? 1. : -1.;
+  const double s_y = (ry < 0.) ? 1. : -1.;
+  const double s_z = (rz < 0.) ? 1. : -1.;
+  rx = fabs(rx);
+  ry = fabs(ry);
+  rz = fabs(rz);
+
+  int i = (int)(rx * ewald_fac);
+  if (i >= Newald) i = Newald - 1;
+  const double dx = rx * ewald_fac - i;
+  const double tx = 1. - dx;
+
+  int j = (int)(ry * ewald_fac);
+  if (j >= Newald) j = Newald - 1;
+  const double dy = ry * ewald_fac - j;
+  const double ty = 1. - dy;
+
+  int k = (int)(rz * ewald_fac);
+  if (k >= Newald) k = Newald - 1;
+  const double dz = rz * ewald_fac - k;
+  const double tz = 1. - dz;
+
+  /* Interpolation in X */
+  corr[0] = 0.;
+  corr[0] += fewald_x[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[0] += fewald_x[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[0] += fewald_x[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[0] += fewald_x[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[0] += fewald_x[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[0] += fewald_x[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[0] += fewald_x[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[0] += fewald_x[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr[0] *= s_x;
+
+  /* Interpolation in Y */
+  corr[1] = 0.;
+  corr[1] += fewald_y[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[1] += fewald_y[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[1] += fewald_y[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[1] += fewald_y[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[1] += fewald_y[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[1] += fewald_y[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[1] += fewald_y[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[1] += fewald_y[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr[1] *= s_y;
+
+  /* Interpolation in Z */
+  corr[2] = 0.;
+  corr[2] += fewald_z[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr[2] += fewald_z[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr[2] += fewald_z[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr[2] += fewald_z[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr[2] += fewald_z[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr[2] += fewald_z[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr[2] += fewald_z[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr[2] += fewald_z[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr[2] *= s_z;
+}
+#endif
 
 /**
  * @brief Checks whether the file containing the exact accelerations for
@@ -116,6 +372,12 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_active(gpi, e)) {
 
+      /* Get some information about the particle */
+      const double pix[3] = {gpi->x[0], gpi->x[1], gpi->x[2]};
+      const double hi = gpi->epsilon;
+      const double hi_inv = 1. / hi;
+      const double hi_inv3 = hi_inv * hi_inv * hi_inv;
+
       /* Be ready for the calculation */
       double a_grav[3] = {0., 0., 0.};
 
@@ -128,9 +390,9 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         if (gpi == gpj) continue;
 
         /* Compute the pairwise distance. */
-        double dx = gpi->x[0] - gpj->x[0];
-        double dy = gpi->x[1] - gpj->x[1];
-        double dz = gpi->x[2] - gpj->x[2];
+        double dx = gpj->x[0] - pix[0];
+        double dy = gpj->x[1] - pix[1];
+        double dz = gpj->x[2] - pix[2];
 
         /* Now apply periodic BC */
         if (periodic) {
@@ -140,34 +402,41 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         }
 
         const double r2 = dx * dx + dy * dy + dz * dz;
-        const double r = sqrt(r2);
-        const double ir = 1. / r;
+        const double r_inv = 1. / sqrt(r2);
+        const double r = r2 * r_inv;
         const double mj = gpj->mass;
-        const double hi = gpi->epsilon;
         double f;
-        const double f_lr = 1.;
 
         if (r >= hi) {
 
           /* Get Newtonian gravity */
-          f = mj * ir * ir * ir * f_lr;
+          f = mj * r_inv * r_inv * r_inv;
 
         } else {
 
-          const double hi_inv = 1. / hi;
-          const double hi_inv3 = hi_inv * hi_inv * hi_inv;
           const double ui = r * hi_inv;
           double W;
 
           kernel_grav_eval_double(ui, &W);
 
           /* Get softened gravity */
-          f = mj * hi_inv3 * W * f_lr;
+          f = mj * hi_inv3 * W;
         }
 
-        a_grav[0] -= f * dx;
-        a_grav[1] -= f * dy;
-        a_grav[2] -= f * dz;
+        a_grav[0] += f * dx;
+        a_grav[1] += f * dy;
+        a_grav[2] += f * dz;
+
+        /* Apply Ewald correction for periodic BC */
+        if (periodic && r > 1e-5 * hi) {
+
+          double corr[3];
+          gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
+
+          a_grav[0] += mj * corr[0];
+          a_grav[1] += mj * corr[1];
+          a_grav[2] += mj * corr[2];
+        }
       }
 
       /* Store the exact answer */

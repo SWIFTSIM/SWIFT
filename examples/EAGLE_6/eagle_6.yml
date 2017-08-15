@@ -12,6 +12,9 @@ TimeIntegration:
   time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+
+Scheduler:
+  cell_split_size: 64
   
 # Parameters governing the snapshots
 Snapshots:

@@ -966,9 +966,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   if (size > s->size) {
 
     /* Free existing task lists if necessary. */
-    if (s->tasks != NULL) free(s->tasks);
-    if (s->tasks_ind != NULL) free(s->tasks_ind);
-    if (s->tid_active != NULL) free(s->tid_active);
+    scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
     if (posix_memalign((void *)&s->tasks, task_align,
@@ -1347,11 +1345,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-#ifdef SWIFT_DEBUG_CHECKS
-          for (int k = 0; k < t->ci->count; k++)
-            if (t->ci->parts[k].ti_drift != s->space->e->ti_current)
-              error("Sending un-drifted particle !");
-#endif
           err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
                           t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "sending %i parts with tag=%i from %i to %i." ,
@@ -1649,11 +1642,29 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
  */
 void scheduler_clean(struct scheduler *s) {
 
-  free(s->tasks);
-  free(s->tasks_ind);
+  scheduler_free_tasks(s);
   free(s->unlocks);
   free(s->unlock_ind);
-  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
+}
+
+/**
+ * @brief Free the task arrays allocated by this #scheduler.
+ */
+void scheduler_free_tasks(struct scheduler *s) {
+
+  if (s->tasks != NULL) {
+    free(s->tasks);
+    s->tasks = NULL;
+  }
+  if (s->tasks_ind != NULL) {
+    free(s->tasks_ind);
+    s->tasks_ind = NULL;
+  }
+  if (s->tid_active != NULL) {
+    free(s->tid_active);
+    s->tid_active = NULL;
+  }
+  s->size = 0;
 }

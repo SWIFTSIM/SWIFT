@@ -190,7 +190,11 @@ int main(int argc, char *argv[]) {
   while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
+#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
         with_aff = 1;
+#else
+        error("Need NUMA support for thread affinity");
+#endif
         break;
       case 'c':
         with_cosmology = 1;
@@ -392,8 +396,12 @@ int main(int argc, char *argv[]) {
     parser_read_file(paramFileName, params);
 
     /* Handle any command-line overrides. */
-    if (nparams > 0)
+    if (nparams > 0) {
+      message(
+          "Overwriting values read from the YAML file with command-line "
+          "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
+    }
 
     /* And dump the parameters as used. */
     // parser_print_params(&params);
@@ -564,6 +572,11 @@ int main(int argc, char *argv[]) {
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
+
+/* Initialise the table of Ewald corrections for the gravity checks */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (periodic) gravity_exact_force_ewald_init(dim[0]);
+#endif
 
   /* Initialise the external potential properties */
   struct external_potential potential;
