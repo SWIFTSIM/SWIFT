@@ -1679,7 +1679,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   const struct engine *e = sp->e;
   const int periodic = sp->periodic;
   const double dim[3] = {sp->dim[0], sp->dim[1], sp->dim[2]};
-  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
 
   /* Self interaction? */
   if (cj == NULL) {
@@ -1733,7 +1733,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     const double r2 = dx * dx + dy * dy + dz * dz;
 
     /* Can we use multipoles ? */
-    if (gravity_multipole_accept(multi_i, multi_j, theta_crit, r2)) {
+    if (gravity_multipole_accept(multi_i, multi_j, theta_crit2, r2)) {
 
       /* Ok, no need to drift anything */
       return;

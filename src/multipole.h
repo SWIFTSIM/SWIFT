@@ -234,6 +234,7 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
  * @brief Zeroes all the fields of a field tensor
  *
  * @param l The field tensor.
+ * @param ti_current The current (integer) time (for debugging only).
  */
 INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
                                               integertime_t ti_current) {
@@ -246,7 +247,7 @@ INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
 }
 
 /**
- * @brief Adds field tensrs to other ones (i.e. does la += lb).
+ * @brief Adds a field tensor to another one (i.e. does la += lb).
  *
  * @param la The gravity tensors to add to.
  * @param lb The gravity tensors to add.
@@ -2175,6 +2176,9 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
     l_b->F_012 += m_a->M_000 * D_soft_012(dx, dy, dz, r, eps_inv);
     l_b->F_111 += m_a->M_000 * D_soft_111(dx, dy, dz, r, eps_inv);
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
   }
 }
 
@@ -2654,22 +2658,24 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
- * @param theta_crit The critical opening angle.
+ * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int
 gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
                                  const struct gravity_tensors *const mb,
-                                 double theta_crit, double r2) {
+                                 double theta_crit2, double r2) {
 
-  const double r_crit_a = ma->r_max_rebuild * theta_crit;
-  const double r_crit_b = mb->r_max_rebuild * theta_crit;
+  const double r_crit_a = ma->r_max_rebuild;
+  const double r_crit_b = mb->r_max_rebuild;
+  const double size = r_crit_a + r_crit_b;
+  const double size2 = size * size;
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));
+  return (r2 * theta_crit2 > size2);
 }
 
 /**
@@ -2681,21 +2687,23 @@ gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
- * @param theta_crit The critical opening angle.
+ * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
     const struct gravity_tensors *const ma,
-    const struct gravity_tensors *const mb, double theta_crit, double r2) {
+    const struct gravity_tensors *const mb, double theta_crit2, double r2) {
 
-  const double r_crit_a = ma->r_max * theta_crit;
-  const double r_crit_b = mb->r_max * theta_crit;
+  const double r_crit_a = ma->r_max;
+  const double r_crit_b = mb->r_max;
+  const double size = r_crit_a + r_crit_b;
+  const double size2 = size * size;
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));
+  return (r2 * theta_crit2 > size2);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */

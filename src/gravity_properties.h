@@ -51,6 +51,9 @@ struct gravity_props {
   /*! Tree opening angle (Multipole acceptance criterion) */
   double theta_crit;
 
+  /*! Square of opening angle */
+  double theta_crit2;
+
   /*! Inverse of opening angle */
   double theta_crit_inv;
 
