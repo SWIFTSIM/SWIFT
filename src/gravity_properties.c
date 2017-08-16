@@ -59,7 +59,7 @@ void gravity_props_init(struct gravity_props *p,
   /* Softening lengths */
   p->epsilon = 3. * parser_get_param_double(params, "Gravity:epsilon");
   p->epsilon2 = p->epsilon * p->epsilon;
-  p->epsilon_inv = 1. / p->epsilon;
+  p->epsilon_inv = 1.f / p->epsilon;
 }
 
 void gravity_props_print(const struct gravity_props *p) {

@@ -1516,14 +1516,14 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const double dim[3]) {
 
   /* Recover some constants */
-  const double eps = props->epsilon;
-  const double eps2 = props->epsilon2;
-  const double eps_inv = props->epsilon_inv;
+  const float eps = props->epsilon;
+  const float eps2 = props->epsilon2;
+  const float eps_inv = props->epsilon_inv;
 
   /* Compute distance vector */
-  double dx = pos_b[0] - pos_a[0];
-  double dy = pos_b[1] - pos_a[1];
-  double dz = pos_b[2] - pos_a[2];
+  float dx = (float)(pos_b[0] - pos_a[0]);
+  float dy = (float)(pos_b[1] - pos_a[1]);
+  float dz = (float)(pos_b[2] - pos_a[2]);
 
   /* Apply BC */
   if (periodic) {
@@ -1533,8 +1533,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   }
 
   /* Compute distance */
-  const double r2 = dx * dx + dy * dy + dz * dz;
-  const double r_inv = 1. / sqrt(r2);
+  const float r2 = dx * dx + dy * dy + dz * dz;
+  const float r_inv = 1. / sqrtf(r2);
 
   /* Compute all derivatives */
   struct potential_derivatives pot;

@@ -58,13 +58,13 @@ struct gravity_props {
   double theta_crit_inv;
 
   /*! Softening length */
-  double epsilon;
+  float epsilon;
 
   /*! Square of softening length */
-  double epsilon2;
+  float epsilon2;
 
   /*! Inverse of softening length */
-  double epsilon_inv;
+  float epsilon_inv;
 };
 
 void gravity_props_print(const struct gravity_props *p);

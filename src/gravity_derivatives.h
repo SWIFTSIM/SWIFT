@@ -85,6 +85,20 @@ struct potential_derivatives {
 #endif
 };
 
+/**
+ * @brief Compute all the relevent derivatives of the softened and truncated
+ * gravitational potential.
+ *
+ * @param r_x x-component of distance vector
+ * @param r_y y-component of distance vector
+ * @param r_z z-component of distance vector
+ * @param r2 Square norm of distance vector
+ * @param r_inv Inverse norm of distance vector
+ * @param eps Softening length.
+ * @param eps2 Square of softening length.
+ * @param eps_inv Inverse of softening length.
+ * @param pot (return) The structure containing all the derivatives.
+ */
 __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
     float r_x, float r_y, float r_z, float r2, float r_inv, float eps,
     float eps2, float eps_inv, struct potential_derivatives *pot) {
