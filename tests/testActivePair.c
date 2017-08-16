@@ -460,7 +460,7 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
 
-  if (posix_memalign((void **)&runner, part_align, sizeof(struct runner)) !=
+  if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT, sizeof(struct runner)) !=
       0) {
     error("couldn't allocate runner");
   }
