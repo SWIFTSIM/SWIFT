@@ -301,7 +301,7 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   /* Now do the opposite loop */
   if (cj_active) {
 
-    /* Loop over all particles in ci... */
+    /* Loop over all particles in cj... */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
 
       /* Skip inactive particles */
@@ -394,106 +394,6 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   /* Write back to the particles */
   if (ci_active) gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
   if (cj_active) gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
-
-#ifdef MATTHIEU_OLD_STUFF
-
-  /* Some constants */
-  const struct engine *const e = r->e;
-
-  /* Cell properties */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
-  struct gpart *restrict gparts_i = ci->gparts;
-  struct gpart *restrict gparts_j = cj->gparts;
-
-  /* MATTHIEU: Should we use local DP accumulators ? */
-
-  /* Loop over all particles in ci... */
-  if (cell_is_active(ci, e)) {
-    for (int pid = 0; pid < gcount_i; pid++) {
-
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gpi = &gparts_i[pid];
-
-      if (!gpart_is_active(gpi, e)) continue;
-
-      /* Apply boundary condition */
-      const double pix[3] = {gpi->x[0] - shift[0], gpi->x[1] - shift[1],
-                             gpi->x[2] - shift[2]};
-
-      /* Loop over every particle in the other cell. */
-      for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-        /* Get a hold of the jth part in cj. */
-        const struct gpart *restrict gpj = &gparts_j[pjd];
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {pix[0] - gpj->x[0],   // x
-                             pix[1] - gpj->x[1],   // y
-                             pix[2] - gpj->x[2]};  // z
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (gpi->ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-#endif
-
-        /* Interact ! */
-        runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpi->num_interacted++;
-#endif
-      }
-    }
-  }
-
-  /* Loop over all particles in cj... */
-  if (cell_is_active(cj, e)) {
-    for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gpj = &gparts_j[pjd];
-
-      if (!gpart_is_active(gpj, e)) continue;
-
-      /* Apply boundary condition */
-      const double pjx[3] = {gpj->x[0] + shift[0], gpj->x[1] + shift[1],
-                             gpj->x[2] + shift[2]};
-
-      /* Loop over every particle in the other cell. */
-      for (int pid = 0; pid < gcount_i; pid++) {
-
-        /* Get a hold of the ith part in ci. */
-        const struct gpart *restrict gpi = &gparts_i[pid];
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {pjx[0] - gpi->x[0],   // x
-                             pjx[1] - gpi->x[1],   // y
-                             pjx[2] - gpi->x[2]};  // z
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (gpi->ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-#endif
-
-        /* Interact ! */
-        runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpj->num_interacted++;
-#endif
-      }
-    }
-  }
-#endif
 }
 
 /**
@@ -654,7 +554,7 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   /* Now do the opposite loop */
   if (cj_active) {
 
-    /* Loop over all particles in ci... */
+    /* Loop over all particles in cj... */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
 
       /* Skip inactive particles */
@@ -752,111 +652,6 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   /* Write back to the particles */
   if (ci_active) gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
   if (cj_active) gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
-
-#ifdef MATTHIEU_OLD_STUFF
-  /* Some constants */
-  const struct engine *const e = r->e;
-  const struct space *s = e->s;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
-  const double rlr = cell_width * a_smooth;
-  const float rlr_inv = 1. / rlr;
-
-  /* Cell properties */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
-  struct gpart *restrict gparts_i = ci->gparts;
-  struct gpart *restrict gparts_j = cj->gparts;
-
-  /* MATTHIEU: Should we use local DP accumulators ? */
-
-  /* Loop over all particles in ci... */
-  if (cell_is_active(ci, e)) {
-    for (int pid = 0; pid < gcount_i; pid++) {
-
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gpi = &gparts_i[pid];
-
-      if (!gpart_is_active(gpi, e)) continue;
-
-      /* Apply boundary condition */
-      const double pix[3] = {gpi->x[0] - shift[0], gpi->x[1] - shift[1],
-                             gpi->x[2] - shift[2]};
-
-      /* Loop over every particle in the other cell. */
-      for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-        /* Get a hold of the jth part in cj. */
-        const struct gpart *restrict gpj = &gparts_j[pjd];
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {pix[0] - gpj->x[0],   // x
-                             pix[1] - gpj->x[1],   // y
-                             pix[2] - gpj->x[2]};  // z
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (gpi->ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-#endif
-
-        /* Interact ! */
-        runner_iact_grav_pp_truncated_nonsym(r2, dx, gpi, gpj, rlr_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpi->num_interacted++;
-#endif
-      }
-    }
-  }
-
-  /* Loop over all particles in cj... */
-  if (cell_is_active(cj, e)) {
-    for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gpj = &gparts_j[pjd];
-
-      if (!gpart_is_active(gpj, e)) continue;
-
-      /* Apply boundary condition */
-      const double pjx[3] = {gpj->x[0] + shift[0], gpj->x[1] + shift[1],
-                             gpj->x[2] + shift[2]};
-
-      /* Loop over every particle in the other cell. */
-      for (int pid = 0; pid < gcount_i; pid++) {
-
-        /* Get a hold of the ith part in ci. */
-        const struct gpart *restrict gpi = &gparts_i[pid];
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {pjx[0] - gpi->x[0],   // x
-                             pjx[1] - gpi->x[1],   // y
-                             pjx[2] - gpi->x[2]};  // z
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (gpi->ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-#endif
-
-        /* Interact ! */
-        runner_iact_grav_pp_truncated_nonsym(r2, dx, gpj, gpi, rlr_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpj->num_interacted++;
-#endif
-      }
-    }
-  }
-
-#endif
 }
 
 /**
@@ -1045,80 +840,6 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
 
   /* Write back to the particles */
   gravity_cache_write_back(ci_cache, gparts, gcount);
-
-#ifdef MATTHIEU_OLD_STUFF
-
-  /* Some constants */
-  const struct engine *const e = r->e;
-
-  /* Cell properties */
-  const int gcount = c->gcount;
-  struct gpart *restrict gparts = c->gparts;
-
-  /* MATTHIEU: Should we use local DP accumulators ? */
-
-  /* Loop over all particles in ci... */
-  for (int pid = 0; pid < gcount; pid++) {
-
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gpi = &gparts[pid];
-
-    /* Loop over every particle in the other cell. */
-    for (int pjd = pid + 1; pjd < gcount; pjd++) {
-
-      /* Get a hold of the jth part in ci. */
-      struct gpart *restrict gpj = &gparts[pjd];
-
-      /* Compute the pairwise distance. */
-      float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                     gpi->x[1] - gpj->x[1],   // y
-                     gpi->x[2] - gpj->x[2]};  // z
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (gpi->ti_drift != e->ti_current)
-        error("gpi not drifted to current time");
-      if (gpj->ti_drift != e->ti_current)
-        error("gpj not drifted to current time");
-#endif
-
-      /* Interact ! */
-      if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
-
-        runner_iact_grav_pp(r2, dx, gpi, gpj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpi->num_interacted++;
-        gpj->num_interacted++;
-#endif
-
-      } else {
-
-        if (gpart_is_active(gpi, e)) {
-
-          runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          gpi->num_interacted++;
-#endif
-
-        } else if (gpart_is_active(gpj, e)) {
-
-          dx[0] = -dx[0];
-          dx[1] = -dx[1];
-          dx[2] = -dx[2];
-          runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          gpj->num_interacted++;
-#endif
-        }
-      }
-    }
-  }
-
-#endif
 }
 
 /**
@@ -1264,83 +985,6 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
 
   /* Write back to the particles */
   gravity_cache_write_back(ci_cache, gparts, gcount);
-
-#ifdef MATTHIEU_OLD_STUFF
-  /* Some constants */
-  const struct engine *const e = r->e;
-  const struct space *s = e->s;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
-  const double rlr = cell_width * a_smooth;
-  const float rlr_inv = 1. / rlr;
-
-  /* Cell properties */
-  const int gcount = c->gcount;
-  struct gpart *restrict gparts = c->gparts;
-
-  /* MATTHIEU: Should we use local DP accumulators ? */
-
-  /* Loop over all particles in ci... */
-  for (int pid = 0; pid < gcount; pid++) {
-
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gpi = &gparts[pid];
-
-    /* Loop over every particle in the other cell. */
-    for (int pjd = pid + 1; pjd < gcount; pjd++) {
-
-      /* Get a hold of the jth part in ci. */
-      struct gpart *restrict gpj = &gparts[pjd];
-
-      /* Compute the pairwise distance. */
-      float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                     gpi->x[1] - gpj->x[1],   // y
-                     gpi->x[2] - gpj->x[2]};  // z
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (gpi->ti_drift != e->ti_current)
-        error("gpi not drifted to current time");
-      if (gpj->ti_drift != e->ti_current)
-        error("gpj not drifted to current time");
-#endif
-
-      /* Interact ! */
-      if (gpart_is_active(gpi, e) && gpart_is_active(gpj, e)) {
-
-        runner_iact_grav_pp_truncated(r2, dx, gpi, gpj, rlr_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        gpi->num_interacted++;
-        gpj->num_interacted++;
-#endif
-
-      } else {
-
-        if (gpart_is_active(gpi, e)) {
-
-          runner_iact_grav_pp_truncated_nonsym(r2, dx, gpi, gpj, rlr_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          gpi->num_interacted++;
-#endif
-
-        } else if (gpart_is_active(gpj, e)) {
-
-          dx[0] = -dx[0];
-          dx[1] = -dx[1];
-          dx[2] = -dx[2];
-          runner_iact_grav_pp_truncated_nonsym(r2, dx, gpj, gpi, rlr_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          gpj->num_interacted++;
-#endif
-        }
-      }
-    }
-  }
-#endif
 }
 
 /**
