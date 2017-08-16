@@ -179,9 +179,9 @@ __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
   pot->D_220 = r_x2 * r_y2 * r_inv9 + r_x2 * r_inv7 + r_y2 * r_inv7 + r_inv5;
   pot->D_202 = r_x2 * r_z2 * r_inv9 + r_x2 * r_inv7 + r_z2 * r_inv7 + r_inv5;
   pot->D_022 = r_y2 * r_z2 * r_inv9 + r_y2 * r_inv7 + r_z2 * r_inv7 + r_inv5;
-  pot->D_211 = r_x2 * r_y * r_z * r_inv9 + r_y * r_z * r_inv5;
-  pot->D_121 = r_y2 * r_x * r_z * r_inv9 + r_x * r_z * r_inv5;
-  pot->D_112 = r_z2 * r_x * r_z * r_inv9 + r_x * r_y * r_inv5;
+  pot->D_211 = r_x2 * r_y * r_z * r_inv9 + r_y * r_z * r_inv7;
+  pot->D_121 = r_y2 * r_x * r_z * r_inv9 + r_x * r_z * r_inv7;
+  pot->D_112 = r_z2 * r_x * r_z * r_inv9 + r_x * r_y * r_inv7;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
