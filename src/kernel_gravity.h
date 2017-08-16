@@ -128,4 +128,17 @@ __attribute__((always_inline)) INLINE static float D_soft_9(float u,
   return phi;
 }
 
+__attribute__((always_inline)) INLINE static float D_soft_11(float u,
+                                                             float u_inv) {
+
+  /* ((((phi'(u)/u)'/u)'/u)'/u)'/u = 315u^-3 - 1260u^-5 */
+  float phi = -1260.f * u_inv;
+  phi = phi * u_inv + 315.f;
+  phi = phi * u_inv;
+  phi = phi * u_inv;
+  phi = phi * u_inv;
+
+  return phi;
+}
+
 #endif /* SWIFT_KERNEL_GRAVITY_H */

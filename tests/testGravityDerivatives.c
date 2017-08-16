@@ -1016,6 +1016,32 @@ int main() {
     test(pot.D_112, D_112(dx, dy, dz, r_inv), tol, min, "D_112");
 #endif
 
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+    /* 5th order terms */
+    test(pot.D_500, D_500(dx, dy, dz, r_inv), tol, min, "D_500");
+    test(pot.D_050, D_050(dx, dy, dz, r_inv), tol, min, "D_050");
+    test(pot.D_005, D_005(dx, dy, dz, r_inv), tol, min, "D_005");
+    test(pot.D_410, D_410(dx, dy, dz, r_inv), tol, min, "D_410");
+    test(pot.D_401, D_401(dx, dy, dz, r_inv), tol, min, "D_401");
+    test(pot.D_140, D_140(dx, dy, dz, r_inv), tol, min, "D_140");
+    test(pot.D_041, D_041(dx, dy, dz, r_inv), tol, min, "D_041");
+    test(pot.D_104, D_104(dx, dy, dz, r_inv), tol, min, "D_104");
+    test(pot.D_014, D_014(dx, dy, dz, r_inv), tol, min, "D_014");
+    test(pot.D_320, D_320(dx, dy, dz, r_inv), tol, min, "D_320");
+    test(pot.D_302, D_302(dx, dy, dz, r_inv), tol, min, "D_302");
+    test(pot.D_230, D_230(dx, dy, dz, r_inv), tol, min, "D_230");
+    test(pot.D_032, D_032(dx, dy, dz, r_inv), tol, min, "D_032");
+    test(pot.D_203, D_203(dx, dy, dz, r_inv), tol, min, "D_203");
+    test(pot.D_023, D_023(dx, dy, dz, r_inv), tol, min, "D_023");
+    test(pot.D_311, D_311(dx, dy, dz, r_inv), tol, min, "D_311");
+    test(pot.D_131, D_131(dx, dy, dz, r_inv), tol, min, "D_131");
+    test(pot.D_113, D_113(dx, dy, dz, r_inv), tol, min, "D_113");
+    test(pot.D_122, D_122(dx, dy, dz, r_inv), tol, min, "D_122");
+    test(pot.D_212, D_212(dx, dy, dz, r_inv), tol, min, "D_212");
+    test(pot.D_221, D_221(dx, dy, dz, r_inv), tol, min, "D_221");
+
+#endif
     message("All good!");
   }
   return 0;

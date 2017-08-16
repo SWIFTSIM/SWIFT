@@ -116,6 +116,9 @@ __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
   float Dt_9;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+  float Dt_11;
+#endif
 
   /* Un-softened case */
   if (r2 > eps2) {
@@ -135,7 +138,10 @@ __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
     Dt_9 = -7.f * Dt_7 * r_inv2; /* 105 / r^9 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+    Dt_11 = -9.f * Dt_9 * r_inv2; /* -945 / r^11 */
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
 
   } else {
@@ -162,7 +168,11 @@ __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
     Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for order >4"
+    const float eps_inv11 = eps_inv9 * eps_inv2;
+    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
 #endif
   }
 
@@ -243,7 +253,40 @@ __attribute__((always_inline)) INLINE static void compute_potential_derivatives(
   pot->D_112 = r_z2 * r_x * r_y * Dt_9 + r_x * r_y * Dt_7;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-#error "Missing implementation for orders >4"
+  /* 5th order derivatives */
+  pot->D_500 = r_x5 * Dt_11 + 10.f * r_x3 * Dt_9 + 15.f * r_x * Dt_7;
+  pot->D_050 = r_y5 * Dt_11 + 10.f * r_y3 * Dt_9 + 15.f * r_y * Dt_7;
+  pot->D_005 = r_z5 * Dt_11 + 10.f * r_z3 * Dt_9 + 15.f * r_z * Dt_7;
+  pot->D_410 = r_x4 * r_y * Dt_11 + 6.f * r_x2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
+  pot->D_401 = r_x4 * r_z * Dt_11 + 6.f * r_x2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
+  pot->D_140 = r_y4 * r_x * Dt_11 + 6.f * r_y2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
+  pot->D_041 = r_y4 * r_z * Dt_11 + 6.f * r_y2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
+  pot->D_104 = r_z4 * r_x * Dt_11 + 6.f * r_z2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
+  pot->D_014 = r_z4 * r_y * Dt_11 + 6.f * r_z2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
+  pot->D_320 = r_x3 * r_y2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_y2 * Dt_9 +
+               3.f * r_x * Dt_7;
+  pot->D_302 = r_x3 * r_z2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_z2 * Dt_9 +
+               3.f * r_x * Dt_7;
+  pot->D_230 = r_y3 * r_x2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_x2 * Dt_9 +
+               3.f * r_y * Dt_7;
+  pot->D_032 = r_y3 * r_z2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_z2 * Dt_9 +
+               3.f * r_y * Dt_7;
+  pot->D_203 = r_z3 * r_x2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_x2 * Dt_9 +
+               3.f * r_z * Dt_7;
+  pot->D_023 = r_z3 * r_y2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_y2 * Dt_9 +
+               3.f * r_z * Dt_7;
+  pot->D_311 = r_x3 * r_y * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
+  pot->D_131 = r_y3 * r_x * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
+  pot->D_113 = r_z3 * r_x * r_y * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
+  pot->D_122 = r_x * r_y2 * r_z2 * Dt_11 + r_x * r_y2 * Dt_9 +
+               r_x * r_z2 * Dt_9 + r_x * Dt_7;
+  pot->D_212 = r_y * r_x2 * r_z2 * Dt_11 + r_y * r_x2 * Dt_9 +
+               r_y * r_z2 * Dt_9 + r_y * Dt_7;
+  pot->D_221 = r_z * r_x2 * r_y2 * Dt_11 + r_z * r_x2 * Dt_9 +
+               r_z * r_y2 * Dt_9 + r_z * Dt_7;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for orders >5"
 #endif
 }
 
