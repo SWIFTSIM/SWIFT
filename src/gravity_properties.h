@@ -65,6 +65,9 @@ struct gravity_props {
 
   /*! Inverse of softening length */
   float epsilon_inv;
+
+  /*! Cube of the inverse of softening length */
+  float epsilon_inv3;
 };
 
 void gravity_props_print(const struct gravity_props *p);
