@@ -795,6 +795,10 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->toc = 0;
 #endif
 
+#ifdef WITH_CUDA
+  t->cuda_task = -1;
+#endif
+
   /* Add an index for it. */
   // lock_lock( &s->lock );
   s->tasks_ind[atomic_inc(&s->nr_tasks)] = ind;

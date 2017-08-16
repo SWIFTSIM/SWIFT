@@ -51,11 +51,15 @@
 #if defined(__ICC)
 #define swift_align_information(array, alignment) \
   __assume_aligned(array, alignment);
-#elif defined(__NVCC__)
-#define swift_align_information(array, alignment) ;
+/*#elif defined(__NVCC__)
+#define swift_align_information(array, alignment) ;*/
 #elif defined(__GNUC__)
+//#ifdef WITH_CUDA
+/*#define swift_align_information(array, alignment) ;
+#else*/
 #define swift_align_information(array, alignment) \
-  array = __builtin_assume_aligned(array, alignment);
+  array = (float*) __builtin_assume_aligned(array, alignment);
+//#endif
 #else
 #define swift_align_information(array, alignment) ;
 #endif

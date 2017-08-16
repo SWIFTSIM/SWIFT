@@ -96,6 +96,7 @@ struct task_cuda *tasks_host;
 
 /* Array of unlocks on the device*/
 __device__ int *cuda_unlocks;
+__device__ int cuda_nr_unlocks;
 
 /* Array of unlocks on the host. */
 int *host_unlocks;
@@ -1826,13 +1827,21 @@ __host__ void update_tasks(struct engine *e) {
   cudaErrCheck(cudaMemcpyFromSymbol(&nr_gpu_tasks, cuda_numtasks, sizeof(int)));
   struct task_cuda *gpu_pointer = NULL;
   cudaErrCheck(cudaMemcpyFromSymbol(
-      gpu_pointer, tasks, sizeof(struct task_cuda *)));  // TODO check.
+       &gpu_pointer, tasks, sizeof(struct task_cuda *)));  // TODO check.
   struct task_cuda *host_tasks = NULL;
   host_tasks =
       (struct task_cuda *)malloc(sizeof(struct task_cuda) * nr_gpu_tasks);
   cudaErrCheck(cudaMemcpy(host_tasks, gpu_pointer,
-                          sizeof(struct task_cuda *) * nr_gpu_tasks,
+                          sizeof(struct task_cuda ) * nr_gpu_tasks,
                           cudaMemcpyDeviceToHost));
+  int cuda_unlock_count;
+  cudaErrCheck(cudaMemcpyFromSymbol( &cuda_unlock_count, cuda_nr_unlocks, sizeof(int) ));
+  int *host_unlock_copy = (int*) malloc(sizeof(int) * cuda_unlock_count);
+  int *host_unlock_pointer = NULL;
+  cudaErrCheck( cudaMemcpyFromSymbol( &host_unlock_pointer, cuda_unlocks, sizeof(int*) ) );
+  cudaErrCheck( cudaDeviceSynchronize());
+  cudaErrCheck( cudaMemcpy( host_unlock_copy, host_unlock_pointer, sizeof(int) * cuda_unlock_count, cudaMemcpyDeviceToHost) );
+
 
   for (int i = 0; i < nr_gpu_tasks; i++) {
     // Update the skip flag and reset the wait to 0.
@@ -1847,8 +1856,9 @@ __host__ void update_tasks(struct engine *e) {
   for (int i = 0; i < nr_gpu_tasks; i++) {
     if (!host_tasks[i].skip) {
       struct task_cuda *temp_t = &host_tasks[i];
+      int *unlocks = host_unlock_copy + (temp_t->unlocks - host_unlock_pointer);
       for (int ii = 0; ii < temp_t->nr_unlock_tasks; ii++) {
-        host_tasks[temp_t->unlocks[ii]].wait++;
+          host_tasks[unlocks[ii]].wait++;
       }
     }
   }
@@ -2076,7 +2086,8 @@ __host__ void create_tasks(struct engine *e) {
       tasks_host[k].size_unlocks = 0;
 
       tasks_host[k].ci = t->ci->cuda_ID;
-      tasks_host[k].cj = t->cj->cuda_ID;
+      if(t->cj != NULL)
+        tasks_host[k].cj = t->cj->cuda_ID;
 
       /* We have a double linked structure because its easier to create. */
       tasks_host[k].task = t;
@@ -2124,10 +2135,12 @@ __host__ void create_tasks(struct engine *e) {
     /* Allocate some CPU memory for the unlocks. */
     t->unlocks = (int *)malloc(sizeof(int) * deps);
     t->size_unlocks = deps;
+    t->nr_unlock_tasks = 0;
 
     /* Copy the dependencies */
     for (int j = 0; j < t->task->nr_unlock_tasks; j++) {
-      t->unlocks[t->nr_unlock_tasks++] = t->task->unlock_tasks[j]->cuda_task;
+      if(t->task->unlock_tasks[j]->cuda_task >= 0)
+        t->unlocks[t->nr_unlock_tasks++] = t->task->unlock_tasks[j]->cuda_task;
     }
 
     /* If it is a force task then add the unload tasks.*/
@@ -2149,6 +2162,7 @@ __host__ void create_tasks(struct engine *e) {
         memcpy(
             temp, tasks_host[t->task->ci->load_task].unlocks,
             sizeof(int) * tasks_host[t->task->ci->load_task].nr_unlock_tasks);
+        tasks_host[t->task->ci->load_task].size_unlocks *= 2;
         free(tasks_host[t->task->ci->load_task].unlocks);
         tasks_host[t->task->ci->load_task].unlocks = temp;
       }
@@ -2166,6 +2180,7 @@ __host__ void create_tasks(struct engine *e) {
           memcpy(
               temp, tasks_host[t->task->cj->load_task].unlocks,
               sizeof(int) * tasks_host[t->task->cj->load_task].nr_unlock_tasks);
+          tasks_host[t->task->cj->load_task].size_unlocks *= 2;
           free(tasks_host[t->task->cj->load_task].unlocks);
           tasks_host[t->task->cj->load_task].unlocks = temp;
         }
@@ -2193,10 +2208,21 @@ __host__ void create_tasks(struct engine *e) {
   /* Add the arrays, update the pointers, remove the small arrays. */
   for (i = 0; i < num_gpu_tasks; i++) {
     memcpy(&host_dependencies[deps_filled], tasks_host[i].unlocks,
-           tasks_host[i].nr_unlock_tasks);
+           tasks_host[i].nr_unlock_tasks * sizeof(int));
     free(tasks_host[i].unlocks);
     tasks_host[i].unlocks = &host_dependencies[deps_filled];
     deps_filled += tasks_host[i].nr_unlock_tasks;
+  }
+
+  /* Set the waits! */
+  for (i = 0; i < num_gpu_tasks; i++) {
+    tasks_host[i].wait = 0;
+  }
+  for (i = 0; i < num_gpu_tasks; i++) {
+      struct task_cuda *temp_t = &tasks_host[i];
+      for (int ii = 0; ii < temp_t->nr_unlock_tasks; ii++) {
+          tasks_host[temp_t->unlocks[ii]].wait++;
+      }
   }
 
   /* Allocate storage for the dependencies on the GPU.*/
@@ -2209,9 +2235,8 @@ __host__ void create_tasks(struct engine *e) {
     gpu_dependencies = NULL;
   }
   cudaErrCheck(cudaMalloc((void **)&gpu_dependencies, sizeof(int) * num_deps));
-
   /* Start copying the dependency array to the device */
-  cudaErrCheck(cudaMemcpyAsync(gpu_dependencies, host_dependencies,
+  cudaErrCheck(cudaMemcpy(gpu_dependencies, host_dependencies,
                                sizeof(int) * num_deps, cudaMemcpyHostToDevice));
 
   /* We need the task's unlock pointers to point at the device stuff, which we
@@ -2227,7 +2252,8 @@ __host__ void create_tasks(struct engine *e) {
 
   /* Copy the new device array to where it will be visible. */
   cudaErrCheck(
-      cudaMemcpyToSymbol(cuda_unlocks, gpu_dependencies, sizeof(int *)));
+      cudaMemcpyToSymbol(cuda_unlocks, &gpu_dependencies, sizeof(int *)));
+  cudaErrCheck( cudaMemcpyToSymbol(cuda_nr_unlocks, &num_deps, sizeof(int)));
 
   /* Copy the tasks to the device. */
   struct task_cuda *gpu_tasks = NULL;
@@ -2245,7 +2271,7 @@ __host__ void create_tasks(struct engine *e) {
                           cudaMemcpyHostToDevice));
 
   cudaErrCheck(
-      cudaMemcpyToSymbol(tasks, gpu_tasks, sizeof(struct task_cuda *)));
+      cudaMemcpyToSymbol(tasks, &gpu_tasks, sizeof(struct task_cuda *)));
 
   /* Create the cuda_cells on the CPU. */
   struct cell_cuda *cell_host =
@@ -2318,16 +2344,6 @@ __host__ void create_tasks(struct engine *e) {
   int qsize = max(num_gpu_tasks, 256);
   cudaErrCheck(cudaMemcpyToSymbol(cuda_queue_size, &qsize, sizeof(int)));
 
-  /* Set the waits! */
-  for (i = 0; i < num_gpu_tasks; i++) {
-    tasks_host[i].wait = 0;
-  }
-  for (i = 0; i < num_gpu_tasks; i++) {
-    struct task_cuda *temp_t = &tasks_host[i];
-    for (int ii = 0; ii < temp_t->nr_unlock_tasks; ii++) {
-      tasks_host[temp_t->unlocks[ii]].wait++;
-    }
-  }
 
   /* Create the queues */
 
@@ -2453,6 +2469,13 @@ __host__ void create_tasks(struct engine *e) {
   work_host[1].rec_count = 0;
   work_host[1].nr_avail_tasks = work_host[1].count;
   work_host[1].count = nr_low;
+  /* Allocate and copy the data to the device. */
+  cudaErrCheck(cudaMalloc(&work_host[1].data, sizeof(int) * qsize));
+  cudaErrCheck(cudaMemcpy((void *)work_host[1].data, data, sizeof(int) * qsize,
+                          cudaMemcpyHostToDevice));
+  cudaErrCheck(cudaMalloc(&work_host[1].rec_data, sizeof(int) * qsize));
+  cudaErrCheck(cudaMemcpy((void *)work_host[1].rec_data, data2,
+                          sizeof(int) * qsize, cudaMemcpyHostToDevice));
 
   /* Copy the work queues to the GPU */
   cudaErrCheck(cudaMemcpyToSymbol(cuda_queues, &work_host,
@@ -2584,6 +2607,7 @@ __host__ void create_tasks(struct engine *e) {
 }
 
 __host__ void run_cuda() {
+  printf("running cuda\n");
   swift_device_kernel << <num_blocks, num_cuda_threads>>> ();
 }
 

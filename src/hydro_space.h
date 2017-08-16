@@ -35,7 +35,7 @@ struct hydro_space {
   double side[3];
 };
 #else
-struct hydro_space {};
+struct hydro_space {float empty;};
 #endif
 
 void hydro_space_init(struct hydro_space *hs, const struct space *s);

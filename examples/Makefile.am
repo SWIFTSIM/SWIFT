@@ -38,6 +38,13 @@ if HAVEMPI
 bin_PROGRAMS += swift_mpi
 endif
 
+if HAVECUDA
+bin_PROGRAMS += swift_cuda
+if HAVEMPI
+bin_PROGRAMS += swift_mpicuda
+endif
+endif
+
 # engine_policy_setaffinity is available?
 if HAVESETAFFINITY
 ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
@@ -54,6 +61,16 @@ swift_LDADD =  ../src/.libs/libswiftsim.a $(EXTRA_LIBS)
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
+
+# Sources for swift_cuda
+swift_cuda_SOURCES = main.c
+swift_cuda_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_CUDA
+swift_cuda_LDADD =  ../src/.libs/libswiftsim_cuda.a ../src/CUDA/.libs/libswiftCUDA.a $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart
+
+# Sources for swift_mpicuda, do we need an affinity policy for MPI?
+swift_mpicuda_SOURCES = main.c
+swift_mpicuda_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_CUDA
+swift_mpicuda_LDADD =  ../src/.libs/libswiftsim_mpicuda.a ../src/CUDA/.libs/libswiftCUDA.a $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart
 
 # Scripts to generate ICs
 EXTRA_DIST = BigCosmoVolume/makeIC.py \

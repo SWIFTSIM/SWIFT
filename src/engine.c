@@ -2939,6 +2939,7 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
 
   const ticks tic = getticks();
 
+  message("We got to a rebuild");
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
@@ -2961,10 +2962,6 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
     error("engine_marktasks failed after space_rebuild.");
 
 
-
-#ifdef WITH_CUDA
-  create_tasks(e);
-#endif
 /* Print the status of the system */
 // if (e->verbose) engine_print_task_counts(e);
 
@@ -3005,7 +3002,15 @@ void engine_prepare(struct engine *e) {
   if (e->forcerepart) engine_repartition(e);
 
   /* Do we need rebuilding ? */
-  if (e->forcerebuild) engine_rebuild(e, 0);
+  if (e->forcerebuild){
+   
+    engine_rebuild(e, 0);
+#ifdef WITH_CUDA
+    message("Creating CUDA tasks\n");
+    printf(" s = {dim= {%f, %f, %f}, periodic = %i, hs = {<No data fields>}, gravity = %i, width = {%f, %f, %f}, iwidth = {%f, %f, %f}, cell_min = %e, dx_max = %e, cdim = {%i, %i, %i,}, maxdepth = %i, nr_cells = %i, tot_cells = %i\n", e->s->dim[0], e->s->dim[1], e->s->dim[2], e->s->periodic, e->s->gravity, e->s->width[0], e->s->width[1], e->s->width[2], e->s->iwidth[0], e->s->iwidth[1], e->s->iwidth[2], e->s->cell_min, e->s->dx_max, e->s->cdim[0], e->s->cdim[1], e->s->cdim[2], e->s->maxdepth, e->s->nr_cells, e->s->tot_cells);
+    create_tasks(e);
+#endif
+  }
 
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
@@ -3379,6 +3384,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
+#ifdef WITH_CUDA
+//  run_cuda();
+#endif
+
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
 
@@ -3606,6 +3615,10 @@ void engine_step(struct engine *e) {
     gravity_exact_force_compute(e->s, e);
 #endif
 
+#ifdef WITH_CUDA
+  message("Updating tasks\n");
+  update_tasks(e);
+#endif
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e);
