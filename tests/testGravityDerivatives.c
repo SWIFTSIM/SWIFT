@@ -955,7 +955,7 @@ int main() {
 
     /* Compute all derivatives */
     struct potential_derivatives pot;
-    compute_potential_derivatives(dx, dy, dz, r_inv, &pot);
+    compute_potential_derivatives(dx, dy, dz, r2, r_inv, 0., 0., FLT_MAX, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

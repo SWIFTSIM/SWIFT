@@ -34,6 +34,8 @@
 #include "inline.h"
 #include "kernel_gravity.h"
 
+#if 0
+
 /*************************/
 /* 0th order derivatives */
 /*************************/
@@ -439,5 +441,7 @@ __attribute__((always_inline)) INLINE static double D_soft_111(
   const double eps_inv7 = eps_inv4 * eps_inv2 * eps_inv;
   return -r_x * r_y * r_z * eps_inv7 * D_soft_3(u);
 }
+
+#endif
 
 #endif /* SWIFT_GRAVITY_SOFTENED_DERIVATIVE_H */
