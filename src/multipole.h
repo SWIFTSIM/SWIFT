@@ -2647,30 +2647,16 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
- * @param periodic Are we using periodic boundary conditions ?
- * @param dim The dimensions of the box.
+ * @param r2 Square of the distance (periodically wrapped) between the
+ * multipoles.
  */
 __attribute__((always_inline)) INLINE static int
 gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
                                  const struct gravity_tensors *const mb,
-                                 double theta_crit_inv, int periodic,
-                                 const double dim[3]) {
+                                 double theta_crit_inv, double r2) {
 
   const double r_crit_a = ma->r_max_rebuild * theta_crit_inv;
   const double r_crit_b = mb->r_max_rebuild * theta_crit_inv;
-
-  double dx = ma->CoM_rebuild[0] - mb->CoM_rebuild[0];
-  double dy = ma->CoM_rebuild[1] - mb->CoM_rebuild[1];
-  double dz = ma->CoM_rebuild[2] - mb->CoM_rebuild[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-
-  const double r2 = dx * dx + dy * dy + dz * dz;
 
   // MATTHIEU: Make this mass-dependent ?
 
@@ -2688,29 +2674,15 @@ gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
- * @param periodic Are we using periodic boundary conditions ?
- * @param dim The dimensions of the box.
+ * @param r2 Square of the distance (periodically wrapped) between the
+ * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
     const struct gravity_tensors *const ma,
-    const struct gravity_tensors *const mb, double theta_crit_inv, int periodic,
-    const double dim[3]) {
+    const struct gravity_tensors *const mb, double theta_crit_inv, double r2) {
 
   const double r_crit_a = ma->r_max * theta_crit_inv;
   const double r_crit_b = mb->r_max * theta_crit_inv;
-
-  double dx = ma->CoM[0] - mb->CoM[0];
-  double dy = ma->CoM[1] - mb->CoM[1];
-  double dz = ma->CoM[2] - mb->CoM[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-
-  const double r2 = dx * dx + dy * dy + dz * dz;
 
   // MATTHIEU: Make this mass-dependent ?
 

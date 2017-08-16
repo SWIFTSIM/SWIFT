@@ -23,7 +23,11 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
+/* Config parameters. */
 #include "../config.h"
+
+/* Local headers */
+#include "inline.h"
 
 #ifdef WITH_VECTORIZATION
 

@@ -34,6 +34,8 @@
 #include "./gravity/Default/gravity.h"
 #include "./gravity/Default/gravity_iact.h"
 
+void gravity_exact_force_ewald_init(double boxSize);
+void gravity_exact_force_ewald_free();
 void gravity_exact_force_compute(struct space *s, const struct engine *e);
 void gravity_exact_force_check(struct space *s, const struct engine *e,
                                float rel_tol);

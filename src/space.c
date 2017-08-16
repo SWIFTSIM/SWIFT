@@ -254,6 +254,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Free up any allocated cells.
+ */
+void space_free_cells(struct space *s) {
+  threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 0, s);
+  s->maxdepth = 0;
+}
+
+/**
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
@@ -379,12 +388,14 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
-      threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                     s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+      space_free_cells(s);
       free(s->cells_top);
       free(s->multipoles_top);
-      s->maxdepth = 0;
     }
+
+    /* Also free the task arrays, these will be regenerated and we can use the
+     * memory while copying the particle arrays. */
+    if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
     /* Set the new cell dimensions only if smaller. */
     for (int k = 0; k < 3; k++) {
@@ -492,9 +503,7 @@ void space_regrid(struct space *s, int verbose) {
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
-    threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
-    s->maxdepth = 0;
+    space_free_cells(s);
   }
 
   if (verbose)
