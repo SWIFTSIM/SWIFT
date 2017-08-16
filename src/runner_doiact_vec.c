@@ -293,6 +293,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     /* Populate max_index_i for remaining particles that are within range. */
     for (int i = first_pi + 1; i < ci->count; i++) {
       temp = max_index_i[i - 1];
+      pi = &parts_i[sort_i[i].i];
 
       while (temp <= cj->count &&
              (sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) >
@@ -339,7 +340,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     /* Populate max_index_j for remaining particles that are within range. */
     for (int i = last_pj - 1; i >= 0; i--) {
       temp = max_index_j[i + 1];
-
+      pj = &parts_j[sort_j[i].i];
+      
       while (temp > 0 &&
              sort_j[i].d - dx_max - (pj->h * kernel_gamma) <
                  sort_i[temp].d - rshift)
