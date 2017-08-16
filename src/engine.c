@@ -3624,6 +3624,11 @@ void engine_step(struct engine *e) {
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
+#ifdef WITH_CUDA
+  message("Running cuda\n");
+  run_cuda();
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)

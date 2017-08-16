@@ -1462,7 +1462,7 @@ __global__ void swift_device_kernel() {
     __syncthreads();
 
     /* Unlock dependencies*/
-    for (i = threadIdx.x; i < tasks[tid].nr_unlock_tasks; i++) {
+    for (i = threadIdx.x; i < tasks[tid].nr_unlock_tasks; i+=blockDim.x) {
       int dependant = tasks[tid].unlocks[i];
       if (atomicSub(&tasks[dependant].wait, 1) == 1 && !tasks[dependant].skip) {
         if (tasks[dependant].type <= type_unload &&
@@ -1822,9 +1822,10 @@ __host__ int find_priority_cutoff(struct task_cuda *tasks, int count) {
 __host__ void update_tasks(struct engine *e) {
 
   int nr_gpu_tasks;
-
+  int nr_tasks;
   /* Download the cuda_tasks from the GPU. */
   cudaErrCheck(cudaMemcpyFromSymbol(&nr_gpu_tasks, cuda_numtasks, sizeof(int)));
+  cudaErrCheck(cudaMemcpyFromSymbol(&nr_tasks, tot_num_tasks, sizeof(int)));
   struct task_cuda *gpu_pointer = NULL;
   cudaErrCheck(cudaMemcpyFromSymbol(
        &gpu_pointer, tasks, sizeof(struct task_cuda *)));  // TODO check.
@@ -1842,6 +1843,7 @@ __host__ void update_tasks(struct engine *e) {
   cudaErrCheck( cudaDeviceSynchronize());
   cudaErrCheck( cudaMemcpy( host_unlock_copy, host_unlock_pointer, sizeof(int) * cuda_unlock_count, cudaMemcpyDeviceToHost) );
 
+  int task_count=0;
 
   for (int i = 0; i < nr_gpu_tasks; i++) {
     // Update the skip flag and reset the wait to 0.
@@ -1855,14 +1857,17 @@ __host__ void update_tasks(struct engine *e) {
   /* Reset the waits. */
   for (int i = 0; i < nr_gpu_tasks; i++) {
     if (!host_tasks[i].skip) {
+      task_count++;
       struct task_cuda *temp_t = &host_tasks[i];
       int *unlocks = host_unlock_copy + (temp_t->unlocks - host_unlock_pointer);
       for (int ii = 0; ii < temp_t->nr_unlock_tasks; ii++) {
-          host_tasks[unlocks[ii]].wait++;
+          if(!host_tasks[unlocks[ii]].skip)
+            host_tasks[unlocks[ii]].wait++;
       }
     }
   }
 
+  cudaErrCheck(cudaMemcpyToSymbol(tot_num_tasks, &task_count, sizeof(int)));
   /* Reset the queue data.*/
   int qsize;
   cudaErrCheck(cudaMemcpyFromSymbol(&qsize, cuda_queue_size, sizeof(int)));
@@ -1888,7 +1893,6 @@ __host__ void update_tasks(struct engine *e) {
   for (int i = unload_host.count; i < qsize; i++) {
     data[i] = -1;
   }
-
   /* Allocate and copy the data to the device. */
   cudaErrCheck(cudaMemcpy((void *)unload_host.data, data, sizeof(int) * qsize,
                           cudaMemcpyHostToDevice));
@@ -1995,7 +1999,7 @@ __host__ void update_tasks(struct engine *e) {
 
   /* Copy the tasks back to the GPU. */
   cudaErrCheck(cudaMemcpy(gpu_pointer, host_tasks,
-                          sizeof(struct task_cuda *) * nr_gpu_tasks,
+                          sizeof(struct task_cuda) * nr_gpu_tasks,
                           cudaMemcpyHostToDevice));
 
   /* Update simulation constants
@@ -2293,7 +2297,7 @@ __host__ void create_tasks(struct engine *e) {
 
   /* Allocate space on the device for the cells. */
   struct cell_cuda *cell_device = NULL;
-  struct cell **pointers_device = NULL;
+  struct cell *pointers_device = NULL;
   if (firstrun) {
     /* If we already have an array for this we need to remove it. */
     cudaErrCheck(cudaMemcpyFromSymbol(cell_device, &cells_cuda,
@@ -2316,14 +2320,14 @@ __host__ void create_tasks(struct engine *e) {
                           cudaMemcpyHostToDevice));
 
   cudaErrCheck(
-      cudaMemcpyToSymbol(cells_cuda, cell_device, sizeof(struct cell_cuda *)));
+      cudaMemcpyToSymbol(cells_cuda, &cell_device, sizeof(struct cell_cuda *)));
 
   cudaErrCheck(cudaMemcpy(pointers_device, host_pointers,
                           sizeof(struct cell *) * s->tot_cells,
                           cudaMemcpyHostToDevice));
 
   cudaErrCheck(
-      cudaMemcpyToSymbol(cpu_cells, pointers_device, sizeof(struct cell **)));
+      cudaMemcpyToSymbol(cpu_cells, &pointers_device, sizeof(struct cell **)));
 
   /* Setup the queues. */
   /* We have 4 queues, one containing unload & implicit tasks. */
@@ -2609,6 +2613,7 @@ __host__ void create_tasks(struct engine *e) {
 __host__ void run_cuda() {
   printf("running cuda\n");
   swift_device_kernel << <num_blocks, num_cuda_threads>>> ();
+  cudaErrCheck(cudaDeviceSynchronize());
 }
 
 /* Make the tests! */
