@@ -63,8 +63,8 @@ struct cache {
   /* Particle z velocity. */
   float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
 
-  /* Maximum distance of particles into neighbouring cell. */
-  float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
+  /* Maximum index into neighbouring cell for particles that are in range. */
+  int *restrict max_index __attribute__((aligned(CACHE_ALIGN)));
 
   /* Cache size. */
   int count;
@@ -111,9 +111,10 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
    * the vector size
    * and include 2 vector lengths for remainder operations. */
-  unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
+  size_t pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
-  unsigned int sizeBytes = (count + pad) * sizeof(float);
+  size_t sizeBytes = (count + pad) * sizeof(float);
+  size_t sizeIntBytes = (count + pad) * sizeof(int);
   int error = 0;
 
   /* Free memory if cache has already been allocated. */
@@ -126,7 +127,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
-    free(c->max_d);
+    free(c->max_index);
   }
 
   error += posix_memalign((void **)&c->x, CACHE_ALIGN, sizeBytes);
@@ -137,7 +138,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
   error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->max_index, CACHE_ALIGN, sizeIntBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -430,7 +431,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->vy);
     free(c->vz);
     free(c->h);
-    free(c->max_d);
+    free(c->max_index);
   }
 }
 

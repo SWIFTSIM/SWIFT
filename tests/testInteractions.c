@@ -17,12 +17,6 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
-
-#ifndef WITH_VECTORIZATION
-int main() { return 0; }
-#else
-
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,15 +24,17 @@ int main() { return 0; }
 #include <unistd.h>
 #include "swift.h"
 
+#ifdef WITH_VECTORIZATION
+
 #define array_align sizeof(float) * VEC_SIZE
 #define ACC_THRESHOLD 1e-5
 
-/* Typdef function pointers for serial and vectorised versions of the
- * interaction functions. */
-typedef void (*serial_interaction)(float, float *, float, float, struct part *,
-                                   struct part *);
-typedef void (*vec_interaction)(float *, float *, float *, float *,
-                                struct part **, struct part **);
+#ifndef IACT
+#define IACT runner_iact_nonsym_density
+#define IACT_VEC runner_iact_nonsym_1_vec_density
+#define IACT_NAME "test_nonsym_density"
+#define NUM_VEC_PROC_INT 1
+#endif
 
 /**
  * @brief Constructs an array of particles in a valid state prior to
@@ -74,7 +70,10 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
   p->h = h;
   p->id = ++(*partId);
+
+#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
   p->mass = 1.0f;
+#endif
 
   /* Place rest of particles around the test particle
    * with random position within a unit sphere. */
@@ -93,7 +92,9 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
     p->h = h;
     p->id = ++(*partId);
+#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
     p->mass = 1.0f;
+#endif
   }
   return particles;
 }
@@ -103,6 +104,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
+#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -113,6 +115,7 @@ void prepare_force(struct part *parts, size_t count) {
     p->force.v_sig = 0.0f;
     p->force.h_dt = 0.0f;
   }
+#endif
 }
 
 /**
@@ -122,25 +125,26 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 
   FILE *file = fopen(fileName, "a");
 
+  /* Write header */
   fprintf(file,
-          "%6llu %10f %10f %10f %10f %10f %10f %10e %10e %10e %13e %13e %13e "
-          "%13e %13e %13e %13e "
-          "%13e %13e %13e %10f\n",
+          "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+          "%13e %13e %13e\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
-          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho,
-          p->density.rho_dh, p->density.wcount, p->density.wcount_dh,
-          p->force.h_dt, p->force.v_sig,
-#if defined(GADGET2_SPH)
-          p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
-          p->density.rot_v[2], p->entropy_dt
-#elif defined(DEFAULT_SPH)
-          p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
-          p->density.rot_v[2], 0.
+          hydro_get_density(p),
+#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+          0.f,
 #else
+          p->density.rho_dh,
+#endif
+          p->density.wcount, p->density.wcount_dh,
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
           p->density.rot_v[2]
+#else
+          0., 0., 0., 0.
 #endif
           );
+
   fclose(file);
 }
 
@@ -152,13 +156,10 @@ void write_header(char *fileName) {
   FILE *file = fopen(fileName, "w");
   /* Write header */
   fprintf(file,
-          "# %4s %10s %10s %10s %10s %10s %10s %10s %10s %10s %13s %13s %13s "
-          "%13s %13s %13s %13s"
-          "%13s %13s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "a_x", "a_y",
-          "a_z", "rho", "rho_dh", "wcount", "wcount_dh", "dh/dt", "v_sig",
-          "div_v", "curl_vx", "curl_vy", "curl_vz", "dS/dt");
-  fprintf(file, "\n# PARTICLES BEFORE INTERACTION:\n");
+          "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
+          "%13s %13s %13s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
+          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
   fclose(file);
 }
 
@@ -187,8 +188,8 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
 }
 
 /*
- * @brief Calls the serial and vectorised version of an interaction
- * function given by the function pointers.
+ * @brief Calls the serial and vectorised version of the non-symmetrical density
+ * interaction.
  *
  * @param test_part Particle that will be updated
  * @param parts Particle array to be interacted
@@ -196,16 +197,15 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
  * @param serial_inter_func Serial interaction function to be called
  * @param vec_inter_func Vectorised interaction function to be called
  * @param runs No. of times to call interactions
+ * @param num_vec_proc No. of vectors to use to process interaction
  *
  */
 void test_interactions(struct part test_part, struct part *parts, size_t count,
-                       serial_interaction serial_inter_func,
-                       vec_interaction vec_inter_func, char *filePrefix,
-                       size_t runs) {
+                       char *filePrefix, int runs, int num_vec_proc) {
 
-  ticks serial_time = 0, vec_time = 0;
+  ticks serial_time = 0;
+  ticks vec_time = 0;
 
-  FILE *file;
   char serial_filename[200] = "";
   char vec_filename[200] = "";
 
@@ -217,56 +217,60 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   write_header(serial_filename);
   write_header(vec_filename);
 
-  /* Test particle at the center of a unit sphere. */
   struct part pi_serial, pi_vec;
-
-  /* Remaining particles in the sphere that will interact with test particle. */
   struct part pj_serial[count], pj_vec[count];
 
-  /* Stores the separation, smoothing length and pointers to particles
-   * needed for the vectorised interaction. */
+  float r2[count] __attribute__((aligned(array_align)));
+  float dx[3 * count] __attribute__((aligned(array_align)));
+
+  struct part *piq[count], *pjq[count];
+  for (size_t k = 0; k < count; k++) {
+    piq[k] = NULL;
+    pjq[k] = NULL;
+  }
+
   float r2q[count] __attribute__((aligned(array_align)));
   float hiq[count] __attribute__((aligned(array_align)));
-  float hjq[count] __attribute__((aligned(array_align)));
-  float dxq[3 * count] __attribute__((aligned(array_align)));
-  struct part *piq[count], *pjq[count];
+  float dxq[count] __attribute__((aligned(array_align)));
+
+  float dyq[count] __attribute__((aligned(array_align)));
+  float dzq[count] __attribute__((aligned(array_align)));
+  float mjq[count] __attribute__((aligned(array_align)));
+  float vixq[count] __attribute__((aligned(array_align)));
+  float viyq[count] __attribute__((aligned(array_align)));
+  float vizq[count] __attribute__((aligned(array_align)));
+  float vjxq[count] __attribute__((aligned(array_align)));
+  float vjyq[count] __attribute__((aligned(array_align)));
+  float vjzq[count] __attribute__((aligned(array_align)));
 
   /* Call serial interaction a set number of times. */
-  for (size_t k = 0; k < runs; k++) {
+  for (int k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_serial = test_part;
     for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
 
-    /* Only dump data on first run. */
-    if (k == 0) {
-      /* Dump state of particles before serial interaction. */
-      dump_indv_particle_fields(serial_filename, &pi_serial);
-      for (size_t i = 0; i < count; i++)
-        dump_indv_particle_fields(serial_filename, &pj_serial[i]);
-    }
-
     /* Perform serial interaction */
     for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
-      for (size_t k = 0; k < 3; k++) {
-        dx[k] = pi_serial.x[k] - pj_serial[i].x[k];
-        r2 += dx[k] * dx[k];
+      r2[i] = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        int ind = (3 * i) + k;
+        dx[ind] = pi_serial.x[k] - pj_serial[i].x[k];
+        r2[i] += dx[ind] * dx[ind];
       }
-
-      const ticks tic = getticks();
-
-      serial_inter_func(r2, dx, pi_serial.h, pj_serial[i].h, &pi_serial,
-                        &pj_serial[i]);
-
-      serial_time += getticks() - tic;
     }
-  }
 
-  file = fopen(serial_filename, "a");
-  fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
-  fclose(file);
+    const ticks tic = getticks();
+/* Perform serial interaction */
+#ifdef __ICC
+#pragma novector
+#endif
+    for (size_t i = 0; i < count; i++) {
+      IACT(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h, &pi_serial,
+           &pj_serial[i]);
+    }
+    serial_time += getticks() - tic;
+  }
 
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(serial_filename, &pi_serial);
@@ -274,7 +278,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     dump_indv_particle_fields(serial_filename, &pj_serial[i]);
 
   /* Call vector interaction a set number of times. */
-  for (size_t k = 0; k < runs; k++) {
+  for (int k = 0; k < runs; k++) {
     /* Reset particle to initial setup */
     pi_vec = test_part;
     for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
@@ -284,45 +288,92 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
-      for (size_t k = 0; k < 3; k++) {
+      for (int k = 0; k < 3; k++) {
         dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
         r2 += dx[k] * dx[k];
       }
 
       r2q[i] = r2;
-      dxq[3 * i + 0] = dx[0];
-      dxq[3 * i + 1] = dx[1];
-      dxq[3 * i + 2] = dx[2];
+      dxq[i] = dx[0];
       hiq[i] = pi_vec.h;
-      hjq[i] = pj_vec[i].h;
       piq[i] = &pi_vec;
       pjq[i] = &pj_vec[i];
+
+      dyq[i] = dx[1];
+      dzq[i] = dx[2];
+      mjq[i] = pj_vec[i].mass;
+      vixq[i] = pi_vec.v[0];
+      viyq[i] = pi_vec.v[1];
+      vizq[i] = pi_vec.v[2];
+      vjxq[i] = pj_vec[i].v[0];
+      vjyq[i] = pj_vec[i].v[1];
+      vjzq[i] = pj_vec[i].v[2];
     }
 
-    /* Only dump data on first run. */
-    if (k == 0) {
-      /* Dump state of particles before vector interaction. */
-      dump_indv_particle_fields(vec_filename, piq[0]);
-      for (size_t i = 0; i < count; i++)
-        dump_indv_particle_fields(vec_filename, pjq[i]);
-    }
+    /* Perform vector interaction. */
+    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
+    vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
+        curlvySum, curlvzSum;
+    mask_t mask, mask2;
+
+    rhoSum.v = vec_set1(0.f);
+    rho_dhSum.v = vec_set1(0.f);
+    wcountSum.v = vec_set1(0.f);
+    wcount_dhSum.v = vec_set1(0.f);
+    div_vSum.v = vec_set1(0.f);
+    curlvxSum.v = vec_set1(0.f);
+    curlvySum.v = vec_set1(0.f);
+    curlvzSum.v = vec_set1(0.f);
+
+    hi_vec.v = vec_load(&hiq[0]);
+    vix_vec.v = vec_load(&vixq[0]);
+    viy_vec.v = vec_load(&viyq[0]);
+    viz_vec.v = vec_load(&vizq[0]);
+
+    hi_inv_vec = vec_reciprocal(hi_vec);
+    vec_init_mask_true(mask);
+    vec_init_mask_true(mask2);
 
     const ticks vec_tic = getticks();
 
-    /* Perform vector interaction. */
-    for (size_t i = 0; i < count; i += VEC_SIZE) {
-      vec_inter_func(&(r2q[i]), &(dxq[3 * i]), &(hiq[i]), &(hjq[i]), &(piq[i]),
-                     &(pjq[i]));
+    for (size_t i = 0; i < count; i += num_vec_proc * VEC_SIZE) {
+
+      /* Interleave two vectors for interaction. */
+      if (num_vec_proc == 2) {
+        runner_iact_nonsym_2_vec_density(
+            &(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (hi_inv_vec), (vix_vec),
+            (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]),
+            &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+            &curlvxSum, &curlvySum, &curlvzSum, mask, mask2, 0);
+      } else { /* Only use one vector for interaction. */
+
+        vector r2, dx, dy, dz;
+        r2.v = vec_load(&(r2q[i]));
+        dx.v = vec_load(&(dxq[i]));
+        dy.v = vec_load(&(dyq[i]));
+        dz.v = vec_load(&(dzq[i]));
+
+        runner_iact_nonsym_1_vec_density(
+            &r2, &dx, &dy, &dz, (hi_inv_vec), (vix_vec), (viy_vec), (viz_vec),
+            &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum,
+            &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+            &curlvzSum, mask);
+      }
     }
+
+    VEC_HADD(rhoSum, piq[0]->rho);
+    VEC_HADD(rho_dhSum, piq[0]->density.rho_dh);
+    VEC_HADD(wcountSum, piq[0]->density.wcount);
+    VEC_HADD(wcount_dhSum, piq[0]->density.wcount_dh);
+    VEC_HADD(div_vSum, piq[0]->density.div_v);
+    VEC_HADD(curlvxSum, piq[0]->density.rot_v[0]);
+    VEC_HADD(curlvySum, piq[0]->density.rot_v[1]);
+    VEC_HADD(curlvzSum, piq[0]->density.rot_v[2]);
 
     vec_time += getticks() - vec_tic;
   }
 
-  file = fopen(vec_filename, "a");
-  fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
-  fclose(file);
-
-  /* Dump result of vector interaction. */
+  /* Dump result of serial interaction. */
   dump_indv_particle_fields(vec_filename, piq[0]);
   for (size_t i = 0; i < count; i++)
     dump_indv_particle_fields(vec_filename, pjq[i]);
@@ -334,6 +385,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   message("The serial interactions took     : %15lli ticks.",
           serial_time / runs);
   message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
 /* And go... */
@@ -386,62 +438,22 @@ int main(int argc, char *argv[]) {
 
   /* Build the infrastructure */
   static long long partId = 0;
-  struct part density_test_particle, force_test_particle;
-  struct part *density_particles =
-      make_particles(count, offset, spacing, h, &partId);
-  struct part *force_particles =
-      make_particles(count, offset, spacing, h, &partId);
-  prepare_force(force_particles, count);
+  struct part test_particle;
+  struct part *particles = make_particles(count, offset, spacing, h, &partId);
 
-  /* Define which interactions to call */
-  serial_interaction serial_inter_func = &runner_iact_nonsym_density;
-  vec_interaction vec_inter_func = &runner_iact_nonsym_vec_density;
-
-  density_test_particle = density_particles[0];
+  test_particle = particles[0];
   /* Call the non-sym density test. */
-  message("Testing non-symmetrical density interaction...");
-  test_interactions(density_test_particle, &density_particles[1], count - 1,
-                    serial_inter_func, vec_inter_func, "test_nonsym_density",
-                    runs);
-
-  density_particles = make_particles(count, offset, spacing, h, &partId);
-
-  /* Re-assign function pointers. */
-  serial_inter_func = &runner_iact_density;
-  vec_inter_func = &runner_iact_vec_density;
-
-  density_test_particle = density_particles[0];
-  /* Call the symmetrical density test. */
-  message("Testing symmetrical density interaction...");
-  test_interactions(density_test_particle, &density_particles[1], count - 1,
-                    serial_inter_func, vec_inter_func, "test_sym_density",
-                    runs);
-
-  /* Re-assign function pointers. */
-  serial_inter_func = &runner_iact_nonsym_force;
-  vec_inter_func = &runner_iact_nonsym_vec_force;
-
-  force_test_particle = force_particles[0];
-  /* Call the test non-sym force test. */
-  message("Testing non-symmetrical force interaction...");
-  test_interactions(force_test_particle, &force_particles[1], count - 1,
-                    serial_inter_func, vec_inter_func, "test_nonsym_force",
-                    runs);
-
-  force_particles = make_particles(count, offset, spacing, h, &partId);
-  prepare_force(force_particles, count);
-
-  /* Re-assign function pointers. */
-  serial_inter_func = &runner_iact_force;
-  vec_inter_func = &runner_iact_vec_force;
-
-  force_test_particle = force_particles[0];
-  /* Call the test symmetrical force test. */
-  message("Testing symmetrical force interaction...");
-  test_interactions(force_test_particle, &force_particles[1], count - 1,
-                    serial_inter_func, vec_inter_func, "test_sym_force", runs);
+  message("Testing %s interaction...", IACT_NAME);
+  test_interactions(test_particle, &particles[1], count - 1, IACT_NAME, runs,
+                    1);
+  test_interactions(test_particle, &particles[1], count - 1, IACT_NAME, runs,
+                    2);
 
   return 0;
 }
 
-#endif /* WITH_VECTORIZATION */
+#else
+
+int main() { return 1; }
+
+#endif

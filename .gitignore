@@ -34,7 +34,7 @@ examples/*/*/*.txt
 examples/*/*/used_parameters.yml
 examples/*/gravity_checks_*.dat
 
-tests/testPair
+tests/testActivePair
 tests/brute_force_periodic_BC_standard.dat
 tests/swift_periodic_BC_standard.dat
 tests/brute_force_periodic_BC_pertrubed.dat
@@ -54,6 +54,11 @@ tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
+tests/brute_force_active.dat
+tests/brute_force_periodic_BC_perturbed.dat
+tests/swift_dopair_active.dat
+tests/test_nonsym_density_serial.dat
+tests/test_nonsym_density_vec.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
@@ -75,8 +80,6 @@ tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test125cells.sh
 tests/test125cellsPerturbed.sh
-tests/testPair.sh
-tests/testPairPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testAdiabaticIndex

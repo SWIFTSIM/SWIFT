@@ -56,4 +56,32 @@ do
     
 done
 
+# Test for particles with random smoothing lengths
+for v in {0..3}
+do
+    echo ""
+	
+    rm -f brute_force_27_standard.dat swift_dopair_27_standard.dat
+
+    echo "Running ./test27cells -n 6 -r 1 -d 0 -f standard -v $v -p 1.3"
+    ./test27cells -n 6 -r 1 -d 0 -f standard -v $v -p 1.3
+
+    if [ -e brute_force_27_standard.dat ]
+    then
+	if python @srcdir@/difffloat.py brute_force_27_standard.dat swift_dopair_27_standard.dat @srcdir@/tolerance_27_perturbed_h2.dat 6
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
+    else
+	echo "Error Missing test output file"
+	exit 1
+    fi
+
+    echo "------------"
+    
+done
+
 exit $?

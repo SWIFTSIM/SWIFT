@@ -32,6 +32,7 @@
 #include "tools.h"
 
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
 #include "error.h"
 #include "gravity.h"
@@ -183,6 +184,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -190,6 +192,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
 
     for (int j = 0; j < cj->count; ++j) {
 
@@ -218,6 +223,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     pj = &cj->parts[j];
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
 
     for (int i = 0; i < ci->count; ++i) {
 
@@ -311,6 +319,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
+  const struct engine *e = r->e;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -335,14 +344,14 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && part_is_active(pi, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2) {
+      if (r2 < hjg2 && part_is_active(pj, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];

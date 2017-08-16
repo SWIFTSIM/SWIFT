@@ -517,7 +517,8 @@ int main(int argc, char *argv[]) {
 
   const int half_dim = (dim - 1) / 2;
 
-  /* Test the periodic boundary conditions for each of the 8 corners. */
+  /* Test the periodic boundary conditions for each of the 8 corners. Interact
+   * each corner with all of its 26 neighbours.*/
   test_boundary_conditions(cells, runner, 0, 0, 0, dim, swiftOutputFileName,
                            bruteForceOutputFileName);
   test_boundary_conditions(cells, runner, dim - 1, 0, 0, dim,
