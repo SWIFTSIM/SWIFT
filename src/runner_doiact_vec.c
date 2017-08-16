@@ -224,7 +224,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 }
 
 /**
- * @brief Populates the arrays max_index_i and max_index_j with the maximum indices of
+ * @brief Populates the arrays max_index_i and max_index_j with the maximum
+ * indices of
  * particles into their neighbouring cells. Also finds the first pi that
  * interacts with any particle in cj and the last pj that interacts with any
  * particle in ci.
@@ -239,9 +240,11 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param hj_max Maximal smoothing length in cell cj
  * @param di_max Maximal position on the axis that can interact in cell ci
  * @param dj_min Minimal position on the axis that can interact in cell ci
- * @param max_index_i array to hold the maximum distances of pi particles into cell
+ * @param max_index_i array to hold the maximum distances of pi particles into
+ * cell
  * cj
- * @param max_index_j array to hold the maximum distances of pj particles into cell
+ * @param max_index_j array to hold the maximum distances of pj particles into
+ * cell
  * cj
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
@@ -265,7 +268,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
    * particle in cell j. */
   first_pi = ci->count;
   int active_id = first_pi - 1;
-  while(first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
+  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
     first_pi--;
     /* Store the index of the particle if it is active. */
     if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
@@ -322,7 +325,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   last_pj = active_id;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
-  if(last_pj > 0) {
+  if (last_pj > 0) {
 
     /* Start from the last particle in cell i. */
     temp = ci->count - 1;
@@ -341,7 +344,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     for (int i = last_pj - 1; i >= 0; i--) {
       temp = max_index_j[i + 1];
       pj = &parts_j[sort_j[i].i];
-      
+
       while (temp > 0 &&
              sort_j[i].d - dx_max - (pj->h * kernel_gamma) <
                  sort_i[temp].d - rshift)
@@ -696,12 +699,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   max_index_i = r->ci_cache.max_index;
   max_index_j = r->cj_cache.max_index;
 
-  /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[]. */
+  /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
+   */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
-                          hj_max, di_max, dj_min, max_index_i, max_index_j,
-                          &first_pi, &last_pj, e);
+                              hj_max, di_max, dj_min, max_index_i, max_index_j,
+                              &first_pi, &last_pj, e);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;

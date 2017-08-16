@@ -43,7 +43,8 @@
  * @param pert The perturbation to apply to the particles in the cell in units
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.
- * @param fraction_active The fraction of particles that should be active in the cell.
+ * @param fraction_active The fraction of particles that should be active in the
+ * cell.
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
@@ -460,8 +461,8 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
 
-  if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT, sizeof(struct runner)) !=
-      0) {
+  if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct runner)) != 0) {
     error("couldn't allocate runner");
   }
 

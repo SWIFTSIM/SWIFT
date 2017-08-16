@@ -438,7 +438,8 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
 
   /* Mask updates to intermediate vector sums for particle pi. */
   rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj.v, wi.v), mask);
-  rho_dhSum->v = vec_mask_sub(rho_dhSum->v, vec_mul(mj.v, wcount_dh_update.v), mask);
+  rho_dhSum->v =
+      vec_mask_sub(rho_dhSum->v, vec_mul(mj.v, wcount_dh_update.v), mask);
   wcountSum->v = vec_mask_add(wcountSum->v, wi.v, mask);
   wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, wcount_dh_update.v, mask);
   div_vSum->v =

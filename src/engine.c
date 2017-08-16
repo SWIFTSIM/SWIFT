@@ -4505,8 +4505,8 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
-  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, (policy & scheduler_flag_steal),
-                 e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues,
+                 (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
