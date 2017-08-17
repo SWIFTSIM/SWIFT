@@ -169,9 +169,11 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
                                 struct cell *cj, double shift[3]) {
 
   /* Some constants */
-  const struct engine *const e = r->e;
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
   struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+  const struct engine *const e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const float theta_crit2 = props->theta_crit2;
 
   /* Cell properties */
   const int gcount_i = ci->gcount;
@@ -204,6 +206,18 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
                          loc_mean);
 
+  /* Recover the multipole info and shift the CoM locations */
+  const float rmax_i = ci->multipole->r_max;
+  const float rmax_j = cj->multipole->r_max;
+  const float multi_mass_i = ci->multipole->m_pole.M_000;
+  const float multi_mass_j = cj->multipole->m_pole.M_000;
+  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
+                          ci->multipole->CoM[1] - loc_mean[1],
+                          ci->multipole->CoM[2] - loc_mean[2]};
+  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
+                          cj->multipole->CoM[1] - loc_mean[1],
+                          cj->multipole->CoM[2] - loc_mean[2]};
+
   /* Ok... Here we go ! */
 
   if (ci_active) {
@@ -224,8 +238,50 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       const float h_inv_i = 1.f / h_i;
       const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-      ///* Can we use the multipole in cj ? */
-      // if
+      /* Distance to the multipole in cj */
+      const float dx = x_i - CoM_j[0];
+      const float dy = y_i - CoM_j[1];
+      const float dz = z_i - CoM_j[2];
+      const float r2 = dx * dx + dy * dy + dz * dz;
+
+      /* Can we use the multipole in cj ? */
+      if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
+
+        /* Get the inverse distance */
+        const float r_inv = 1.f / sqrtf(r2);
+
+        float f_ij, W_ij;
+
+        if (r2 >= h2_i) {
+
+          /* Get Newtonian gravity */
+          f_ij = multi_mass_j * r_inv * r_inv * r_inv;
+
+        } else {
+
+          const float r = r2 * r_inv;
+          const float ui = r * h_inv_i;
+
+          kernel_grav_eval(ui, &W_ij);
+
+          /* Get softened gravity */
+          f_ij = multi_mass_j * h_inv3_i * W_ij;
+        }
+
+        /* Store it back */
+        ci_cache->a_x[pid] = -f_ij * dx;
+        ci_cache->a_y[pid] = -f_ij * dy;
+        ci_cache->a_z[pid] = -f_ij * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+#endif
+        /* Done with this particle */
+        continue;
+      }
+
+      /* Ok, as of here we have no choice but directly interact everything */
 
       /* Local accumulators for the acceleration */
       float a_x = 0.f, a_y = 0.f, a_z = 0.f;
@@ -319,6 +375,51 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       const float h2_j = h_j * h_j;
       const float h_inv_j = 1.f / h_j;
       const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
+
+      /* Distance to the multipole in ci */
+      const float dx = x_j - CoM_i[0];
+      const float dy = y_j - CoM_i[1];
+      const float dz = z_j - CoM_i[2];
+      const float r2 = dx * dx + dy * dy + dz * dz;
+
+      /* Can we use the multipole in cj ? */
+      if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
+
+        /* Get the inverse distance */
+        const float r_inv = 1.f / sqrtf(r2);
+
+        float f_ji, W_ji;
+
+        if (r2 >= h2_j) {
+
+          /* Get Newtonian gravity */
+          f_ji = multi_mass_i * r_inv * r_inv * r_inv;
+
+        } else {
+
+          const float r = r2 * r_inv;
+          const float uj = r * h_inv_j;
+
+          kernel_grav_eval(uj, &W_ji);
+
+          /* Get softened gravity */
+          f_ji = multi_mass_i * h_inv3_j * W_ji;
+        }
+
+        /* Store it back */
+        cj_cache->a_x[pjd] = -f_ji * dx;
+        cj_cache->a_y[pjd] = -f_ji * dy;
+        cj_cache->a_z[pjd] = -f_ji * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        gparts_j[pjd].num_interacted += ci->multipole->m_pole.num_gpart;
+#endif
+        /* Done with this particle */
+        continue;
+      }
+
+      /* Ok, as of here we have no choice but directly interact everything */
 
       /* Local accumulators for the acceleration */
       float a_x = 0.f, a_y = 0.f, a_z = 0.f;
@@ -683,6 +784,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
+  /* Check that we are not doing something stupid */
+  if (ci->split || cj->split) error("Running P-P on splitable cells");
+
   /* Let's start by drifting things */
   if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
   if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
@@ -1016,6 +1120,9 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
+
+  /* Check that we are not doing something stupid */
+  if (c->split) error("Running P-P on a splitable cell");
 
   /* Do we need to start by drifting things ? */
   if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");

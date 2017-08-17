@@ -176,6 +176,12 @@ struct gravity_tensors {
     /*! The actual content */
     struct {
 
+      /*! Multipole mass */
+      struct multipole m_pole;
+
+      /*! Field tensor for the potential */
+      struct grav_tensor pot;
+
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];
 
@@ -187,12 +193,6 @@ struct gravity_tensors {
 
       /*! Upper limit of the CoM<->gpart distance at the last rebuild */
       double r_max_rebuild;
-
-      /*! Multipole mass */
-      struct multipole m_pole;
-
-      /*! Field tensor for the potential */
-      struct grav_tensor pot;
     };
   };
 } SWIFT_STRUCT_ALIGN;
