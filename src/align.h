@@ -70,8 +70,8 @@
  * @param type Type of array
  * @param alignment The alignment in bytes of the array.
  */
-#define swift_align_and_restrict_information(array, ptr, type, alignment) \
-  type *restrict array = ptr;                                             \
+#define swift_declare_aligned_ptr(type, array, ptr, alignment) \
+  type *restrict array = ptr;                                  \
   swift_align_information(array, alignment);
 
 /**

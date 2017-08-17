@@ -159,22 +159,14 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
-  swift_align_and_restrict_information(x, ci_cache->x, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(y, ci_cache->y, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(z, ci_cache->z, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(h, ci_cache->h, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(m, ci_cache->m, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vx, ci_cache->vx, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vy, ci_cache->vy, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vz, ci_cache->vz, float,
-                                       SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   const struct part *restrict parts = ci->parts;
   double loc[3];
@@ -250,22 +242,14 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
-  swift_align_and_restrict_information(x, ci_cache->x, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(y, ci_cache->y, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(z, ci_cache->z, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(h, ci_cache->h, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(m, ci_cache->m, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vx, ci_cache->vx, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vy, ci_cache->vy, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vz, ci_cache->vz, float,
-                                       SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   int ci_cache_count = ci->count - first_pi_align;
   /* Shift the particles positions to a local frame (ci frame) so single
@@ -305,22 +289,14 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
-  swift_align_and_restrict_information(xj, cj_cache->x, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(yj, cj_cache->y, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(zj, cj_cache->z, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(hj, cj_cache->h, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(mj, cj_cache->m, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vxj, cj_cache->vx, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vyj, cj_cache->vy, float,
-                                       SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vzj, cj_cache->vz, float,
-                                       SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, xj, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, yj, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, zj, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, hj, cj_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, mj, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vxj, cj_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vyj, cj_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vzj, cj_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
