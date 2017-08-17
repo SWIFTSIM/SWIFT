@@ -5,7 +5,7 @@ EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 if HAVECUDA
 
 AM_CFLAGS = -I.. $(HDF5_CPPFLAGS) -g
-CUDA_MYFLAGS = -D_FORCE_INLINES -O0 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -G -ccbin=gcc-4.8
+CUDA_MYFLAGS = -D_FORCE_INLINES -O0 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -G -ccbin=gcc-4.8 -m64
 #-dc
 
 # Assign a "safe" version number
@@ -29,7 +29,8 @@ libswiftCUDA_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
         $(LDFLAGS) -o $@
 
 libswiftCUDA_la_SOURCES = $(SOURCES_CUDA)
-libswiftCUDA_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS)
+libswiftCUDA_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la -I../
+libswiftCUDA_la_LIBADD = ../.libs/libswiftsim_cuda.la ../.libs/libswiftsim_mpicuda.la
 libswiftCUDA_la_LDFLAGS = $(AM_LDFLAGS)
 
 libswiftdummy_la_SOURCES = dummy.c
@@ -38,12 +39,12 @@ libswiftdummy_la_LDFLAGS = $(AM_LDFLAGS)
 
 test_27_cells_SOURCES=test27cells.c
 test_27_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA $(CUDA_CFLAGS) 
-test_27_cells_LDADD= libswiftCUDA.la ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart
+test_27_cells_LDADD= ../.libs/libswiftsim_cuda.la ../.libs/libswiftsim_mpicuda.la libswiftCUDA.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -L/home/aidan/cuda_7.5/lib64/ -lcudart
 test_27_cells_LDFLAGS = $(AM_LDFLAGS) $(CUDA_CFLAGS)
 
 test_125_cells_SOURCES=test125cells.c
 test_125_cells_CFLAGS=$(AM_CFLAGS) -DWITH_CUDA $(CUDA_CFLAGS)
-test_125_cells_LDADD= libswiftCUDA.la ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -L/home/aidan/cuda_7.5/lib64/ -lcudart
+test_125_cells_LDADD= ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la libswiftCUDA.la $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -L/home/aidan/cuda_7.5/lib64/ -lcudart
 test_125_cells_LDFLAGS = $(AM_LDFLAGS) $(CUDA_CFLAGS) 
 
 

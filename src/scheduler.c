@@ -1107,7 +1107,11 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
     struct task *t = &s->tasks[tid[ind]];
 
     /* Ignore skipped tasks. */
+#ifdef WITH_CUDA
+    if (t->skip || t->gpu) continue;
+#else
     if (t->skip) continue;
+#endif
 
     /* Increment the task's own wait counter for the enqueueing. */
     atomic_inc(&t->wait);
@@ -1262,7 +1266,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   int qid = -1;
 
   /* Ignore skipped tasks */
+#ifdef WITH_CUDA
+  if (t->skip || t->gpu) return;
+#else
   if (t->skip) return;
+#endif
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {

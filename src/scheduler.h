@@ -121,6 +121,9 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
 }
 
 /* Function prototypes. */
+struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
+                               enum task_subtypes subtype, int flags,
+                               int implicit, struct cell *ci, struct cell *cj);
 void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,

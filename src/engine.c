@@ -2665,6 +2665,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
+#ifdef WITH_CUDA
+    /* If with CUDA we need the mega task*/
+    else if(t->type == task_type_GPU_mega){
+      scheduler_activate(s, t);
+    }
+#endif
     /* Pair? */
     else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 

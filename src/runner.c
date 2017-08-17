@@ -63,6 +63,9 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#ifdef WITH_CUDA
+#include "CUDA/runner_cuda_main.h"
+#endif
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -1996,6 +1999,11 @@ void *runner_main(void *data) {
         case task_type_sourceterms:
           runner_do_sourceterms(r, t->ci, 1);
           break;
+#ifdef WITH_CUDA
+        case task_type_GPU_mega:
+          run_cuda();
+          break;
+#endif
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }

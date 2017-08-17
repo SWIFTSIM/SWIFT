@@ -2055,9 +2055,34 @@ __host__ void create_tasks(struct engine *e) {
 
   /* We only create density, ghost and force tasks on the device at current. */
   for (i = 0; i < sched->nr_tasks; i++) {
-    if (is_gpu_task(&sched->tasks[i])) num_gpu_tasks++;
+    if (is_gpu_task(&sched->tasks[i])) 
+    {
+      num_gpu_tasks++;
+      sched->tasks[i].gpu = 1;
+    }
   }
 
+  /* Create the task to call the GPU kernel */
+  struct task *gpu_mega = scheduler_addtask(sched, task_type_GPU_mega,
+                            task_subtype_none, 0, 0, NULL, NULL );
+  /* Create a task for the GPU work call on the host */
+  /* Loop through tke tasks and sort the unlocks... */
+  for(i = 0; i < sched->nr_tasks; i++) {
+     if(!sched->tasks[i].gpu){
+       /* Loop through the non-gpu tasks and move the dependency to GPU tasks to the mega.*/
+       for(int j = 0; j < sched->tasks[i].nr_unlock_tasks; j++){
+         if(sched->tasks[i].unlock_tasks[j]->gpu)
+           sched->tasks[i].unlock_tasks[j] = gpu_mega;
+       }
+     }else{
+       for(int j = 0; j < sched->tasks[i].nr_unlock_tasks; j++){
+         if(!sched->tasks[i].unlock_tasks[j]->gpu)
+          scheduler_addunlock(sched, gpu_mega, sched->tasks[i].unlock_tasks[j]);
+       }
+     }
+  }
+
+  scheduler_set_unlocks(sched);
   /* We also create a load and unload task for every cell in the system */
   num_gpu_tasks += s->tot_cells * 2;
 

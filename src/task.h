@@ -66,6 +66,7 @@ enum task_types {
   task_type_grav_down,
   task_type_cooling,
   task_type_sourceterms,
+  task_type_GPU_mega,
   task_type_count
 } __attribute__((packed));
 
@@ -182,6 +183,8 @@ struct task {
 #ifdef WITH_CUDA
 /* Index of the CUDA task in initial array. */
   int cuda_task;
+  /* Is the task a GPU task (and therefore skipped on the CPU) */
+  char gpu;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
