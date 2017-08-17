@@ -135,8 +135,8 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
@@ -179,8 +179,8 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
