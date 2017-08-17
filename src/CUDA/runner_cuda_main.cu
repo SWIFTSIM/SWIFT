@@ -10,7 +10,6 @@
 
 extern "C" {
 #include <string.h>
-}
 #include "runner_cuda_main.h"
 #include "queue_cuda.h"
 #include "task_cuda.h"
@@ -25,6 +24,7 @@ extern "C" {
 }
 #include "../space.h"
 #include "../adiabatic_index.h"
+}
 
 /*Definition of particle structures (SoA on GPU) */
 struct particle_arrays {
