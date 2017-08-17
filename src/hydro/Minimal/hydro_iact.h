@@ -51,23 +51,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute density of pi. */
   const float hi_inv = 1.f / hi;
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
+  const float uj = r * hj_inv;
+  kernel_deval(uj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->density.rho_dh -= mi * (hydro_dimension * wj + xj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= xj * wj_dx;
+  pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 }
 
 /**
@@ -96,13 +96,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float r = sqrtf(r2);
 
   const float h_inv = 1.f / hi;
-  const float xi = r * h_inv;
-  kernel_deval(xi, &wi, &wi_dx);
+  const float ui = r * h_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->density.rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 }
 
 /**

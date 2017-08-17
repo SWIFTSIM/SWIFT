@@ -59,19 +59,15 @@
  * @brief Reads a data array from a given HDF5 group.
  *
  * @param grp The group from which to read.
- * @param name The name of the array to read.
- * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
- * @param partSize The size in bytes of the particle structure.
- * @param importance If COMPULSORY, the data must be present in the IC file. If
- *OPTIONAL, the array will be zeroed when the data is not present.
+ * @param props The #io_props of the field to read
+ * @param N The number of particles to read on this rank.
+ * @param N_total The total number of particles on all ranks.
+ * @param offset The offset position where this rank starts reading.
+ * @param internal_units The #unit_system used internally
+ * @param ic_units The #unit_system used in the ICs
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
- *the part array
- * will be written once the structures have been stabilized.
+ * the part array will be written once the structures have been stabilized.
  */
 void readArray(hid_t grp, const struct io_props props, size_t N,
                long long N_total, long long offset,
@@ -274,16 +270,17 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
  * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
- * @param name The name of the array to write.
- * @param type The #DATA_TYPE of the array.
+ * the HDF5 file.
+ * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
- * @param partSize The size in bytes of the particle structure.
- * @param us The unit_system currently in use
- * @param convFactor The UnitConversionFactor for this arrayo
+ * @param N_total The total number of particles on all ranks.
+ * @param offset The offset position where this rank starts writing.
+ * @param mpi_rank The MPI rank of this node
+ * @param internal_units The #unit_system used internally
+ * @param snapshot_units The #unit_system used in the snapshots
+ *
+ * @todo A better version using HDF5 hyper-slabs to write the file directly from
+ * the part array will be written once the structures have been stabilized.
  */
 void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
@@ -741,7 +738,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%03i.hdf5", baseName,
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
            outputCount);
 
   /* Compute offset in the file and total number of particles */

@@ -170,7 +170,7 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 }
 
 /**
- * @brief MPI reduce operator for #mpicollectgroup structures.
+ * @brief MPI reduce operator for #mpicollectgroup1 structures.
  */
 static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
                                     MPI_Datatype *datatype) {

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo ""
+
+rm -f brute_force_pair_active.dat swift_dopair_active.dat
+
+./testActivePair -n 6 -r 1 -d 0 -f active
+
+python @srcdir@/difffloat.py brute_force_active.dat swift_dopair_active.dat @srcdir@/tolerance_pair_active.dat
+
+exit $?

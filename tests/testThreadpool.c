@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "../config.h"
+
 // Standard includes.
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +33,7 @@ void map_function_first(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     int input = inputs[ind];
     usleep(rand() % 1000000);
-    printf("map_function_first: got input %i.\n", input);
+    printf("   map_function_first: got input %i.\n", input);
     fflush(stdout);
   }
 }
@@ -41,7 +43,7 @@ void map_function_second(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     int input = inputs[ind];
     usleep(rand() % 1000000);
-    printf("map_function_second: got input %i.\n", input);
+    printf("   map_function_second: got input %i.\n", input);
     fflush(stdout);
   }
 }
@@ -49,37 +51,49 @@ void map_function_second(void *map_data, int num_elements, void *extra_data) {
 int main(int argc, char *argv[]) {
 
   // Some constants for this test.
-  const int num_threads = 16;
   const int N = 20;
   const int num_runs = 2;
 
-  // Create a threadpool with 8 threads.
-  struct threadpool tp;
-  threadpool_init(&tp, num_threads);
+  // Create threadpools with different numbers of threads.
+  for (int num_thread = 1; num_thread <= 16; num_thread *= 4) {
+    printf("# Creating threadpool with %d threads\n", num_thread);
+    struct threadpool tp;
+    threadpool_init(&tp, num_thread);
 
-  // Main loop.
-  for (int run = 0; run < num_runs; run++) {
+    // Main loop.
+    for (int run = 0; run < num_runs; run++) {
 
-    // Run over a set of integers and print them.
-    int data[N];
-    for (int k = 0; k < N; k++) data[k] = k;
-    printf("processing integers from 0..%i.\n", N);
-    fflush(stdout);
-    threadpool_map(&tp, map_function_first, data, N, sizeof(int), 1, NULL);
+      // Run over a set of integers and print them.
+      int data[N];
+      for (int k = 0; k < N; k++) data[k] = k;
+      printf("1..processing integers from 0..%i.\n", N);
+      fflush(stdout);
+      threadpool_map(&tp, map_function_first, data, N, sizeof(int), 1, NULL);
 
-    // Do the same thing again, with less jobs than threads.
-    printf("processing integers from 0..%i.\n", N / 2);
-    fflush(stdout);
-    threadpool_map(&tp, map_function_second, data, N / 2, sizeof(int), 1, NULL);
+      // Do the same thing again, with less jobs than threads.
+      printf("2..processing integers from 0..%i.\n", N / 2);
+      fflush(stdout);
+      threadpool_map(&tp, map_function_second, data, N / 2, sizeof(int), 1,
+                     NULL);
 
-    // Do the same thing again, with a chunk size of two.
-    printf("processing integers from 0..%i.\n", N);
-    fflush(stdout);
-    threadpool_map(&tp, map_function_first, data, N, sizeof(int), 2, NULL);
+      // Do the same thing again, with a chunk size of two.
+      printf("3..processing integers from 0..%i.\n", N);
+      fflush(stdout);
+      threadpool_map(&tp, map_function_first, data, N, sizeof(int), 2, NULL);
+    }
+
+/* If logging was enabled, dump the log. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+    char filename[80];
+    sprintf(filename, "threadpool_log-%d.txt", num_thread);
+    printf("# Dumping log\n");
+    threadpool_dump_log(&tp, filename, 1);
+#endif
+
+    /* Be clean */
+    threadpool_clean(&tp);
+    printf("\n");
   }
-
-  /* Be clean */
-  threadpool_clean(&tp);
 
   return 0;
 }

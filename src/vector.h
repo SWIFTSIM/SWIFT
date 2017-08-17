@@ -23,7 +23,11 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
+/* Config parameters. */
 #include "../config.h"
+
+/* Local headers */
+#include "inline.h"
 
 #ifdef WITH_VECTORIZATION
 
@@ -64,7 +68,9 @@
 #define vec_sub(a, b) _mm512_sub_ps(a, b)
 #define vec_mask_sub(a, b, mask) _mm512_mask_sub_ps(a, mask, a, b)
 #define vec_mul(a, b) _mm512_mul_ps(a, b)
+#define vec_div(a, b) _mm512_div_ps(a, b)
 #define vec_fma(a, b, c) _mm512_fmadd_ps(a, b, c)
+#define vec_fnma(a, b, c) _mm512_fnmadd_ps(a, b, c)
 #define vec_sqrt(a) _mm512_sqrt_ps(a)
 #define vec_rcp(a) _mm512_rcp14_ps(a)
 #define vec_rsqrt(a) _mm512_rsqrt14_ps(a)
@@ -77,15 +83,16 @@
 #define vec_cmp_lt(a, b) _mm512_cmp_ps_mask(a, b, _CMP_LT_OQ)
 #define vec_cmp_lte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_LE_OQ)
 #define vec_cmp_gte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_GE_OQ)
-#define vec_cmp_result(a) a
-#define vec_form_int_mask(a) a
+#define vec_cmp_result(a) ({ a; })
+#define vec_form_int_mask(a) ({ a; })
 #define vec_and(a, b) _mm512_and_ps(a, b)
-#define vec_mask_and(a, b) a &b
-#define vec_and_mask(a, mask) _mm512_maskz_expand_ps(mask, a)
-#define vec_init_mask(mask) mask = 0xFFFF
-#define vec_zero_mask(mask) mask = 0
-#define vec_create_mask(mask, cond) mask = cond
-#define vec_pad_mask(mask, pad) mask = mask >> (pad)
+#define vec_mask_and(a, b) _mm512_kand(a, b)
+#define vec_and_mask(a, mask) _mm512_maskz_mov_ps(mask, a)
+#define vec_init_mask_true(mask) ({ mask = 0xFFFF; })
+#define vec_zero_mask(mask) ({ mask = 0; })
+#define vec_create_mask(mask, cond) ({ mask = cond; })
+#define vec_pad_mask(mask, pad) ({ mask = mask >> (pad); })
+#define vec_blend(mask, a, b) _mm512_mask_blend_ps(mask, a, b)
 #define vec_todbl_lo(a) _mm512_cvtps_pd(_mm512_extract128_ps(a, 0))
 #define vec_todbl_hi(a) _mm512_cvtps_pd(_mm512_extract128_ps(a, 1))
 #define vec_dbl_tofloat(a, b) _mm512_insertf128(_mm512_castps128_ps512(a), b, 1)
@@ -159,6 +166,7 @@
 #define vec_sub(a, b) _mm256_sub_ps(a, b)
 #define vec_mask_sub(a, b, mask) vec_sub(a, vec_and(b, mask.v))
 #define vec_mul(a, b) _mm256_mul_ps(a, b)
+#define vec_div(a, b) _mm256_div_ps(a, b)
 #define vec_sqrt(a) _mm256_sqrt_ps(a)
 #define vec_rcp(a) _mm256_rcp_ps(a)
 #define vec_rsqrt(a) _mm256_rsqrt_ps(a)
@@ -176,11 +184,12 @@
 #define vec_and(a, b) _mm256_and_ps(a, b)
 #define vec_mask_and(a, b) _mm256_and_ps(a.v, b.v)
 #define vec_and_mask(a, mask) _mm256_and_ps(a, mask.v)
-#define vec_init_mask(mask) mask.m = vec_setint1(0xFFFFFFFF)
+#define vec_init_mask_true(mask) mask.m = vec_setint1(0xFFFFFFFF)
 #define vec_create_mask(mask, cond) mask.v = cond
 #define vec_zero_mask(mask) mask.v = vec_setzero()
 #define vec_pad_mask(mask, pad) \
   for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
+#define vec_blend(mask, a, b) _mm256_blendv_ps(a, b, mask.v)
 #define vec_todbl_lo(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 0))
 #define vec_todbl_hi(a) _mm256_cvtps_pd(_mm256_extract128_ps(a, 1))
 #define vec_dbl_tofloat(a, b) _mm256_insertf128(_mm256_castps128_ps256(a), b, 1)
@@ -222,6 +231,7 @@
 /* Check if we have AVX2 intrinsics alongside AVX */
 #ifdef HAVE_AVX2
 #define vec_fma(a, b, c) _mm256_fmadd_ps(a, b, c)
+#define vec_fnma(a, b, c) _mm256_fnmadd_ps(a, b, c)
 
 /* Used in VEC_FORM_PACKED_MASK */
 #define identity_indices 0x0706050403020100
@@ -248,6 +258,11 @@
 /* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
+#endif
+
+/* Create a negated FMA using vec_sub and vec_mul if AVX2 is not present. */
+#ifndef vec_fnma
+#define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
 #endif
 
 /* Form a packed mask without intrinsics if AVX2 is not present. */
@@ -313,6 +328,7 @@
 #define vec_add(a, b) _mm_add_ps(a, b)
 #define vec_sub(a, b) _mm_sub_ps(a, b)
 #define vec_mul(a, b) _mm_mul_ps(a, b)
+#define vec_div(a, b) _mm_div_ps(a, b)
 #define vec_sqrt(a) _mm_sqrt_ps(a)
 #define vec_rcp(a) _mm_rcp_ps(a)
 #define vec_rsqrt(a) _mm_rsqrt_ps(a)

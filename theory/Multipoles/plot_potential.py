@@ -141,7 +141,7 @@ plot([epsilon, epsilon], [-10, 10], 'k-', alpha=0.5, lw=0.5)
 plot([epsilon/plummer_equivalent_factor, epsilon/plummer_equivalent_factor], [0, 10], 'k-', alpha=0.5, lw=0.5)
 
 ylim(0, 2.3)
-ylabel("$|\\phi(r)|$", labelpad=1)
+ylabel("$\\varphi(r)$", labelpad=1)
 #yticks([0., 0.5, 1., 1.5, 2., 2.5], ["$%.1f$"%(0.*epsilon), "$%.1f$"%(0.5*epsilon), "$%.1f$"%(1.*epsilon), "$%.1f$"%(1.5*epsilon), "$%.1f$"%(2.*epsilon)])
 
 xlim(0,r_max_plot)
@@ -163,19 +163,6 @@ xticks([0., 0.5, 1., 1.5, 2., 2.5], ["$%.1f$"%(0./epsilon), "", "$%.1f$"%(1./eps
 xlabel("$r/H$", labelpad=-7)
 
 ylim(0, 0.95)
-ylabel("$|\\overrightarrow{\\nabla}\\phi(r)|$", labelpad=0)
+ylabel("$|\\overrightarrow{\\nabla}\\varphi(r)|$", labelpad=0)
 
 savefig("potential.pdf")
-
-
-
-
-#Construct potential
-# phi = np.zeros(np.size(r))
-# for i in range(np.size(r)):
-#     if r[i] > 2*epsilon:
-#         phi[i] = 1./ r[i]
-#     elif r[i] > epsilon:
-#         phi[i] = -(1./epsilon) * ((32./3.)*u[i]**2 - (48./3.)*u[i]**3 + (38.4/4.)*u[i]**4 - (32./15.)*u[i]**5 + (2./30.)*u[i]**(-1) - (9/5.))
-#     else:
-#         phi[i] = -(1./epsilon) * ((32./6.)*u[i]**2 - (38.4/4.)*u[i]**4 + (32./5.)*u[i]**4 - (7./5.))

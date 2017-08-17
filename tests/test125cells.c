@@ -349,13 +349,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 0;
 
   // shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
-  cell->sort = NULL;
-  cell->sortsize = 0;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
@@ -363,7 +361,8 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 void clean_up(struct cell *ci) {
   free(ci->parts);
   free(ci->xparts);
-  free(ci->sort);
+  for (int k = 0; k < 13; k++)
+    if (ci->sort[k] != NULL) free(ci->sort[k]);
   free(ci);
 }
 
@@ -445,6 +444,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
@@ -565,8 +566,8 @@ int main(int argc, char *argv[]) {
   prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
-  hp.target_neighbours = pow_dimension(h) * kernel_norm;
-  hp.delta_neighbours = 4.;
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
@@ -637,10 +638,19 @@ int main(int argc, char *argv[]) {
     }
 
     /* First, sort stuff */
-    for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
+    for (int j = 0; j < 125; ++j)
+      runner_do_sort(&runner, cells[j], 0x1FFF, 0, 0);
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+
+/* Initialise the particle cache. */
+#ifdef WITH_VECTORIZATION
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    runner.cj_cache.count = 0;
+    cache_init(&runner.cj_cache, 512);
+#endif
 
     /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
@@ -664,7 +674,7 @@ int main(int argc, char *argv[]) {
 
                 struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
 
-                if (cj > ci) runner_dopair1_density(&runner, ci, cj);
+                if (cj > ci) runner_dopair1_branch_density(&runner, ci, cj);
               }
             }
           }

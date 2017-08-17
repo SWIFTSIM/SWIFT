@@ -119,6 +119,34 @@ __attribute__((always_inline)) INLINE static float pow_dimension_plus_one(
 }
 
 /**
+ * @brief Returns the argument to the power given by the dimension minus one
+ *
+ * Computes \f$x^{d-1}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
+    float x) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return x * x;
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return x;
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return 1.f;
+
+#else
+
+  error("The dimension is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
  * @param A A 3x3 matrix of which we want to invert the top left dxd part

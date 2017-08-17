@@ -31,6 +31,7 @@
 #define IACT runner_iact_nonsym_density
 #define IACT_VEC runner_iact_nonsym_2_vec_density
 #define IACT_NAME "test_nonsym_density"
+#define NUM_VEC_PROC_INT 2
 #endif
 
 #ifdef SYM_DENSITY
@@ -53,8 +54,9 @@
 
 #ifndef IACT
 #define IACT runner_iact_nonsym_density
-#define IACT_VEC runner_iact_nonsym_2_vec_density
+#define IACT_VEC runner_iact_nonsym_1_vec_density
 #define IACT_NAME "test_nonsym_density"
+#define NUM_VEC_PROC_INT 1
 #endif
 
 /**
@@ -125,7 +127,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
+#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -389,19 +391,35 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
     hi_inv_vec = vec_reciprocal(hi_vec);
 
-    mask_t mask, mask2;
-    vec_init_mask(mask);
-    vec_init_mask(mask2);
-
+    mask_t mask;
+    vec_init_mask_true(mask);
+#if (NUM_VEC_PROC_INT == 2)
+    mask_t mask2;
+    vec_init_mask_true(mask2);
+#endif
     const ticks vec_tic = getticks();
 
-    for (size_t i = 0; i < count; i += 2 * VEC_SIZE) {
+    for (size_t i = 0; i < count; i += NUM_VEC_PROC_INT * VEC_SIZE) {
 
+/* Interleave two vectors for interaction. */
+#if (NUM_VEC_PROC_INT == 2)
       IACT_VEC(&(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (hi_inv_vec),
                (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
                &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum, &wcountSum,
                &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum,
                mask, mask2, 0);
+#else /* Only use one vector for interaction. */
+      vector r2, dx, dy, dz;
+      r2.v = vec_load(&(r2q[i]));
+      dx.v = vec_load(&(dxq[i]));
+      dy.v = vec_load(&(dyq[i]));
+      dz.v = vec_load(&(dzq[i]));
+
+      IACT_VEC(&r2, &dx, &dy, &dz, (hi_inv_vec), (vix_vec), (viy_vec),
+               (viz_vec), &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]),
+               &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+               &curlvxSum, &curlvySum, &curlvzSum, mask);
+#endif
     }
 
     VEC_HADD(rhoSum, piq[0]->rho);

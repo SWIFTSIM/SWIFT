@@ -31,15 +31,16 @@
 
 /* Local includes. */
 #include "align.h"
+#include "kernel_hydro.h"
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "space.h"
 #include "task.h"
 #include "timeline.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
-struct space;
 struct scheduler;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
@@ -122,7 +123,7 @@ struct cell {
   struct spart *sparts;
 
   /*! Pointer for the sorted indices. */
-  struct entry *sort;
+  struct entry *sort[13];
 
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
@@ -151,7 +152,9 @@ struct cell {
   /*! The multipole initialistation task */
   struct task *init_grav;
 
-  /*! The ghost task */
+  /*! The ghost tasks */
+  struct task *ghost_in;
+  struct task *ghost_out;
   struct task *ghost;
 
   /*! The extra ghost task for complex hydro schemes */
@@ -236,9 +239,6 @@ struct cell {
   /*! Maximum beginning of (integer) time step in this cell. */
   integertime_t ti_beg_max;
 
-  /*! Last (integer) time the cell's sort arrays were updated. */
-  integertime_t ti_sort;
-
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;
 
@@ -268,9 +268,6 @@ struct cell {
 
   /*! Nr of #spart in this cell. */
   int scount;
-
-  /*! The size of the sort array */
-  int sortsize;
 
   /*! Bit-mask indicating the sorted directions */
   unsigned int sorted;
@@ -326,7 +323,30 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+  /*! Values of dx_max and h_max before the drifts, used for sub-cell tasks. */
+  float dx_max_old;
+  float h_max_old;
+  float dx_max_sort_old;
+
+  /* Bit mask of sort directions that will be needed in the next timestep. */
+  unsigned int requires_sorts;
+
+  /*! Does this cell need to be drifted? */
+  char do_drift;
+
+  /*! Do any of this cell's sub-cells need to be drifted? */
+  char do_sub_drift;
+
+  /*! Bit mask of sorts that need to be computed for this cell. */
+  unsigned int do_sort;
+
+  /*! Do any of this cell's sub-cells need to be sorted? */
+  char do_sub_sort;
+
 #ifdef SWIFT_DEBUG_CHECKS
+  /*! Last (integer) time the cell's sort arrays were updated. */
+  integertime_t ti_sort;
+
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[64];
 
@@ -344,7 +364,7 @@ struct cell {
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff);
-void cell_sanitize(struct cell *c);
+void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);
@@ -373,10 +393,103 @@ void cell_reset_task_counters(struct cell *c);
 int cell_is_drift_needed(struct cell *c, const struct engine *e);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
-void cell_drift_part(struct cell *c, const struct engine *e);
+void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
+void cell_store_pre_drift_values(struct cell *c);
+void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
+                                 struct scheduler *s);
+void cell_activate_drift_part(struct cell *c, struct scheduler *s);
+void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_clear_drift_flags(struct cell *c, void *data);
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+
+/* Inlined functions (for speed). */
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split &&
+         ((kernel_gamma * c->h_max_old + c->dx_max_old) < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* operations will be executed. So no need for the particle to be at exactly
+   */
+  /* the right place. */
+  return c->split;
+}
+
+/**
+ * @brief Can a pair task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are create after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* tasks will be created. So no need to check for h_max */
+  return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Have particles in a pair of cells moved too much and require a rebuild
+ * ?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
+    const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  return (kernel_gamma * max(ci->h_max, cj->h_max) + ci->dx_max_part +
+              cj->dx_max_part >
+          cj->dmin);
+}
 
 #endif /* SWIFT_CELL_H */

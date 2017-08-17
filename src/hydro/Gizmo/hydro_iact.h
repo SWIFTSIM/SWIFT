@@ -20,6 +20,7 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "hydro_flux_limiters.h"
 #include "hydro_gradients.h"
 #include "riemann.h"
 
@@ -57,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -74,7 +75,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= xj * wj_dx;
+  pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -121,7 +122,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= xi * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -346,8 +347,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
             (Wi[3] - Wj[3]) * dx[2];
-  if (dvdotdx > 0.) {
-    vmax -= dvdotdx / r;
+  dvdotdx = min(dvdotdx, (vi[0] - vj[0]) * dx[0] + (vi[1] - vj[1]) * dx[1] +
+                             (vi[2] - vj[2]) * dx[2]);
+  if (dvdotdx < 0.) {
+    /* the magical factor 3 also appears in Gadget2 */
+    vmax -= 3. * dvdotdx / r;
   }
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
   if (mode == 1) {
@@ -487,36 +491,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
-  /* Flux limiter */
-  float flux_limit_factor = 1.;
-  float timefac = max(dti, dtj);
-  float areafac = max(pi->geometry.Atot, pj->geometry.Atot);
-  if (totflux[0] * areafac * timefac > pi->conserved.mass) {
-    flux_limit_factor = pi->conserved.mass / (totflux[0] * areafac * timefac);
-  }
-  if (totflux[0] * areafac * timefac > pj->conserved.mass) {
-    flux_limit_factor =
-        min(pj->conserved.mass / (totflux[0] * areafac * timefac),
-            flux_limit_factor);
-  }
-  if (totflux[4] * areafac * timefac > pi->conserved.energy) {
-    flux_limit_factor =
-        min(pi->conserved.energy / (totflux[4] * areafac * timefac),
-            flux_limit_factor);
-  }
-  if (totflux[4] * areafac * timefac > pj->conserved.energy) {
-    flux_limit_factor =
-        min(pj->conserved.energy / (totflux[4] * areafac * timefac),
-            flux_limit_factor);
-  }
-  totflux[0] *= flux_limit_factor;
-  totflux[1] *= flux_limit_factor;
-  totflux[2] *= flux_limit_factor;
-  totflux[3] *= flux_limit_factor;
-  totflux[4] *= flux_limit_factor;
+  hydro_flux_limiters_apply(totflux, pi, pj);
 
   /* Store mass flux */
-  float mflux = mindt * Anorm * totflux[0];
+  float mflux = Anorm * totflux[0];
   pi->gravity.mflux[0] += mflux * dx[0];
   pi->gravity.mflux[1] += mflux * dx[1];
   pi->gravity.mflux[2] += mflux * dx[2];
@@ -554,7 +532,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   if (mode == 1 || pj->force.active == 0) {
     /* Store mass flux */
-    mflux = mindt * Anorm * totflux[0];
+    mflux = Anorm * totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];
     pj->gravity.mflux[1] -= mflux * dx[1];
     pj->gravity.mflux[2] -= mflux * dx[2];

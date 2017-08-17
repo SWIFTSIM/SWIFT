@@ -1,52 +1,55 @@
-\subsection{Derivatives of the gravitational potential}
+\subsection{Notes on the derivatives of the gravitational potential}
+\label{ssec:grav_derivatives}
 
 The calculation of all the
-$D_\mathbf{n}(x,y,z) \equiv \nabla^{\mathbf{n}}\phi(x,y,z)$ terms up
+$\mathsf{D}_\mathbf{n}(x,y,z) \equiv \nabla^{\mathbf{n}}\varphi(x,y,z)$ terms up
 to the relevent order can be quite tedious and it is beneficial to
 automatize the whole setup. Ideally, one would like to have an
-expression for each of this term that is only made of multiplications
+expression for each of these terms that is only made of multiplications
 and additions of each of the coordinates and the inverse distance. We
-achieve this by writing $\phi$ as a composition of functions
-$\phi(u(x,y,z))$ and apply the \textit{Fa\`a di Bruno}
+achieve this by writing $\varphi$ as a composition of functions
+$\varphi(u(x,y,z))$ and apply the \textit{Fa\`a di Bruno}
 formula \citep[i.e. the ``chain rule'' for higher order derivatives,
-e.g.][]{Hardy2006} to construct our terms:
-
+ see e.g.][]{Hardy2006} to construct our terms:
 \begin{equation}
 \label{eq:faa_di_bruno}
-\frac{\partial^n}{\partial x_1 \cdots \partial x_n} \phi(u)
-= \sum_{A} \phi^{(|A|)}(u) \prod_{B \in
+\frac{\partial^n}{\partial x_1 \cdots \partial x_n} \varphi(u)
+= \sum_{A} \varphi^{(|A|)}(u) \prod_{B \in
 A} \frac{\partial^{|B|}}{\prod_{c\in B}\partial x_c} u(x,y,z),
 \end{equation}
 where $A$ is the set of all partitions of $\lbrace1,\cdots, n\rbrace$,
-$B$ is a block of a partition $A$ and $|\cdot|$ denotes the
-cardinality of a set. For generic functions $\phi$ and $u$ this
+$B$ is a block of a partition in the set $A$ and $|\cdot|$ denotes the
+cardinality of a set. For generic functions $\varphi$ and $u$ this
 formula yields an untracktable number of terms; an 8th-order
 derivative will have $4140$ (!)  terms in the sum\footnote{The number
-of terms in the sum is given by the Bell number of the same order}. \\
-We choose to write
+  of terms in the sum is given by the Bell number of the same
+  order.}. \\ For the un-softened gravitational potential, we choose to write
 \begin{align}
-   \phi(x,y,z) &= 1 / \sqrt{u(x,y,z)}, \\
+   \varphi(x,y,z) &= 1 / \sqrt{u(x,y,z)}, \\
    u(x,y,z) &= x^2 + y^2 + z^2.
 \end{align}
-This choice allows to have derivatives of any order of $\phi(u)$ that
-only depend on powers of $u$:
-
+This choice allows to have derivatives of any order of $\varphi(u)$ that
+can be easily expressed and only depend on powers of $u$:
 \begin{equation}
-f^{(n)}(u) = \frac{\Gamma(\frac{1}{2})}{\Gamma(\frac{1}{2} -
-n)}\frac{1}{u^{n+\frac{1}{2}}}.
+\varphi^{(n)}(u) = (-1)^n\cdot\frac{(2n-1)!!}{2^n}\cdot\frac{1}{u^{n+\frac{1}{2}}},
 \end{equation}
-More importantly, this choice of decomposition allows us to have
-derivatives of $u$ only up to second order in $x$, $y$ or $z$. The
-number of non-zero terms in eq. \ref{eq:faa_di_bruno} is hence
-drastically reduced. For instance, when computing
-$D_{(4,1,3)} \equiv \frac{\partial^8}{\partial x^4 \partial y \partial
-z^3} \phi$, $4100$ of the $4140$ terms will involve at least one
+where $!!$ denotes the semi-factorial. More importantly, this
+choice of decomposition allows us to have non-zero derivatives of $u$
+only up to second order in $x$, $y$ or $z$. The number of non-zero
+terms in eq. \ref{eq:faa_di_bruno} is hence drastically reduced. For
+instance, when computing $\mathsf{D}_{(4,1,3)}(\mathbf{r}) \equiv
+\frac{\partial^8}{\partial x^4 \partial y \partial z^3}
+\varphi(u(x,y,z))$, $4100$ of the $4140$ terms will involve at least one
 zero-valued derivative (e.g. $\partial^3/\partial x^3$ or
 $\partial^2/\partial x\partial y$) of $u$. Furthermore, among the 40
-remaining terms, many will involve the same derivatives and can be
-grouped together, leaving us with a sum of six products of $x$,$y$ and
-$z$. This is generally the case for most of the $D_\mathbf{n}$'s and
-figuring out which terms are identical in a given set of partitions of
-$\lbrace1,\cdots, n\rbrace$ is an interesting exercise in
-combinatorics left for the reader \citep[see also][]{Hardy2006}.
+remaining terms, many will involve the same combination of derivatives
+of $u$ and can be grouped together, leaving us with a sum of six
+products of $x$,$y$ and $z$. This is generally the case for most of
+the $\mathsf{D}_\mathbf{n}$'s and figuring out which terms are identical in a
+given set of partitions of $\lbrace1,\cdots, n\rbrace$ is an
+interesting exercise in combinatorics left for the reader \citep[see
+  also][]{Hardy2006}. We use a \texttt{python} script based on this
+technique to generate the actual C routines used within \swift. Some
+examples of these terms are given in Appendix
+\ref{sec:pot_derivatives}.
 

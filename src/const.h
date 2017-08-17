@@ -37,7 +37,7 @@
 #define const_max_u_change 0.1f
 
 /* Thermal energy per unit mass used as a constant for the isothermal EoS */
-#define const_isothermal_internal_energy 20.2615290634f
+#define const_isothermal_internal_energy 20.2678457288f
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
@@ -48,6 +48,9 @@
 /* Different slope limiters can be combined */
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
+
+/* Types of flux limiter to use (GIZMO_SPH only) */
+#define GIZMO_FLUX_LIMITER
 
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
