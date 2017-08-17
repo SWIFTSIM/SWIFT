@@ -1798,8 +1798,9 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_multipole_accept_rebuild(multi_i, multi_j, theta_crit2,
-                                                r2)) {
+          if (!gravity_multipole_accept(multi_i->r_max_rebuild,
+                                        multi_j->r_max_rebuild, theta_crit2,
+                                        r2)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,

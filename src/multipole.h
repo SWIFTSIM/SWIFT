@@ -2390,52 +2390,20 @@ INLINE static void gravity_M2P(const struct multipole *ma,
 
 /**
  * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
- * interaction using the CoM and cell radius at rebuild.
+ * interaction using the distance and cell radius.
  *
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
  *
- * @param ma The #multipole of the first #cell.
- * @param mb The #multipole of the second #cell.
- * @param theta_crit2 The square of the critical opening angle.
- * @param r2 Square of the distance (periodically wrapped) between the
- * multipoles.
- */
-__attribute__((always_inline)) INLINE static int
-gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
-                                 const struct gravity_tensors *const mb,
-                                 double theta_crit2, double r2) {
-
-  const double r_crit_a = ma->r_max_rebuild;
-  const double r_crit_b = mb->r_max_rebuild;
-  const double size = r_crit_a + r_crit_b;
-  const double size2 = size * size;
-
-  // MATTHIEU: Make this mass-dependent ?
-
-  /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > size2);
-}
-
-/**
- * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
- * interaction using the CoM and cell radius at the current time.
- *
- * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
- * Issue 1, pp.27-42, equation 10.
- *
- * @param ma The #multipole of the first #cell.
- * @param mb The #multipole of the second #cell.
+ * @param r_crit_a The size of the multipole A.
+ * @param r_crit_b The size of the multipole B.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
-    const struct gravity_tensors *const ma,
-    const struct gravity_tensors *const mb, double theta_crit2, double r2) {
+    double r_crit_a, double r_crit_b, double theta_crit2, double r2) {
 
-  const double r_crit_a = ma->r_max;
-  const double r_crit_b = mb->r_max;
   const double size = r_crit_a + r_crit_b;
   const double size2 = size * size;
 

@@ -1733,7 +1733,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     const double r2 = dx * dx + dy * dy + dz * dz;
 
     /* Can we use multipoles ? */
-    if (gravity_multipole_accept(multi_i, multi_j, theta_crit2, r2)) {
+    if (gravity_multipole_accept(multi_i->r_max, multi_j->r_max, theta_crit2,
+                                 r2)) {
 
       /* Ok, no need to drift anything */
       return;
