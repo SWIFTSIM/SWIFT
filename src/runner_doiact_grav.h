@@ -247,26 +247,10 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       /* Can we use the multipole in cj ? */
       if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-
-        float f_ij, W_ij;
-
-        if (r2 >= h2_i) {
-
-          /* Get Newtonian gravity */
-          f_ij = multi_mass_j * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float r = r2 * r_inv;
-          const float ui = r * h_inv_i;
-
-          kernel_grav_eval(ui, &W_ij);
-
-          /* Get softened gravity */
-          f_ij = multi_mass_j * h_inv3_i * W_ij;
-        }
+        /* Interact! */
+        float f_ij;
+        runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, multi_mass_j,
+                                 &f_ij);
 
         /* Store it back */
         ci_cache->a_x[pid] = -f_ij * dx;
@@ -318,26 +302,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
           error("gpj not drifted to current time");
 #endif
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-
-        float f_ij, W_ij;
-
-        if (r2 >= h2_i) {
-
-          /* Get Newtonian gravity */
-          f_ij = mass_j * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float r = r2 * r_inv;
-          const float ui = r * h_inv_i;
-
-          kernel_grav_eval(ui, &W_ij);
-
-          /* Get softened gravity */
-          f_ij = mass_j * h_inv3_i * W_ij;
-        }
+        /* Interact! */
+        float f_ij;
+        runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
 
         /* Store it back */
         a_x -= f_ij * dx;
@@ -385,26 +352,10 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       /* Can we use the multipole in cj ? */
       if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-
-        float f_ji, W_ji;
-
-        if (r2 >= h2_j) {
-
-          /* Get Newtonian gravity */
-          f_ji = multi_mass_i * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float r = r2 * r_inv;
-          const float uj = r * h_inv_j;
-
-          kernel_grav_eval(uj, &W_ji);
-
-          /* Get softened gravity */
-          f_ji = multi_mass_i * h_inv3_j * W_ji;
-        }
+        /* Interact! */
+        float f_ji;
+        runner_iact_grav_pp_full(r2, h2_j, h_inv_j, h_inv3_j, multi_mass_i,
+                                 &f_ji);
 
         /* Store it back */
         cj_cache->a_x[pjd] = -f_ji * dx;
@@ -456,26 +407,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
           error("gpi not drifted to current time");
 #endif
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-
-        float f_ji, W_ji;
-
-        if (r2 >= h2_j) {
-
-          /* Get Newtonian gravity */
-          f_ji = mass_i * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float r = r2 * r_inv;
-          const float uj = r * h_inv_j;
-
-          kernel_grav_eval(uj, &W_ji);
-
-          /* Get softened gravity */
-          f_ji = mass_i * h_inv3_j * W_ji;
-        }
+        /* Interact! */
+        float f_ji;
+        runner_iact_grav_pp_full(r2, h2_j, h_inv_j, h_inv3_j, mass_i, &f_ji);
 
         /* Store it back */
         a_x -= f_ji * dx;
@@ -518,6 +452,7 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   const struct space *s = e->s;
   const double cell_width = s->width[0];
   const double a_smooth = e->gravity_properties->a_smooth;
+  const float theta_crit2 = e->gravity_properties->theta_crit2;
   const double rlr = cell_width * a_smooth;
   const float rlr_inv = 1. / rlr;
 
@@ -556,6 +491,18 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
   gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
                          loc_mean);
 
+  /* Recover the multipole info and shift the CoM locations */
+  const float rmax_i = ci->multipole->r_max;
+  const float rmax_j = cj->multipole->r_max;
+  const float multi_mass_i = ci->multipole->m_pole.M_000;
+  const float multi_mass_j = cj->multipole->m_pole.M_000;
+  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
+                          ci->multipole->CoM[1] - loc_mean[1],
+                          ci->multipole->CoM[2] - loc_mean[2]};
+  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
+                          cj->multipole->CoM[1] - loc_mean[1],
+                          cj->multipole->CoM[2] - loc_mean[2]};
+
   /* Ok... Here we go ! */
 
   if (ci_active) {
@@ -575,6 +522,35 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
       const float h2_i = h_i * h_i;
       const float h_inv_i = 1.f / h_i;
       const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
+
+      /* Distance to the multipole in cj */
+      const float dx = x_i - CoM_j[0];
+      const float dy = y_i - CoM_j[1];
+      const float dz = z_i - CoM_j[2];
+      const float r2 = dx * dx + dy * dy + dz * dz;
+
+      /* Can we use the multipole in cj ? */
+      if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
+
+        /* Interact! */
+        float f_ij;
+        runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, multi_mass_j,
+                                      rlr_inv, &f_ij);
+
+        /* Store it back */
+        ci_cache->a_x[pid] = -f_ij * dx;
+        ci_cache->a_y[pid] = -f_ij * dy;
+        ci_cache->a_z[pid] = -f_ij * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+#endif
+        /* Done with this particle */
+        continue;
+      }
+
+      /* Ok, as of here we have no choice but directly interact everything */
 
       /* Local accumulators for the acceleration */
       float a_x = 0.f, a_y = 0.f, a_z = 0.f;
@@ -611,31 +587,10 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
           error("gpj not drifted to current time");
 #endif
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-        const float r = r2 * r_inv;
-
-        float f_ij, W_ij, corr_lr;
-
-        if (r2 >= h2_i) {
-
-          /* Get Newtonian gravity */
-          f_ij = mass_j * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float ui = r * h_inv_i;
-
-          kernel_grav_eval(ui, &W_ij);
-
-          /* Get softened gravity */
-          f_ij = mass_j * h_inv3_i * W_ij;
-        }
-
-        /* Get long-range correction */
-        const float u_lr = r * rlr_inv;
-        kernel_long_grav_eval(u_lr, &corr_lr);
-        f_ij *= corr_lr;
+        /* Interact! */
+        float f_ij;
+        runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+                                      rlr_inv, &f_ij);
 
         /* Store it back */
         a_x -= f_ij * dx;
@@ -674,6 +629,35 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
       const float h_inv_j = 1.f / h_j;
       const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
 
+      /* Distance to the multipole in ci */
+      const float dx = x_j - CoM_i[0];
+      const float dy = y_j - CoM_i[1];
+      const float dz = z_j - CoM_i[2];
+      const float r2 = dx * dx + dy * dy + dz * dz;
+
+      /* Can we use the multipole in cj ? */
+      if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
+
+        /* Interact! */
+        float f_ji;
+        runner_iact_grav_pp_truncated(r2, h2_j, h_inv_j, h_inv3_j, multi_mass_i,
+                                      rlr_inv, &f_ji);
+
+        /* Store it back */
+        cj_cache->a_x[pjd] = -f_ji * dx;
+        cj_cache->a_y[pjd] = -f_ji * dy;
+        cj_cache->a_z[pjd] = -f_ji * dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        gparts_j[pjd].num_interacted += ci->multipole->m_pole.num_gpart;
+#endif
+        /* Done with this particle */
+        continue;
+      }
+
+      /* Ok, as of here we have no choice but directly interact everything */
+
       /* Local accumulators for the acceleration */
       float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
@@ -709,31 +693,10 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
           error("gpi not drifted to current time");
 #endif
 
-        /* Get the inverse distance */
-        const float r_inv = 1.f / sqrtf(r2);
-        const float r = r2 * r_inv;
-
-        float f_ji, W_ji, corr_lr;
-
-        if (r2 >= h2_j) {
-
-          /* Get Newtonian gravity */
-          f_ji = mass_i * r_inv * r_inv * r_inv;
-
-        } else {
-
-          const float uj = r * h_inv_j;
-
-          kernel_grav_eval(uj, &W_ji);
-
-          /* Get softened gravity */
-          f_ji = mass_i * h_inv3_j * W_ji;
-        }
-
-        /* Get long-range correction */
-        const float u_lr = r * rlr_inv;
-        kernel_long_grav_eval(u_lr, &corr_lr);
-        f_ji *= corr_lr;
+        /* Interact! */
+        float f_ji;
+        runner_iact_grav_pp_truncated(r2, h2_j, h_inv_j, h_inv3_j, mass_i,
+                                      rlr_inv, &f_ji);
 
         /* Store it back */
         a_x -= f_ji * dx;
@@ -907,26 +870,9 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
         error("gpj not drifted to current time");
 #endif
 
-      /* Get the inverse distance */
-      const float r_inv = 1.f / sqrtf(r2);
-
-      float f_ij, W_ij;
-
-      if (r2 >= h2_i) {
-
-        /* Get Newtonian gravity */
-        f_ij = mass_j * r_inv * r_inv * r_inv;
-
-      } else {
-
-        const float r = r2 * r_inv;
-        const float ui = r * h_inv_i;
-
-        kernel_grav_eval(ui, &W_ij);
-
-        /* Get softened gravity */
-        f_ij = mass_j * h_inv3_i * W_ij;
-      }
+      /* Interact! */
+      float f_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
@@ -1047,31 +993,10 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
         error("gpj not drifted to current time");
 #endif
 
-      /* Get the inverse distance */
-      const float r_inv = 1.f / sqrtf(r2);
-      const float r = r2 * r_inv;
-
-      float f_ij, W_ij, corr_lr;
-
-      if (r2 >= h2_i) {
-
-        /* Get Newtonian gravity */
-        f_ij = mass_j * r_inv * r_inv * r_inv;
-
-      } else {
-
-        const float ui = r * h_inv_i;
-
-        kernel_grav_eval(ui, &W_ij);
-
-        /* Get softened gravity */
-        f_ij = mass_j * h_inv3_i * W_ij;
-      }
-
-      /* Get long-range correction */
-      const float u_lr = r * rlr_inv;
-      kernel_long_grav_eval(u_lr, &corr_lr);
-      f_ij *= corr_lr;
+      /* Interact! */
+      float f_ij;
+      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+                                    rlr_inv, &f_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
