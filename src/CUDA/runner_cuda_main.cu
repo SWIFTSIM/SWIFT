@@ -20,7 +20,9 @@ extern "C" {
 #include "../cell.h"
 #include "../hydro_properties.h"
 #include "../engine.h"
+extern "C" {
 #include "../scheduler.h"
+}
 #include "../space.h"
 #include "../adiabatic_index.h"
 
@@ -1429,6 +1431,13 @@ __global__ void swift_device_kernel() {
 
     if (tid < 0) continue;
 
+#ifdef CUDA_TASK_TIMERS
+    if(threadIdx.x == 0){
+      tasks[tid].blockID = blockIdx.x;
+      tasks[tid].tic = clock64();
+    }
+#endif
+
     int type = tasks[tid].type;
     int subtype = tasks[tid].subtype;
 
@@ -1461,6 +1470,11 @@ __global__ void swift_device_kernel() {
 
     __syncthreads();
 
+#ifdef CUDA_TASK_TIMERS
+    if(threadIdx.x == 0){
+       tasks[tid].toc = clock64();
+    }
+#endif
     /* Unlock dependencies*/
     for (i = threadIdx.x; i < tasks[tid].nr_unlock_tasks; i+=blockDim.x) {
       int dependant = tasks[tid].unlocks[i];
@@ -3011,6 +3025,32 @@ __host__ void allocate_cell(void **cell) {
 __host__ void free_parts(void *parts) { cudaErrCheck(cudaFreeHost(parts)); }
 
 __host__ void free_cell(void *cell) { cudaErrCheck(cudaFreeHost(cell)); }
+
+__host__ void printTaskTimers(){
+#ifdef CUDA_TASK_TIMERS
+/* Load the task structures back from the GPU */
+  cudaErrCheck(cudaMemcpyFromSymbol(&nr_gpu_tasks, cuda_numtasks, sizeof(int)));
+  cudaErrCheck(cudaMemcpyFromSymbol(&nr_tasks, tot_num_tasks, sizeof(int)));
+  struct task_cuda *gpu_pointer = NULL;
+  cudaErrCheck(cudaMemcpyFromSymbol(
+       &gpu_pointer, tasks, sizeof(struct task_cuda *))); 
+  struct task_cuda *host_tasks = NULL;
+  host_tasks =
+      (struct task_cuda *)malloc(sizeof(struct task_cuda) * nr_gpu_tasks);
+  cudaErrCheck(cudaMemcpy(host_tasks, gpu_pointer,
+                          sizeof(struct task_cuda ) * nr_gpu_tasks,
+                          cudaMemcpyDeviceToHost));
+  FILE *file = fopen("CUDA_TASKTIMERS", "w");
+  for(int i = 0; i < ...; i++){
+    struct task_cuda *t = &host_tasks[i];
+    fprintf(file, "%i %i %i %lli %lli\n",t->type, t->subtype, t->blockID, t->tic, t->toc);
+  } 
+
+  free(host_tasks);
+#else
+  error("CUDA Task Timers unavailable, compile with CUDA_TASK_TIMERS defined.");
+#endif
+}
 
 #ifdef WITH_CUDA
 #undef static

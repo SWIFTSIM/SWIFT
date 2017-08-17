@@ -46,6 +46,12 @@ struct task_cuda {
   /* Size of unlock array during initialisation. */
   int size_unlocks;
 
+#ifdef CUDA_TASK_TIMERS
+  /* Executing block*/
+  int blockID;
+  /* Start/end time for task */
+  long long int tic , toc;
+#endif
 };
 
 
