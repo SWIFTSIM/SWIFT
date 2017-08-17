@@ -134,16 +134,11 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
     int gcount_padded, const double shift[3]) {
 
   /* Make the compiler understand we are in happy vectorization land */
-  float *restrict x = c->x;
-  float *restrict y = c->y;
-  float *restrict z = c->z;
-  float *restrict m = c->m;
-  float *restrict epsilon = c->epsilon;
-  swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
@@ -183,16 +178,11 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate_no_shift(
     int gcount_padded) {
 
   /* Make the compiler understand we are in happy vectorization land */
-  float *restrict x = c->x;
-  float *restrict y = c->y;
-  float *restrict z = c->z;
-  float *restrict m = c->m;
-  float *restrict epsilon = c->epsilon;
-  swift_align_information(x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */

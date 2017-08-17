@@ -209,8 +209,8 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->multipole->r_max;
   const float rmax_j = cj->multipole->r_max;
-  const float multi_mass_i = ci->multipole->m_pole.M_000;
-  const float multi_mass_j = cj->multipole->m_pole.M_000;
+  const struct multipole *multi_i = &ci->multipole->m_pole;
+  const struct multipole *multi_j = &cj->multipole->m_pole;
   const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
                           ci->multipole->CoM[1] - loc_mean[1],
                           ci->multipole->CoM[2] - loc_mean[2]};
@@ -248,14 +248,14 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
 
         /* Interact! */
-        float f_ij;
-        runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, multi_mass_j,
-                                 &f_ij);
+        float f_x, f_y, f_z;
+        runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
+                            &f_z);
 
         /* Store it back */
-        ci_cache->a_x[pid] = -f_ij * dx;
-        ci_cache->a_y[pid] = -f_ij * dy;
-        ci_cache->a_z[pid] = -f_ij * dz;
+        ci_cache->a_x[pid] = f_x;
+        ci_cache->a_y[pid] = f_y;
+        ci_cache->a_z[pid] = f_z;
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Update the interaction counter */
@@ -353,14 +353,14 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
       if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
 
         /* Interact! */
-        float f_ji;
-        runner_iact_grav_pp_full(r2, h2_j, h_inv_j, h_inv3_j, multi_mass_i,
-                                 &f_ji);
+        float f_x, f_y, f_z;
+        runner_iact_grav_pm(dx, dy, dz, r2, h_j, h_inv_j, multi_i, &f_x, &f_y,
+                            &f_z);
 
         /* Store it back */
-        cj_cache->a_x[pjd] = -f_ji * dx;
-        cj_cache->a_y[pjd] = -f_ji * dy;
-        cj_cache->a_z[pjd] = -f_ji * dz;
+        cj_cache->a_x[pjd] = f_x;
+        cj_cache->a_y[pjd] = f_y;
+        cj_cache->a_z[pjd] = f_z;
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Update the interaction counter */

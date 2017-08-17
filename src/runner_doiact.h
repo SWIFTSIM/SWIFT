@@ -1039,7 +1039,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       const float hj = pj->h;
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
       if (dj - rshift > di_max) continue;
-      
+
       double pjx[3];
       for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -1451,7 +1451,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     const float hj = pj->h;
     const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
     if (dj - rshift > di_max) continue;
-    
+
     double pjx[3];
     for (int k = 0; k < 3; k++) pjx[k] = pj->x[k] + shift[k];
     const float hjg2 = hj * hj * kernel_gamma2;

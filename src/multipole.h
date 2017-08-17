@@ -1517,7 +1517,6 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
 
   /* Recover some constants */
   const float eps = props->epsilon;
-  const float eps2 = props->epsilon2;
   const float eps_inv = props->epsilon_inv;
 
   /* Compute distance vector */
@@ -1537,9 +1536,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   const float r_inv = 1. / sqrtf(r2);
 
   /* Compute all derivatives */
-  struct potential_derivatives pot;
-  compute_potential_derivatives(dx, dy, dz, r2, r_inv, eps, eps2, eps_inv,
-                                &pot);
+  struct potential_derivatives_M2L pot;
+  compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv, &pot);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
