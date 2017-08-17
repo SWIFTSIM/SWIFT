@@ -137,7 +137,8 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->vy, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->vz, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT, sizeIntBytes);
+  error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT,
+                          sizeIntBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -151,29 +152,38 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
  * @param ci_cache The cache.
  */
 __attribute__((always_inline)) INLINE void cache_read_particles(
-    const struct cell *restrict const ci, struct cache *restrict const ci_cache) {
+    const struct cell *restrict const ci,
+    struct cache *restrict const ci_cache) {
 
 #if defined(GADGET2_SPH)
 
-/* Let the compiler know that the data is aligned and create pointers to the 
- * arrays inside the cache. */
-swift_align_and_restrict_information(x, ci_cache->x, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(y, ci_cache->y, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(z, ci_cache->z, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(h, ci_cache->h, float, SWIFT_CACHE_ALIGNMENT);  
-swift_align_and_restrict_information(m, ci_cache->m, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(vx, ci_cache->vx, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(vy, ci_cache->vy, float, SWIFT_CACHE_ALIGNMENT);
-swift_align_and_restrict_information(vz, ci_cache->vz, float, SWIFT_CACHE_ALIGNMENT);
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_align_and_restrict_information(x, ci_cache->x, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(y, ci_cache->y, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(z, ci_cache->z, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(h, ci_cache->h, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(m, ci_cache->m, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vx, ci_cache->vx, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vy, ci_cache->vy, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vz, ci_cache->vz, float,
+                                       SWIFT_CACHE_ALIGNMENT);
 
-const struct part *restrict parts = ci->parts;
-double loc[3];
-loc[0] = ci->loc[0];
-loc[1] = ci->loc[1];
-loc[2] = ci->loc[2];
+  const struct part *restrict parts = ci->parts;
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
 
-/* Shift the particles positions to a local frame so single precision can be
- * used instead of double precision. */
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
   for (int i = 0; i < ci->count; i++) {
     x[i] = (float)(parts[i].x[0] - loc[0]);
     y[i] = (float)(parts[i].x[1] - loc[1]);
@@ -208,10 +218,10 @@ loc[2] = ci->loc[2];
  */
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const struct cell *restrict const ci, const struct cell *restrict const cj,
-    struct cache *restrict const ci_cache, struct cache *restrict const cj_cache,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const double *restrict const shift, int *first_pi, int *last_pj,
-    const int num_vec_proc) {
+    struct cache *restrict const ci_cache,
+    struct cache *restrict const cj_cache, const struct entry *restrict sort_i,
+    const struct entry *restrict sort_j, const double *restrict const shift,
+    int *first_pi, int *last_pj, const int num_vec_proc) {
 
   int idx;
   /* Pad number of particles read to the vector size. */
@@ -238,21 +248,31 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   loc[1] = ci->loc[1];
   loc[2] = ci->loc[2];
 
-/* Let the compiler know that the data is aligned and create pointers to the 
- * arrays inside the cache. */
-  swift_align_and_restrict_information(x, ci_cache->x, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(y, ci_cache->y, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(z, ci_cache->z, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(h, ci_cache->h, float, SWIFT_CACHE_ALIGNMENT);  
-  swift_align_and_restrict_information(m, ci_cache->m, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vx, ci_cache->vx, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vy, ci_cache->vy, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vz, ci_cache->vz, float, SWIFT_CACHE_ALIGNMENT);
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_align_and_restrict_information(x, ci_cache->x, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(y, ci_cache->y, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(z, ci_cache->z, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(h, ci_cache->h, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(m, ci_cache->m, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vx, ci_cache->vx, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vy, ci_cache->vy, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vz, ci_cache->vz, float,
+                                       SWIFT_CACHE_ALIGNMENT);
 
   int ci_cache_count = ci->count - first_pi_align;
-  /* Shift the particles positions to a local frame (ci frame) so single precision
+  /* Shift the particles positions to a local frame (ci frame) so single
+   * precision
    * can be
-   * used instead of double precision. Also shift the cell ci, particles positions
+   * used instead of double precision. Also shift the cell ci, particles
+   * positions
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
     idx = sort_i[i + first_pi_align].i;
@@ -282,17 +302,25 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     vy[i] = 1.f;
     vz[i] = 1.f;
   }
-  
-/* Let the compiler know that the data is aligned and create pointers to the 
- * arrays inside the cache. */
-  swift_align_and_restrict_information(xj, cj_cache->x, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(yj, cj_cache->y, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(zj, cj_cache->z, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(hj, cj_cache->h, float, SWIFT_CACHE_ALIGNMENT);  
-  swift_align_and_restrict_information(mj, cj_cache->m, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vxj, cj_cache->vx, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vyj, cj_cache->vy, float, SWIFT_CACHE_ALIGNMENT);
-  swift_align_and_restrict_information(vzj, cj_cache->vz, float, SWIFT_CACHE_ALIGNMENT);
+
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_align_and_restrict_information(xj, cj_cache->x, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(yj, cj_cache->y, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(zj, cj_cache->z, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(hj, cj_cache->h, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(mj, cj_cache->m, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vxj, cj_cache->vx, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vyj, cj_cache->vy, float,
+                                       SWIFT_CACHE_ALIGNMENT);
+  swift_align_and_restrict_information(vzj, cj_cache->vz, float,
+                                       SWIFT_CACHE_ALIGNMENT);
 
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
