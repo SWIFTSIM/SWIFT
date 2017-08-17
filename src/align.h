@@ -70,18 +70,9 @@
  * @param type Type of array
  * @param alignment The alignment in bytes of the array.
  */
-#if defined(__ICC)
 #define swift_align_and_restrict_information(array, ptr, type, alignment) \
   type *restrict array = ptr;                                             \
-  __assume_aligned(array, alignment);
-#elif defined(__GNUC__)
-#define swift_align_and_restrict_information(array, ptr, type, alignment) \
-  type *restrict array = ptr;                                             \
-  array = __builtin_assume_aligned(array, alignment);
-#else
-#define swift_align_and_restrict_information(array, ptr, type, alignment) \
-  type *restrict array = ptr;
-#endif
+  swift_align_information(array, alignment);
 
 /**
  * @brief Macro to tell the compiler that a given number is 0 modulo a given
