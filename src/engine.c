@@ -227,8 +227,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                               /* implicit = */ 1, c, NULL);
         engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
 
-/* Generate the extra ghost task. */
 #ifdef EXTRA_HYDRO_LOOP
+        /* Generate the extra ghost task. */
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 #endif
@@ -4545,8 +4545,8 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
-  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
-                 e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues,
+                 (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *

@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers */
+#include "align.h"
 #include "cell.h"
 #include "error.h"
 #include "part.h"
@@ -30,9 +31,7 @@
 #include "vector.h"
 
 #define NUM_VEC_PROC 2
-#define CACHE_ALIGN 64
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
-#define C2_CACHE_ALIGN sizeof(float) * VEC_SIZE
 
 #ifdef WITH_VECTORIZATION
 /* Cache struct to hold a local copy of a cells' particle
@@ -40,31 +39,31 @@
 struct cache {
 
   /* Particle x position. */
-  float *restrict x __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict x SWIFT_CACHE_ALIGN;
 
   /* Particle y position. */
-  float *restrict y __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict y SWIFT_CACHE_ALIGN;
 
   /* Particle z position. */
-  float *restrict z __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict z SWIFT_CACHE_ALIGN;
 
   /* Particle smoothing length. */
-  float *restrict h __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict h SWIFT_CACHE_ALIGN;
 
   /* Particle mass. */
-  float *restrict m __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict m SWIFT_CACHE_ALIGN;
 
   /* Particle x velocity. */
-  float *restrict vx __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict vx SWIFT_CACHE_ALIGN;
 
   /* Particle y velocity. */
-  float *restrict vy __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict vy SWIFT_CACHE_ALIGN;
 
   /* Particle z velocity. */
-  float *restrict vz __attribute__((aligned(CACHE_ALIGN)));
+  float *restrict vz SWIFT_CACHE_ALIGN;
 
-  /* Maximum distance of particles into neighbouring cell. */
-  float *restrict max_d __attribute__((aligned(CACHE_ALIGN)));
+  /* Maximum index into neighbouring cell for particles that are in range. */
+  int *restrict max_index SWIFT_CACHE_ALIGN;
 
   /* Cache size. */
   int count;
@@ -75,28 +74,28 @@ struct cache {
 struct c2_cache {
 
   /* Separation between two particles squared. */
-  float r2q[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float r2q[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* x separation between two particles. */
-  float dxq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float dxq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* y separation between two particles. */
-  float dyq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float dyq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* z separation between two particles. */
-  float dzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float dzq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* Mass of particle pj. */
-  float mq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float mq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* x velocity of particle pj. */
-  float vxq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float vxq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* y velocity of particle pj. */
-  float vyq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float vyq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 
   /* z velocity of particle pj. */
-  float vzq[C2_CACHE_SIZE] __attribute__((aligned(C2_CACHE_ALIGN)));
+  float vzq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 };
 
 /**
@@ -111,9 +110,10 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
    * the vector size
    * and include 2 vector lengths for remainder operations. */
-  unsigned int pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
+  size_t pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
-  unsigned int sizeBytes = (count + pad) * sizeof(float);
+  size_t sizeBytes = (count + pad) * sizeof(float);
+  size_t sizeIntBytes = (count + pad) * sizeof(int);
   int error = 0;
 
   /* Free memory if cache has already been allocated. */
@@ -126,18 +126,19 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vy);
     free(c->vz);
     free(c->h);
-    free(c->max_d);
+    free(c->max_index);
   }
 
-  error += posix_memalign((void **)&c->x, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->y, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->z, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->m, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->vx, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->vy, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->vz, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->h, CACHE_ALIGN, sizeBytes);
-  error += posix_memalign((void **)&c->max_d, CACHE_ALIGN, sizeBytes);
+  error += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->y, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->z, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->m, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->vx, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->vy, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->vz, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT,
+                          sizeIntBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -151,156 +152,43 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
  * @param ci_cache The cache.
  */
 __attribute__((always_inline)) INLINE void cache_read_particles(
-    const struct cell *const ci, struct cache *const ci_cache) {
+    const struct cell *restrict const ci,
+    struct cache *restrict const ci_cache) {
 
 #if defined(GADGET2_SPH)
 
-/* Shift the particles positions to a local frame so single precision can be
- * used instead of double precision. */
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma vector aligned
-#endif
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
+
+  const struct part *restrict parts = ci->parts;
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
+
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
   for (int i = 0; i < ci->count; i++) {
-    ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0];
-    ci_cache->y[i] = ci->parts[i].x[1] - ci->loc[1];
-    ci_cache->z[i] = ci->parts[i].x[2] - ci->loc[2];
-    ci_cache->h[i] = ci->parts[i].h;
+    x[i] = (float)(parts[i].x[0] - loc[0]);
+    y[i] = (float)(parts[i].x[1] - loc[1]);
+    z[i] = (float)(parts[i].x[2] - loc[2]);
+    h[i] = parts[i].h;
 
-    ci_cache->m[i] = ci->parts[i].mass;
-    ci_cache->vx[i] = ci->parts[i].v[0];
-    ci_cache->vy[i] = ci->parts[i].v[1];
-    ci_cache->vz[i] = ci->parts[i].v[2];
+    m[i] = parts[i].mass;
+    vx[i] = parts[i].v[0];
+    vy[i] = parts[i].v[1];
+    vz[i] = parts[i].v[2];
   }
 
 #endif
-}
-
-/**
- * @brief Populate cache by reading in the particles from two cells in unsorted
- * order.
- *
- * @param ci The i #cell.
- * @param cj The j #cell.
- * @param ci_cache The cache for cell ci.
- * @param cj_cache The cache for cell cj.
- * @param shift The amount to shift the particle positions to account for BCs
- */
-__attribute__((always_inline)) INLINE void cache_read_two_cells(
-    const struct cell *const ci, const struct cell *const cj,
-    struct cache *const ci_cache, struct cache *const cj_cache,
-    const double *const shift) {
-
-  /* Shift the particles positions to a local frame (ci frame) so single
-   * precision can be
-   * used instead of double precision. Also shift the cell ci, particles
-   * positions due to BCs but leave cell cj. */
-  for (int i = 0; i < ci->count; i++) {
-    ci_cache->x[i] = ci->parts[i].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[i] = ci->parts[i].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[i] = ci->parts[i].x[2] - ci->loc[2] - shift[2];
-    ci_cache->h[i] = ci->parts[i].h;
-
-    ci_cache->m[i] = ci->parts[i].mass;
-    ci_cache->vx[i] = ci->parts[i].v[0];
-    ci_cache->vy[i] = ci->parts[i].v[1];
-    ci_cache->vz[i] = ci->parts[i].v[2];
-  }
-
-  for (int i = 0; i < cj->count; i++) {
-    cj_cache->x[i] = cj->parts[i].x[0] - ci->loc[0];
-    cj_cache->y[i] = cj->parts[i].x[1] - ci->loc[1];
-    cj_cache->z[i] = cj->parts[i].x[2] - ci->loc[2];
-    cj_cache->h[i] = cj->parts[i].h;
-
-    cj_cache->m[i] = cj->parts[i].mass;
-    cj_cache->vx[i] = cj->parts[i].v[0];
-    cj_cache->vy[i] = cj->parts[i].v[1];
-    cj_cache->vz[i] = cj->parts[i].v[2];
-  }
-}
-
-__attribute__((always_inline)) INLINE void cache_read_cell_sorted(
-    const struct cell *const ci, struct cache *const ci_cache,
-    const struct entry *restrict sort_i, double *const loc,
-    double *const shift) {
-
-  int idx;
-/* Shift the particles positions to a local frame (ci frame) so single precision
- * can be
- * used instead of double precision. Also shift the cell ci, particles positions
- * due to BCs but leave cell cj. */
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#endif
-  for (int i = 0; i < ci->count; i++) {
-    idx = sort_i[i].i;
-
-    ci_cache->x[i] = ci->parts[idx].x[0] - loc[0] - shift[0];
-    ci_cache->y[i] = ci->parts[idx].x[1] - loc[1] - shift[1];
-    ci_cache->z[i] = ci->parts[idx].x[2] - loc[2] - shift[2];
-    ci_cache->h[i] = ci->parts[idx].h;
-
-    ci_cache->m[i] = ci->parts[idx].mass;
-    ci_cache->vx[i] = ci->parts[idx].v[0];
-    ci_cache->vy[i] = ci->parts[idx].v[1];
-    ci_cache->vz[i] = ci->parts[idx].v[2];
-  }
-}
-
-/**
- * @brief Populate cache by reading in the particles from two cells in sorted
- * order.
- *
- * @param ci The i #cell.
- * @param cj The j #cell.
- * @param ci_cache The #cache for cell ci.
- * @param cj_cache The #cache for cell cj.
- * @param sort_i The array of sorted particle indices for cell ci.
- * @param sort_j The array of sorted particle indices for cell ci.
- * @param shift The amount to shift the particle positions to account for BCs
- */
-__attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
-    const struct cell *const ci, const struct cell *const cj,
-    struct cache *const ci_cache, struct cache *const cj_cache,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const double *const shift) {
-
-  int idx;
-/* Shift the particles positions to a local frame (ci frame) so single precision
- * can be
- * used instead of double precision. Also shift the cell ci, particles positions
- * due to BCs but leave cell cj. */
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#endif
-  for (int i = 0; i < ci->count; i++) {
-    idx = sort_i[i].i;
-    ci_cache->x[i] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[i] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[i] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
-    ci_cache->h[i] = ci->parts[idx].h;
-
-    ci_cache->m[i] = ci->parts[idx].mass;
-    ci_cache->vx[i] = ci->parts[idx].v[0];
-    ci_cache->vy[i] = ci->parts[idx].v[1];
-    ci_cache->vz[i] = ci->parts[idx].v[2];
-  }
-
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma simd
-#endif
-  for (int i = 0; i < cj->count; i++) {
-    idx = sort_j[i].i;
-    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
-    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
-    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
-    cj_cache->h[i] = cj->parts[idx].h;
-
-    cj_cache->m[i] = cj->parts[idx].mass;
-    cj_cache->vx[i] = cj->parts[idx].v[0];
-    cj_cache->vy[i] = cj->parts[idx].v[1];
-    cj_cache->vz[i] = cj->parts[idx].v[2];
-  }
 }
 
 /**
@@ -321,13 +209,13 @@ __attribute__((always_inline)) INLINE void cache_read_two_cells_sorted(
  * interaction.
  */
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
-    const struct cell *const ci, const struct cell *const cj,
-    struct cache *const ci_cache, struct cache *const cj_cache,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const double *const shift, int *first_pi, int *last_pj,
-    const int num_vec_proc) {
+    const struct cell *restrict const ci, const struct cell *restrict const cj,
+    struct cache *restrict const ci_cache,
+    struct cache *restrict const cj_cache, const struct entry *restrict sort_i,
+    const struct entry *restrict sort_j, const double *restrict const shift,
+    int *first_pi, int *last_pj, const int num_vec_proc) {
 
-  int idx, ci_cache_idx;
+  int idx;
   /* Pad number of particles read to the vector size. */
   int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
@@ -345,74 +233,97 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   int first_pi_align = *first_pi;
   int last_pj_align = *last_pj;
+  const struct part *restrict parts_i = ci->parts;
+  const struct part *restrict parts_j = cj->parts;
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
 
-/* Shift the particles positions to a local frame (ci frame) so single precision
- * can be
- * used instead of double precision. Also shift the cell ci, particles positions
- * due to BCs but leave cell cj. */
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma vector aligned
-#endif
-  for (int i = first_pi_align; i < ci->count; i++) {
-    /* Make sure ci_cache is filled from the first element. */
-    ci_cache_idx = i - first_pi_align;
-    idx = sort_i[i].i;
-    ci_cache->x[ci_cache_idx] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[ci_cache_idx] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[ci_cache_idx] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
-    ci_cache->h[ci_cache_idx] = ci->parts[idx].h;
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
-    ci_cache->m[ci_cache_idx] = ci->parts[idx].mass;
-    ci_cache->vx[ci_cache_idx] = ci->parts[idx].v[0];
-    ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
-    ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
+  int ci_cache_count = ci->count - first_pi_align;
+  /* Shift the particles positions to a local frame (ci frame) so single
+   * precision
+   * can be
+   * used instead of double precision. Also shift the cell ci, particles
+   * positions
+   * due to BCs but leave cell cj. */
+  for (int i = 0; i < ci_cache_count; i++) {
+    idx = sort_i[i + first_pi_align].i;
+    x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
+    y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
+    z[i] = (float)(parts_i[idx].x[2] - loc[2] - shift[2]);
+    h[i] = parts_i[idx].h;
+
+    m[i] = parts_i[idx].mass;
+    vx[i] = parts_i[idx].v[0];
+    vy[i] = parts_i[idx].v[1];
+    vz[i] = parts_i[idx].v[2];
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
+  float fake_pix = 2.0f * parts_i[sort_i[ci->count - 1].i].x[0];
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++) {
-    ci_cache->x[i] = fake_pix;
-    ci_cache->y[i] = 1.f;
-    ci_cache->z[i] = 1.f;
-    ci_cache->h[i] = 1.f;
+    x[i] = fake_pix;
+    y[i] = 1.f;
+    z[i] = 1.f;
+    h[i] = 1.f;
 
-    ci_cache->m[i] = 1.f;
-    ci_cache->vx[i] = 1.f;
-    ci_cache->vy[i] = 1.f;
-    ci_cache->vz[i] = 1.f;
+    m[i] = 1.f;
+    vx[i] = 1.f;
+    vy[i] = 1.f;
+    vz[i] = 1.f;
   }
 
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma vector aligned
-#endif
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, xj, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, yj, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, zj, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, hj, cj_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, mj, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vxj, cj_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vyj, cj_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vzj, cj_cache->vz, SWIFT_CACHE_ALIGNMENT);
+
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
-    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
-    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
-    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
-    cj_cache->h[i] = cj->parts[idx].h;
+    xj[i] = (float)(parts_j[idx].x[0] - loc[0]);
+    yj[i] = (float)(parts_j[idx].x[1] - loc[1]);
+    zj[i] = (float)(parts_j[idx].x[2] - loc[2]);
+    hj[i] = parts_j[idx].h;
 
-    cj_cache->m[i] = cj->parts[idx].mass;
-    cj_cache->vx[i] = cj->parts[idx].v[0];
-    cj_cache->vy[i] = cj->parts[idx].v[1];
-    cj_cache->vz[i] = cj->parts[idx].v[2];
+    mj[i] = parts_j[idx].mass;
+    vxj[i] = parts_j[idx].v[0];
+    vyj[i] = parts_j[idx].v[1];
+    vzj[i] = parts_j[idx].v[2];
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
   float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
-    cj_cache->x[i] = fake_pjx;
-    cj_cache->y[i] = 1.f;
-    cj_cache->z[i] = 1.f;
-    cj_cache->h[i] = 1.f;
+    xj[i] = fake_pjx;
+    yj[i] = 1.f;
+    zj[i] = 1.f;
+    hj[i] = 1.f;
 
-    cj_cache->m[i] = 1.f;
-    cj_cache->vx[i] = 1.f;
-    cj_cache->vy[i] = 1.f;
-    cj_cache->vz[i] = 1.f;
+    mj[i] = 1.f;
+    vxj[i] = 1.f;
+    vyj[i] = 1.f;
+    vzj[i] = 1.f;
   }
 }
 
@@ -430,7 +341,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->vy);
     free(c->vz);
     free(c->h);
-    free(c->max_d);
+    free(c->max_index);
   }
 }
 
