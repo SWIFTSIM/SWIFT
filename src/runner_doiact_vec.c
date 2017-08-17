@@ -1260,8 +1260,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         vector v_dx, v_dy, v_dz, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0) {
-          error("Unaligned read!!! cj_cache_idx=%d", cj_cache_idx);
+        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 || cj_cache_idx + (VEC_SIZE - 1) > (last_pj_align + 1 + VEC_SIZE)) {
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj_align=%d", cj_cache_idx, last_pj_align);
         }
 #endif
 
@@ -1386,8 +1386,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
            ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0) {
-          error("Unaligned read!!! ci_cache_idx=%d", ci_cache_idx);
+        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0 || ci_cache_idx + (VEC_SIZE - 1) > (count_i - first_pi_align + VEC_SIZE)) {
+          error("Unaligned read!!! ci_cache_idx=%d, first_pi_align=%d, count_i=%d", ci_cache_idx, first_pi_align, count_i);
         }
 #endif
 
