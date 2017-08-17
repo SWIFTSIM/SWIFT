@@ -662,8 +662,8 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
     hi_inv_vec = vec_reciprocal(hi_vec);
     
     mask_t mask, mask2;
-    vec_init_mask(mask);
-    vec_init_mask(mask2);
+    vec_init_mask_true(mask);
+    vec_init_mask_true(mask2);
     
     const ticks vec_tic = getticks();
 
