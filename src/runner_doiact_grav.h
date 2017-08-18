@@ -155,570 +155,245 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
   TIMER_TOC(timer_dopair_grav_mm);
 }
 
-/**
- * @brief Computes the interaction of all the particles in a cell with all the
- * particles of another cell using the full Newtonian potential
- *
- * @param r The #runner.
- * @param ci The first #cell.
- * @param cj The other #cell.
- * @param shift The distance vector (periodically wrapped) between the cell
- * centres.
- */
-void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
-                                struct cell *cj, double shift[3]) {
+static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
+                                              struct gravity_cache *ci_cache,
+                                              struct gravity_cache *cj_cache,
+                                              int gcount_i, int gcount_j,
+                                              int gcount_padded_j,
+                                              struct gpart *restrict gparts_i,
+                                              struct gpart *restrict gparts_j) {
 
-  /* Some constants */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
-  const struct engine *const e = r->e;
-  const struct gravity_props *props = e->gravity_properties;
-  const float theta_crit2 = props->theta_crit2;
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount_i; pid++) {
 
-  /* Cell properties */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
-  struct gpart *restrict gparts_i = ci->gparts;
-  struct gpart *restrict gparts_j = cj->gparts;
-  const int ci_active = cell_is_active(ci, e);
-  const int cj_active = cell_is_active(cj, e);
-  const double loc_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
-  const double loc_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
-  const double loc_mean[3] = {0.5 * (loc_i[0] + loc_j[0]),
-                              0.5 * (loc_i[1] + loc_j[1]),
-                              0.5 * (loc_i[2] + loc_j[2])};
+    /* Skip inactive particles */
+    if (!ci_cache->active[pid]) continue;
 
-  /* Anything to do here ?*/
-  if (!ci_active && !cj_active) return;
-
-  /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
-    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
-          gcount_j);
-
-  /* Computed the padded counts */
-  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
-  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
-
-  /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         loc_mean);
-  gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                         loc_mean);
-
-  /* Recover the multipole info and shift the CoM locations */
-  const float rmax_i = ci->multipole->r_max;
-  const float rmax_j = cj->multipole->r_max;
-  const struct multipole *multi_i = &ci->multipole->m_pole;
-  const struct multipole *multi_j = &cj->multipole->m_pole;
-  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
-                          ci->multipole->CoM[1] - loc_mean[1],
-                          ci->multipole->CoM[2] - loc_mean[2]};
-  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
-                          cj->multipole->CoM[1] - loc_mean[1],
-                          cj->multipole->CoM[2] - loc_mean[2]};
-
-  /* Ok... Here we go ! */
-
-  if (ci_active) {
-
-    /* Loop over all particles in ci... */
-    for (int pid = 0; pid < gcount_i; pid++) {
-
-      /* Skip inactive particles */
-      if (!gpart_is_active(&gparts_i[pid], e)) continue;
-
-      const float x_i = ci_cache->x[pid];
-      const float y_i = ci_cache->y[pid];
-      const float z_i = ci_cache->z[pid];
-
-      /* Some powers of the softening length */
-      const float h_i = ci_cache->epsilon[pid];
-      const float h2_i = h_i * h_i;
-      const float h_inv_i = 1.f / h_i;
-      const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
-
-      /* Distance to the multipole in cj */
-      const float dx = x_i - CoM_j[0];
-      const float dy = y_i - CoM_j[1];
-      const float dz = z_i - CoM_j[2];
-      const float r2 = dx * dx + dy * dy + dz * dz;
-
-      /* Can we use the multipole in cj ? */
-      if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
-
-        /* Interact! */
-        float f_x, f_y, f_z;
-        runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
-                            &f_z);
-
-        /* Store it back */
-        ci_cache->a_x[pid] = f_x;
-        ci_cache->a_y[pid] = f_y;
-        ci_cache->a_z[pid] = f_z;
+    /* Skip particle that can use the multipole */
+    if (ci_cache->use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
-#endif
-        /* Done with this particle */
-        continue;
-      }
-
-      /* Ok, as of here we have no choice but directly interact everything */
-
-      /* Local accumulators for the acceleration */
-      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
-
-      /* Make the compiler understand we are in happy vectorization land */
-      swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
-      swift_assume_size(gcount_padded_j, VEC_SIZE);
-
-      /* Loop over every particle in the other cell. */
-      for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
-
-        /* Get info about j */
-        const float x_j = cj_cache->x[pjd];
-        const float y_j = cj_cache->y[pjd];
-        const float z_j = cj_cache->z[pjd];
-        const float mass_j = cj_cache->m[pjd];
-
-        /* Compute the pairwise (square) distance. */
-        const float dx = x_i - x_j;
-        const float dy = y_i - y_j;
-        const float dz = z_i - z_j;
-        const float r2 = dx * dx + dy * dy + dz * dz;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (r2 == 0.f) error("Interacting particles with 0 distance");
-
-        /* Check that particles have been drifted to the current time */
-        if (gparts_i[pid].ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
+    if (!gpart_is_active(&gparts_i[pid], e))
+      error("Active particle went through the cache");
 #endif
 
-        /* Interact! */
-        float f_ij;
-        runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
+    const float x_i = ci_cache->x[pid];
+    const float y_i = ci_cache->y[pid];
+    const float z_i = ci_cache->z[pid];
 
-        /* Store it back */
-        a_x -= f_ij * dx;
-        a_y -= f_ij * dy;
-        a_z -= f_ij * dz;
+    /* Some powers of the softening length */
+    const float h_i = ci_cache->epsilon[pid];
+    const float h2_i = h_i * h_i;
+    const float h_inv_i = 1.f / h_i;
+    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter if it's not a padded gpart */
-        if (pjd < gcount_j) gparts_i[pid].num_interacted++;
-#endif
-      }
+    /* Local accumulators for the acceleration */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
-      /* Store everything back in cache */
-      ci_cache->a_x[pid] = a_x;
-      ci_cache->a_y[pid] = a_y;
-      ci_cache->a_z[pid] = a_z;
-    }
-  }
+    /* Make the compiler understand we are in happy vectorization land */
+    swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_assume_size(gcount_padded_j, VEC_SIZE);
 
-  /* Now do the opposite loop */
-  if (cj_active) {
+    /* Loop over every particle in the other cell. */
+    for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
 
-    /* Loop over all particles in cj... */
-    for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-      /* Skip inactive particles */
-      if (!gpart_is_active(&gparts_j[pjd], e)) continue;
-
+      /* Get info about j */
       const float x_j = cj_cache->x[pjd];
       const float y_j = cj_cache->y[pjd];
       const float z_j = cj_cache->z[pjd];
+      const float mass_j = cj_cache->m[pjd];
 
-      /* Some powers of the softening length */
-      const float h_j = cj_cache->epsilon[pjd];
-      const float h2_j = h_j * h_j;
-      const float h_inv_j = 1.f / h_j;
-      const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
-
-      /* Distance to the multipole in ci */
-      const float dx = x_j - CoM_i[0];
-      const float dy = y_j - CoM_i[1];
-      const float dz = z_j - CoM_i[2];
+      /* Compute the pairwise (square) distance. */
+      const float dx = x_i - x_j;
+      const float dy = y_i - y_j;
+      const float dz = z_i - z_j;
       const float r2 = dx * dx + dy * dy + dz * dz;
 
-      /* Can we use the multipole in cj ? */
-      if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
-
-        /* Interact! */
-        float f_x, f_y, f_z;
-        runner_iact_grav_pm(dx, dy, dz, r2, h_j, h_inv_j, multi_i, &f_x, &f_y,
-                            &f_z);
-
-        /* Store it back */
-        cj_cache->a_x[pjd] = f_x;
-        cj_cache->a_y[pjd] = f_y;
-        cj_cache->a_z[pjd] = f_z;
-
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        gparts_j[pjd].num_interacted += ci->multipole->m_pole.num_gpart;
-#endif
-        /* Done with this particle */
-        continue;
-      }
+      if (r2 == 0.f) error("Interacting particles with 0 distance");
 
-      /* Ok, as of here we have no choice but directly interact everything */
-
-      /* Local accumulators for the acceleration */
-      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
-
-      /* Make the compiler understand we are in happy vectorization land */
-      swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
-      swift_assume_size(gcount_padded_i, VEC_SIZE);
-
-      /* Loop over every particle in the other cell. */
-      for (int pid = 0; pid < gcount_padded_i; pid++) {
-
-        /* Get info about j */
-        const float x_i = ci_cache->x[pid];
-        const float y_i = ci_cache->y[pid];
-        const float z_i = ci_cache->z[pid];
-        const float mass_i = ci_cache->m[pid];
-
-        /* Compute the pairwise (square) distance. */
-        const float dx = x_j - x_i;
-        const float dy = y_j - y_i;
-        const float dz = z_j - z_i;
-        const float r2 = dx * dx + dy * dy + dz * dz;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (r2 == 0.f) error("Interacting particles with 0 distance");
-
-        /* Check that particles have been drifted to the current time */
-        if (gparts_j[pjd].ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-        if (pid < gcount_i && gparts_i[pid].ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
+      /* Check that particles have been drifted to the current time */
+      if (gparts_i[pid].ti_drift != e->ti_current)
+        error("gpi not drifted to current time");
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+        error("gpj not drifted to current time");
 #endif
 
-        /* Interact! */
-        float f_ji;
-        runner_iact_grav_pp_full(r2, h2_j, h_inv_j, h_inv3_j, mass_i, &f_ji);
+      /* Interact! */
+      float f_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
 
-        /* Store it back */
-        a_x -= f_ji * dx;
-        a_y -= f_ji * dy;
-        a_z -= f_ji * dz;
+      /* Store it back */
+      a_x -= f_ij * dx;
+      a_y -= f_ij * dy;
+      a_z -= f_ij * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter if it's not a padded gpart */
-        if (pid < gcount_i) gparts_j[pjd].num_interacted++;
+      /* Update the interaction counter if it's not a padded gpart */
+      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
 #endif
-      }
-
-      /* Store everything back in cache */
-      cj_cache->a_x[pjd] = a_x;
-      cj_cache->a_y[pjd] = a_y;
-      cj_cache->a_z[pjd] = a_z;
     }
-  }
 
-  /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
-  if (cj_active) gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
+    /* Store everything back in cache */
+    ci_cache->a_x[pid] = a_x;
+    ci_cache->a_y[pid] = a_y;
+    ci_cache->a_z[pid] = a_z;
+  }
 }
 
-/**
- * @brief Computes the interaction of all the particles in a cell with all the
- * particles of another cell using the truncated Newtonian potential
- *
- * @param r The #runner.
- * @param ci The first #cell.
- * @param cj The other #cell.
- * @param shift The distance vector (periodically wrapped) between the cell
- * centres.
- */
-void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
-                                     struct cell *cj, double shift[3]) {
+static INLINE void runner_dopair_grav_pp_truncated(
+    const struct engine *e, const float rlr_inv, struct gravity_cache *ci_cache,
+    struct gravity_cache *cj_cache, int gcount_i, int gcount_j,
+    int gcount_padded_j, struct gpart *restrict gparts_i,
+    struct gpart *restrict gparts_j) {
 
-  /* Some constants */
-  const struct engine *const e = r->e;
-  const struct space *s = e->s;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
-  const float theta_crit2 = e->gravity_properties->theta_crit2;
-  const double rlr = cell_width * a_smooth;
-  const float rlr_inv = 1. / rlr;
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount_i; pid++) {
 
-  /* Caches to play with */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+    /* Skip inactive particles */
+    if (!ci_cache->active[pid]) continue;
 
-  /* Cell properties */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
-  struct gpart *restrict gparts_i = ci->gparts;
-  struct gpart *restrict gparts_j = cj->gparts;
-  const int ci_active = cell_is_active(ci, e);
-  const int cj_active = cell_is_active(cj, e);
-  const double loc_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
-  const double loc_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
-  const double loc_mean[3] = {0.5 * (loc_i[0] + loc_j[0]),
-                              0.5 * (loc_i[1] + loc_j[1]),
-                              0.5 * (loc_i[2] + loc_j[2])};
-
-  /* Anything to do here ?*/
-  if (!ci_active && !cj_active) return;
-
-  /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
-    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
-          gcount_j);
-
-  /* Computed the padded counts */
-  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
-  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
-
-  /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         loc_mean);
-  gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                         loc_mean);
-
-  /* Recover the multipole info and shift the CoM locations */
-  const float rmax_i = ci->multipole->r_max;
-  const float rmax_j = cj->multipole->r_max;
-  const struct multipole *multi_i = &ci->multipole->m_pole;
-  const struct multipole *multi_j = &cj->multipole->m_pole;
-  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
-                          ci->multipole->CoM[1] - loc_mean[1],
-                          ci->multipole->CoM[2] - loc_mean[2]};
-  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
-                          cj->multipole->CoM[1] - loc_mean[1],
-                          cj->multipole->CoM[2] - loc_mean[2]};
-
-  /* Ok... Here we go ! */
-
-  if (ci_active) {
-
-    /* Loop over all particles in ci... */
-    for (int pid = 0; pid < gcount_i; pid++) {
-
-      /* Skip inactive particles */
-      if (!gpart_is_active(&gparts_i[pid], e)) continue;
-
-      const float x_i = ci_cache->x[pid];
-      const float y_i = ci_cache->y[pid];
-      const float z_i = ci_cache->z[pid];
-
-      /* Some powers of the softening length */
-      const float h_i = ci_cache->epsilon[pid];
-      const float h2_i = h_i * h_i;
-      const float h_inv_i = 1.f / h_i;
-      const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
-
-      /* Distance to the multipole in cj */
-      const float dx = x_i - CoM_j[0];
-      const float dy = y_i - CoM_j[1];
-      const float dz = z_i - CoM_j[2];
-      const float r2 = dx * dx + dy * dy + dz * dz;
-
-      /* Can we use the multipole in cj ? */
-      if (gravity_multipole_accept(0., rmax_j, theta_crit2, r2)) {
-
-        /* Interact! */
-        float f_x, f_y, f_z;
-        runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
-                            &f_z);
-
-        /* Store it back */
-        ci_cache->a_x[pid] = f_x;
-        ci_cache->a_y[pid] = f_y;
-        ci_cache->a_z[pid] = f_z;
+    /* Skip particle that can use the multipole */
+    if (ci_cache->use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
-#endif
-        /* Done with this particle */
-        continue;
-      }
-
-      /* Ok, as of here we have no choice but directly interact everything */
-
-      /* Local accumulators for the acceleration */
-      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
-
-      /* Make the compiler understand we are in happy vectorization land */
-      swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
-      swift_assume_size(gcount_padded_j, VEC_SIZE);
-
-      /* Loop over every particle in the other cell. */
-      for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
-
-        /* Get info about j */
-        const float x_j = cj_cache->x[pjd];
-        const float y_j = cj_cache->y[pjd];
-        const float z_j = cj_cache->z[pjd];
-        const float mass_j = cj_cache->m[pjd];
-
-        /* Compute the pairwise (square) distance. */
-        const float dx = x_i - x_j;
-        const float dy = y_i - y_j;
-        const float dz = z_i - z_j;
-        const float r2 = dx * dx + dy * dy + dz * dz;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (r2 == 0.f) error("Interacting particles with 0 distance");
-
-        /* Check that particles have been drifted to the current time */
-        if (gparts_i[pid].ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
-        if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
+    if (!gpart_is_active(&gparts_i[pid], e))
+      error("Active particle went through the cache");
 #endif
 
-        /* Interact! */
-        float f_ij;
-        runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                      rlr_inv, &f_ij);
+    const float x_i = ci_cache->x[pid];
+    const float y_i = ci_cache->y[pid];
+    const float z_i = ci_cache->z[pid];
 
-        /* Store it back */
-        a_x -= f_ij * dx;
-        a_y -= f_ij * dy;
-        a_z -= f_ij * dz;
+    /* Some powers of the softening length */
+    const float h_i = ci_cache->epsilon[pid];
+    const float h2_i = h_i * h_i;
+    const float h_inv_i = 1.f / h_i;
+    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter if it's not a padded gpart */
-        if (pjd < gcount_j) gparts_i[pid].num_interacted++;
-#endif
-      }
+    /* Local accumulators for the acceleration */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
-      /* Store everything back in cache */
-      ci_cache->a_x[pid] = a_x;
-      ci_cache->a_y[pid] = a_y;
-      ci_cache->a_z[pid] = a_z;
-    }
-  }
+    /* Make the compiler understand we are in happy vectorization land */
+    swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_assume_size(gcount_padded_j, VEC_SIZE);
 
-  /* Now do the opposite loop */
-  if (cj_active) {
+    /* Loop over every particle in the other cell. */
+    for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
 
-    /* Loop over all particles in cj... */
-    for (int pjd = 0; pjd < gcount_j; pjd++) {
-
-      /* Skip inactive particles */
-      if (!gpart_is_active(&gparts_j[pjd], e)) continue;
-
+      /* Get info about j */
       const float x_j = cj_cache->x[pjd];
       const float y_j = cj_cache->y[pjd];
       const float z_j = cj_cache->z[pjd];
+      const float mass_j = cj_cache->m[pjd];
 
-      /* Some powers of the softening length */
-      const float h_j = cj_cache->epsilon[pjd];
-      const float h2_j = h_j * h_j;
-      const float h_inv_j = 1.f / h_j;
-      const float h_inv3_j = h_inv_j * h_inv_j * h_inv_j;
-
-      /* Distance to the multipole in ci */
-      const float dx = x_j - CoM_i[0];
-      const float dy = y_j - CoM_i[1];
-      const float dz = z_j - CoM_i[2];
+      /* Compute the pairwise (square) distance. */
+      const float dx = x_i - x_j;
+      const float dy = y_i - y_j;
+      const float dz = z_i - z_j;
       const float r2 = dx * dx + dy * dy + dz * dz;
 
-      /* Can we use the multipole in cj ? */
-      if (gravity_multipole_accept(0., rmax_i, theta_crit2, r2)) {
-
-        /* Interact! */
-        float f_x, f_y, f_z;
-        runner_iact_grav_pm(dx, dy, dz, r2, h_j, h_inv_j, multi_i, &f_x, &f_y,
-                            &f_z);
-
-        /* Store it back */
-        cj_cache->a_x[pjd] = f_x;
-        cj_cache->a_y[pjd] = f_y;
-        cj_cache->a_z[pjd] = f_z;
-
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        gparts_j[pjd].num_interacted += ci->multipole->m_pole.num_gpart;
-#endif
-        /* Done with this particle */
-        continue;
-      }
+      if (r2 == 0.f) error("Interacting particles with 0 distance");
 
-      /* Ok, as of here we have no choice but directly interact everything */
-
-      /* Local accumulators for the acceleration */
-      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
-
-      /* Make the compiler understand we are in happy vectorization land */
-      swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
-      swift_assume_size(gcount_padded_i, VEC_SIZE);
-
-      /* Loop over every particle in the other cell. */
-      for (int pid = 0; pid < gcount_padded_i; pid++) {
-
-        /* Get info about j */
-        const float x_i = ci_cache->x[pid];
-        const float y_i = ci_cache->y[pid];
-        const float z_i = ci_cache->z[pid];
-        const float mass_i = ci_cache->m[pid];
-
-        /* Compute the pairwise (square) distance. */
-        const float dx = x_j - x_i;
-        const float dy = y_j - y_i;
-        const float dz = z_j - z_i;
-        const float r2 = dx * dx + dy * dy + dz * dz;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (r2 == 0.f) error("Interacting particles with 0 distance");
-
-        /* Check that particles have been drifted to the current time */
-        if (gparts_j[pjd].ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
-        if (pid < gcount_i && gparts_i[pid].ti_drift != e->ti_current)
-          error("gpi not drifted to current time");
+      /* Check that particles have been drifted to the current time */
+      if (gparts_i[pid].ti_drift != e->ti_current)
+        error("gpi not drifted to current time");
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+        error("gpj not drifted to current time");
 #endif
 
-        /* Interact! */
-        float f_ji;
-        runner_iact_grav_pp_truncated(r2, h2_j, h_inv_j, h_inv3_j, mass_i,
-                                      rlr_inv, &f_ji);
+      /* Interact! */
+      float f_ij;
+      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+                                    rlr_inv, &f_ij);
 
-        /* Store it back */
-        a_x -= f_ji * dx;
-        a_y -= f_ji * dy;
-        a_z -= f_ji * dz;
+      /* Store it back */
+      a_x -= f_ij * dx;
+      a_y -= f_ij * dy;
+      a_z -= f_ij * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter if it's not a padded gpart */
-        if (pid < gcount_i) gparts_j[pjd].num_interacted++;
+      /* Update the interaction counter if it's not a padded gpart */
+      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
 #endif
-      }
-
-      /* Store everything back in cache */
-      cj_cache->a_x[pjd] = a_x;
-      cj_cache->a_y[pjd] = a_y;
-      cj_cache->a_z[pjd] = a_z;
     }
-  }
 
-  /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, gparts_i, gcount_i);
-  if (cj_active) gravity_cache_write_back(cj_cache, gparts_j, gcount_j);
+    /* Store everything back in cache */
+    ci_cache->a_x[pid] = a_x;
+    ci_cache->a_y[pid] = a_y;
+    ci_cache->a_z[pid] = a_z;
+  }
+}
+
+static INLINE void runner_dopair_grav_pm(
+    const struct engine *restrict e, struct gravity_cache *ci_cache,
+    int gcount_i, int gcount_padded_i, struct gpart *restrict gparts_i,
+    const float CoM_j[3], const struct multipole *restrict multi_j,
+    struct cell *restrict cj) {
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->active, SWIFT_CACHE_ALIGNMENT);
+  swift_align_information(ci_cache->use_mpole, SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded_i, VEC_SIZE);
+
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount_padded_i; pid++) {
+
+    /* Skip inactive particles */
+    if (!ci_cache->active[pid]) continue;
+
+    /* Skip particle that cannot use the multipole */
+    if (!ci_cache->use_mpole[pid]) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
+      error("Active particle went through the cache");
+#endif
+
+    const float x_i = ci_cache->x[pid];
+    const float y_i = ci_cache->y[pid];
+    const float z_i = ci_cache->z[pid];
+
+    /* Some powers of the softening length */
+    const float h_i = ci_cache->epsilon[pid];
+    const float h_inv_i = 1.f / h_i;
+
+    /* Distance to the Multipole */
+    const float dx = x_i - CoM_j[0];
+    const float dy = y_i - CoM_j[1];
+    const float dz = z_i - CoM_j[2];
+    const float r2 = dx * dx + dy * dy + dz * dz;
+
+    /* Interact! */
+    float f_x, f_y, f_z;
+    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
+                        &f_z);
+
+    /* Store it back */
+    ci_cache->a_x[pid] = f_x;
+    ci_cache->a_y[pid] = f_y;
+    ci_cache->a_z[pid] = f_z;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update the interaction counter */
+    if (pid < gcount_i)
+      gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+#endif
+  }
 }
 
 /**
@@ -731,21 +406,14 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
  */
 void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
-  /* Some properties of the space */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const double cell_width = s->width[0];
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double a_smooth = e->gravity_properties->a_smooth;
-  const double r_cut_min = e->gravity_properties->r_cut_min;
-  const double min_trunc = cell_width * r_cut_min * a_smooth;
-  double shift[3] = {0.0, 0.0, 0.0};
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  const int ci_active = cell_is_active(ci, e);
+  const int cj_active = cell_is_active(cj, e);
+  if (!ci_active && !cj_active) return;
 
   /* Check that we are not doing something stupid */
   if (ci->split || cj->split) error("Running P-P on splitable cells");
@@ -754,12 +422,96 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
   if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
 
+  /* Recover some useful constants */
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double cell_width = s->width[0];
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const float theta_crit2 = e->gravity_properties->theta_crit2;
+  const double a_smooth = e->gravity_properties->a_smooth;
+  const double r_cut_min = e->gravity_properties->r_cut_min;
+  const double rlr = cell_width * a_smooth;
+  const double min_trunc = rlr * r_cut_min;
+  const float rlr_inv = 1. / rlr;
+
+  /* Caches to play with */
+  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+  struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
+
+  /* Centre of the cell pais */
+  const double loc_mean[3] = {0.5 * (ci->loc[0] + cj->loc[0]),
+                              0.5 * (ci->loc[1] + cj->loc[1]),
+                              0.5 * (ci->loc[2] + cj->loc[2])};
+  // MATTHIEU deal with periodicity
+
+  /* Star by constructing particle caches */
+
+  /* Computed the padded counts */
+  const int gcount_i = ci->gcount;
+  const int gcount_j = cj->gcount;
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
+
+  /* Check that we fit in cache */
+  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
+    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
+          gcount_j);
+
+  /* Recover the multipole info and shift the CoM locations */
+  const float rmax_i = ci->multipole->r_max;
+  const float rmax_j = cj->multipole->r_max;
+  const float rmax2_i = rmax_i * rmax_i;
+  const float rmax2_j = rmax_j * rmax_j;
+  const struct multipole *multi_i = &ci->multipole->m_pole;
+  const struct multipole *multi_j = &cj->multipole->m_pole;
+  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
+                          ci->multipole->CoM[1] - loc_mean[1],
+                          ci->multipole->CoM[2] - loc_mean[2]};
+  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
+                          cj->multipole->CoM[1] - loc_mean[1],
+                          cj->multipole->CoM[2] - loc_mean[2]};
+  // MATTHIEU deal with periodicity
+
+  /* Fill the caches */
+  gravity_cache_populate(e->max_active_bin, ci_cache, ci->gparts, gcount_i,
+                         gcount_padded_i, loc_mean, CoM_j, rmax2_j,
+                         theta_crit2);
+  gravity_cache_populate(e->max_active_bin, cj_cache, cj->gparts, gcount_j,
+                         gcount_padded_j, loc_mean, CoM_i, rmax2_i,
+                         theta_crit2);
+
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
-    runner_dopair_grav_pp_full(r, ci, cj, shift);
-  } else {
+
+    /* Not periodic -> Can always use Newtonian potential */
+
+    /* Let's updated the active cell(s) only */
+    if (ci_active) {
+
+      /* First the P2P */
+      runner_dopair_grav_pp_full(e, ci_cache, cj_cache, gcount_i, gcount_j,
+                                 gcount_padded_j, ci->gparts, cj->gparts);
+
+      /* Then the M2P */
+      runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i, ci->gparts,
+                            CoM_j, multi_j, cj);
+    }
+    if (cj_active) {
+
+      /* First the P2P */
+      runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
+                                 gcount_padded_i, cj->gparts, ci->gparts);
+      /* Then the M2P */
+      runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j, cj->gparts,
+                            CoM_i, multi_i, ci);
+    }
+
+  } else { /* Periodic BC */
+
+    // MATTHIEU deal with periodicity
 
     /* Get the relative distance between the pairs, wrapping. */
+    double shift[3] = {0.0, 0.0, 0.0};
     shift[0] = nearest(cj->loc[0] - ci->loc[0], dim[0]);
     shift[1] = nearest(cj->loc[1] - ci->loc[1], dim[1]);
     shift[2] = nearest(cj->loc[2] - ci->loc[2], dim[2]);
@@ -767,14 +519,39 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
         shift[0] * shift[0] + shift[1] * shift[1] + shift[2] * shift[2];
 
     /* Get the maximal distance between any two particles */
-    const double max_r = sqrt(r2) + ci->multipole->r_max + cj->multipole->r_max;
+    const double max_r = sqrt(r2) + rmax_i + rmax_j;
 
     /* Do we need to use the truncated interactions ? */
-    if (max_r > min_trunc)
-      runner_dopair_grav_pp_truncated(r, ci, cj, shift);
-    else
-      runner_dopair_grav_pp_full(r, ci, cj, shift);
+    if (max_r > min_trunc) {
+
+      /* Periodic but far-away cells must use the truncated potential */
+
+      /* Let's updated the active cell(s) only */
+      if (ci_active)
+        runner_dopair_grav_pp_truncated(e, rlr_inv, ci_cache, cj_cache,
+                                        gcount_i, gcount_j, gcount_padded_j,
+                                        ci->gparts, cj->gparts);
+      if (cj_active)
+        runner_dopair_grav_pp_truncated(e, rlr_inv, cj_cache, ci_cache,
+                                        gcount_j, gcount_i, gcount_padded_i,
+                                        cj->gparts, ci->gparts);
+    } else {
+
+      /* Periodic but close-by cells can use the full Newtonian potential */
+
+      /* Let's updated the active cell(s) only */
+      if (ci_active)
+        runner_dopair_grav_pp_full(e, ci_cache, cj_cache, gcount_i, gcount_j,
+                                   gcount_padded_j, ci->gparts, cj->gparts);
+      if (cj_active)
+        runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
+                                   gcount_padded_i, cj->gparts, ci->gparts);
+    }
   }
+
+  /* Write back to the particles */
+  if (ci_active) gravity_cache_write_back(ci_cache, ci->gparts, gcount_i);
+  if (cj_active) gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
 
   TIMER_TOC(timer_dopair_grav_pp);
 }
@@ -812,7 +589,8 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
+  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
+                                  gcount_padded, loc);
 
   /* Ok... Here we go ! */
 
@@ -820,7 +598,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   for (int pid = 0; pid < gcount; pid++) {
 
     /* Skip inactive particles */
-    if (!gpart_is_active(&gparts[pid], e)) continue;
+    if (!ci_cache->active[pid]) continue;
 
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
@@ -935,7 +713,8 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
+  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
+                                  gcount_padded, loc);
 
   /* Ok... Here we go ! */
 
@@ -943,7 +722,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   for (int pid = 0; pid < gcount; pid++) {
 
     /* Skip inactive particles */
-    if (!gpart_is_active(&gparts[pid], e)) continue;
+    if (!ci_cache->active[pid]) continue;
 
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];

@@ -2411,4 +2411,26 @@ __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
   return (r2 * theta_crit2 > size2);
 }
 
+/**
+ * @brief Checks whether a particle-cell interaction can be appromixated by a
+ * M2P
+ * interaction using the distance and cell radius.
+ *
+ * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
+ * Issue 1, pp.27-42, equation 10.
+ *
+ * @param r_max2 The square of the size of the multipole.
+ * @param theta_crit2 The square of the critical opening angle.
+ * @param r2 Square of the distance (periodically wrapped) between the
+ * multipoles.
+ */
+__attribute__((always_inline)) INLINE static int gravity_M2P_accept(
+    float r_max2, float theta_crit2, float r2) {
+
+  // MATTHIEU: Make this mass-dependent ?
+
+  /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
+  return (r2 * theta_crit2 > r_max2);
+}
+
 #endif /* SWIFT_MULTIPOLE_H */
