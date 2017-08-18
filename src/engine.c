@@ -3318,8 +3318,9 @@ void engine_skip_drift(struct engine *e) {
 
     struct task *t = &tasks[i];
 
-    /* Skip everything that updates the particles */
-    if (t->type == task_type_drift_part) t->skip = 1;
+    /* Skip everything that moves the particles */
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart)
+      t->skip = 1;
   }
 
   /* Run through the cells and clear some flags. */
