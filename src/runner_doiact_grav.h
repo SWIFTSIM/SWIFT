@@ -163,6 +163,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
                                               struct gpart *restrict gparts_i,
                                               struct gpart *restrict gparts_j) {
 
+  TIMER_TIC;
+
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -242,6 +244,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
   }
+
+  TIMER_TOC(timer_dopair_grav_pp);
 }
 
 static INLINE void runner_dopair_grav_pp_truncated(
@@ -249,6 +253,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     struct gravity_cache *cj_cache, int gcount_i, int gcount_j,
     int gcount_padded_j, struct gpart *restrict gparts_i,
     struct gpart *restrict gparts_j) {
+
+  TIMER_TIC;
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -330,6 +336,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
   }
+
+  TIMER_TOC(timer_dopair_grav_pp);
 }
 
 static INLINE void runner_dopair_grav_pm(
@@ -338,38 +346,43 @@ static INLINE void runner_dopair_grav_pm(
     const float CoM_j[3], const struct multipole *restrict multi_j,
     struct cell *restrict cj) {
 
+  TIMER_TIC;
+
   /* Make the compiler understand we are in happy vectorization land */
-  swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->active, SWIFT_CACHE_ALIGNMENT);
-  swift_align_information(ci_cache->use_mpole, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, ci_cache->epsilon,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, active, ci_cache->active,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
+                            SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
-    if (!ci_cache->active[pid]) continue;
+    if (!active[pid]) continue;
 
     /* Skip particle that cannot use the multipole */
-    if (!ci_cache->use_mpole[pid]) continue;
+    if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 #endif
 
-    const float x_i = ci_cache->x[pid];
-    const float y_i = ci_cache->y[pid];
-    const float z_i = ci_cache->z[pid];
+    const float x_i = x[pid];
+    const float y_i = y[pid];
+    const float z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = ci_cache->epsilon[pid];
+    const float h_i = epsilon[pid];
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
@@ -384,9 +397,9 @@ static INLINE void runner_dopair_grav_pm(
                         &f_z);
 
     /* Store it back */
-    ci_cache->a_x[pid] = f_x;
-    ci_cache->a_y[pid] = f_y;
-    ci_cache->a_z[pid] = f_z;
+    a_x[pid] = f_x;
+    a_y[pid] = f_y;
+    a_z[pid] = f_z;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
@@ -394,6 +407,8 @@ static INLINE void runner_dopair_grav_pm(
       gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
 #endif
   }
+
+  TIMER_TOC(timer_dopair_grav_pm);
 }
 
 /**
@@ -553,7 +568,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   if (ci_active) gravity_cache_write_back(ci_cache, ci->gparts, gcount_i);
   if (cj_active) gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
 
-  TIMER_TOC(timer_dopair_grav_pp);
+  TIMER_TOC(timer_dopair_grav_branch);
 }
 
 /**
