@@ -946,8 +946,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_multipole_accept(multi_i->r_max, multi_j->r_max, theta_crit2,
-                               r2)) {
+  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
 
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1171,8 +1170,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     }
 
     /* Check the multipole acceptance criterion */
-    if (gravity_multipole_accept(multi_i->r_max, multi_j->r_max, theta_crit2,
-                                 r2)) {
+    if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
@@ -1195,9 +1193,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       const double r2_rebuild = dx * dx + dy * dy + dz * dz;
 
       /* Is the criterion violated now but was OK at the last rebuild ? */
-      if (gravity_multipole_accept(multi_i->r_max_rebuild,
-                                   multi_j->r_max_rebuild, theta_crit2,
-                                   r2_rebuild)) {
+      if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
+                             theta_crit2, r2_rebuild)) {
 
         /* Alright, we have to take charge of that pair in a different way. */
         // MATTHIEU: We should actually open the tree-node here and recurse.

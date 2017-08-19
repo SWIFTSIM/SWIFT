@@ -2399,7 +2399,7 @@ INLINE static void gravity_M2P(const struct multipole *ma,
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
-__attribute__((always_inline)) INLINE static int gravity_multipole_accept(
+__attribute__((always_inline)) INLINE static int gravity_M2L_accept(
     double r_crit_a, double r_crit_b, double theta_crit2, double r2) {
 
   const double size = r_crit_a + r_crit_b;
