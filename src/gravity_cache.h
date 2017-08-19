@@ -132,12 +132,19 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
 /**
  * @brief Fills a #gravity_cache structure with some #gpart and shift them.
  *
+ * Also checks whether the #gpart can use a M2P interaction instead of the
+ * more expensive P2P.
+ *
+ * @param max_active_bin The largest active bin in the current time-step.
  * @param c The #gravity_cache to fill.
  * @param gparts The #gpart array to read from.
  * @param gcount The number of particles to read.
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
  * @param shift A shift to apply to all the particles.
+ * @param CoM The position of the multipole.
+ * @param r_max2 The square of the multipole radius.
+ * @param theta_crit2 The square of the opening angle.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     timebin_t max_active_bin, struct gravity_cache *c,
@@ -192,6 +199,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
 /**
  * @brief Fills a #gravity_cache structure with some #gpart and shift them.
  *
+ * @param max_active_bin The largest active bin in the current time-step.
  * @param c The #gravity_cache to fill.
  * @param gparts The #gpart array to read from.
  * @param gcount The number of particles to read.
