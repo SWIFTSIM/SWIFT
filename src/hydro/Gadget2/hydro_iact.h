@@ -1169,6 +1169,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 }
 
 #ifdef WITH_VECTORIZATION
+  static const vector const_viscosity_alpha_fac = FILL_VEC(-0.25f * const_viscosity_alpha);
+
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
     vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
@@ -1182,7 +1184,7 @@ runner_iact_nonsym_1_vec_force(
 #ifdef WITH_VECTORIZATION
 
   vector r, ri;
-  vector vjx, vjy, vjz;
+  vector vjx, vjy, vjz, dvx, dvy, dvz;
   vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
   vector xi, xj;
   vector hid_inv, hjd_inv;
@@ -1209,63 +1211,66 @@ runner_iact_nonsym_1_vec_force(
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
-  balsara.v = balsara_i.v + balsara_j.v;
+  balsara.v = vec_add(balsara_i.v, balsara_j.v);
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(*r2);
-  r.v = r2->v * ri.v;
+  r.v = vec_mul(r2->v, ri.v);
 
   /* Get the kernel for hi. */
   hid_inv = pow_dimension_plus_one_vec(hi_inv);
-  xi.v = r.v * hi_inv.v;
+  xi.v = vec_mul(r.v, hi_inv.v);
   kernel_eval_dWdx_force_vec(&xi, &wi_dx);
-  wi_dr.v = hid_inv.v * wi_dx.v;
+  wi_dr.v = vec_mul(hid_inv.v, wi_dx.v);
 
   /* Get the kernel for hj. */
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
-  xj.v = r.v * hj_inv.v;
+  xj.v = vec_mul(r.v, hj_inv.v);
 
   /* Calculate the kernel for two particles. */
   kernel_eval_dWdx_force_vec(&xj, &wj_dx);
 
-  wj_dr.v = hjd_inv.v * wj_dx.v;
+  wj_dr.v = vec_mul(hjd_inv.v, wj_dx.v);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix.v - vjx.v) * dx->v) + ((viy.v - vjy.v) * dy->v) +
-           ((viz.v - vjz.v) * dz->v);
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
-  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+  mu_ij.v = vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
-  rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
-  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
-           mu_ij.v * balsara.v / rho_ij.v;
+  rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
+  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))), rho_ij.v);
 
   /* Now, convolve with the kernel */
-  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  sph_term.v =
-      (grad_hi.v * piPOrho2.v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
-      ri.v;
+  visc_term.v = vec_mul(vec_set1(0.5f), vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
 
+  sph_term.v =
+      vec_mul(vec_fma(vec_mul(grad_hi.v, piPOrho2.v), wi_dr.v, vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))), ri.v);
+  
   /* Eventually get the acceleration */
-  acc.v = visc_term.v + sph_term.v;
+  acc.v = vec_add(visc_term.v, sph_term.v);
 
   /* Use the force, Luke! */
-  piax.v = mj.v * dx->v * acc.v;
-  piay.v = mj.v * dy->v * acc.v;
-  piaz.v = mj.v * dz->v * acc.v;
+  piax.v = vec_mul(mj.v, vec_mul(dx->v, acc.v));
+  piay.v = vec_mul(mj.v, vec_mul(dy->v, acc.v));
+  piaz.v = vec_mul(mj.v, vec_mul(dz->v, acc.v));
 
   /* Get the time derivative for h. */
-  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
+  pih_dt.v = vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
-  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
 
   /* Store the forces back on the particles. */
   a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
@@ -1417,9 +1422,6 @@ runner_iact_nonsym_2_vec_force(
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  vector const_viscosity_alpha_fac;
-  const_viscosity_alpha_fac.v = vec_set1(-0.25f * const_viscosity_alpha);
-  
   visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))), rho_ij.v);
   visc_2.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))), rho_ij_2.v);
 
@@ -1445,16 +1447,6 @@ runner_iact_nonsym_2_vec_force(
   piay_2.v = vec_mul(mj_2.v, vec_mul(dy_2.v, acc_2.v));
   piaz.v = vec_mul(mj.v, vec_mul(dz.v, acc.v));
   piaz_2.v = vec_mul(mj_2.v, vec_mul(dz_2.v, acc_2.v));
-
-//  for(int i=0; i<VEC_SIZE; i++) {
-//    message("mj: %f",mj.f[i]);
-//    message("dvdr: %f",dvdr.f[i]);
-//    message("ri: %f",ri.f[i]);
-//    message("pjrho: %f",pjrho.f[i]);
-//    message("wi_dr: %f",wi_dr.f[i]);
-//    message("wi_dx: %f",wi_dx.f[i]);
-//    message("hid_inv: %f",hid_inv.f[i]);
-//  }
 
   /* Get the time derivative for h. */
   pih_dt.v = vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
