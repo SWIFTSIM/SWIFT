@@ -1067,20 +1067,6 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
   if (gettimer) TIMER_TOC(timer_dosub_self_grav);
 }
 
-void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
-                       int timer) {
-
-  /* Is this a single cell? */
-  if (cj == NULL) {
-
-    runner_doself_grav(r, ci, 1);
-
-  } else {
-
-    runner_dopair_grav(r, ci, cj, 1);
-  }
-}
-
 /**
  * @brief Performs all M-M interactions between a given top-level cell and all
  * the other top-levels that are far enough.
