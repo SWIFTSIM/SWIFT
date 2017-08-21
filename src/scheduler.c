@@ -1441,8 +1441,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     if (t2->skip) continue;
 #endif
     const int res = atomic_dec(&t2->wait);
-    if(t2->type == task_type_kick2 && t->type != task_type_GPU_mega)
-      message("Unlocked by type not GPU_mega");
     if (res < 1) {
     if(t->type == task_type_GPU_mega)
       message("GPU_mega");
