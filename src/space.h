@@ -161,6 +161,9 @@ struct space {
   size_t nr_sparts_foreign, size_sparts_foreign;
 
 #endif
+#ifdef WITH_CUDA
+  struct task *GPU_task;
+#endif
 };
 
 /* function prototypes. */

@@ -1753,12 +1753,12 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+  
   /* Main loop. */
   while (1) {
 
     /* Wait at the barrier. */
     engine_barrier(e);
-
     /* Re-set the pointer to the previous task, as there is none. */
     struct task *t = NULL;
     struct task *prev = NULL;
@@ -1775,7 +1775,9 @@ void *runner_main(void *data) {
         TIMER_TOC(timer_gettask);
 
         /* Did I get anything? */
-        if (t == NULL) break;
+        if (t == NULL){
+          break;
+        }
       }
 
       /* Get the cells. */
@@ -1907,8 +1909,10 @@ void *runner_main(void *data) {
           break;
 
         case task_type_sub_pair:
-          if (t->subtype == task_subtype_density)
+          if (t->subtype == task_subtype_density){
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+            message("Found a density task...");
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);

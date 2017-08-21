@@ -147,10 +147,18 @@ struct task {
 #endif
 
   /*! Number of tasks unlocked by this one */
+#ifdef WITH_CUDA
+  int nr_unlock_tasks;
+#else
   short int nr_unlock_tasks;
+#endif
 
   /*! Number of unsatisfied dependencies */
+#ifdef WITH_CUDA
+  int wait;
+#else
   short int wait;
+#endif
 
   /*! Type of the task */
   enum task_types type;

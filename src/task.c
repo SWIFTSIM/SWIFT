@@ -152,7 +152,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
       }
       break;
-
+    case task_type_GPU_mega:
+      return task_action_part;
+      break;
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:

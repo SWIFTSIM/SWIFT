@@ -2908,7 +2908,11 @@ void engine_print_task_counts(struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
+#ifdef WITH_CUDA
+    if (tasks[k].skip || tasks[k].gpu)
+#else
     if (tasks[k].skip)
+#endif
       counts[task_type_count] += 1;
     else
       counts[(int)tasks[k].type] += 1;
@@ -2945,7 +2949,6 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
 
   const ticks tic = getticks();
 
-  message("We got to a rebuild");
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
@@ -2963,6 +2966,9 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Re-build the tasks. */
   engine_maketasks(e);
 
+#ifdef WITH_CUDA
+    create_tasks(e);
+#endif
   /* Run through the tasks and mark as skip or not. */
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
@@ -3011,11 +3017,6 @@ void engine_prepare(struct engine *e) {
   if (e->forcerebuild){
    
     engine_rebuild(e, 0);
-#ifdef WITH_CUDA
-    message("Creating CUDA tasks\n");
-    printf(" s = {dim= {%f, %f, %f}, periodic = %i, hs = {<No data fields>}, gravity = %i, width = {%f, %f, %f}, iwidth = {%f, %f, %f}, cell_min = %e, dx_max = %e, cdim = {%i, %i, %i,}, maxdepth = %i, nr_cells = %i, tot_cells = %i\n", e->s->dim[0], e->s->dim[1], e->s->dim[2], e->s->periodic, e->s->gravity, e->s->width[0], e->s->width[1], e->s->width[2], e->s->iwidth[0], e->s->iwidth[1], e->s->iwidth[2], e->s->cell_min, e->s->dx_max, e->s->cdim[0], e->s->cdim[1], e->s->cdim[2], e->s->maxdepth, e->s->nr_cells, e->s->tot_cells);
-    create_tasks(e);
-#endif
   }
 
   /* Unskip active tasks and check for rebuild */
@@ -3385,14 +3386,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_init_part(&s->parts[k], &e->s->hs);
   for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
 
+#ifdef WITH_CUDA
+  update_tasks(e);
+#endif
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
-#ifdef WITH_CUDA
-//  run_cuda();
-#endif
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
@@ -3448,6 +3449,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
+#ifdef WITH_CUDA
+  update_tasks(e);
+#endif
   /* Run the 0th time-step */
   engine_launch(e);
 
@@ -3622,18 +3626,12 @@ void engine_step(struct engine *e) {
 #endif
 
 #ifdef WITH_CUDA
-  message("Updating tasks\n");
   update_tasks(e);
 #endif
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e);
   TIMER_TOC(timer_runners);
-
-#ifdef WITH_CUDA
-  message("Running cuda\n");
-  run_cuda();
-#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -3725,6 +3723,9 @@ void engine_unskip(struct engine *e) {
   if (e->s->periodic && (e->policy & engine_policy_self_gravity))
     scheduler_activate(&e->sched, e->s->grav_top_level);
 
+#ifdef WITH_CUDA
+  scheduler_activate(&e->sched, e->s->GPU_task);
+#endif
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

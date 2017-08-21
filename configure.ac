@@ -424,6 +424,7 @@ if test "x$with_cuda" != "xno"; then
    if test "x$have_cuda" != "xno"; then
       AC_DEFINE([HAVE_CUDA], 1, [The CUDA compiler is installed.])
    fi
+   CFLAGS="${CFLAGS} -m64"
 fi
 AC_SUBST(CUDA_CFLAGS)
 AC_SUBST(CUDA_LIBS)

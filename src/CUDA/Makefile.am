@@ -5,7 +5,7 @@ EXTRA_DIST = $(SOURCES_CUDA) $(include_HEADERS)
 if HAVECUDA
 
 AM_CFLAGS = -I.. $(HDF5_CPPFLAGS) -g
-CUDA_MYFLAGS = -D_FORCE_INLINES -O0 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -G -ccbin=gcc-4.8 -m64
+CUDA_MYFLAGS = -D_FORCE_INLINES -O3 -g -lineinfo -src-in-ptx --maxrregcount=32 -ftz=true -DWITH_CUDA -ccbin=gcc-4.8 -m64
 #-dc
 
 # Assign a "safe" version number

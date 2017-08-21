@@ -437,7 +437,6 @@ __device__ void doself_density(struct cell_cuda *ci) {
 
     /* If the particle isn't active skip it. */
     if (!cuda_part_is_active(pid)) {
-      printf("Particle %i isn't active\n", pid);
       continue;
     }
 
@@ -1331,7 +1330,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
       }
       /* Did we get the right number of neighbours? */
       if (fabsf(h_new - h_old) > eps * h_old) {
-
         cuda_parts.h[i] = h_new;
 
         // If below absolute max try again
@@ -1341,7 +1339,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
         } else {
           /* The particle is a lost cause */
           cuda_parts.h[i] = hydro_h_max;
-
           /* Do some damage control if no neighbours were found */
           if (cuda_parts.wcount[i] == cuda_kernel_root * kernel_norm)
             cuda_hydro_part_has_no_neighbours(i);
@@ -1464,8 +1461,11 @@ __global__ void swift_device_kernel() {
         doself_force(ci);
       }
     } else if (type == task_type_ghost) {
-      struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
-      do_ghost(ci);
+      if(! tasks[tid].implicit){
+        struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
+
+        do_ghost(ci);
+      }
     }
 
     __syncthreads();
@@ -1893,7 +1893,7 @@ __host__ void update_tasks(struct engine *e) {
                                     sizeof(struct queue_cuda)));
 
   int *data = (int *)malloc(sizeof(int) * qsize);
-  int nr_unload;
+  int nr_unload=0;
   unload_host.count = 0;
   for (int i = 0; i < nr_gpu_tasks; i++) {
     if (host_tasks[i].type <= type_unload &&
@@ -2050,6 +2050,7 @@ __host__ int is_gpu_task(struct task *t) {
   for (int i = 0; i < num_gpu_types; i++) {
     if (t->type == gpu_work_task_array[i]) result = 1;
   }
+  if(t->subtype != task_subtype_none && t->subtype != task_subtype_density && t->subtype != task_subtype_force) result = 0;
   return result;
 }
 
@@ -2079,9 +2080,12 @@ __host__ void create_tasks(struct engine *e) {
   /* Create the task to call the GPU kernel */
   struct task *gpu_mega = scheduler_addtask(sched, task_type_GPU_mega,
                             task_subtype_none, 0, 0, NULL, NULL );
+  e->s->GPU_task = gpu_mega;
   /* Create a task for the GPU work call on the host */
   /* Loop through tke tasks and sort the unlocks... */
   for(i = 0; i < sched->nr_tasks; i++) {
+    if(&sched->tasks[i] == gpu_mega)
+      continue;
      if(!sched->tasks[i].gpu){
        /* Loop through the non-gpu tasks and move the dependency to GPU tasks to the mega.*/
        for(int j = 0; j < sched->tasks[i].nr_unlock_tasks; j++){
@@ -2095,7 +2099,7 @@ __host__ void create_tasks(struct engine *e) {
        }
      }
   }
-
+//  gpu_mega->skip = 0;
   scheduler_set_unlocks(sched);
   /* We also create a load and unload task for every cell in the system */
   num_gpu_tasks += s->tot_cells * 2;
@@ -2114,7 +2118,6 @@ __host__ void create_tasks(struct engine *e) {
   k = 0;
   /* Create the tasks. */
   for (i = 0; i < sched->nr_tasks; i++) {
-
     if (is_gpu_task(&sched->tasks[i])) {
       /* Copy the data to the CUDA task. */
       struct task *t = &sched->tasks[i];
@@ -2175,6 +2178,11 @@ __host__ void create_tasks(struct engine *e) {
       }
     }
 
+    /* Ghost tasks also unlock the unload tasks. */
+    if(t->type == task_type_ghost)
+      deps++;
+
+
     /* Allocate some CPU memory for the unlocks. */
     t->unlocks = (int *)malloc(sizeof(int) * deps);
     t->size_unlocks = deps;
@@ -2192,6 +2200,9 @@ __host__ void create_tasks(struct engine *e) {
       if (t->type == task_type_pair) {
         t->unlocks[t->nr_unlock_tasks++] = t->task->cj->unload_task;
       }
+    }
+    if(t->type == task_type_ghost) {
+        t->unlocks[t->nr_unlock_tasks++] = t->task->ci->unload_task;
     }
 
     /* If it is a density task then it is unlocked by the load task. */
@@ -2650,7 +2661,6 @@ __host__ void create_tasks(struct engine *e) {
 }
 
 __host__ void run_cuda() {
-  printf("running cuda\n");
   swift_device_kernel << <num_blocks, num_cuda_threads>>> ();
   cudaErrCheck(cudaDeviceSynchronize());
 }
@@ -3029,6 +3039,7 @@ __host__ void free_cell(void *cell) { cudaErrCheck(cudaFreeHost(cell)); }
 __host__ void printTaskTimers(){
 #ifdef CUDA_TASK_TIMERS
 /* Load the task structures back from the GPU */
+  int nr_gpu_tasks, nr_tasks;
   cudaErrCheck(cudaMemcpyFromSymbol(&nr_gpu_tasks, cuda_numtasks, sizeof(int)));
   cudaErrCheck(cudaMemcpyFromSymbol(&nr_tasks, tot_num_tasks, sizeof(int)));
   struct task_cuda *gpu_pointer = NULL;
@@ -3041,11 +3052,11 @@ __host__ void printTaskTimers(){
                           sizeof(struct task_cuda ) * nr_gpu_tasks,
                           cudaMemcpyDeviceToHost));
   FILE *file = fopen("CUDA_TASKTIMERS", "w");
-  for(int i = 0; i < ...; i++){
+  for(int i = 0; i < nr_gpu_tasks; i++){
     struct task_cuda *t = &host_tasks[i];
     fprintf(file, "%i %i %i %lli %lli\n",t->type, t->subtype, t->blockID, t->tic, t->toc);
   } 
-
+  fclose(file);
   free(host_tasks);
 #else
   error("CUDA Task Timers unavailable, compile with CUDA_TASK_TIMERS defined.");

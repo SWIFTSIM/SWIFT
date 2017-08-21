@@ -795,8 +795,10 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->toc = 0;
 #endif
 
+
 #ifdef WITH_CUDA
   t->cuda_task = -1;
+  t->gpu = 0;
 #endif
 
   /* Add an index for it. */
@@ -816,10 +818,19 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
+#ifdef WITH_CUDA
+  int *counts;
+  if ((counts = ( int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
+#else
   short int *counts;
-  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
+  if ((counts = ( short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
+#endif
     error("Failed to allocate temporary counts array.");
+#ifdef WITH_CUDA
+  bzero(counts, sizeof(int) * s->nr_tasks);
+#else
   bzero(counts, sizeof(short int) * s->nr_tasks);
+#endif
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
 
@@ -851,15 +862,21 @@ void scheduler_set_unlocks(struct scheduler *s) {
   if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
                                         s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
+  int *volatile indices;
+   if( (indices = (int *volatile) malloc( sizeof(int) * s->size_unlocks)) == NULL)
+       error("Failed to allocate temporary indices array.");
   for (int k = 0; k < s->nr_unlocks; k++) {
     const int ind = s->unlock_ind[k];
     unlocks[offsets[ind]] = s->unlocks[k];
+    indices[offsets[ind]] = ind;
     offsets[ind] += 1;
   }
 
   /* Swap the unlocks. */
   free(s->unlocks);
   s->unlocks = unlocks;
+  free(s->unlock_ind);
+  s->unlock_ind = indices;
 
   /* Re-set the offsets. */
   offsets[0] = 0;
@@ -872,6 +889,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->nr_unlock_tasks = counts[k];
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that there are no duplicate unlocks. */
@@ -1105,7 +1123,6 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &s->tasks[tid[ind]];
-
     /* Ignore skipped tasks. */
 #ifdef WITH_CUDA
     if (t->skip || t->gpu) continue;
@@ -1122,6 +1139,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
       error("Task unlocked by more than %d tasks!",
             (1 << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
+
 
     /* Sets the waits of the dependances */
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
@@ -1417,10 +1435,17 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+#ifdef WITH_CUDA
+    if (t2->skip || t2->gpu) continue;
+#else
     if (t2->skip) continue;
-
+#endif
     const int res = atomic_dec(&t2->wait);
+    if(t2->type == task_type_kick2 && t->type != task_type_GPU_mega)
+      message("Unlocked by type not GPU_mega");
     if (res < 1) {
+    if(t->type == task_type_GPU_mega)
+      message("GPU_mega");
       error("Negative wait!");
     } else if (res == 1) {
       scheduler_enqueue(s, t2);

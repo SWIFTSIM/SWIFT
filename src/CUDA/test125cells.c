@@ -843,8 +843,8 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, solution, 0);
 
   /* Clean things to make the sanitizer happy ... */
-  for (int i = 0; i < 125; ++i) clean_up(cells[i]);
-  free(solution);
+//  for (int i = 0; i < 125; ++i) clean_up(cells[i]);
+//  free(solution);
 
   return 0;
 }
