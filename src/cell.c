@@ -1401,8 +1401,13 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 }
 
 /**
- * @brief Traverse a sub-cell task and activate the drift and sort tasks along
- * the way.
+ * @brief Traverse a sub-cell task and activate the hydro drift tasks that are
+ * required
+ * by a hydro task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
  */
 void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
                                  struct scheduler *s) {
@@ -1670,7 +1675,13 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
- * @brief Traverse a sub-cell task and activate the gravity drift tasks
+ * @brief Traverse a sub-cell task and activate the gravity drift tasks that are
+ * required
+ * by a self gravity task.
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
  */
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s) {
@@ -1792,6 +1803,40 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
         }
       }
     }
+  }
+}
+
+/**
+ * @brief Traverse a sub-cell task and activate the gravity drift tasks that are
+ * required
+ * by an external gravity task.
+ *
+ * @param ci The #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_external_grav_tasks(struct cell *ci,
+                                               struct scheduler *s) {
+
+  /* Some constants */
+  const struct space *sp = s->space;
+  const struct engine *e = sp->e;
+
+  /* Do anything? */
+  if (!cell_is_active(ci, e)) return;
+
+  /* Recurse? */
+  if (ci->split) {
+
+    /* Loop over all progenies (no need for pairs for self-gravity) */
+    for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j] != NULL) {
+        cell_activate_subcell_external_grav_tasks(ci->progeny[j], s);
+      }
+    }
+  } else {
+
+    /* We have reached the bottom of the tree: activate gpart drift */
+    cell_activate_drift_gpart(ci, s);
   }
 }
 
@@ -1987,7 +2032,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, t);
 
       /* Set the drifting flags */
-      if (t->type == task_type_self) {
+      if (t->type == task_type_self &&
+          t->subtype == task_subtype_external_grav) {
+        cell_activate_subcell_external_grav_tasks(t->ci, s);
+      } else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
         cell_activate_subcell_grav_tasks(t->ci, NULL, s);
       } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(t->ci, t->cj, s);

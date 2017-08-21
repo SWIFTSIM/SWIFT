@@ -695,7 +695,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_top_level ||
                t->type == task_type_grav_ghost) {
-      // MATTHIEU: for the future
+      /* For future use */
     } else {
       error("Unexpected task sub-type");
     }

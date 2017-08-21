@@ -196,7 +196,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
-      /* Add the gravity tasks */
+      /* Add the self-gravity tasks */
       if (is_self_gravity) {
 
         /* Initialisation of the multipoles */
@@ -217,8 +217,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav_down, c->kick2);
       }
 
-      /* Generate the ghost tasks. */
+      /* Add the hydrodynamics tasks */
       if (is_with_hydro) {
+
+        /* Generate the ghost tasks. */
         c->ghost_in =
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
