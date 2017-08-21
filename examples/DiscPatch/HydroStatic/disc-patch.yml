@@ -1,8 +1,8 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.9885e33     # Grams
-  UnitLength_in_cgs:   3.0856776e18  # Centimeters
-  UnitVelocity_in_cgs: 1e5           # Centimeters per second
+  UnitMass_in_cgs:     1.9885e33         # Grams
+  UnitLength_in_cgs:   3.08567758149e18  # Centimeters
+  UnitVelocity_in_cgs: 1e5               # Centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
@@ -11,17 +11,17 @@ TimeIntegration:
   time_begin: 968   # The starting time of the simulation (in internal units).
   time_end:   12000.  # The end time of the simulation (in internal units).
   dt_min:     1e-4  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1.    # The maximal time-step size of the simulation (in internal units).
+  dt_max:     10.   # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1 # Time between statistics output
+  delta_time:          24 # Time between statistics output
   
 # Parameters governing the snapshots
 Snapshots:
-  basename:           Disc-Patch-dynamic # Common part of the name of output files
-  time_first:         968.               # Time of the first output (in internal units)
-  delta_time:         24.                 # Time difference between consecutive outputs (in internal units)
+  basename:    Disc-Patch-dynamic # Common part of the name of output files
+  time_first:  968.               # Time of the first output (in internal units)
+  delta_time:  96.                # Time difference between outputs (in internal units)
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -29,7 +29,7 @@ SPH:
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
-  max_smoothing_length:  70.      # Maximal smoothing length allowed (in internal units).
+  h_max:                 60.      # Maximal smoothing length allowed (in internal units).
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -39,5 +39,7 @@ InitialConditions:
 DiscPatchPotential:
   surface_density: 10.
   scale_height:    100.
-  z_disc:          200.
+  x_disc:          400.
+  x_trunc:         300.
+  x_max:           380.
   timestep_mult:   0.03

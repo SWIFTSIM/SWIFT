@@ -33,7 +33,8 @@
 #include "kernel_gravity.h"
 
 #define gravity_props_default_a_smooth 1.25f
-#define gravity_props_default_r_cut 4.5f
+#define gravity_props_default_r_cut_max 4.5f
+#define gravity_props_default_r_cut_min 0.1f
 
 void gravity_props_init(struct gravity_props *p,
                         const struct swift_params *params) {
@@ -41,8 +42,10 @@ void gravity_props_init(struct gravity_props *p,
   /* Tree-PM parameters */
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                            gravity_props_default_a_smooth);
-  p->r_cut = parser_get_opt_param_float(params, "Gravity:r_cut",
-                                        gravity_props_default_r_cut);
+  p->r_cut_max = parser_get_opt_param_float(params, "Gravity:r_cut_max",
+                                            gravity_props_default_r_cut_max);
+  p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
+                                            gravity_props_default_r_cut_min);
 
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
@@ -52,7 +55,7 @@ void gravity_props_init(struct gravity_props *p,
   p->theta_crit_inv = 1. / p->theta_crit;
 
   /* Softening lengths */
-  p->epsilon = parser_get_param_double(params, "Gravity:epsilon");
+  p->epsilon = 3. * parser_get_param_double(params, "Gravity:epsilon");
   p->epsilon2 = p->epsilon * p->epsilon;
   p->epsilon_inv = 1. / p->epsilon;
 }
@@ -66,13 +69,13 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
-  message("Self-gravity softening:    epsilon=%.4f", p->epsilon);
+  message("Self-gravity softening:    epsilon=%.4f (Plummer equivalent: %.4f)",
+          p->epsilon, p->epsilon / 3.);
 
-  if (p->a_smooth != gravity_props_default_a_smooth)
-    message("Self-gravity MM smoothing-scale: a_smooth=%f", p->a_smooth);
+  message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
-  if (p->r_cut != gravity_props_default_r_cut)
-    message("Self-gravity MM cut-off: r_cut=%f", p->r_cut);
+  message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
+  message("Self-gravity truncation cut-off: r_cut_min=%f", p->r_cut_min);
 }
 
 #if defined(HAVE_HDF5)
@@ -81,9 +84,12 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
   io_write_attribute_f(h_grpgrav, "Softening length", p->epsilon);
+  io_write_attribute_f(h_grpgrav, "Softening length (Plummer equivalent)",
+                       p->epsilon / 3.);
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
-  io_write_attribute_f(h_grpgrav, "MM a_smooth", p->a_smooth);
-  io_write_attribute_f(h_grpgrav, "MM r_cut", p->r_cut);
+  io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max", p->r_cut_max);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min", p->r_cut_min);
 }
 #endif

@@ -1,0 +1,39 @@
+\subsection{Coupling the FMM to a mesh for periodic long-range forces}
+\label{ssec:mesh_summary}
+
+\begin{equation}
+  S(x) = \frac{e^x}{1 + e^x}
+\end{equation}
+
+\begin{align}
+  \varphi_s(r) &= \frac{1}{r}\left[2 - 2S\left(\frac{2r}{r_s}\right)\right] \nonumber\\
+  &= \frac{1}{r}\left[2 - \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}}\right] 
+\end{align}
+\begin{align}
+  |\mathbf{f}_s(r)| &= \frac{1}{r^2}\left[\frac{4r}{r_s}S'\left(\frac{2r}{r_s}\right) - 2S\left(\frac{2r}{r_s}\right) + 2\right] \nonumber \\
+  &= \frac{1}{r^2}\left[\frac{4r}{r_s}\frac{e^{\frac{2r}{r_s}}}{(1+e^{\frac{2r}{r_s}})^2} - \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}} + 2\right]
+\end{align}
+
+\begin{equation}
+  \tilde\varphi_l(k) = \frac{1}{k^2}\left[\frac{\upi}{2}kr_s\textrm{csch}\left(\frac{\upi}{2}kr_s\right) \right]
+\end{equation}
+
+\begin{figure}
+\includegraphics[width=\columnwidth]{potential_short.pdf}
+\caption{aa}
+\label{fig:fmm:potential_short}
+\end{figure}
+
+
+\begin{figure}
+\includegraphics[width=\columnwidth]{force_short.pdf}
+\caption{bb}
+\label{fig:fmm:force_short}
+\end{figure}
+
+
+\begin{figure}
+\includegraphics[width=\columnwidth]{potential_long.pdf}
+\caption{cc}
+\label{fig:fmm:potential_long}
+\end{figure}

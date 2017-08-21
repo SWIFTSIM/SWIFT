@@ -48,14 +48,14 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",        "sort",           "self",
-    "pair",        "sub_self",       "sub_pair",
-    "init",        "init_grav",      "ghost",
-    "extra_ghost", "drift",          "kick1",
-    "kick2",       "timestep",       "send",
-    "recv",        "grav_top_level", "grav_long_range",
-    "grav_mm",     "grav_down",      "cooling",
-    "sourceterms"};
+    "none",       "sort",           "self",
+    "pair",       "sub_self",       "sub_pair",
+    "init_grav",  "ghost",          "extra_ghost",
+    "drift_part", "drift_gpart",    "kick1",
+    "kick2",      "timestep",       "send",
+    "recv",       "grav_top_level", "grav_long_range",
+    "grav_ghost", "grav_mm",        "grav_down",
+    "cooling",    "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -120,6 +120,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_none;
       break;
 
+    case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
@@ -152,13 +153,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       }
       break;
 
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
-    case task_type_drift:
       if (t->ci->count > 0 && t->ci->gcount > 0)
         return task_action_all;
       else if (t->ci->count > 0)
@@ -176,8 +175,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_multipole;
       break;
 
+    case task_type_drift_gpart:
     case task_type_grav_down:
       return task_action_gpart;
+      break;
 
     default:
       error("Unknown task_action for task");
@@ -272,21 +273,20 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-    case task_type_init_grav:
-      cell_munlocktree(ci);
-      break;
-
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
-    case task_type_drift:
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
       break;
 
+    case task_type_drift_part:
     case task_type_sort:
       cell_unlocktree(ci);
+      break;
+
+    case task_type_drift_gpart:
+      cell_gunlocktree(ci);
       break;
 
     case task_type_self:
@@ -317,7 +317,6 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       break;
 
-    case task_type_grav_top_level:
     case task_type_grav_long_range:
     case task_type_grav_mm:
       cell_munlocktree(ci);
@@ -363,16 +362,9 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_init_grav:
-      if (ci->mhold) return 0;
-      if (cell_mlocktree(ci) != 0) return 0;
-      break;
-
-    case task_type_init:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
-    case task_type_drift:
       if (ci->hold || ci->ghold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_glocktree(ci) != 0) {
@@ -381,8 +373,15 @@ int task_lock(struct task *t) {
       }
       break;
 
+    case task_type_drift_part:
     case task_type_sort:
+      if (ci->hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
+      break;
+
+    case task_type_drift_gpart:
+      if (ci->ghold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
       break;
 
     case task_type_self:
@@ -442,7 +441,6 @@ int task_lock(struct task *t) {
       }
       break;
 
-    case task_type_grav_top_level:
     case task_type_grav_long_range:
     case task_type_grav_mm:
       /* Lock the m-poles */

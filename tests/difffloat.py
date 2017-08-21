@@ -35,12 +35,18 @@ file1 = sys.argv[1]
 file2 = sys.argv[2]
 number_to_check = -1
 
-if len(sys.argv) == 5:
-    number_to_check = int(sys.argv[4])
-
 fileTol = ""
 if len(sys.argv) >= 4:
     fileTol = sys.argv[3]
+
+if len(sys.argv) >= 5:
+    number_to_check = int(sys.argv[4])
+
+# Get the particle properties being compared from the header.
+with open(file1, 'r') as f:
+  line = f.readline()
+  if 'ID' in line:
+    part_props = line.split()[1:]
 
 data1 = loadtxt(file1)
 data2 = loadtxt(file2)
@@ -58,7 +64,7 @@ n_lines = shape(data1)[0]
 n_columns = shape(data1)[1]
 
 if fileTol != "":
-    if n_linesTol != 2:
+    if n_linesTol != 3:
         print "Incorrect number of lines in tolerance file '%s'."%fileTol
     if n_columnsTol != n_columns:
         print "Incorrect number of columns in tolerance file '%s'."%fileTol
@@ -68,10 +74,12 @@ if fileTol == "":
     print "Relative difference tolerance:", rel_tol
     absTol = ones(n_columns) * abs_tol
     relTol = ones(n_columns) * rel_tol
+    limTol = zeros(n_columns)
 else:
     print "Tolerances read from file"
     absTol = dataTol[0,:]
     relTol = dataTol[1,:]
+    limTol = dataTol[2,:]
 
 n_lines_to_check = 0
 if number_to_check > 0:
@@ -95,17 +103,17 @@ for i in range(n_lines_to_check):
             rel_diff = 0.
 
         if( abs_diff > 1.1*absTol[j]):
-            print "Absolute difference larger than tolerance (%e) for particle %d, column %d:"%(absTol[j], i,j)
+            print "Absolute difference larger than tolerance (%e) for particle %d, column %s:"%(absTol[j], data1[i,0], part_props[j])
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s:       |a-b| = %e"%("Difference", abs_diff)
             print ""
             error = True
 
-        if abs(data1[i,j]) < 1e-6 and + abs(data2[i,j]) < 1e-6 : continue
-            
+        if abs(data1[i,j]) + abs(data2[i,j]) < limTol[j] : continue
+
         if( rel_diff > 1.1*relTol[j]):
-            print "Relative difference larger than tolerance (%e) for particle %d, column %d:"%(relTol[j], i,j)
+            print "Relative difference larger than tolerance (%e) for particle %d, column %s:"%(relTol[j], data1[i,0], part_props[j])
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s: |a-b|/|a+b| = %e"%("Difference", rel_diff)

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.5.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.6.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
@@ -187,6 +187,31 @@ AC_ARG_ENABLE([task-debugging],
 )
 if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
+
+# Check if threadpool debugging is on.
+AC_ARG_ENABLE([threadpool-debugging],
+   [AS_HELP_STRING([--enable-threadpool-debugging],
+     [Store threadpool mapper timing information and generate threadpool dump files @<:@yes/no@:>@]
+   )],
+   [enable_threadpool_debugging="$enableval"],
+   [enable_threadpool_debugging="no"]
+)
+if test "$enable_threadpool_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
+   LDFLAGS="$LDFLAGS -rdynamic"
+fi
+
+# Check if the general timers are switched on.
+AC_ARG_ENABLE([timers],
+   [AS_HELP_STRING([--enable-timers],
+     [Activate the basic timers @<:@yes/no@:>@]
+   )],
+   [enable_timers="$enableval"],
+   [enable_timers="no"]
+)
+if test "$enable_timers" = "yes"; then
+   AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
 # Check if expensive debugging is on.
@@ -817,10 +842,10 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravitational field expansion @<:@ default: 3@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 4@:>@]
    )],
    [with_multipole_order="$withval"],
-   [with_multipole_order="3"]
+   [with_multipole_order="4"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
@@ -836,18 +861,31 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
-AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
-AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
+AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
+AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
+AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
+AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
+# Make sure the latest git revision string gets included
+touch src/version.c
+
+# Generate output.
+AC_OUTPUT
+
 # Report general configuration.
-AC_MSG_RESULT([
+AC_MSG_RESULT([ 
+ ------- Summary --------
+
+   $PACKAGE_NAME v.$PACKAGE_VERSION
+
    Compiler        : $CC
     - vendor       : $ax_cv_c_compiler_vendor
     - version      : $ax_cv_c_compiler_version
@@ -874,13 +912,10 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
-   Task debugging    : $enable_task_debugging
-   Debugging checks  : $enable_debugging_checks
-   Gravity checks    : $gravity_force_checks
-])
+   Individual timers    : $enable_timers
+   Task debugging       : $enable_task_debugging
+   Threadpool debugging : $enable_threadpool_debugging
+   Debugging checks     : $enable_debugging_checks
+   Gravity checks       : $gravity_force_checks
 
-# Make sure the latest git revision string gets included
-touch src/version.c
-
-# Generate output.
-AC_OUTPUT
+ ------------------------])

@@ -34,12 +34,17 @@ examples/*/*/*.txt
 examples/*/*/used_parameters.yml
 examples/*/gravity_checks_*.dat
 
-tests/testPair
+tests/testActivePair
+tests/brute_force_periodic_BC_standard.dat
+tests/swift_periodic_BC_standard.dat
+tests/brute_force_periodic_BC_pertrubed.dat
+tests/swift_periodic_BC_perturbed.dat
 tests/brute_force_standard.dat
 tests/swift_dopair_standard.dat
 tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/test27cells
+tests/testPeriodicBC
 tests/test125cells
 tests/brute_force_27_standard.dat
 tests/swift_dopair_27_standard.dat
@@ -47,6 +52,13 @@ tests/brute_force_27_perturbed.dat
 tests/swift_dopair_27_perturbed.dat
 tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
+tests/brute_force_125_perturbed.dat
+tests/swift_dopair_125_perturbed.dat
+tests/brute_force_active.dat
+tests/brute_force_periodic_BC_perturbed.dat
+tests/swift_dopair_active.dat
+tests/test_nonsym_density_serial.dat
+tests/test_nonsym_density_vec.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
@@ -62,11 +74,12 @@ tests/testMaths
 tests/testThreadpool
 tests/testParser
 tests/parser_output.yml
+tests/testPeriodicBC.sh
+tests/testPeriodicBCPerturbed.sh
 tests/test27cells.sh
 tests/test27cellsPerturbed.sh
 tests/test125cells.sh
-tests/testPair.sh
-tests/testPairPerturbed.sh
+tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testAdiabaticIndex
@@ -92,6 +105,9 @@ theory/paper_pasc/pasc_paper.pdf
 theory/Multipoles/fmm.pdf
 theory/Multipoles/fmm_standalone.pdf
 theory/Multipoles/potential.pdf
+theory/Multipoles/potential_long.pdf
+theory/Multipoles/potential_short.pdf
+theory/Multipoles/force_short.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4

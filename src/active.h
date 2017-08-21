@@ -29,25 +29,48 @@
 #include "timeline.h"
 
 /**
- * @brief Check that a cell been drifted to the current time.
+ * @brief Check that the #part in a #cell have been drifted to the current time.
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_is_drifted(
+__attribute__((always_inline)) INLINE static int cell_are_part_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_old > e->ti_current)
+  if (c->ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e)",
-        c->ti_old, c->ti_old * e->timeBase, e->ti_current,
+        c->ti_old_part, c->ti_old_part * e->timeBase, e->ti_current,
         e->ti_current * e->timeBase);
 #endif
 
-  return (c->ti_old == e->ti_current);
+  return (c->ti_old_part == e->ti_current);
+}
+
+/**
+ * @brief Check that the #gpart in a #cell have been drifted to the current
+ * time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_old_gpart > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->ti_old_gpart, c->ti_old_gpart * e->timeBase, e->ti_current,
+        e->ti_current * e->timeBase);
+#endif
+
+  return (c->ti_old_gpart == e->ti_current);
 }
 
 /* Are cells / particles active for regular tasks ? */

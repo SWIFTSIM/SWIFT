@@ -53,14 +53,22 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   if ((phimax + delta1) * phimax > 0.0f) {
     phiplus = phimax + delta1;
   } else {
-    phiplus = phimax / (1.0f + delta1 / fabs(phimax));
+    if (phimax != 0.) {
+      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
+    } else {
+      phiplus = 0.;
+    }
   }
 
   /* if sign(phimin-delta1) == sign(phimin) */
   if ((phimin - delta1) * phimin > 0.0f) {
     phiminus = phimin - delta1;
   } else {
-    phiminus = phimin / (1.0f + delta1 / fabs(phimin));
+    if (phimin != 0.) {
+      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
+    } else {
+      phiminus = 0.;
+    }
   }
 
   if (phi_i < phi_j) {

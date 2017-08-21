@@ -46,7 +46,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "volume=%.3e, "
       "matrix_E=[[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e]]}, "
       "timestepvars={"
-      "vmax=%.3e}, "
+      "vmax=%.3e},"
       "density={"
       "div_v=%.3e, "
       "wcount_dh=%.3e, "

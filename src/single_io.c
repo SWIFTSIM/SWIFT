@@ -64,8 +64,7 @@
  * @param ic_units The #unit_system used in the ICs
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
- *the part array
- * will be written once the structures have been stabilized.
+ * the part array will be written once the structures have been stabilized.
  */
 void readArray(hid_t h_grp, const struct io_props prop, size_t N,
                const struct unit_system* internal_units,
@@ -607,7 +606,7 @@ void write_output_single(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%03i.hdf5", baseName,
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
            outputCount);
 
   /* First time, we need to create the XMF file */

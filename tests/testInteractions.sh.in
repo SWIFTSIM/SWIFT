@@ -1,0 +1,29 @@
+#!/bin/bash
+
+echo ""
+
+rm -f test_nonsym_density_serial.dat test_nonsym_density_vec.dat
+
+echo "Running ./testInteractions"
+
+./testInteractions
+
+if [ $? != 0 ]; then
+  echo "testInteractions is redundant when vectorisation is disabled"
+else
+  if [ -e test_nonsym_density_serial.dat ]
+  then
+    if python @srcdir@/difffloat.py test_nonsym_density_serial.dat test_nonsym_density_vec.dat @srcdir@/tolerance_testInteractions.dat
+    then
+      echo "Accuracy test passed"
+    else
+      echo "Accuracy test failed"
+      exit 1
+    fi
+  else
+    echo "Error Missing test output file"
+    exit 1
+  fi
+fi
+
+echo "------------"

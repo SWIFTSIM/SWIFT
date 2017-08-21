@@ -34,8 +34,8 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <math.h>
+/* Local headers. */
+#include "inline.h"
 
 /***************************/
 /* 0th order vector powers */

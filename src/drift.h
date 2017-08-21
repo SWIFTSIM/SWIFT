@@ -39,7 +39,7 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, float dt, double timeBase, integertime_t ti_old,
+    struct gpart *restrict gp, double dt, double timeBase, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part *restrict p, struct xpart *restrict xp, float dt,
+    struct part *restrict p, struct xpart *restrict xp, double dt,
     double timeBase, integertime_t ti_old, integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -101,10 +101,12 @@ __attribute__((always_inline)) INLINE static void drift_part(
   /* Predict the values of the extra fields */
   hydro_predict_extra(p, xp, dt);
 
-  /* Compute offset since last cell construction */
-  xp->x_diff[0] -= xp->v_full[0] * dt;
-  xp->x_diff[1] -= xp->v_full[1] * dt;
-  xp->x_diff[2] -= xp->v_full[2] * dt;
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = xp->v_full[k] * dt;
+    xp->x_diff[k] -= dx;
+    xp->x_diff_sort[k] -= dx;
+  }
 }
 
 /**
@@ -117,7 +119,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
-    struct spart *restrict sp, float dt, double timeBase, integertime_t ti_old,
+    struct spart *restrict sp, double dt, double timeBase, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS

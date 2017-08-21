@@ -74,7 +74,7 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
     case DOUBLE:
       return H5T_NATIVE_DOUBLE;
     case CHAR:
-      return H5T_C_S1;
+      return H5T_NATIVE_CHAR;
     default:
       error("Unknown type");
       return 0;

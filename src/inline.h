@@ -20,6 +20,9 @@
 #ifndef SWIFT_INLINE_H
 #define SWIFT_INLINE_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /**
  * @brief Defines inline
  */

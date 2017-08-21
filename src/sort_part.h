@@ -83,6 +83,18 @@ static const int sortlistID[27] = {
     /* (  1 ,  1 ,  0 ) */ 1,
     /* (  1 ,  1 ,  1 ) */ 0};
 
+/* Ratio of particles interacting assuming a uniform distribution */
+static const float sid_scale[13] = {0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f,
+                                    0.4025f, 0.1897f, 0.4025f, 0.1897f, 0.4025f,
+                                    0.5788f, 0.4025f, 0.5788f};
+
+/* Sid flags for every sub-pair of a self task. */
+static const int sub_sid_flag[7][8] = {
+    {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
+    {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
+    {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
+    {-1, -1, -1, -1, -1, -1, -1, 12}};
+
 /**
  * @brief Determines whether a pair of cells are corner to corner.
  *

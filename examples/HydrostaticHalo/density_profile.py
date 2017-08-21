@@ -1,6 +1,27 @@
+###############################################################################
+ # This file is part of SWIFT.
+ # Copyright (c) 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+ # 
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU Lesser General Public License as published
+ # by the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ # 
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ # 
+ # You should have received a copy of the GNU Lesser General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ # 
+ ##############################################################################
+
 import numpy as np
 import h5py as h5
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+from pylab import *
 import sys
 
 #for the plotting
@@ -21,7 +42,7 @@ H_0_cgs = 100. * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 #read some header/parameter information from the first snapshot
 
-filename = "Hydrostatic_000.hdf5"
+filename = "Hydrostatic_0000.hdf5"
 f = h5.File(filename,'r')
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
@@ -42,11 +63,12 @@ M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
-    filename = "Hydrostatic_%03d.hdf5" %i
+    filename = "Hydrostatic_%04d.hdf5" %i
     f = h5.File(filename,'r')
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
-#translate coords by centre of box
+
+    #translate coords by centre of box
     header = f["Header"]
     snap_time = header.attrs["Time"]
     snap_time_cgs = snap_time * unit_time_cgs
@@ -63,58 +85,46 @@ for i in range(n_snaps):
     bin_width = bin_edges[1] - bin_edges[0]
     hist = np.histogram(r,bins = bin_edges)[0] # number of particles in each bin
 
-#find the mass in each radial bin
 
+    #find the mass in each radial bin
     mass_dset = f["PartType0/Masses"]
-#mass of each particles should be equal
+
+    #mass of each particles should be equal
     part_mass = np.array(mass_dset)[0]
     part_mass_cgs = part_mass * unit_mass_cgs
     part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs 
 
     mass_hist = hist * part_mass_over_virial_mass
     radial_bin_mids = np.linspace(bin_width/2.,max_r - bin_width/2.,n_radial_bins)
-#volume in each radial bin
+
+    #volume in each radial bin
     volume = 4.*np.pi * radial_bin_mids**2 * bin_width
 
-#now divide hist by the volume so we have a density in each bin
 
+    #now divide hist by the volume so we have a density in each bin
     density = mass_hist / volume
-
-    ##read the densities
-
-    # density_dset = f["PartType0/Density"]
-    # density = np.array(density_dset)
-    # density_cgs = density * unit_mass_cgs / unit_length_cgs**3
-    # rho = density_cgs * r_vir_cgs**3 / M_vir_cgs
 
     t = np.linspace(10./n_radial_bins,10.0,1000)
     rho_analytic = t**(-2)/(4.*np.pi)
 
-    #calculate cooling radius
 
-    #r_cool_over_r_vir = np.sqrt((2.*(gamma - 1.)*lambda_cgs*M_vir_cgs*X_H**2)/(4.*np.pi*CONST_m_H_CGS**2*v_c_cgs**2*r_vir_cgs**3))*np.sqrt(snap_time_cgs)
-
-    #initial analytic density profile
-    
+    #initial analytic density profile    
     if (i == 0):
         r_0 = radial_bin_mids[0]
         rho_0 = density[0]
-
         rho_analytic_init = rho_0 * (radial_bin_mids/r_0)**(-2)
-    plt.plot(radial_bin_mids,density/rho_analytic_init,'ko',label = "Average density of shell")
-    #plt.plot(t,rho_analytic,label = "Initial analytic density profile"
-    plt.xlabel(r"$r / r_{vir}$")
-    plt.ylabel(r"$\rho / \rho_{init})$")
-    plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
-    #plt.ylim((1.e-2,1.e1))
-    #plt.plot((r_cool_over_r_vir,r_cool_over_r_vir),(0,20),'r',label = "Cooling radius")
-    plt.xlim((radial_bin_mids[0],max_r))
-    plt.ylim((0,20))
-    plt.plot((0,max_r),(1,1))
-    #plt.xscale('log')
-    #plt.yscale('log')
-    plt.legend(loc = "upper right")
+
+    figure()
+    plot(radial_bin_mids,density/rho_analytic_init,'ko',label = "Average density of shell")
+    #plot(t,rho_analytic,label = "Initial analytic density profile")
+    xlabel(r"$r / r_{vir}$")
+    ylabel(r"$\rho / \rho_{init}$")
+    title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
+    xlim((radial_bin_mids[0],max_r))
+    ylim((0,2))
+    plot((0,max_r),(1,1))
+    legend(loc = "upper right")
     plot_filename = "./plots/density_profile/density_profile_%03d.png" %i
-    plt.savefig(plot_filename,format = "png")
-    plt.close()
+    savefig(plot_filename,format = "png")
+    close()
 

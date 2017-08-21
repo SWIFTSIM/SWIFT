@@ -206,12 +206,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->rho += p->mass * kernel_root;
   p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
-  p->density.wcount *= kernel_norm;
-  p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
+  p->density.wcount *= h_inv_dim;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
 
@@ -222,6 +223,31 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * rho_inv;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  p->rho = p->mass * kernel_root * h_inv_dim;
+  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.rho_dh = 0.f;
+  p->density.wcount_dh = 0.f;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -239,6 +265,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   const float fac_mu = 1.f; /* Will change with cosmological integration */
 
+  /* Inverse of the physical density */
+  const float rho_inv = 1.f / p->rho;
+
   /* Compute the norm of the curl */
   const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
                              p->density.rot_v[1] * p->density.rot_v[1] +
@@ -254,7 +283,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
-  const float rho_inv = 1.f / p->rho;
   const float P_over_rho2 = pressure * rho_inv * rho_inv;
 
   /* Compute the Balsara switch */
@@ -262,11 +290,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
 
   /* Compute the "grad h" term */
-  const float grad_h_term =
+  const float omega_inv =
       1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
 
   /* Update variables. */
-  p->force.f = grad_h_term;
+  p->force.f = omega_inv;
   p->force.P_over_rho2 = P_over_rho2;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
@@ -293,7 +321,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->force.v_sig = 0.0f;
+  p->force.v_sig = p->force.soundspeed;
 }
 
 /**

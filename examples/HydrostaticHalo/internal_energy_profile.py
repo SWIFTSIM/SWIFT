@@ -1,6 +1,27 @@
+###############################################################################
+ # This file is part of SWIFT.
+ # Copyright (c) 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+ # 
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU Lesser General Public License as published
+ # by the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ # 
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ # 
+ # You should have received a copy of the GNU Lesser General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ # 
+ ##############################################################################
+
 import numpy as np
 import h5py as h5
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+from pylab import *
 import sys
 
 def do_binning(x,y,x_bin_edges):
@@ -39,7 +60,7 @@ H_0_cgs = 100. * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 #read some header/parameter information from the first snapshot
 
-filename = "Hydrostatic_000.hdf5"
+filename = "Hydrostatic_0000.hdf5"
 f = h5.File(filename,'r')
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
@@ -48,8 +69,6 @@ unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"]
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
 v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
-#lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
-#X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]
 box_centre = np.array(header.attrs["BoxSize"])
@@ -60,11 +79,12 @@ M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
-    filename = "Hydrostatic_%03d.hdf5" %i
+    filename = "Hydrostatic_%04d.hdf5" %i
     f = h5.File(filename,'r')
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
-#translate coords by centre of box
+
+    #translate coords by centre of box
     header = f["Header"]
     snap_time = header.attrs["Time"]
     snap_time_cgs = snap_time * unit_time_cgs
@@ -75,11 +95,11 @@ for i in range(n_snaps):
     radius_cgs = radius*unit_length_cgs
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
-#get the internal energies
+    #get the internal energies
     u_dset = f["PartType0/InternalEnergy"]
     u = np.array(u_dset)
 
-#make dimensionless
+    #make dimensionless
     u /= v_c**2/(2. * (gamma - 1.))
     r = radius_over_virial_radius
 
@@ -90,21 +110,16 @@ for i in range(n_snaps):
     radial_bin_mids = np.linspace(bin_widths / 2. , max_r - bin_widths / 2. , n_radial_bins) 
     binned_u = u_totals / hist
 
-    #calculate cooling radius
-
-    #r_cool_over_r_vir = np.sqrt((2.*(gamma - 1.)*lambda_cgs*M_vir_cgs*X_H**2)/(4.*np.pi*CONST_m_H_CGS**2*v_c_cgs**2*r_vir_cgs**3))*np.sqrt(snap_time_cgs)
-
-    plt.plot(radial_bin_mids,binned_u,'ko',label = "Numerical solution")
-    #plt.plot((0,1),(1,1),label = "Analytic Solution")
-    #plt.plot((r_cool_over_r_vir,r_cool_over_r_vir),(0,2),'r',label = "Cooling radius")
-    plt.legend(loc = "lower right")
-    plt.xlabel(r"$r / r_{vir}$")
-    plt.ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
-    plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
-    plt.ylim((0,2))
+    figure()
+    plot(radial_bin_mids,binned_u,'ko',label = "Numerical solution")
+    legend(loc = "lower right")
+    xlabel(r"$r / r_{vir}$")
+    ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
+    title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
+    ylim((0,2))
     plot_filename = "./plots/internal_energy/internal_energy_profile_%03d.png" %i
-    plt.savefig(plot_filename,format = "png")
-    plt.close()
+    savefig(plot_filename,format = "png")
+    close()
 
 
         

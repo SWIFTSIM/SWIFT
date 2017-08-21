@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -DTIMER $(HDF5_CPPFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -63,8 +63,8 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h part_type.h \
-		 gravity.h gravity_io.h \
+		 dimension.h equation_of_state.h part_type.h periodic.h \
+		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 sourceterms.h \
@@ -86,6 +86,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gizmo/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/hydro_slope_limiters_face.h \
                  hydro/Gizmo/hydro_slope_limiters.h \
+                 hydro/Gizmo/hydro_flux_limiters.h \
+                 hydro/Gizmo/hydro_unphysical.h \
+                 hydro/Gizmo/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \

@@ -15,27 +15,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) -DTIMER
-
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS)
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
-        testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
-        testParser.sh testSPHStep test125cells.sh testFFT \
+        testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
+        testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
-        testMatrixInversion testThreadpool testDump testLogger \
-        testVoronoi1D testVoronoi2D testVoronoi3D
+        testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
+        testVoronoi1D testVoronoi2D testVoronoi3D \
+	testPeriodicBC.sh testPeriodicBCPerturbed.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testPair test27cells test125cells testParser \
+		 testSPHStep testActivePair test27cells test125cells testParser \
                  testKernel testFFT testInteractions testMaths \
                  testSymmetry testThreadpool benchmarkInteractions \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
-		 testVoronoi1D testVoronoi2D testVoronoi3D
+		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC
+
+# Rebuild tests when SWIFT is updated.
+$(check_PROGRAMS): ../src/.libs/libswiftsim.a
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -52,9 +55,11 @@ testSPHStep_SOURCES = testSPHStep.c
 
 testSingle_SOURCES = testSingle.c
 
-testPair_SOURCES = testPair.c
+testActivePair_SOURCES = testActivePair.c
 
 test27cells_SOURCES = test27cells.c
+
+testPeriodicBC_SOURCES = testPeriodicBC.c
 
 test125cells_SOURCES = test125cells.c
 
@@ -91,8 +96,10 @@ testDump_SOURCES = testDump.c
 testLogger_SOURCES = testLogger.c
 
 # Files necessary for distribution
-EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
-	     test27cells.sh test27cellsPerturbed.sh testParser.sh \
-	     test125cells.sh testParserInput.yaml difffloat.py \
-	     tolerance_125.dat tolerance_27_normal.dat tolerance_27_perturbed.dat \
-	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat
+EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
+	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
+	     testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
+	     difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
+             tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
+	     tolerance_testInteractions.dat tolerance_pair_active.dat \
+	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat

@@ -28,7 +28,6 @@
 #include <string.h>
 
 /* Includes. */
-//#include "active.h"
 #include "align.h"
 #include "const.h"
 #include "error.h"
@@ -37,8 +36,8 @@
 #include "gravity_softened_derivatives.h"
 #include "inline.h"
 #include "kernel_gravity.h"
-#include "minmax.h"
 #include "part.h"
+#include "periodic.h"
 #include "vector_power.h"
 
 #define multipole_align 128
@@ -1499,23 +1498,28 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param pos_a The position of the multipole.
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
  */
 INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
-                               const struct gravity_props *props,
-                               int periodic) {
+                               const struct gravity_props *props, int periodic,
+                               const double dim[3]) {
 
   /* Recover some constants */
   const double eps2 = props->epsilon2;
 
   /* Compute distance vector */
-  const double dx =
-      periodic ? box_wrap(pos_b[0] - pos_a[0], 0., 1.) : pos_b[0] - pos_a[0];
-  const double dy =
-      periodic ? box_wrap(pos_b[1] - pos_a[1], 0., 1.) : pos_b[1] - pos_a[1];
-  const double dz =
-      periodic ? box_wrap(pos_b[2] - pos_a[2], 0., 1.) : pos_b[2] - pos_a[2];
+  double dx = pos_b[0] - pos_a[0];
+  double dy = pos_b[1] - pos_a[1];
+  double dz = pos_b[2] - pos_a[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
 
   /* Compute distance */
   const double r2 = dx * dx + dy * dy + dz * dz;
@@ -1626,7 +1630,7 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                   m_a->M_010 * D_021(dx, dy, dz, r_inv) +
                   m_a->M_001 * D_012(dx, dy, dz, r_inv);
 
-    /*  3rd order multipole term (addition to rank 2)*/
+    /*  3rd order multipole term (addition to rank 3)*/
     l_b->F_300 += m_a->M_000 * D_300(dx, dy, dz, r_inv);
     l_b->F_030 += m_a->M_000 * D_030(dx, dy, dz, r_inv);
     l_b->F_003 += m_a->M_000 * D_003(dx, dy, dz, r_inv);
@@ -2097,6 +2101,72 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
     l_b->F_101 += m_a->M_000 * D_soft_101(dx, dy, dz, r, eps_inv);
     l_b->F_011 += m_a->M_000 * D_soft_011(dx, dy, dz, r, eps_inv);
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+    /*  3rd order multipole term (addition to rank 0)*/
+    l_b->F_000 += m_a->M_300 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_030 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_003 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_210 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_201 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_120 * D_soft_120(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_021 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_102 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_012 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_000 += m_a->M_111 * D_soft_111(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 1)*/
+    l_b->F_100 += m_a->M_200 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_100 += m_a->M_110 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_111(dx, dy, dz, r, eps_inv);
+    l_b->F_010 += m_a->M_200 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_010 += m_a->M_110 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_001 += m_a->M_200 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_020 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_002 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_001 += m_a->M_110 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_101 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_011 * D_soft_012(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 2)*/
+    l_b->F_200 += m_a->M_100 * D_soft_300(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_201(dx, dy, dz, r, eps_inv);
+    l_b->F_020 += m_a->M_100 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_030(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_002 += m_a->M_100 * D_soft_102(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_012(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_110 += m_a->M_100 * D_soft_210(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_120(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_111(dx, dy, dz, r, eps_inv);
+    l_b->F_101 += m_a->M_100 * D_soft_201(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_011 += m_a->M_100 * D_soft_111(dx, dy, dz, r, eps_inv) +
+                  m_a->M_010 * D_soft_021(dx, dy, dz, r, eps_inv) +
+                  m_a->M_001 * D_soft_012(dx, dy, dz, r, eps_inv);
+
+    /*  3rd order multipole term (addition to rank 3)*/
+    l_b->F_300 += m_a->M_000 * D_soft_300(dx, dy, dz, r, eps_inv);
+    l_b->F_030 += m_a->M_000 * D_soft_030(dx, dy, dz, r, eps_inv);
+    l_b->F_003 += m_a->M_000 * D_soft_003(dx, dy, dz, r, eps_inv);
+    l_b->F_210 += m_a->M_000 * D_soft_210(dx, dy, dz, r, eps_inv);
+    l_b->F_201 += m_a->M_000 * D_soft_201(dx, dy, dz, r, eps_inv);
+    l_b->F_120 += m_a->M_000 * D_soft_120(dx, dy, dz, r, eps_inv);
+    l_b->F_021 += m_a->M_000 * D_soft_021(dx, dy, dz, r, eps_inv);
+    l_b->F_102 += m_a->M_000 * D_soft_102(dx, dy, dz, r, eps_inv);
+    l_b->F_012 += m_a->M_000 * D_soft_012(dx, dy, dz, r, eps_inv);
+    l_b->F_111 += m_a->M_000 * D_soft_111(dx, dy, dz, r, eps_inv);
+#endif
   }
 }
 
@@ -2109,12 +2179,10 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
  * @param lb The #grav_tensor to shift.
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
- * @param periodic Is the calculation periodic ?
  */
 INLINE static void gravity_L2L(struct grav_tensor *la,
                                const struct grav_tensor *lb,
-                               const double pos_a[3], const double pos_b[3],
-                               int periodic) {
+                               const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
   gravity_field_tensors_init(la);
@@ -2571,31 +2639,50 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 
 /**
  * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
- * interaction.
+ * interaction using the CoM and cell radius at rebuild.
+ *
+ * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
+ * Issue 1, pp.27-42, equation 10.
  *
  * @param ma The #multipole of the first #cell.
  * @param mb The #multipole of the second #cell.
  * @param theta_crit_inv The inverse of the critical opening angle.
- * @param rebuild Are we using the current value of CoM or the ones from
- * the last rebuild ?
+ * @param r2 Square of the distance (periodically wrapped) between the
+ * multipoles.
+ */
+__attribute__((always_inline)) INLINE static int
+gravity_multipole_accept_rebuild(const struct gravity_tensors *const ma,
+                                 const struct gravity_tensors *const mb,
+                                 double theta_crit_inv, double r2) {
+
+  const double r_crit_a = ma->r_max_rebuild * theta_crit_inv;
+  const double r_crit_b = mb->r_max_rebuild * theta_crit_inv;
+
+  // MATTHIEU: Make this mass-dependent ?
+
+  /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
+  return (r2 > (r_crit_a + r_crit_b) * (r_crit_a + r_crit_b));
+}
+
+/**
+ * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
+ * interaction using the CoM and cell radius at the current time.
+ *
+ * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
+ * Issue 1, pp.27-42, equation 10.
+ *
+ * @param ma The #multipole of the first #cell.
+ * @param mb The #multipole of the second #cell.
+ * @param theta_crit_inv The inverse of the critical opening angle.
+ * @param r2 Square of the distance (periodically wrapped) between the
+ * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_multipole_accept(
-    const struct gravity_tensors *ma, const struct gravity_tensors *mb,
-    double theta_crit_inv, int rebuild) {
+    const struct gravity_tensors *const ma,
+    const struct gravity_tensors *const mb, double theta_crit_inv, double r2) {
 
-  const double r_crit_a =
-      (rebuild ? ma->r_max_rebuild : ma->r_max) * theta_crit_inv;
-  const double r_crit_b =
-      (rebuild ? mb->r_max_rebuild : mb->r_max) * theta_crit_inv;
-
-  const double dx = rebuild ? ma->CoM_rebuild[0] - mb->CoM_rebuild[0]
-                            : ma->CoM[0] - mb->CoM[0];
-  const double dy = rebuild ? ma->CoM_rebuild[1] - mb->CoM_rebuild[1]
-                            : ma->CoM[1] - mb->CoM[1];
-  const double dz = rebuild ? ma->CoM_rebuild[2] - mb->CoM_rebuild[2]
-                            : ma->CoM[2] - mb->CoM[2];
-
-  const double r2 = dx * dx + dy * dy + dz * dz;
+  const double r_crit_a = ma->r_max * theta_crit_inv;
+  const double r_crit_b = mb->r_max * theta_crit_inv;
 
   // MATTHIEU: Make this mass-dependent ?
 

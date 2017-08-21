@@ -27,8 +27,8 @@
  * 1, 1, pp. 24 (2014), arXiv:1405.2255
  */
 
-/* Some standard headers. */
-#include <math.h>
+/* Config parameters. */
+#include "../config.h"
 
 /* Local headers. */
 #include "inline.h"

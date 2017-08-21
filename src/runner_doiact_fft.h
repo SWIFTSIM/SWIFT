@@ -21,6 +21,6 @@
 
 struct runner;
 
-void runner_do_grav_fft(struct runner *r);
+void runner_do_grav_fft(struct runner *r, int timer);
 
 #endif /* SWIFT_RUNNER_DOIACT_FFT_H */

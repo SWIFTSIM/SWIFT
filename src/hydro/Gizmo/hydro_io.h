@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "hydro_flux_limiters.h"
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
 #include "io_properties.h"
@@ -127,7 +128,7 @@ float convert_Etot(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -143,23 +144,15 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                               parts, primitives.P, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
-  list[6] = io_make_output_field("Acceleration", FLOAT, 3,
-                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
+  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
                                  primitives.rho);
-  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
-                                 geometry.volume);
-  list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
-                                 parts, primitives.gradients.rho);
-  list[10] = io_make_output_field_convert_part(
+  list[7] = io_make_output_field_convert_part(
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
-  list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                  parts, primitives.P);
-  list[12] =
+  list[8] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                 parts, primitives.P);
+  list[9] =
       io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
                                         parts, conserved.energy, convert_Etot);
-  list[13] = io_make_output_field("GravAcceleration", FLOAT, 3,
-                                  UNIT_CONV_ACCELERATION, parts, gravity.old_a);
 }
 
 /**
@@ -176,6 +169,10 @@ void writeSPHflavour(hid_t h_grpsph) {
                        HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Piecewise slope limiter model",
                        HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+
+  /* Flux limiter information */
+  io_write_attribute_s(h_grpsph, "Flux limiter model",
+                       HYDRO_FLUX_LIMITER_IMPLEMENTATION);
 
   /* Riemann solver information */
   io_write_attribute_s(h_grpsph, "Riemann solver type",

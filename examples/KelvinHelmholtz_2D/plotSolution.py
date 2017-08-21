@@ -63,7 +63,7 @@ rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 snap = int(sys.argv[1])
 
 # Read the simulation data
-sim = h5py.File("kelvinHelmholtz_%03d.hdf5"%snap, "r")
+sim = h5py.File("kelvinHelmholtz_%04d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]

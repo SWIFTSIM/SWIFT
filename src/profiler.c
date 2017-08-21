@@ -31,6 +31,46 @@
 #include "hydro.h"
 #include "version.h"
 
+/* Array to store the list of file names. Order must match profiler_types
+ * enumerator and profiler_func_names. */
+const char *profiler_file_names[profiler_length] = {"enginecollecttimesteps",
+                                                    "enginedrift",
+                                                    "enginerebuild",
+                                                    "schedulerreweight",
+                                                    "schedulerclearwaits",
+                                                    "schedulerrewait",
+                                                    "schedulerenqueue",
+                                                    "engineprintstats",
+                                                    "enginelaunch",
+                                                    "spacerebuild",
+                                                    "enginemaketasks",
+                                                    "enginemarktasks",
+                                                    "spaceregrid",
+                                                    "spacepartssort",
+                                                    "spacesplit",
+                                                    "spacegetcellid",
+                                                    "spacecountparts"};
+
+/* Array to store the list of function names. Order must match profiler_types
+ * enumerator and profiler_file_names. */
+const char *profiler_func_names[profiler_length] = {"engine_collect_timesteps",
+                                                    "engine_drift",
+                                                    "engine_rebuild",
+                                                    "scheduler_reweight",
+                                                    "scheduler_clear_waits",
+                                                    "scheduler_rewait",
+                                                    "scheduler_enqueue",
+                                                    "engine_print_stats",
+                                                    "engine_launch",
+                                                    "space_rebuild",
+                                                    "engine_maketasks",
+                                                    "engine_marktasks",
+                                                    "space_regrid",
+                                                    "space_parts_sort",
+                                                    "space_split",
+                                                    "space_get_cell_id",
+                                                    "space_count_parts"};
+
 /**
  * @brief Resets all timers.
  *
@@ -38,24 +78,8 @@
  * function timers.
  */
 void profiler_reset_timers(struct profiler *profiler) {
-
-  profiler->collect_timesteps_time = 0;
-  profiler->drift_time = 0;
-  profiler->rebuild_time = 0;
-  profiler->reweight_time = 0;
-  profiler->clear_waits_time = 0;
-  profiler->re_wait_time = 0;
-  profiler->enqueue_time = 0;
-  profiler->stats_time = 0;
-  profiler->launch_time = 0;
-  profiler->space_rebuild_time = 0;
-  profiler->engine_maketasks_time = 0;
-  profiler->engine_marktasks_time = 0;
-  profiler->space_regrid_time = 0;
-  profiler->space_parts_sort_time = 0;
-  profiler->space_split_time = 0;
-  profiler->space_parts_get_cell_id_time = 0;
-  profiler->space_count_parts_time = 0;
+  /* Iterate over times array and reset values. */
+  for (int i = 0; i < profiler_length; i++) profiler->times[i] = 0;
 }
 
 /**
@@ -66,8 +90,9 @@ void profiler_reset_timers(struct profiler *profiler) {
  * @param functionName name of function that is being timed.
  * @param file (return) pointer used to open output file.
  */
-void profiler_write_timing_info_header(const struct engine *e, char *fileName,
-                                       char *functionName, FILE **file) {
+void profiler_write_timing_info_header(const struct engine *e,
+                                       const char *fileName,
+                                       const char *functionName, FILE **file) {
 
   /* Create the file name in the format: "fileName_(no. of threads)" */
   char fullFileName[200] = "";
@@ -82,13 +107,14 @@ void profiler_write_timing_info_header(const struct engine *e, char *fileName,
           "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
           "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
           "+/- %.2f\n# Eta: %f\n"
-          "# %6s %14s %14s %10s %10s %16s [%s]\n",
+          "# %6s %14s %14s %10s %10s %10s %16s [%s]\n",
           hostname(), functionName, git_revision(), compiler_name(),
           compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
           kernel_name, e->hydro_properties->target_neighbours,
           e->hydro_properties->delta_neighbours,
           e->hydro_properties->eta_neighbours, "Step", "Time", "Time-step",
-          "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+          "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+          clocks_getunit());
 
   fflush(*file);
 }
@@ -103,44 +129,11 @@ void profiler_write_timing_info_header(const struct engine *e, char *fileName,
  */
 void profiler_write_all_timing_info_headers(const struct engine *e,
                                             struct profiler *profiler) {
-
-  profiler_write_timing_info_header(e, "enginecollecttimesteps",
-                                    "engine_collect_timesteps",
-                                    &profiler->file_engine_collect_timesteps);
-  profiler_write_timing_info_header(e, "enginedrift", "engine_drift",
-                                    &profiler->file_engine_drift);
-  profiler_write_timing_info_header(e, "enginerebuild", "engine_rebuild",
-                                    &profiler->file_engine_rebuild);
-  profiler_write_timing_info_header(e, "schedulerreweight",
-                                    "scheduler_reweight",
-                                    &profiler->file_scheduler_reweight);
-  profiler_write_timing_info_header(e, "schedulerclearwaits",
-                                    "scheduler_clear_waits",
-                                    &profiler->file_scheduler_clear_waits);
-  profiler_write_timing_info_header(e, "schedulerrewait", "scheduler_rewait",
-                                    &profiler->file_scheduler_re_wait);
-  profiler_write_timing_info_header(e, "schedulerenqueue", "scheduler_enqueue",
-                                    &profiler->file_scheduler_enqueue);
-  profiler_write_timing_info_header(e, "engineprintstats", "engine_print_stats",
-                                    &profiler->file_engine_stats);
-  profiler_write_timing_info_header(e, "enginelaunch", "engine_launch",
-                                    &profiler->file_engine_launch);
-  profiler_write_timing_info_header(e, "spacerebuild", "space_rebuild",
-                                    &profiler->file_space_rebuild);
-  profiler_write_timing_info_header(e, "enginemaketasks", "engine_maketasks",
-                                    &profiler->file_engine_maketasks);
-  profiler_write_timing_info_header(e, "enginemarktasks", "engine_marktasks",
-                                    &profiler->file_engine_marktasks);
-  profiler_write_timing_info_header(e, "spaceregrid", "space_regrid",
-                                    &profiler->file_space_regrid);
-  profiler_write_timing_info_header(e, "spacepartssort", "space_parts_sort",
-                                    &profiler->file_space_parts_sort);
-  profiler_write_timing_info_header(e, "spacesplit", "space_split",
-                                    &profiler->file_space_split);
-  profiler_write_timing_info_header(e, "spacegetcellid", "space_get_cell_id",
-                                    &profiler->file_space_parts_get_cell_id);
-  profiler_write_timing_info_header(e, "spacecountparts", "space_count_parts",
-                                    &profiler->file_space_count_parts);
+  /* Iterate over files array and write file headers. */
+  for (int i = 0; i < profiler_length; i++) {
+    profiler_write_timing_info_header(
+        e, profiler_file_names[i], profiler_func_names[i], &profiler->files[i]);
+  }
 }
 
 /**
@@ -153,8 +146,9 @@ void profiler_write_all_timing_info_headers(const struct engine *e,
 void profiler_write_timing_info(const struct engine *e, ticks time,
                                 FILE *file) {
 
-  fprintf(file, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
-          e->timeStep, e->updates, e->g_updates, clocks_from_ticks(time));
+  fprintf(file, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+          e->timeStep, e->updates, e->g_updates, e->s_updates,
+          clocks_from_ticks(time));
   fflush(file);
 }
 
@@ -169,39 +163,10 @@ void profiler_write_timing_info(const struct engine *e, ticks time,
 void profiler_write_all_timing_info(const struct engine *e,
                                     struct profiler *profiler) {
 
-  profiler_write_timing_info(e, profiler->drift_time,
-                             profiler->file_engine_drift);
-  profiler_write_timing_info(e, profiler->rebuild_time,
-                             profiler->file_engine_rebuild);
-  profiler_write_timing_info(e, profiler->reweight_time,
-                             profiler->file_scheduler_reweight);
-  profiler_write_timing_info(e, profiler->clear_waits_time,
-                             profiler->file_scheduler_clear_waits);
-  profiler_write_timing_info(e, profiler->re_wait_time,
-                             profiler->file_scheduler_re_wait);
-  profiler_write_timing_info(e, profiler->enqueue_time,
-                             profiler->file_scheduler_enqueue);
-  profiler_write_timing_info(e, profiler->stats_time,
-                             profiler->file_engine_stats);
-  profiler_write_timing_info(e, profiler->launch_time,
-                             profiler->file_engine_launch);
-  profiler_write_timing_info(e, profiler->space_rebuild_time,
-                             profiler->file_space_rebuild);
-  profiler_write_timing_info(e, profiler->engine_maketasks_time,
-                             profiler->file_engine_maketasks);
-  profiler_write_timing_info(e, profiler->engine_marktasks_time,
-                             profiler->file_engine_marktasks);
-  profiler_write_timing_info(e, profiler->space_regrid_time,
-                             profiler->file_space_regrid);
-  profiler_write_timing_info(e, profiler->space_parts_sort_time,
-                             profiler->file_space_parts_sort);
-  profiler_write_timing_info(e, profiler->space_split_time,
-                             profiler->file_space_split);
-  profiler_write_timing_info(e, profiler->space_parts_get_cell_id_time,
-                             profiler->file_space_parts_get_cell_id);
-  profiler_write_timing_info(e, profiler->space_count_parts_time,
-                             profiler->file_space_count_parts);
-
+  /* Iterate over times array and print timing info to files. */
+  for (int i = 0; i < profiler_length; i++) {
+    profiler_write_timing_info(e, profiler->times[i], profiler->files[i]);
+  }
   /* Reset timers. */
   profiler_reset_timers(profiler);
 }
@@ -215,20 +180,6 @@ void profiler_write_all_timing_info(const struct engine *e,
  */
 void profiler_close_files(struct profiler *profiler) {
 
-  fclose(profiler->file_engine_drift);
-  fclose(profiler->file_engine_rebuild);
-  fclose(profiler->file_scheduler_reweight);
-  fclose(profiler->file_scheduler_clear_waits);
-  fclose(profiler->file_scheduler_re_wait);
-  fclose(profiler->file_scheduler_enqueue);
-  fclose(profiler->file_engine_stats);
-  fclose(profiler->file_engine_launch);
-  fclose(profiler->file_space_rebuild);
-  fclose(profiler->file_engine_maketasks);
-  fclose(profiler->file_engine_marktasks);
-  fclose(profiler->file_space_regrid);
-  fclose(profiler->file_space_parts_sort);
-  fclose(profiler->file_space_split);
-  fclose(profiler->file_space_parts_get_cell_id);
-  fclose(profiler->file_space_count_parts);
+  /* Iterate over files array and close files. */
+  for (int i = 0; i < profiler_length; i++) fclose(profiler->files[i]);
 }

@@ -29,7 +29,7 @@
 #define queue_sizeinit 100
 #define queue_sizegrow 2
 #define queue_search_window 8
-#define queue_incoming_size 1024
+#define queue_incoming_size 10240
 #define queue_struct_align 64
 
 /* Counters. */
