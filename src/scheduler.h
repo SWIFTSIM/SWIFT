@@ -103,6 +103,7 @@ struct scheduler {
   /* The node we are working on. */
   int nodeID;
 
+  /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
 };
 

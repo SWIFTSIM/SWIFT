@@ -1377,7 +1377,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    if (qid < 0) qid = rand_r((unsigned int*)pthread_getspecific(s->local_seed_pointer) ) % s->nr_queues;
+    if (qid < 0)
+      qid = rand_r((unsigned int *)pthread_getspecific(s->local_seed_pointer)) %
+            s->nr_queues;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
