@@ -226,20 +226,27 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 }
 
 /**
- * @brief Compute the vector remainder force interactions from the secondary cache.
+ * @brief Compute the vector remainder force interactions from the secondary
+ * cache.
  *
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x acceleration
+ * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x
+ * acceleration
  * update on pi.
- * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y acceleration
+ * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y
+ * acceleration
  * update on pi.
- * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z acceleration
+ * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z
+ * acceleration
  * update on pi.
- * @param h_dtSum (return) #vector holding the cumulative sum of the time derivative of the smoothing length update on pi.
- * @param v_sigSum (return) #vector holding the maximum of the signal velocity update on pi.
- * @param entropy_dtSum (return) #vector holding the cumulative sum of the time derivative of the entropy
+ * @param h_dtSum (return) #vector holding the cumulative sum of the time
+ * derivative of the smoothing length update on pi.
+ * @param v_sigSum (return) #vector holding the maximum of the signal velocity
+ * update on pi.
+ * @param entropy_dtSum (return) #vector holding the cumulative sum of the time
+ * derivative of the entropy
  * update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
@@ -251,7 +258,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param v_balsara_i #vector of balsara switch of pi.
  * @param v_ci #vector of sound speed of pi.
  * @param icount_align (return) Interaction count after the remainder
- * @param num_vec_proc #int of the number of vectors to use to perform interaction.
+ * @param num_vec_proc #int of the number of vectors to use to perform
+ * interaction.
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
@@ -333,15 +341,21 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x acceleration
+ * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x
+ * acceleration
  * update on pi.
- * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y acceleration
+ * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y
+ * acceleration
  * update on pi.
- * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z acceleration
+ * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z
+ * acceleration
  * update on pi.
- * @param h_dtSum (return) #vector holding the cumulative sum of the time derivative of the smoothing length update on pi.
- * @param v_sigSum (return) #vector holding the maximum of the signal velocity update on pi.
- * @param entropy_dtSum (return) #vector holding the cumulative sum of the time derivative of the entropy
+ * @param h_dtSum (return) #vector holding the cumulative sum of the time
+ * derivative of the smoothing length update on pi.
+ * @param v_sigSum (return) #vector holding the maximum of the signal velocity
+ * update on pi.
+ * @param entropy_dtSum (return) #vector holding the cumulative sum of the time
+ * derivative of the entropy
  * update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
@@ -352,7 +366,8 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
  * @param v_pOrhoi2 #vector of pressure over density squared of pi.
  * @param v_balsara_i #vector of balsara switch of pi.
  * @param v_ci #vector of sound speed of pi.
- * @param num_vec_proc #int of the number of vectors to use to perform interaction.
+ * @param num_vec_proc #int of the number of vectors to use to perform
+ * interaction.
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void storeForceInteractions(
@@ -993,17 +1008,17 @@ for (int pid = 0; pid < count; pid++) {
       storeForceInteractions(
           doi_mask, pjd, &v_r2, &v_dx_tmp, &v_dy_tmp, &v_dz_tmp, cell_cache,
           &int_cache, &icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-          &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv, v_vix, v_viy,
-          v_viz, v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci, 2);
+          &h_dtSum, &v_sigSum, &entropy_dtSum, v_hi_inv, v_vix, v_viy, v_viz,
+          v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci, 2);
     }
 
   } /* Loop over all other particles. */
 
   /* Perform padded vector remainder interactions if any are present. */
-  calcRemForceInteractions(
-      &int_cache, icount, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum,
-      &v_sigSum, &entropy_dtSum, v_hi_inv, v_vix, v_viy, v_viz, v_rhoi,
-      v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci, &icount_align, 2);
+  calcRemForceInteractions(&int_cache, icount, &a_hydro_xSum, &a_hydro_ySum,
+                           &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum,
+                           v_hi_inv, v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
+                           v_pOrhoi2, v_balsara_i, v_ci, &icount_align, 2);
 
   /* Initialise masks to true in case remainder interactions have been
    * performed. */
@@ -1015,14 +1030,13 @@ for (int pid = 0; pid < count; pid++) {
   for (int pjd = 0; pjd < icount_align; pjd += (2 * VEC_SIZE)) {
     runner_iact_nonsym_2_vec_force(
         &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
-        &int_cache.dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
-        v_pOrhoi2, v_balsara_i, v_ci, &int_cache.vxq[pjd],
-        &int_cache.vyq[pjd], &int_cache.vzq[pjd], &int_cache.rhoq[pjd],
-        &int_cache.grad_hq[pjd], &int_cache.pOrho2q[pjd],
-        &int_cache.balsaraq[pjd], &int_cache.soundspeedq[pjd],
-        &int_cache.mq[pjd], v_hi_inv, &int_cache.h_invq[pjd], &a_hydro_xSum,
-        &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum,
-        int_mask, int_mask2, 0);
+        &int_cache.dzq[pjd], v_vix, v_viy, v_viz, v_rhoi, v_grad_hi, v_pOrhoi2,
+        v_balsara_i, v_ci, &int_cache.vxq[pjd], &int_cache.vyq[pjd],
+        &int_cache.vzq[pjd], &int_cache.rhoq[pjd], &int_cache.grad_hq[pjd],
+        &int_cache.pOrho2q[pjd], &int_cache.balsaraq[pjd],
+        &int_cache.soundspeedq[pjd], &int_cache.mq[pjd], v_hi_inv,
+        &int_cache.h_invq[pjd], &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+        &h_dtSum, &v_sigSum, &entropy_dtSum, int_mask, int_mask2, 0);
   }
 
   VEC_HADD(a_hydro_xSum, pi->a_hydro[0]);
@@ -1258,8 +1272,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         vector v_dx, v_dy, v_dz, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 || cj_cache_idx + (VEC_SIZE - 1) > (last_pj_align + 1 + VEC_SIZE)) {
-          error("Unaligned read!!! cj_cache_idx=%d, last_pj_align=%d", cj_cache_idx, last_pj_align);
+        if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
+            cj_cache_idx + (VEC_SIZE - 1) > (last_pj_align + 1 + VEC_SIZE)) {
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj_align=%d",
+                cj_cache_idx, last_pj_align);
         }
 #endif
 
@@ -1384,8 +1400,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
            ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0 || ci_cache_idx + (VEC_SIZE - 1) > (count_i - first_pi_align + VEC_SIZE)) {
-          error("Unaligned read!!! ci_cache_idx=%d, first_pi_align=%d, count_i=%d", ci_cache_idx, first_pi_align, count_i);
+        if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0 ||
+            ci_cache_idx + (VEC_SIZE - 1) >
+                (count_i - first_pi_align + VEC_SIZE)) {
+          error(
+              "Unaligned read!!! ci_cache_idx=%d, first_pi_align=%d, "
+              "count_i=%d",
+              ci_cache_idx, first_pi_align, count_i);
         }
 #endif
 

@@ -64,7 +64,7 @@ struct cache {
 
   /* Maximum index into neighbouring cell for particles that are in range. */
   int *restrict max_index SWIFT_CACHE_ALIGN;
-  
+
   /* Particle density. */
   float *restrict rho SWIFT_CACHE_ALIGN;
 
@@ -178,10 +178,14 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT,
                           sizeIntBytes);
   error += posix_memalign((void **)&c->rho, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->grad_h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->pOrho2, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
-  error += posix_memalign((void **)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->grad_h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->pOrho2, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -235,7 +239,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 }
 
 /**
- * @brief Populate cache for force interactions by reading in the particles in unsorted order.
+ * @brief Populate cache for force interactions by reading in the particles in
+ * unsorted order.
  *
  * @param ci The #cell.
  * @param ci_cache The cache.
@@ -257,10 +262,14 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
   swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, rho, ci_cache->rho, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed,
+                            SWIFT_CACHE_ALIGNMENT);
 
   const struct part *restrict parts = ci->parts;
   double loc[3];
@@ -280,7 +289,7 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
     vx[i] = parts[i].v[0];
     vy[i] = parts[i].v[1];
     vz[i] = parts[i].v[2];
-    
+
     rho[i] = parts[i].rho;
     grad_h[i] = parts[i].force.f;
     pOrho2[i] = parts[i].force.P_over_rho2;

@@ -126,37 +126,29 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
   FILE *file = fopen(fileName, "a");
 
   fprintf(file,
-            "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
-            "%8.5f "
-            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
-            p->id, p->x[0],
-            p->x[1], p->x[2],
-            p->v[0], p->v[1],
-            p->v[2], p->h,
-            hydro_get_density(p),
+          "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
+          "%8.5f "
+          "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
+          p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
+          hydro_get_density(p),
 #if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
-            0.f,
+          0.f,
 #else
-            p->density.div_v,
+          p->density.div_v,
 #endif
-            hydro_get_entropy(p),
-            hydro_get_internal_energy(p),
-            hydro_get_pressure(p),
-            hydro_get_soundspeed(p),
-            p->a_hydro[0], p->a_hydro[1],
-            p->a_hydro[2], p->force.h_dt,
+          hydro_get_entropy(p), hydro_get_internal_energy(p),
+          hydro_get_pressure(p), hydro_get_soundspeed(p), p->a_hydro[0],
+          p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
 #if defined(GADGET2_SPH)
-            p->force.v_sig, p->entropy_dt,
-            0.f
+          p->force.v_sig, p->entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)
-            p->force.v_sig, 0.f,
-            p->force.u_dt
+          p->force.v_sig, 0.f, p->force.u_dt
 #elif defined(MINIMAL_SPH)
-            p->force.v_sig, 0.f, p->u_dt
+          p->force.v_sig, 0.f, p->u_dt
 #else
-            0.f, 0.f, 0.f
+          0.f, 0.f, 0.f
 #endif
-            );
+          );
 
   fclose(file);
 }
@@ -174,7 +166,7 @@ void write_header(char *fileName) {
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
           "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
           "dS/dt", "du/dt");
-  
+
   fclose(file);
 }
 
@@ -415,8 +407,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
  * @param runs No. of times to call interactions
  *
  */
-void test_force_interactions(struct part test_part, struct part *parts, size_t count,
-                       char *filePrefix, int runs, int num_vec_proc) {
+void test_force_interactions(struct part test_part, struct part *parts,
+                             size_t count, char *filePrefix, int runs,
+                             int num_vec_proc) {
 
   ticks serial_time = 0;
   ticks vec_time = 0;
@@ -449,7 +442,7 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
   float dxq[count] __attribute__((aligned(array_align)));
   float dyq[count] __attribute__((aligned(array_align)));
   float dzq[count] __attribute__((aligned(array_align)));
-  
+
   float hiq[count] __attribute__((aligned(array_align)));
   float vixq[count] __attribute__((aligned(array_align)));
   float viyq[count] __attribute__((aligned(array_align)));
@@ -459,7 +452,7 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
   float pOrhoi2q[count] __attribute__((aligned(array_align)));
   float balsaraiq[count] __attribute__((aligned(array_align)));
   float ciq[count] __attribute__((aligned(array_align)));
-  
+
   float hj_invq[count] __attribute__((aligned(array_align)));
   float mjq[count] __attribute__((aligned(array_align)));
   float vjxq[count] __attribute__((aligned(array_align)));
@@ -502,8 +495,8 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
 #pragma novector
 #endif
     for (size_t i = 0; i < count; i++) {
-      runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h, &pi_serial,
-           &pj_serial[i]);
+      runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
+                               &pi_serial, &pj_serial[i]);
     }
     serial_time += getticks() - tic;
   }
@@ -540,7 +533,7 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
       dxq[i] = dx[0];
       dyq[i] = dx[1];
       dzq[i] = dx[2];
-      
+
       hiq[i] = pi_vec.h;
       vixq[i] = pi_vec.v[0];
       viyq[i] = pi_vec.v[1];
@@ -550,7 +543,7 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
       pOrhoi2q[i] = pi_vec.force.P_over_rho2;
       balsaraiq[i] = pi_vec.force.balsara;
       ciq[i] = pi_vec.force.soundspeed;
-      
+
       hj_invq[i] = 1.f / pj_vec[i].h;
       mjq[i] = pj_vec[i].mass;
       vjxq[i] = pj_vec[i].v[0];
@@ -561,7 +554,6 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
       pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
       balsarajq[i] = pj_vec[i].force.balsara;
       cjq[i] = pj_vec[i].force.soundspeed;
-
     }
 
     /* Only dump data on first run. */
@@ -572,9 +564,11 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
         dump_indv_particle_fields(vec_filename, pjq[i]);
     }
 
-/* Perform vector interaction. */
-    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec, rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec;
-    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum, entropy_dtSum;
+    /* Perform vector interaction. */
+    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec, rhoi_vec, grad_hi_vec,
+        pOrhoi2_vec, balsara_i_vec, ci_vec;
+    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
+        entropy_dtSum;
 
     a_hydro_xSum.v = vec_setzero();
     a_hydro_ySum.v = vec_setzero();
@@ -594,20 +588,23 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
     ci_vec.v = vec_load(&ciq[0]);
 
     hi_inv_vec = vec_reciprocal(hi_vec);
-    
+
     mask_t mask, mask2;
     vec_init_mask_true(mask);
     vec_init_mask_true(mask2);
-    
+
     const ticks vec_tic = getticks();
 
     for (size_t i = 0; i < count; i += num_vec_proc * VEC_SIZE) {
 
       if (num_vec_proc == 2) {
-      runner_iact_nonsym_2_vec_force(&(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]),
-               (vix_vec), (viy_vec), (viz_vec), rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]), &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, &(hj_invq[i]), &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-               &h_dtSum, &v_sigSum, &entropy_dtSum,
-               mask, mask2, 0);
+        runner_iact_nonsym_2_vec_force(
+            &(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (vix_vec), (viy_vec),
+            (viz_vec), rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec,
+            ci_vec, &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(rhojq[i]),
+            &(grad_hjq[i]), &(pOrhoj2q[i]), &(balsarajq[i]), &(cjq[i]),
+            &(mjq[i]), hi_inv_vec, &(hj_invq[i]), &a_hydro_xSum, &a_hydro_ySum,
+            &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, mask, mask2, 0);
       } else { /* Only use one vector for interaction. */
 
         vector r2, dx, dy, dz;
@@ -617,11 +614,13 @@ void test_force_interactions(struct part test_part, struct part *parts, size_t c
         dz.v = vec_load(&(dzq[i]));
 
         runner_iact_nonsym_1_vec_force(
-            &r2, &dx, &dy, &dz, vix_vec, viy_vec, viz_vec, rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]), &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, &(hj_invq[i]), &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-               &h_dtSum, &v_sigSum, &entropy_dtSum,
-               mask);
+            &r2, &dx, &dy, &dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
+            grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]),
+            &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]),
+            &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, &(hj_invq[i]),
+            &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum,
+            &entropy_dtSum, mask);
       }
-
     }
 
     VEC_HADD(a_hydro_xSum, piq[0]->a_hydro[0]);
@@ -716,9 +715,11 @@ int main(int argc, char *argv[]) {
 
   prepare_force(particles, count);
 
-  test_force_interactions(test_particle, &particles[1], count - 1, "test_nonsym_force", runs, 1);
-  test_force_interactions(test_particle, &particles[1], count - 1, "test_nonsym_force", runs, 2);
-  
+  test_force_interactions(test_particle, &particles[1], count - 1,
+                          "test_nonsym_force", runs, 1);
+  test_force_interactions(test_particle, &particles[1], count - 1,
+                          "test_nonsym_force", runs, 2);
+
   return 0;
 }
 

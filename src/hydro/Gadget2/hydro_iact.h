@@ -1168,7 +1168,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 }
 
 #ifdef WITH_VECTORIZATION
-  static const vector const_viscosity_alpha_fac = FILL_VEC(-0.25f * const_viscosity_alpha);
+static const vector const_viscosity_alpha_fac =
+    FILL_VEC(-0.25f * const_viscosity_alpha);
 
 /**
  * @brief Force interaction computed using 1 vector
@@ -1177,12 +1178,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
     vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
-    vector viz, vector pirho, vector grad_hi, vector piPOrho2,
-    vector balsara_i, vector ci, float *Vjx, float *Vjy, float *Vjz,
-    float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector hi_inv, float *Hj_inv, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
+    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
+    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
+    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
+    vector *entropy_dtSum, mask_t mask) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1246,21 +1247,28 @@ runner_iact_nonsym_1_vec_force(
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
-  mu_ij.v = vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
+  mu_ij.v =
+      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
   v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))), rho_ij.v);
+  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+                   rho_ij.v);
 
   /* Now, convolve with the kernel */
-  visc_term.v = vec_mul(vec_set1(0.5f), vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
+  visc_term.v =
+      vec_mul(vec_set1(0.5f),
+              vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
 
   sph_term.v =
-      vec_mul(vec_fma(vec_mul(grad_hi.v, piPOrho2.v), wi_dr.v, vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))), ri.v);
-  
+      vec_mul(vec_fma(vec_mul(grad_hi.v, piPOrho2.v), wi_dr.v,
+                      vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))),
+              ri.v);
+
   /* Eventually get the acceleration */
   acc.v = vec_add(visc_term.v, sph_term.v);
 
@@ -1270,7 +1278,8 @@ runner_iact_nonsym_1_vec_force(
   piaz.v = vec_mul(mj.v, vec_mul(dz->v, acc.v));
 
   /* Get the time derivative for h. */
-  pih_dt.v = vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
+  pih_dt.v =
+      vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
   entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
@@ -1299,13 +1308,12 @@ runner_iact_nonsym_1_vec_force(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_2_vec_force(
     float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,
-    vector viz, vector pirho, vector grad_hi, vector piPOrho2,
-    vector balsara_i, vector ci, float *Vjx, float *Vjy, float *Vjz,
-    float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector hi_inv, float *Hj_inv, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask, mask_t mask_2,
-    short mask_cond) {
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
+    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
+    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
+    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
+    vector *entropy_dtSum, mask_t mask, mask_t mask_2, short mask_cond) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1408,18 +1416,20 @@ runner_iact_nonsym_2_vec_force(
   dvy_2.v = vec_sub(viy.v, vjy_2.v);
   dvz.v = vec_sub(viz.v, vjz.v);
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
-  
+
   /* Compute dv dot r. */
   dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
-  dvdr_2.v =
-      vec_fma(dvx_2.v, dx_2.v, vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+  dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
+                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
   omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
-  mu_ij.v = vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v));       /* This is 0 or negative */
-  mu_ij_2.v = vec_mul(fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
+  mu_ij.v =
+      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
+  mu_ij_2.v = vec_mul(
+      fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
   v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
@@ -1429,19 +1439,33 @@ runner_iact_nonsym_2_vec_force(
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))), rho_ij.v);
-  visc_2.v = vec_div(vec_mul(const_viscosity_alpha_fac.v, vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))), rho_ij_2.v);
+  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+                   rho_ij.v);
+  visc_2.v =
+      vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                      vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
+              rho_ij_2.v);
 
   /* Now, convolve with the kernel */
-  visc_term.v = vec_mul(vec_set1(0.5f), vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
-  visc_term_2.v = vec_mul(vec_set1(0.5f), vec_mul(visc_2.v, vec_mul(vec_add(wi_dr_2.v, wj_dr_2.v), ri_2.v)));
-  
+  visc_term.v =
+      vec_mul(vec_set1(0.5f),
+              vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
+  visc_term_2.v = vec_mul(
+      vec_set1(0.5f),
+      vec_mul(visc_2.v, vec_mul(vec_add(wi_dr_2.v, wj_dr_2.v), ri_2.v)));
+
   vector grad_hi_mul_piPOrho2;
   grad_hi_mul_piPOrho2.v = vec_mul(grad_hi.v, piPOrho2.v);
 
   sph_term.v =
-      vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr.v, vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))), ri.v);
-  sph_term_2.v = vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr_2.v, vec_mul(grad_hj_2.v, vec_mul(pjPOrho2_2.v, wj_dr_2.v))), ri_2.v);
+      vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr.v,
+                      vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))),
+              ri.v);
+  sph_term_2.v =
+      vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr_2.v,
+                      vec_mul(grad_hj_2.v, vec_mul(pjPOrho2_2.v, wj_dr_2.v))),
+              ri_2.v);
 
   /* Eventually get the acceleration */
   acc.v = vec_add(visc_term.v, sph_term.v);
@@ -1456,8 +1480,11 @@ runner_iact_nonsym_2_vec_force(
   piaz_2.v = vec_mul(mj_2.v, vec_mul(dz_2.v, acc_2.v));
 
   /* Get the time derivative for h. */
-  pih_dt.v = vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
-  pih_dt_2.v = vec_div(vec_mul(mj_2.v, vec_mul(dvdr_2.v, vec_mul(ri_2.v, wi_dr_2.v))), pjrho_2.v);
+  pih_dt.v =
+      vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
+  pih_dt_2.v =
+      vec_div(vec_mul(mj_2.v, vec_mul(dvdr_2.v, vec_mul(ri_2.v, wi_dr_2.v))),
+              pjrho_2.v);
 
   /* Change in entropy */
   entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
