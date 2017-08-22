@@ -33,7 +33,6 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF2 runner_doself2_force_vec
-//#define DOPAIR2 runner_dopair2_force_vec
 #define DOSELF2_NAME "runner_doself2_force_vec"
 #define DOPAIR2_NAME "runner_dopair2_force"
 #endif
