@@ -226,32 +226,32 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 }
 
 /**
- * @brief Compute the vector remainder interactions from the secondary cache.
+ * @brief Compute the vector remainder force interactions from the secondary cache.
  *
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param rhoSum (return) #vector holding the cumulative sum of the density
+ * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x acceleration
  * update on pi.
- * @param rho_dhSum (return) #vector holding the cumulative sum of the density
- * gradient update on pi.
- * @param wcountSum (return) #vector holding the cumulative sum of the wcount
+ * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y acceleration
  * update on pi.
- * @param wcount_dhSum (return) #vector holding the cumulative sum of the wcount
- * gradient update on pi.
- * @param div_vSum (return) #vector holding the cumulative sum of the divergence
+ * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z acceleration
  * update on pi.
- * @param curlvxSum (return) #vector holding the cumulative sum of the curl of
- * vx update on pi.
- * @param curlvySum (return) #vector holding the cumulative sum of the curl of
- * vy update on pi.
- * @param curlvzSum (return) #vector holding the cumulative sum of the curl of
- * vz update on pi.
+ * @param h_dtSum (return) #vector holding the cumulative sum of the time derivative of the smoothing length update on pi.
+ * @param v_sigSum (return) #vector holding the maximum of the signal velocity update on pi.
+ * @param entropy_dtSum (return) #vector holding the cumulative sum of the time derivative of the entropy
+ * update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
+ * @param v_rhoi #vector of density of pi.
+ * @param v_grad_hi #vector of smoothing length gradient of pi.
+ * @param v_pOrhoi2 #vector of pressure over density squared of pi.
+ * @param v_balsara_i #vector of balsara switch of pi.
+ * @param v_ci #vector of sound speed of pi.
  * @param icount_align (return) Interaction count after the remainder
+ * @param num_vec_proc #int of the number of vectors to use to perform interaction.
  * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
@@ -329,33 +329,31 @@ __attribute__((always_inline)) INLINE static void calcRemForceInteractions(
  * @param v_dx #vector of the x separation between two particles.
  * @param v_dy #vector of the y separation between two particles.
  * @param v_dz #vector of the z separation between two particles.
- * @param v_mj #vector of the mass of particle pj.
- * @param v_vjx #vector of x velocity of pj.
- * @param v_vjy #vector of y velocity of pj.
- * @param v_vjz #vector of z velocity of pj.
  * @param cell_cache #cache of all particles in the cell.
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param rhoSum #vector holding the cumulative sum of the density update on pi.
- * @param rho_dhSum #vector holding the cumulative sum of the density gradient
+ * @param a_hydro_xSum (return) #vector holding the cumulative sum of the x acceleration
  * update on pi.
- * @param wcountSum #vector holding the cumulative sum of the wcount update on
- * pi.
- * @param wcount_dhSum #vector holding the cumulative sum of the wcount gradient
+ * @param a_hydro_ySum (return) #vector holding the cumulative sum of the y acceleration
  * update on pi.
- * @param div_vSum #vector holding the cumulative sum of the divergence update
- * on pi.
- * @param curlvxSum #vector holding the cumulative sum of the curl of vx update
- * on pi.
- * @param curlvySum #vector holding the cumulative sum of the curl of vy update
- * on pi.
- * @param curlvzSum #vector holding the cumulative sum of the curl of vz update
- * on pi.
+ * @param a_hydro_zSum (return) #vector holding the cumulative sum of the z acceleration
+ * update on pi.
+ * @param h_dtSum (return) #vector holding the cumulative sum of the time derivative of the smoothing length update on pi.
+ * @param v_sigSum (return) #vector holding the maximum of the signal velocity update on pi.
+ * @param entropy_dtSum (return) #vector holding the cumulative sum of the time derivative of the entropy
+ * update on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
  * @param v_viy #vector of y velocity of pi.
  * @param v_viz #vector of z velocity of pi.
+ * @param v_rhoi #vector of density of pi.
+ * @param v_grad_hi #vector of smoothing length gradient of pi.
+ * @param v_pOrhoi2 #vector of pressure over density squared of pi.
+ * @param v_balsara_i #vector of balsara switch of pi.
+ * @param v_ci #vector of sound speed of pi.
+ * @param num_vec_proc #int of the number of vectors to use to perform interaction.
+ * interactions have been performed, should be a multiple of the vector length.
  */
 __attribute__((always_inline)) INLINE static void storeForceInteractions(
     const int mask, const int pjd, vector *v_r2, vector *v_dx, vector *v_dy,
@@ -828,7 +826,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 }
 
 /**
- * @brief Compute the cell self-interaction (non-symmetric) using vector
+ * @brief Compute the force cell self-interaction (non-symmetric) using vector
  * intrinsics with one particle pi at a time.
  *
  * @param r The #runner.
