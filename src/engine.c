@@ -4616,7 +4616,8 @@ void engine_init(struct engine *e, struct space *s,
     error("Failed to initialize barrier.");
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
-   * guess based on the numbers of cells and how many tasks per cell we expect. */
+   * guess based on the numbers of cells and how many tasks per cell we expect.
+   */
   e->tasks_per_cell =
       parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
 
