@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+# Usage:
+#  process_plot_threadpool nprocess [time-range-ms]
+#
+# Description:
+#  Process all the threadpool info files in the current directory
+#  creating function graphs for steps and threads.
+#
+#  The input files are created by a run using the "-Y interval" flag and
+#  should be named "threadpool_info-step<n>.dat" in the current directory.
+#  All located files will be processed using "nprocess" concurrent
+#  processes and all plots will have the same time range if one is given.
+#  An output HTML file "index.html" will be created to view all the plots.
+#
+#
+# This file is part of SWIFT:
+#
+#  Copyright (C) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
+#  All Rights Reserved.
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Handle command-line
+if test "$1" = ""; then
+    echo "Usage: $0 nprocess [time-range-ms]"
+    exit 1
+fi
+NPROCS=$1
+TIMERANGE=0
+LIMIT="(autoranged)"
+if test "$2" != ""; then
+    TIMERANGE=$2
+    LIMIT=""
+fi
+
+#  Find all thread info files. Use version sort to get into correct order.
+files=$(ls -v threadpool_info-step*.dat)
+if test $? != 0; then
+    echo "Failed to find any threadpool info files"
+    exit 1
+fi
+
+#  Construct list of names, the step no and names for the graphics.
+list=""
+for f in $files; do
+    s=$(echo $f| sed 's,threadpool_info-step\(.*\).dat,\1,')
+    list="$list $f $s poolstep${s}r"
+done
+
+#  And process them,
+echo "Processing threadpool info files..."
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./analyse_threadpool_tasks.py \$0 > \$2.stats"
+
+echo "Writing output threadpool-index.html file"
+#  Construct document - serial.
+cat <<EOF > threadpool-index.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>SWIFT threadpool tasks $LIMIT</title>
+  </head>
+  <body>
+  <h1>SWIFT threadpool tasks $LIMIT</h1>
+EOF
+
+echo $list | xargs -n 3 | while read f s g; do
+    cat <<EOF >> threadpool-index.html
+<h2>Step $s</h2>
+EOF
+    cat <<EOF >> threadpool-index.html
+<a href="poolstep${s}r${i}.html"><img src="poolstep${s}r${i}.png" width=400px/></a>
+EOF
+    cat <<EOF > poolstep${s}r${i}.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+<img src="poolstep${s}r${i}.png">
+<pre>
+EOF
+cat poolstep${s}r${i}.stats >> poolstep${s}r${i}.html
+cat <<EOF >> poolstep${s}r${i}.html
+</body>
+</html>
+EOF
+
+done
+
+cat <<EOF >> threadpool-index.html
+  </body>
+</html>
+EOF
+
+echo "Finished"
+
+exit

@@ -153,10 +153,13 @@ struct part {
 
   } geometry;
 
-  /* Variables used for timestep calculation (currently not used). */
+  /* Variables used for timestep calculation. */
   struct {
 
-    /* Maximum fluid velocity among all neighbours. */
+    /* Maximum signal velocity among all the neighbours of the particle. The
+     * signal velocity encodes information about the relative fluid velocities
+     * AND particle velocities of the neighbour and this particle, as well as
+     * the sound speed of both particles. */
     float vmax;
 
   } timestepvars;
@@ -200,14 +203,6 @@ struct part {
 
   /* Specific stuff for the gravity-hydro coupling. */
   struct {
-
-    /* Previous value of the gravitational acceleration. */
-    float old_a[3];
-
-    float grad_a[3][3];
-
-    /* Previous value of the mass flux vector. */
-    float old_mflux[3];
 
     /* Current value of the mass flux vector. */
     float mflux[3];

@@ -119,6 +119,34 @@ __attribute__((always_inline)) INLINE static float pow_dimension_plus_one(
 }
 
 /**
+ * @brief Returns the argument to the power given by the dimension minus one
+ *
+ * Computes \f$x^{d-1}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
+    float x) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return x * x;
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return x;
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return 1.f;
+
+#else
+
+  error("The dimension is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
  * @param A A 3x3 matrix of which we want to invert the top left dxd part
@@ -247,11 +275,11 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  return (vector)(x.v * x.v * x.v);
+  return (vector)(vec_mul(vec_mul(x.v, x.v), x.v));
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  return (vector)(x.v * x.v);
+  return (vector)(vec_mul(x.v, x.v));
 
 #elif defined(HYDRO_DIMENSION_1D)
 
@@ -276,16 +304,16 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  const vector x2 = (vector)(x.v * x.v);
-  return (vector)(x2.v * x2.v);
+  const vector x2 = (vector)(vec_mul(x.v, x.v));
+  return (vector)(vec_mul(x2.v, x2.v));
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  return (vector)(x.v * x.v * x.v);
+  return (vector)(vec_mul(x.v, vec_mul(x.v, x.v)));
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  return (vector)(x.v * x.v);
+  return (vector)(vec_mul(x.v, x.v));
 
 #else
 

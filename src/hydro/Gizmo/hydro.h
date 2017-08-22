@@ -49,17 +49,21 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   return CFL_condition;
 #endif
 
-  if (p->timestepvars.vmax == 0.) {
-    /* vmax can be zero in vacuum cells that only have vacuum neighbours */
-    /* in this case, the time step should be limited by the maximally
-       allowed time step. Since we do not know what that value is here, we set
-       the time step to a very large value */
-    return FLT_MAX;
-  } else {
-    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                             hydro_dimension_inv);
-    return 2. * CFL_condition * psize / fabsf(p->timestepvars.vmax);
+  float vrel[3];
+  vrel[0] = p->primitives.v[0] - xp->v_full[0];
+  vrel[1] = p->primitives.v[1] - xp->v_full[1];
+  vrel[2] = p->primitives.v[2] - xp->v_full[2];
+  float vmax =
+      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  vmax = max(vmax, p->timestepvars.vmax);
+  const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
+  float dt = FLT_MAX;
+  if (vmax > 0.) {
+    dt = psize / vmax;
   }
+  return CFL_condition * dt;
 }
 
 /**
@@ -225,14 +229,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float ih = 1.0f / h;
+  const float ihdim = pow_dimension(ih);
+  const float ihdim_plus_one = ihdim * ih;
 
   /* Final operation on the density. */
   p->density.wcount += kernel_root;
-  p->density.wcount *= kernel_norm;
+  p->density.wcount *= ihdim;
 
-  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
-
-  const float ihdim = pow_dimension(ih);
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
+  p->density.wcount_dh *= ihdim_plus_one;
 
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
@@ -367,6 +372,42 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 }
 
 /**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part* restrict p, struct xpart* restrict xp) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.wcount_dh = 0.f;
+  p->geometry.volume = 1.0f;
+  p->geometry.matrix_E[0][0] = 1.0f;
+  p->geometry.matrix_E[0][1] = 0.0f;
+  p->geometry.matrix_E[0][2] = 0.0f;
+  p->geometry.matrix_E[1][0] = 0.0f;
+  p->geometry.matrix_E[1][1] = 1.0f;
+  p->geometry.matrix_E[1][2] = 0.0f;
+  p->geometry.matrix_E[2][0] = 0.0f;
+  p->geometry.matrix_E[2][1] = 0.0f;
+  p->geometry.matrix_E[2][2] = 1.0f;
+  /* centroid is relative w.r.t. particle position */
+  /* by setting the centroid to 0.0f, we make sure no velocity correction is
+     applied */
+  p->geometry.centroid[0] = 0.0f;
+  p->geometry.centroid[1] = 0.0f;
+  p->geometry.centroid[2] = 0.0f;
+  p->geometry.Atot = 1.0f;
+}
+
+/**
  * @brief Prepare a particle for the gradient calculation.
  *
  * The name of this method is confusing, as this method is really called after
@@ -384,7 +425,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp) {
 
   /* Initialize time step criterion variables */
-  p->timestepvars.vmax = 0.0f;
+  p->timestepvars.vmax = 0.;
 
   /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);
@@ -601,24 +642,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
-    /* Store the gravitational acceleration for later use. */
-    /* This is used for the prediction step. */
-    p->gravity.old_a[0] = a_grav[0];
-    p->gravity.old_a[1] = a_grav[1];
-    p->gravity.old_a[2] = a_grav[2];
-
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
 
-    /* Kick the momentum for half a time step */
-    /* Note that this also affects the particle movement, as the velocity for
-       the particles is set after this. */
-    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
-    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
-    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
-
 #if !defined(EOS_ISOTHERMAL_GAS)
-    /* This part still needs to be tested! */
+    /* If the energy needs to be updated, we need to do it before the momentum
+       is updated, as the old value of the momentum enters the equations. */
     p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
                                  p->conserved.momentum[1] * a_grav[1] +
                                  p->conserved.momentum[2] * a_grav[2]);
@@ -627,6 +656,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                                  a_grav[1] * p->gravity.mflux[1] +
                                  a_grav[2] * p->gravity.mflux[2]);
 #endif
+
+    /* Kick the momentum for half a time step */
+    /* Note that this also affects the particle movement, as the velocity for
+       the particles is set after this. */
+    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
+    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
+    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
   }
 
   /* reset fluxes */

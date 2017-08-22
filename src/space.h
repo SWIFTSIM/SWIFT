@@ -30,19 +30,22 @@
 #include <stddef.h>
 
 /* Includes. */
-#include "cell.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
 #include "space.h"
 
+/* Avoid cyclic inclusions */
+struct cell;
+
 /* Some constants. */
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
-#define space_subsize_default 64000000
-#define space_maxcount_default 10000
+#define space_subsize_pair_default 256000000
+#define space_subsize_self_default 32000
+#define space_subsize_self_grav_default 32000
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
@@ -53,8 +56,9 @@
 /* Split size. */
 extern int space_splitsize;
 extern int space_maxsize;
-extern int space_subsize;
-extern int space_maxcount;
+extern int space_subsize_pair;
+extern int space_subsize_self;
+extern int space_subsize_self_grav;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -139,9 +143,6 @@ struct space {
   /*! Number of queues in the system. */
   int nr_queues;
 
-  /*! Has this space already been sanitized ? */
-  int sanitized;
-
   /*! The associated engine. */
   struct engine *e;
 
@@ -225,5 +226,6 @@ void space_check_timesteps(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
+void space_free_cells(struct space *s);
 
 #endif /* SWIFT_SPACE_H */

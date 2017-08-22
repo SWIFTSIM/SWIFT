@@ -32,11 +32,13 @@
 #include "tools.h"
 
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "part.h"
+#include "periodic.h"
 #include "runner.h"
 
 /**
@@ -181,6 +183,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -188,6 +192,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
 
     for (int j = 0; j < cj->count; ++j) {
 
@@ -197,6 +204,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -216,6 +224,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
+
     for (int i = 0; i < ci->count; ++i) {
 
       pi = &ci->parts[i];
@@ -224,6 +235,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -241,6 +253,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -259,6 +272,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -288,6 +302,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -304,6 +319,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
+  const struct engine *e = r->e;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -328,14 +344,14 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && part_is_active(pi, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2) {
+      if (r2 < hjg2 && part_is_active(pj, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
@@ -423,7 +439,7 @@ void pairs_single_grav(double *dim, long long int pid,
       fdx[i] = dx[i];
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
-    runner_iact_grav_pp(0.f, r2, fdx, &pi, &pj);
+    runner_iact_grav_pp(r2, fdx, &pi, &pj);
     a[0] += pi.a_grav[0];
     a[1] += pi.a_grav[1];
     a[2] += pi.a_grav[2];
@@ -748,7 +764,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct gravity_props *gravity_properties, float rlr) {
 
   const float rlr_inv = 1. / rlr;
-  const float r_cut = gravity_properties->r_cut;
+  const float r_cut = gravity_properties->r_cut_max;
   const float max_d = r_cut * rlr;
   const float max_d2 = max_d * max_d;
 
@@ -783,7 +799,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
       if (r2 < max_d2 || 1) {
 
         /* Apply the gravitational acceleration. */
-        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
+        runner_iact_grav_pp(r2, dx, gpi, gpj);
       }
     }
   }
