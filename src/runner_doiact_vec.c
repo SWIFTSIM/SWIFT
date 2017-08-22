@@ -655,21 +655,26 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const int active_ci = cell_is_active(ci, e);
+  const int active_cj = cell_is_active(cj, e);
 
   /* Check if any particles are active and return if there are not. */
   int numActive = 0;
-  for (int pid = count_i - 1;
-       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-    struct part *restrict pi = &parts_i[sort_i[pid].i];
-    if (part_is_active(pi, e)) {
-      numActive++;
-      break;
+
+  if(active_ci) {
+    for (int pid = count_i - 1;
+        pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active(pi, e)) {
+        numActive++;
+        break;
+      }
     }
   }
 
-  if (!numActive) {
+  if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
-         pjd++) {
+        pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active(pj, e)) {
         numActive++;
@@ -726,7 +731,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
 
-  if (cell_is_active(ci, e)) {
+  if (active_ci) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -854,7 +859,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     } /* loop over the parts in ci. */
   }
 
-  if (cell_is_active(cj, e)) {
+  if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
