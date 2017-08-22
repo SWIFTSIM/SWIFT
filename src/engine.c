@@ -2971,11 +2971,11 @@ int engine_estimate_nr_tasks(struct engine *e) {
       ncells++;
 
       /* Count cell depth until we get below the parts per cell threshold. */
-      int depth = 3;
+      int depth = 0;
       while (nparts > space_splitsize) {
         depth++;
         nparts /= 8;
-        ncells += (1 << depth);
+        ncells += (1 << (depth * 3));
       }
     }
   }
