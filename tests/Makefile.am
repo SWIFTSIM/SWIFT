@@ -32,7 +32,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testSPHStep testActivePair test27cells test125cells testParser \
                  testKernel testFFT testInteractions testMaths \
-                 testSymmetry testThreadpool benchmarkInteractions \
+                 testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC
@@ -70,8 +70,6 @@ testKernel_SOURCES = testKernel.c
 testFFT_SOURCES = testFFT.c
 
 testInteractions_SOURCES = testInteractions.c
-
-benchmarkInteractions_SOURCES = benchmarkInteractions.c
 
 testAdiabaticIndex_SOURCES = testAdiabaticIndex.c
 
