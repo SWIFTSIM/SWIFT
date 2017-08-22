@@ -242,9 +242,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Shift ci particles for boundary conditions and location of cell.*/
   double total_ci_shift[3];
-  total_ci_shift[0] = loc[0] - shift[0];
-  total_ci_shift[1] = loc[1] - shift[1];
-  total_ci_shift[2] = loc[2] - shift[2];
+  total_ci_shift[0] = loc[0] + shift[0];
+  total_ci_shift[1] = loc[1] + shift[1];
+  total_ci_shift[2] = loc[2] + shift[2];
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
