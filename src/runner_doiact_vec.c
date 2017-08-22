@@ -661,9 +661,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Check if any particles are active and return if there are not. */
   int numActive = 0;
 
-  if(active_ci) {
+  if (active_ci) {
     for (int pid = count_i - 1;
-        pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+         pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
       struct part *restrict pi = &parts_i[sort_i[pid].i];
       if (part_is_active(pi, e)) {
         numActive++;
@@ -674,7 +674,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
-        pjd++) {
+         pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active(pj, e)) {
         numActive++;
@@ -873,8 +873,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
-      const double dj_test =
-          sort_j[pjd].d - hj * kernel_gamma - dx_max;
+      const double dj_test = sort_j[pjd].d - hj * kernel_gamma - dx_max;
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
