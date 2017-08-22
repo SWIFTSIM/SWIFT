@@ -240,6 +240,12 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   loc[1] = ci->loc[1];
   loc[2] = ci->loc[2];
 
+  /* Shift ci particles for boundary conditions and location of cell.*/
+  double total_ci_shift[3];
+  total_ci_shift[0] = loc[0] - shift[0];
+  total_ci_shift[1] = loc[1] - shift[1];
+  total_ci_shift[2] = loc[2] - shift[2];
+
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -260,9 +266,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
     idx = sort_i[i + first_pi_align].i;
-    x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
-    y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
-    z[i] = (float)(parts_i[idx].x[2] - loc[2] - shift[2]);
+    x[i] = (float)(parts_i[idx].x[0] - total_ci_shift[0]);
+    y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
+    z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
 
     m[i] = parts_i[idx].mass;
