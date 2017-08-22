@@ -404,7 +404,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 }
 
 /*
- * @brief Calls the serial and vectorised version of the non-symmetrical density
+ * @brief Calls the serial and vectorised version of the non-symmetrical force
  * interaction.
  *
  * @param test_part Particle that will be updated
