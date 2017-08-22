@@ -31,6 +31,7 @@
 #define IACT runner_iact_nonsym_density
 #define IACT_VEC runner_iact_nonsym_2_vec_density
 #define IACT_NAME "test_nonsym_density"
+#define NUM_VEC_PROC_INT 2
 #endif
 
 #ifdef SYM_DENSITY
@@ -53,8 +54,9 @@
 
 #ifndef IACT
 #define IACT runner_iact_nonsym_density
-#define IACT_VEC runner_iact_nonsym_2_vec_density
+#define IACT_VEC runner_iact_nonsym_1_vec_density
 #define IACT_NAME "test_nonsym_density"
+#define NUM_VEC_PROC_INT 1
 #endif
 
 /**
@@ -368,7 +370,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 
 /* Perform vector interaction. */
 #ifdef WITH_VECTORIZATION
-    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec, mask, mask2;
+    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec;
     vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
         curlvySum, curlvzSum;
 
@@ -387,28 +389,35 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     viz_vec.v = vec_load(&vizq[0]);
 
     hi_inv_vec = vec_reciprocal(hi_vec);
-    mask.m = vec_setint1(0xFFFFFFFF);
-    mask2.m = vec_setint1(0xFFFFFFFF);
 
-#ifdef HAVE_AVX512_F
-    KNL_MASK_16 knl_mask, knl_mask2;
-    knl_mask = 0xFFFF;
-    knl_mask2 = 0xFFFF;
+    mask_t mask;
+    vec_init_mask_true(mask);
+#if (NUM_VEC_PROC_INT == 2)
+    mask_t mask2;
+    vec_init_mask_true(mask2);
 #endif
-
     const ticks vec_tic = getticks();
 
-    for (size_t i = 0; i < count; i += 2 * VEC_SIZE) {
+    for (size_t i = 0; i < count; i += NUM_VEC_PROC_INT * VEC_SIZE) {
 
+/* Interleave two vectors for interaction. */
+#if (NUM_VEC_PROC_INT == 2)
       IACT_VEC(&(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (hi_inv_vec),
                (vix_vec), (viy_vec), (viz_vec), &(vjxq[i]), &(vjyq[i]),
                &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum, &wcountSum,
                &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum,
-               mask, mask2,
-#ifdef HAVE_AVX512_F
-               knl_mask, knl_mask2);
-#else
-               0, 0);
+               mask, mask2, 0);
+#else /* Only use one vector for interaction. */
+      vector r2, dx, dy, dz;
+      r2.v = vec_load(&(r2q[i]));
+      dx.v = vec_load(&(dxq[i]));
+      dy.v = vec_load(&(dyq[i]));
+      dz.v = vec_load(&(dzq[i]));
+
+      IACT_VEC(&r2, &dx, &dy, &dz, (hi_inv_vec), (vix_vec), (viy_vec),
+               (viz_vec), &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]),
+               &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+               &curlvxSum, &curlvySum, &curlvzSum, mask);
 #endif
     }
 

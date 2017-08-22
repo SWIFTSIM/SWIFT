@@ -133,6 +133,8 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
   int updated = 0;
   for (int i = 0; i < params->paramCount; i++) {
     if (strcmp(name, params->data[i].name) == 0) {
+      message("Value of '%s' changed from '%s' to '%s'", params->data[i].name,
+              params->data[i].value, value);
       strcpy(params->data[i].value, value);
       updated = 1;
     }

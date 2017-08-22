@@ -57,6 +57,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "map.h"
 #include "minmax.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -153,7 +154,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int periodic = e->s->periodic;
-  const int is_hydro = (e->policy & engine_policy_hydro);
+  const int is_with_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
@@ -162,15 +163,19 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   if (c->super == c) {
 
     /* Add the sort task. */
-    c->sorts =
-        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+    if (is_with_hydro) {
+      c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
+                                   c, NULL);
+    }
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
       /* Add the drift task. */
-      c->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                        task_subtype_none, 0, 0, c, NULL);
+      if (is_with_hydro) {
+        c->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                          task_subtype_none, 0, 0, c, NULL);
+      }
 
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
@@ -207,7 +212,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Generate the ghost tasks. */
-      if (is_hydro) {
+      if (is_with_hydro) {
         c->ghost_in =
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
@@ -215,14 +220,13 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
         engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
-      }
 
 #ifdef EXTRA_HYDRO_LOOP
-      /* Generate the extra ghost task. */
-      if (is_hydro)
+        /* Generate the extra ghost task. */
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 #endif
+      }
 
       /* Cooling task */
       if (is_with_cooling) {
@@ -897,6 +901,16 @@ void engine_repartition(struct engine *e) {
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
+
+  /* Partitioning requires copies of the particles, so we need to reduce the
+   * memory in use to the minimum, we can free the sorting indices and the
+   * tasks as these will be regenerated at the next rebuild. */
+
+  /* Sorting indices. */
+  if (e->s->cells_top != NULL) space_free_cells(e->s);
+
+  /* Task arrays. */
+  scheduler_free_tasks(&e->sched);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
@@ -1731,13 +1745,17 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
 
-    /* Deal with periodicity dependencies */
+    /* Deal with periodicity FFT task dependencies */
     const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
     if (ghost_id > n_ghosts) error("Invalid ghost_id");
     if (periodic) {
       ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
       ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
     }
+
+    /* Recover the multipole information */
+    struct gravity_tensors *const multi_i = ci->multipole;
+    const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
     /* Loop over every other cell */
     for (int ii = 0; ii < cdim[0]; ii++) {
@@ -1757,11 +1775,27 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Is that neighbour local ? */
           if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
-          /* Are the cells to close for a MM interaction ? */
-          if (!gravity_multipole_accept_rebuild(ci->multipole, cj->multipole,
-                                                theta_crit_inv, periodic,
-                                                dim)) {
+          /* Recover the multipole information */
+          struct gravity_tensors *const multi_j = cj->multipole;
 
+          /* Get the distance between the CoMs */
+          double dx = CoM_i[0] - multi_j->CoM[0];
+          double dy = CoM_i[1] - multi_j->CoM[1];
+          double dz = CoM_i[2] - multi_j->CoM[2];
+
+          /* Apply BC */
+          if (periodic) {
+            dx = nearest(dx, dim[0]);
+            dy = nearest(dy, dim[1]);
+            dz = nearest(dz, dim[2]);
+          }
+          const double r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Are the cells too close for a MM interaction ? */
+          if (!gravity_multipole_accept_rebuild(multi_i, multi_j,
+                                                theta_crit_inv, r2)) {
+
+            /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
           }
@@ -2796,8 +2830,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Kick/Drift/init ? */
     if (t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_init_grav) {
+        t->type == task_type_drift_gpart || t->type == task_type_init_grav) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -4583,13 +4616,13 @@ void engine_init(struct engine *e, struct space *s,
     error("Failed to initialize barrier.");
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
-   * guess that hopefully is large enough, but not too large. */
+   * guess based on the numbers of cells and how many tasks per cell we expect. */
   e->tasks_per_cell =
       parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
-                 scheduler_flag_steal, e->nodeID, &e->threadpool);
+                 (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
@@ -4633,8 +4666,12 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
 
-#ifdef WITH_VECTORIZATION
     /* Allocate particle caches. */
+    e->runners[k].ci_gravity_cache.count = 0;
+    e->runners[k].cj_gravity_cache.count = 0;
+    gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
+    gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
+#ifdef WITH_VECTORIZATION
     e->runners[k].ci_cache.count = 0;
     e->runners[k].cj_cache.count = 0;
     cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
@@ -4725,8 +4762,12 @@ void engine_compute_next_snapshot_time(struct engine *e) {
 void engine_clean(struct engine *e) {
 
 #ifdef WITH_VECTORIZATION
-  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].ci_cache);
-  for (int i = 0; i < e->nr_threads; ++i) cache_clean(&e->runners[i].cj_cache);
+  for (int i = 0; i < e->nr_threads; ++i) {
+    cache_clean(&e->runners[i].ci_cache);
+    cache_clean(&e->runners[i].cj_cache);
+    gravity_cache_clean(&e->runners[i].ci_gravity_cache);
+    gravity_cache_clean(&e->runners[i].cj_gravity_cache);
+  }
 #endif
   free(e->runners);
   free(e->snapshotUnits);

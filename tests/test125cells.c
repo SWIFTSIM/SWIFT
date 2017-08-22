@@ -440,6 +440,7 @@ void runner_doself2_force(struct runner *r, struct cell *ci);
 /* And go... */
 int main(int argc, char *argv[]) {
 
+  engine_pin();
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
   double perturbation = 0.;

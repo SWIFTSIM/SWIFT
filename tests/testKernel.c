@@ -68,7 +68,7 @@ int main() {
       vx.f[j] = (i + j) * 2.25f / numPoints;
     }
 
-    vx_h.v = vx.v / vec_set1(h);
+    vx_h.v = vec_mul(vx.v, vec_set1(1.f / h));
 
     kernel_deval_1_vec(&vx_h, &W_vec, &dW_vec);
 
@@ -106,8 +106,8 @@ int main() {
       vx_2.f[j] = (i + j) * 2.25f / numPoints;
     }
 
-    vx_h.v = vx.v / vec_set1(h);
-    vx_h_2.v = vx_2.v / vec_set1(h);
+    vx_h.v = vec_mul(vx.v, vec_set1(1.f / h));
+    vx_h_2.v = vec_mul(vx_2.v, vec_set1(1.f / h));
 
     kernel_deval_2_vec(&vx_h, &W_vec, &dW_vec, &vx_h_2, &W_vec_2, &dW_vec_2);
 

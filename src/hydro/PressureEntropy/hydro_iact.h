@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the weighted density */
   pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= uj * wj_dx;
+  pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the weighted density */
   pj->rho_bar += mi * pi->entropy_one_over_gamma * wj;
@@ -147,7 +147,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the weighted density */
   pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
