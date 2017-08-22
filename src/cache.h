@@ -235,7 +235,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 }
 
 /**
- * @brief Populate cache by reading in the particles in unsorted order.
+ * @brief Populate cache for force interactions by reading in the particles in unsorted order.
  *
  * @param ci The #cell.
  * @param ci_cache The cache.

@@ -726,6 +726,7 @@ int main(int argc, char *argv[]) {
     /* And now the self-interaction for the main cell */
     DOSELF2(&runner, main_cell);
 
+    self_force_time += getticks() - self_tic;
     timings[26] += getticks() - self_tic;
 #endif
 
@@ -740,14 +741,6 @@ int main(int argc, char *argv[]) {
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
-  }
-
-  for (size_t n = 0; n < 100 * runs; ++n) {
-    ticks self_tic = getticks();
-
-    DOSELF2(&runner, main_cell);
-
-    self_force_time += getticks() - self_tic;
   }
 
   /* Output timing */
@@ -765,7 +758,7 @@ int main(int argc, char *argv[]) {
   message("Edge calculations took         : %15lli ticks.", edge_time / runs);
   message("Face calculations took         : %15lli ticks.", face_time / runs);
   message("Self calculations took         : %15lli ticks.",
-          self_force_time / 100 * runs);
+          self_force_time / runs);
   message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)

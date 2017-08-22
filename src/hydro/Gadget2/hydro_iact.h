@@ -466,7 +466,6 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *curlvySum, vector *curlvzSum,
                                  mask_t mask, mask_t mask2, short mask_cond) {
 
-
   vector r, ri, r2, ui, wi, wi_dx;
   vector mj;
   vector dx, dy, dz, dvx, dvy, dvz;
@@ -1171,6 +1170,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #ifdef WITH_VECTORIZATION
   static const vector const_viscosity_alpha_fac = FILL_VEC(-0.25f * const_viscosity_alpha);
 
+/**
+ * @brief Force interaction computed using 1 vector
+ * (non-symmetric vectorized version).
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
     vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
@@ -1289,6 +1292,10 @@ runner_iact_nonsym_1_vec_force(
 #endif
 }
 
+/**
+ * @brief Force interaction computed using 2 interleaved vectors
+ * (non-symmetric vectorized version).
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_2_vec_force(
     float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,

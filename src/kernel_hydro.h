@@ -436,8 +436,6 @@ static const vector cubic_2_dwdx_const_c2 = FILL_VEC(-3.f);
 static const vector cond = FILL_VEC(0.5f);
 #endif
 
-/*TODO: Comment kernels for each region */
-
 /**
  * @brief Computes the kernel function and its derivative for two particles
  * using vectors. Does not return zero if $u > \\gamma = H/h$, should only
