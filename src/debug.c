@@ -300,7 +300,7 @@ static void dumpCells_map(struct cell *c, void *data) {
 #endif
 
   /* Only locally active cells are dumped. */
-  if (c->count > 0)
+  if (c->count > 0 || c->gcount > 0 || c->scount > 0)
     fprintf(file,
             "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d "
             "%6.1f %20lld %6d %6d %6d %6d\n",
@@ -324,8 +324,8 @@ void dumpCells(const char *prefix, struct space *s) {
   /* Name of output file. */
   static int nseq = 0;
   char fname[200];
-  sprintf(fname, "%s_%03d.dat", prefix, nseq);
-  atomic_inc(&nseq);
+  int uniq = atomic_inc(&nseq);
+  sprintf(fname, "%s_%03d.dat", prefix, uniq);
 
   file = fopen(fname, "w");
 
