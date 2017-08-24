@@ -1181,7 +1181,7 @@ runner_iact_nonsym_1_vec_force(
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
     vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
     float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
     vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
     vector *entropy_dtSum, mask_t mask) {
 
@@ -1189,7 +1189,7 @@ runner_iact_nonsym_1_vec_force(
 
   vector r, ri;
   vector vjx, vjy, vjz, dvx, dvy, dvz;
-  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj;
   vector xi, xj;
   vector hid_inv, hjd_inv;
   vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
@@ -1210,7 +1210,6 @@ runner_iact_nonsym_1_vec_force(
   pjPOrho2.v = vec_load(PjPOrho2);
   balsara_j.v = vec_load(Balsara_j);
   cj.v = vec_load(Cj);
-  hj_inv.v = vec_load(Hj_inv);
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
