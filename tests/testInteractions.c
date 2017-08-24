@@ -614,7 +614,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
         dz.v = vec_load(&(dzq[i]));
         hj.v = vec_load(&hj_invq[i]);
         hj_inv = vec_reciprocal(hj);
-        
+
         runner_iact_nonsym_1_vec_force(
             &r2, &dx, &dy, &dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
             grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]),

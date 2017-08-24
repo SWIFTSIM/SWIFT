@@ -516,8 +516,9 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
 
 /**
  * @brief Computes the kernel function and its derivative for two particles
- * using interleaved vectors. The return value is undefined if $u > \\gamma = H/h$. 
- * 
+ * using interleaved vectors. The return value is undefined if $u > \\gamma =
+ * H/h$.
+ *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
@@ -640,7 +641,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_2_vec(
 
 /**
  * @brief Computes the kernel function for two particles
- * using vectors. The return value is undefined if $u > \\gamma = H/h$. 
+ * using vectors. The return value is undefined if $u > \\gamma = H/h$.
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param w (return) The value of the kernel function $W(x,h)$.

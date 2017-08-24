@@ -528,18 +528,17 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
-        storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz,
-                          cell_cache, &int_cache, &icount, &rhoSum, &rho_dhSum,
-                          &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
-                          &curlvySum, &curlvzSum, v_hi_inv, v_vix, v_viy,
-                          v_viz);
-      }
-      if (doi_mask2) {
-        storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2,
-                          &v_dy_2, &v_dz_2, cell_cache, &int_cache,
-                          &icount, &rhoSum, &rho_dhSum, &wcountSum,
+        storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
+                          &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum,
                           &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
                           &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+      }
+      if (doi_mask2) {
+        storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
+                          &v_dz_2, cell_cache, &int_cache, &icount, &rhoSum,
+                          &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+                          &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix,
+                          v_viy, v_viz);
       }
     }
 
@@ -746,17 +745,18 @@ for (int pid = 0; pid < count; pid++) {
       v_hj.v = vec_load(&cell_cache->h[pjd]);
       v_hj_inv = vec_reciprocal(v_hj);
 
-      /* To stop floating point exceptions for when particle separations are 0. */
+      /* To stop floating point exceptions for when particle separations are 0.
+       */
       v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
       runner_iact_nonsym_1_vec_force(
-              &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, 
-              v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
-              &cell_cache->vx[pjd], &cell_cache->vy[pjd],
-              &cell_cache->vz[pjd], &cell_cache->rho[pjd], &cell_cache->grad_h[pjd],
-              &cell_cache->pOrho2[pjd], &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd], &cell_cache->m[pjd], v_hi_inv, v_hj_inv, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
-          &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
-
+          &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
+          v_pOrhoi2, v_balsara_i, v_ci, &cell_cache->vx[pjd],
+          &cell_cache->vy[pjd], &cell_cache->vz[pjd], &cell_cache->rho[pjd],
+          &cell_cache->grad_h[pjd], &cell_cache->pOrho2[pjd],
+          &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd],
+          &cell_cache->m[pjd], v_hi_inv, v_hj_inv, &a_hydro_xSum, &a_hydro_ySum,
+          &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
     }
 
   } /* Loop over all other particles. */
