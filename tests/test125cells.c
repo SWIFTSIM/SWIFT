@@ -740,6 +740,11 @@ int main(int argc, char *argv[]) {
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
+
+    for (int i = 0; i < 125; ++i) {
+      for (int n = 0; n < cells[i]->count; ++n)
+        hydro_init_part(&cells[i]->parts[n], &space.hs);
+    }
   }
 
   /* Output timing */
