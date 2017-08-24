@@ -746,6 +746,9 @@ for (int pid = 0; pid < count; pid++) {
       v_hj.v = vec_load(&cell_cache->h[pjd]);
       v_hj_inv = vec_reciprocal(v_hj);
 
+      /* To stop floating point exceptions for when particle separations are 0. */
+      v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
+
       runner_iact_nonsym_1_vec_force(
               &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, 
               v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
