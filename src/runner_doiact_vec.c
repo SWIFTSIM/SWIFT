@@ -738,8 +738,7 @@ for (int pid = 0; pid < count; pid++) {
     v_doi_mask.v = vec_and(v_doi_mask.v, v_doi_mask_self_check.v);
     doi_mask = vec_form_int_mask(v_doi_mask);
 
-    /* If there are any interactions left pack interaction values into c2
-     * cache. */
+    /* If there are any interactions perform them. */
     if (doi_mask) {
       vector v_hj, v_hj_inv;
       v_hj.v = vec_load(&cell_cache->h[pjd]);
