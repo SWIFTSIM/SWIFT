@@ -111,24 +111,6 @@ struct c2_cache {
 
   /* z velocity of particle pj. */
   float vzq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Density of particle pj. */
-  float rhoq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Smoothing length gradient of particle pj. */
-  float grad_hq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Pressure over density squared of particle pj. */
-  float pOrho2q[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Balsara switch of particle pj. */
-  float balsaraq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Sound speed of particle pj. */
-  float soundspeedq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
-
-  /* Inverse smoothing length of particle pj. */
-  float h_invq[C2_CACHE_SIZE] SWIFT_CACHE_ALIGN;
 };
 
 /**
