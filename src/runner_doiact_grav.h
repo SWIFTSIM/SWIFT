@@ -426,9 +426,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  const int ci_active = cell_is_active(ci, e);
-  const int cj_active = cell_is_active(cj, e);
-  if (!ci_active && !cj_active) return;
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Check that we are not doing something stupid */
   if (ci->split || cj->split) error("Running P-P on splitable cells");
@@ -438,10 +436,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
 
   /* Recover some useful constants */
-  const struct space *s = e->s;
+  struct space *s = e->s;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const float theta_crit2 = e->gravity_properties->theta_crit2;
   const double a_smooth = e->gravity_properties->a_smooth;
   const double r_cut_min = e->gravity_properties->r_cut_min;
@@ -453,24 +450,29 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
   struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
 
-  /* Centre of the cell pais */
-  const double loc_mean[3] = {0.5 * (ci->loc[0] + cj->loc[0]),
-                              0.5 * (ci->loc[1] + cj->loc[1]),
-                              0.5 * (ci->loc[2] + cj->loc[2])};
-  // MATTHIEU deal with periodicity
+  /* Get the distance vector between the pairs, wrapping. */
+  double cell_shift[3];
+  space_getsid(s, &ci, &cj, cell_shift);
 
-  /* Star by constructing particle caches */
+  /* Record activity status */
+  const int ci_active = cell_is_active(ci, e);
+  const int cj_active = cell_is_active(cj, e);
 
-  /* Computed the padded counts */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
-  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
-  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
+  /* Do we need to drift the multipoles ? */
+  if (cj_active && ci->ti_old_multipole != e->ti_current)
+    cell_drift_multipole(ci, e);
+  if (ci_active && cj->ti_old_multipole != e->ti_current)
+    cell_drift_multipole(cj, e);
 
-  /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
-    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
-          gcount_j);
+  /* Centre of the cell pair */
+  const double loc[3] = {ci->loc[0],   // + 0. * ci->width[0],
+                         ci->loc[1],   // + 0. * ci->width[1],
+                         ci->loc[2]};  // + 0. * ci->width[2]};
+
+  /* Shift to apply to the particles in each cell */
+  const double shift_i[3] = {loc[0] + cell_shift[0], loc[1] + cell_shift[1],
+                             loc[2] + cell_shift[2]};
+  const double shift_j[3] = {loc[0], loc[1], loc[2]};
 
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->multipole->r_max;
@@ -479,21 +481,33 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   const float rmax2_j = rmax_j * rmax_j;
   const struct multipole *multi_i = &ci->multipole->m_pole;
   const struct multipole *multi_j = &cj->multipole->m_pole;
-  const float CoM_i[3] = {ci->multipole->CoM[0] - loc_mean[0],
-                          ci->multipole->CoM[1] - loc_mean[1],
-                          ci->multipole->CoM[2] - loc_mean[2]};
-  const float CoM_j[3] = {cj->multipole->CoM[0] - loc_mean[0],
-                          cj->multipole->CoM[1] - loc_mean[1],
-                          cj->multipole->CoM[2] - loc_mean[2]};
-  // MATTHIEU deal with periodicity
+  const float CoM_i[3] = {ci->multipole->CoM[0] - shift_i[0],
+                          ci->multipole->CoM[1] - shift_i[1],
+                          ci->multipole->CoM[2] - shift_i[2]};
+  const float CoM_j[3] = {cj->multipole->CoM[0] - shift_j[0],
+                          cj->multipole->CoM[1] - shift_j[1],
+                          cj->multipole->CoM[2] - shift_j[2]};
+
+  /* Start by constructing particle caches */
+
+  /* Computed the padded counts */
+  const int gcount_i = ci->gcount;
+  const int gcount_j = cj->gcount;
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we fit in cache */
+  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
+    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
+          gcount_j);
+#endif
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, ci_cache, ci->gparts, gcount_i,
-                         gcount_padded_i, loc_mean, CoM_j, rmax2_j,
-                         theta_crit2);
+                         gcount_padded_i, shift_i, CoM_j, rmax2_j, theta_crit2);
   gravity_cache_populate(e->max_active_bin, cj_cache, cj->gparts, gcount_j,
-                         gcount_padded_j, loc_mean, CoM_i, rmax2_i,
-                         theta_crit2);
+                         gcount_padded_j, shift_j, CoM_i, rmax2_i, theta_crit2);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -523,15 +537,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } else { /* Periodic BC */
 
-    // MATTHIEU deal with periodicity
-
-    /* Get the relative distance between the pairs, wrapping. */
-    double shift[3] = {0.0, 0.0, 0.0};
-    shift[0] = nearest(cj->loc[0] - ci->loc[0], dim[0]);
-    shift[1] = nearest(cj->loc[1] - ci->loc[1], dim[1]);
-    shift[2] = nearest(cj->loc[2] - ci->loc[2], dim[2]);
-    const double r2 =
-        shift[0] * shift[0] + shift[1] * shift[1] + shift[2] * shift[2];
+    /* Get the relative distance between the CoMs */
+    const double dx[3] = {CoM_j[0] - CoM_i[0], CoM_j[1] - CoM_i[1],
+                          CoM_j[2] - CoM_i[2]};
+    const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Get the maximal distance between any two particles */
     const double max_r = sqrt(r2) + rmax_i + rmax_j;
@@ -542,25 +551,54 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Periodic but far-away cells must use the truncated potential */
 
       /* Let's updated the active cell(s) only */
-      if (ci_active)
+      if (ci_active) {
+
+        /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(e, rlr_inv, ci_cache, cj_cache,
                                         gcount_i, gcount_j, gcount_padded_j,
                                         ci->gparts, cj->gparts);
-      if (cj_active)
+
+        /* Then the M2P */
+        runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
+                              ci->gparts, CoM_j, multi_j, cj);
+      }
+      if (cj_active) {
+
+        /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(e, rlr_inv, cj_cache, ci_cache,
                                         gcount_j, gcount_i, gcount_padded_i,
                                         cj->gparts, ci->gparts);
+
+        /* Then the M2P */
+        runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j,
+                              cj->gparts, CoM_i, multi_i, ci);
+      }
+
     } else {
 
       /* Periodic but close-by cells can use the full Newtonian potential */
 
       /* Let's updated the active cell(s) only */
-      if (ci_active)
+      if (ci_active) {
+
+        /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(e, ci_cache, cj_cache, gcount_i, gcount_j,
                                    gcount_padded_j, ci->gparts, cj->gparts);
-      if (cj_active)
+
+        /* Then the M2P */
+        runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
+                              ci->gparts, CoM_j, multi_j, cj);
+      }
+      if (cj_active) {
+
+        /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
                                    gcount_padded_i, cj->gparts, ci->gparts);
+
+        /* Then the M2P */
+        runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j,
+                              cj->gparts, CoM_i, multi_i, ci);
+      }
     }
   }
 
@@ -597,9 +635,11 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   /* Anything to do here ?*/
   if (!c_active) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we fit in cache */
   if (gcount > ci_cache->count)
     error("Not enough space in the cache! gcount=%d", gcount);
+#endif
 
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
@@ -721,9 +761,11 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   /* Anything to do here ?*/
   if (!c_active) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we fit in cache */
   if (gcount > ci_cache->count)
     error("Not enough space in the caches! gcount=%d", gcount);
+#endif
 
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
@@ -852,7 +894,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   } else {
 
     /* Get the maximal distance between any two particles */
-    const double max_r = 2 * c->multipole->r_max;
+    const double max_r = 2. * c->multipole->r_max;
 
     /* Do we need to use the truncated interactions ? */
     if (max_r > min_trunc)

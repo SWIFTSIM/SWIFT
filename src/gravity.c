@@ -555,8 +555,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   if (!gravity_exact_force_file_exits(e)) {
 
     char file_name_exact[100];
-    if(s->periodic)
-      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%d.dat", e->step);
+    if (s->periodic)
+      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%d.dat",
+              e->step);
     else
       sprintf(file_name_exact, "gravity_checks_exact_step%d.dat", e->step);
 

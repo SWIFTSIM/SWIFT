@@ -1477,12 +1477,12 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
           gp->num_interacted++;
           if (gp->num_interacted != (long long)e->s->nr_gparts)
             error(
-                "g-particle (id=%lld, type=%d) did not interact "
+                "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally "
                 "with all other gparts gp->num_interacted=%lld, "
                 "total_gparts=%zd",
-                gp->id_or_neg_offset, gp->type, gp->num_interacted,
-                e->s->nr_gparts);
+                gp->id_or_neg_offset, part_type_names[gp->type],
+                gp->num_interacted, e->s->nr_gparts);
         }
 #endif
       }
