@@ -261,7 +261,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   bzero(cell->xparts, count * sizeof(struct xpart));
 
   float h_max = 0.f;
-  
+
   /* Construct the parts */
   struct part *part = cell->parts;
   struct xpart *xpart = cell->xparts;

@@ -290,7 +290,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   struct cell *main_cell = cells[loc_i * (dim * dim) + loc_j * dim + loc_k];
 
   /* Zero the fields */
-  for (int j = 0; j < dim*dim*dim; ++j) zero_particle_fields(cells[j]);
+  for (int j = 0; j < dim * dim * dim; ++j) zero_particle_fields(cells[j]);
 
 /* Run all the pairs */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
@@ -337,7 +337,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  for (int i = 0; i < dim*dim*dim; ++i) zero_particle_fields(cells[i]);
+  for (int i = 0; i < dim * dim * dim; ++i) zero_particle_fields(cells[i]);
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
   runner.e = &engine;
 
   /* Construct some cells */
-  struct cell *cells[dim*dim*dim];
+  struct cell *cells[dim * dim * dim];
   static long long partId = 0;
   for (int i = 0; i < dim; ++i) {
     for (int j = 0; j < dim; ++j) {
@@ -581,7 +581,7 @@ int main(int argc, char *argv[]) {
                            swiftOutputFileName, bruteForceOutputFileName);
 
   /* Clean things to make the sanitizer happy ... */
-  for (int i = 0; i < dim*dim*dim; ++i) clean_up(cells[i]);
+  for (int i = 0; i < dim * dim * dim; ++i) clean_up(cells[i]);
 
   return 0;
 }

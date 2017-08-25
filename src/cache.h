@@ -280,12 +280,24 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
-    if (x[i] > 2 * sqrt(3) * ci->width[0] || x[i] < -sqrt(3) * ci->width[0]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d x pos is not within [-ci->width, 2*sqrt(3)*ci->width]. x=%f, ci->width[0]=%f", loc[0], loc[1], loc[2], i, x[i], ci->width[0]);
-    if (y[i] > 2 * sqrt(3) * ci->width[1] || y[i] < -sqrt(3) * ci->width[1]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d y pos is not within [-ci->width, 2*sqrt(3)*ci->width]. y=%f, ci->width[1]=%f", loc[0], loc[1], loc[2], i, y[i], ci->width[1]);
-    if (z[i] > 2 * sqrt(3) * ci->width[2] || z[i] < -sqrt(3) * ci->width[2]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d z pos is not within [-ci->width, 2*sqrt(3)*ci->width]. z=%f, ci->width[2]=%f", loc[0], loc[1], loc[2], i, z[i], ci->width[2]);
+    if (x[i] > 2 * sqrt(3) * ci->width[0] || x[i] < -sqrt(3) * ci->width[0])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d x pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. x=%f, ci->width[0]=%f",
+          loc[0], loc[1], loc[2], i, x[i], ci->width[0]);
+    if (y[i] > 2 * sqrt(3) * ci->width[1] || y[i] < -sqrt(3) * ci->width[1])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d y pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. y=%f, ci->width[1]=%f",
+          loc[0], loc[1], loc[2], i, y[i], ci->width[1]);
+    if (z[i] > 2 * sqrt(3) * ci->width[2] || z[i] < -sqrt(3) * ci->width[2])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d z pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. z=%f, ci->width[2]=%f",
+          loc[0], loc[1], loc[2], i, z[i], ci->width[2]);
   }
 #endif
-  
+
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
   float fake_pix = 2.0f * parts_i[sort_i[ci->count - 1].i].x[0];
@@ -329,9 +341,21 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i <= last_pj_align; i++) {
-    if (xj[i] > 2 * sqrt(3) * ci->width[0] || xj[i] < -sqrt(3) * ci->width[0]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d xj pos is not within [-ci->width, 2*sqrt(3)*ci->width]. xj=%f, ci->width[0]=%f", loc[0], loc[1], loc[2], i, xj[i], ci->width[0]);
-    if (yj[i] > 2 * sqrt(3) * ci->width[1] || yj[i] < -sqrt(3) * ci->width[1]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d yj pos is not within [-ci->width, 2*sqrt(3)*ci->width]. yj=%f, ci->width[1]=%f",loc[0],loc[1],loc[2],i,yj[i],ci->width[1]);
-    if (zj[i] > 2 * sqrt(3) * ci->width[2] || zj[i] < -sqrt(3) * ci->width[2]) error("Error: cj->loc[%lf,%lf,%lf] Particle %d zj pos is not within [-ci->width, 2*sqrt(3)*ci->width]. zj=%f, ci->width[2]=%f",loc[0],loc[1],loc[2],i,zj[i],ci->width[2]);
+    if (xj[i] > 2 * sqrt(3) * ci->width[0] || xj[i] < -sqrt(3) * ci->width[0])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d xj pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. xj=%f, ci->width[0]=%f",
+          loc[0], loc[1], loc[2], i, xj[i], ci->width[0]);
+    if (yj[i] > 2 * sqrt(3) * ci->width[1] || yj[i] < -sqrt(3) * ci->width[1])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d yj pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. yj=%f, ci->width[1]=%f",
+          loc[0], loc[1], loc[2], i, yj[i], ci->width[1]);
+    if (zj[i] > 2 * sqrt(3) * ci->width[2] || zj[i] < -sqrt(3) * ci->width[2])
+      error(
+          "Error: cj->loc[%lf,%lf,%lf] Particle %d zj pos is not within "
+          "[-ci->width, 2*sqrt(3)*ci->width]. zj=%f, ci->width[2]=%f",
+          loc[0], loc[1], loc[2], i, zj[i], ci->width[2]);
   }
 #endif
 
