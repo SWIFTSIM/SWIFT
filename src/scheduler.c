@@ -772,7 +772,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
-  if (ind >= s->size) error("Task list overflow.");
+  if (ind >= s->size)
+    error(
+        "Task list overflow (%d). Need to increase "
+        "Scheduler:tasks_per_cell.",
+        ind);
 
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
