@@ -36,6 +36,7 @@
 #include "parallel_io.h"
 
 /* Local includes. */
+#include "allocation.h"
 #include "common_io.h"
 #include "dimension.h"
 #include "engine.h"
