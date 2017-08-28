@@ -145,12 +145,13 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param CoM The position of the multipole.
  * @param r_max2 The square of the multipole radius.
  * @param theta_crit2 The square of the opening angle.
+ * @param cell The cell we play with (to get reasonable padding positions).
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     timebin_t max_active_bin, struct gravity_cache *c,
     const struct gpart *restrict gparts, int gcount, int gcount_padded,
-    const double shift[3], const float CoM[3], float r_max2,
-    float theta_crit2) {
+    const double shift[3], const float CoM[3], float r_max2, float theta_crit2,
+    const struct cell *cell) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
@@ -184,11 +185,16 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
   if (gcount_padded < gcount) error("Padded counter smaller than counter");
 #endif
 
+  /* Particles used for padding should get impossible positions
+   * that have a reasonable magnitude. We use the cell width for this */
+  const float pos_padded[3] = {-2. * cell->width[0], -2. * cell->width[1],
+                               -2. * cell->width[2]};
+
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
-    x[i] = 0.f;
-    y[i] = 0.f;
-    z[i] = 0.f;
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
     epsilon[i] = 0.f;
     m[i] = 0.f;
     active[i] = 0;
@@ -206,12 +212,14 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
  * @param shift A shift to apply to all the particles.
+ * @param cell The cell we play with (to get reasonable padding positions).
  */
 __attribute__((always_inline)) INLINE static void
 gravity_cache_populate_no_mpole(timebin_t max_active_bin,
                                 struct gravity_cache *c,
                                 const struct gpart *restrict gparts, int gcount,
-                                int gcount_padded, const double shift[3]) {
+                                int gcount_padded, const double shift[3],
+                                const struct cell *cell) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
@@ -236,11 +244,15 @@ gravity_cache_populate_no_mpole(timebin_t max_active_bin,
   if (gcount_padded < gcount) error("Padded counter smaller than counter");
 #endif
 
+  /* Particles used for padding should get impossible positions
+   * that have a reasonable magnitude. We use the cell width for this */
+  const float pos_padded[3] = {-2. * cell->width[0], -2. * cell->width[1],
+                               -2. * cell->width[2]};
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
-    x[i] = 0.f;
-    y[i] = 0.f;
-    z[i] = 0.f;
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
     epsilon[i] = 0.f;
     m[i] = 0.f;
     active[i] = 0;
