@@ -100,6 +100,9 @@ struct grav_tensor {
   integertime_t ti_init;
 
 #endif
+
+  /* Has this tensor received any contribution? */
+  char interacted;
 };
 
 struct multipole {
@@ -216,18 +219,18 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
  */
 INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 
-  /* const double dx = m->m_pole.vel[0] * dt; */
-  /* const double dy = m->m_pole.vel[1] * dt; */
-  /* const double dz = m->m_pole.vel[2] * dt; */
+  const double dx = m->m_pole.vel[0] * dt;
+  const double dy = m->m_pole.vel[1] * dt;
+  const double dz = m->m_pole.vel[2] * dt;
 
   /* Move the whole thing according to bulk motion */
-  /* m->CoM[0] += dx; */
-  /* m->CoM[1] += dy; */
-  /* m->CoM[2] += dz; */
+  m->CoM[0] += dx;
+  m->CoM[1] += dy;
+  m->CoM[2] += dz;
 
   /* Conservative change in maximal radius containing all gpart */
   /* MATTHIEU: Use gpart->x_diff here ? */
-  /* m->r_max += sqrt(dx * dx + dy * dy + dz * dz); */
+  m->r_max += sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 /**
@@ -258,6 +261,8 @@ INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
   if (lb->num_interacted == 0) error("Adding tensors that did not interact");
   la->num_interacted += lb->num_interacted;
 #endif
+
+  la->interacted = 1;
 
   /* Add 0th order terms */
   la->F_000 += lb->F_000;
@@ -347,6 +352,7 @@ INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
 INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
 
   printf("-------------------------\n");
+  printf("Interacted: %d\n", l->interacted);
   printf("F_000= %12.5e\n", l->F_000);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   printf("-------------------------\n");
@@ -1543,6 +1549,9 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
   /* Count interactions */
   l_b->num_interacted += m_a->num_gpart;
 #endif
+
+  /* Record that this tensor has received contributions */
+  l_b->interacted = 1;
 
   /*  0th order term */
   l_b->F_000 += m_a->M_000 * pot.D_000;

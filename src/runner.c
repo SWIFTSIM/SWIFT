@@ -1472,9 +1472,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (e->policy & engine_policy_self_gravity) {
 
+          /* Let's add a self interaction to simplify the count */
+          gp->num_interacted++;
+
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          gp->num_interacted++;
           if (gp->num_interacted != (long long)e->s->nr_gparts)
             error(
                 "g-particle (id=%lld, type=%s) did not interact "

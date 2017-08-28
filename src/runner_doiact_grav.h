@@ -68,12 +68,16 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 #endif
         struct grav_tensor shifted_tensor;
 
-        /* Shift the field tensor */
-        gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
-                    c->multipole->CoM);
+        /* If the tensor received any contribution, push it down */
+        if (c->multipole->pot.interacted) {
 
-        /* Add it to this level's tensor */
-        gravity_field_tensors_add(&cp->multipole->pot, &shifted_tensor);
+          /* Shift the field tensor */
+          gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
+                      c->multipole->CoM);
+
+          /* Add it to this level's tensor */
+          gravity_field_tensors_add(&cp->multipole->pot, &shifted_tensor);
+        }
 
         /* Recurse */
         runner_do_grav_down(r, cp, 0);
@@ -81,6 +85,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     }
 
   } else { /* Leaf case */
+
+    /* We can abort early if no interactions via multipole happened */
+    if (!c->multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
@@ -97,6 +104,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         /* Check that particles have been drifted to the current time */
         if (gp->ti_drift != e->ti_current)
           error("gpart not drifted to current time");
+        if (c->multipole->pot.ti_init != e->ti_current)
+          error("c->field tensor not initialised");
 #endif
 
         /* Apply the kernel */
