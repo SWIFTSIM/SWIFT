@@ -2742,7 +2742,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 			    logger_mask_u | logger_mask_h | logger_mask_rho |
 			    logger_mask_consts,
 			    &p->last_offset, e->logger_dump);
-	    message("Offset: %lu", p->last_offset);
+	    //message("Offset: %lu", p->last_offset);
 	    /* Set counter back to zero */
 	    p->last_output = 0;
 	  }

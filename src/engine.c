@@ -3639,6 +3639,8 @@ void engine_maketasks(struct engine *e) {
     e->size_links += s->tot_cells * self_grav_tasks_per_cell;
   if (e->policy & engine_policy_stars)
     e->size_links += s->tot_cells * stars_tasks_per_cell;
+  if (e->policy & engine_policy_logger)
+    e->size_links += s->tot_cells;
 
   /* Allocate the new link list */
   if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
@@ -4436,6 +4438,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
   if (e->policy & engine_policy_stars) {
     n1 += 2;
+  }
+  if (e->policy & engine_policy_logger) {
+    n1 += 1;
+    n2 += 1;
   }
 
 #ifdef WITH_MPI
