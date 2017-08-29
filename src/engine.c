@@ -6453,8 +6453,12 @@ void engine_dump_snapshot(struct engine *e) {
                       MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units);
+  if (e->policy & engine_policy_logger)
+    write_index_single(e, e->snapshotBaseName, e->internal_units,
+		       e->snapshotUnits);
+  else
+    write_output_single(e, e->snapshotBaseName, e->internal_units,
+			e->snapshotUnits);
 #endif
 #endif
 

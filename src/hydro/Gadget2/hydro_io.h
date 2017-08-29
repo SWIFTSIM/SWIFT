@@ -188,6 +188,30 @@ INLINE static void hydro_write_particles(const struct part* parts,
 #endif
 }
 
+
+/**
+ * @brief Specifies which particle fields to write to a dataset
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
+ * 
+ * In this version, we only want the ids and the offset.
+ */
+void hydro_write_index(struct part* parts, struct io_props* list,
+		       int* num_fields) {
+
+  *num_fields = 2;
+
+  /* List what we want to write */
+  list[0] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, parts, id);
+
+  list[1] = io_make_output_field("Offset", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, parts, last_offset);
+}
+
+
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write

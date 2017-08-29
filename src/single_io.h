@@ -42,6 +42,9 @@ void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units);
 
+void write_index_single(struct engine* e, const char* baseName,
+			const struct unit_system* internal_units,
+			const struct unit_system* snapshot_units);
 #endif /* HAVE_HDF5 && !WITH_MPI */
 
 #endif /* SWIFT_SINGLE_IO_H */
