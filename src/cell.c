@@ -2330,7 +2330,8 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
 
   /* Drift the multipole */
-  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
+  if (ti_current > ti_old_multipole)
+    gravity_drift(c->multipole, dt, c->dx_max_gpart);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2365,7 +2366,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
 
-  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt);
+  if (ti_current > ti_old_multipole)
+    gravity_drift(c->multipole, dt, c->dx_max_gpart);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;

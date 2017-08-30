@@ -216,8 +216,11 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
  *
  * @param m The #multipole.
  * @param dt The drift time-step.
+ * @param x_diff The maximal distance moved by any particle since the last
+ * rebuild.
  */
-INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
+INLINE static void gravity_drift(struct gravity_tensors *m, double dt,
+                                 float x_diff) {
 
   const double dx = m->m_pole.vel[0] * dt;
   const double dy = m->m_pole.vel[1] * dt;
@@ -229,8 +232,7 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
   m->CoM[2] += dz;
 
   /* Conservative change in maximal radius containing all gpart */
-  /* MATTHIEU: Use gpart->x_diff here ? */
-  m->r_max += sqrt(dx * dx + dy * dy + dz * dz);
+  m->r_max = m->r_max_rebuild + 2. * x_diff;
 }
 
 /**
