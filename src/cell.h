@@ -152,9 +152,13 @@ struct cell {
   /*! The multipole initialistation task */
   struct task *init_grav;
 
-  /*! The ghost tasks */
+  /*! Dependency implicit task for the ghost  (in->ghost->out)*/
   struct task *ghost_in;
+
+  /*! Dependency implicit task for the ghost  (in->ghost->out)*/
   struct task *ghost_out;
+
+  /*! The ghost task itself */
   struct task *ghost;
 
   /*! The extra ghost task for complex hydro schemes */
@@ -311,6 +315,21 @@ struct cell {
   /*! Is the #spart data of this cell being used in a sub-cell? */
   int shold;
 
+  /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+  float dx_max_old;
+
+  /*! Values of h_max before the drifts, used for sub-cell tasks. */
+  float h_max_old;
+
+  /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+  float dx_max_sort_old;
+
+  /*! Bit mask of sort directions that will be needed in the next timestep. */
+  unsigned int requires_sorts;
+
+  /*! Bit mask of sorts that need to be computed for this cell. */
+  unsigned int do_sort;
+
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
 
@@ -323,14 +342,6 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
-  /*! Values of dx_max and h_max before the drifts, used for sub-cell tasks. */
-  float dx_max_old;
-  float h_max_old;
-  float dx_max_sort_old;
-
-  /* Bit mask of sort directions that will be needed in the next timestep. */
-  unsigned int requires_sorts;
-
   /*! Does this cell need to be drifted (hydro)? */
   char do_drift;
 
@@ -342,9 +353,6 @@ struct cell {
 
   /*! Do any of this cell's sub-cells need to be drifted (gravity)? */
   char do_grav_sub_drift;
-
-  /*! Bit mask of sorts that need to be computed for this cell. */
-  unsigned int do_sort;
 
   /*! Do any of this cell's sub-cells need to be sorted? */
   char do_sub_sort;
