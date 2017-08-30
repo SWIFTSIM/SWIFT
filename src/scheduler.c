@@ -740,7 +740,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
-  if (ind >= s->size) error("Task list overflow.");
+  if (ind >= s->size)
+    error(
+        "Task list overflow (%d). Need to increase "
+        "Scheduler:tasks_per_cell.",
+        ind);
 
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
@@ -1345,7 +1349,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    if (qid < 0) qid = rand() % s->nr_queues;
+    /* Note that getticks() is random enough */
+    if (qid < 0) qid = getticks() % s->nr_queues;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -1577,6 +1582,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
+  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 

@@ -2514,7 +2514,7 @@ void engine_maketasks(struct engine *e) {
   const ticks tic = getticks();
 
   /* Re-set the scheduler. */
-  scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
+  scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) {
@@ -2943,7 +2943,8 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[(int)tasks[k].type] += 1;
   }
-  message("Total = %d", nr_tasks);
+  message("Total = %d  (per cell = %d)", nr_tasks,
+          (int)ceil((double)nr_tasks / e->s->tot_cells));
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -2962,6 +2963,117 @@ void engine_print_task_counts(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief if necessary, estimate the number of tasks required given
+ *        the current tasks in use and the numbers of cells.
+ *
+ * If e->tasks_per_cell is set greater than 0 then that value is used
+ * as the estimate of the average number of tasks per cell,
+ * otherwise we attempt an estimate.
+ *
+ * @param e the #engine
+ *
+ * @return the estimated total number of tasks
+ */
+int engine_estimate_nr_tasks(struct engine *e) {
+
+  int tasks_per_cell = e->tasks_per_cell;
+  if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
+
+  /* Our guess differs depending on the types of tasks we are using, but we
+   * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
+   * Where <n1> is the expected maximum tasks per top-level/super cell, and
+   * <n2> the expected maximum tasks for all other cells. These should give
+   * a safe upper limit.
+   */
+  int n1 = 0;
+  int n2 = 0;
+  if (e->policy & engine_policy_hydro) {
+    n1 += 36;
+    n2 += 2;
+#ifdef WITH_MPI
+    n1 += 6;
+#endif
+
+#ifdef EXTRA_HYDRO_LOOP
+    n1 += 15;
+#ifdef WITH_MPI
+    n1 += 2;
+#endif
+#endif
+  }
+  if (e->policy & engine_policy_self_gravity) {
+    n1 += 24;
+    n2 += 1;
+#ifdef WITH_MPI
+    n2 += 2;
+#endif
+  }
+  if (e->policy & engine_policy_external_gravity) {
+    n1 += 2;
+  }
+  if (e->policy & engine_policy_cosmology) {
+    n1 += 2;
+  }
+  if (e->policy & engine_policy_cooling) {
+    n1 += 2;
+  }
+  if (e->policy & engine_policy_sourceterms) {
+    n1 += 2;
+  }
+  if (e->policy & engine_policy_stars) {
+    n1 += 2;
+  }
+
+#ifdef WITH_MPI
+
+  /* We need fewer tasks per rank when using MPI, but we could have
+   * imbalances, so we need to work using the locally active cells, not just
+   * some equipartition amongst the nodes. Don't want to recurse the whole
+   * cell tree, so just make a guess of the maximum possible total cells. */
+  int ntop = 0;
+  int ncells = 0;
+  for (int k = 0; k < e->s->nr_cells; k++) {
+    struct cell *c = &e->s->cells_top[k];
+
+    /* Any cells with particles will have tasks (local & foreign). */
+    int nparts = c->count + c->gcount + c->scount;
+    if (nparts > 0) {
+      ntop++;
+      ncells++;
+
+      /* Count cell depth until we get below the parts per cell threshold. */
+      int depth = 0;
+      while (nparts > space_splitsize) {
+        depth++;
+        nparts /= 8;
+        ncells += (1 << (depth * 3));
+      }
+    }
+  }
+
+  /* If no local cells, we are probably still initialising, so just keep
+   * room for the top-level. */
+  if (ncells == 0) {
+    ntop = e->s->nr_cells;
+    ncells = ntop;
+  }
+#else
+  int ntop = e->s->nr_cells;
+  int ncells = e->s->tot_cells;
+#endif
+
+  double ntasks = n1 * ntop + n2 * (ncells - ntop);
+  tasks_per_cell = ceil(ntasks / ncells);
+
+  if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
+  if (e->verbose)
+    message("tasks per cell estimated as: %d, maximum tasks: %d",
+            tasks_per_cell, ncells * tasks_per_cell);
+
+  return ncells * tasks_per_cell;
 }
 
 /**
@@ -4545,9 +4657,14 @@ void engine_init(struct engine *e, struct space *s,
       pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
     error("Failed to initialize barrier.");
 
-  /* Init the scheduler with enough tasks for the initial sorting tasks. */
-  const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
-  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues,
+  /* Expected average for tasks per cell. If set to zero we use a heuristic
+   * guess based on the numbers of cells and how many tasks per cell we expect.
+   */
+  e->tasks_per_cell =
+      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
+
+  /* Init the scheduler. */
+  scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
                  (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
