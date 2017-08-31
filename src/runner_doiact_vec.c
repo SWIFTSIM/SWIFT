@@ -258,7 +258,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const float dx_max, const float rshift, const double hi_max,
     const double hj_max, const double di_max, const double dj_min,
     int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
-    const struct engine *e) {
+    const timebin_t max_active_bin) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -273,7 +273,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
     first_pi--;
     /* Store the index of the particle if it is active. */
-    if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
+    if (part_is_active_no_debug(&parts_i[sort_i[first_pi].i], max_active_bin)) active_id = first_pi;
   }
 
   /* Set the first active pi in range of any particle in cell j. */
@@ -320,7 +320,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
          sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
     last_pj++;
     /* Store the index of the particle if it is active. */
-    if (part_is_active(&parts_j[sort_j[last_pj].i], e)) active_id = last_pj;
+    if (part_is_active_no_debug(&parts_j[sort_j[last_pj].i], max_active_bin)) active_id = last_pj;
   }
 
   /* Set the last active pj in range of any particle in cell i. */
@@ -383,6 +383,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
+  const timebin_t max_active_bin = e->max_active_bin;
+
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
 
   TIMER_TIC
@@ -413,7 +415,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     pi = &parts[pid];
 
     /* Is the ith particle active? */
-    if (!part_is_active(pi, e)) continue;
+    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
     vector pix, piy, piz;
 
@@ -600,6 +602,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   int count_align;
   const int num_vec_proc = 1;
 
+  const timebin_t max_active_bin = e->max_active_bin;
+  
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
@@ -640,7 +644,7 @@ for (int pid = 0; pid < count; pid++) {
   pi = &parts[pid];
 
   /* Is the ith particle active? */
-  if (!part_is_active(pi, e)) continue;
+  if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
   vector pix, piy, piz;
 
@@ -740,9 +744,8 @@ for (int pid = 0; pid < count; pid++) {
 
     /* If there are any interactions perform them. */
     if (doi_mask) {
-      vector v_hj, v_hj_inv;
-      v_hj.v = vec_load(&cell_cache->h[pjd]);
-      v_hj_inv = vec_reciprocal(v_hj);
+      vector v_hj_inv;
+      v_hj_inv = vec_reciprocal(hj);
 
       /* To stop floating point exceptions for when particle separations are 0.
        */
@@ -789,6 +792,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
+  const timebin_t max_active_bin = e->max_active_bin;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
@@ -851,7 +855,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int pid = count_i - 1;
        pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
     struct part *restrict pi = &parts_i[sort_i[pid].i];
-    if (part_is_active(pi, e)) {
+    if (part_is_active_no_debug(pi, max_active_bin)) {
       numActive++;
       break;
     }
@@ -861,7 +865,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      if (part_is_active(pj, e)) {
+      if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
       }
@@ -895,7 +899,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
                               hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, e);
+                              &first_pi, &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -923,7 +927,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
-      if (!part_is_active(pi, e)) continue;
+      if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
       /* Set the cache index. */
       int ci_cache_idx = pid - first_pi_align;
@@ -1053,7 +1057,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      if (!part_is_active(pj, e)) continue;
+      if (!part_is_active_no_debug(pj, max_active_bin)) continue;
 
       /* Set the cache index. */
       int cj_cache_idx = pjd;
