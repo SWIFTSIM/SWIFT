@@ -369,22 +369,26 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const double shift_threshold_x = 4. * ci->width[0] * (1. + 2.*space_maxreldx);
+  const double shift_threshold_y = 4. * ci->width[1] * (1. + 2.*space_maxreldx);
+  const double shift_threshold_z = 4. * ci->width[2] * (1. + 2.*space_maxreldx);
+
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
-    if (x[i] > 2 * sqrt(3) * ci->width[0] || x[i] < -sqrt(3) * ci->width[0])
+    if (x[i] > shift_threshold_x || x[i] < -shift_threshold_x)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d x pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. x=%f, ci->width[0]=%f",
+          "Error: ci->loc[%lf,%lf,%lf],cj->loc[%lf,%lf,%lf] Particle %d x pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. x=%f, ci->width[0]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, x[i], ci->width[0]);
-    if (y[i] > 2 * sqrt(3) * ci->width[1] || y[i] < -sqrt(3) * ci->width[1])
+    if (y[i] > shift_threshold_y || y[i] < -shift_threshold_y)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d y pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. y=%f, ci->width[1]=%f",
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d y pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. y=%f, ci->width[1]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, y[i], ci->width[1]);
-    if (z[i] > 2 * sqrt(3) * ci->width[2] || z[i] < -sqrt(3) * ci->width[2])
+    if (z[i] > shift_threshold_z || z[i] < -shift_threshold_z)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d z pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. z=%f, ci->width[2]=%f",
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d z pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. z=%f, ci->width[2]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, z[i], ci->width[2]);
   }
 #endif
@@ -432,20 +436,20 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i <= last_pj_align; i++) {
-    if (xj[i] > 2 * sqrt(3) * ci->width[0] || xj[i] < -sqrt(3) * ci->width[0])
+    if (xj[i] > shift_threshold_x || xj[i] < -shift_threshold_x)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d xj pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. xj=%f, ci->width[0]=%f",
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d xj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. xj=%f, ci->width[0]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, xj[i], ci->width[0]);
-    if (yj[i] > 2 * sqrt(3) * ci->width[1] || yj[i] < -sqrt(3) * ci->width[1])
+    if (yj[i] > shift_threshold_y || yj[i] < -shift_threshold_y)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d yj pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. yj=%f, ci->width[1]=%f",
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d yj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. yj=%f, ci->width[1]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, yj[i], ci->width[1]);
-    if (zj[i] > 2 * sqrt(3) * ci->width[2] || zj[i] < -sqrt(3) * ci->width[2])
+    if (zj[i] > shift_threshold_z || zj[i] < -shift_threshold_z)
       error(
-          "Error: cj->loc[%lf,%lf,%lf] Particle %d zj pos is not within "
-          "[-sqrt(3)*ci->width, 2*sqrt(3)*ci->width]. zj=%f, ci->width[2]=%f",
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d zj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. zj=%f, ci->width[2]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
           loc[0], loc[1], loc[2], i, zj[i], ci->width[2]);
   }
 #endif
