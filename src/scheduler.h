@@ -113,11 +113,11 @@ struct scheduler {
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
-#ifdef WITH_CUDA
-  if (!t->gpu && atomic_cas(&t->skip, 1, 0)) {
-#else
+  //#ifdef WITH_CUDA
+  //  if (!t->gpu && atomic_cas(&t->skip, 1, 0)) {
+  //#else
   if (atomic_cas(&t->skip, 1, 0)){ 
-#endif
+    //#endif
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
