@@ -125,23 +125,28 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 
   FILE *file = fopen(fileName, "a");
 
-  /* Write header */
   fprintf(file,
-          "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-          "%13e %13e %13e\n",
-          p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
+          "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
+          "%8.5f "
+          "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
+          p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_density(p),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
           0.f,
 #else
-          p->density.rho_dh,
+          p->density.div_v,
 #endif
-          p->density.wcount, p->density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
-          p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
-          p->density.rot_v[2]
+          hydro_get_entropy(p), hydro_get_internal_energy(p),
+          hydro_get_pressure(p), hydro_get_soundspeed(p), p->a_hydro[0],
+          p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
+#if defined(GADGET2_SPH)
+          p->force.v_sig, p->entropy_dt, 0.f
+#elif defined(DEFAULT_SPH)
+          p->force.v_sig, 0.f, p->force.u_dt
+#elif defined(MINIMAL_SPH)
+          p->force.v_sig, 0.f, p->u_dt
 #else
-          0., 0., 0., 0.
+          0.f, 0.f, 0.f
 #endif
           );
 
@@ -156,10 +161,12 @@ void write_header(char *fileName) {
   FILE *file = fopen(fileName, "w");
   /* Write header */
   fprintf(file,
-          "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
-          "%13s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
-          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
+          "# %4s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %13s %13s "
+          "%13s %13s %13s %8s %8s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "h", "rho",
+          "div_v", "S", "u", "P", "c", "a_x", "a_y", "a_z", "h_dt", "v_sig",
+          "dS/dt", "du/dt");
+
   fclose(file);
 }
 
@@ -212,7 +219,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   strcpy(serial_filename, filePrefix);
   strcpy(vec_filename, filePrefix);
   sprintf(serial_filename + strlen(serial_filename), "_serial.dat");
-  sprintf(vec_filename + strlen(vec_filename), "_vec.dat");
+  sprintf(vec_filename + strlen(vec_filename), "_%d_vec.dat", num_vec_proc);
 
   write_header(serial_filename);
   write_header(vec_filename);
@@ -388,6 +395,265 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
+/*
+ * @brief Calls the serial and vectorised version of the non-symmetrical force
+ * interaction.
+ *
+ * @param test_part Particle that will be updated
+ * @param parts Particle array to be interacted
+ * @param count No. of particles to be interacted
+ * @param serial_inter_func Serial interaction function to be called
+ * @param vec_inter_func Vectorised interaction function to be called
+ * @param runs No. of times to call interactions
+ *
+ */
+void test_force_interactions(struct part test_part, struct part *parts,
+                             size_t count, char *filePrefix, int runs,
+                             int num_vec_proc) {
+
+  ticks serial_time = 0;
+  ticks vec_time = 0;
+
+  FILE *file;
+  char serial_filename[200] = "";
+  char vec_filename[200] = "";
+
+  strcpy(serial_filename, filePrefix);
+  strcpy(vec_filename, filePrefix);
+  sprintf(serial_filename + strlen(serial_filename), "_serial.dat");
+  sprintf(vec_filename + strlen(vec_filename), "_%d_vec.dat", num_vec_proc);
+
+  write_header(serial_filename);
+  write_header(vec_filename);
+
+  struct part pi_serial, pi_vec;
+  struct part pj_serial[count], pj_vec[count];
+
+  float r2[count] __attribute__((aligned(array_align)));
+  float dx[3 * count] __attribute__((aligned(array_align)));
+
+  struct part *piq[count], *pjq[count];
+  for (size_t k = 0; k < count; k++) {
+    piq[k] = NULL;
+    pjq[k] = NULL;
+  }
+
+  float r2q[count] __attribute__((aligned(array_align)));
+  float dxq[count] __attribute__((aligned(array_align)));
+  float dyq[count] __attribute__((aligned(array_align)));
+  float dzq[count] __attribute__((aligned(array_align)));
+
+  float hiq[count] __attribute__((aligned(array_align)));
+  float vixq[count] __attribute__((aligned(array_align)));
+  float viyq[count] __attribute__((aligned(array_align)));
+  float vizq[count] __attribute__((aligned(array_align)));
+  float rhoiq[count] __attribute__((aligned(array_align)));
+  float grad_hiq[count] __attribute__((aligned(array_align)));
+  float pOrhoi2q[count] __attribute__((aligned(array_align)));
+  float balsaraiq[count] __attribute__((aligned(array_align)));
+  float ciq[count] __attribute__((aligned(array_align)));
+
+  float hj_invq[count] __attribute__((aligned(array_align)));
+  float mjq[count] __attribute__((aligned(array_align)));
+  float vjxq[count] __attribute__((aligned(array_align)));
+  float vjyq[count] __attribute__((aligned(array_align)));
+  float vjzq[count] __attribute__((aligned(array_align)));
+  float rhojq[count] __attribute__((aligned(array_align)));
+  float grad_hjq[count] __attribute__((aligned(array_align)));
+  float pOrhoj2q[count] __attribute__((aligned(array_align)));
+  float balsarajq[count] __attribute__((aligned(array_align)));
+  float cjq[count] __attribute__((aligned(array_align)));
+
+  /* Call serial interaction a set number of times. */
+  for (int k = 0; k < runs; k++) {
+    /* Reset particle to initial setup */
+    pi_serial = test_part;
+    for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
+
+    /* Only dump data on first run. */
+    if (k == 0) {
+      /* Dump state of particles before serial interaction. */
+      dump_indv_particle_fields(serial_filename, &pi_serial);
+      for (size_t i = 0; i < count; i++)
+        dump_indv_particle_fields(serial_filename, &pj_serial[i]);
+    }
+
+    /* Perform serial interaction */
+    for (size_t i = 0; i < count; i++) {
+      /* Compute the pairwise distance. */
+      r2[i] = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        int ind = (3 * i) + k;
+        dx[ind] = pi_serial.x[k] - pj_serial[i].x[k];
+        r2[i] += dx[ind] * dx[ind];
+      }
+    }
+
+    const ticks tic = getticks();
+/* Perform serial interaction */
+#ifdef __ICC
+#pragma novector
+#endif
+    for (size_t i = 0; i < count; i++) {
+      runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
+                               &pi_serial, &pj_serial[i]);
+    }
+    serial_time += getticks() - tic;
+  }
+
+  file = fopen(serial_filename, "a");
+  fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
+  fclose(file);
+
+  /* Dump result of serial interaction. */
+  dump_indv_particle_fields(serial_filename, &pi_serial);
+  for (size_t i = 0; i < count; i++)
+    dump_indv_particle_fields(serial_filename, &pj_serial[i]);
+
+  /* Call vector interaction a set number of times. */
+  for (int k = 0; k < runs; k++) {
+    /* Reset particle to initial setup */
+    pi_vec = test_part;
+    for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
+
+    /* Setup arrays for vector interaction. */
+    for (size_t i = 0; i < count; i++) {
+      /* Compute the pairwise distance. */
+      float r2 = 0.0f;
+      float dx[3];
+      for (int k = 0; k < 3; k++) {
+        dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      piq[i] = &pi_vec;
+      pjq[i] = &pj_vec[i];
+
+      r2q[i] = r2;
+      dxq[i] = dx[0];
+      dyq[i] = dx[1];
+      dzq[i] = dx[2];
+
+      hiq[i] = pi_vec.h;
+      vixq[i] = pi_vec.v[0];
+      viyq[i] = pi_vec.v[1];
+      vizq[i] = pi_vec.v[2];
+      rhoiq[i] = pi_vec.rho;
+      grad_hiq[i] = pi_vec.force.f;
+      pOrhoi2q[i] = pi_vec.force.P_over_rho2;
+      balsaraiq[i] = pi_vec.force.balsara;
+      ciq[i] = pi_vec.force.soundspeed;
+
+      hj_invq[i] = 1.f / pj_vec[i].h;
+      mjq[i] = pj_vec[i].mass;
+      vjxq[i] = pj_vec[i].v[0];
+      vjyq[i] = pj_vec[i].v[1];
+      vjzq[i] = pj_vec[i].v[2];
+      rhojq[i] = pj_vec[i].rho;
+      grad_hjq[i] = pj_vec[i].force.f;
+      pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
+      balsarajq[i] = pj_vec[i].force.balsara;
+      cjq[i] = pj_vec[i].force.soundspeed;
+    }
+
+    /* Only dump data on first run. */
+    if (k == 0) {
+      /* Dump state of particles before vector interaction. */
+      dump_indv_particle_fields(vec_filename, piq[0]);
+      for (size_t i = 0; i < count; i++)
+        dump_indv_particle_fields(vec_filename, pjq[i]);
+    }
+
+    /* Perform vector interaction. */
+    vector hi_vec, hi_inv_vec, vix_vec, viy_vec, viz_vec, rhoi_vec, grad_hi_vec,
+        pOrhoi2_vec, balsara_i_vec, ci_vec;
+    vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
+        entropy_dtSum;
+
+    a_hydro_xSum.v = vec_setzero();
+    a_hydro_ySum.v = vec_setzero();
+    a_hydro_zSum.v = vec_setzero();
+    h_dtSum.v = vec_setzero();
+    v_sigSum.v = vec_setzero();
+    entropy_dtSum.v = vec_setzero();
+
+    hi_vec.v = vec_load(&hiq[0]);
+    vix_vec.v = vec_load(&vixq[0]);
+    viy_vec.v = vec_load(&viyq[0]);
+    viz_vec.v = vec_load(&vizq[0]);
+    rhoi_vec.v = vec_load(&rhoiq[0]);
+    grad_hi_vec.v = vec_load(&grad_hiq[0]);
+    pOrhoi2_vec.v = vec_load(&pOrhoi2q[0]);
+    balsara_i_vec.v = vec_load(&balsaraiq[0]);
+    ci_vec.v = vec_load(&ciq[0]);
+
+    hi_inv_vec = vec_reciprocal(hi_vec);
+
+    mask_t mask, mask2;
+    vec_init_mask_true(mask);
+    vec_init_mask_true(mask2);
+
+    const ticks vec_tic = getticks();
+
+    for (size_t i = 0; i < count; i += num_vec_proc * VEC_SIZE) {
+
+      if (num_vec_proc == 2) {
+        runner_iact_nonsym_2_vec_force(
+            &(r2q[i]), &(dxq[i]), &(dyq[i]), &(dzq[i]), (vix_vec), (viy_vec),
+            (viz_vec), rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec,
+            ci_vec, &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(rhojq[i]),
+            &(grad_hjq[i]), &(pOrhoj2q[i]), &(balsarajq[i]), &(cjq[i]),
+            &(mjq[i]), hi_inv_vec, &(hj_invq[i]), &a_hydro_xSum, &a_hydro_ySum,
+            &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, mask, mask2, 0);
+      } else { /* Only use one vector for interaction. */
+
+        vector r2, dx, dy, dz, hj, hj_inv;
+        r2.v = vec_load(&(r2q[i]));
+        dx.v = vec_load(&(dxq[i]));
+        dy.v = vec_load(&(dyq[i]));
+        dz.v = vec_load(&(dzq[i]));
+        hj.v = vec_load(&hj_invq[i]);
+        hj_inv = vec_reciprocal(hj);
+
+        runner_iact_nonsym_1_vec_force(
+            &r2, &dx, &dy, &dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
+            grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]),
+            &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]),
+            &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, hj_inv,
+            &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum,
+            &entropy_dtSum, mask);
+      }
+    }
+
+    VEC_HADD(a_hydro_xSum, piq[0]->a_hydro[0]);
+    VEC_HADD(a_hydro_ySum, piq[0]->a_hydro[1]);
+    VEC_HADD(a_hydro_zSum, piq[0]->a_hydro[2]);
+    VEC_HADD(h_dtSum, piq[0]->force.h_dt);
+    VEC_HMAX(v_sigSum, piq[0]->force.v_sig);
+    VEC_HADD(entropy_dtSum, piq[0]->entropy_dt);
+
+    vec_time += getticks() - vec_tic;
+  }
+
+  file = fopen(vec_filename, "a");
+  fprintf(file, "\n# PARTICLES AFTER INTERACTION:\n");
+  fclose(file);
+
+  /* Dump result of serial interaction. */
+  dump_indv_particle_fields(vec_filename, piq[0]);
+  for (size_t i = 0; i < count; i++)
+    dump_indv_particle_fields(vec_filename, pjq[i]);
+
+  /* Check serial results against the vectorised results. */
+  if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
+    message("Differences found...");
+
+  message("The serial interactions took     : %15lli ticks.",
+          serial_time / runs);
+  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("Speed up: %15fx.", (double)(serial_time) / vec_time);
+}
+
 /* And go... */
 int main(int argc, char *argv[]) {
   size_t runs = 10000;
@@ -448,6 +714,13 @@ int main(int argc, char *argv[]) {
                     1);
   test_interactions(test_particle, &particles[1], count - 1, IACT_NAME, runs,
                     2);
+
+  prepare_force(particles, count);
+
+  test_force_interactions(test_particle, &particles[1], count - 1,
+                          "test_nonsym_force", runs, 1);
+  test_force_interactions(test_particle, &particles[1], count - 1,
+                          "test_nonsym_force", runs, 2);
 
   return 0;
 }

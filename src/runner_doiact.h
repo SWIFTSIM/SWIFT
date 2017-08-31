@@ -2672,9 +2672,14 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   }
 
   /* Otherwise, compute self-interaction. */
-  else
+  else {
+#if (DOSELF2 == runner_doself2_force) && defined(WITH_VECTORIZATION) && \
+    defined(GADGET2_SPH)
+    runner_doself2_force_vec(r, ci);
+#else
     DOSELF2(r, ci);
-
+#endif
+  }
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
 
