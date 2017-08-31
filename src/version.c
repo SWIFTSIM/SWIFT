@@ -142,10 +142,7 @@ const char *configuration_options(void) {
   static int initialised = 0;
   static const char *config = SWIFT_CONFIG_FLAGS;
   if (!initialised) {
-    if (strlen(config) < 1024 - 2)
-      sprintf(buf, "'%s'", config);
-    else
-      error("SWIFT_CONFIG_FLAGS string longer than buffer");
+    snprintf(buf, 1024, "'%s'", config);
     initialised = 1;
   }
   return buf;
@@ -161,10 +158,7 @@ const char *compilation_cflags(void) {
   static int initialised = 0;
   static const char *cflags = SWIFT_CFLAGS;
   if (!initialised) {
-    if (strlen(cflags) < 1024 - 2)
-      sprintf(buf, "'%s'", cflags);
-    else
-      error("SWIFT_CFLAGS string longer than buffer");
+    snprintf(buf, 1024, "'%s'", cflags);
     initialised = 1;
   }
   return buf;

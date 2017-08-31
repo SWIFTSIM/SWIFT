@@ -25,10 +25,8 @@
 #if defined(RIEMANN_SOLVER_EXACT)
 
 #define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
-#if defined(EOS_IDEAL_GAS)
+#if defined(EOS_IDEAL_GAS) || defined(EOS_ISOTHERMAL_GAS)
 #include "riemann/riemann_exact.h"
-#elif defined(EOS_ISOTHERMAL_GAS)
-#include "riemann/riemann_exact_isothermal.h"
 #else
 #error "The Exact Riemann solver is incompatible with this equation of state!"
 #endif

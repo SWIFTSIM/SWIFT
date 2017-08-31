@@ -34,7 +34,7 @@ import sys
 stats_filename = "./energy.txt"
 
 # First snapshot
-snap_filename = "Isothermal_000.hdf5"
+snap_filename = "Isothermal_0000.hdf5"
 f = h5.File(snap_filename,'r')
 
 # Read the units parameters from the snapshot
@@ -70,7 +70,7 @@ Lz_snap = np.zeros(402)
 
 # Read all the particles from the snapshots
 for i in range(402):
-    snap_filename = "Isothermal_%0.3d.hdf5"%i
+    snap_filename = "Isothermal_%0.4d.hdf5"%i
     f = h5.File(snap_filename,'r')
 
     pos_x = f["PartType1/Coordinates"][:,0]

@@ -12,9 +12,6 @@ TimeIntegration:
   time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
-
-Scheduler:
-  cell_split_size:     50
   
 # Parameters governing the snapshots
 Snapshots:
@@ -29,8 +26,8 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration.
+  epsilon:               0.001    # Softening length (in internal units).
   theta:                 0.7      # Opening angle (Multipole acceptance criterion)
-  epsilon:               0.0001   # Softening length (in internal units).
   
 # Parameters for the hydrodynamics scheme
 SPH:

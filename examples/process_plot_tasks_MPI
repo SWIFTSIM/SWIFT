@@ -62,6 +62,9 @@ nrank=$(($nrank-1))
 #  And process them,
 echo "Processing thread info files..."
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks_MPI.py --expand 1 --limit $TIMERANGE \$0 \$2 "
+for i in $(seq 0 $nrank); do
+    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./analyse_tasks_MPI.py -r $i \$0 > \$2${i}.stats"
+done
 
 echo "Writing output index.html file"
 #  Construct document - serial.
@@ -78,12 +81,31 @@ EOF
 echo $list | xargs -n 3 | while read f s g; do
     cat <<EOF >> index.html
 <h2>Step $s</h2>
+<ul style="list-style-type:none">
+<li>
 EOF
     for i in $(seq 0 $nrank); do
-        cat <<EOF >> index.html
-<a href="step${s}r${i}.png"><img src="step${s}r${i}.png" width=400px/></a>
-EOF
+        cat <<EOF2 >> index.html
+<a href="step${s}r${i}.html"><img src="step${s}r${i}.png" width=400px/></a>
+EOF2
+    cat <<EOF2 > step${s}r${i}.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+<img src="step${s}r${i}.png">
+<pre>
+EOF2
+cat step${s}r${i}.stats >> step${s}r${i}.html
+cat <<EOF2 >> step${s}r${i}.html
+</pre>
+</body>
+</html>
+EOF2
     done
+cat <<EOF >> index.html
+</li>
+</ul>
+EOF
 done
 
 cat <<EOF >> index.html

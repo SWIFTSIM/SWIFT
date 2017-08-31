@@ -95,9 +95,10 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
-             "init_grav", "ghost", "extra_ghost", "drift", "kick1", "kick2",
-             "timestep", "send", "recv", "grav_top_level", "grav_long_range",
-             "grav_mm", "grav_down", "cooling", "sourceterms", "count"]
+             "init_grav", "ghost", "extra_ghost", "drift_part", "drift_gpart",
+             "kick1", "kick2", "timestep", "send", "recv", "grav_top_level",
+             "grav_long_range", "grav_mm", "grav_down", "cooling",
+             "sourceterms", "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
             "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
@@ -111,15 +112,14 @@ FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
 
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
-
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
-           "sienna", "aquamarine", "bisque", "blue", "green", "brown",
-           "purple", "mocassin", "olivedrab", "chartreuse", "darksage",
-           "darkgreen", "green", "mediumseagreen", "mediumaquamarine",
-           "darkslategrey", "mediumturquoise", "black", "cadetblue", "skyblue",
-           "red", "slategray", "gold", "slateblue", "blueviolet",
-           "mediumorchid", "firebrick", "magenta", "hotpink", "pink",
-           "orange", "lightgreen"]
+           "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
+           "brown", "purple", "moccasin", "olivedrab", "chartreuse",
+           "darksage", "darkgreen", "green", "mediumseagreen",
+           "mediumaquamarine", "darkslategrey", "mediumturquoise",
+           "black", "cadetblue", "skyblue", "red", "slategray", "gold",
+           "slateblue", "blueviolet", "mediumorchid", "firebrick",
+           "magenta", "hotpink", "pink", "orange", "lightgreen"]
 maxcolours = len(colours)
 
 #  Set colours of task/subtype.
@@ -141,9 +141,9 @@ for task in SUBTYPES:
 #  For fiddling with colours...
 if args.verbose:
     print "#Selected colours:"
-    for task in TASKCOLOURS.keys():
+    for task in sorted(TASKCOLOURS.keys()):
         print "# " + task + ": " + TASKCOLOURS[task]
-    for task in SUBCOLOURS.keys():
+    for task in sorted(SUBCOLOURS.keys()):
         print "# " + task + ": " + SUBCOLOURS[task]
 
 #  Read input.
@@ -171,11 +171,13 @@ delta_t = delta_t * CPU_CLOCK
 if delta_t == 0:
     for rank in range(nranks):
         data = sdata[sdata[:,0] == rank]
-        dt = max(data[:,6]) - min(data[:,5])
+        full_step = data[0,:]
+        tic_step = int(full_step[5])
+        toc_step = int(full_step[6])
+        dt = toc_step - tic_step
         if dt > delta_t:
             delta_t = dt
     print "Data range: ", delta_t / CPU_CLOCK, "ms"
-
 
 # Once more doing the real gather and plots this time.
 for rank in range(nranks):
@@ -186,6 +188,8 @@ for rank in range(nranks):
     tic_step = int(full_step[5])
     toc_step = int(full_step[6])
     data = data[1:,:]
+    typesseen = []
+    nethread = 0
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
@@ -274,12 +278,12 @@ for rank in range(nranks):
 
     #  Legend and room for it.
     nrow = len(typesseen) / 5
-    if len(typesseen) * 5 < nrow:
-        nrow = nrow + 1
     ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
-    ax.set_ylim(0, nethread + nrow + 1)
+    ax.set_ylim(0, nethread + 0.5)
     if data.size > 0:
-        ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
+        ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
 
     # Start and end of time-step
     ax.plot([0, 0], [0, nethread + nrow + 1], 'k--', linewidth=1)

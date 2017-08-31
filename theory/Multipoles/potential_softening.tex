@@ -1,4 +1,5 @@
 \subsection{Gravitational softening}
+\label{ssec:potential_softening}
 
 To avoid artificial two-body relaxation, the Dirac
 $\delta$-distribution of particles is convolved with a softening
@@ -6,9 +7,13 @@ kernel of a given fixed, but time-variable, scale-length
 $\epsilon$. Instead of the commonly used spline kernel of
 \cite{Monaghan1985} (e.g. in \textsc{Gadget}), we use a C2 kernel
 \citep{Wendland1995} which leads to an expression for the force that
-is cheaper to compute and has a very similar overall shape. We set
-$\tilde\delta(\mathbf{x}) = \rho(|\mathbf{x}|) = W(|\mathbf{x}|,
-3\epsilon_{\rm Plummer})$, with $W(r, H)$ given by
+is cheaper to compute and has a very similar overall shape. The C2
+kernel has the advantage of being branch-free leading to an expression
+which is faster to evaluate using vector units available on modern
+architectures; it also does not require any divisions to evaluate the
+softened forces. We set $\tilde\delta(\mathbf{x}) =
+\rho(|\mathbf{x}|) = W(|\mathbf{x}|, 3\epsilon_{\rm Plummer})$, with
+$W(r, H)$ given by
 
 \begin{align}
 W(r,H) &= \frac{21}{2\pi H^3} \times \nonumber \\
@@ -18,9 +23,9 @@ W(r,H) &= \frac{21}{2\pi H^3} \times \nonumber \\
 \end{array}
 \right.
 \end{align}
-and $u = r/H$. The potential $\phi(r,H)$ corresponding to this density distribution reads
+and $u = r/H$. The potential $\varphi(r,H)$ corresponding to this density distribution reads
 \begin{align}
-\phi = 
+\varphi = 
 \left\lbrace\begin{array}{rcl}
 \frac{1}{H} (-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3) & \mbox{if} & u < 1,\\
 \frac{1}{r} & \mbox{if} & u \geq 1.
@@ -41,12 +46,13 @@ details see Sec. 2 of~\cite{Price2007}).
 
 \begin{figure}
 \includegraphics[width=\columnwidth]{potential.pdf}
-\caption{The density (top), potential (middle) and forces (bottom) of
-generated py a point mass in our softened gravitational scheme (for
-completeness, we chose $\epsilon=2$). A
-Plummer-equivalent sphere is shown for comparison. The spline kernel
-of \citet{Monaghan1985}, used in \textsc{Gadget}, is shown for
-comparison but note that it has not been re-scaled to match the
-Plummer-sphere potential at $r=0$.}
+\caption{The density (top), potential (middle) and forces (bottom)
+  generated py a point mass in our softened gravitational scheme.
+  A Plummer-equivalent sphere is shown for comparison. The spline
+  kernel of \citet{Monaghan1985}, used in \textsc{Gadget}, is shown
+  for comparison but note that it has not been re-scaled to match the
+  Plummer-sphere potential at $r=0$.  %(for completeness, we chose
+  %$\epsilon=2$).
+  }
 \label{fig:fmm:softening}
 \end{figure}

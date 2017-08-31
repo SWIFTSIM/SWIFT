@@ -34,7 +34,7 @@ import sys
 stats_filename = "./energy.txt"
 
 # First snapshot
-snap_filename = "coolingBox_000.hdf5"
+snap_filename = "coolingBox_0000.hdf5"
 
 # Some constants in cgs units
 k_b = 1.38E-16 #boltzmann
@@ -104,7 +104,7 @@ print "Cooling time:", cooling_time_cgs, "[s]"
 u_snapshots_cgs = zeros(25)
 t_snapshots_cgs = zeros(25)
 for i in range(25):
-    snap = h5.File("coolingBox_%0.3d.hdf5"%i,'r')
+    snap = h5.File("coolingBox_%0.4d.hdf5"%i,'r')
     u_snapshots_cgs[i] = sum(snap["/PartType0/InternalEnergy"][:] * snap["/PartType0/Masses"][:])  / total_mass[0] * unit_length**2 / (unit_time)**2
     t_snapshots_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
 

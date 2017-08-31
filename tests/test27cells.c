@@ -30,11 +30,9 @@
 /* Local headers. */
 #include "swift.h"
 
-#define ACC_THRESHOLD 1e-5
-
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
-#define DOPAIR1 runner_dopair1_density_vec
+#define DOPAIR1 runner_dopair1_branch_density
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
@@ -45,7 +43,7 @@
 #endif
 
 #ifndef DOPAIR1
-#define DOPAIR1 runner_dopair1_density
+#define DOPAIR1 runner_dopair1_branch_density
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
@@ -64,18 +62,20 @@ enum velocity_types {
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
  * @param h The smoothing length of the particles in units of the inter-particle
- *separation.
+ * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
  * @param pert The perturbation to apply to the particles in the cell in units
- *of the inter-particle separation.
+ * of the inter-particle separation.
  * @param vel The type of velocity field (0, random, divergent, rotating)
+ * @param h_pert The perturbation to apply to the smoothing length.
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
-                       enum velocity_types vel) {
+                       enum velocity_types vel, double h_pert) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
+  float h_max = 0.f;
   struct cell *cell = malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
@@ -121,7 +121,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
             part->v[2] = 0.f;
             break;
         }
-        part->h = size * h / (float)n;
+        if (h_pert)
+          part->h = size * h * random_uniform(1.f, h_pert) / (float)n;
+        else
+          part->h = size * h / (float)n;
+        h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
@@ -156,7 +160,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h;
+  cell->h_max = h_max;
   cell->count = count;
   cell->dx_max_part = 0.;
   cell->dx_max_sort = 0.;
@@ -170,20 +174,19 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
-  cell->ti_sort = 8;
 
   shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
-  cell->sort = NULL;
-  cell->sortsize = 0;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
   free(ci->parts);
-  free(ci->sort);
+  for (int k = 0; k < 13; k++)
+    if (ci->sort[k] != NULL) free(ci->sort[k]);
   free(ci);
 }
 
@@ -202,6 +205,10 @@ void zero_particle_fields(struct cell *c) {
 void end_calculation(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid]);
+
+    /* Recover the common "Neighbour number" definition */
+    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
+    c->parts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -288,33 +295,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fclose(file);
 }
 
-/**
- * @brief Compares the vectorised result against
- * the serial result of the interaction.
- *
- * @param serial_parts Particle array that has been interacted serially
- * @param vec_parts Particle array to be interacted using vectors
- * @param count No. of particles that have been interacted
- * @param threshold Level of accuracy needed
- *
- * @return Non-zero value if difference found, 0 otherwise
- */
-int check_results(struct part *serial_parts, struct part *vec_parts, int count,
-                  double threshold) {
-  int result = 0;
-
-  for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
-
-  return result;
-}
-
 /* Just a forward declaration... */
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -322,8 +307,7 @@ int main(int argc, char *argv[]) {
   engine_pin();
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
-  double perturbation = 0.;
-  double threshold = ACC_THRESHOLD;
+  double perturbation = 0., h_pert = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
@@ -339,10 +323,13 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
+        break;
+      case 'p':
+        sscanf(optarg, "%lf", &h_pert);
         break;
       case 's':
         sscanf(optarg, "%lf", &size);
@@ -365,9 +352,6 @@ int main(int argc, char *argv[]) {
       case 'v':
         sscanf(optarg, "%d", (int *)&vel);
         break;
-      case 'a':
-        sscanf(optarg, "%lf", &threshold);
-        break;
       case '?':
         error("Unknown option.");
         break;
@@ -382,6 +366,7 @@ int main(int argc, char *argv[]) {
         "runner_doself1_density()."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
+        "\n-p                 - Random fractional change in h, h=h*random(1,p)"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
@@ -415,7 +400,11 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.s = &space;
@@ -435,12 +424,13 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
-                                             &partId, perturbation, vel);
+        cells[i * 9 + j * 3 + k] =
+            make_cell(particles, offset, size, h, rho, &partId, perturbation,
+                      vel, h_pert);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
+        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }
@@ -504,10 +494,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Store the vectorised particle results. */
-  struct part vec_parts[main_cell->count];
-  for (int i = 0; i < main_cell->count; i++) vec_parts[i] = main_cell->parts[i];
-
   /* Output timing */
   ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
                       timings[18] + timings[20] + timings[24] + timings[26];
@@ -551,10 +537,6 @@ int main(int argc, char *argv[]) {
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
-
-  /* Check serial results against the vectorised results. */
-  if (check_results(main_cell->parts, vec_parts, main_cell->count, threshold))
-    message("Differences found...");
 
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);

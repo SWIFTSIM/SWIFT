@@ -36,6 +36,7 @@
  * @brief The different task types.
  *
  * Be sure to update the taskID_names array in tasks.c if you modify this list!
+ * Also update the python task plotting scripts!
  */
 enum task_types {
   task_type_none = 0,
@@ -161,6 +162,9 @@ struct task {
 #ifdef SWIFT_DEBUG_TASKS
   /*! ID of the queue or runner owning this task */
   short int rid;
+
+  /*! Information about the direction of the pair task */
+  short int sid;
 
   /*! Start and end time of this task */
   ticks tic, toc;

@@ -78,7 +78,7 @@ PLOT_PARAMS = {"axes.labelsize": 10,
                "figure.figsize" : (args.width, args.height),
                "figure.subplot.left" : 0.03,
                "figure.subplot.right" : 0.995,
-               "figure.subplot.bottom" : 0.1,
+               "figure.subplot.bottom" : 0.09,
                "figure.subplot.top" : 0.99,
                "figure.subplot.wspace" : 0.,
                "figure.subplot.hspace" : 0.,
@@ -89,30 +89,32 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
-             "init_grav", "ghost", "extra_ghost", "drift", "kick1", "kick2",
-             "timestep", "send", "recv", "grav_top_level", "grav_long_range",
-             "grav_mm", "grav_down", "cooling", "sourceterms", "count"]
+             "init_grav", "ghost", "extra_ghost", "drift_part",
+             "drift_gpart", "kick1", "kick2", "timestep", "send", "recv",
+             "grav_top_level", "grav_long_range", "grav_ghost", "grav_mm",
+             "grav_down", "cooling", "sourceterms", "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
             "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
 
 #  Task/subtypes of interest.
 FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
-             "sub_self/density", "pair/force", "pair/density", "pair/grav",
-             "sub_pair/force",
-             "sub_pair/density", "recv/xv", "send/xv", "recv/rho", "send/rho",
+             "sub_self/density", "sub_self/grav", "pair/force", "pair/density",
+             "pair/grav", "sub_pair/force",
+             "sub_pair/density", "sub_pair/grav", "recv/xv", "send/xv",
+             "recv/rho", "send/rho",
              "recv/tend", "send/tend"]
 
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
-
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
-           "sienna", "aquamarine", "bisque", "blue", "green", "brown",
-           "purple", "mocassin", "olivedrab", "chartreuse", "darksage",
-           "darkgreen", "green", "mediumseagreen", "mediumaquamarine",
-           "darkslategrey", "mediumturquoise", "black", "cadetblue", "skyblue",
-           "red", "slategray", "gold", "slateblue", "blueviolet",
-           "mediumorchid", "firebrick", "magenta", "hotpink", "pink"]
+           "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
+           "brown", "purple", "moccasin", "olivedrab", "chartreuse",
+           "steelblue", "darkgreen", "green", "mediumseagreen",
+           "mediumaquamarine", "darkslategrey", "mediumturquoise",
+           "black", "cadetblue", "skyblue", "red", "slategray", "gold",
+           "slateblue", "blueviolet", "mediumorchid", "firebrick",
+           "magenta", "hotpink", "pink", "orange", "lightgreen"]
 maxcolours = len(colours)
 
 #  Set colours of task/subtype.
@@ -134,9 +136,9 @@ for task in SUBTYPES:
 #  For fiddling with colours...
 if args.verbose:
     print "#Selected colours:"
-    for task in TASKCOLOURS.keys():
+    for task in sorted(TASKCOLOURS.keys()):
         print "# " + task + ": " + TASKCOLOURS[task]
-    for task in SUBCOLOURS.keys():
+    for task in sorted(SUBCOLOURS.keys()):
         print "# " + task + ": " + SUBCOLOURS[task]
 
 #  Read input.
@@ -161,7 +163,7 @@ data = data[data[:,5] != 0]
 #  Calculate the time range, if not given.
 delta_t = delta_t * CPU_CLOCK
 if delta_t == 0:
-    dt = max(data[:,5]) - min(data[:,4])
+    dt = toc_step - tic_step
     if dt > delta_t:
         delta_t = dt
     print "Data range: ", delta_t / CPU_CLOCK, "ms"
@@ -182,7 +184,7 @@ ecounter = []
 for i in range(nthread):
     ecounter.append(0)
 
-num_lines = pl.size(data) / 10
+num_lines = pl.size(data) / pl.size(full_step)
 for line in range(num_lines):
     thread = int(data[line,0])
 
@@ -242,21 +244,21 @@ for i in range(nthread):
 #  Legend and room for it.
 nrow = len(typesseen) / 5
 if not args.nolegend:
-    if len(typesseen) * 5 < nrow:
-        nrow = nrow + 1
     ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
-    ax.set_ylim(0, nthread + nrow + 1)
-    ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
-
+    ax.set_ylim(0, nthread + 0.5)
+    ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
+    
 # Start and end of time-step
 ax.plot([0, 0], [0, nthread + nrow + 1], 'k--', linewidth=1)
 ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
 
-ax.set_xlabel("Wall clock time [ms]")
+ax.set_xlabel("Wall clock time [ms]", labelpad=0.)
 if expand == 1:
-    ax.set_ylabel("Thread ID" )
+    ax.set_ylabel("Thread ID", labelpad=0 )
 else:
-    ax.set_ylabel("Thread ID * " + str(expand) )
+    ax.set_ylabel("Thread ID * " + str(expand), labelpad=0 )
 ax.set_yticks(pl.array(range(nthread)), True)
 
 loc = plticker.MultipleLocator(base=expand)

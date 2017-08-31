@@ -212,14 +212,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.pressure_dh -=
       hydro_dimension * p->mass * p->entropy_one_over_gamma * kernel_root;
   p->density.wcount += kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->rho_bar *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.pressure_dh *= h_inv_dim_plus_one;
-  p->density.wcount *= kernel_norm;
-  p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
+  p->density.wcount *= h_inv_dim;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
   const float entropy_minus_one_over_gamma = 1.f / p->entropy_one_over_gamma;
@@ -234,6 +235,33 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * rho_inv;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  p->rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_bar = p->mass * kernel_root * h_inv_dim;
+  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.rho_dh = 0.f;
+  p->density.wcount_dh = 0.f;
+  p->density.pressure_dh = 0.f;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -308,7 +336,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->force.v_sig = p->force.soundspeed;
+  p->force.v_sig = 0.0f;
 }
 
 /**

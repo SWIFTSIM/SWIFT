@@ -60,9 +60,10 @@
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
-int space_subsize = space_subsize_default;
+int space_subsize_pair = space_subsize_pair_default;
+int space_subsize_self = space_subsize_self_default;
+int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_maxsize = space_maxsize_default;
-int space_maxcount = space_maxcount_default;
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.
@@ -214,6 +215,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->scount = 0;
     c->init_grav = NULL;
     c->extra_ghost = NULL;
+    c->ghost_in = NULL;
+    c->ghost_out = NULL;
     c->ghost = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
@@ -227,10 +230,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
-    if (c->sort != NULL) {
-      free(c->sort);
-      c->sort = NULL;
-    }
+    c->parts = NULL;
+    c->xparts = NULL;
+    c->gparts = NULL;
+    c->sparts = NULL;
+    for (int i = 0; i < 13; i++)
+      if (c->sort[i] != NULL) {
+        free(c->sort[i]);
+        c->sort[i] = NULL;
+      }
 #if WITH_MPI
     c->recv_xv = NULL;
     c->recv_rho = NULL;
@@ -243,6 +251,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->send_ti = NULL;
 #endif
   }
+}
+
+/**
+ * @brief Free up any allocated cells.
+ */
+void space_free_cells(struct space *s) {
+  threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 0, s);
+  s->maxdepth = 0;
 }
 
 /**
@@ -308,14 +325,22 @@ void space_regrid(struct space *s, int verbose) {
         "small,\n"
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
-        " - particle with velocities so large that they move by more than two "
+        " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
-  /* Check if we have enough cells for gravity. */
-  if (s->gravity && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
+  /* Check if we have enough cells for periodic gravity. */
+  if (s->gravity && s->periodic && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
     error(
-        "Must have at least 8 cells in each spatial dimension when gravity "
-        "is switched on.");
+        "Must have at least 8 cells in each spatial dimension when periodic "
+        "gravity is switched on.\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
+        " - the (minimal) time-step is too large leading to particles with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particles with velocities so large that they move by more than two "
+        "box sizes per time-step.\n");
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -357,18 +382,20 @@ void space_regrid(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-    message("re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
+    message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     fflush(stdout);
 #endif
 
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
-      threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                     s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
+      space_free_cells(s);
       free(s->cells_top);
       free(s->multipoles_top);
-      s->maxdepth = 0;
     }
+
+    /* Also free the task arrays, these will be regenerated and we can use the
+     * memory while copying the particle arrays. */
+    if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
     /* Set the new cell dimensions only if smaller. */
     for (int k = 0; k < 3; k++) {
@@ -476,9 +503,7 @@ void space_regrid(struct space *s, int verbose) {
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
-    threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 100, s);
-    s->maxdepth = 0;
+    space_free_cells(s);
   }
 
   if (verbose)
@@ -499,7 +524,7 @@ void space_rebuild(struct space *s, int verbose) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-  if (s->e->nodeID == 0 || verbose) message("re)building space");
+  if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
 #endif
 
@@ -910,14 +935,16 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_old;
     c->ti_old_gpart = ti_old;
     c->ti_old_multipole = ti_old;
-    c->parts = finger;
-    c->xparts = xfinger;
-    c->gparts = gfinger;
-    c->sparts = sfinger;
-    finger = &finger[c->count];
-    xfinger = &xfinger[c->count];
-    gfinger = &gfinger[c->gcount];
-    sfinger = &sfinger[c->scount];
+    if (c->nodeID == engine_rank) {
+      c->parts = finger;
+      c->xparts = xfinger;
+      c->gparts = gfinger;
+      c->sparts = sfinger;
+      finger = &finger[c->count];
+      xfinger = &xfinger[c->count];
+      gfinger = &gfinger[c->gcount];
+      sfinger = &sfinger[c->scount];
+    }
   }
   // message( "hooking up cells took %.3f %s." ,
   // clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -954,7 +981,7 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
   const ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
-                 sizeof(struct cell), 1, s);
+                 sizeof(struct cell), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -962,28 +989,33 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
 }
 
 /**
- * @brief Runs through the top-level cells and checks whether tasks associated
- * with them can be split. If not, try to sanitize the cells.
+ * @brief #threadpool mapper function to sanitize the cells
+ *
+ * @param map_data Pointers towards the top-level cells.
+ * @param num_cells The number of top-level cells.
+ * @param extra_data Unused parameters.
+ */
+void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
+  /* Unpack the inputs. */
+  struct cell *cells_top = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[ind];
+    cell_sanitize(c, 0);
+  }
+}
+
+/**
+ * @brief Runs through the top-level cells and sanitize their h values
  *
  * @param s The #space to act upon.
  */
 void space_sanitize(struct space *s) {
 
-  s->sanitized = 1;
+  if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
-  for (int k = 0; k < s->nr_cells; k++) {
-
-    struct cell *c = &s->cells_top[k];
-    const double min_width = c->dmin;
-
-    /* Do we have a problem ? */
-    if (c->h_max * kernel_gamma * space_stretch > min_width * 0.5 &&
-        c->count > space_maxcount) {
-
-      /* Ok, clean-up the mess */
-      cell_sanitize(c);
-    }
-  }
+  threadpool_map(&s->e->threadpool, space_sanitize_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 0, NULL);
 }
 
 /**
@@ -1166,7 +1198,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
   data.ind = ind;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, &data);
+                 s->nr_parts, sizeof(struct part), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1193,7 +1225,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
   data.ind = gind;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1220,7 +1252,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
   data.ind = sind;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
-                 s->sparts, s->nr_sparts, sizeof(struct spart), 1000, &data);
+                 s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1783,10 +1815,11 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
  */
 void space_map_clearsort(struct cell *c, void *data) {
 
-  if (c->sort != NULL) {
-    free(c->sort);
-    c->sort = NULL;
-  }
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) {
+      free(c->sort[i]);
+      c->sort[i] = NULL;
+    }
 }
 
 /**
@@ -2284,7 +2317,8 @@ void space_recycle(struct space *s, struct cell *c) {
     error("Failed to destroy spinlocks.");
 
   /* Clear this cell's sort arrays. */
-  if (c->sort != NULL) free(c->sort);
+  for (int i = 0; i < 13; i++)
+    if (c->sort[i] != NULL) free(c->sort[i]);
 
   /* Lock the space. */
   lock_lock(&s->lock);
@@ -2336,7 +2370,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
       error("Failed to destroy spinlocks.");
 
     /* Clear this cell's sort arrays. */
-    if (c->sort != NULL) free(c->sort);
+    for (int i = 0; i < 13; i++)
+      if (c->sort[i] != NULL) free(c->sort[i]);
 
     /* Count this cell. */
     count += 1;
@@ -2480,7 +2515,7 @@ void space_synchronize_particle_positions(struct space *s) {
       (s->nr_gparts > 0 && s->nr_sparts > 0))
     threadpool_map(&s->e->threadpool,
                    space_synchronize_particle_positions_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 1000, (void *)s);
+                   s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
 }
 
 /**
@@ -2630,7 +2665,6 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
-  s->sanitized = 0;
   s->periodic = periodic;
   s->gravity = gravity;
   s->nr_parts = Npart;
@@ -2677,15 +2711,21 @@ void space_init(struct space *s, const struct swift_params *params,
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
                                            space_maxsize_default);
-  space_subsize = parser_get_opt_param_int(params, "Scheduler:cell_sub_size",
-                                           space_subsize_default);
+  space_subsize_pair = parser_get_opt_param_int(
+      params, "Scheduler:cell_sub_size_pair", space_subsize_pair_default);
+  space_subsize_self = parser_get_opt_param_int(
+      params, "Scheduler:cell_sub_size_self", space_subsize_self_default);
+  space_subsize_self_grav =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
+                               space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
-  space_maxcount = parser_get_opt_param_int(params, "Scheduler:cell_max_count",
-                                            space_maxcount_default);
+
   if (verbose)
-    message("max_size set to %d, sub_size set to %d, split_size set to %d",
-            space_maxsize, space_subsize, space_splitsize);
+    message(
+        "max_size set to %d, sub_size_pair set to %d, sub_size_self set to %d, "
+        "split_size set to %d",
+        space_maxsize, space_subsize_pair, space_subsize_self, space_splitsize);
 
   /* Apply h scaling */
   const double scaling =

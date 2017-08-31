@@ -64,7 +64,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute the kernel function for pj */
   const float hj_inv = 1.f / hj;
@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= uj * wj_dx;
+  pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
@@ -112,9 +112,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
 
-  vector r, ri, r2, xi, xj, hi, hj, hi_inv, hj_inv, wi, wj, wi_dx, wj_dx;
+  vector r, ri, r2, ui, uj, hi, hj, hi_inv, hj_inv, wi, wj, wi_dx, wj_dx;
   vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
   vector mi, mj;
   vector dx[3], dv[3];
@@ -161,15 +161,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   hi.v = vec_load(Hi);
   hi_inv = vec_reciprocal(hi);
-  xi.v = r.v * hi_inv.v;
+  ui.v = r.v * hi_inv.v;
 
   hj.v = vec_load(Hj);
   hj_inv = vec_reciprocal(hj);
-  xj.v = r.v * hj_inv.v;
+  uj.v = r.v * hj_inv.v;
 
   /* Compute the kernel function. */
-  kernel_deval_vec(&xi, &wi, &wi_dx);
-  kernel_deval_vec(&xj, &wj, &wj_dx);
+  kernel_deval_vec(&ui, &wi, &wi_dx);
+  kernel_deval_vec(&uj, &wj, &wj_dx);
 
   /* Compute dv. */
   dv[0].v = vi[0].v - vj[0].v;
@@ -188,17 +188,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   /* Compute density of pi. */
   rhoi.v = mj.v * wi.v;
-  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + xi.v * wi_dx.v);
+  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + ui.v * wi_dx.v);
   wcounti.v = wi.v;
-  wcounti_dh.v = xi.v * wi_dx.v;
+  wcounti_dh.v = (vec_set1(hydro_dimension) * wi.v + ui.v * wi_dx.v);
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
   for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
   /* Compute density of pj. */
   rhoj.v = mi.v * wj.v;
-  rhoj_dh.v = mi.v * (vec_set1(hydro_dimension) * wj.v + xj.v * wj_dx.v);
+  rhoj_dh.v = mi.v * (vec_set1(hydro_dimension) * wj.v + uj.v * wj_dx.v);
   wcountj.v = wj.v;
-  wcountj_dh.v = xj.v * wj_dx.v;
+  wcountj_dh.v = (vec_set1(hydro_dimension) * wj.v + uj.v * wj_dx.v);
   div_vj.v = mi.v * dvdr.v * wj_dx.v;
   for (k = 0; k < 3; k++) curl_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
 
@@ -241,7 +241,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
-  const float ri = 1.0f / r;
+  const float r_inv = 1.0f / r;
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -254,9 +254,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;
+  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  const float fac = mj * wi_dx * ri;
+  const float fac = mj * wi_dx * r_inv;
 
   /* Compute dv dot r */
   dv[0] = pi->v[0] - pj->v[0];
@@ -282,9 +282,9 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
                                struct part **pi, struct part **pj) {
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
 
-  vector r, ri, r2, xi, hi, hi_inv, wi, wi_dx;
+  vector r, ri, r2, ui, hi, hi_inv, wi, wi_dx;
   vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
   vector mj;
   vector dx[3], dv[3];
@@ -328,9 +328,9 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   hi.v = vec_load(Hi);
   hi_inv = vec_reciprocal(hi);
-  xi.v = r.v * hi_inv.v;
+  ui.v = r.v * hi_inv.v;
 
-  kernel_deval_vec(&xi, &wi, &wi_dx);
+  kernel_deval_vec(&ui, &wi, &wi_dx);
 
   /* Compute dv. */
   dv[0].v = vi[0].v - vj[0].v;
@@ -349,9 +349,9 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   /* Compute density of pi. */
   rhoi.v = mj.v * wi.v;
-  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + xi.v * wi_dx.v);
+  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + ui.v * wi_dx.v);
   wcounti.v = wi.v;
-  wcounti_dh.v = xi.v * wi_dx.v;
+  wcounti_dh.v = (vec_set1(hydro_dimension) * wi.v + ui.v * wi_dx.v);
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
   for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
@@ -390,7 +390,7 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
                                  vector *curlvySum, vector *curlvzSum,
                                  mask_t mask) {
 
-  vector r, ri, xi, wi, wi_dx;
+  vector r, ri, ui, wi, wi_dx;
   vector mj;
   vector dvx, dvy, dvz;
   vector vjx, vjy, vjz;
@@ -407,10 +407,10 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
   ri = vec_reciprocal_sqrt(*r2);
   r.v = vec_mul(r2->v, ri.v);
 
-  xi.v = vec_mul(r.v, hi_inv.v);
+  ui.v = vec_mul(r.v, hi_inv.v);
 
   /* Calculate the kernel for two particles. */
-  kernel_deval_1_vec(&xi, &wi, &wi_dx);
+  kernel_deval_1_vec(&ui, &wi, &wi_dx);
 
   /* Compute dv. */
   dvx.v = vec_sub(vix.v, vjx.v);
@@ -432,14 +432,16 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
   curlvry.v = vec_mul(curlvry.v, ri.v);
   curlvrz.v = vec_mul(curlvrz.v, ri.v);
 
+  vector wcount_dh_update;
+  wcount_dh_update.v =
+      vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(ui.v, wi_dx.v));
+
   /* Mask updates to intermediate vector sums for particle pi. */
   rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj.v, wi.v), mask);
-  rho_dhSum->v = vec_mask_sub(
-      rho_dhSum->v, vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                          vec_mul(xi.v, wi_dx.v))),
-      mask);
+  rho_dhSum->v =
+      vec_mask_sub(rho_dhSum->v, vec_mul(mj.v, wcount_dh_update.v), mask);
   wcountSum->v = vec_mask_add(wcountSum->v, wi.v, mask);
-  wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, vec_mul(xi.v, wi_dx.v), mask);
+  wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, wcount_dh_update.v, mask);
   div_vSum->v =
       vec_mask_sub(div_vSum->v, vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask);
   curlvxSum->v = vec_mask_add(curlvxSum->v,
@@ -464,13 +466,13 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *curlvySum, vector *curlvzSum,
                                  mask_t mask, mask_t mask2, short mask_cond) {
 
-  vector r, ri, r2, xi, wi, wi_dx;
+  vector r, ri, r2, ui, wi, wi_dx;
   vector mj;
   vector dx, dy, dz, dvx, dvy, dvz;
   vector vjx, vjy, vjz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
-  vector r_2, ri2, r2_2, xi2, wi2, wi_dx2;
+  vector r_2, ri2, r2_2, ui2, wi2, wi_dx2;
   vector mj2;
   vector dx2, dy2, dz2, dvx2, dvy2, dvz2;
   vector vjx2, vjy2, vjz2;
@@ -501,11 +503,11 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
   r.v = vec_mul(r2.v, ri.v);
   r_2.v = vec_mul(r2_2.v, ri2.v);
 
-  xi.v = vec_mul(r.v, hi_inv.v);
-  xi2.v = vec_mul(r_2.v, hi_inv.v);
+  ui.v = vec_mul(r.v, hi_inv.v);
+  ui2.v = vec_mul(r_2.v, hi_inv.v);
 
   /* Calculate the kernel for two particles. */
-  kernel_deval_2_vec(&xi, &wi, &wi_dx, &xi2, &wi2, &wi_dx2);
+  kernel_deval_2_vec(&ui, &wi, &wi_dx, &ui2, &wi2, &wi_dx2);
 
   /* Compute dv. */
   dvx.v = vec_sub(vix.v, vjx.v);
@@ -542,25 +544,25 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
   curlvrz.v = vec_mul(curlvrz.v, ri.v);
   curlvrz2.v = vec_mul(curlvrz2.v, ri2.v);
 
+  vector wcount_dh_update, wcount_dh_update2;
+  wcount_dh_update.v =
+      vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(ui.v, wi_dx.v));
+  wcount_dh_update2.v =
+      vec_fma(vec_set1(hydro_dimension), wi2.v, vec_mul(ui2.v, wi_dx2.v));
+
   /* Mask updates to intermediate vector sums for particle pi. */
   /* Mask only when needed. */
   if (mask_cond) {
     rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj.v, wi.v), mask);
     rhoSum->v = vec_mask_add(rhoSum->v, vec_mul(mj2.v, wi2.v), mask2);
-    rho_dhSum->v = vec_mask_sub(
-        rho_dhSum->v, vec_mul(mj.v, vec_fma(vec_set1(hydro_dimension), wi.v,
-                                            vec_mul(xi.v, wi_dx.v))),
-        mask);
-    rho_dhSum->v = vec_mask_sub(
-        rho_dhSum->v, vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
-                                             vec_mul(xi2.v, wi_dx2.v))),
-        mask2);
+    rho_dhSum->v =
+        vec_mask_sub(rho_dhSum->v, vec_mul(mj.v, wcount_dh_update.v), mask);
+    rho_dhSum->v =
+        vec_mask_sub(rho_dhSum->v, vec_mul(mj2.v, wcount_dh_update2.v), mask2);
     wcountSum->v = vec_mask_add(wcountSum->v, wi.v, mask);
     wcountSum->v = vec_mask_add(wcountSum->v, wi2.v, mask2);
-    wcount_dhSum->v =
-        vec_mask_sub(wcount_dhSum->v, vec_mul(xi.v, wi_dx.v), mask);
-    wcount_dhSum->v =
-        vec_mask_sub(wcount_dhSum->v, vec_mul(xi2.v, wi_dx2.v), mask2);
+    wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, wcount_dh_update.v, mask);
+    wcount_dhSum->v = vec_mask_sub(wcount_dhSum->v, wcount_dh_update2.v, mask2);
     div_vSum->v = vec_mask_sub(div_vSum->v,
                                vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)), mask);
     div_vSum->v = vec_mask_sub(
@@ -578,24 +580,29 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
     curlvzSum->v = vec_mask_add(
         curlvzSum->v, vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)), mask2);
   } else {
-    rhoSum->v += vec_mul(mj.v, wi.v);
-    rhoSum->v += vec_mul(mj2.v, wi2.v);
-    rho_dhSum->v -= vec_mul(
-        mj.v, vec_fma(vec_set1(hydro_dimension), wi.v, vec_mul(xi.v, wi_dx.v)));
-    rho_dhSum->v -= vec_mul(mj2.v, vec_fma(vec_set1(hydro_dimension), wi2.v,
-                                           vec_mul(xi2.v, wi_dx2.v)));
-    wcountSum->v += wi.v;
-    wcountSum->v += wi2.v;
-    wcount_dhSum->v -= vec_mul(xi.v, wi_dx.v);
-    wcount_dhSum->v -= vec_mul(xi2.v, wi_dx2.v);
-    div_vSum->v -= vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v));
-    div_vSum->v -= vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v));
-    curlvxSum->v += vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v));
-    curlvxSum->v += vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v));
-    curlvySum->v += vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v));
-    curlvySum->v += vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v));
-    curlvzSum->v += vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v));
-    curlvzSum->v += vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v));
+    rhoSum->v = vec_add(rhoSum->v, vec_mul(mj.v, wi.v));
+    rhoSum->v = vec_add(rhoSum->v, vec_mul(mj2.v, wi2.v));
+    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(mj.v, wcount_dh_update.v));
+    rho_dhSum->v = vec_sub(rho_dhSum->v, vec_mul(mj2.v, wcount_dh_update2.v));
+    wcountSum->v = vec_add(wcountSum->v, wi.v);
+    wcountSum->v = vec_add(wcountSum->v, wi2.v);
+    wcount_dhSum->v = vec_sub(wcount_dhSum->v, wcount_dh_update.v);
+    wcount_dhSum->v = vec_sub(wcount_dhSum->v, wcount_dh_update2.v);
+    div_vSum->v = vec_sub(div_vSum->v, vec_mul(mj.v, vec_mul(dvdr.v, wi_dx.v)));
+    div_vSum->v =
+        vec_sub(div_vSum->v, vec_mul(mj2.v, vec_mul(dvdr2.v, wi_dx2.v)));
+    curlvxSum->v =
+        vec_add(curlvxSum->v, vec_mul(mj.v, vec_mul(curlvrx.v, wi_dx.v)));
+    curlvxSum->v =
+        vec_add(curlvxSum->v, vec_mul(mj2.v, vec_mul(curlvrx2.v, wi_dx2.v)));
+    curlvySum->v =
+        vec_add(curlvySum->v, vec_mul(mj.v, vec_mul(curlvry.v, wi_dx.v)));
+    curlvySum->v =
+        vec_add(curlvySum->v, vec_mul(mj2.v, vec_mul(curlvry2.v, wi_dx2.v)));
+    curlvzSum->v =
+        vec_add(curlvzSum->v, vec_mul(mj.v, vec_mul(curlvrz.v, wi_dx.v)));
+    curlvzSum->v =
+        vec_add(curlvzSum->v, vec_mul(mj2.v, vec_mul(curlvrz2.v, wi_dx2.v)));
   }
 }
 #endif
@@ -703,7 +710,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -985,7 +992,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef WITH_VECTORIZATION
+#ifdef WITH_OLD_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -1161,21 +1168,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 }
 
 #ifdef WITH_VECTORIZATION
+static const vector const_viscosity_alpha_fac =
+    FILL_VEC(-0.25f * const_viscosity_alpha);
+
+/**
+ * @brief Force interaction computed using 1 vector
+ * (non-symmetric vectorized version).
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_1_vec_force(
-    vector *r2, vector *dx, vector *dy, vector *dz, vector *vix, vector *viy,
-    vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2,
-    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz, float *Mj,
-    float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    vector *hi_inv, vector *hj, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask) {
+    vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
+    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
+    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
+    vector hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
+    vector *entropy_dtSum, mask_t mask) {
 
 #ifdef WITH_VECTORIZATION
 
   vector r, ri;
-  vector vjx, vjy, vjz;
-  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector vjx, vjy, vjz, dvx, dvy, dvz;
+  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj;
   vector xi, xj;
   vector hid_inv, hjd_inv;
   vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
@@ -1196,75 +1210,85 @@ runner_iact_nonsym_1_vec_force(
   pjPOrho2.v = vec_load(PjPOrho2);
   balsara_j.v = vec_load(Balsara_j);
   cj.v = vec_load(Cj);
-  hj_inv = vec_reciprocal(*hj);
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
-  balsara.v = balsara_i->v + balsara_j.v;
+  balsara.v = vec_add(balsara_i.v, balsara_j.v);
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(*r2);
-  r.v = r2->v * ri.v;
+  r.v = vec_mul(r2->v, ri.v);
 
   /* Get the kernel for hi. */
-  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
-  xi.v = r.v * hi_inv->v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv);
+  xi.v = vec_mul(r.v, hi_inv.v);
   kernel_eval_dWdx_force_vec(&xi, &wi_dx);
-  wi_dr.v = hid_inv.v * wi_dx.v;
+  wi_dr.v = vec_mul(hid_inv.v, wi_dx.v);
 
   /* Get the kernel for hj. */
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
-  xj.v = r.v * hj_inv.v;
+  xj.v = vec_mul(r.v, hj_inv.v);
 
   /* Calculate the kernel. */
   kernel_eval_dWdx_force_vec(&xj, &wj_dx);
 
-  wj_dr.v = hjd_inv.v * wj_dx.v;
+  wj_dr.v = vec_mul(hjd_inv.v, wj_dx.v);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix->v - vjx.v) * dx->v) + ((viy->v - vjy.v) * dy->v) +
-           ((viz->v - vjz.v) * dz->v);
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
-  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+  mu_ij.v =
+      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
-  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
-  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
-           mu_ij.v * balsara.v / rho_ij.v;
+  rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
+  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+                   rho_ij.v);
 
   /* Now, convolve with the kernel */
-  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
+  visc_term.v =
+      vec_mul(vec_set1(0.5f),
+              vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
+
   sph_term.v =
-      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
-      ri.v;
+      vec_mul(vec_fma(vec_mul(grad_hi.v, piPOrho2.v), wi_dr.v,
+                      vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))),
+              ri.v);
 
   /* Eventually get the acceleration */
-  acc.v = visc_term.v + sph_term.v;
+  acc.v = vec_add(visc_term.v, sph_term.v);
 
   /* Use the force, Luke! */
-  piax.v = mj.v * dx->v * acc.v;
-  piay.v = mj.v * dy->v * acc.v;
-  piaz.v = mj.v * dz->v * acc.v;
+  piax.v = vec_mul(mj.v, vec_mul(dx->v, acc.v));
+  piay.v = vec_mul(mj.v, vec_mul(dy->v, acc.v));
+  piaz.v = vec_mul(mj.v, vec_mul(dz->v, acc.v));
 
   /* Get the time derivative for h. */
-  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
+  pih_dt.v =
+      vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
-  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
 
   /* Store the forces back on the particles. */
   a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
   a_hydro_ySum->v = vec_mask_sub(a_hydro_ySum->v, piay.v, mask);
   a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz.v, mask);
   h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt.v, mask);
-  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig, mask));
+  v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig.v, mask));
   entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt.v, mask);
 
 #else
@@ -1276,24 +1300,27 @@ runner_iact_nonsym_1_vec_force(
 #endif
 }
 
+/**
+ * @brief Force interaction computed using 2 interleaved vectors
+ * (non-symmetric vectorized version).
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_2_vec_force(
-    float *R2, float *Dx, float *Dy, float *Dz, vector *vix, vector *viy,
-    vector *viz, vector *pirho, vector *grad_hi, vector *piPOrho2,
-    vector *balsara_i, vector *ci, float *Vjx, float *Vjy, float *Vjz,
-    float *Pjrho, float *Grad_hj, float *PjPOrho2, float *Balsara_j, float *Cj,
-    float *Mj, vector *hi_inv, float *Hj_inv, vector *a_hydro_xSum,
-    vector *a_hydro_ySum, vector *a_hydro_zSum, vector *h_dtSum,
-    vector *v_sigSum, vector *entropy_dtSum, mask_t mask, mask_t mask_2,
-    short mask_cond) {
+    float *R2, float *Dx, float *Dy, float *Dz, vector vix, vector viy,
+    vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
+    vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
+    float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
+    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
+    vector *entropy_dtSum, mask_t mask, mask_t mask_2, short mask_cond) {
 
 #ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
-  vector dx, dy, dz;
+  vector dx, dy, dz, dvx, dvy, dvz;
   vector vjx, vjy, vjz;
   vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
-  vector xi, xj;
+  vector ui, uj;
   vector hid_inv, hjd_inv;
   vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piax, piay, piaz;
@@ -1303,10 +1330,10 @@ runner_iact_nonsym_2_vec_force(
   vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
 
   vector r_2, r2_2, ri_2;
-  vector dx_2, dy_2, dz_2;
+  vector dx_2, dy_2, dz_2, dvx_2, dvy_2, dvz_2;
   vector vjx_2, vjy_2, vjz_2;
   vector pjrho_2, grad_hj_2, pjPOrho2_2, balsara_j_2, cj_2, mj_2, hj_inv_2;
-  vector xi_2, xj_2;
+  vector ui_2, uj_2;
   vector hjd_inv_2;
   vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
   vector piax_2, piay_2, piaz_2;
@@ -1316,128 +1343,151 @@ runner_iact_nonsym_2_vec_force(
   vector rho_ij_2, visc_2, visc_term_2, sph_term_2, acc_2, entropy_dt_2;
 
   /* Fill vectors. */
-  r2.v = vec_load(R2);
-  dx.v = vec_load(Dx);
-  dy.v = vec_load(Dy);
-  dz.v = vec_load(Dz);
-
-  vjx.v = vec_load(Vjx);
-  vjy.v = vec_load(Vjy);
-  vjz.v = vec_load(Vjz);
   mj.v = vec_load(Mj);
+  mj_2.v = vec_load(&Mj[VEC_SIZE]);
+  vjx.v = vec_load(Vjx);
+  vjx_2.v = vec_load(&Vjx[VEC_SIZE]);
+  vjy.v = vec_load(Vjy);
+  vjy_2.v = vec_load(&Vjy[VEC_SIZE]);
+  vjz.v = vec_load(Vjz);
+  vjz_2.v = vec_load(&Vjz[VEC_SIZE]);
+  dx.v = vec_load(Dx);
+  dx_2.v = vec_load(&Dx[VEC_SIZE]);
+  dy.v = vec_load(Dy);
+  dy_2.v = vec_load(&Dy[VEC_SIZE]);
+  dz.v = vec_load(Dz);
+  dz_2.v = vec_load(&Dz[VEC_SIZE]);
 
+  /* Get the radius and inverse radius. */
+  r2.v = vec_load(R2);
+  r2_2.v = vec_load(&R2[VEC_SIZE]);
+  ri = vec_reciprocal_sqrt(r2);
+  ri_2 = vec_reciprocal_sqrt(r2_2);
+  r.v = vec_mul(r2.v, ri.v);
+  r_2.v = vec_mul(r2_2.v, ri_2.v);
+
+  /* Get remaining properties. */
   pjrho.v = vec_load(Pjrho);
+  pjrho_2.v = vec_load(&Pjrho[VEC_SIZE]);
   grad_hj.v = vec_load(Grad_hj);
+  grad_hj_2.v = vec_load(&Grad_hj[VEC_SIZE]);
   pjPOrho2.v = vec_load(PjPOrho2);
+  pjPOrho2_2.v = vec_load(&PjPOrho2[VEC_SIZE]);
   balsara_j.v = vec_load(Balsara_j);
+  balsara_j_2.v = vec_load(&Balsara_j[VEC_SIZE]);
   cj.v = vec_load(Cj);
+  cj_2.v = vec_load(&Cj[VEC_SIZE]);
   hj_inv.v = vec_load(Hj_inv);
+  hj_inv_2.v = vec_load(&Hj_inv[VEC_SIZE]);
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
-  r2_2.v = vec_load(&R2[VEC_SIZE]);
-  dx_2.v = vec_load(&Dx[VEC_SIZE]);
-  dy_2.v = vec_load(&Dy[VEC_SIZE]);
-  dz_2.v = vec_load(&Dz[VEC_SIZE]);
-
-  vjx_2.v = vec_load(&Vjx[VEC_SIZE]);
-  vjy_2.v = vec_load(&Vjy[VEC_SIZE]);
-  vjz_2.v = vec_load(&Vjz[VEC_SIZE]);
-  mj_2.v = vec_load(&Mj[VEC_SIZE]);
-
-  pjrho_2.v = vec_load(&Pjrho[VEC_SIZE]);
-  grad_hj_2.v = vec_load(&Grad_hj[VEC_SIZE]);
-  pjPOrho2_2.v = vec_load(&PjPOrho2[VEC_SIZE]);
-  balsara_j_2.v = vec_load(&Balsara_j[VEC_SIZE]);
-  cj_2.v = vec_load(&Cj[VEC_SIZE]);
-  hj_inv_2.v = vec_load(&Hj_inv[VEC_SIZE]);
-
-  /* Load stuff. */
-  balsara.v = balsara_i->v + balsara_j.v;
-  balsara_2.v = balsara_i->v + balsara_j_2.v;
-
-  /* Get the radius and inverse radius. */
-  ri = vec_reciprocal_sqrt(r2);
-  ri_2 = vec_reciprocal_sqrt(r2_2);
-  r.v = r2.v * ri.v;
-  r_2.v = r2_2.v * ri_2.v;
+  /* Find the balsara switch. */
+  balsara.v = vec_add(balsara_i.v, balsara_j.v);
+  balsara_2.v = vec_add(balsara_i.v, balsara_j_2.v);
 
   /* Get the kernel for hi. */
-  hid_inv = pow_dimension_plus_one_vec(*hi_inv);
-  xi.v = r.v * hi_inv->v;
-  xi_2.v = r_2.v * hi_inv->v;
-  kernel_eval_dWdx_force_vec(&xi, &wi_dx);
-  kernel_eval_dWdx_force_vec(&xi_2, &wi_dx_2);
-  wi_dr.v = hid_inv.v * wi_dx.v;
-  wi_dr_2.v = hid_inv.v * wi_dx_2.v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv);
+  ui.v = vec_mul(r.v, hi_inv.v);
+  ui_2.v = vec_mul(r_2.v, hi_inv.v);
+  kernel_eval_dWdx_force_vec(&ui, &wi_dx);
+  kernel_eval_dWdx_force_vec(&ui_2, &wi_dx_2);
+  wi_dr.v = vec_mul(hid_inv.v, wi_dx.v);
+  wi_dr_2.v = vec_mul(hid_inv.v, wi_dx_2.v);
 
   /* Get the kernel for hj. */
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   hjd_inv_2 = pow_dimension_plus_one_vec(hj_inv_2);
-  xj.v = r.v * hj_inv.v;
-  xj_2.v = r_2.v * hj_inv_2.v;
+  uj.v = vec_mul(r.v, hj_inv.v);
+  uj_2.v = vec_mul(r_2.v, hj_inv_2.v);
 
   /* Calculate the kernel for two particles. */
-  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
-  kernel_eval_dWdx_force_vec(&xj_2, &wj_dx_2);
+  kernel_eval_dWdx_force_vec(&uj, &wj_dx);
+  kernel_eval_dWdx_force_vec(&uj_2, &wj_dx_2);
 
-  wj_dr.v = hjd_inv.v * wj_dx.v;
-  wj_dr_2.v = hjd_inv_2.v * wj_dx_2.v;
+  wj_dr.v = vec_mul(hjd_inv.v, wj_dx.v);
+  wj_dr_2.v = vec_mul(hjd_inv_2.v, wj_dx_2.v);
+
+  /* Compute dv. */
+  dvx.v = vec_sub(vix.v, vjx.v);
+  dvx_2.v = vec_sub(vix.v, vjx_2.v);
+  dvy.v = vec_sub(viy.v, vjy.v);
+  dvy_2.v = vec_sub(viy.v, vjy_2.v);
+  dvz.v = vec_sub(viz.v, vjz.v);
+  dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = ((vix->v - vjx.v) * dx.v) + ((viy->v - vjy.v) * dy.v) +
-           ((viz->v - vjz.v) * dz.v);
-  dvdr_2.v = ((vix->v - vjx_2.v) * dx_2.v) + ((viy->v - vjy_2.v) * dy_2.v) +
-             ((viz->v - vjz_2.v) * dz_2.v);
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
+                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
   omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
-  mu_ij.v = fac_mu.v * ri.v * omega_ij.v;       /* This is 0 or negative */
-  mu_ij_2.v = fac_mu.v * ri_2.v * omega_ij_2.v; /* This is 0 or negative */
+  mu_ij.v =
+      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
+  mu_ij_2.v = vec_mul(
+      fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = ci->v + cj.v - vec_set1(3.0f) * mu_ij.v;
-  v_sig_2.v = ci->v + cj_2.v - vec_set1(3.0f) * mu_ij_2.v;
+  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig_2.v = vec_fnma(vec_set1(3.f), mu_ij_2.v, vec_add(ci.v, cj_2.v));
 
   /* Now construct the full viscosity term */
-  rho_ij.v = vec_set1(0.5f) * (pirho->v + pjrho.v);
-  rho_ij_2.v = vec_set1(0.5f) * (pirho->v + pjrho_2.v);
-  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
-           mu_ij.v * balsara.v / rho_ij.v;
-  visc_2.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig_2.v *
-             mu_ij_2.v * balsara_2.v / rho_ij_2.v;
+  rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
+  rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
+
+  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+                   rho_ij.v);
+  visc_2.v =
+      vec_div(vec_mul(const_viscosity_alpha_fac.v,
+                      vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
+              rho_ij_2.v);
 
   /* Now, convolve with the kernel */
-  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
-  visc_term_2.v = vec_set1(0.5f) * visc_2.v * (wi_dr_2.v + wj_dr_2.v) * ri_2.v;
+  visc_term.v =
+      vec_mul(vec_set1(0.5f),
+              vec_mul(visc.v, vec_mul(vec_add(wi_dr.v, wj_dr.v), ri.v)));
+  visc_term_2.v = vec_mul(
+      vec_set1(0.5f),
+      vec_mul(visc_2.v, vec_mul(vec_add(wi_dr_2.v, wj_dr_2.v), ri_2.v)));
+
+  vector grad_hi_mul_piPOrho2;
+  grad_hi_mul_piPOrho2.v = vec_mul(grad_hi.v, piPOrho2.v);
+
   sph_term.v =
-      (grad_hi->v * piPOrho2->v * wi_dr.v + grad_hj.v * pjPOrho2.v * wj_dr.v) *
-      ri.v;
-  sph_term_2.v = (grad_hi->v * piPOrho2->v * wi_dr_2.v +
-                  grad_hj_2.v * pjPOrho2_2.v * wj_dr_2.v) *
-                 ri_2.v;
+      vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr.v,
+                      vec_mul(grad_hj.v, vec_mul(pjPOrho2.v, wj_dr.v))),
+              ri.v);
+  sph_term_2.v =
+      vec_mul(vec_fma(grad_hi_mul_piPOrho2.v, wi_dr_2.v,
+                      vec_mul(grad_hj_2.v, vec_mul(pjPOrho2_2.v, wj_dr_2.v))),
+              ri_2.v);
 
   /* Eventually get the acceleration */
-  acc.v = visc_term.v + sph_term.v;
-  acc_2.v = visc_term_2.v + sph_term_2.v;
+  acc.v = vec_add(visc_term.v, sph_term.v);
+  acc_2.v = vec_add(visc_term_2.v, sph_term_2.v);
 
   /* Use the force, Luke! */
-  piax.v = mj.v * dx.v * acc.v;
-  piax_2.v = mj_2.v * dx_2.v * acc_2.v;
-  piay.v = mj.v * dy.v * acc.v;
-  piay_2.v = mj_2.v * dy_2.v * acc_2.v;
-  piaz.v = mj.v * dz.v * acc.v;
-  piaz_2.v = mj_2.v * dz_2.v * acc_2.v;
+  piax.v = vec_mul(mj.v, vec_mul(dx.v, acc.v));
+  piax_2.v = vec_mul(mj_2.v, vec_mul(dx_2.v, acc_2.v));
+  piay.v = vec_mul(mj.v, vec_mul(dy.v, acc.v));
+  piay_2.v = vec_mul(mj_2.v, vec_mul(dy_2.v, acc_2.v));
+  piaz.v = vec_mul(mj.v, vec_mul(dz.v, acc.v));
+  piaz_2.v = vec_mul(mj_2.v, vec_mul(dz_2.v, acc_2.v));
 
   /* Get the time derivative for h. */
-  pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
-  pih_dt_2.v = mj_2.v * dvdr_2.v * ri_2.v / pjrho_2.v * wi_dr_2.v;
+  pih_dt.v =
+      vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
+  pih_dt_2.v =
+      vec_div(vec_mul(mj_2.v, vec_mul(dvdr_2.v, vec_mul(ri_2.v, wi_dr_2.v))),
+              pjrho_2.v);
 
   /* Change in entropy */
-  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
-  entropy_dt_2.v = mj_2.v * visc_term_2.v * dvdr_2.v;
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
+  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_2.v));
 
   /* Store the forces back on the particles. */
   if (mask_cond) {
@@ -1449,8 +1499,8 @@ runner_iact_nonsym_2_vec_force(
     a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, piaz_2.v, mask_2);
     h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt.v, mask);
     h_dtSum->v = vec_mask_sub(h_dtSum->v, pih_dt_2.v, mask_2);
-    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig, mask));
-    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig_2, mask_2));
+    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig.v, mask));
+    v_sigSum->v = vec_fmax(v_sigSum->v, vec_and_mask(v_sig_2.v, mask_2));
     entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt.v, mask);
     entropy_dtSum->v = vec_mask_add(entropy_dtSum->v, entropy_dt_2.v, mask_2);
   } else {

@@ -1,4 +1,5 @@
-\subsection{Derivatives of the potential}
+\section{Derivatives of the potential}
+\label{sec:pot_derivatives}
 
 For completeness, we give here the full expression for the first few
 derivatives of the potential that are used in our FMM scheme. We use
@@ -6,7 +7,7 @@ the notation $\mathbf{r}=(r_x, r_y, r_z)$, $r = |\mathbf{r}|$ and
 $u=r/H$. Starting from the potential (Eq. \ref{eq:fmm:potential},
 reproduced here for clarity), 
 \begin{align}
-D_{000}(\mathbf{r}) = \phi (\mathbf{r},H) = 
+\mathsf{D}_{000}(\mathbf{r}) = \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 \frac{1}{H} \left(-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3\right) & \mbox{if} & u < 1,\\
 \frac{1}{r} & \mbox{if} & u \geq 1, 
@@ -14,10 +15,11 @@ D_{000}(\mathbf{r}) = \phi (\mathbf{r},H) =
 \right.\nonumber
 \end{align}
 we can construct the higher order terms by successively applying the
-"chain rule". We show examples of the first few relevant ones here.
+"chain rule". We show representative examples of the first few
+relevant ones here split by order.
 
 \begin{align}
-D_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \phi (\mathbf{r},H) = 
+\mathsf{D}_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 -\frac{r_x}{H^3} \left(21u^5 - 90u^4 + 140u^3 - 84u^2 + 14\right) & \mbox{if} & u < 1,\\
 -\frac{r_x}{r^3} & \mbox{if} & u \geq 1, 
@@ -25,8 +27,10 @@ D_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \phi (\mathbf{r},H) =
 \right.\nonumber
 \end{align}
 
+\noindent\rule{6cm}{0.4pt}
+
 \begin{align}
-D_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \phi (\mathbf{r},H) = 
+\mathsf{D}_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 \frac{r_x^2}{H^5}\left(-105u^3+360u^2-420u+168\right) -
 \frac{1}{H^3} \left(21u^5 - 90u^4 + 140u^3 - 84u^2 + 14\right) & \mbox{if} & u < 1,\\
@@ -36,7 +40,7 @@ D_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \phi (\mathbf{r},H) =
 \end{align}
 
 \begin{align}
-D_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \phi (\mathbf{r},H) = 
+\mathsf{D}_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 \frac{r_xr_y}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
 3\frac{r_xr_y}{r^5} & \mbox{if} & u \geq 1, 
@@ -44,8 +48,10 @@ D_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \phi (\mathbf{
 \right.\nonumber
 \end{align}
 
+\noindent\rule{6cm}{0.4pt}
+
 \begin{align}
-D_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \phi (\mathbf{r},H) = 
+\mathsf{D}_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 -\frac{r_x^3}{H^7} \left(315u - 720 + 420u^{-1}\right) +
 \frac{3r_x}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
@@ -55,7 +61,7 @@ D_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \phi (\mathbf{r},H) =
 \end{align}
 
 \begin{align}
-D_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \phi (\mathbf{r},H) = 
+\mathsf{D}_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 -\frac{r_x^2r_y}{H^7} \left(315u - 720 + 420u^{-1}\right) +
 \frac{r_y}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
@@ -66,10 +72,32 @@ D_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \phi (\mathbf{r},H) =
 
 
 \begin{align}
-D_{111}(\mathbf{r}) = \frac{\partial^3}{\partial r_x\partial r_y\partial r_z} \phi (\mathbf{r},H) = 
+\mathsf{D}_{111}(\mathbf{r}) = \frac{\partial^3}{\partial r_x\partial r_y\partial r_z} \varphi (\mathbf{r},H) = 
 \left\lbrace\begin{array}{rcl}
 -\frac{r_xr_yr_z}{H^7} \left(315u - 720 + 420u^{-1}\right) & \mbox{if} & u < 1,\\
 -15\frac{r_xr_yr_z}{r^7} & \mbox{if} & u \geq 1, 
 \end{array}
 \right.\nonumber
+\end{align}
+
+\noindent\rule{6cm}{0.4pt}
+
+\begin{align}
+  \mathsf{D}_{400}(\mathbf{r}) &=
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{310}(\mathbf{r}) &=
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{220}(\mathbf{r}) &=
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{211}(\mathbf{r}) &=
+  \nonumber
 \end{align}

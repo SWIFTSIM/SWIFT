@@ -43,6 +43,9 @@ struct external_potential {
   /*! Amplitude of the sine wave. */
   double amplitude;
 
+  /*! Growth time of the potential. */
+  double growth_time;
+
   /*! Time-step limiting factor. */
   double timestep_limit;
 };
@@ -76,7 +79,13 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
-  g->a_grav[0] = potential->amplitude * sin(2. * M_PI * g->x[0]) /
+  float Acorr = 1.;
+
+  if (time < potential->growth_time) {
+    Acorr = time / potential->growth_time;
+  }
+
+  g->a_grav[0] = potential->amplitude * Acorr * sin(2. * M_PI * g->x[0]) /
                  phys_const->const_newton_G;
 }
 
@@ -114,6 +123,8 @@ static INLINE void potential_init_backend(
 
   potential->amplitude =
       parser_get_param_double(parameter_file, "SineWavePotential:amplitude");
+  potential->growth_time = parser_get_opt_param_double(
+      parameter_file, "SineWavePotential:growth_time", 0.);
   potential->timestep_limit = parser_get_param_double(
       parameter_file, "SineWavePotential:timestep_limit");
 }
