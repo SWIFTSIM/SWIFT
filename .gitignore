@@ -59,6 +59,11 @@ tests/brute_force_periodic_BC_perturbed.dat
 tests/swift_dopair_active.dat
 tests/test_nonsym_density_serial.dat
 tests/test_nonsym_density_vec.dat
+tests/test_nonsym_force_serial.dat
+tests/test_nonsym_density_1_vec.dat
+tests/test_nonsym_density_2_vec.dat
+tests/test_nonsym_force_1_vec.dat
+tests/test_nonsym_force_2_vec.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
