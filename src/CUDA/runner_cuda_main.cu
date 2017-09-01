@@ -245,8 +245,11 @@ __device__ void load_cell(int cell_index) {
   int i;
   /* Get the index to copy the data for the 0th particle in this cell to.*/
   int start = cell->first_part;
-//  if(cell_index == 1) asm("trap;");
   __syncthreads();
+  if(threadIdx.x == 0){
+    cell->ti_end_min = cpu_cell->ti_end_min;
+    cell->ti_end_max = cpu_cell->ti_end_max;
+  }
   for (i = threadIdx.x; i < cell->part_count; i += blockDim.x) {
     struct part *current = &parts[i];
     /* Load the ID and position*/
@@ -1924,7 +1927,7 @@ __host__ void update_tasks(struct engine *e) {
   struct queue_cuda load_host;
   cudaErrCheck(
       cudaMemcpyFromSymbol(&load_host, load_queue, sizeof(struct queue_cuda)));
-  int nr_load;
+  int nr_load=0;
   load_host.count = 0;
   for (int i = 0; i < nr_gpu_tasks; i++) {
     if (host_tasks[i].type == type_load && !host_tasks[i].skip) {
