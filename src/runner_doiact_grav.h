@@ -194,9 +194,9 @@ void runner_dopair_grav_pp_full(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         loc_mean);
+                         loc_mean, ci);
   gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                         loc_mean);
+                         loc_mean, cj);
 
   /* Ok... Here we go ! */
 
@@ -542,9 +542,9 @@ void runner_dopair_grav_pp_truncated(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         loc_mean);
+                         loc_mean, ci);
   gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                         loc_mean);
+                         loc_mean, cj);
 
   /* Ok... Here we go ! */
 
@@ -941,7 +941,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
+  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc, c);
 
   /* Ok... Here we go ! */
 
@@ -1155,7 +1155,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   /* Computed the padded counts */
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc);
+  gravity_cache_populate(ci_cache, gparts, gcount, gcount_padded, loc, c);
 
   /* Ok... Here we go ! */
 
