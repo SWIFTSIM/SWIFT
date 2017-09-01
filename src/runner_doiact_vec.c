@@ -700,6 +700,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
         cell_cache->y[i] = piy.f[0];
         cell_cache->z[i] = piz.f[0];
         cell_cache->h[i] = 1.f;
+        cell_cache->rho[i] = 1.f;
+        cell_cache->grad_h[i] = 1.f;
       }
     }
 
