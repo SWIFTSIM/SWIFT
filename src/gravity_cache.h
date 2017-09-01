@@ -131,7 +131,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  */
 __attribute__((always_inline)) INLINE void gravity_cache_populate(
     struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
-    int gcount_padded, const double shift[3]) {
+    int gcount_padded, const double shift[3], const struct cell *cell) {
 
   /* Make the compiler understand we are in happy vectorization land */
   float *restrict x = c->x;
@@ -161,9 +161,9 @@ __attribute__((always_inline)) INLINE void gravity_cache_populate(
 
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
-    x[i] = 0.f;
-    y[i] = 0.f;
-    z[i] = 0.f;
+    x[i] = -3.f * cell->width[0];
+    y[i] = -3.f * cell->width[0];
+    z[i] = -3.f * cell->width[0];
     epsilon[i] = 0.f;
     m[i] = 0.f;
   }
