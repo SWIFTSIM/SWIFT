@@ -702,6 +702,9 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
         cell_cache->h[i] = 1.f;
         cell_cache->rho[i] = 1.f;
         cell_cache->grad_h[i] = 1.f;
+        cell_cache->pOrho2[i] = 1.f;
+        cell_cache->balsara[i] = 1.f;
+        cell_cache->soundspeed[i] = 1.f;
       }
     }
 
