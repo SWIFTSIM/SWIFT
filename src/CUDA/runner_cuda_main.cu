@@ -19,9 +19,7 @@ extern "C" {
 #include "../cell.h"
 #include "../hydro_properties.h"
 #include "../engine.h"
-extern "C" {
 #include "../scheduler.h"
-}
 #include "../space.h"
 #include "../adiabatic_index.h"
 }
@@ -77,7 +75,7 @@ struct particle_arrays {
   /* Device array containing time step length */
   timebin_t *time_bin;
 };
-
+__device__ int global_count;
 __device__ struct particle_arrays cuda_parts;
 __constant__ int cuda_nr_parts;
 
@@ -159,6 +157,14 @@ __device__ void cuda_queue_puttask(struct queue_cuda *q, int tid) {
 
 /* Density kernel function */
 __constant__ float cuda_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
+
+/* definition to expand macro then apply to pragma message */
+#define VALUE_TO_STRING(x) #x
+#define VALUE(x) VALUE_TO_STRING(x)
+#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+
+#pragma message(VAR_NAME_VALUE(kernel_degree))
+#pragma message(VAR_NAME_VALUE(kernel_ivals))
 
 #define cuda_kernel_root                        \
   ((float)(cuda_kernel_coeffs[kernel_degree]) * \
@@ -304,6 +310,8 @@ __device__ void load_cell(int cell_index) {
     local_entropy_dt = current->entropy_dt;
 
     cuda_parts.h[start + i] = local_h;
+    if(start+i == 0) 
+      printf("%f\n", cuda_parts.h[start+i]);
     cuda_parts.mass[start + i] = local_mass;
     cuda_parts.rho[start + i] = local_rho;
     cuda_parts.entropy[start + i] = local_entropy;
@@ -360,21 +368,9 @@ __device__ void unload_cell(int cell_index) {
   int i;
   /* Get the index to copy the data for the 0th particle in this cell to.*/
   int start = cell->first_part;
-
+  __syncthreads();
   for (i = threadIdx.x; i < cell->part_count; i += blockDim.x) {
     struct part *current = &parts[i];
-
-    /* Copy back the ID and position.*/
-    current->id = cuda_parts.id[start + i];
-    current->x[0] = cuda_parts.x_x[start + i];
-    current->x[1] = cuda_parts.x_y[start + i];
-    current->x[2] = cuda_parts.x_z[start + i];
-
-    /* Copy back the velocity*/
-    float3 local_v = cuda_parts.v[start + i];
-    current->v[0] = local_v.x;
-    current->v[1] = local_v.y;
-    current->v[2] = local_v.z;
 
     /* Copy back the acceleration */
     float3 local_a_hydro = cuda_parts.a_hydro[start + i];
@@ -384,9 +380,7 @@ __device__ void unload_cell(int cell_index) {
 
     /* Copy back the cutoff, mass, density, entropy and entropy_dt*/
     current->h = cuda_parts.h[start + i];
-    current->mass = cuda_parts.mass[start + i];
     current->rho = cuda_parts.rho[start + i];
-    current->entropy = cuda_parts.entropy[start + i];
     current->entropy_dt = cuda_parts.entropy_dt[start + i];
 
     /* Copy back the force union.*/
@@ -397,14 +391,11 @@ __device__ void unload_cell(int cell_index) {
     current->force.v_sig = cuda_parts.v_sig[start + i];
     current->force.h_dt = cuda_parts.h_dt[start + i];
 
-    /* Copy back the timebin. */
-    current->time_bin = cuda_parts.time_bin[start + i];
   }
 }
 
 /* Task function to execute a self-density task. */
 __device__ void doself_density(struct cell_cuda *ci) {
-
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
     printf(
@@ -504,6 +495,7 @@ __device__ void doself_density(struct cell_cuda *ci) {
     /* Write data for particle pid back to global stores. */
     atomicAdd(&cuda_parts.rho[pid], rho);
     atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
+    
     atomicAdd(&cuda_parts.wcount[pid], wcount);
     atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
     atomicAdd(&cuda_parts.div_v[pid], div_v);
@@ -934,6 +926,8 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
 
     /* Flush to global stores.*/
     atomicAdd(&cuda_parts.a_hydro[pid].x, a_hydro.x);
+    if(cuda_parts.id[pid] == 11816)
+      printf("a_hydro.x = %f\n", cuda_parts.a_hydro[pid].x);
     atomicAdd(&cuda_parts.a_hydro[pid].y, a_hydro.y);
     atomicAdd(&cuda_parts.a_hydro[pid].z, a_hydro.z);
     atomicAdd(&cuda_parts.h_dt[pid], h_dt);
@@ -969,10 +963,10 @@ __device__ void hydro_end_density(int pid) {
   cuda_parts.wcount[pid] += cuda_kernel_root;
   cuda_parts.wcount_dh[pid] -= hydro_dimension * cuda_kernel_root;
 
-  /* Finish the calculation by inser4ting the missing h-factors */
+  /* Finish the calculation by inserting the missing h-factors */
   cuda_parts.rho[pid] *= h_inv_dim;
   cuda_parts.rho_dh[pid] *= h_inv_dim_plus_one;
-  cuda_parts.wcount[pid] *= kernel_norm;
+  cuda_parts.wcount[pid] *= h_inv_dim;
   cuda_parts.wcount_dh[pid] *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.0 / cuda_parts.rho[pid];
@@ -1126,8 +1120,8 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
       piv = cuda_parts.v[pid];
       pjv = cuda_parts.v[j];
       dv[0] = piv.x - pjv.x;
-      dx[1] = piv.y - pjv.y;
-      dx[2] = piv.z - pjv.z;
+      dv[1] = piv.y - pjv.y;
+      dv[2] = piv.z - pjv.z;
       const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
       div_v -= fac * dvdr;
@@ -1218,8 +1212,8 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
       piv = cuda_parts.v[pid];
       pjv = cuda_parts.v[j];
       dv[0] = piv.x - pjv.x;
-      dx[1] = piv.y - pjv.y;
-      dx[2] = piv.z - pjv.z;
+      dv[1] = piv.y - pjv.y;
+      dv[2] = piv.z - pjv.z;
       const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
       div_v -= fac * dvdr;
@@ -1259,7 +1253,7 @@ __device__ void cuda_hydro_fix_particle(int pid, struct cell_cuda *c) {
   cuda_parts.rot_v[pid].x = 0.f;
   cuda_parts.rot_v[pid].y = 0.f;
   cuda_parts.rot_v[pid].z = 0.f;
-
+  atomicAdd(&global_count, 1);
   /* Climb up the cell hierarchy. */
   struct cell_cuda *c2 = c;
   for (int cell = (c - cells_cuda); cell >= 0; cell = c2->parent) {
@@ -1281,6 +1275,7 @@ __device__ void cuda_hydro_fix_particle(int pid, struct cell_cuda *c) {
   }
 }
 
+
 /* During ghost work only this block will be accessing the thread, no need for
  * atomics. */
 __device__ void do_ghost(struct cell_cuda *c) {
@@ -1290,9 +1285,9 @@ __device__ void do_ghost(struct cell_cuda *c) {
   //  const float target_wcount = target_neighbours;
   //  const float max_wcount = target_wcount + delta_neighbours;
   // const float min_wcount = target_wcount - delta_neighbours;
-  const float hydro_eta_dim = cuda_eta_neighbours;
+  const float hydro_eta_dim = cuda_pow_dimension(cuda_eta_neighbours);
   const float eps = cuda_h_tolerance;
-
+  int redo;
   /* Is the cell active? */
   if (!cuda_cell_is_active(c)) return;
 
@@ -1302,15 +1297,18 @@ __device__ void do_ghost(struct cell_cuda *c) {
       if (c->progeny[k] >= 0) do_ghost(&cells_cuda[k]);
     }
   } else {
-
     /* Loop over the particles in the cell. */
     for (int i = part_i + threadIdx.x; i < part_i + count_i; i+= blockDim.x) {
+      redo = 1;
+      int a = 0;
+      if (!cuda_part_is_active(i)) continue;
+      while( redo && a < 7  ){
+      a++;
+      redo = 0;
       float h_new;
       const float h_old = cuda_parts.h[i];
-      const float h_old_dim = cuda_pow_dimension(h_old);
+      const float h_old_dim = h_old*h_old*h_old;//cuda_pow_dimension(h_old);
       const float h_old_dim_minus_one = cuda_pow_dimension_minus_one(h_old);
-
-      if (!cuda_part_is_active(i)) continue;
       if (cuda_parts.wcount[i] == 0.f) {
         h_new = 2.f * h_old;
       } else {
@@ -1325,6 +1323,7 @@ __device__ void do_ghost(struct cell_cuda *c) {
             cuda_parts.wcount_dh[i] * h_old_dim +
             hydro_dimension * cuda_parts.wcount[i] * h_old_dim_minus_one;
 
+
         h_new = h_old - f / f_prime;
 
         /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -1337,8 +1336,17 @@ __device__ void do_ghost(struct cell_cuda *c) {
 
         // If below absolute max try again
         // else give up...
-        if (cuda_parts.h[i] < hydro_h_max) {
-          cuda_hydro_fix_particle(i, c);
+        if ( cuda_parts.h[i] < hydro_h_max) {
+  cuda_parts.rho[i] = 0.f;
+  cuda_parts.wcount[i] = 0.f;
+  cuda_parts.wcount_dh[i] = 0.f;
+  cuda_parts.rho_dh[i] = 0.f;
+  cuda_parts.div_v[i] = 0.f;
+  cuda_parts.rot_v[i].x = 0.f;
+  cuda_parts.rot_v[i].y = 0.f;
+  cuda_parts.rot_v[i].z = 0.f;
+  redo = 1;
+  atomicAdd(&global_count, 1);
         } else {
           /* The particle is a lost cause */
           cuda_parts.h[i] = hydro_h_max;
@@ -1348,7 +1356,11 @@ __device__ void do_ghost(struct cell_cuda *c) {
         }
 
       } /* correct number of neighbours */
-
+      if(redo) {
+        cuda_hydro_fix_particle(i,c); 
+      }
+        
+      } 
       /* We now have a particle whose smoothing length has convegered */
       /* Time to set the force variables */
       /* Compute variables required for the force loop */
@@ -1394,7 +1406,8 @@ __global__ void swift_device_kernel() {
   __shared__ volatile int tid;
   __shared__ volatile int done;
   int i;
-
+  if(threadIdx.x == 0 && blockIdx.x == 0)
+    global_count = 0;
   /* Main loop */
   while (1) {
     __syncthreads();
@@ -1496,7 +1509,8 @@ __global__ void swift_device_kernel() {
     }
 
   }  // End of main loop
-
+  if(threadIdx.x == 0 && blockIdx.x == 0)
+  printf("global_count = %i\n", global_count);
   /* Don't need to do any cleanup, all the dependencies and skips and queues are
    * set by CPU. */
 }
@@ -1616,12 +1630,12 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
                                     int parent_load_task,
                                     int parent_unload_task) {
   tasks_host[*k].unlocks =
-      (int *)malloc(sizeof(int) * 9);  // For now we create CPU storage for
+      (int *)malloc(sizeof(int) * 11);  // For now we create CPU storage for
                                        // these unlocks for each task. No task
                                        // should have more than 9 unlocks to
                                        // other transfer tasks.
   tasks_host[*k].nr_unlock_tasks = 0;
-  tasks_host[*k].size_unlocks = 9;
+  tasks_host[*k].size_unlocks = 11;
   if (c->split) {
 
     /* If the task is split we create implicit tasks to deal with dependencies.
@@ -1669,6 +1683,8 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     c->unload_task = *k;
     *k = *k + 1;
 
+    /* load task unlocks the unload task...*/
+    tasks_host[(*k)-2].unlocks[tasks_host[(*k)-2].nr_unlock_tasks++] = (*k)-1;
     /* Recurse down the tree. */
     int load = *k - 2;
     int unload = *k - 1;
@@ -1716,6 +1732,8 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     }
     c->unload_task = *k;
     *k = *k + 1;
+    /* load task unlocks the unload task...*/
+    tasks_host[(*k)-2].unlocks[tasks_host[(*k)-2].nr_unlock_tasks++] = (*k)-1;
   }
 }
 
@@ -2663,10 +2681,6 @@ __host__ void create_tasks(struct engine *e) {
   host_pointers = NULL;
 }
 
-__host__ void run_cuda() {
-  swift_device_kernel << <num_blocks, num_cuda_threads>>> ();
-  cudaErrCheck(cudaDeviceSynchronize());
-}
 
 /* Make the tests! */
 
@@ -3064,6 +3078,14 @@ __host__ void printTaskTimers(){
 #else
   error("CUDA Task Timers unavailable, compile with CUDA_TASK_TIMERS defined.");
 #endif
+}
+
+__host__ void run_cuda() {
+  swift_device_kernel << <num_blocks, num_cuda_threads>>> ();
+#ifdef CUDA_TASK_TIMERS
+  printTaskTimers();
+#endif
+  cudaErrCheck(cudaDeviceSynchronize());
 }
 
 #ifdef WITH_CUDA
