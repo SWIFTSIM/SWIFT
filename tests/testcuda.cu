@@ -16,8 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#ifndef static
+#define static
+#endif
+#ifndef restrict
+#define restrict __restrict__
+#endif
 
+extern "C" {
+#include "testcuda.h"
 /* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
@@ -25,25 +32,10 @@
 #include <string.h>
 #include <unistd.h>
 
-/* Local headers. */
-#include "swift.h"
+}
 
-#if defined(WITH_VECTORIZATION)
-#define DOSELF1 runner_doself1_density_vec
-#define DOPAIR1 runner_dopair1_branch_density
-#define DOSELF1_NAME "runner_doself1_density_vec"
-#define DOPAIR1_NAME "runner_dopair1_density_vec"
-#endif
+#include <cuda.h>
 
-#ifndef DOSELF1
-#define DOSELF1 runner_doself1_density
-#define DOSELF1_NAME "runner_doself1_density"
-#endif
-
-#ifndef DOPAIR1
-#define DOPAIR1 runner_dopair1_branch_density
-#define DOPAIR1_NAME "runner_dopair1_density"
-#endif
 
 /* n is both particles per axis and box size:
  * particles are generated on a mesh with unit spacing
@@ -53,7 +45,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double pert) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell*)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -67,34 +59,26 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
-        part->x[0] =
-            offset[0] +
-            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        part->x[1] =
-            offset[1] +
-            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        part->x[2] =
-            offset[2] +
-            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[0] = 0.;
+	//offset[0] +
+	//size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[1] = 0;
+	  //offset[1] +
+	  //size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
+        part->x[2] = 0;
+	  //offset[2] +
+	  //size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         // part->v[0] = part->x[0] - 1.5;
         // part->v[1] = part->x[1] - 1.5;
         // part->v[2] = part->x[2] - 1.5;
-        part->v[0] = random_uniform(-0.05, 0.05);
-        part->v[1] = random_uniform(-0.05, 0.05);
-        part->v[2] = random_uniform(-0.05, 0.05);
+        part->v[0] = 1.;//random_uniform(-0.05, 0.05);
+        part->v[1] = 1.;//random_uniform(-0.05, 0.05);
+        part->v[2] = 1.;//random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
         part->id = ++(*partId);
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
-        part->conserved.mass = density * volume / count;
-#else
         part->mass = density * volume / count;
-#endif
         part->time_bin = 1;
 
-#ifdef SWIFT_DEBUG_CHECKS
-        part->ti_drift = 8;
-        part->ti_kick = 8;
-#endif
 
         ++part;
       }
@@ -118,18 +102,15 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_end_min = 8;
   cell->ti_end_max = 8;
 
-  shuffle_particles(cell->parts, cell->count);
-
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  //shuffle_particles(cell->parts, cell->count);
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
   free(ci->parts);
-  for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+  //for (int k = 0; k < 13; k++)
+  //if (ci->sort[k] != NULL) free(ci->sort[k]);
   free(ci);
 }
 
@@ -138,7 +119,7 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], NULL);
+    //hydro_init_part(&c->parts[pid], NULL);
   }
 }
 
@@ -159,23 +140,15 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   for (int pid = 0; pid < ci->count; pid++) {
     fprintf(file,
-            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%6llu %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
-            0.f,
-#else
+            //ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
             ci->parts[pid].density.rho_dh,
-#endif
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
-#else
-            0., 0., 0., 0.
-#endif
             );
   }
 
@@ -183,23 +156,15 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   for (int pjd = 0; pjd < cj->count; pjd++) {
     fprintf(file,
-            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%6llu %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
-            0.f,
-#else
+            //cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
             cj->parts[pjd].density.rho_dh,
-#endif
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
-#else
-            0., 0., 0., 0.
-#endif
             );
   }
 
@@ -212,26 +177,32 @@ void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 
+__global__ void test() {
+if (threadIdx.x == 0)
+  printf("Youpi");
+}
+
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
   double offset[3] = {0, 0, 0}, h = 1.1255, size = 1., rho = 1.;
   double perturbation = 0.;
   struct cell *ci, *cj;
-  struct space space;
-  struct engine engine;
-  struct runner runner;
+  //struct space space;
+  //struct engine engine;
+  //struct runner runner;
   char c;
   static unsigned long long partId = 0;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
-  ticks tic, toc, time;
+test<<<1000,1000>>>();
+//  ticks tic, toc, time;
 
   /* Initialize CPU frequency, this also starts time. */
-  unsigned long long cpufreq = 0;
-  clocks_set_cpufreq(cpufreq);
+  //unsigned long long cpufreq = 0;
+  //clocks_set_cpufreq(cpufreq);
 
   /* Choke on FP-exceptions */
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   srand(0);
 
@@ -275,16 +246,16 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  space.periodic = 0;
-  space.dim[0] = 3.;
-  space.dim[1] = 3.;
-  space.dim[2] = 3.;
+  //space.periodic = 0;
+  //space.dim[0] = 3.;
+  //space.dim[1] = 3.;
+  //space.dim[2] = 3.;
 
-  engine.s = &space;
-  engine.time = 0.1f;
-  engine.ti_current = 8;
-  engine.max_active_bin = num_time_bins;
-  runner.e = &engine;
+  //engine.s = &space;
+  //engine.time = 0.1f;
+  //engine.ti_current = 8;
+  //engine.max_active_bin = num_time_bins;
+  //runner.e = &engine;
 
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
@@ -293,24 +264,22 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
-  runner_do_sort(&runner, ci, 0x1FFF, 0, 0);
-  runner_do_sort(&runner, cj, 0x1FFF, 0, 0);
+  //runner_do_sort(&runner, ci, 0x1FFF, 0, 0);
+  //runner_do_sort(&runner, cj, 0x1FFF, 0, 0);
 
-  time = 0;
+//  time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
     zero_particle_fields(ci);
     zero_particle_fields(cj);
 
-    tic = getticks();
+    //tic = getticks();
 
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
     /* Run the test */
-    DOPAIR1(&runner, ci, cj);
-#endif
+    //DOPAIR1(&runner, ci, cj);
 
-    toc = getticks();
-    time += toc - tic;
+    //toc = getticks();
+    //time += toc - tic;
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -320,7 +289,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Output timing */
-  message("SWIFT calculation took       %lli ticks.", time / runs);
+//  message("SWIFT calculation took       %lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -328,21 +297,19 @@ int main(int argc, char *argv[]) {
   zero_particle_fields(ci);
   zero_particle_fields(cj);
 
-  tic = getticks();
+//  tic = getticks();
 
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
   /* Run the brute-force test */
-  pairs_all_density(&runner, ci, cj);
-#endif
+  //pairs_all_density(&runner, ci, cj);
 
-  toc = getticks();
+//  toc = getticks();
 
   /* Dump */
   sprintf(outputFileName, "brute_force_%s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, ci, cj);
 
   /* Output timing */
-  message("Brute force calculation took %lli ticks.", toc - tic);
+//  message("Brute force calculation took %lli ticks.", toc - tic);
 
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);
