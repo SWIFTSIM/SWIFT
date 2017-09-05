@@ -294,6 +294,49 @@ void copy_to_device_array(struct cell *ci, int offset) {
   free_parts(h_p);
 }
 
+void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_part) {
+
+  struct particle_arrays c_parts;
+  cudaErrCheck(cudaMemcpyFromSymbol(&c_parts, cuda_parts,
+                                    sizeof(struct particle_arrays)));
+
+  void *p_data = c_parts.id + offset;
+  cudaErrCheck(cudaMemcpy(h_p->id, p_data, sizeof(long long int) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.x_x + offset;
+  cudaErrCheck(cudaMemcpy(h_p->x_x, p_data, sizeof(double) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.x_y + offset;
+  cudaErrCheck(cudaMemcpy(h_p->x_y, p_data, sizeof(double) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.x_z + offset;
+  cudaErrCheck(cudaMemcpy(h_p->x_z, p_data, sizeof(double) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.v + offset;
+  cudaErrCheck(cudaMemcpy(h_p->v, p_data, sizeof(float3) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.a_hydro + offset;
+  cudaErrCheck(cudaMemcpy(h_p->a_hydro, p_data, sizeof(float3) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.h + offset;
+  cudaErrCheck(cudaMemcpy(h_p->h, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.mass + offset;
+  cudaErrCheck(cudaMemcpy(h_p->mass, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.rho + offset;
+  cudaErrCheck(cudaMemcpy(h_p->rho, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.entropy + offset;
+  cudaErrCheck(cudaMemcpy(h_p->entropy, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.entropy_dt + offset;
+  cudaErrCheck(cudaMemcpy(h_p->entropy_dt, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  p_data = c_parts.time_bin + offset;
+  cudaErrCheck(cudaMemcpy(h_p->time_bin, p_data, sizeof(timebin_t) * num_part, cudaMemcpyDeviceToHost));
+}
+
 struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
   copy_to_device_array(ci, offset);
   
@@ -331,32 +374,36 @@ struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
 }
 
 void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
-  struct particle_arrays *h_cuda_part;
   struct cell_cuda *h_cuda_cell = (struct cell_cuda*) malloc(sizeof(struct cell_cuda));
+
   cudaMemcpy(h_cuda_cell, cuda_c, sizeof(struct cell_cuda), cudaMemcpyDeviceToHost);
   int N = h_cuda_cell->part_count;
   int p_i = h_cuda_cell->first_part;
-  cudaMemcpy(h_cuda_part, &cuda_parts, sizeof(struct particle_arrays), cudaMemcpyDeviceToHost);
-  for (int i=0; i<N; i++) {
-    struct part p = c->parts[i];
 
-    p.id = h_cuda_part->id[p_i];
-    p.h = h_cuda_part->h[p_i];
-    p.rho = h_cuda_part->rho[p_i];
-    p.entropy = h_cuda_part->entropy[p_i];
-    p.entropy_dt = h_cuda_part->entropy_dt[p_i];
+  struct particle_arrays h_cuda_part;
+  allocate_parts(&h_cuda_part, N);
+  copy_from_device_array(&h_cuda_part, p_i, N);
+
+  for (int i=0; i<N; i++) {
+    struct part *p = &c->parts[i];
+
+    p->id = h_cuda_part.id[p_i];
+    p->h = h_cuda_part.h[p_i];
+    p->rho = h_cuda_part.rho[p_i];
+    p->entropy = h_cuda_part.entropy[p_i];
+    p->entropy_dt = h_cuda_part.entropy_dt[p_i];
     
-    p.x[0] = h_cuda_part->x_x[p_i];
-    p.v[0] = h_cuda_part->v[p_i].x;
-    p.a_hydro[0] = h_cuda_part->a_hydro[p_i].x;
+    p->x[0] = h_cuda_part.x_x[p_i];
+    p->v[0] = h_cuda_part.v[p_i].x;
+    p->a_hydro[0] = h_cuda_part.a_hydro[p_i].x;
 #if DIM > 1
-    p.x[1] = h_cuda_part->x_y[p_i];
-    p.v[1] = h_cuda_part->v[p_i].y;
-    p.a_hydro[1] = h_cuda_part->a_hydro[p_i].y;
+    p->x[1] = h_cuda_part.x_y[p_i];
+    p->v[1] = h_cuda_part.v[p_i].y;
+    p->a_hydro[1] = h_cuda_part.a_hydro[p_i].y;
 #if DIM > 2
-    p.x[2] = h_cuda_part->x_z[p_i];
-    p.v[2] = h_cuda_part->v[p_i].z;
-    p.a_hydro[2] = h_cuda_part->a_hydro[p_i].z;
+    p->x[2] = h_cuda_part.x_z[p_i];
+    p->v[2] = h_cuda_part.v[p_i].z;
+    p->a_hydro[2] = h_cuda_part.a_hydro[p_i].z;
 #endif
 #endif
 
@@ -603,7 +650,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-printf("p %g\n", ci->parts[0].density);
+printf("p %g\n", ci->parts[0].rho);
   /* Output timing */
 //  message("SWIFT calculation took       %lli ticks.", time / runs);
 
