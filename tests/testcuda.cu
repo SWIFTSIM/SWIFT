@@ -509,44 +509,68 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
+#ifdef FULL_COMP
   fprintf(file,
           "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
           "%13s %13s %13s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
           "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
+#else
+  fprintf(file,
+          "# %4s %10s %10s %10s %10s %10s %10s %13s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho");
+#endif
 
   fprintf(file, "# ci --------------------------------------------\n");
 
   for (int pid = 0; pid < ci->count; pid++) {
+#ifdef FULL_COMP
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-            "%13e %13e %13e\n",
+            "%13e %13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], //hydro_get_density(&ci->parts[pid]),
+            ci->parts[pid].v[2], ci->parts[pid].rho,
             ci->parts[pid].density.rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
             );
+#else
+    fprintf(file,
+            "%6llu %10f %10f %10f %10f %10f %13e %13e\n",
+            ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
+            ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
+            ci->parts[pid].v[2], ci->parts[pid].rho
+            );
+    
+#endif
   }
 
   fprintf(file, "# cj --------------------------------------------\n");
 
   for (int pjd = 0; pjd < cj->count; pjd++) {
+#ifdef FULL_COMP
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-            "%13e %13e %13e\n",
+            "%13e %13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], //hydro_get_density(&cj->parts[pjd]),
+            cj->parts[pjd].v[2], cj->parts[pjd].rho,
             cj->parts[pjd].density.rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
             );
+#else
+    fprintf(file,
+            "%6llu %10f %10f %10f %10f %10f %13e %13e\n",
+            cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
+            cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
+            cj->parts[pjd].v[2], cj->parts[pjd].rho
+            );
+#endif
   }
-
   fclose(file);
 }
 
@@ -629,11 +653,14 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
+  sprintf(outputFileName, "swift_gpu_init_%s.dat", outputFileNameExtension);
+  dump_particle_fields(outputFileName, ci, cj);
+
   allocate_device_parts(2*volume);
 
   struct cell_cuda *cuda_ci;
   struct cell_cuda *cuda_cj;
-
+  
   //  time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -654,19 +681,19 @@ int main(int argc, char *argv[]) {
     copy_to_host(cuda_ci, ci);
     /* Dump if necessary */
     if (i % 50 == 0) {
-      sprintf(outputFileName, "swift_dopair_%s.dat", outputFileNameExtension);
+      sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);
       dump_particle_fields(outputFileName, ci, cj);
     }
   }
 
-printf("p %g\n", ci->parts[0].rho);
+  printf("rho %g\n", ci->parts[0].rho);
   /* Output timing */
 //  message("SWIFT calculation took       %lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  zero_particle_fields(ci);
+  //zero_particle_fields(ci);
   //zero_particle_fields(cj);
 
 //  tic = getticks();
@@ -677,7 +704,7 @@ printf("p %g\n", ci->parts[0].rho);
 //  toc = getticks();
 
   /* Dump */
-  sprintf(outputFileName, "brute_force_%s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "swift_gpu_end_%s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, ci, cj);
 
   /* Output timing */
