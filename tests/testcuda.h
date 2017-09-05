@@ -505,3 +505,22 @@ __device__ __inline__ int cuda_part_is_active(int pid) {
 
   return (cuda_parts.time_bin[pid] <= max_active_bin);
 }
+
+
+__device__ __constant__ float const_viscosity_alpha=0.8;
+
+#define HYDRO_DIMENSION_3D
+
+__device__ float cuda_pow_dimension_plus_one(float x) {
+#if defined(HYDRO_DIMENSION_3D)
+  const float x2 = x * x;
+  return x2 * x2;
+#elif defined(HYDRO_DIMENSION_2D)
+  return x * x * x;
+#elif defined(HYDRO_DIMENSION_1D)
+  return x * x;
+#else
+  printf("The dimension is not defined!");
+  return 0.f;
+#endif
+}
