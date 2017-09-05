@@ -1414,7 +1414,6 @@ __global__ void swift_device_kernel() {
   __shared__ volatile int tid;
   __shared__ volatile int done;
   int i;
-  if(threadIdx.x == 0 && blockIdx.x == 0)
   /* Main loop */
   while (1) {
     __syncthreads();
