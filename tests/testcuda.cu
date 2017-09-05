@@ -167,7 +167,7 @@ __global__ void do_test(struct cell_cuda *ci, struct cell_cuda *cj) {
   //dopair_density(ci, cj);
 }
 
-void allocate_parts(struct particle_arrays *p, size_t num_part) {  
+void allocate_parts(struct particle_arrays *p, size_t num_part) { 
   p->id = (long long int*) malloc (sizeof(long long int) * num_part);
   p->x_x = (double*) malloc(sizeof(double) * num_part);
   p->x_y = (double*) malloc(sizeof(double) * num_part);
@@ -179,6 +179,22 @@ void allocate_parts(struct particle_arrays *p, size_t num_part) {
   p->rho = (float*) malloc(sizeof(float) * num_part);
   p->entropy = (float*) malloc(sizeof(float) * num_part);
   p->entropy_dt = (float*) malloc(sizeof(float) * num_part);
+
+  // density
+  p->wcount = (float*) malloc(sizeof(float) * num_part);
+  p->wcount_dh = (float*) malloc(sizeof(float) * num_part);
+  p->rho_dh = (float*) malloc(sizeof(float) * num_part);
+  p->rot_v = (float3*) malloc(sizeof(float3) * num_part);
+  p->div_v = (float*) malloc(sizeof(float) * num_part);
+
+  // force
+  p->balsara = (float*) malloc(sizeof(float) * num_part);
+  p->f = (float*) malloc(sizeof(float) * num_part);
+  p->P_over_rho2 = (float*) malloc(sizeof(float) * num_part);
+  p->soundspeed = (float*) malloc(sizeof(float) * num_part);
+  p->v_sig = (float*) malloc(sizeof(float) * num_part);
+  p->h_dt = (float*) malloc(sizeof(float) * num_part);
+  
   p->time_bin = (timebin_t*) malloc(sizeof(timebin_t) * num_part);
 }
 
@@ -196,6 +212,22 @@ void allocate_device_parts(size_t num_part) {
   cudaErrCheck(cudaMalloc(&c_parts.rho, sizeof(float) * num_part));
   cudaErrCheck(cudaMalloc(&c_parts.entropy, sizeof(float) * num_part));
   cudaErrCheck(cudaMalloc(&c_parts.entropy_dt, sizeof(float) * num_part));
+
+  // density
+  cudaErrCheck(cudaMalloc(&c_parts.wcount, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.wcount_dh, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.rho_dh, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.rot_v, sizeof(float3) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.div_v, sizeof(float) * num_part));
+
+  // force
+  cudaErrCheck(cudaMalloc(&c_parts.balsara, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.f, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.P_over_rho2, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.soundspeed, sizeof(float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.v_sig, sizeof(volatile float) * num_part));
+  cudaErrCheck(cudaMalloc(&c_parts.h_dt, sizeof(float) * num_part));
+
   cudaErrCheck(cudaMalloc(&c_parts.time_bin, sizeof(timebin_t) * num_part));
 
   cudaErrCheck(cudaMemcpyToSymbol(cuda_parts, &c_parts, sizeof(struct particle_arrays)));
@@ -213,6 +245,22 @@ void free_parts(struct particle_arrays p) {
   free(p.rho); p.rho = NULL;
   free(p.entropy); p.entropy = NULL;
   free(p.entropy_dt); p.entropy_dt = NULL;
+
+  // density
+  free(p.wcount); p.wcount = NULL;
+  free(p.wcount_dh); p.wcount_dh = NULL;
+  free(p.rho_dh); p.rho_dh = NULL;
+  free(p.rot_v); p.rot_v = NULL;
+  free(p.div_v); p.div_v = NULL;
+
+  // force
+  free(p.balsara); p.balsara = NULL;
+  free(p.f); p.f = NULL;
+  free(p.P_over_rho2); p.P_over_rho2 = NULL;
+  free(p.soundspeed); p.soundspeed = NULL;
+  free((void *)p.v_sig); p.v_sig = NULL;
+  free(p.h_dt); p.h_dt = NULL;
+  
   free(p.time_bin); p.time_bin = NULL;
 }
 
@@ -232,6 +280,23 @@ void free_device_parts() {
   cudaErrCheck(cudaFree(parts.rho));
   cudaErrCheck(cudaFree(parts.entropy));
   cudaErrCheck(cudaFree(parts.entropy_dt));
+
+  // density
+  cudaErrCheck(cudaFree(parts.wcount));
+  cudaErrCheck(cudaFree(parts.wcount_dh));
+  cudaErrCheck(cudaFree(parts.rho_dh));
+  cudaErrCheck(cudaFree(parts.rot_v));
+  cudaErrCheck(cudaFree(parts.div_v));
+
+  // force
+  cudaErrCheck(cudaFree(parts.balsara));
+  cudaErrCheck(cudaFree(parts.f));
+  cudaErrCheck(cudaFree(parts.P_over_rho2));
+  cudaErrCheck(cudaFree(parts.soundspeed));
+  cudaErrCheck(cudaFree((void*)parts.v_sig));
+  cudaErrCheck(cudaFree(parts.h_dt));
+
+  
   cudaErrCheck(cudaFree(parts.time_bin));
 }
 
@@ -262,6 +327,24 @@ void copy_to_device_array(struct cell *ci, int offset) {
     h_p.rho[i] = p.rho;
     h_p.entropy[i] = p.entropy;
     h_p.entropy_dt[i] = p.entropy_dt;
+
+    // density
+    h_p.wcount[i] = p.density.wcount;
+    h_p.wcount_dh[i] = p.density.wcount_dh;
+    h_p.rho_dh[i] = p.density.rho_dh;
+    h_p.rot_v[i].x = p.density.rot_v[0];
+    h_p.rot_v[i].y = p.density.rot_v[1];
+    h_p.rot_v[i].z = p.density.rot_v[2];
+    h_p.div_v[i] = p.density.div_v;
+
+    // force
+    h_p.balsara[i] = p.force.balsara;
+    h_p.f[i] = p.force.f;
+    h_p.P_over_rho2[i] = p.force.P_over_rho2;
+    h_p.soundspeed[i] = p.force.soundspeed;
+    h_p.v_sig[i] = p.force.v_sig;
+    h_p.h_dt[i] = p.force.h_dt;
+    
     h_p.time_bin[i] = p.time_bin;
   }
 
@@ -302,6 +385,42 @@ void copy_to_device_array(struct cell *ci, int offset) {
   p_data = c_parts.entropy_dt + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.entropy_dt,sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
+  // density
+  p_data = c_parts.wcount + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.wcount, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.wcount_dh + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.wcount_dh, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.rho_dh + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.rho_dh, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.rot_v + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.rot_v, sizeof(float3) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.div_v + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.div_v, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  // force
+  p_data = c_parts.balsara + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.balsara, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.f + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.f, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.P_over_rho2 + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.P_over_rho2, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.soundspeed + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.soundspeed, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = (void*)(c_parts.v_sig + offset);
+  cudaErrCheck(cudaMemcpy(p_data, (void*)h_p.v_sig, sizeof(volatile float) * num_part, cudaMemcpyHostToDevice));
+
+  p_data = c_parts.h_dt + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.h_dt, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+
+  
   p_data = c_parts.time_bin + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.time_bin,sizeof(timebin_t) * num_part, cudaMemcpyHostToDevice));
 
@@ -346,6 +465,43 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
 
   p_data = c_parts.entropy_dt + offset;
   cudaErrCheck(cudaMemcpy(h_p->entropy_dt, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+
+  // density
+  p_data = c_parts.wcount + offset;
+  cudaErrCheck(cudaMemcpy(h_p->wcount, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.wcount_dh + offset;
+  cudaErrCheck(cudaMemcpy(h_p->wcount_dh, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.rho_dh + offset;
+  cudaErrCheck(cudaMemcpy(h_p->rho_dh, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.rot_v + offset;
+  cudaErrCheck(cudaMemcpy(h_p->rot_v, p_data, sizeof(float3) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.div_v + offset;
+  cudaErrCheck(cudaMemcpy(h_p->div_v, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+
+  // force
+  p_data = c_parts.balsara + offset;
+  cudaErrCheck(cudaMemcpy(h_p->balsara, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.f + offset;
+  cudaErrCheck(cudaMemcpy(h_p->f, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.P_over_rho2 + offset;
+  cudaErrCheck(cudaMemcpy(h_p->P_over_rho2, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.soundspeed + offset;
+  cudaErrCheck(cudaMemcpy(h_p->soundspeed, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
+  //p_data = (void*)(c_parts.v_sig + offset);
+  //cudaErrCheck(cudaMemcpy(h_p->, p_data, sizeof(volatile float) * num_part, cudaMemcpyDeviceToHost));
+  
+  p_data = c_parts.h_dt + offset;
+  cudaErrCheck(cudaMemcpy(h_p->h_dt, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
+  
 
   p_data = c_parts.time_bin + offset;
   cudaErrCheck(cudaMemcpy(h_p->time_bin, p_data, sizeof(timebin_t) * num_part, cudaMemcpyDeviceToHost));
@@ -406,18 +562,34 @@ void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
     p->rho = h_cuda_part.rho[p_i];
     p->entropy = h_cuda_part.entropy[p_i];
     p->entropy_dt = h_cuda_part.entropy_dt[p_i];
+    //density
+    p->density.wcount = h_cuda_part.wcount[p_i];
+    p->density.wcount_dh = h_cuda_part.wcount_dh[p_i];
+    p->density.rho_dh = h_cuda_part.rho_dh[p_i];
+    p->density.div_v = h_cuda_part.div_v[p_i];
+
+    //force
+    p->force.balsara = h_cuda_part.balsara[p_i];
+    p->force.f = h_cuda_part.f[p_i];
+    p->force.P_over_rho2 = h_cuda_part.P_over_rho2[p_i];
+    p->force.soundspeed = h_cuda_part.soundspeed[p_i];
+    p->force.v_sig = h_cuda_part.v_sig[p_i];
+    p->force.h_dt = h_cuda_part.h_dt[p_i];
     
     p->x[0] = h_cuda_part.x_x[p_i];
     p->v[0] = h_cuda_part.v[p_i].x;
     p->a_hydro[0] = h_cuda_part.a_hydro[p_i].x;
+    p->density.rot_v[0] = h_cuda_part.rot_v[p_i].x;
 #if DIM > 1
     p->x[1] = h_cuda_part.x_y[p_i];
     p->v[1] = h_cuda_part.v[p_i].y;
     p->a_hydro[1] = h_cuda_part.a_hydro[p_i].y;
+    p->density.rot_v[1] = h_cuda_part.rot_v[p_i].y;
 #if DIM > 2
     p->x[2] = h_cuda_part.x_z[p_i];
     p->v[2] = h_cuda_part.v[p_i].z;
     p->a_hydro[2] = h_cuda_part.a_hydro[p_i].z;
+    p->density.rot_v[2] = h_cuda_part.rot_v[p_i].z;
 #endif
 #endif
 
@@ -464,6 +636,20 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->mass = density * volume / count;
         part->time_bin = 1;
 
+	part->density.wcount = 0.;
+	part->density.wcount_dh = 0.;
+	part->density.rho_dh = 0.;
+	part->density.rot_v[0] = 0.;
+	part->density.rot_v[1] = 0.;
+	part->density.rot_v[2] = 0.;
+	part->density.div_v = 0.;
+
+	part->force.balsara = 0.;
+	part->force.f = 0.;
+	part->force.P_over_rho2 = 0.;
+	part->force.soundspeed = 0.;
+	part->force.v_sig = 0.;
+	part->force.h_dt = 0.;
 
         ++part;
       }
@@ -506,6 +692,8 @@ void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     struct part* p = &c->parts[pid];
     p->rho = 0.f;
+
+    // density
     p->density.wcount = 0.f;
     p->density.wcount_dh = 0.f;
     p->density.rho_dh = 0.f;
@@ -513,6 +701,14 @@ void zero_particle_fields(struct cell *c) {
     p->density.rot_v[0] = 0.f;
     p->density.rot_v[1] = 0.f;
     p->density.rot_v[2] = 0.f;
+
+    // force
+    p->force.balsara = 0.f;
+    p->force.f = 0.f;
+    p->force.P_over_rho2 = 0.f;
+    p->force.soundspeed = 0.f;
+    p->force.v_sig = 0.f;
+    p->force.h_dt = 0.f;
   }
 }
 
@@ -701,7 +897,7 @@ int main(int argc, char *argv[]) {
     //time += toc - tic;
 
     copy_to_host(cuda_ci, ci);
-    copy_to_host(cuda_cj, cj);
+    //copy_to_host(cuda_cj, cj);
     /* Dump if necessary */
     if (i % 50 == 0) {
       sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);

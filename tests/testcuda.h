@@ -122,7 +122,7 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
-  union {
+  //union {
 
     struct {
 
@@ -164,7 +164,7 @@ struct part {
       float h_dt;
 
     } force;
-  };
+  //};
 
   /* Time-step length */
   timebin_t time_bin;
