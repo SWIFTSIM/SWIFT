@@ -310,48 +310,51 @@ void copy_to_device_array(struct cell *ci, int offset) {
   allocate_parts(&h_p, num_part);
   
   //copy particles data
-  for(int i=offset;i<num_part+offset;i++) {
+  for(int i=0;i<num_part;i++) {
+    int p_i = i + offset;
     struct part p = ci->parts[i];
-    h_p.id[i] = p.id;
-    h_p.x_x[i] = p.x[0];
-    h_p.x_y[i] = p.x[1];
-    h_p.x_z[i] = p.x[2];
-    h_p.v[i].x = p.v[0];
-    h_p.v[i].y = p.v[1];
-    h_p.v[i].z = p.v[2];
-    h_p.a_hydro[i].x = p.a_hydro[0];
-    h_p.a_hydro[i].y = p.a_hydro[1];
-    h_p.a_hydro[i].z = p.a_hydro[2];
-    h_p.h[i] = p.h;
-    h_p.mass[i] = p.mass;
-    h_p.rho[i] = p.rho;
-    h_p.entropy[i] = p.entropy;
-    h_p.entropy_dt[i] = p.entropy_dt;
+    h_p.id[p_i] = p.id;
+    h_p.x_x[p_i] = p.x[0];
+    h_p.x_y[p_i] = p.x[1];
+    h_p.x_z[p_i] = p.x[2];
+    h_p.v[p_i].x = p.v[0];
+    h_p.v[p_i].y = p.v[1];
+    h_p.v[p_i].z = p.v[2];
+    h_p.a_hydro[p_i].x = p.a_hydro[0];
+    h_p.a_hydro[p_i].y = p.a_hydro[1];
+    h_p.a_hydro[p_i].z = p.a_hydro[2];
+    h_p.h[p_i] = p.h;
+    h_p.mass[p_i] = p.mass;
+    h_p.rho[p_i] = p.rho;
+    h_p.entropy[p_i] = p.entropy;
+    h_p.entropy_dt[p_i] = p.entropy_dt;
 
     // density
-    h_p.wcount[i] = p.density.wcount;
-    h_p.wcount_dh[i] = p.density.wcount_dh;
-    h_p.rho_dh[i] = p.density.rho_dh;
-    h_p.rot_v[i].x = p.density.rot_v[0];
-    h_p.rot_v[i].y = p.density.rot_v[1];
-    h_p.rot_v[i].z = p.density.rot_v[2];
-    h_p.div_v[i] = p.density.div_v;
+    h_p.wcount[p_i] = p.density.wcount;
+    h_p.wcount_dh[p_i] = p.density.wcount_dh;
+    h_p.rho_dh[p_i] = p.density.rho_dh;
+    h_p.rot_v[p_i].x = p.density.rot_v[0];
+    h_p.rot_v[p_i].y = p.density.rot_v[1];
+    h_p.rot_v[p_i].z = p.density.rot_v[2];
+    h_p.div_v[p_i] = p.density.div_v;
 
     // force
-    h_p.balsara[i] = p.force.balsara;
-    h_p.f[i] = p.force.f;
-    h_p.P_over_rho2[i] = p.force.P_over_rho2;
-    h_p.soundspeed[i] = p.force.soundspeed;
-    h_p.v_sig[i] = p.force.v_sig;
-    h_p.h_dt[i] = p.force.h_dt;
+    h_p.balsara[p_i] = p.force.balsara;
+    h_p.f[p_i] = p.force.f;
+    h_p.P_over_rho2[p_i] = p.force.P_over_rho2;
+    h_p.soundspeed[p_i] = p.force.soundspeed;
+    h_p.v_sig[p_i] = p.force.v_sig;
+    h_p.h_dt[p_i] = p.force.h_dt;
     
-    h_p.time_bin[i] = p.time_bin;
+    h_p.time_bin[p_i] = p.time_bin;
   }
 
   struct particle_arrays c_parts;
   cudaErrCheck(cudaMemcpyFromSymbol(&c_parts, cuda_parts,
                                     sizeof(struct particle_arrays)));
 
+  if (offset > 0)
+    exit(1);
   void *p_data = c_parts.id + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.id, sizeof(long long int) * num_part,cudaMemcpyHostToDevice));
 
@@ -509,7 +512,8 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
 
 struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
   copy_to_device_array(ci, offset);
-  
+  if (offset > 0)
+    exit(1);
   /* Set the host pointer. */
   struct cell_cuda c2;
 
@@ -882,10 +886,11 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
     zero_particle_fields(ci);
-    //zero_particle_fields(cj);
+    zero_particle_fields(cj);
 
     cuda_ci = copy_from_host(ci, 0);
-    //cuda_cj = copy_from_host(cj, ci->count);
+    cuda_cj = copy_from_host(cj, ci->count);
+    exit(1);
     //tic = getticks();
 
     /* Run the test */
@@ -897,7 +902,7 @@ int main(int argc, char *argv[]) {
     //time += toc - tic;
 
     copy_to_host(cuda_ci, ci);
-    //copy_to_host(cuda_cj, cj);
+    copy_to_host(cuda_cj, cj);
     /* Dump if necessary */
     if (i % 50 == 0) {
       sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);
