@@ -49,9 +49,17 @@ __host__ inline void cudaErrCheck(cudaError_t status) {
   }
 }
 
-
+/* Task function to execute a self-density task. */
 __device__ void doself_density(struct cell_cuda *ci) {
 
+  /* Is the cell active? */
+  if (!cuda_cell_is_active(ci)) {
+    printf(
+        "Cell isn't active..., ti_end_min=%i, ti_current=%i, "
+        "max_active_bin=%i\n",
+        ci->ti_end_min, ti_current, max_active_bin);
+    return;
+  }
 
   const int count_i = ci->part_count;
   int part_i = ci->first_part;
@@ -77,6 +85,10 @@ __device__ void doself_density(struct cell_cuda *ci) {
     rot_v.y = 0.0f;
     rot_v.z = 0.0f;
 
+    /* If the particle isn't active skip it. */
+    if (!cuda_part_is_active(pid)) {
+      continue;
+    }
 
     /* Search for the neighbours! */
     for (int pjd = part_i; pjd < part_i + count_i; pjd++) {
@@ -138,19 +150,21 @@ __device__ void doself_density(struct cell_cuda *ci) {
     }  // Loop over cj.
     /* Write data for particle pid back to global stores. */
     atomicAdd(&cuda_parts.rho[pid], rho);
-    //atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
-    //atomicAdd(&cuda_parts.wcount[pid], wcount);
-    //atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
-    //atomicAdd(&cuda_parts.div_v[pid], div_v);
-    //atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
-    //atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
-    //atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
+    atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
+    atomicAdd(&cuda_parts.wcount[pid], wcount);
+    atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
+    atomicAdd(&cuda_parts.div_v[pid], div_v);
+    atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
+    atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
+    atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
   }
 }
 
-__global__ void do_test(struct cell_cuda *ci) {
+
+__global__ void do_test(struct cell_cuda *ci, struct cell_cuda *cj) {
 
   doself_density(ci);
+  //dopair_density(ci, cj);
 }
 
 void allocate_parts(struct particle_arrays *p, size_t num_part) {  
@@ -577,6 +591,13 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 int main(int argc, char *argv[]) {
 
+  int tmp = 8;
+  cudaErrCheck(
+      cudaMemcpyToSymbol(ti_current, &tmp, sizeof(int)));
+  tmp = 1000;
+  cudaErrCheck(
+      cudaMemcpyToSymbol(max_active_bin, &tmp, sizeof(int)));
+
   float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
   for (int a = 0; a < (kernel_degree + 1) * (kernel_ivals + 1); a++) {
     host_kernel_coeffs[a] = kernel_coeffs[a];
@@ -668,10 +689,11 @@ int main(int argc, char *argv[]) {
     //zero_particle_fields(cj);
 
     cuda_ci = copy_from_host(ci, 0);
+    //cuda_cj = copy_from_host(cj, ci->count);
     //tic = getticks();
 
     /* Run the test */
-    do_test<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+    do_test<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
 
@@ -679,6 +701,7 @@ int main(int argc, char *argv[]) {
     //time += toc - tic;
 
     copy_to_host(cuda_ci, ci);
+    copy_to_host(cuda_cj, cj);
     /* Dump if necessary */
     if (i % 50 == 0) {
       sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);
