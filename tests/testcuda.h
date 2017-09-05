@@ -1,8 +1,11 @@
 typedef long long integertime_t;
 typedef char timebin_t;
+
 #define part_align 128
 #define CUDA_MAX_LINKS 27
-#define CUDA_THREAD 256
+#define CUDA_THREADS 256
+#define DIM 3
+
 
 #define kernel_degree 3
 #define kernel_ivals 2  /*!< Number of branches */
