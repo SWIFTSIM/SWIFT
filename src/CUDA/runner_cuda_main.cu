@@ -14,6 +14,7 @@ extern "C" {
 #include "queue_cuda.h"
 #include "task_cuda.h"
 #include "cell_cuda.h"
+#include "../active.h"
 #include "../kernel_hydro.h"
 #include "../dimension.h"
 #include "../cell.h"
@@ -310,8 +311,6 @@ __device__ void load_cell(int cell_index) {
     local_entropy_dt = current->entropy_dt;
 
     cuda_parts.h[start + i] = local_h;
-    if(start+i == 0) 
-      printf("%f\n", cuda_parts.h[start+i]);
     cuda_parts.mass[start + i] = local_mass;
     cuda_parts.rho[start + i] = local_rho;
     cuda_parts.entropy[start + i] = local_entropy;
@@ -363,8 +362,9 @@ __device__ void unload_cell(int cell_index) {
 
   /* Get the pointer to the relevant cells. */
   struct cell *cpu_cell = cpu_cells[cell_index];
-  const struct cell_cuda *cell = &cells_cuda[cell_index];
+  struct cell_cuda *cell = &cells_cuda[cell_index];
   struct part *parts = cpu_cell->parts;
+  if (!cuda_cell_is_active(cell)) return;
   int i;
   /* Get the index to copy the data for the 0th particle in this cell to.*/
   int start = cell->first_part;
@@ -398,8 +398,9 @@ __device__ void unload_cell(int cell_index) {
 __device__ void doself_density(struct cell_cuda *ci) {
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
+    if(threadIdx.x ==0)
     printf(
-        "Cell isn't active..., ti_end_min=%i, ti_current=%i, "
+        "Cell isn't active..., ti_end_min=%lli, ti_current=%lli, "
         "max_active_bin=%i\n",
         ci->ti_end_min, ti_current, max_active_bin);
     return;
@@ -511,7 +512,7 @@ __device__ void doself_density(struct cell_cuda *ci) {
 __device__ void dopair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
 
   /* Are these cells active? */
-  if (!cuda_cell_is_active(ci) && !cuda_cell_is_active(cj)) return;
+  if (!cuda_cell_is_active(ci)) return;
 
   const int count_i = ci->part_count;
   const int count_j = cj->part_count;
@@ -678,6 +679,10 @@ __device__ void doself_force(struct cell_cuda *ci) {
         float wi, wj, wi_dx, wj_dx;
         const float fac_mu = 1.f;
 
+/*        if(cuda_parts.id[pid] == 142801)
+          printf("self Part %i dx %e %e %e\n", cuda_parts.id[pjd], dx[0], dx[1], dx[2]);
+        if(cuda_parts.id[pid] == 142801)
+          printf("self Part %i r2 = %e, hi = %e, hig2 = %e, j = %e, hjg2 = %e\n", cuda_parts.id[pjd], r2, hi, hig2, hj, hj*hj*kernel_gamma2);*/
         const float r = sqrtf(r2);
         const float r_inv = 1.0f / r;
 
@@ -775,7 +780,6 @@ __device__ void doself_force(struct cell_cuda *ci) {
       if (v_sig_stor > global_vsig)
         old = atomicCAS(address_as_int, assumed, __float_as_int(v_sig_stor));
     } while (assumed != old && v_sig_stor > global_vsig);
-
   }  // Outer loop
 }
 
@@ -785,7 +789,7 @@ __device__ void doself_force(struct cell_cuda *ci) {
 __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
 
   /* Are these cells active? */
-  if (!cuda_cell_is_active(ci) && !cuda_cell_is_active(cj)) return;
+  if (!cuda_cell_is_active(ci)) return;
 
   const int count_i = ci->part_count;
   const int count_j = cj->part_count;
@@ -842,7 +846,6 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
       if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
         float wi, wj, wi_dx, wj_dx;
         const float fac_mu = 1.f;
-
         const float r = sqrtf(r2);
         const float r_inv = 1.0f / r;
 
@@ -926,8 +929,6 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
 
     /* Flush to global stores.*/
     atomicAdd(&cuda_parts.a_hydro[pid].x, a_hydro.x);
-    if(cuda_parts.id[pid] == 11816)
-      printf("a_hydro.x = %f\n", cuda_parts.a_hydro[pid].x);
     atomicAdd(&cuda_parts.a_hydro[pid].y, a_hydro.y);
     atomicAdd(&cuda_parts.a_hydro[pid].z, a_hydro.z);
     atomicAdd(&cuda_parts.h_dt[pid], h_dt);
@@ -1099,6 +1100,8 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
       /* Get r and 1/r */
       const float r = sqrtf(r2);
       const float ri = 1.0f / r;
+/*      if(cuda_parts.id[pid] == 142801)
+        printf("neighbour = %lli, r=%e, h=%e\n", cuda_parts.id[j], r2, hi);*/
 
       /* Compute the kernel function */
       const float hi_inv = 1.0f / hi;
@@ -1113,7 +1116,7 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
       /* Compute condtribution to the number of neighbours */
       wcount += w;
       wcount_dh -= (hydro_dimension * w + ui * dw_dx);
-
+          
       const float fac = mj * dw_dx * ri;
 
       float3 piv, pjv;
@@ -1192,6 +1195,8 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
       const float r = sqrtf(r2);
       const float ri = 1.0f / r;
 
+    /*  if(cuda_parts.id[pid] == 142801)
+        printf("pair neighbour = %lli, r=%e, h=%e\n", cuda_parts.id[j], r2, hi);*/
       /* Compute the kernel function */
       const float hi_inv = 1.0f / hi;
       const float ui = r * hi_inv;
@@ -1253,22 +1258,25 @@ __device__ void cuda_hydro_fix_particle(int pid, struct cell_cuda *c) {
   cuda_parts.rot_v[pid].x = 0.f;
   cuda_parts.rot_v[pid].y = 0.f;
   cuda_parts.rot_v[pid].z = 0.f;
-  atomicAdd(&global_count, 1);
   /* Climb up the cell hierarchy. */
   struct cell_cuda *c2 = c;
+  
   for (int cell = (c - cells_cuda); cell >= 0; cell = c2->parent) {
     c2 = &cells_cuda[cell];
 
-    for (int l = 0; l < c->nr_links; l++) {
-      if (tasks[l].type == task_type_self ||
-          tasks[l].type == task_type_sub_self)
+    for (int l = 0; l < c2->nr_links; l++) {
+      const int tid = c2->links[l];
+      if (tasks[tid].type == task_type_self ||
+          tasks[tid].type == task_type_sub_self)
         cuda_doself_subset_density(pid, cell);
-      else if (tasks[l].type == task_type_pair ||
-               tasks[l].type == task_type_sub_pair) {
-        if (tasks[l].ci == cell) {
-          cuda_dopair_subset_density(pid, tasks[l].cj, cell);
+      else if (tasks[tid].type == task_type_pair ||
+               tasks[tid].type == task_type_sub_pair) {
+/*        if(cuda_parts.id[pid] == 142801)
+          printf("cell %lli Task %lli type %i ci %i cj %i \n", cell, (&tasks[tid]-tasks), tasks[tid].type, tasks[tid].ci, tasks[tid].cj);*/
+        if (tasks[tid].ci == cell) {
+          cuda_dopair_subset_density(pid, tasks[tid].cj, cell);
         } else {
-          cuda_dopair_subset_density(pid, tasks[l].ci, cell);
+          cuda_dopair_subset_density(pid, tasks[tid].ci, cell);
         }
       }
     }
@@ -1302,12 +1310,12 @@ __device__ void do_ghost(struct cell_cuda *c) {
       redo = 1;
       int a = 0;
       if (!cuda_part_is_active(i)) continue;
-      while( redo && a < 7  ){
+      while( redo && a < 30  ){
       a++;
       redo = 0;
       float h_new;
       const float h_old = cuda_parts.h[i];
-      const float h_old_dim = h_old*h_old*h_old;//cuda_pow_dimension(h_old);
+      const float h_old_dim = cuda_pow_dimension(h_old);//h_old*h_old*h_old;//d);
       const float h_old_dim_minus_one = cuda_pow_dimension_minus_one(h_old);
       if (cuda_parts.wcount[i] == 0.f) {
         h_new = 2.f * h_old;
@@ -1360,7 +1368,7 @@ __device__ void do_ghost(struct cell_cuda *c) {
         cuda_hydro_fix_particle(i,c); 
       }
         
-      } 
+      }
       /* We now have a particle whose smoothing length has convegered */
       /* Time to set the force variables */
       /* Compute variables required for the force loop */
@@ -1407,7 +1415,6 @@ __global__ void swift_device_kernel() {
   __shared__ volatile int done;
   int i;
   if(threadIdx.x == 0 && blockIdx.x == 0)
-    global_count = 0;
   /* Main loop */
   while (1) {
     __syncthreads();
@@ -1463,10 +1470,12 @@ __global__ void swift_device_kernel() {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
         dopair_density(ci, cj);
+        dopair_density(cj, ci);
       } else if (subtype == task_subtype_force) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
         dopair_force(ci, cj);
+        dopair_force(cj, ci);
       }
     } else if (type == task_type_self || type == task_type_sub_self) {
       if (subtype == task_subtype_density) {
@@ -1509,8 +1518,6 @@ __global__ void swift_device_kernel() {
     }
 
   }  // End of main loop
-  if(threadIdx.x == 0 && blockIdx.x == 0)
-  printf("global_count = %i\n", global_count);
   /* Don't need to do any cleanup, all the dependencies and skips and queues are
    * set by CPU. */
 }
@@ -1883,8 +1890,16 @@ __host__ void update_tasks(struct engine *e) {
   for (int i = 0; i < nr_gpu_tasks; i++) {
     // Update the skip flag and reset the wait to 0.
     host_tasks[i].wait = 0;
-    if (host_tasks[i].type > type_load)
+    if (host_tasks[i].type > type_load){
+      struct task *t = host_tasks[i].task;
+      if(!(cell_is_active(t->ci, e) || (t->cj != NULL && cell_is_active(t->cj, e))) && !t->skip){
+            printf("Inactive task isn't skipped\n");
+          }
+      if(t->type != host_tasks[i].type || t->subtype != host_tasks[i].subtype)
+        printf("Pointers broke\n");
       host_tasks[i].skip = host_tasks[i].task->skip;
+      host_tasks[i].task->skip = 1;
+    }
     else
       host_tasks[i].skip = 0;
   }

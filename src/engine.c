@@ -3633,6 +3633,8 @@ void engine_step(struct engine *e) {
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
+  printParticle(e->s->parts, e->s->xparts, 142800, e->s->nr_parts);
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
