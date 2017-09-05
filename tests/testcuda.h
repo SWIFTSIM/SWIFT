@@ -1,6 +1,10 @@
 typedef long long integertime_t;
 typedef char timebin_t;
 
+extern "C" {
+#include <stdio.h>
+}
+
 #define part_align 128
 #define CUDA_MAX_LINKS 27
 #define CUDA_THREADS 256
@@ -22,7 +26,14 @@ typedef char timebin_t;
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma)))
 #define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma)))
+
 __constant__ float cuda_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
+
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {3.f,  -3.f, 0.f,  0.5f, /* 0 < u < 0.5 */
+                                    -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
+                                    0.f,  0.f,  0.f,  0.f}; /* 1 < u */
+
 __device__ __inline__ void cuda_kernel_deval(float u, float *restrict W,
                                              float *restrict dW_dx) {
   /* Go to the range [0,1] from [0,H] */
@@ -40,6 +51,8 @@ __device__ __inline__ void cuda_kernel_deval(float u, float *restrict W,
   for (int k = 2; k <= kernel_degree; k++) {
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
+    if (threadIdx.x == 0)
+      printf("coeff %g\n", coeffs[k]);
   }
 
   /* Return the results */

@@ -552,6 +552,15 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 
 int main(int argc, char *argv[]) {
+
+  float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
+  for (int a = 0; a < (kernel_degree + 1) * (kernel_ivals + 1); a++) {
+    host_kernel_coeffs[a] = kernel_coeffs[a];
+  }
+  cudaErrCheck(cudaMemcpyToSymbol(
+    cuda_kernel_coeffs, &host_kernel_coeffs,
+    sizeof(float) * (kernel_degree + 1) * (kernel_ivals + 1)));
+
   size_t particles = 0, runs = 0, volume, type = 0;
   double offset[3] = {0, 0, 0}, h = 1.1255, size = 1., rho = 1.;
   double perturbation = 0.;
