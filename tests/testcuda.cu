@@ -496,8 +496,8 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
   p_data = c_parts.soundspeed + offset;
   cudaErrCheck(cudaMemcpy(h_p->soundspeed, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
   
-  //p_data = (void*)(c_parts.v_sig + offset);
-  //cudaErrCheck(cudaMemcpy(h_p->, p_data, sizeof(volatile float) * num_part, cudaMemcpyDeviceToHost));
+  p_data = (void*)(c_parts.v_sig + offset);
+  cudaErrCheck(cudaMemcpy((void*)h_p->v_sig, p_data, sizeof(volatile float) * num_part, cudaMemcpyDeviceToHost));
   
   p_data = c_parts.h_dt + offset;
   cudaErrCheck(cudaMemcpy(h_p->h_dt, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
