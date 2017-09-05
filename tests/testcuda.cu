@@ -138,13 +138,13 @@ __device__ void doself_density(struct cell_cuda *ci) {
     }  // Loop over cj.
     /* Write data for particle pid back to global stores. */
     atomicAdd(&cuda_parts.rho[pid], rho);
-    atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
-    atomicAdd(&cuda_parts.wcount[pid], wcount);
-    atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
-    atomicAdd(&cuda_parts.div_v[pid], div_v);
-    atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
-    atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
-    atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
+    //atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
+    //atomicAdd(&cuda_parts.wcount[pid], wcount);
+    //atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
+    //atomicAdd(&cuda_parts.div_v[pid], div_v);
+    //atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
+    //atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
+    //atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
   }
 }
 
@@ -153,8 +153,7 @@ __global__ void do_test(struct cell_cuda *ci) {
   doself_density(ci);
 }
 
-struct particle_arrays* allocate_parts(size_t num_part) {
-  struct particle_arrays *p = (struct particle_arrays*)malloc(sizeof(struct particle_arrays));
+void allocate_parts(struct particle_arrays *p, size_t num_part) {  
   p->id = (long long int*) malloc (sizeof(long long int) * num_part);
   p->x_x = (double*) malloc(sizeof(double) * num_part);
   p->x_y = (double*) malloc(sizeof(double) * num_part);
@@ -166,24 +165,11 @@ struct particle_arrays* allocate_parts(size_t num_part) {
   p->rho = (float*) malloc(sizeof(float) * num_part);
   p->entropy = (float*) malloc(sizeof(float) * num_part);
   p->entropy_dt = (float*) malloc(sizeof(float) * num_part);
-  //p->wcount = (float*) malloc(sizeof(float) * num_part);
-  //p->wcount_dh = (float*) malloc(sizeof(float) * num_part);
-  //p->rho_dh = (float*) malloc(sizeof(float) * num_part);
-  //p->rot_v = (float3*) malloc(sizeof(float3) * num_part);
-  //p->div_v = (float*) malloc(sizeof(float) * num_part);
-  //p->balsara = (float*) malloc(sizeof(float) * num_part);
-  //p->f = (float*) malloc(sizeof(float) * num_part);
-  //p->P_over_rho2 = (float*) malloc(sizeof(float) * num_part);
-  //p->soundspeed = (float*) malloc(sizeof(float) * num_part);
-  //p->v_sig = (float*) malloc(sizeof(float) * num_part);
-  //p->h_dt = (float*) malloc(sizeof(float) * num_part);
   p->time_bin = (timebin_t*) malloc(sizeof(timebin_t) * num_part);
-  return p;
 }
 
-struct particle_arrays* allocate_device_parts(size_t num_part) {
+void allocate_device_parts(size_t num_part) {
   struct particle_arrays c_parts;
-  //cudaErrCheck(cudaMalloc((void**)&c_parts, sizeof(struct particle_arrays)));
   
   cudaErrCheck(cudaMalloc(&c_parts.id, sizeof(long long int) * num_part));
   cudaErrCheck(cudaMalloc(&c_parts.x_x, sizeof(double) * num_part));
@@ -196,224 +182,152 @@ struct particle_arrays* allocate_device_parts(size_t num_part) {
   cudaErrCheck(cudaMalloc(&c_parts.rho, sizeof(float) * num_part));
   cudaErrCheck(cudaMalloc(&c_parts.entropy, sizeof(float) * num_part));
   cudaErrCheck(cudaMalloc(&c_parts.entropy_dt, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.wcount, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.wcount_dh, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.rho_dh, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.rot_v, sizeof(float3) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.div_v, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.balsara, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.f, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.P_over_rho2, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.soundspeed, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.v_sig, sizeof(float) * num_part));
-  // cudaErrCheck(cudaMalloc((void**)&c_parts.h_dt, sizeof(float) * num_part));	
-  cudaErrCheck(cudaMalloc((void**)&c_parts.time_bin, sizeof(timebin_t) * num_part));
-  return &c_parts;
+  cudaErrCheck(cudaMalloc(&c_parts.time_bin, sizeof(timebin_t) * num_part));
+
+  cudaErrCheck(cudaMemcpyToSymbol(cuda_parts, &c_parts, sizeof(struct particle_arrays)));
 }
 
-void free_parts(struct particle_arrays *p) {
-  free(p->id); p->id = NULL;
-  free(p->x_x); p->x_x = NULL;
-  free(p->x_y); p->x_y = NULL;
-  free(p->x_z); p->x_z = NULL;
-  free(p->v); p->v = NULL;
-  free(p->a_hydro); p->a_hydro = NULL;
-  free(p->h); p->h = NULL;
-  free(p->mass); p->mass = NULL;
-  free(p->rho); p->rho = NULL;
-  free(p->entropy); p->entropy = NULL;
-  free(p->entropy_dt); p->entropy_dt = NULL;
-  //free(p->wcount); p->wcount = NULL;
-  //free(p->wcount_dh); p->wcount_dh = NULL;
-  //free(p->rho_dh); p->rho_dh = NULL;
-  //free(p->rot_v); p->rot_v = NULL;
-  //free(p->div_v); p->div_v = NULL;
-  //free(p->balsara); p->balsara = NULL;
-  //free(p->f); p->f = NULL;
-  //free(p->P_over_rho2); p->P_over_rho2 = NULL;
-  //free(p->soundspeed); p->soundspeed = NULL;
-  //free(p->v_sig); p->v_sig = NULL;
-  //free(p->h_dt); p->h_dt = NULL;
-  free(p->time_bin); p->time_bin = NULL;
-  p = NULL;
+void free_parts(struct particle_arrays p) {
+  free(p.id); p.id = NULL;
+  free(p.x_x); p.x_x = NULL;
+  free(p.x_y); p.x_y = NULL;
+  free(p.x_z); p.x_z = NULL;
+  free(p.v); p.v = NULL;
+  free(p.a_hydro); p.a_hydro = NULL;
+  free(p.h); p.h = NULL;
+  free(p.mass); p.mass = NULL;
+  free(p.rho); p.rho = NULL;
+  free(p.entropy); p.entropy = NULL;
+  free(p.entropy_dt); p.entropy_dt = NULL;
+  free(p.time_bin); p.time_bin = NULL;
 }
 
-void free_device_parts(struct particle_arrays *parts) {
-  cudaErrCheck(cudaFree(parts->id));
-  cudaErrCheck(cudaFree(parts->x_x));
-  cudaErrCheck(cudaFree(parts->x_y));
-  cudaErrCheck(cudaFree(parts->x_z));
-  cudaErrCheck(cudaFree(parts->v));
-  cudaErrCheck(cudaFree(parts->a_hydro));
-  cudaErrCheck(cudaFree(parts->h));
-  cudaErrCheck(cudaFree(parts->mass));
-  cudaErrCheck(cudaFree(parts->rho));
-  cudaErrCheck(cudaFree(parts->entropy));
-  cudaErrCheck(cudaFree(parts->entropy_dt));
-  //cudaErrCheck(cudaFree(parts->wcount));
-  //cudaErrCheck(cudaFree(parts->wcount_dh));
-  //cudaErrCheck(cudaFree(parts->rho_dh));
-  //cudaErrCheck(cudaFree(parts->rot_v));
-  //cudaErrCheck(cudaFree(parts->div_v));
-  //cudaErrCheck(cudaFree(parts->balsara));
-  //cudaErrCheck(cudaFree(parts->f));
-  //cudaErrCheck(cudaFree(parts->P_over_rho2));
-  //cudaErrCheck(cudaFree(parts->soundspeed));
-  //cudaErrCheck(cudaFree(parts->v_sig));
-  //cudaErrCheck(cudaFree(parts->h_dt));
-  cudaErrCheck(cudaFree(parts->time_bin));
-  parts = NULL;
+void free_device_parts() {
+  struct particle_arrays parts;
+  cudaErrCheck(cudaMemcpyFromSymbol(&parts, cuda_parts,
+				    sizeof(struct particle_arrays)));
 
+  cudaErrCheck(cudaFree(parts.id));
+  cudaErrCheck(cudaFree(parts.x_x));
+  cudaErrCheck(cudaFree(parts.x_y));
+  cudaErrCheck(cudaFree(parts.x_z));
+  cudaErrCheck(cudaFree(parts.v));
+  cudaErrCheck(cudaFree(parts.a_hydro));
+  cudaErrCheck(cudaFree(parts.h));
+  cudaErrCheck(cudaFree(parts.mass));
+  cudaErrCheck(cudaFree(parts.rho));
+  cudaErrCheck(cudaFree(parts.entropy));
+  cudaErrCheck(cudaFree(parts.entropy_dt));
+  cudaErrCheck(cudaFree(parts.time_bin));
 }
 
 
 void copy_to_device_array(struct cell *ci, int offset) {
 
-  struct particle_arrays *h_p;
-  
+  struct particle_arrays h_p;
+    
   int num_part = ci->count;
   
-  h_p = allocate_parts(num_part);
+  allocate_parts(&h_p, num_part);
   
   //copy particles data
   for(int i=offset;i<num_part+offset;i++) {
     struct part p = ci->parts[i];
-    h_p->id[i] = p.id;
-    h_p->x_x[i] = p.x[0];
-    h_p->x_y[i] = p.x[1];
-    h_p->x_z[i] = p.x[2];
-    h_p->v[i].x = p.v[0];
-    h_p->v[i].y = p.v[1];
-    h_p->v[i].z = p.v[2];
-    h_p->a_hydro[i].x = p.a_hydro[0];
-    h_p->a_hydro[i].y = p.a_hydro[1];
-    h_p->a_hydro[i].z = p.a_hydro[2];
-    h_p->h[i] = p.h;
-    h_p->mass[i] = p.mass;
-    h_p->rho[i] = p.rho;
-    h_p->entropy[i] = p.entropy;
-    h_p->entropy_dt[i] = p.entropy_dt;
-    // h_p->wcount[i] = p.wcount;
-    // h_p->wcount_dh[i] = p.wcount_dh;
-    // h_p->rho_dh[i] = p.rho_dh;
-    // h_p->rot_v[i].x = p.rot_v[0];
-    // h_p->rot_v[i].y = p.rot_v[1];
-    // h_p->rot_v[i].z = p.rot_v[2];
-    // h_p->div_v[i] = p.div_v;
-    // h_p->balsara[i] = p.balsara;
-    // h_p->f[i] = p.f;
-    // h_p->P_over_rho2[i] = p.P_over_rho2;
-    // h_p->soundspeed[i] = p.soundspeed;
-    // h_p->v_sig[i] = p.v_sig;
-    // h_p->h_dt[i] = p.h_dt;
-    h_p->time_bin[i] = p.time_bin;
+    h_p.id[i] = p.id;
+    h_p.x_x[i] = p.x[0];
+    h_p.x_y[i] = p.x[1];
+    h_p.x_z[i] = p.x[2];
+    h_p.v[i].x = p.v[0];
+    h_p.v[i].y = p.v[1];
+    h_p.v[i].z = p.v[2];
+    h_p.a_hydro[i].x = p.a_hydro[0];
+    h_p.a_hydro[i].y = p.a_hydro[1];
+    h_p.a_hydro[i].z = p.a_hydro[2];
+    h_p.h[i] = p.h;
+    h_p.mass[i] = p.mass;
+    h_p.rho[i] = p.rho;
+    h_p.entropy[i] = p.entropy;
+    h_p.entropy_dt[i] = p.entropy_dt;
+    h_p.time_bin[i] = p.time_bin;
   }
 
-  void *p_data = &cuda_parts.id + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->id, sizeof(long long int) * num_part,cudaMemcpyHostToDevice));
+  struct particle_arrays c_parts;
+  cudaErrCheck(cudaMemcpyFromSymbol(&c_parts, cuda_parts,
+                                    sizeof(struct particle_arrays)));
 
-  p_data = &cuda_parts.x_x + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->x_x, sizeof(double) * num_part, cudaMemcpyHostToDevice));
+  void *p_data = c_parts.id + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.id, sizeof(long long int) * num_part,cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.x_y + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->x_y, sizeof(double) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.x_x + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.x_x, sizeof(double) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.x_z + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->x_z, sizeof(double) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.x_y + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.x_y, sizeof(double) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.v + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->v, sizeof(float3) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.x_z + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.x_z, sizeof(double) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.a_hydro + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->a_hydro,sizeof(float3) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.v + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.v, sizeof(float3) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.h + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->h,sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.a_hydro + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.a_hydro,sizeof(float3) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.mass + offset;
-  cudaErrCheck(cudaMemcpy(p_data,&h_p->mass, sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.h + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.h,sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.rho + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->rho,sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.mass + offset;
+  cudaErrCheck(cudaMemcpy(p_data,h_p.mass, sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.entropy + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->entropy,sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.rho + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.rho,sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  p_data = &cuda_parts.entropy_dt + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->entropy_dt,sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.entropy + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.entropy,sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.wcount[offset], &h_p->wcount,sizeof(float) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.entropy_dt + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.entropy_dt,sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.wcount_dh[offset], &h_p->wcount_dh,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.rho_dh[offset], &h_p->rho_dh,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.rot_v[offset], &h_p->rot_v,sizeof(float3) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.div_v[offset], &h_p->div_v,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.balsara[offset], &h_p->balsara,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.f[offset], &h_p->f,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.P_over_rho2[offset], &h_p->P_over_rho2,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.soundspeed[offset], &h_p->soundspeed,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.v_sig[offset], &h_p->v_sig, sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  // cudaErrCheck(cudaMemcpy(&cuda_parts.h_dt[offset], &h_p->h_dt,sizeof(float) * num_part, cudaMemcpyHostToDevice));
-
-  p_data = &cuda_parts.time_bin + offset;
-  cudaErrCheck(cudaMemcpy(p_data, &h_p->time_bin,sizeof(timebin_t) * num_part, cudaMemcpyHostToDevice));
+  p_data = c_parts.time_bin + offset;
+  cudaErrCheck(cudaMemcpy(p_data, h_p.time_bin,sizeof(timebin_t) * num_part, cudaMemcpyHostToDevice));
 
   free_parts(h_p);
 }
 
-void copy_from_host(struct cell *ci, struct cell_cuda *cuda_ci, int offset) {
-  /* Recursive function to create the cell structures require for the GPU.*/
-  //void create_cells(struct cell *c, struct cell_cuda *cell_host,
-  //                         struct cell **host_pointers, struct part *parts) {
-
+struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
+  copy_to_device_array(ci, offset);
+  
   /* Set the host pointer. */
-  /*host_pointers[ci->cuda_ID] = ci;
-  struct cell_cuda *c2 = &cell_host[ci->cuda_ID];
+  struct cell_cuda c2;
 
-  c2->loc[0] = ci->loc[0];
-  c2->loc[1] = ci->loc[1];
-  c2->loc[2] = ci->loc[2];
-  c2->width[0] = ci->width[0];
-  c2->width[1] = ci->width[1];
-  c2->width[2] = ci->width[2];
-  c2->h_max = ci->h_max;
-  c2->first_part = ci->parts - parts;
-  c2->part_count = ci->count;
+  for (int k=0; k<DIM; k++) {
+    c2.loc[k] = ci->loc[k];
+    c2.width[k] = ci->width[k];
+  
+  }
+  c2.h_max = ci->h_max;
+  c2.first_part = offset;
+  c2.part_count = ci->count;
   if (ci->parent != NULL) {
-    c2->parent = ci->parent->cuda_ID;
+    c2.parent = ci->parent->cuda_ID;
   } else {
-    c2->parent = -1;
+    c2.parent = -1;
   }
   if (ci->super != NULL) {
-    c2->super = ci->super->cuda_ID;
+    c2.super = ci->super->cuda_ID;
   } else {
-    c2->super = -1;
+    c2.super = -1;
   }
-  c2->ti_end_min = ci->ti_end_min;
-  c2->ti_end_max = ci->ti_end_max;
-  c2->dmin = ci->dmin;
-  c2->nr_links = 0;
-  c2->split = ci->split;
+  c2.ti_end_min = ci->ti_end_min;
+  c2.ti_end_max = ci->ti_end_max;
+  c2.dmin = ci->dmin;
+  c2.nr_links = 0;
+  c2.split = ci->split;
 
-  for (int i = 0; i < 8; i++) {*/
-    /* Set progeny and recurse. */
-  /*if (c->progeny[i] != NULL) {
-      c2->progeny[i] = ci->progeny[i]->cuda_ID;
-      create_cells(ci->progeny[i], cell_host, host_pointers, parts);
-    }
-    }*/
-
-
-
+  struct cell_cuda *ret;
+  cudaErrCheck( cudaMalloc(&ret, sizeof(struct cell_cuda)) );
+  cudaErrCheck( cudaMemcpy(ret, &c2, sizeof(struct cell_cuda), cudaMemcpyHostToDevice) );
+  return ret;
 }
 
 void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
@@ -431,26 +345,18 @@ void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
     p.rho = h_cuda_part->rho[p_i];
     p.entropy = h_cuda_part->entropy[p_i];
     p.entropy_dt = h_cuda_part->entropy_dt[p_i];
-    /*p->density.wcount = h_cuda_part->wcount[p_i];
-    p->density.wcount_dh = h_cuda_part->wcount_dh[p_i];
-    p->density.rho_dh = h_cuda_part->rho_dh[p_i];
-    p->density.div_v = h_cuda_part->div_v[p_i];
-    p->force*/
     
     p.x[0] = h_cuda_part->x_x[p_i];
     p.v[0] = h_cuda_part->v[p_i].x;
     p.a_hydro[0] = h_cuda_part->a_hydro[p_i].x;
-    //p->density.rot_v[0] = h_cuda_part->rot_v[p_i].x;
 #if DIM > 1
     p.x[1] = h_cuda_part->x_y[p_i];
     p.v[1] = h_cuda_part->v[p_i].y;
     p.a_hydro[1] = h_cuda_part->a_hydro[p_i].y;
-    //p->density.rot_v[1] = h_cuda_part->rot_v[p_i].y;
 #if DIM > 2
     p.x[2] = h_cuda_part->x_z[p_i];
     p.v[2] = h_cuda_part->v[p_i].z;
     p.a_hydro[2] = h_cuda_part->a_hydro[p_i].z;
-    //p->density.rot_v[2] = h_cuda_part->rot_v[p_i].z;
 #endif
 #endif
 
@@ -570,7 +476,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            //ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
+            ci->parts[pid].v[2], //hydro_get_density(&ci->parts[pid]),
             ci->parts[pid].density.rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
@@ -586,7 +492,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            //cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
+            cj->parts[pjd].v[2], //hydro_get_density(&cj->parts[pjd]),
             cj->parts[pjd].density.rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
@@ -609,7 +515,7 @@ int main(int argc, char *argv[]) {
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
 
-//  ticks tic, toc, time;
+  //  ticks tic, toc, time;
 
   /* Initialize CPU frequency, this also starts time. */
   //unsigned long long cpufreq = 0;
@@ -667,7 +573,7 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
-  cuda_parts = *allocate_device_parts(2*volume);
+  allocate_device_parts(2*volume);
 
   struct cell_cuda *cuda_ci;
   struct cell_cuda *cuda_cj;
@@ -678,7 +584,7 @@ int main(int argc, char *argv[]) {
     zero_particle_fields(ci);
     //zero_particle_fields(cj);
 
-    copy_from_host(ci, cuda_ci, 0);
+    cuda_ci = copy_from_host(ci, 0);
     //tic = getticks();
 
     /* Run the test */
@@ -697,7 +603,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-
+printf("p %g\n", ci->parts[0].density);
   /* Output timing */
 //  message("SWIFT calculation took       %lli ticks.", time / runs);
 
