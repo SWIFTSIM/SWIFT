@@ -496,6 +496,7 @@ __device__ __constant__ int ti_current;
 
 __device__ __constant__ int max_active_bin;
 
+__device__ __constant__ double dim[3];
 
 __device__ int cuda_cell_is_active(struct cell_cuda *c) {
   return (c->ti_end_min == ti_current);
