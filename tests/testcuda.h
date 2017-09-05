@@ -51,8 +51,6 @@ __device__ __inline__ void cuda_kernel_deval(float u, float *restrict W,
   for (int k = 2; k <= kernel_degree; k++) {
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
-    if (threadIdx.x == 0)
-      printf("coeff %g\n", coeffs[k]);
   }
 
   /* Return the results */
