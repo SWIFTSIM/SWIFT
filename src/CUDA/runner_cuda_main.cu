@@ -111,6 +111,7 @@ __device__ __constant__ float target_neighbours;
 __device__ __constant__ float hydro_h_max;
 __device__ __constant__ float cuda_h_tolerance;
 __device__ __constant__ float cuda_eta_neighbours;
+__device__ __constant__ int engine_step_cuda;
 
 /* Queue function to search for a task index from a specific queue. */
 __device__ int cuda_queue_gettask(struct queue_cuda *q) {
@@ -163,9 +164,6 @@ __constant__ float cuda_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
 #define VALUE_TO_STRING(x) #x
 #define VALUE(x) VALUE_TO_STRING(x)
 #define VAR_NAME_VALUE(var) #var "="  VALUE(var)
-
-#pragma message(VAR_NAME_VALUE(kernel_degree))
-#pragma message(VAR_NAME_VALUE(kernel_ivals))
 
 #define cuda_kernel_root                        \
   ((float)(cuda_kernel_coeffs[kernel_degree]) * \
@@ -401,8 +399,8 @@ __device__ void doself_density(struct cell_cuda *ci) {
     if(threadIdx.x ==0)
     printf(
         "Cell isn't active..., ti_end_min=%lli, ti_current=%lli, "
-        "max_active_bin=%i\n",
-        ci->ti_end_min, ti_current, max_active_bin);
+        "max_active_bin=%i, cell_id = %lli\n",
+        ci->ti_end_min, ti_current, max_active_bin, (ci-cells_cuda));
     return;
   }
 
@@ -849,6 +847,11 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
         const float r = sqrtf(r2);
         const float r_inv = 1.0f / r;
 
+        if(engine_step_cuda==139 && cuda_parts.id[pid] == 142800)
+        {
+          
+            printf("rho = %e, pid = 142800, pjd = %i ci = %lli, is_active = %i\n", cuda_parts.rho[pid], cuda_parts.id[pjd], (ci - cells_cuda),cuda_part_is_active(pid) );
+        }
         /* Load some data.*/
         const float mj = cuda_parts.mass[pjd];
         const float rhoi = cuda_parts.rho[pid];
@@ -1296,19 +1299,32 @@ __device__ void do_ghost(struct cell_cuda *c) {
   const float hydro_eta_dim = cuda_pow_dimension(cuda_eta_neighbours);
   const float eps = cuda_h_tolerance;
   int redo;
+  if(engine_step_cuda == 139 && threadIdx.x == 0 && c->parent == 362 )
+    printf("cell %lli, cell_pos %e %e %e cell_width %e %e %e\n", (c-cells_cuda), c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+    
+  for(int i = part_i + threadIdx.x; i < part_i + count_i; i+= blockDim.x){
+   
+        if(engine_step_cuda==139 && cuda_parts.id[i] == 142800){
+            printf("rho = %e, pid = 142800,, active = %i, cell = %lli c->split = %i, c_is_active %i pre-reccGHOST\n", cuda_parts.rho[i], cuda_part_is_active(i), (c - cells_cuda), c->split , cuda_cell_is_active(c));
+            printf("position = %e %e %e cell_pos %e %e %e cell_Dim %e %e %e\n", cuda_parts.x_x[i], cuda_parts.x_y[i], cuda_parts.x_z[i], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+        }
+  }
   /* Is the cell active? */
-  if (!cuda_cell_is_active(c)) return;
-
+  if (!cuda_cell_is_active(c)){
+    return;
+  }
   /* Recurse... */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] >= 0) do_ghost(&cells_cuda[k]);
+      if (c->progeny[k] >= 0) do_ghost(&cells_cuda[c->progeny[k]]);
     }
   } else {
     /* Loop over the particles in the cell. */
     for (int i = part_i + threadIdx.x; i < part_i + count_i; i+= blockDim.x) {
       redo = 1;
       int a = 0;
+        if(engine_step_cuda==139 && cuda_parts.id[i] == 142800)
+            printf("rho = %e, pid = 142800, a = %i GHOST\n", cuda_parts.rho[i], a);
       if (!cuda_part_is_active(i)) continue;
       while( redo && a < 30  ){
       a++;
@@ -1369,6 +1385,8 @@ __device__ void do_ghost(struct cell_cuda *c) {
       }
         
       }
+        if(engine_step_cuda==139 && cuda_parts.id[i] == 142800)
+            printf("rho = %e, pid = 142800, a = %i\n", cuda_parts.rho[i], a);
       /* We now have a particle whose smoothing length has convegered */
       /* Time to set the force variables */
       /* Compute variables required for the force loop */
@@ -1414,6 +1432,7 @@ __global__ void swift_device_kernel() {
   __shared__ volatile int tid;
   __shared__ volatile int done;
   int i;
+  
   /* Main loop */
   while (1) {
     __syncthreads();
@@ -1489,7 +1508,12 @@ __global__ void swift_device_kernel() {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
 
         do_ghost(ci);
-      }
+        }
+    }else if( type == type_implicit_load){
+         struct cell *cpu_cell = cpu_cells[tasks[tid].ci];
+         struct cell_cuda *cell = &cells_cuda[tasks[tid].ci];
+         cell->ti_end_min = cpu_cell->ti_end_min;
+         cell->ti_end_max = cpu_cell->ti_end_max;
     }
 
     __syncthreads();
@@ -1509,8 +1533,12 @@ __global__ void swift_device_kernel() {
         } else {
           if (tasks[dependant].weight >= median_cost) {
             cuda_queue_puttask(&cuda_queues[0], dependant);
+            if(tasks[dependant].type == type_implicit_load)
+              printf("Scheduled implicit load\n");
           } else {
             cuda_queue_puttask(&cuda_queues[1], dependant);
+            if(tasks[dependant].type == type_implicit_load)
+              printf("Scheduled implicit load\n");
           }
         }
       }
@@ -1890,12 +1918,6 @@ __host__ void update_tasks(struct engine *e) {
     // Update the skip flag and reset the wait to 0.
     host_tasks[i].wait = 0;
     if (host_tasks[i].type > type_load){
-      struct task *t = host_tasks[i].task;
-      if(!(cell_is_active(t->ci, e) || (t->cj != NULL && cell_is_active(t->cj, e))) && !t->skip){
-            printf("Inactive task isn't skipped\n");
-          }
-      if(t->type != host_tasks[i].type || t->subtype != host_tasks[i].subtype)
-        printf("Pointers broke\n");
       host_tasks[i].skip = host_tasks[i].task->skip;
       host_tasks[i].task->skip = 1;
     }
@@ -2072,6 +2094,8 @@ __device__ __constant__ timebin_t max_active_bin; */
   cudaErrCheck(cudaMemcpyToSymbol(cuda_eta_neighbours,
                                   &e->hydro_properties->eta_neighbours,
                                   sizeof(float)));
+
+  cudaErrCheck(cudaMemcpyToSymbol(engine_step_cuda, &e->step, sizeof(float)));
   /* Clean up */
   free(host_tasks);
   free(data);
@@ -2192,6 +2216,8 @@ __host__ void create_tasks(struct engine *e) {
 
   /* Loop through the tasks */
   for (i = 0; i < num_gpu_tasks; i++) {
+    if(tasks_host[i].type == type_implicit_load)
+      printf("Implicit says hi!\n");
     /* The transfer tasks dependencies are done anyway so skip them. */
     if (tasks_host[i].type == type_load || tasks_host[i].type == type_unload ||
         tasks_host[i].type == type_implicit_load ||
