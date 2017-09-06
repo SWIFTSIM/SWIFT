@@ -492,13 +492,13 @@ struct particle_arrays {
 __device__ struct particle_arrays cuda_parts;
 
 
-__device__ __constant__ int ti_current;
+__device__ __constant__ int ti_current = 8;
 
-__device__ __constant__ int max_active_bin;
+__device__ __constant__ int max_active_bin = 8;
 
 __device__ __constant__ double dim[3];
 
-__device__ int cuda_cell_is_active(struct cell_cuda *c) {
+__device__ __inline__ int cuda_cell_is_active(struct cell_cuda *c) {
   return (c->ti_end_min == ti_current);
 }
 

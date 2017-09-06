@@ -5,7 +5,7 @@ export HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial/
 
 rm testcuda.o
 
-nvcc -c -g -D_FORCE_INLINES -O3 -lineinfo -I$HDF5_INC -src-in-ptx --maxrregcount=32 -ftz=true -m64 -ccbin=gcc testcuda.cu -o testcuda.o
+nvcc -c -g -D_FORCE_INLINES -O3 -lineinfo -I$HDF5_INC -src-in-ptx --maxrregcount=32 -ftz=true -m64 -ccbin=gcc --ptxas-options=-v testcuda.cu -o testcuda.o
 
 echo "############################"
 echo "linking"
