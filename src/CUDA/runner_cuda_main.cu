@@ -2216,8 +2216,6 @@ __host__ void create_tasks(struct engine *e) {
 
   /* Loop through the tasks */
   for (i = 0; i < num_gpu_tasks; i++) {
-    if(tasks_host[i].type == type_implicit_load)
-      printf("Implicit says hi!\n");
     /* The transfer tasks dependencies are done anyway so skip them. */
     if (tasks_host[i].type == type_load || tasks_host[i].type == type_unload ||
         tasks_host[i].type == type_implicit_load ||
