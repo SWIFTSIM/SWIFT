@@ -652,7 +652,8 @@ __device__ void doself_density_symmetric(struct cell_cuda *ci) {
 }
 
 /* Task function to execute a self-density task. */
-__device__ void doself_density(struct cell_cuda *ci) {
+__global__ void doself_density(struct cell_cuda **c) {
+  struct cell_cuda *ci = c[blockIdx.x];   
 
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
@@ -771,7 +772,7 @@ __global__ void do_test_self_density_symmetric(struct cell_cuda *ci) {
 
 __global__ void do_test_self_density(struct cell_cuda *ci) {
 
-  doself_density(ci);
+  // doself_density(ci);
 
 }
 
@@ -1433,7 +1434,7 @@ int main(int argc, char *argv[]) {
   double perturbation = 0.;
   struct cell *ci, *cj;
 
-  char c;
+  char cx;
   static unsigned long long partId = 0;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
@@ -1449,8 +1450,8 @@ int main(int argc, char *argv[]) {
 
   srand(0);
 
-  while ((c = getopt(argc, argv, "h:p:r:t:d:f:")) != -1) {
-    switch (c) {
+  while ((cx = getopt(argc, argv, "h:p:r:t:d:f:")) != -1) {
+    switch (cx) {
       case 'h':
         sscanf(optarg, "%lf", &h);
         break;
@@ -1491,65 +1492,73 @@ int main(int argc, char *argv[]) {
 
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
+  int cell_number = 1000;
+  struct cell **c;
+  c = (cell**) malloc(sizeof(struct cell*) * cell_number);
+  for (size_t i = 0; i < cell_number; ++i) {
+    c[i] = make_cell(particles, offset, size, h, rho, &partId, perturbation);
+  }
 
-  ci = make_cell(particles, offset, size, h, rho, &partId, perturbation);
-  for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
-  cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
+//  ci = make_cell(particles, offset, size, h, rho, &partId, perturbation);
+//  for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
+//  cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
   sprintf(outputFileName, "swift_gpu_init_%s.dat", outputFileNameExtension);
-  dump_particle_fields(outputFileName, ci, cj);
 
-  allocate_device_parts(2*volume);
+  allocate_device_parts(cell_number * volume);
 
-  struct cell_cuda *cuda_ci;
-  struct cell_cuda *cuda_cj;
+  struct cell_cuda **cuda_c;
+  struct cell_cuda **cuda_c_cpu;
+
+  cudaErrCheck(cudaMalloc(cuda_c, sizeof(struct cell_cuda*) * cell_number));
+  cuda_c_cpu = (struct cell_cuda**) malloc(sizeof(struct cell_cuda*) * cell_number);
   
   //  time = 0;
   for (size_t i = 0; i < runs; ++i) {
-    /* Zero the fields */
-    zero_particle_fields(ci);
-    if (runPair)
-      zero_particle_fields(cj);
-    
-    cuda_ci = copy_from_host(ci, 0);
-    if (runPair)
-      cuda_cj = copy_from_host(cj, ci->count);
+    /* Zero the fields and loop over all the cells */
+    int x = 0;
+    for (size_t j = 0; j < cell_number; ++j) {
+       zero_particle_fields(c[j]);
+       cuda_c_cpu[j] = copy_from_host(c[j], x);
+       x += c[j]->count;
+    }
+
+    cudaErrCheck(cudaMemcpyFromSymbol(cuda_c, cuda_c_cpu, cell_number * sizeof(struct cell_cuda**)));
+   
     //exit(1);
     //tic = getticks();
 
     /* Run the test */
-    if (runPair) {
-      do_test_pair_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-      cudaErrCheck( cudaPeekAtLastError() );
-      cudaErrCheck( cudaDeviceSynchronize() );
-    }
+//    if (runPair) {
+//      do_test_pair_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+//      cudaErrCheck( cudaPeekAtLastError() );
+//      cudaErrCheck( cudaDeviceSynchronize() );
+//    }
 
-    do_test_self_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+    doself_density<<<cell_number, volume>>>(cuda_c);
     //do_test_self_density_symmetric<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
+    cudaErrCheck(cudaMemcpyFromSymbol(cuda_c_cpu, cuda_c, cell_number * sizeof(struct cell_cuda**)));
+    
+//    if (runPair) {
+//      do_test_pair_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+//      cudaErrCheck( cudaPeekAtLastError() );
+//      cudaErrCheck( cudaDeviceSynchronize() );
+//    }
 
-    if (runPair) {
-      do_test_pair_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-      cudaErrCheck( cudaPeekAtLastError() );
-      cudaErrCheck( cudaDeviceSynchronize() );
-    }
-
-    do_test_self_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
-    cudaErrCheck( cudaPeekAtLastError() );
-    cudaErrCheck( cudaDeviceSynchronize() );
+//    do_test_self_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+//    cudaErrCheck( cudaPeekAtLastError() );
+//    cudaErrCheck( cudaDeviceSynchronize() );
     
     //toc = getticks();
     //time += toc - tic;
 
-    copy_to_host(cuda_ci, ci);
-    if (runPair)
-      copy_to_host(cuda_cj, cj);
-    /* Dump if necessary */
-    if (i % 50 == 0) {
-      sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);
-      dump_particle_fields(outputFileName, ci, cj);
+    for (size_t j=0; j < cell_number; ++j) {
+      copy_to_host(cuda_c_cpu[j], c[j]);
     }
+
+    /* Dump if necessary */
   }
 
   printf("rho %g\n", ci->parts[0].rho);
@@ -1571,7 +1580,6 @@ int main(int argc, char *argv[]) {
 
   /* Dump */
   sprintf(outputFileName, "swift_gpu_end_%s.dat", outputFileNameExtension);
-  dump_particle_fields(outputFileName, ci, cj);
 
   /* Output timing */
 //  message("Brute force calculation took %lli ticks.", toc - tic);
