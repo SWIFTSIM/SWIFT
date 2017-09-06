@@ -332,6 +332,9 @@ int main(int argc, char *argv[]) {
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
 
+#ifdef WITH_CUDA
+  cudaSetDeviceFlags(cudaDeviceMapHost);
+#endif
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 

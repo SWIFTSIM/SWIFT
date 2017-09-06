@@ -6,9 +6,9 @@ int swift_alloc(void ** memptr, size_t alignment, size_t size){
 
   int result = cudaMallocHost( memptr, size );
   if(result != cudaSuccess)
-    result = 1;
+    return 1;
   else
-    result = 0;
+    return 0;
 
 #else
 
