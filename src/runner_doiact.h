@@ -357,15 +357,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   error("Don't use in actual runs ! Slow code !");
 #endif
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
-
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -382,12 +373,15 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
+    const int pi_active = part_is_active(pi, e);
 
     /* Loop over the parts in cj. */
     for (int pjd = pid + 1; pjd < count; pjd++) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
+      const float hj = pj->h;
+      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
@@ -396,46 +390,30 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[k] = pix[k] - pj->x[k];
         r2 += dx[k] * dx[k];
       }
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Hit or miss? */
-      if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
+      if (r2 < hig2 || r2 < hjg2) {
 
-#ifndef WITH_OLD_VECTORIZATION
+        if (pi_active && pj_active) {
 
-        IACT(r2, dx, hi, pj->h, pi, pj);
+          IACT(r2, dx, hi, hj, pi, pj);
+        } else if (pi_active) {
 
-#else
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        } else if (pj_active) {
 
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
+          dx[0] = -dx[0];
+          dx[1] = -dx[1];
+          dx[2] = -dx[2];
 
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
         }
-
-#endif
       }
 
     } /* loop over the parts in cj. */
 
   } /* loop over the parts in ci. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
 
   TIMER_TOC(TIMER_DOSELF);
 }
