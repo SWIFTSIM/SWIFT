@@ -632,9 +632,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const float hydro_h_max = e->hydro_properties->h_max;
-  const float eps = e->hydro_properties->h_tolerance * 1e10;
+  const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
-    pow_dimension(e->hydro_properties->eta_neighbours);
+      pow_dimension(e->hydro_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
