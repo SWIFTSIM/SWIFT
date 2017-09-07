@@ -507,7 +507,7 @@ __device__ struct particle_arrays cuda_parts;
 
 __device__ __constant__ int ti_current = 8;
 
-__device__ __constant__ int max_active_bin = 1;
+__device__ __constant__ int max_active_bin = 100000;
 
 __device__ __constant__ double dim[3];
 

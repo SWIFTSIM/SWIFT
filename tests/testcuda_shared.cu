@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+/* This file does ONE CELL ONLY. It actually works and should be used for profiling */
+
 // NEED TO USE
 //   gpuErrchk( cudaPeekAtLastError() );
 //  gpuErrchk( cudaDeviceSynchronize() );
@@ -27,7 +29,7 @@
 #ifndef restrict
 #define restrict __restrict__
 #endif
-//#define FULL_COMP
+#define FULL_COMP
 extern "C" {
 #include "testcuda.h"
 /* Some standard headers. */
@@ -40,7 +42,6 @@ extern "C" {
 }
 
 #include <cuda.h>
-#include <cuda_runtime_api.h>
 
 
 /* Host function to check cuda functions don't return errors */
@@ -217,140 +218,6 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
   }  // Loop over cell ci.
 }
 
-/**
- * @brief Compute the interactions between a cell pair (non-symmetric).
- *
- * @param r The #runner.
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param sid The direction of the pair
- */
-__device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj,
-				      const int sid, const int swap) {
-
-  /* Pick-out the sorted lists. */
-  const long long int f_i = ci->first_part;
-  const long long int f_j = cj->first_part;
-  const struct entry *sort_i = &cuda_parts.sort[sid][f_i];
-  const struct entry *sort_j = &cuda_parts.sort[sid][f_j];
-
-  /* Get some other useful values. */
-  const double hi_max = ci->h_max * kernel_gamma;
-  const int count_i = ci->part_count;
-  const int count_j = cj->part_count;
-  const double dj_min = sort_j->d;
-  float rho, rho_dh, div_v, wcount, wcount_dh;
-  float3 rot_v;
-
-  if (cuda_cell_is_active(ci)) {
-
-    /* Loop over the parts in ci. */
-    for (int pid = count_i - 1 - threadIdx.x;
-         pid >= 0 && sort_i[pid].d + hi_max > dj_min; pid-= blockDim.x) {
-      /* Get a hold of the ith part in ci. */
-      const int pi = sort_i[pid].i + f_i;
-      if (!cuda_part_is_active(pi)) continue;
-      const float hi = cuda_parts.h[pi];
-      const double di = sort_i[pid].d + hi * kernel_gamma;
-      if (di < dj_min) continue;
-      
-      double pix[3], piv[3];
-      pix[0] = cuda_parts.x_x[pi];
-      pix[1] = cuda_parts.x_y[pi];
-      pix[2] = cuda_parts.x_z[pi];
-      
-      piv[0] = cuda_parts.v[pi].x;
-      piv[1] = cuda_parts.v[pi].y;
-      piv[2] = cuda_parts.v[pi].z;
-
-      const float hig2 = hi * hi * kernel_gamma2;
-
-      rho = 0.0f;
-      rho_dh = 0.0f;
-      div_v = 0.0f;
-      wcount = 0.0f;
-      wcount_dh = 0.0f;
-      rot_v.x = 0.0f;
-      rot_v.y = 0.0f;
-      rot_v.z = 0.0f;
-
-
-      /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-	//printf("pjd : %lli\n", pjd);
-        /* Get a pointer to the jth particle. */
-        const int pj= sort_j[pjd].i + f_j;
-
-        /* Compute the pairwise distance. */
-        float r2 = 0.0f;
-        float dx[3];
-	dx[0] = pix[0] - cuda_parts.x_x[pj];
-	dx[1] = pix[1] - cuda_parts.x_y[pj];
-	dx[2] = pix[2] - cuda_parts.x_z[pj];
-	for (int k = 0; k < 3; k++) {
-	  r2 += dx[k] * dx[k];
-	}
-	
-        /* Hit or miss? */
-        if (r2 < hig2) {
-	  
-	  float wi, wi_dx;
-	  float dv[3], curlvr[3];
-	    
-	  /* Get the masses. */
-	  const float mj = cuda_parts.mass[pj];
-	    
-	  /* Get r and r inverse. */
-	  const float r = sqrtf(r2);
-	  const float r_inv = 1.0f / r;
-
-	  /* Compute the kernel function */
-	  const float hi_inv = 1.0f / hi;
-	  const float ui = r * hi_inv;
-	  cuda_kernel_deval(ui, &wi, &wi_dx);
-
-	  /* Compute contribution to the density */
-	  rho += mj * wi;
-	  rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
-
-	  /* Compute contribution to the number of neighbours */
-	  wcount += wi;
-	  wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
-	  const float fac = mj * wi_dx * r_inv;
-
-	  /* Compute dv dot r */
-	  dv[0] = piv[0] - cuda_parts.v[pj].x;
-	  dv[1] = piv[1] - cuda_parts.v[pj].y;
-	  dv[2] = piv[2] - cuda_parts.v[pj].z;
-	  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-	  div_v -= fac * dvdr;
-
-	  /* Compute dv cross r */
-	  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-	  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-	  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-	  
-	  rot_v.x += fac * curlvr[0];
-	  rot_v.y += fac * curlvr[1];
-	  rot_v.z += fac * curlvr[2];
-	}
-
-      }
-      int pid_write = pid + f_i;
-      atomicAdd(&cuda_parts.rho[pid_write], rho);
-      atomicAdd(&cuda_parts.rho_dh[pid_write], rho_dh);
-      atomicAdd(&cuda_parts.wcount[pid_write], wcount);
-      atomicAdd(&cuda_parts.wcount_dh[pid_write], wcount_dh);
-      atomicAdd(&cuda_parts.div_v[pid_write], div_v);
-      atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
-      atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
-      atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
-    } /* loop over the parts in cj. */
-    
-  } /* loop over the parts in ci. */
-  
-} /* Cell ci is active */
 
 /* Task function to execute a density task. Uses naive n^2 algorithm without
  * symmetry*/
@@ -627,7 +494,7 @@ __device__ void doself_force(struct cell_cuda *ci) {
 }
 
 /* Task function to execute a self-density task. */
-__device__ void doself_density_symmetric(struct cell_cuda *ci) {
+__global__ void doself_density(struct cell_cuda *ci) {
 
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
@@ -647,166 +514,7 @@ __device__ void doself_density_symmetric(struct cell_cuda *ci) {
        pid += blockDim.x) {
     double pix[3];
     pix[0] = cuda_parts.x_x[pid];
-    pix[1] = cuda_parts.x_y[pid];
-    pix[2] = cuda_parts.x_z[pid];
-    const float hi = cuda_parts.h[pid];
-    const float hig2 = hi * hi * kernel_gamma2;
-
-    /* Reset local values. */
-    rho = 0.0f;
-    rho_dh = 0.0f;
-    div_v = 0.0f;
-    wcount = 0.0f;
-    wcount_dh = 0.0f;
-    rot_v.x = 0.0f;
-    rot_v.y = 0.0f;
-    rot_v.z = 0.0f;
-
-    /* Search for the neighbours! */
-    for (int pjd = pid + 1; pjd < part_i + count_i; pjd++) {
-      /* Particles don't interact with themselves */
-      float dx[3], r2 = 0.0f;
-      dx[0] = pix[0] - cuda_parts.x_x[pjd];
-      r2 += dx[0] * dx[0];
-      dx[1] = pix[1] - cuda_parts.x_y[pjd];
-      r2 += dx[1] * dx[1];
-      dx[2] = pix[2] - cuda_parts.x_z[pjd];
-      r2 += dx[2] * dx[2];
-
-      const float hj = cuda_parts.h[pjd];
-      const float hjg2 = hj * hj * kernel_gamma2;
-      /* If in range then interact. */
-      if (r2 < hig2 || r2 < hjg2) {
-        float w, dw_dx;
-        float dv[3], curlvr[3];
-        /* Get r and 1/r */
-        const float r = sqrtf(r2);
-        const float ri = 1.0f / r;
-
-	if (r2 < hig2 && cuda_part_is_active(pid)) {
-	  /* Load mass on particle pj. */
-	  const float mj = cuda_parts.mass[pjd];
-
-
-	  /* Compute the kernel function */
-	  const float hi_inv = 1.0f / hi;
-	  const float ui = r * hi_inv;
-
-	  cuda_kernel_deval(ui, &w, &dw_dx);
-	  /* Compute contribution to the density. */
-	  rho = mj * w;
-	  rho_dh = - mj * (hydro_dimension * w + ui * dw_dx);
-
-	  /* Compute contribution to the number of neighbours */
-	  wcount = w;
-	  wcount_dh = -(hydro_dimension * w + ui * dw_dx);
-
-	  const float fac = mj * dw_dx * ri;
-
-	  /* Compute dv dot r */
-	  float3 piv, pjv;
-	  piv = cuda_parts.v[pid];
-	  pjv = cuda_parts.v[pjd];
-	  dv[0] = piv.x - pjv.x;
-	  dv[1] = piv.y - pjv.y;
-	  dv[2] = piv.z - pjv.z;
-	  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-	  div_v = - fac * dvdr;
-
-	  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-	  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-	  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-	  
-	  rot_v.x = fac * curlvr[0];
-	  rot_v.y = fac * curlvr[1];
-	  rot_v.z = fac * curlvr[2];
-
-	  atomicAdd(&cuda_parts.rho[pid], rho);
-	  atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
-	  atomicAdd(&cuda_parts.wcount[pid], wcount);
-	  atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
-	  atomicAdd(&cuda_parts.div_v[pid], div_v);
-	  atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
-	  atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
-	  atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
-	}
-	
-	if (r2 < hjg2 && cuda_part_is_active(pjd)) {
-	  /* Load mass on particle pj. */
-	  const float mi = cuda_parts.mass[pid];
-
-
-	  /* Compute the kernel function */
-	  const float hj_inv = 1.0f / hj;
-	  const float uj = r * hj_inv;
-
-	  cuda_kernel_deval(uj, &w, &dw_dx);
-	  /* Compute contribution to the density. */
-	  rho = mi * w;
-	  rho_dh = - mi * (hydro_dimension * w + uj * dw_dx);
-
-	  /* Compute contribution to the number of neighbours */
-	  wcount = w;
-	  wcount_dh = -(hydro_dimension * w + uj * dw_dx);
-
-	  const float fac = mi * dw_dx * ri;
-
-	  /* Compute dv dot r */
-	  float3 piv, pjv;
-	  piv = cuda_parts.v[pid];
-	  pjv = cuda_parts.v[pjd];
-	  dv[0] = pjv.x - piv.x;
-	  dv[1] = pjv.y - piv.y;
-	  dv[2] = pjv.z - piv.z;
-	  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-	  div_v = - fac * dvdr;
-
-	  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-	  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-	  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-	  
-	  rot_v.x = fac * curlvr[0];
-	  rot_v.y = fac * curlvr[1];
-	  rot_v.z = fac * curlvr[2];
-
-	  atomicAdd(&cuda_parts.rho[pjd], rho);
-	  atomicAdd(&cuda_parts.rho_dh[pjd], rho_dh);
-	  atomicAdd(&cuda_parts.wcount[pjd], wcount);
-	  atomicAdd(&cuda_parts.wcount_dh[pjd], wcount_dh);
-	  atomicAdd(&cuda_parts.div_v[pjd], div_v);
-	  atomicAdd(&cuda_parts.rot_v[pjd].x, rot_v.x);
-	  atomicAdd(&cuda_parts.rot_v[pjd].y, rot_v.y);
-	  atomicAdd(&cuda_parts.rot_v[pjd].z, rot_v.z);
-	}
-      }
-    }  // Loop over cj.
-    /* Write data for particle pid back to global stores. */
-  }
-}
-
-/* Task function to execute a self-density task. */
-__device__ void doself_density(struct cell_cuda *ci) {
-
-  /* Is the cell active? */
-  if (!cuda_cell_is_active(ci)) {
-    printf(
-        "Cell isn't active..., ti_end_min=%i, ti_current=%i, "
-        "max_active_bin=%i\n",
-        ci->ti_end_min, ti_current, max_active_bin);
-    return;
-  }
-
-  const int count_i = ci->part_count;
-  int part_i = ci->first_part;
-  float rho, rho_dh, div_v, wcount, wcount_dh;
-  float3 rot_v;
-
-  for (int pid = part_i + threadIdx.x; pid < part_i + count_i;
-       pid += blockDim.x) {
-    double pix[3];
-    pix[0] = cuda_parts.x_x[pid];
+    printf("x: %g\n", pix[0]);
     pix[1] = cuda_parts.x_y[pid];
     pix[2] = cuda_parts.x_z[pid];
     const float hi = cuda_parts.h[pid];
@@ -897,16 +605,142 @@ __device__ void doself_density(struct cell_cuda *ci) {
   }
 }
 
+/* Task function to execute a self-density task. */
+__global__ void doself_density_shared(struct cell_cuda *ci) {
 
-__global__ void do_test_self_density_symmetric(struct cell_cuda *ci) {
+  /* Is the cell active? */
+  if (!cuda_cell_is_active(ci)) {
+    printf(
+        "Cell isn't active..., ti_end_min=%i, ti_current=%i, "
+        "max_active_bin=%i\n",
+        ci->ti_end_min, ti_current, max_active_bin);
+    return;
+  }
 
-  doself_density_symmetric(ci);
+  const int count_i = ci->part_count;
+  int part_i = ci->first_part;
+  float rho, rho_dh, div_v, wcount, wcount_dh;
+  float3 rot_v;
 
+  // SHARED
+  extern __shared__ float shared[];
+  float *x_x  = shared;
+  float *x_y  = shared + 1*count_i;
+  float *x_z  = shared + 2*count_i;
+  float *mass = shared + 3*count_i;
+  float *h    = shared + 4*count_i;
+  float *v_x  = shared + 5*count_i;
+  float *v_y  = shared + 6*count_i;
+  float *v_z  = shared + 7*count_i;
+
+  // Load particle position in shared mem
+  // TODO: loop fission?
+  // TODO: thread memory access rule? (skip blockDim or half-warp???)
+  for (int pid = threadIdx.x; pid < count_i; pid += blockDim.x) {
+    int id = part_i + pid;
+    x_x[pid] = cuda_parts.x_x[id] - ci->loc[0];
+    x_y[pid] = cuda_parts.x_y[id] - ci->loc[1];
+    x_z[pid] = cuda_parts.x_z[id] - ci->loc[2];
+    mass[pid] = cuda_parts.mass[id];
+    h[pid] = cuda_parts.h[id];
+    v_x[pid] = cuda_parts.v[id].x;
+    v_y[pid] = cuda_parts.v[id].y;
+    v_z[pid] = cuda_parts.v[id].z;
+  }  
+  __syncthreads();
+
+//  for (int pid = part_i + threadIdx.x; pid < part_i + count_i;
+//       pid += blockDim.x) {
+  for (int pid = threadIdx.x; pid < count_i;
+       pid += blockDim.x) {
+    const float hi = h[pid];
+    const float hig2 = hi * hi * kernel_gamma2;
+    int pid_write = pid + part_i;
+    /* Reset local values. */
+    rho = 0.0f;
+    rho_dh = 0.0f;
+    div_v = 0.0f;
+    wcount = 0.0f;
+    wcount_dh = 0.0f;
+    rot_v.x = 0.0f;
+    rot_v.y = 0.0f;
+    rot_v.z = 0.0f;
+
+    /* If the particle isn't active skip it. */
+    if (!cuda_part_is_active(pid_write)) {
+      continue;
+    }
+    /* Search for the neighbours! */
+    for (int pjd = 0; pjd < count_i; pjd++) {
+      /* Particles don't interact with themselves */
+      if (pid == pjd && pjd != count_i - 1) pjd++;
+      float dx[3], r2 = 0.0f;
+      dx[0] = x_x[pid] - x_x[pjd];
+      r2 += dx[0] * dx[0];
+      dx[1] = x_y[pid] - x_y[pjd];
+      r2 += dx[1] * dx[1];
+      dx[2] = x_z[pid] - x_z[pjd];
+      r2 += dx[2] * dx[2];
+
+      /* If in range then interact. */
+      if (r2 < hig2) {
+        float w, dw_dx;
+        float dv[3], curlvr[3];
+        /* Load mass on particle pj. */
+        const float mj = mass[pjd];
+
+        /* Get r and 1/r */
+        const float r = sqrtf(r2);
+        const float ri = 1.0f / r;
+
+        /* Compute the kernel function */
+        const float hi_inv = 1.0f / hi;
+        const float ui = r * hi_inv;
+
+        cuda_kernel_deval(ui, &w, &dw_dx);
+        /* Compute contribution to the density. */
+        rho += mj * w;
+        rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
+
+        /* Compute contribution to the number of neighbours */
+        wcount += w;
+        wcount_dh -= (hydro_dimension * w + ui * dw_dx);
+
+        const float fac = mj * dw_dx * ri;
+
+        /* Compute dv dot r */
+        dv[0] = v_x[pid] - v_x[pjd];
+        dv[1] = v_y[pid] - v_y[pjd];
+        dv[2] = v_z[pid] - v_z[pjd];
+        const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+        div_v -= fac * dvdr;
+
+        curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+        curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+        curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+        rot_v.x += fac * curlvr[0];
+        rot_v.y += fac * curlvr[1];
+        rot_v.z += fac * curlvr[2];
+      }
+    }  // Loop over cj.
+    /* Write data for particle pid back to global stores. */
+    atomicAdd(&cuda_parts.rho[pid_write], rho);
+    atomicAdd(&cuda_parts.rho_dh[pid_write], rho_dh);
+    atomicAdd(&cuda_parts.wcount[pid_write], wcount);
+    atomicAdd(&cuda_parts.wcount_dh[pid_write], wcount_dh);
+    atomicAdd(&cuda_parts.div_v[pid_write], div_v);
+    atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
+    atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
+    atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
+  }
 }
+
 
 __global__ void do_test_self_density(struct cell_cuda *ci) {
 
-  doself_density(ci);
+//  doself_density(ci);
 
 }
 
@@ -919,13 +753,6 @@ __global__ void do_test_pair_density(struct cell_cuda *ci, struct cell_cuda *cj)
 
   dopair_density(ci,cj);
   dopair_density(cj,ci);
-
-}
-
-__global__ void do_test_pair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj, const int sid, const int swap) {
-
-  dopair_density_sorted(ci, cj, sid, swap);
-  //dopair_density_sorted(cj, ci, sid, -swap);
 
 }
 
@@ -964,10 +791,6 @@ void allocate_parts(struct particle_arrays *p, size_t num_part) {
   p->h_dt = (float*) malloc(sizeof(float) * num_part);
   
   p->time_bin = (timebin_t*) malloc(sizeof(timebin_t) * num_part);
-
-  for (int i=0; i<NBRE_DIR; i++)
-    p->sort[i] = (struct entry *)malloc(sizeof(struct entry)*(num_part + 1));
-
 }
 
 void allocate_device_parts(size_t num_part) {
@@ -1002,11 +825,7 @@ void allocate_device_parts(size_t num_part) {
 
   cudaErrCheck(cudaMalloc(&c_parts.time_bin, sizeof(timebin_t) * num_part));
 
-  for (int i=0; i<NBRE_DIR; i++)
-    cudaErrCheck(cudaMalloc(&c_parts.sort[i], sizeof(struct entry) * num_part));
-
-   cudaErrCheck(cudaMemcpyToSymbol(cuda_parts, &c_parts, sizeof(struct particle_arrays)));
-
+  cudaErrCheck(cudaMemcpyToSymbol(cuda_parts, &c_parts, sizeof(struct particle_arrays)));
 }
 
 void free_parts(struct particle_arrays p) {
@@ -1071,10 +890,8 @@ void free_device_parts() {
   cudaErrCheck(cudaFree(parts.soundspeed));
   cudaErrCheck(cudaFree((void*)parts.v_sig));
   cudaErrCheck(cudaFree(parts.h_dt));
-  
-  for (int i=0; i<NBRE_DIR; i++)
-    cudaErrCheck(cudaFree(parts.sort[i]));
 
+  
   cudaErrCheck(cudaFree(parts.time_bin));
 }
 
@@ -1122,12 +939,7 @@ void copy_to_device_array(struct cell *ci, int offset) {
     h_p.soundspeed[i] = p.force.soundspeed;
     h_p.v_sig[i] = p.force.v_sig;
     h_p.h_dt[i] = p.force.h_dt;
-
-    for (int j=0; j<NBRE_DIR; j++) {
-      h_p.sort[j][i].d = ci->sort[j][i].d;
-      h_p.sort[j][i].i = ci->sort[j][i].i;
-    }
-      
+    
     h_p.time_bin[i] = p.time_bin;
   }
 
@@ -1203,11 +1015,6 @@ void copy_to_device_array(struct cell *ci, int offset) {
   p_data = c_parts.h_dt + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.h_dt, sizeof(float) * num_part, cudaMemcpyHostToDevice));
 
-  
-  for (int j=0; j<NBRE_DIR; j++) {
-    p_data = c_parts.sort[j] + offset;
-    cudaErrCheck(cudaMemcpy(p_data, h_p.sort[j], sizeof(struct entry) * num_part, cudaMemcpyHostToDevice));
-  }
   
   p_data = c_parts.time_bin + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.time_bin,sizeof(timebin_t) * num_part, cudaMemcpyHostToDevice));
@@ -1290,11 +1097,6 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
   p_data = c_parts.h_dt + offset;
   cudaErrCheck(cudaMemcpy(h_p->h_dt, p_data, sizeof(float) * num_part, cudaMemcpyDeviceToHost));
   
-
-  for (int j=0; j<NBRE_DIR; j++) {
-    p_data = c_parts.sort[j] + offset;
-    cudaErrCheck(cudaMemcpy(h_p->sort[j], p_data, sizeof(struct entry) * num_part, cudaMemcpyDeviceToHost));
-  }
 
   p_data = c_parts.time_bin + offset;
   cudaErrCheck(cudaMemcpy(h_p->time_bin, p_data, sizeof(timebin_t) * num_part, cudaMemcpyDeviceToHost));
@@ -1385,9 +1187,6 @@ void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
 #endif
 #endif
 
-    for (int j=0; j<NBRE_DIR; j++)
-      c->sort[j][i] = h_cuda_part.sort[j][i];
-
     p_i++;
   }
 }
@@ -1429,7 +1228,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         part->id = ++(*partId);
         part->mass = density * volume / count;
-        part->time_bin = (int) random_uniform(1, 500);
+        part->time_bin = 1;
 
 	part->density.wcount = 0.;
 	part->density.wcount_dh = 0.;
@@ -1584,12 +1383,16 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   fclose(file);
 }
 
-int main(int argc, char *argv[]) {
-  cudaEvent_t gpu_start, gpu_stop;
-  cudaStream_t stream;
-  cudaEventCreate(&gpu_start);
-  cudaEventCreate(&gpu_stop);
 
+int main(int argc, char *argv[]) {
+
+  bool runPair = false;
+  int tmp = 8;
+  cudaErrCheck(
+      cudaMemcpyToSymbol(ti_current, &tmp, sizeof(int)));
+  tmp = 1000;
+  cudaErrCheck(
+      cudaMemcpyToSymbol(max_active_bin, &tmp, sizeof(int)));
 
   float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
   for (int a = 0; a < (kernel_degree + 1) * (kernel_ivals + 1); a++) {
@@ -1679,45 +1482,46 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
     zero_particle_fields(ci);
-    zero_particle_fields(cj);
-
-    do_sort(ci);
-    do_sort(cj);
+    if (runPair)
+      zero_particle_fields(cj);
     
     cuda_ci = copy_from_host(ci, 0);
-    cuda_cj = copy_from_host(cj, ci->count);
+    if (runPair)
+      cuda_cj = copy_from_host(cj, ci->count);
     //exit(1);
     //tic = getticks();
 
     /* Run the test */
-    cudaEventRecord(gpu_start,stream);
-    //do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-    do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
-    cudaEventRecord(gpu_stop,0);
-    printf("WARNING: one one side\n");
+    if (runPair) {
+		do_test_pair_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+		cudaErrCheck( cudaPeekAtLastError() );
+		cudaErrCheck( cudaDeviceSynchronize() );
+    }
+
+    //    do_test_self_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+    //doself_density<<<1,CUDA_THREADS>>>(cuda_ci);
+    size_t sum = 8*sizeof(float);
+    sum *= volume;
+    doself_density_shared<<<1,CUDA_THREADS,sum>>>(cuda_ci);
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
-    cudaEventSynchronize(gpu_stop);
-    float gpu_time;
-    cudaEventElapsedTime(&gpu_time, gpu_start, gpu_stop);
-    printf("%g\n", gpu_time);
-    //do_test_self_density<<<1,CUDA_THREADS>>>(cuda_ci);
-    //do_test_self_density_symmetric<<<1,CUDA_THREADS>>>(cuda_ci);
-    //cudaErrCheck( cudaPeekAtLastError() );
-    //cudaErrCheck( cudaDeviceSynchronize() );
+/*
+    if (runPair) {
+      do_test_pair_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+      cudaErrCheck( cudaPeekAtLastError() );
+      cudaErrCheck( cudaDeviceSynchronize() );
+    }
 
-    // do_test_pair_force<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-    // cudaErrCheck( cudaPeekAtLastError() );
-    // cudaErrCheck( cudaDeviceSynchronize() );
-    
-    // do_test_self_force<<<1,CUDA_THREADS>>>(cuda_ci);
-    // cudaErrCheck( cudaPeekAtLastError() );
-    // cudaErrCheck( cudaDeviceSynchronize() );
+    do_test_self_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+    cudaErrCheck( cudaPeekAtLastError() );
+    cudaErrCheck( cudaDeviceSynchronize() );
+*/  
     //toc = getticks();
     //time += toc - tic;
 
     copy_to_host(cuda_ci, ci);
-    copy_to_host(cuda_cj, cj);
+    if (runPair)
+      copy_to_host(cuda_cj, cj);
     /* Dump if necessary */
     if (i % 50 == 0) {
       sprintf(outputFileName, "swift_gpu_%s.dat", outputFileNameExtension);
