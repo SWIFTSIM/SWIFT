@@ -3393,7 +3393,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TIC;
   engine_launch(e);
   TIMER_TOC(timer_runners);
-
+  engine_dump_snapshot(e);
+  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
@@ -3455,6 +3457,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Run the 0th time-step */
   engine_launch(e);
 
+  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -3543,6 +3547,23 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
+  void check_cell_timestep(struct cell *c, struct engine *e){
+     if(c->ti_end_min < e->ti_current)
+       error("Found a bad cell");
+     for(int k = 0; k < c->count; k++)
+     {
+        if(get_integer_time_end(e->ti_current, c->parts[k].time_bin) < e->ti_current)
+          error("Found a bad particle");
+     }
+     if(c->split)
+     {
+        for(int k = 0; k < 8; k++)
+        {
+          if(c->progeny[k] != NULL) 
+            check_cell_timestep(c->progeny[k], e);
+        }
+     }
+  }
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -3628,12 +3649,29 @@ void engine_step(struct engine *e) {
 #ifdef WITH_CUDA
   update_tasks(e);
 #endif
+  for(int i = 0; i < e->s->nr_cells; i++)
+  {
+    check_cell_timestep(&e->s->cells_top[i], e);
+  }
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e);
   TIMER_TOC(timer_runners);
-
-  printParticle(e->s->parts, e->s->xparts, 142800, e->s->nr_parts);
+/*  if(e->step == 15)
+  {
+    float max = 0.0f;
+    int maxind = -1;
+    for(int i = 0; i < (int)e->s->nr_parts; i++)
+    {
+      if(e->s->parts[i].rho > max){
+        max = e->s->parts[i].rho;
+       maxind = i; 
+      }
+    }
+    printf("Max density particle = %lli\n", e->s->parts[maxind].id);
+  }*/
+  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -3659,7 +3697,7 @@ void engine_step(struct engine *e) {
   }
 
   /* Do we want a snapshot? */
-  if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
+  //if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
   /* Drift everybody (i.e. what has not yet been drifted) */

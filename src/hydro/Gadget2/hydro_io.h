@@ -75,7 +75,7 @@ float convert_P(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -99,6 +99,14 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                               parts, rho, convert_u);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
+  list[10] =
+      io_make_output_field("Entropy_dt", FLOAT, 1, UNIT_CONV_DENSITY, parts, entropy_dt);
+  list[11] =
+      io_make_output_field("soundspeed", FLOAT, 1, UNIT_CONV_DENSITY, parts, force.soundspeed);
+  list[12] =
+      io_make_output_field("v_sig", FLOAT, 1, UNIT_CONV_DENSITY, parts, force.v_sig);
+  list[13] =
+      io_make_output_field("h_dt", FLOAT, 1, UNIT_CONV_DENSITY, parts, force.h_dt);
 }
 
 /**

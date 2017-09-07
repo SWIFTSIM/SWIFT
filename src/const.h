@@ -21,7 +21,7 @@
 #define SWIFT_CONST_H
 
 /* SPH Viscosity constants. */
-#define const_viscosity_alpha 0.8f
+#define const_viscosity_alpha 0.0f//0.8f
 #define const_viscosity_alpha_min \
   0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
 #define const_viscosity_alpha_max \
