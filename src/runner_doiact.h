@@ -32,6 +32,9 @@
 #define _DOPAIR1(f) PASTE(runner_dopair1, f)
 #define DOPAIR1 _DOPAIR1(FUNCTION)
 
+#define _DOPAIR1_old(f) PASTE(runner_dopair1old, f)
+#define DOPAIR1_old _DOPAIR1_old(FUNCTION)
+
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
 
@@ -128,14 +131,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 // error("Don't use in actual runs ! Slow code !");
 #endif
 
-#ifdef WITH_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -161,9 +156,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
     const float hi = pi->h;
+    const int pi_active = part_is_active(pi, e);
 
     double pix[3];
-    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - ci->loc[k] - shift[k];
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Loop over the parts in cj. */
@@ -171,82 +167,36 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      const float hj = pj->h;
+      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
+      double pjx[3];
       for (int k = 0; k < 3; k++) {
-        dx[k] = pix[k] - pj->x[k];
+	pjx[k] = pj->x[k] - ci->loc[k];
+        dx[k] = pix[k] - pjx[k];
         r2 += dx[k] * dx[k];
       }
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && pi_active) {
 
-#ifndef WITH_VECTORIZATION
-
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj);
       }
-      if (r2 < pj->h * pj->h * kernel_gamma2) {
+      if (r2 < hjg2 && pj_active) {
 
-#ifndef WITH_VECTORIZATION
+        dx[0] = -dx[0];
+        dx[1] = -dx[1];
+        dx[2] = -dx[2];
 
-        for (int k = 0; k < 3; k++) dx[k] = -dx[k];
-        IACT_NONSYM(r2, dx, pj->h, hi, pj, pi);
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = -dx[0];
-        dxq[3 * icount + 1] = -dx[1];
-        dxq[3 * icount + 2] = -dx[2];
-        hiq[icount] = pj->h;
-        hjq[icount] = hi;
-        piq[icount] = pj;
-        pjq[icount] = pi;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi);
       }
 
     } /* loop over the parts in cj. */
-
-  } /* loop over the parts in ci. */
-
-#ifdef WITH_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
+  }   /* loop over the parts in ci. */
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -297,7 +247,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     const int pi_active = part_is_active(pi, e);
 
     double pix[3];
-    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+    for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - ci->loc[k] - shift[k];
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Loop over the parts in cj. */
@@ -311,8 +261,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
+      double pjx[3];
       for (int k = 0; k < 3; k++) {
-        dx[k] = pix[k] - pj->x[k];
+	pjx[k] = pj->x[k] - ci->loc[k];
+        dx[k] = pix[k] - pjx[k];
         r2 += dx[k] * dx[k];
       }
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -556,6 +508,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
                    struct cell *restrict cj) {
 
+  error("FUCK");
+  
   struct engine *e = r->e;
 
 #ifdef WITH_OLD_VECTORIZATION
@@ -853,6 +807,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
 
+  //DOPAIR1_NAIVE(r, ci, cj);
+  //return;
+
 #ifdef WITH_OLD_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -1074,6 +1031,198 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   TIMER_TOC(TIMER_DOPAIR);
 }
 
+void DOPAIR1_old(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  struct engine *restrict e = r->e;
+
+  DOPAIR1_NAIVE(r, ci, cj);
+  return;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    error("Interacting undrifted cells.");
+
+  /* Get the shift ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) ||
+      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+
+  /* Get the cutoff shift. */
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_i = ci->sort[sid];
+  const struct entry *restrict sort_j = cj->sort[sid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
+      error(
+          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
+          "ci->dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
+          ci->dx_max_sort_old);
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
+        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
+      error(
+          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
+          "cj->dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
+          cj->dx_max_sort_old);
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  /* Get some other useful values. */
+  const double hi_max = ci->h_max;
+  const double hj_max = cj->h_max;
+  const int count_i = ci->count;
+  const int count_j = cj->count;
+  struct part *restrict parts_i = ci->parts;
+  struct part *restrict parts_j = cj->parts;
+  const double di_max = sort_i[count_i - 1].d;
+  const double dj_min = sort_j[0].d;
+  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+
+  if (cell_is_active(ci, e)) {
+
+    int last_pj = count_j - 1;
+
+    /* Loop over the parts in ci until nothing is within range in cj.
+     * We start from the centre and move outwards. */
+    for (int pid = count_i - 1; pid >= 0; pid--) {
+
+      /* Get a hold of the ith part in ci. */
+      struct part *pi = &parts_i[sort_i[pid].i];
+      const float hi = pi->h;
+
+      /* Skip inactive particles */
+      if (!part_is_active(pi, e)) continue;
+
+      /* Is there anything we need to interact with ? */
+      const double di =
+          sort_i[pid].d + hj_max * kernel_gamma + dx_max - rshift;
+      if (di < dj_min) continue;
+
+      /* Where do we have to stop when looping over cell j? */
+      while (sort_j[last_pj].d > di && last_pj > 0) last_pj--;
+
+      last_pj += 1;
+      if (last_pj >= count_j) last_pj = count_j - 1;
+
+      /* Get some additional information about pi */
+      const float hig2 = hi * hi * kernel_gamma2;
+      const float pix = pi->x[0] - ci->loc[0] - shift[0];
+      const float piy = pi->x[1] - ci->loc[1] - shift[1];
+      const float piz = pi->x[2] - ci->loc[2] - shift[2];
+
+      /* Now loop over the relevant particles in cj */
+      for (int pjd = 0; pjd <= last_pj; ++pjd) {
+
+        /* Recover pj */
+        struct part *pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const float pjx = pj->x[0] - ci->loc[0];
+        const float pjy = pj->x[1] - ci->loc[1];
+        const float pjz = pj->x[2] - ci->loc[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        if (r2 < hig2) {
+
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        }
+      } /* Loop over the parts in cj */
+    }   /* Loop over the parts in ci */
+  }     /* Cell ci is active */
+
+  if (cell_is_active(cj, e)) {
+
+    int first_pi = 0;
+
+    /* Loop over the parts in cj until nothing is within range in ci.
+     * We start from the centre and move outwards. */
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a hold of the jth part in cj. */
+      struct part *pj = &parts_j[sort_j[pjd].i];
+      const float hj = pj->h;
+
+      /* Skip inactive particles */
+      if (!part_is_active(pj, e)) continue;
+
+      /* Is there anything we need to interact with ? */
+      const double dj = sort_j[pjd].d - hi_max * kernel_gamma - dx_max;
+      if (dj > di_max - rshift) continue;
+
+      /* Where do we have to stop when looping over cell i? */
+      while (sort_i[first_pi].d - rshift < dj && first_pi < count_i - 1)
+        first_pi++;
+
+      first_pi -= 1;
+      if (first_pi < 0) first_pi = 0;
+
+      /* Get some additional information about pi */
+      const float hjg2 = hj * hj * kernel_gamma2;
+      const float pjx = pj->x[0] - ci->loc[0];
+      const float pjy = pj->x[1] - ci->loc[1];
+      const float pjz = pj->x[2] - ci->loc[2];
+
+      /* Now loop over the relevant particles in ci */
+      for (int pid = count_i - 1; pid >= first_pi; --pid) {
+
+        /* Recover pi */
+        struct part *pi = &parts_i[sort_i[pid].i];
+        const float hi = pi->h;
+        const float pix = pi->x[0] - ci->loc[0] - shift[0];
+        const float piy = pi->x[1] - ci->loc[1] - shift[1];
+        const float piz = pi->x[2] - ci->loc[2] - shift[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        if (r2 < hjg2) {
+
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        }
+      } /* Loop over the parts in ci */
+    }   /* Loop over the parts in cj */
+  }     /* Cell cj is active */
+
+  TIMER_TOC(TIMER_DOPAIR);
+}
+
+
+
 /**
  * @brief Determine which version of DOPAIR1 needs to be called depending on the
  * orientation of the cells or whether DOPAIR1 needs to be called at all.
@@ -1115,6 +1264,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 #else
   DOPAIR1(r, ci, cj, sid, shift);
 #endif
+
+//  DOPAIR1(r, ci, cj);
 }
 
 /**
@@ -1617,9 +1768,9 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
-
-  // DOPAIR2_NAIVE(r, ci, cj);
-  // return;
+  
+  //DOPAIR2_NAIVE(r, ci, cj);
+  //return;
 
   TIMER_TIC;
 
