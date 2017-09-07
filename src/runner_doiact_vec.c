@@ -1185,8 +1185,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
     } /* loop over the parts in cj. */
 
-    TIMER_TOC(timer_dopair_density);
   }
+  
+  TIMER_TOC(timer_dopair_density);
 
 #endif /* WITH_VECTORIZATION */
 }
