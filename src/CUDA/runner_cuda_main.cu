@@ -1243,6 +1243,9 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
   atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
   atomicAdd(&cuda_parts.div_v[pid], div_v);
   atomicAdd(&cuda_parts.rot_v[pid].x, rot_v.x);
+  atomicAdd(&cuda_parts.rot_v[pid].y, rot_v.y);
+  atomicAdd(&cuda_parts.rot_v[pid].z, rot_v.z);
+
 }
 
 /* Device function to fix a single particle that was messed up in the density
