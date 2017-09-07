@@ -40,6 +40,7 @@ extern "C" {
 }
 
 #include <cuda.h>
+#include <cuda_runtime_api.h>
 
 
 /* Host function to check cuda functions don't return errors */
@@ -1583,8 +1584,11 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   fclose(file);
 }
 
-
 int main(int argc, char *argv[]) {
+  cudaEvent_t gpu_start, gpu_stop;
+  cudaStream_t stream;
+  cudaEventCreate(&gpu_start);
+  cudaEventCreate(&gpu_stop);
 
 
   float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
@@ -1686,12 +1690,17 @@ int main(int argc, char *argv[]) {
     //tic = getticks();
 
     /* Run the test */
-    do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-    //do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
+    cudaEventRecord(gpu_start,stream);
+    //do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+    do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
+    cudaEventRecord(gpu_stop,0);
     printf("WARNING: one one side\n");
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
-
+    cudaEventSynchronize(gpu_stop);
+    float gpu_time;
+    cudaEventElapsedTime(&gpu_time, gpu_start, gpu_stop);
+    printf("%g\n", gpu_time);
     //do_test_self_density<<<1,CUDA_THREADS>>>(cuda_ci);
     //do_test_self_density_symmetric<<<1,CUDA_THREADS>>>(cuda_ci);
     //cudaErrCheck( cudaPeekAtLastError() );
