@@ -269,14 +269,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   error("Don't use in actual runs ! Slow code !");
 #endif
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -302,6 +294,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
     const float hi = pi->h;
+    const int pi_active = part_is_active(pi, e);
 
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
@@ -312,6 +305,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      const float hj = pj->h;
+      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
@@ -320,65 +315,28 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[k] = pix[k] - pj->x[k];
         r2 += dx[k] * dx[k];
       }
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Hit or miss? */
-      if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
+      if (r2 < hig2 || r2 < hjg2) {
 
-#ifndef WITH_OLD_VECTORIZATION
+        if (pi_active && pj_active) {
 
-        //IACT(r2, dx, hi, pj->h, pi, pj);
-	if(part_is_active(pi,e)) {
+          IACT(r2, dx, hi, hj, pi, pj);
+        } else if (pi_active) {
 
-	  if(pi->id == 142801)
-	    message("PAIR_NAIVE1 neighbour ID=%lld", pj->id);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        } else if (pj_active) {
 
-	  
-	  IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-	}
-	if(part_is_active(pj,e)) {
+          dx[0] = -dx[0];
+          dx[1] = -dx[1];
+          dx[2] = -dx[2];
 
-	  if(pj->id == 142801)
-	    message("PAIR_NAIVE2 neighbour ID=%lld", pi->id);
-
-	  dx[0] = -dx[0];
-	  dx[1] = -dx[1];
-	  dx[2] = -dx[2];
-	  
-	  IACT_NONSYM(r2, dx, pj->h, hi, pj, pi);
-	}
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
         }
-
-#endif
       }
-
     } /* loop over the parts in cj. */
-
-  } /* loop over the parts in ci. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
+  }   /* loop over the parts in ci. */
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -687,7 +645,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
-	
+
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -699,10 +657,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-	/* if(pi->id == 142801) */
-	/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e c->loc=[%e %e %e]", */
-	/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
-	  
+/* if(pi->id == 142801) */
+/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
+ * c->loc=[%e %e %e]", */
+/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
+
 #ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
@@ -767,11 +726,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-	/* if(pi->id == 142801) */
-	/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e c->loc=[%e %e %e]", */
-	/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
-       
-	  
+/* if(pi->id == 142801) */
+/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
+ * c->loc=[%e %e %e]", */
+/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
+
 #ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
@@ -854,8 +813,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      
-      
+
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -867,12 +825,11 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.0f && r2 < hig2) {
 
+/* if(pi->id == 142801) */
+/*   message("SELF_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
+ * g2=%e", */
+/* 	  pj->id, hi, hig2, r2, kernel_gamma2); */
 
-	/* if(pi->id == 142801) */
-	/*   message("SELF_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e g2=%e", */
-	/* 	  pj->id, hi, hig2, r2, kernel_gamma2); */
-
-	
 #ifndef WITH_OLD_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
@@ -1204,7 +1161,7 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
 
   DOPAIR2_NAIVE(r, ci, cj);
   return;
-  
+
 #ifdef WITH_OLD_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1367,10 +1324,8 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifndef WITH_OLD_VECTORIZATION
 
+          if (pj->id == 142801) message("PAIR");
 
-	  if(pj->id == 142801)
-	    message("PAIR");
-	  
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
 #else
@@ -1432,27 +1387,23 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
-	  if(pi->id == 142801)
-	    message("PAIR");
+            if (pi->id == 142801) message("PAIR");
 
-	    
-            //IACT(r2, dx, hi, hj, pi, pj);
-	    IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	    dx[0] = -dx[0];
-	    dx[1] = -dx[1];
-	    dx[2] = -dx[2];
+            // IACT(r2, dx, hi, hj, pi, pj);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+            dx[0] = -dx[0];
+            dx[1] = -dx[1];
+            dx[2] = -dx[2];
 
-	  if(pj->id == 142801)
-	    message("PAIR");
+            if (pj->id == 142801) message("PAIR");
 
-	    IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-	  }else {
-	    	  if(pi->id == 142801)
-		    message("PAIR");
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          } else {
+            if (pi->id == 142801) message("PAIR");
 
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	  }
-	    
+          }
+
 #else
 
           /* Does pj need to be updated too? */
@@ -1548,10 +1499,8 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifndef WITH_OLD_VECTORIZATION
 
-	  if(pi->id == 142801)
-	    message("PAIR");
+          if (pi->id == 142801) message("PAIR");
 
-	  
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
 
 #else
@@ -1613,26 +1562,22 @@ void DOPAIR2_old(struct runner *r, struct cell *ci, struct cell *cj) {
           /* Does pi need to be updated too? */
           if (part_is_active(pi, e)) {
 
-	    if(pj->id == 142801)
-	      message("PAIR");
+            if (pj->id == 142801) message("PAIR");
 
-            //IACT(r2, dx, hj, hi, pj, pi);
-	    IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-	    dx[0] = -dx[0];
-	    dx[1] = -dx[1];
-	    dx[2] = -dx[2];
-	    
-	    if(pi->id == 142801)
-	      message("PAIR");
-
-	    IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	  }else {
-	  if(pj->id == 142801)
-	    message("PAIR");
-
-	    
+            // IACT(r2, dx, hj, hi, pj, pi);
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-	  }
+            dx[0] = -dx[0];
+            dx[1] = -dx[1];
+            dx[2] = -dx[2];
+
+            if (pi->id == 142801) message("PAIR");
+
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          } else {
+            if (pj->id == 142801) message("PAIR");
+
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          }
 #else
 
           /* Does pi need to be updated too? */
@@ -1704,11 +1649,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
 
-  //DOPAIR2_NAIVE(r, ci, cj);
-  //return;
-  
   TIMER_TIC;
-  
+
   /* Anything to do here? */
   if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
@@ -1768,11 +1710,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-
   /* Get some other useful values. */
   const double hi_max = ci->h_max;
   const double hj_max = cj->h_max;
-  //const double total_h_max = max(hi_max, hj_max);
   const int count_i = ci->count;
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
@@ -1781,144 +1721,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dj_min = sort_j[0].d;
   const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
-  //if(di_max > dj_min) error("weird cells di_max=%e dj_min=%e", di_max, dj_min);
-  
-  //---------------------------------------------------------------------
-
-  int *max_index_i = malloc(count_i * sizeof(int));
-  int *max_index_j = malloc(count_j * sizeof(int));
-  bzero(max_index_i, sizeof(int) * count_i);
-  bzero(max_index_j, sizeof(int) * count_j);
-#ifdef BANANA
-  //---------------------------------------------------------------------
-
-  /* Find the leftmost active particle in cell i that:
-   * - has any particle of cell j in its range.
-   * - is within range of any particle of cell j. */
-  int first_pi = count_i;
-  //int active_i = first_pi - 1;
-  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + total_h_max * kernel_gamma - rshift > dj_min) {
-    first_pi--;
-    /* /\* Store the index of the particle if it is active. *\/ */
-    /* if (part_is_active(&parts_i[sort_i[first_pi].i], e)) */
-    /*   active_i = first_pi; */
-  }
-
-  /* Index of the first active particle in i with neighbours in j. */
-  /* first_pi = active_i; */
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*   if (first_pi > count_i) */
-/*     error("Invalid first_pi=%d, ci->count=%d", first_pi, count_i); */
-/* #endif */
-  
-  if(first_pi < count_i){
-
-    /* Find the maximum index into cell j for each particle in cell i. */
-    const struct part *pi = &parts_i[sort_i[first_pi].i];
-    const float hi = pi->h;
-    const float di = sort_i[first_pi].d;
-    
-    /* Loop through particles in cell j until they are not in range of first_pi. */
-    int temp = 0;
-    while (temp <= count_j &&
-           (di + (max(hi, hj_max) * kernel_gamma + dx_max - rshift) >
-            sort_j[temp].d)) // MATTHIEU: could use pj->h here instead of hj_max!
-      temp++;
-    max_index_i[first_pi] = temp;
-
-    /* Now do the same for the other particles */
-    for (int i = first_pi + 1; i < count_i; i++) {
-      pi = &parts_i[sort_i[i].i];
-      const float hi = pi->h;
-      const float di = sort_i[i].d;
-      
-      /* Loop through particles in cell j until they are not in range of pi. */
-      temp = max_index_i[i - 1];
-      while (temp <= count_j &&
-             (di + (max(hi, hj_max) * kernel_gamma + dx_max - rshift) >
-              sort_j[temp].d)) // MATTHIEU: could use pj->h here instead of hj_max!
-        temp++;
-
-      max_index_i[i] = temp;
-    } 
-  } else {
-    /* No particle within range */
-    max_index_i[count_i - 1] = 0;
-  }
-
-
-  //---------------------------------------------------------------------
-
-
-  /* Find the leftmost active particle in cell j that:
-   * - has any particle of cell i in its range.
-   * - is within range of any particle of cell i. */
-  int last_pj = -1;
-  //int active_j = last_pj;
-  while (last_pj < count_j &&
-         sort_j[last_pj + 1].d - total_h_max * kernel_gamma - dx_max < di_max - rshift) {
-    last_pj++;    
-    /* Store the index of the particle if it is active. */
-    //if (part_is_active(&parts_j[sort_j[last_pj].i], e))
-    // active_j = last_pj;
-  }
-
-  /* Set the last active particle in j with neighbours in i. */
-  //last_pj = active_j;
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*   if(last_pj < 0) */
-/*     error("Invalid last_pj=%d, cj->count=%d", last_pj, count_j); */
-/* #endif */
-
-  if(last_pj > 0) {
-  
-    /* Start from the last particle in cell i. */
-    const struct part *pj = &parts_j[sort_j[last_pj].i];
-    const float hj = pj->h;
-    const float dj = sort_j[last_pj].d;
-
-    /* Loop through particles in cell i until they don't interact with last_pj. */
-    int temp = count_i - 1;
-    while (temp > 0 &&
-           dj - dx_max - (max(hi_max, hj) * kernel_gamma) <
-	   sort_i[temp].d - rshift)
-      temp--;
-    max_index_j[last_pj] = temp;
-
-    /* Now do the same for the other particles */
-    for (int j = last_pj - 1; j >= 0; j--) {
-      const struct part *pj = &parts_j[sort_j[j].i];
-      const float hj = pj->h;
-      const float dj = sort_j[j].d;
-      
-      temp = max_index_j[j + 1];	    
-      while (temp > 0 &&
-             dj - dx_max - (max(hj, hi_max) * kernel_gamma) <
-	     sort_i[temp].d - rshift)
-        temp--;
-
-      max_index_j[j] = temp;
-    }
-  }else {
-
-    /* No particle within range */
-    max_index_j[0] = count_i - 1;
-  }
-
-  //---------------------------------------------------------------------
-
-  /* Limits of the outer loops. */
-  const int first_pi_loop = 0;//first_pi;
-  const int last_pj_loop = count_j;//last_pj;
-#endif
-  //---------------------------------------------------------------------
-  
   if (cell_is_active(ci, e)) {
 
     int last_pj = count_j;
-    
+
     /* Loop over the parts in ci until nothing is within range in cj.
      * We start from the centre and move outwards. */
     for (int pid = count_i - 1; pid >= 0; pid--) {
@@ -1931,59 +1737,48 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (!part_is_active(pi, e)) continue;
 
       /* Is there anything we need to interact with ? */
-      const double di = sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
+      const double di =
+          sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
       /* Where do we have to stop when looping over cell j? */
-      while(sort_j[last_pj].d > di)
-	last_pj--;
+      while (sort_j[last_pj].d > di) last_pj--;
       last_pj++;
-      
-      if(pi->id == 142801)
-	message("count_j=%d last_pj=%d", count_j, last_pj);
 
-      
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
       const float pix = pi->x[0] - ci->loc[0] - shift[0];
       const float piy = pi->x[1] - ci->loc[1] - shift[1];
       const float piz = pi->x[2] - ci->loc[2] - shift[2];
-      
+
       /* Now loop over the relevant particles in cj */
-      for(int pjd = 0; pjd < /*exit_iteration_i*/ last_pj; ++pjd) {
+      for (int pjd = 0; pjd < last_pj; ++pjd) {
 
-	/* Recover pj */
-	struct part *pj = &parts_j[sort_j[pjd].i];
-	const float hj = pj->h;
-	const float hjg2 = hj * hj * kernel_gamma2;
-	const float pjx = pj->x[0] - ci->loc[0];
-	const float pjy = pj->x[1] - ci->loc[1];
-	const float pjz = pj->x[2] - ci->loc[2];
+        /* Recover pj */
+        struct part *pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const float hjg2 = hj * hj * kernel_gamma2;
+        const float pjx = pj->x[0] - ci->loc[0];
+        const float pjy = pj->x[1] - ci->loc[1];
+        const float pjz = pj->x[2] - ci->loc[2];
 
-	/* Compute the pairwise distance. */
-	float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-	const float r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-	if(r2 < hig2 || r2 < hjg2) {
+        if (r2 < hig2 || r2 < hjg2) {
 
-	  if(pi->id == 142801)
-	    message("PAIR_SORT1 neighbour ID=%lld  r2=%e hig2=%e hjg2=%e di_max=%e dj_min=%e sort_i.d=%e sort_j.d=%e",
-		    pj->id, r2, hig2, hjg2, di_max, dj_min, sort_i[pid].d, sort_j[pjd].d);
-
-	  
-	  IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	}
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        }
       } /* Loop over the parts in cj */
-    } /* Loop over the parts in ci */
-  } /* Cell ci is active */
-
-  //---------------------------------------------------------------------
+    }   /* Loop over the parts in ci */
+  }     /* Cell ci is active */
 
   if (cell_is_active(cj, e)) {
 
     int first_pi = 0;
-    
-    /* Loop over the parts in cj until nothing is within range in ci. 
+
+    /* Loop over the parts in cj until nothing is within range in ci.
      * We start from the centre and move outwards. */
     for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -1999,56 +1794,38 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (dj > di_max - rshift) continue;
 
       /* Where do we have to stop when looping over cell j? */
-      while(sort_i[first_pi].d - rshift < dj)
-	first_pi++;
+      while (sort_i[first_pi].d - rshift < dj) first_pi++;
       first_pi--;
-      
-      /* Where do we have to stop when looping over cell i? */
-      //const int exit_iteration_j = max_index_j[pjd] - first_pi;
 
-      if(pj->id == 142801)
-	message("count_i=%d first_pi=%d", count_i, first_pi);
-      
       /* Get some additional information about pi */
       const float hjg2 = hj * hj * kernel_gamma2;
       const float pjx = pj->x[0] - ci->loc[0];
       const float pjy = pj->x[1] - ci->loc[1];
       const float pjz = pj->x[2] - ci->loc[2];
-      
+
       /* Now loop over the relevant particles in ci */
-      for(int pid = count_i /*exit_iteration_j*/; pid >=first_pi; --pid){
+      for (int pid = count_i /*exit_iteration_j*/; pid >= first_pi; --pid) {
 
-	//if(pj->id == 142801)
-	//  message("pid=%d", pid);
-	
-	/* Recover pi */
-	struct part *pi = &parts_i[sort_i[pid].i];
-	const float hi = pi->h;
-	const float hig2 = hi * hi * kernel_gamma2;
-	const float pix = pi->x[0] - ci->loc[0] - shift[0];
-	const float piy = pi->x[1] - ci->loc[1] - shift[1];
-	const float piz = pi->x[2] - ci->loc[2] - shift[2];
-	
-	/* Compute the pairwise distance. */
-	float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
-	const float r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
+        /* Recover pi */
+        struct part *pi = &parts_i[sort_i[pid].i];
+        const float hi = pi->h;
+        const float hig2 = hi * hi * kernel_gamma2;
+        const float pix = pi->x[0] - ci->loc[0] - shift[0];
+        const float piy = pi->x[1] - ci->loc[1] - shift[1];
+        const float piz = pi->x[2] - ci->loc[2] - shift[2];
 
-	if(r2 < hjg2 || r2 < hig2) {
+        /* Compute the pairwise distance. */
+        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-	  if(pj->id == 142801)
-	    message("PAIR_SORT2 neighbour ID=%lld r2=%e hig2=%e hjg2=%e di_max=%e dj_min=%e sort_j.d=%e sort_i.d=%e",
-		    pi->id, r2, hig2, hjg2, di_max, dj_min, sort_j[pjd].d, sort_i[pid].d);
+        if (r2 < hjg2 || r2 < hig2) {
 
-	  
-	  IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-	}
-      } /* Loop over the parts in ci */      
-    } /* Loop over the parts in cj */
-  } /* Cell cj is active */
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        }
+      } /* Loop over the parts in ci */
+    }   /* Loop over the parts in cj */
+  }     /* Cell cj is active */
 
-  free(max_index_i);
-  free(max_index_j);
-  
   TIMER_TOC(TIMER_DOPAIR);
 }
 
@@ -2368,7 +2145,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
-	
+
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -2377,10 +2154,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-	/* if(pi->id==142801 && pj->id==142780) */
-	/*   message("FOUND1!  r2=%e hi=%e hj=%e", r2, hi, hj); */
+/* if(pi->id==142801 && pj->id==142780) */
+/*   message("FOUND1!  r2=%e hi=%e hj=%e", r2, hi, hj); */
 
-	
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2394,8 +2170,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #ifndef WITH_OLD_VECTORIZATION
 
-	  /* if(pj->id == 142801) */
-	  /*   message("SELF"); */
+          /* if(pj->id == 142801) */
+          /*   message("SELF"); */
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
 #else
@@ -2453,13 +2229,12 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           error("Particle pj not drifted to current time");
 #endif
 
-	/* if(pi->id==142801 && pj->id==142780) */
-	/*   message("FOUND2! r2=%e hi=%e hj=%e", r2, hi, hj); */
+        /* if(pi->id==142801 && pj->id==142780) */
+        /*   message("FOUND2! r2=%e hi=%e hj=%e", r2, hi, hj); */
 
-	/* if(pj->id==142801 && pi->id==142780) */
-	/*   message("FOUND3! r2=%e hi=%e hj=%e", r2, hi, hj); */
-		
-	
+        /* if(pj->id==142801 && pi->id==142780) */
+        /*   message("FOUND3! r2=%e hi=%e hj=%e", r2, hi, hj); */
+
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
@@ -2468,25 +2243,25 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
 
-	    /* if(pi->id == 142801) */
-	    /*   message("SELF"); */
+            /* if(pi->id == 142801) */
+            /*   message("SELF"); */
 
-            //IACT(r2, dx, hi, hj, pi, pj);
-	    IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	    dx[0] = -dx[0];
-	    dx[1] = -dx[1];
-	    dx[2] = -dx[2];
+            // IACT(r2, dx, hi, hj, pi, pj);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+            dx[0] = -dx[0];
+            dx[1] = -dx[1];
+            dx[2] = -dx[2];
 
-	    /* if(pj->id == 142801) */
-	    /*   message("SELF"); */
+            /* if(pj->id == 142801) */
+            /*   message("SELF"); */
 
-	    IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-	  }else {
-	    /* if(pi->id == 142801) */
-	    /*   message("SELF"); */
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          } else {
+            /* if(pi->id == 142801) */
+            /*   message("SELF"); */
 
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-	  }
+          }
 #else
 
           /* Does pj need to be updated too? */
