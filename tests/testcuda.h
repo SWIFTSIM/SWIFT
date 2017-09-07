@@ -3,13 +3,15 @@ typedef char timebin_t;
 
 extern "C" {
 #include <stdio.h>
+#include <float.h>
 }
 
 #define part_align 128
 #define CUDA_MAX_LINKS 27
 #define CUDA_THREADS 256
 #define DIM 3
-
+#define NBRE_DIR 13
+#define atomic_or(v, i) __sync_fetch_and_or(v, i)
 
 #define kernel_degree 3
 #define kernel_ivals 2  /*!< Number of branches */
@@ -181,6 +183,15 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
+/* sorting stuff */
+struct entry {
+
+  /*! Distance on the axis */
+  float d;
+
+  /*! Particle index */
+  int i;
+};
 
 /**
  * @brief Cell within the tree structure.
@@ -205,7 +216,7 @@ struct cell {
   struct part *parts;
 
   /*! Pointer for the sorted indices. */
-  //struct entry *sort[13];
+  struct entry *sort[NBRE_DIR];
 
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
@@ -458,6 +469,8 @@ struct particle_arrays {
   /* Device array containing the particle entropy_dt */
   float *entropy_dt;
 
+  /* Device array containing sort */
+  struct entry *sort[NBRE_DIR];
   /* Unclear if unions work on the GPU, so unrolling the union for now */
   /* DENSITY */
   /* Device array containing the number of neighbours. */
@@ -494,7 +507,7 @@ __device__ struct particle_arrays cuda_parts;
 
 __device__ __constant__ int ti_current = 8;
 
-__device__ __constant__ int max_active_bin = 8;
+__device__ __constant__ int max_active_bin = 1;
 
 __device__ __constant__ double dim[3];
 
@@ -524,4 +537,143 @@ __device__ float cuda_pow_dimension_plus_one(float x) {
   printf("The dimension is not defined!");
   return 0.f;
 #endif
+}
+
+
+
+/**
+ * @brief Sort the entries in ascending order using QuickSort.
+ *
+ * @param sort The entries
+ * @param N The number of entries.
+ */
+void runner_do_sort_ascending(struct entry *sort, int N) {
+
+  struct {
+    short int lo, hi;
+  } qstack[10];
+  int qpos, i, j, lo, hi, imin;
+  struct entry temp;
+  float pivot;
+
+  /* Sort parts in cell_i in decreasing order with quicksort */
+  qstack[0].lo = 0;
+  qstack[0].hi = N - 1;
+  qpos = 0;
+  while (qpos >= 0) {
+    lo = qstack[qpos].lo;
+    hi = qstack[qpos].hi;
+    qpos -= 1;
+    if (hi - lo < 15) {
+      for (i = lo; i < hi; i++) {
+        imin = i;
+        for (j = i + 1; j <= hi; j++)
+          if (sort[j].d < sort[imin].d) imin = j;
+        if (imin != i) {
+          temp = sort[imin];
+          sort[imin] = sort[i];
+          sort[i] = temp;
+        }
+      }
+    } else {
+      pivot = sort[(lo + hi) / 2].d;
+      i = lo;
+      j = hi;
+      while (i <= j) {
+        while (sort[i].d < pivot) i++;
+        while (sort[j].d > pivot) j--;
+        if (i <= j) {
+          if (i < j) {
+            temp = sort[i];
+            sort[i] = sort[j];
+            sort[j] = temp;
+          }
+          i += 1;
+          j -= 1;
+        }
+      }
+      if (j > (lo + hi) / 2) {
+        if (lo < j) {
+          qpos += 1;
+          qstack[qpos].lo = lo;
+          qstack[qpos].hi = j;
+        }
+        if (i < hi) {
+          qpos += 1;
+          qstack[qpos].lo = i;
+          qstack[qpos].hi = hi;
+        }
+      } else {
+        if (i < hi) {
+          qpos += 1;
+          qstack[qpos].lo = i;
+          qstack[qpos].hi = hi;
+        }
+        if (lo < j) {
+          qpos += 1;
+          qstack[qpos].lo = lo;
+          qstack[qpos].hi = j;
+        }
+      }
+    }
+  }
+}
+
+/* Orientation of the cell pairs */
+static const double runner_shift[13][3] = {
+    {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
+    {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
+    {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
+    {7.071067811865475e-01, 0.0, 7.071067811865475e-01},
+    {1.0, 0.0, 0.0},
+    {7.071067811865475e-01, 0.0, -7.071067811865475e-01},
+    {5.773502691896258e-01, -5.773502691896258e-01, 5.773502691896258e-01},
+    {7.071067811865475e-01, -7.071067811865475e-01, 0.0},
+    {5.773502691896258e-01, -5.773502691896258e-01, -5.773502691896258e-01},
+    {0.0, 7.071067811865475e-01, 7.071067811865475e-01},
+    {0.0, 1.0, 0.0},
+    {0.0, 7.071067811865475e-01, -7.071067811865475e-01},
+    {0.0, 0.0, 1.0},
+};
+
+/**
+ * @brief Sort the particles in the given cell along all cardinal directions.
+ *
+ * @param c The #cell.
+ */
+void do_sort(struct cell *c) {
+
+  struct part *parts = c->parts;
+  const int count = c->count;
+
+  /* start by allocating the entry arrays in the requested dimensions. */
+  for (int j = 0; j < NBRE_DIR; j++) {
+    if (c->sort[j] == NULL) {
+      if ((c->sort[j] = (struct entry *)malloc(sizeof(struct entry) *
+                                               (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
+    }
+  }
+  
+  /* Fill the sort array. */
+
+  for (int k = 0; k < count; k++) {
+    const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
+    for (int j = 0; j < NBRE_DIR; j++)
+      {
+	c->sort[j][k].i = k;
+	c->sort[j][k].d = px[0] * runner_shift[j][0] +
+	  px[1] * runner_shift[j][1] +
+	  px[2] * runner_shift[j][2];
+      }
+  }
+
+  /* Add the sentinel and sort. */
+  for (int j = 0; j < NBRE_DIR; j++) {
+      c->sort[j][count].d = FLT_MAX;
+      c->sort[j][count].i = 0;
+      runner_do_sort_ascending(c->sort[j], count);
+      atomic_or(&c->sorted, 1 << j);
+    }
+  
 }
