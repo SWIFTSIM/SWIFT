@@ -1138,7 +1138,7 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
   cudaErrCheck(cudaMemcpy(h_p->time_bin, p_data, sizeof(timebin_t) * num_part, cudaMemcpyDeviceToHost));
 }
 
-struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
+struct cell_cuda* copy_from_host(struct cell *ci, struct cell_cuda *temp,int offset) {
   // Copy the particles in c_i
   copy_to_device_array(ci, offset);
   // The rest of this is copying the cell information.
@@ -1170,9 +1170,10 @@ struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
   c2.split = ci->split;
 
   struct cell_cuda *ret;
-  cudaErrCheck( cudaMalloc(&ret, sizeof(struct cell_cuda)) );
-  cudaErrCheck( cudaMemcpy(ret, &c2, sizeof(struct cell_cuda), cudaMemcpyHostToDevice) );
-  return ret;
+  cudaErrCheck( cudaMemcpy(temp, &c2, sizeof(struct cell_cuda), cudaMemcpyHostToDevice));
+//  cudaErrCheck( cudaMalloc(&ret, sizeof(struct cell_cuda)) );
+  //cudaErrCheck( cudaMemcpy(ret, &c2, sizeof(struct cell_cuda), cudaMemcpyHostToDevice) );
+  return temp;
 }
 
 void copy_to_host(struct cell_cuda *cuda_c, struct cell *c, int n_cells) {
@@ -1423,6 +1424,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 int main(int argc, char *argv[]) {
   srand(4);
+
+  // Set up some kernel stuff
   float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
   for (int a = 0; a < (kernel_degree + 1) * (kernel_ivals + 1); a++) {
     host_kernel_coeffs[a] = kernel_coeffs[a];
@@ -1494,7 +1497,7 @@ int main(int argc, char *argv[]) {
   // The number of particles is actually 'volume', i.e. particles**3.
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
-  int cell_number = 2;
+  int cell_number = 100;
   struct cell **c;
 
   // The cells on the CPU. We first allocate a pointer to an array of pointers
@@ -1515,11 +1518,12 @@ int main(int argc, char *argv[]) {
   // Now we have to start putting things on the GPU
   struct cell_cuda **cuda_c;
   struct cell_cuda **cuda_c_cpu;
-
+  struct cell_cuda **host_cell_temp;
   // Allocate space on the GPU for the pointers to the cells
   cudaErrCheck(cudaMalloc(&cuda_c, sizeof(struct cell_cuda*) * cell_number));
   // Allocate enough space on the GPU for all of the device particles.
   allocate_device_parts(cell_number * volume);
+  host_cell_temp = (cell_cuda**) malloc(sizeof(struct cell_cuda*)*cell_number);
   // Allocate memory on the CPU -- we need to translate the original description of the
   // particles/cells into the GPU friendly version.
   cuda_c_cpu = (struct cell_cuda**) malloc(sizeof(struct cell_cuda*) * cell_number);
@@ -1530,10 +1534,15 @@ int main(int argc, char *argv[]) {
     for (size_t j = 0; j < cell_number; ++j) {
       zero_particle_fields(c[j]);
       printf("Attempting to store particles in cuda_c from host c %d\n", j);
-
+      
+      cudaErrCheck(cudaMalloc(&host_cell_temp[j], sizeof(struct cell_cuda)));
+      
       offset_x = j;
-      cuda_c[j] = copy_from_host(c[j], offset_x);
+      copy_from_host(c[j], host_cell_temp[j], offset_x);
     }
+
+    cudaMemcpy(cuda_c, host_cell_temp, sizeof(struct cell_cuda*)*cell_number, cudaMemcpyHostToDevice);
+    free(host_cell_temp);
 
     printf("Running the Kernel");
     doself_density<<<cell_number, volume>>>(cuda_c);
