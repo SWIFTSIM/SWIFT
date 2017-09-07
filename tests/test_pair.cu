@@ -243,30 +243,15 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
 
   if (cuda_cell_is_active(ci)) {
 
-    int pid = count_i - 1 - threadIdx.x;
     /* Loop over the parts in ci. */
-    while (pid >= 0 && sort_i[pid].d + hi_max > dj_min) {
+    for (int pid = count_i - 1 - threadIdx.x;
+         pid >= 0 && sort_i[pid].d + hi_max > dj_min; pid-= blockDim.x) {
       /* Get a hold of the ith part in ci. */
-      int pi;
-      float hi;
-      double di;
-      while (1) {
-	pi = sort_i[pid].i + f_i;
-	hi = cuda_parts.h[pi];
-	di = sort_i[pid].d + hi * kernel_gamma;
-	if (cuda_part_is_active(pi) && di < dj_min) {
-	  break;
-	}
-	pid -= blockDim.x;
-	if (pid < 0 || sort_i[pid].d + hi_max < dj_min) {
-	  break;
-	}
-	continue;
-      }
-      __syncthreads();
-
-      if (pid < 0 || sort_i[pid].d + hi_max < dj_min)
-	break;
+      const int pi = sort_i[pid].i + f_i;
+      if (!cuda_part_is_active(pi)) continue;
+      const float hi = cuda_parts.h[pi];
+      const double di = sort_i[pid].d + hi * kernel_gamma;
+      if (di < dj_min) continue;
       
       double pix[3], piv[3];
       pix[0] = cuda_parts.x_x[pi];
@@ -276,7 +261,9 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
       piv[0] = cuda_parts.v[pi].x;
       piv[1] = cuda_parts.v[pi].y;
       piv[2] = cuda_parts.v[pi].z;
+
       const float hig2 = hi * hi * kernel_gamma2;
+
       rho = 0.0f;
       rho_dh = 0.0f;
       div_v = 0.0f;
@@ -291,7 +278,7 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 	//printf("pjd : %lli\n", pjd);
         /* Get a pointer to the jth particle. */
-        const int pj = sort_j[pjd].i + f_j;
+        const int pj= sort_j[pjd].i + f_j;
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -299,11 +286,10 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
 	dx[0] = pix[0] - cuda_parts.x_x[pj];
 	dx[1] = pix[1] - cuda_parts.x_y[pj];
 	dx[2] = pix[2] - cuda_parts.x_z[pj];
-        for (int k = 0; k < 3; k++) {
-          r2 += dx[k] * dx[k];
-        }
-
-
+	for (int k = 0; k < 3; k++) {
+	  r2 += dx[k] * dx[k];
+	}
+	
         /* Hit or miss? */
         if (r2 < hig2) {
 	  
@@ -348,7 +334,7 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
 	  rot_v.y += fac * curlvr[1];
 	  rot_v.z += fac * curlvr[2];
 	}
-	
+
       }
       int pid_write = pid + f_i;
       atomicAdd(&cuda_parts.rho[pid_write], rho);
@@ -359,8 +345,6 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
       atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
       atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
       atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
-
-      pid-= blockDim.x;
     } /* loop over the parts in cj. */
     
   } /* loop over the parts in ci. */
@@ -940,7 +924,7 @@ __global__ void do_test_pair_density(struct cell_cuda *ci, struct cell_cuda *cj)
 __global__ void do_test_pair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj, const int sid, const int swap) {
 
   dopair_density_sorted(ci, cj, sid, swap);
-  dopair_density_sorted(cj, ci, sid, -swap);
+  //dopair_density_sorted(cj, ci, sid, -swap);
 
 }
 
@@ -1704,22 +1688,22 @@ int main(int argc, char *argv[]) {
     /* Run the test */
     do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
     //do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
-    cudaErrCheck( cudaPeekAtLastError() );
-    cudaErrCheck( cudaDeviceSynchronize() );
-    
-    do_test_self_density<<<1,CUDA_THREADS>>>(cuda_ci);
-    //do_test_self_density_symmetric<<<1,CUDA_THREADS>>>(cuda_ci);
+    printf("WARNING: one one side\n");
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
 
-    do_test_pair_force<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-    cudaErrCheck( cudaPeekAtLastError() );
-    cudaErrCheck( cudaDeviceSynchronize() );
+    //do_test_self_density<<<1,CUDA_THREADS>>>(cuda_ci);
+    //do_test_self_density_symmetric<<<1,CUDA_THREADS>>>(cuda_ci);
+    //cudaErrCheck( cudaPeekAtLastError() );
+    //cudaErrCheck( cudaDeviceSynchronize() );
+
+    // do_test_pair_force<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+    // cudaErrCheck( cudaPeekAtLastError() );
+    // cudaErrCheck( cudaDeviceSynchronize() );
     
-    do_test_self_force<<<1,CUDA_THREADS>>>(cuda_ci);
-    cudaErrCheck( cudaPeekAtLastError() );
-    cudaErrCheck( cudaDeviceSynchronize() );
-    
+    // do_test_self_force<<<1,CUDA_THREADS>>>(cuda_ci);
+    // cudaErrCheck( cudaPeekAtLastError() );
+    // cudaErrCheck( cudaDeviceSynchronize() );
     //toc = getticks();
     //time += toc - tic;
 
