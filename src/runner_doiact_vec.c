@@ -287,11 +287,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     temp = 0;
 
     const struct part *pi = &parts_i[sort_i[first_pi].i];
+    const float first_di = sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
     /* Loop through particles in cell j until they are not in range of pi. */
-    while (temp <= cj->count &&
-           (sort_i[first_pi].d + (pi->h * kernel_gamma + dx_max - rshift) >
-            sort_j[temp].d))
+    while (temp <= cj->count && first_di > sort_j[temp].d)
       temp++;
 
     max_index_i[first_pi] = temp;
@@ -300,10 +299,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     for (int i = first_pi + 1; i < ci->count; i++) {
       temp = max_index_i[i - 1];
       pi = &parts_i[sort_i[i].i];
+    
+      const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
 
-      while (temp <= cj->count &&
-             (sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) >
-              sort_j[temp].d))
+      while (temp <= cj->count && di > sort_j[temp].d)
         temp++;
 
       max_index_i[i] = temp;
@@ -335,11 +334,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     temp = ci->count - 1;
 
     const struct part *pj = &parts_j[sort_j[last_pj].i];
+    const float last_dj = sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
 
     /* Loop through particles in cell i until they are not in range of pj. */
-    while (temp > 0 &&
-           sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) <
-               sort_i[temp].d - rshift)
+    while (temp > 0 && last_dj < sort_i[temp].d)
       temp--;
 
     max_index_j[last_pj] = temp;
@@ -348,10 +346,9 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     for (int i = last_pj - 1; i >= 0; i--) {
       temp = max_index_j[i + 1];
       pj = &parts_j[sort_j[i].i];
+      const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
 
-      while (temp > 0 &&
-             sort_j[i].d - dx_max - (pj->h * kernel_gamma) <
-                 sort_i[temp].d - rshift)
+      while (temp > 0 && dj < sort_i[temp].d)
         temp--;
 
       max_index_j[i] = temp;
