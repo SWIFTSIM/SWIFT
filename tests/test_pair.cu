@@ -228,39 +228,70 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
 				      const int sid, const int swap) {
 
   /* Pick-out the sorted lists. */
-  const struct entry *sort = cuda_parts.sort[sid];
   const long long int f_i = ci->first_part;
   const long long int f_j = cj->first_part;
+  const struct entry *sort_i = &cuda_parts.sort[sid][f_i];
+  const struct entry *sort_j = &cuda_parts.sort[sid][f_j];
 
   /* Get some other useful values. */
   const double hi_max = ci->h_max * kernel_gamma;
   const int count_i = ci->part_count;
   const int count_j = cj->part_count;
-  const double dj_min = sort[f_j].d;
+  const double dj_min = sort_j->d;
+  float rho, rho_dh, div_v, wcount, wcount_dh;
+  float3 rot_v;
 
   if (cuda_cell_is_active(ci)) {
 
+    int pid = count_i - 1 - threadIdx.x;
     /* Loop over the parts in ci. */
-    for (int pid = count_i - 1 - threadIdx.x;
-         pid >= 0 && sort[f_i + pid].d + hi_max > dj_min; pid-= blockDim.x) {
+    while (pid >= 0 && sort_i[pid].d + hi_max > dj_min) {
       /* Get a hold of the ith part in ci. */
-      const int pi = sort[f_i + pid].i + f_i;
-      if (!cuda_part_is_active(pi)) continue;
-      const float hi = cuda_parts.h[pi];
-      const double di = sort[pid].d + hi * kernel_gamma;
-      if (di < dj_min) continue;
+      int pi;
+      float hi;
+      double di;
+      while (1) {
+	pi = sort_i[pid].i + f_i;
+	hi = cuda_parts.h[pi];
+	di = sort_i[pid].d + hi * kernel_gamma;
+	if (cuda_part_is_active(pi) && di < dj_min) {
+	  break;
+	}
+	pid -= blockDim.x;
+	if (pid < 0 || sort_i[pid].d + hi_max < dj_min) {
+	  break;
+	}
+	continue;
+      }
+      __syncthreads();
+
+      if (pid < 0 || sort_i[pid].d + hi_max < dj_min)
+	break;
       
-      double pix[3];
+      double pix[3], piv[3];
       pix[0] = cuda_parts.x_x[pi];
       pix[1] = cuda_parts.x_y[pi];
       pix[2] = cuda_parts.x_z[pi];
+      
+      piv[0] = cuda_parts.v[pi].x;
+      piv[1] = cuda_parts.v[pi].y;
+      piv[2] = cuda_parts.v[pi].z;
       const float hig2 = hi * hi * kernel_gamma2;
+      rho = 0.0f;
+      rho_dh = 0.0f;
+      div_v = 0.0f;
+      wcount = 0.0f;
+      wcount_dh = 0.0f;
+      rot_v.x = 0.0f;
+      rot_v.y = 0.0f;
+      rot_v.z = 0.0f;
+
 
       /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < count_j && sort[pjd].d < di; pjd++) {
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 	//printf("pjd : %lli\n", pjd);
         /* Get a pointer to the jth particle. */
-        const int pj = sort[pjd+f_j].i + f_j;
+        const int pj = sort_j[pjd].i + f_j;
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -292,34 +323,44 @@ __device__ void dopair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj
 	  cuda_kernel_deval(ui, &wi, &wi_dx);
 
 	  /* Compute contribution to the density */
-	  cuda_parts.rho[pi] += mj * wi;
-	  cuda_parts.rho_dh[pi] -= mj * (hydro_dimension * wi + ui * wi_dx);
+	  rho += mj * wi;
+	  rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
 	  /* Compute contribution to the number of neighbours */
-	  cuda_parts.wcount[pi] += wi;
-	  cuda_parts.wcount_dh[pi] -= (hydro_dimension * wi + ui * wi_dx);
+	  wcount += wi;
+	  wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 	  const float fac = mj * wi_dx * r_inv;
 
 	  /* Compute dv dot r */
-	  dv[0] = cuda_parts.v[pi].x - cuda_parts.v[pj].x;
-	  dv[1] = cuda_parts.v[pi].y - cuda_parts.v[pj].y;
-	  dv[2] = cuda_parts.v[pi].z - cuda_parts.v[pj].z;
+	  dv[0] = piv[0] - cuda_parts.v[pj].x;
+	  dv[1] = piv[1] - cuda_parts.v[pj].y;
+	  dv[2] = piv[2] - cuda_parts.v[pj].z;
 	  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-	  cuda_parts.div_v[pi] -= fac * dvdr;
+	  div_v -= fac * dvdr;
 
 	  /* Compute dv cross r */
 	  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
 	  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
 	  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 	  
-	  cuda_parts.rot_v[pi].x += fac * curlvr[0];
-	  cuda_parts.rot_v[pi].y += fac * curlvr[1];
-	  cuda_parts.rot_v[pi].z += fac * curlvr[2];
+	  rot_v.x += fac * curlvr[0];
+	  rot_v.y += fac * curlvr[1];
+	  rot_v.z += fac * curlvr[2];
 	}
 	
       }
-      
+      int pid_write = pid + f_i;
+      atomicAdd(&cuda_parts.rho[pid_write], rho);
+      atomicAdd(&cuda_parts.rho_dh[pid_write], rho_dh);
+      atomicAdd(&cuda_parts.wcount[pid_write], wcount);
+      atomicAdd(&cuda_parts.wcount_dh[pid_write], wcount_dh);
+      atomicAdd(&cuda_parts.div_v[pid_write], div_v);
+      atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
+      atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
+      atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
+
+      pid-= blockDim.x;
     } /* loop over the parts in cj. */
     
   } /* loop over the parts in ci. */
