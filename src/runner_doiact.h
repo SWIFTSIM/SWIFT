@@ -125,7 +125,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 #endif
 
 #ifdef WITH_VECTORIZATION
@@ -266,7 +266,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
+// error("Don't use in actual runs ! Slow code !");
 #endif
 
   TIMER_TIC;
@@ -1618,6 +1618,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
 
+  // DOPAIR2_NAIVE(r, ci, cj);
+  // return;
+
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -1692,7 +1695,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   if (cell_is_active(ci, e)) {
 
-    int last_pj = count_j;
+    int last_pj = count_j - 1;
 
     /* Loop over the parts in ci until nothing is within range in cj.
      * We start from the centre and move outwards. */
@@ -1711,7 +1714,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (di < dj_min) continue;
 
       /* Where do we have to stop when looping over cell j? */
-      while (sort_j[last_pj].d > di) last_pj--;
+      while (sort_j[last_pj].d > di && last_pj > 0) last_pj--;
+
+      last_pj += 1;
+      if (last_pj >= count_j) last_pj = count_j - 1;
 
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
@@ -1720,7 +1726,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const float piz = pi->x[2] - ci->loc[2] - shift[2];
 
       /* Now loop over the relevant particles in cj */
-      for (int pjd = 0; pjd < last_pj; ++pjd) {
+      for (int pjd = 0; pjd <= last_pj; ++pjd) {
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
@@ -1761,8 +1767,12 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const double dj = sort_j[pjd].d - max(hj, hi_max) * kernel_gamma - dx_max;
       if (dj > di_max - rshift) continue;
 
-      /* Where do we have to stop when looping over cell j? */
-      while (sort_i[first_pi].d - rshift < dj) first_pi++;
+      /* Where do we have to stop when looping over cell i? */
+      while (sort_i[first_pi].d - rshift < dj && first_pi < count_i - 1)
+        first_pi++;
+
+      first_pi -= 1;
+      if (first_pi < 0) first_pi = 0;
 
       /* Get some additional information about pi */
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -1771,7 +1781,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const float pjz = pj->x[2] - ci->loc[2];
 
       /* Now loop over the relevant particles in ci */
-      for (int pid = count_i; pid >= first_pi; --pid) {
+      for (int pid = count_i - 1; pid >= first_pi; --pid) {
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
