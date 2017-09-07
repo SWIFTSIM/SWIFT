@@ -1661,8 +1661,8 @@ int main(int argc, char *argv[]) {
     //tic = getticks();
 
     /* Run the test */
-    //do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-    do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
+    do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
+    //do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
     
