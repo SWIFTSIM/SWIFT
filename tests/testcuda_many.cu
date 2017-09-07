@@ -677,6 +677,9 @@ __global__ void doself_density(struct cell_cuda **c) {
     pix[2] = cuda_parts.x_z[pid];
     const float hi = cuda_parts.h[pid];
     const float hig2 = hi * hi * kernel_gamma2;
+    if (pid == 0) {
+      printf("Block %d Part0 x %f %f %f", blockIdx.x, pix[0], pix[1], pix[2]);
+    }
 
     /* Reset local values. */
     rho = 0.0f;
@@ -975,10 +978,11 @@ void copy_to_device_array(struct cell *ci, int offset) {
     h_p.time_bin[i] = p.time_bin;
   }
 
+  printf("Now copying particle data...");
   struct particle_arrays c_parts;
   cudaErrCheck(cudaMemcpyFromSymbol(&c_parts, cuda_parts,
                                     sizeof(struct particle_arrays)));
-
+  
   void *p_data = c_parts.id + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.id, sizeof(long long int) * num_part,cudaMemcpyHostToDevice));
 
@@ -1135,7 +1139,9 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
 }
 
 struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
+  // Copy the particles in c_i
   copy_to_device_array(ci, offset);
+  // The rest of this is copying the cell information.
   /* Set the host pointer. */
   struct cell_cuda c2;
 
@@ -1169,7 +1175,7 @@ struct cell_cuda* copy_from_host(struct cell *ci, int offset) {
   return ret;
 }
 
-void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
+void copy_to_host(struct cell_cuda *cuda_c, struct cell *c, int n_cells) {
   struct cell_cuda *h_cuda_cell = (struct cell_cuda*) malloc(sizeof(struct cell_cuda));
 
   cudaMemcpy(h_cuda_cell, cuda_c, sizeof(struct cell_cuda), cudaMemcpyDeviceToHost);
@@ -1181,8 +1187,6 @@ void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
   copy_from_device_array(&h_cuda_part, p_i, N);
   
   for (int i=0; i<N; i++) {
-    printf("%d\n", p_i);
-    fflush(stdout);
     struct part *p = &c->parts[i];
     p->id = h_cuda_part.id[p_i];
     p->h = h_cuda_part.h[p_i];
@@ -1418,10 +1422,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 
 int main(int argc, char *argv[]) {
-
   srand(4);
-  bool runPair = true;
-
   float host_kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)];
   for (int a = 0; a < (kernel_degree + 1) * (kernel_ivals + 1); a++) {
     host_kernel_coeffs[a] = kernel_coeffs[a];
@@ -1433,7 +1434,6 @@ int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
   double offset[3] = {0, 0, 0}, h = 1.1255, size = 1., rho = 1.;
   double perturbation = 0.;
-  struct cell *ci, *cj;
 
   char cx;
   static unsigned long long partId = 0;
@@ -1491,71 +1491,65 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  // The number of particles is actually 'volume', i.e. particles**3.
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
-  int cell_number = 100;
+  int cell_number = 2;
   struct cell **c;
+
+  // The cells on the CPU. We first allocate a pointer to an array of pointers
+  // that individually point to a cell.
   c = (cell**) malloc(sizeof(struct cell*) * cell_number);
+
   for (size_t i = 0; i < cell_number; ++i) {
+    // Fill up each cell with the particles
+    // Is this way of doing things correct?
+    printf("Hello from CPU cell %d. This cell is of size %d\n", i, sizeof(c[i]));
+
+    offset[0] = i; // Ensure that all cells aren't at the same position!
     c[i] = make_cell(particles, offset, size, h, rho, &partId, perturbation);
   }
 
-//  ci = make_cell(particles, offset, size, h, rho, &partId, perturbation);
-//  for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
-//  cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
-
   sprintf(outputFileName, "swift_gpu_init_%s.dat", outputFileNameExtension);
 
-  allocate_device_parts(cell_number * volume);
+  // Now we have to start putting things on the GPU
   struct cell_cuda **cuda_c;
   struct cell_cuda **cuda_c_cpu;
 
+  // Allocate space on the GPU for the pointers to the cells
   cudaErrCheck(cudaMalloc(&cuda_c, sizeof(struct cell_cuda*) * cell_number));
+  // Allocate enough space on the GPU for all of the device particles.
+  allocate_device_parts(cell_number * volume);
+  // Allocate memory on the CPU -- we need to translate the original description of the
+  // particles/cells into the GPU friendly version.
   cuda_c_cpu = (struct cell_cuda**) malloc(sizeof(struct cell_cuda*) * cell_number);
   
-//  time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields and loop over all the cells */
-    int x = 0;
+    int offset_x = 0;
     for (size_t j = 0; j < cell_number; ++j) {
-       zero_particle_fields(c[j]);
-       cuda_c_cpu[j] = copy_from_host(c[j], x);
-       x += c[j]->count;
+      zero_particle_fields(c[j]);
+      printf("Attempting to store particles in cuda_c from host c %d\n", j);
+
+      offset_x = j;
+      cuda_c[j] = copy_from_host(c[j], offset_x);
     }
 
-    cudaErrCheck(cudaMemcpy(cuda_c, cuda_c_cpu, cell_number * sizeof(struct cell_cuda*), cudaMemcpyHostToDevice));
-    //exit(1);
-    //tic = getticks();
-
-    /* Run the test */
-//    if (runPair) {
-//      do_test_pair_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-//      cudaErrCheck( cudaPeekAtLastError() );
-//      cudaErrCheck( cudaDeviceSynchronize() );
-//    }
-
+    printf("Running the Kernel");
     doself_density<<<cell_number, volume>>>(cuda_c);
-    //do_test_self_density_symmetric<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
+    printf("Running error checks for the Kernel");
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
+
+    // Copy back
     cudaErrCheck(cudaMemcpy(cuda_c_cpu, cuda_c, cell_number * sizeof(struct cell_cuda*), cudaMemcpyDeviceToHost));
     
-//    if (runPair) {
-//      do_test_pair_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
-//      cudaErrCheck( cudaPeekAtLastError() );
-//      cudaErrCheck( cudaDeviceSynchronize() );
-//    }
-
-//    do_test_self_force<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
-//    cudaErrCheck( cudaPeekAtLastError() );
-//    cudaErrCheck( cudaDeviceSynchronize() );
-    
-    //toc = getticks();
-    //time += toc - tic;
 
     for (size_t j=0; j < cell_number; ++j) {
+      // Translate back into the original format, for some reason.
       printf("Hello World from Cell %d\n", j);
-      copy_to_host(cuda_c_cpu[j], c[j]);
+      copy_to_host(cuda_c_cpu[j], c[j], cell_number);
+      //printf("Cell %d Part0 x %f %f %f", j, c[j].parts[0].x[0], c[j].parts[0].x[1], c[j].parts[0].x[2]);
     }
 
     /* Dump if necessary */
