@@ -657,11 +657,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-/* if(pi->id == 142801) */
-/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
- * c->loc=[%e %e %e]", */
-/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
-
 #ifndef WITH_OLD_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
@@ -715,6 +710,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
+
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
         float dx[3];
@@ -725,11 +721,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
-
-/* if(pi->id == 142801) */
-/*   message("PAIR_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
- * c->loc=[%e %e %e]", */
-/* 	  pj->id, hi, hig2, r2, cj->loc[0], cj->loc[1], cj->loc[2]); */
 
 #ifndef WITH_OLD_VECTORIZATION
 
