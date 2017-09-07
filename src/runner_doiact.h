@@ -1743,7 +1743,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Where do we have to stop when looping over cell j? */
       while (sort_j[last_pj].d > di) last_pj--;
-      last_pj++;
 
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
@@ -1795,7 +1794,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Where do we have to stop when looping over cell j? */
       while (sort_i[first_pi].d - rshift < dj) first_pi++;
-      first_pi--;
 
       /* Get some additional information about pi */
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -1804,7 +1802,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const float pjz = pj->x[2] - ci->loc[2];
 
       /* Now loop over the relevant particles in ci */
-      for (int pid = count_i /*exit_iteration_j*/; pid >= first_pi; --pid) {
+      for (int pid = count_i; pid >= first_pi; --pid) {
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
@@ -2154,9 +2152,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-/* if(pi->id==142801 && pj->id==142780) */
-/*   message("FOUND1!  r2=%e hi=%e hj=%e", r2, hi, hj); */
-
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2170,8 +2165,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #ifndef WITH_OLD_VECTORIZATION
 
-          /* if(pj->id == 142801) */
-          /*   message("SELF"); */
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
 #else
@@ -2195,9 +2188,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #endif
         }
-
       } /* loop over all other particles. */
-
     }
 
     /* Otherwise, interact with all candidates. */
@@ -2229,39 +2220,16 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           error("Particle pj not drifted to current time");
 #endif
 
-        /* if(pi->id==142801 && pj->id==142780) */
-        /*   message("FOUND2! r2=%e hi=%e hj=%e", r2, hi, hj); */
-
-        /* if(pj->id==142801 && pi->id==142780) */
-        /*   message("FOUND3! r2=%e hi=%e hj=%e", r2, hi, hj); */
-
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
 #ifndef WITH_OLD_VECTORIZATION
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e)) {
-
-            /* if(pi->id == 142801) */
-            /*   message("SELF"); */
-
-            // IACT(r2, dx, hi, hj, pi, pj);
+          if (part_is_active(pj, e))
+            IACT(r2, dx, hi, hj, pi, pj);
+          else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-            dx[0] = -dx[0];
-            dx[1] = -dx[1];
-            dx[2] = -dx[2];
-
-            /* if(pj->id == 142801) */
-            /*   message("SELF"); */
-
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-          } else {
-            /* if(pi->id == 142801) */
-            /*   message("SELF"); */
-
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-          }
 #else
 
           /* Does pj need to be updated too? */
