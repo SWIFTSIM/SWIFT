@@ -91,7 +91,8 @@
 #define vec_init_mask_true(mask) ({ mask = 0xFFFF; })
 #define vec_zero_mask(mask) ({ mask = 0; })
 #define vec_create_mask(mask, cond) ({ mask = cond; })
-#define vec_combine_masks(mask1, mask2) ({ mask1 = vec_mask_and(mask1,mask2); })
+#define vec_combine_masks(mask1, mask2) \
+  ({ mask1 = vec_mask_and(mask1, mask2); })
 #define vec_pad_mask(mask, pad) ({ mask = mask >> (pad); })
 #define vec_blend(mask, a, b) _mm512_mask_blend_ps(mask, a, b)
 #define vec_todbl_lo(a) _mm512_cvtps_pd(_mm512_extract128_ps(a, 0))
@@ -187,7 +188,8 @@
 #define vec_and_mask(a, mask) _mm256_and_ps(a, mask.v)
 #define vec_init_mask_true(mask) mask.m = vec_setint1(0xFFFFFFFF)
 #define vec_create_mask(mask, cond) mask.v = cond
-#define vec_combine_masks(mask1, mask2) ({ mask1.v = vec_mask_and(mask1,mask2); })
+#define vec_combine_masks(mask1, mask2) \
+  ({ mask1.v = vec_mask_and(mask1, mask2); })
 #define vec_zero_mask(mask) mask.v = vec_setzero()
 #define vec_pad_mask(mask, pad) \
   for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
