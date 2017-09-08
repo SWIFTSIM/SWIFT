@@ -302,7 +302,7 @@ struct cell {
   float dmin;
 
   /*! Maximum particle movement in this cell since the last sort. */
-  float dx_max_sort;
+  //float dx_max_sort;
 
   /*! Maximum part movement in this cell since last construction. */
   float dx_max_part;
