@@ -633,107 +633,142 @@ __global__ void doself_density_shared(struct cell_cuda *ci) {
   float *v_y  = shared + 6*count_i;
   float *v_z  = shared + 7*count_i;
 
-  // Load particle position in shared mem
-  // TODO: loop fission?
-  // TODO: thread memory access rule? (skip blockDim or half-warp???)
-  for (int pid = threadIdx.x; pid < count_i; pid += blockDim.x) {
-    int id = part_i + pid;
-    x_x[pid] = cuda_parts.x_x[id] - ci->loc[0];
-    x_y[pid] = cuda_parts.x_y[id] - ci->loc[1];
-    x_z[pid] = cuda_parts.x_z[id] - ci->loc[2];
-    mass[pid] = cuda_parts.mass[id];
-    h[pid] = cuda_parts.h[id];
-    v_x[pid] = cuda_parts.v[id].x;
-    v_y[pid] = cuda_parts.v[id].y;
-    v_z[pid] = cuda_parts.v[id].z;
-  }  
-  __syncthreads();
 
-//  for (int pid = part_i + threadIdx.x; pid < part_i + count_i;
-//       pid += blockDim.x) {
-  for (int pid = threadIdx.x; pid < count_i;
-       pid += blockDim.x) {
-    const float hi = h[pid];
-    const float hig2 = hi * hi * kernel_gamma2;
-    int pid_write = pid + part_i;
-    /* Reset local values. */
-    rho = 0.0f;
-    rho_dh = 0.0f;
-    div_v = 0.0f;
-    wcount = 0.0f;
-    wcount_dh = 0.0f;
-    rot_v.x = 0.0f;
-    rot_v.y = 0.0f;
-    rot_v.z = 0.0f;
+  int tile_size = count_i/2; 
+  int num_full_tiles = (count_i-1)/tile_size + 1;
+  int residual_parts = count_i - num_full_tiles*tile_size;
+  int num_tiles = num_full_tiles;
+  if(residual_parts>0)
+	num_tiles++;	
+  int current_tile_size = tile_size;
+  int tile_offset = part_i;
 
-    /* If the particle isn't active skip it. */
-    if (!cuda_part_is_active(pid_write)) {
-      continue;
-    }
-    /* Search for the neighbours! */
-    for (int pjd = 0; pjd < count_i; pjd++) {
-      /* Particles don't interact with themselves */
-      if (pid == pjd && pjd != count_i - 1) pjd++;
-      float dx[3], r2 = 0.0f;
-      dx[0] = x_x[pid] - x_x[pjd];
-      r2 += dx[0] * dx[0];
-      dx[1] = x_y[pid] - x_y[pjd];
-      r2 += dx[1] * dx[1];
-      dx[2] = x_z[pid] - x_z[pjd];
-      r2 += dx[2] * dx[2];
+  for (int pid_loc = threadIdx.x; pid_loc < count_i; pid_loc += blockDim.x) {
+  	 
+	 // Load local particle
+     int id_loc = part_i + pid_loc;
+     float x_x_loc = cuda_parts.x_x[id_loc] - ci->loc[0];// TODO: register?
+     float x_y_loc = cuda_parts.x_y[id_loc] - ci->loc[1];
+     float x_z_loc = cuda_parts.x_z[id_loc] - ci->loc[2];
+     float h_loc = cuda_parts.h[id_loc];
+     float v_x_loc = cuda_parts.v[id_loc].x;
+     float v_y_loc = cuda_parts.v[id_loc].y;
+     float v_z_loc = cuda_parts.v[id_loc].z;
 
-      /* If in range then interact. */
-      if (r2 < hig2) {
-        float w, dw_dx;
-        float dv[3], curlvr[3];
-        /* Load mass on particle pj. */
-        const float mj = mass[pjd];
+	 const float hi = h_loc;// TODO: remove this line
+   	 const float hig2 = hi * hi * kernel_gamma2;
+   	 int pid_write = pid_loc;// TODO: remove this line
 
-        /* Get r and 1/r */
-        const float r = sqrtf(r2);
-        const float ri = 1.0f / r;
+	 /* Reset local values. */
+     rho = 0.0f;		
+     rho_dh = 0.0f;	
+	 div_v = 0.0f;
+     wcount = 0.0f;
+     wcount_dh = 0.0f;
+     rot_v.x = 0.0f;
+     rot_v.y = 0.0f;
+     rot_v.z = 0.0f;
 
-        /* Compute the kernel function */
-        const float hi_inv = 1.0f / hi;
-        const float ui = r * hi_inv;
+     /* If the particle isn't active skip it. */
+     if (!cuda_part_is_active(pid_write)) {
+     	continue;
+     }
+	 __syncthreads();// TODO: remove this
 
-        cuda_kernel_deval(ui, &w, &dw_dx);
-        /* Compute contribution to the density. */
-        rho += mj * w;
-        rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
+	 // Loop over tiles
+	 for(int tileid=0;tileid<num_tiles;tileid++) {
 
-        /* Compute contribution to the number of neighbours */
-        wcount += w;
-        wcount_dh -= (hydro_dimension * w + ui * dw_dx);
+     	// Load particle position in shared mem
+ 		// TODO: loop fission?
+  	 	// TODO: thread memory access rule? (skip blockDim or half-warp???)
+	 	if(tileid == num_tiles - 1 && residual_parts>0)
+	    	current_tile_size = residual_parts;
 
-        const float fac = mj * dw_dx * ri;
+     	printf("tileid: %d, tile_size: %d, num_full_tiles: %d, residual_parts: %d, num_tiles:"
+     " %d, current_tile_size: %d, tileid, tile_offset: %d\n",tile_size,num_full_tiles,residual_parts,num_tiles,current_tile_size,tile_offset);
 
-        /* Compute dv dot r */
-        dv[0] = v_x[pid] - v_x[pjd];
-        dv[1] = v_y[pid] - v_y[pjd];
-        dv[2] = v_z[pid] - v_z[pjd];
-        const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+       	for (int pjd = threadIdx.x; pjd < current_tile_size; pjd +=blockDim.x) {//  
+    	 	int jd = tile_offset + pjd;
+         	x_x[pjd] = cuda_parts.x_x[jd] - ci->loc[0];// TODO: register?
+    	 	x_y[pjd] = cuda_parts.x_y[jd] - ci->loc[1];
+    	 	x_z[pjd] = cuda_parts.x_z[jd] - ci->loc[2];
+    	 	mass[pjd] = cuda_parts.mass[jd];
+    	 	h[pjd] = cuda_parts.h[jd];
+    	 	v_x[pjd] = cuda_parts.v[jd].x;
+    	 	v_y[pjd] = cuda_parts.v[jd].y;
+    	 	v_z[pjd] = cuda_parts.v[jd].z;
+     	}  
+     	__syncthreads();
+	     
+		/* Search for the neighbours! */
+    	for (int pjd = 0; pjd < current_tile_size; pjd++) {
+    	 	int jd = tile_offset + pjd;			
+      		/* Particles don't interact with themselves */
+      		if (id_loc == jd && pjd != current_tile_size - 1) pjd++;
+      		float dx[3], r2 = 0.0f;
+      		dx[0] = x_x_loc - x_x[pjd];
+      		r2 += dx[0] * dx[0];
+      		dx[1] = x_y_loc - x_y[pjd];
+      		r2 += dx[1] * dx[1];
+      		dx[2] = x_z_loc - x_z[pjd];
+      		r2 += dx[2] * dx[2];
 
-        div_v -= fac * dvdr;
+      		/* If in range then interact. */
+      		if (r2 < hig2) {
+        	   float w, dw_dx;
+        	   float dv[3], curlvr[3];
+        	   /* Load mass on particle pj. */
+        	   const float mj = mass[pjd];
 
-        curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-        curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-        curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+       		   /* Get r and 1/r */
+        	   const float r = sqrtf(r2);
+        	   const float ri = 1.0f / r;
 
-        rot_v.x += fac * curlvr[0];
-        rot_v.y += fac * curlvr[1];
-        rot_v.z += fac * curlvr[2];
-      }
-    }  // Loop over cj.
-    /* Write data for particle pid back to global stores. */
-    atomicAdd(&cuda_parts.rho[pid_write], rho);
-    atomicAdd(&cuda_parts.rho_dh[pid_write], rho_dh);
-    atomicAdd(&cuda_parts.wcount[pid_write], wcount);
-    atomicAdd(&cuda_parts.wcount_dh[pid_write], wcount_dh);
-    atomicAdd(&cuda_parts.div_v[pid_write], div_v);
-    atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
-    atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
-    atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
+			   /* Compute the kernel function */
+        	   const float hi_inv = 1.0f / hi;
+        	   const float ui = r * hi_inv;
+
+        	   cuda_kernel_deval(ui, &w, &dw_dx);
+        	   /* Compute contribution to the density. */
+        	   rho += mj * w;
+        	   rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
+
+        	   /* Compute contribution to the number of neighbours */
+        	   wcount += w;
+        	   wcount_dh -= (hydro_dimension * w + ui * dw_dx);
+
+        	   const float fac = mj * dw_dx * ri;
+
+        	   /* Compute dv dot r */
+        	   dv[0] = v_x_loc - v_x[pjd];
+        	   dv[1] = v_y_loc - v_y[pjd];
+        	   dv[2] = v_z_loc - v_z[pjd];
+        	   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+        	   div_v -= fac * dvdr;
+
+        	   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+        	   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+        	   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+        	   rot_v.x += fac * curlvr[0];
+        	   rot_v.y += fac * curlvr[1];
+        	   rot_v.z += fac * curlvr[2];
+      		}
+    		
+		}
+
+		/* Write data for particle pid back to global stores. */
+    	atomicAdd(&cuda_parts.rho[pid_write], rho);
+    	atomicAdd(&cuda_parts.rho_dh[pid_write], rho_dh);
+    	atomicAdd(&cuda_parts.wcount[pid_write], wcount);
+    	atomicAdd(&cuda_parts.wcount_dh[pid_write], wcount_dh);
+    	atomicAdd(&cuda_parts.div_v[pid_write], div_v);
+    	atomicAdd(&cuda_parts.rot_v[pid_write].x, rot_v.x);
+    	atomicAdd(&cuda_parts.rot_v[pid_write].y, rot_v.y);
+    	atomicAdd(&cuda_parts.rot_v[pid_write].z, rot_v.z);
+		tile_offset += current_tile_size; 
+  	} 
   }
 }
 
@@ -1499,8 +1534,9 @@ int main(int argc, char *argv[]) {
     }
 
     //    do_test_self_density<<<volume/CUDA_THREADS + 1,CUDA_THREADS>>>(cuda_ci);
-    //doself_density<<<1,CUDA_THREADS>>>(cuda_ci);
-    size_t sum = 8*sizeof(float);
+//    doself_density<<<1,CUDA_THREADS>>>(cuda_ci);
+    
+	size_t sum = 8*sizeof(float);
     sum *= volume;
     doself_density_shared<<<1,CUDA_THREADS,sum>>>(cuda_ci);
     cudaErrCheck( cudaPeekAtLastError() );
