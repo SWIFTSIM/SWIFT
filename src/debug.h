@@ -19,6 +19,9 @@
 #ifndef SWIFT_DEBUG_H
 #define SWIFT_DEBUG_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "cell.h"
 #include "part.h"
