@@ -925,7 +925,7 @@ __global__ void do_test_pair_density(struct cell_cuda *ci, struct cell_cuda *cj)
 __global__ void do_test_pair_density_sorted(struct cell_cuda *ci, struct cell_cuda *cj, const int sid, const int swap) {
 
   dopair_density_sorted(ci, cj, sid, swap);
-  //dopair_density_sorted(cj, ci, sid, -swap);
+  dopair_density_sorted(cj, ci, sid, -swap);
 
 }
 
@@ -1140,7 +1140,7 @@ void copy_to_device_array(struct cell *ci, int offset) {
 
   p_data = c_parts.x_x + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.x_x, sizeof(double) * num_part, cudaMemcpyHostToDevice));
-
+  
   p_data = c_parts.x_y + offset;
   cudaErrCheck(cudaMemcpy(p_data, h_p.x_y, sizeof(double) * num_part, cudaMemcpyHostToDevice));
 
@@ -1226,7 +1226,7 @@ void copy_from_device_array(struct particle_arrays *h_p, int offset, size_t num_
 
   p_data = c_parts.x_x + offset;
   cudaErrCheck(cudaMemcpy(h_p->x_x, p_data, sizeof(double) * num_part, cudaMemcpyDeviceToHost));
-
+  
   p_data = c_parts.x_y + offset;
   cudaErrCheck(cudaMemcpy(h_p->x_y, p_data, sizeof(double) * num_part, cudaMemcpyDeviceToHost));
 
@@ -1349,46 +1349,44 @@ void copy_to_host(struct cell_cuda *cuda_c, struct cell *c) {
   for (int i=0; i<N; i++) {
     struct part *p = &c->parts[i];
 
-    p->id = h_cuda_part.id[p_i];
-    p->h = h_cuda_part.h[p_i];
-    p->rho = h_cuda_part.rho[p_i];
-    p->entropy = h_cuda_part.entropy[p_i];
-    p->entropy_dt = h_cuda_part.entropy_dt[p_i];
+    p->id = h_cuda_part.id[i];
+    p->h = h_cuda_part.h[i];
+    p->rho = h_cuda_part.rho[i];
+    p->entropy = h_cuda_part.entropy[i];
+    p->entropy_dt = h_cuda_part.entropy_dt[i];
     //density
-    p->density.wcount = h_cuda_part.wcount[p_i];
-    p->density.wcount_dh = h_cuda_part.wcount_dh[p_i];
-    p->density.rho_dh = h_cuda_part.rho_dh[p_i];
-    p->density.div_v = h_cuda_part.div_v[p_i];
+    p->density.wcount = h_cuda_part.wcount[i];
+    p->density.wcount_dh = h_cuda_part.wcount_dh[i];
+    p->density.rho_dh = h_cuda_part.rho_dh[i];
+    p->density.div_v = h_cuda_part.div_v[i];
 
     //force
-    p->force.balsara = h_cuda_part.balsara[p_i];
-    p->force.f = h_cuda_part.f[p_i];
-    p->force.P_over_rho2 = h_cuda_part.P_over_rho2[p_i];
-    p->force.soundspeed = h_cuda_part.soundspeed[p_i];
-    p->force.v_sig = h_cuda_part.v_sig[p_i];
-    p->force.h_dt = h_cuda_part.h_dt[p_i];
+    p->force.balsara = h_cuda_part.balsara[i];
+    p->force.f = h_cuda_part.f[i];
+    p->force.P_over_rho2 = h_cuda_part.P_over_rho2[i];
+    p->force.soundspeed = h_cuda_part.soundspeed[i];
+    p->force.v_sig = h_cuda_part.v_sig[i];
+    p->force.h_dt = h_cuda_part.h_dt[i];
     
-    p->x[0] = h_cuda_part.x_x[p_i];
-    p->v[0] = h_cuda_part.v[p_i].x;
-    p->a_hydro[0] = h_cuda_part.a_hydro[p_i].x;
-    p->density.rot_v[0] = h_cuda_part.rot_v[p_i].x;
+    p->x[0] = h_cuda_part.x_x[i];
+    p->v[0] = h_cuda_part.v[i].x;
+    p->a_hydro[0] = h_cuda_part.a_hydro[i].x;
+    p->density.rot_v[0] = h_cuda_part.rot_v[i].x;
 #if DIM > 1
-    p->x[1] = h_cuda_part.x_y[p_i];
-    p->v[1] = h_cuda_part.v[p_i].y;
-    p->a_hydro[1] = h_cuda_part.a_hydro[p_i].y;
-    p->density.rot_v[1] = h_cuda_part.rot_v[p_i].y;
+    p->x[1] = h_cuda_part.x_y[i];
+    p->v[1] = h_cuda_part.v[i].y;
+    p->a_hydro[1] = h_cuda_part.a_hydro[i].y;
+    p->density.rot_v[1] = h_cuda_part.rot_v[i].y;
 #if DIM > 2
-    p->x[2] = h_cuda_part.x_z[p_i];
-    p->v[2] = h_cuda_part.v[p_i].z;
-    p->a_hydro[2] = h_cuda_part.a_hydro[p_i].z;
-    p->density.rot_v[2] = h_cuda_part.rot_v[p_i].z;
+    p->x[2] = h_cuda_part.x_z[i];
+    p->v[2] = h_cuda_part.v[i].z;
+    p->a_hydro[2] = h_cuda_part.a_hydro[i].z;
+    p->density.rot_v[2] = h_cuda_part.rot_v[i].z;
 #endif
 #endif
 
     for (int j=0; j<NBRE_DIR; j++)
       c->sort[j][i] = h_cuda_part.sort[j][i];
-
-    p_i++;
   }
 }
 
@@ -1504,6 +1502,11 @@ void zero_particle_fields(struct cell *c) {
     p->force.soundspeed = 0.f;
     p->force.v_sig = 0.f;
     p->force.h_dt = 0.f;
+
+  }
+  for(int i=0; i<NBRE_DIR; i++) {
+    free(c->sort[i]);
+    c->sort[i] = NULL;
   }
 }
 
@@ -1675,26 +1678,27 @@ int main(int argc, char *argv[]) {
   struct cell_cuda *cuda_ci;
   struct cell_cuda *cuda_cj;
   
+  int ind = 0;
   //  time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
-    zero_particle_fields(ci);
-    zero_particle_fields(cj);
+    //zero_particle_fields(ci);
+    //zero_particle_fields(cj);
 
     do_sort(ci);
     do_sort(cj);
-    
+
     cuda_ci = copy_from_host(ci, 0);
     cuda_cj = copy_from_host(cj, ci->count);
     //exit(1);
     //tic = getticks();
 
     /* Run the test */
+    
     cudaEventRecord(gpu_start,stream);
     //do_test_pair_density<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj);
     do_test_pair_density_sorted<<<1,CUDA_THREADS>>>(cuda_ci, cuda_cj, 0, 1);
     cudaEventRecord(gpu_stop,0);
-    printf("WARNING: one one side\n");
     cudaErrCheck( cudaPeekAtLastError() );
     cudaErrCheck( cudaDeviceSynchronize() );
     cudaEventSynchronize(gpu_stop);
