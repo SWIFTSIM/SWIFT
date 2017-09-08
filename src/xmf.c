@@ -205,6 +205,7 @@ void xmf_write_groupfooter(FILE* xmfFile, enum part_type ptype) {
  */
 int xmf_precision(enum IO_DATA_TYPE type) {
   switch (type) {
+    case INT:
     case FLOAT:
       return 4;
       break;
@@ -233,6 +234,7 @@ const char* xmf_type(enum IO_DATA_TYPE type) {
     case DOUBLE:
       return "Float";
       break;
+    case INT:
     case ULONGLONG:
     case LONGLONG:
       return "Int";

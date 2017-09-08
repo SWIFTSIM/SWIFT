@@ -19,10 +19,13 @@
 #ifndef SWIFT_HYDRO_IO_H
 #define SWIFT_HYDRO_IO_H
 
-#include "./const.h"
+/* Config parameters. */
+#include "../config.h"
 
 /* Import the right functions */
-#if defined(MINIMAL_SPH)
+#if defined(DEBUG_INTERACTIONS_SPH)
+#include "./hydro/DebugInteractions/hydro_io.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_io.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_io.h"

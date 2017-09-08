@@ -4762,14 +4762,14 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_clean(struct engine *e) {
 
-#ifdef WITH_VECTORIZATION
   for (int i = 0; i < e->nr_threads; ++i) {
+#ifdef WITH_VECTORIZATION
     cache_clean(&e->runners[i].ci_cache);
     cache_clean(&e->runners[i].cj_cache);
+#endif
     gravity_cache_clean(&e->runners[i].ci_gravity_cache);
     gravity_cache_clean(&e->runners[i].cj_gravity_cache);
   }
-#endif
   free(e->runners);
   free(e->snapshotUnits);
   free(e->links);
