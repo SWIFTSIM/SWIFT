@@ -381,15 +381,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
-
   TIMER_TIC;
 
   const int count_j = cj->count;
@@ -445,42 +436,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
       }
-
     } /* loop over the parts in cj. */
-
-  } /* loop over the parts in ci. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
+  }   /* loop over the parts in ci. */
 
   TIMER_TOC(timer_dopair_subset_naive);
 }
@@ -500,16 +459,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
                    struct cell *restrict cj) {
 
-  struct engine *e = r->e;
-
-#ifdef WITH_OLD_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
+  const struct engine *e = r->e;
 
   TIMER_TIC;
 
@@ -579,36 +529,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-          /* Add this interaction to the queue. */
-          r2q[icount] = r2;
-          dxq[3 * icount + 0] = dx[0];
-          dxq[3 * icount + 1] = dx[1];
-          dxq[3 * icount + 2] = dx[2];
-          hiq[icount] = hi;
-          hjq[icount] = pj->h;
-          piq[icount] = pi;
-          pjq[icount] = pj;
-          icount += 1;
-
-          /* Flush? */
-          if (icount == VEC_SIZE) {
-            IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-            icount = 0;
-          }
-
-#endif
         }
-
       } /* loop over the parts in cj. */
-
-    } /* loop over the parts in ci. */
-
+    }   /* loop over the parts in ci. */
   }
 
   /* Parts are on the right. */
@@ -644,43 +568,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-          /* Add this interaction to the queue. */
-          r2q[icount] = r2;
-          dxq[3 * icount + 0] = dx[0];
-          dxq[3 * icount + 1] = dx[1];
-          dxq[3 * icount + 2] = dx[2];
-          hiq[icount] = hi;
-          hjq[icount] = pj->h;
-          piq[icount] = pi;
-          pjq[icount] = pj;
-          icount += 1;
-
-          /* Flush? */
-          if (icount == VEC_SIZE) {
-            IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-            icount = 0;
-          }
-
-#endif
         }
-
       } /* loop over the parts in cj. */
-
-    } /* loop over the parts in ci. */
+    }   /* loop over the parts in ci. */
   }
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
 
   TIMER_TOC(timer_dopair_subset);
 }
