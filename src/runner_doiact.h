@@ -590,15 +590,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount = 0;
-  float r2q[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-#endif
-
   TIMER_TIC;
 
   const int count_i = ci->count;
@@ -630,47 +621,10 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.0f && r2 < hig2) {
 
-/* if(pi->id == 142801) */
-/*   message("SELF_SUBSET interaction with pj->id=%lld hi=%e, hig2=%e r2=%e
- * g2=%e", */
-/* 	  pj->id, hi, hig2, r2, kernel_gamma2); */
-
-#ifndef WITH_OLD_VECTORIZATION
-
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
-
-#else
-
-        /* Add this interaction to the queue. */
-        r2q[icount] = r2;
-        dxq[3 * icount + 0] = dx[0];
-        dxq[3 * icount + 1] = dx[1];
-        dxq[3 * icount + 2] = dx[2];
-        hiq[icount] = hi;
-        hjq[icount] = pj->h;
-        piq[icount] = pi;
-        pjq[icount] = pj;
-        icount += 1;
-
-        /* Flush? */
-        if (icount == VEC_SIZE) {
-          IACT_NONSYM_VEC(r2q, dxq, hiq, hjq, piq, pjq);
-          icount = 0;
-        }
-
-#endif
       }
-
     } /* loop over the parts in cj. */
-
-  } /* loop over the parts in ci. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount > 0)
-    for (int k = 0; k < icount; k++)
-      IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
-#endif
+  }   /* loop over the parts in ci. */
 
   TIMER_TOC(timer_doself_subset);
 }
@@ -1109,21 +1063,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount1 = 0;
-  float r2q1[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq1[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq1[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq1[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq1[VEC_SIZE], *pjq1[VEC_SIZE];
-  int icount2 = 0;
-  float r2q2[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq2[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq2[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq2[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
-#endif
-
   TIMER_TIC;
 
   if (!cell_is_active(c, e)) return;
@@ -1186,34 +1125,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-
-#else
-
-          /* Add this interaction to the queue. */
-          r2q1[icount1] = r2;
-          dxq1[3 * icount1 + 0] = dx[0];
-          dxq1[3 * icount1 + 1] = dx[1];
-          dxq1[3 * icount1 + 2] = dx[2];
-          hiq1[icount1] = hj;
-          hjq1[icount1] = hi;
-          piq1[icount1] = pj;
-          pjq1[icount1] = pi;
-          icount1 += 1;
-
-          /* Flush? */
-          if (icount1 == VEC_SIZE) {
-            IACT_NONSYM_VEC(r2q1, dxq1, hiq1, hjq1, piq1, pjq1);
-            icount1 = 0;
-          }
-
-#endif
         }
-
       } /* loop over all other particles. */
-
     }
 
     /* Otherwise, interact with all candidates. */
@@ -1250,8 +1164,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || doj) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           /* Which parts need to be updated? */
           if (r2 < hig2 && doj)
             IACT(r2, dx, hi, hj, pi, pj);
@@ -1263,85 +1175,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             dx[2] = -dx[2];
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
           }
-
-#else
-
-          /* Does pj need to be updated too? */
-          if (r2 < hig2 && doj) {
-
-            /* Add this interaction to the symmetric queue. */
-            r2q2[icount2] = r2;
-            dxq2[3 * icount2 + 0] = dx[0];
-            dxq2[3 * icount2 + 1] = dx[1];
-            dxq2[3 * icount2 + 2] = dx[2];
-            hiq2[icount2] = hi;
-            hjq2[icount2] = hj;
-            piq2[icount2] = pi;
-            pjq2[icount2] = pj;
-            icount2 += 1;
-
-            /* Flush? */
-            if (icount2 == VEC_SIZE) {
-              IACT_VEC(r2q2, dxq2, hiq2, hjq2, piq2, pjq2);
-              icount2 = 0;
-            }
-
-          } else if (!doj) {
-
-            /* Add this interaction to the non-symmetric queue. */
-            r2q1[icount1] = r2;
-            dxq1[3 * icount1 + 0] = dx[0];
-            dxq1[3 * icount1 + 1] = dx[1];
-            dxq1[3 * icount1 + 2] = dx[2];
-            hiq1[icount1] = hi;
-            hjq1[icount1] = hj;
-            piq1[icount1] = pi;
-            pjq1[icount1] = pj;
-            icount1 += 1;
-
-            /* Flush? */
-            if (icount1 == VEC_SIZE) {
-              IACT_NONSYM_VEC(r2q1, dxq1, hiq1, hjq1, piq1, pjq1);
-              icount1 = 0;
-            }
-
-          } else {
-
-            /* Add this interaction to the non-symmetric queue. */
-            r2q1[icount1] = r2;
-            dxq1[3 * icount1 + 0] = -dx[0];
-            dxq1[3 * icount1 + 1] = -dx[1];
-            dxq1[3 * icount1 + 2] = -dx[2];
-            hiq1[icount1] = hj;
-            hjq1[icount1] = hi;
-            piq1[icount1] = pj;
-            pjq1[icount1] = pi;
-            icount1 += 1;
-
-            /* Flush? */
-            if (icount1 == VEC_SIZE) {
-              IACT_NONSYM_VEC(r2q1, dxq1, hiq1, hjq1, piq1, pjq1);
-              icount1 = 0;
-            }
-          }
-
-#endif
         }
-
       } /* loop over all other particles. */
     }
-
   } /* loop over all particles. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount1 > 0)
-    for (int k = 0; k < icount1; k++)
-      IACT_NONSYM(r2q1[k], &dxq1[3 * k], hiq1[k], hjq1[k], piq1[k], pjq1[k]);
-  if (icount2 > 0)
-    for (int k = 0; k < icount2; k++)
-      IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
-#endif
 
   free(indt);
 
@@ -1358,25 +1195,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-#ifdef WITH_OLD_VECTORIZATION
-  int icount1 = 0;
-  float r2q1[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq1[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq1[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq1[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq1[VEC_SIZE], *pjq1[VEC_SIZE];
-  int icount2 = 0;
-  float r2q2[VEC_SIZE] __attribute__((aligned(16)));
-  float hiq2[VEC_SIZE] __attribute__((aligned(16)));
-  float hjq2[VEC_SIZE] __attribute__((aligned(16)));
-  float dxq2[3 * VEC_SIZE] __attribute__((aligned(16)));
-  struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
-#endif
-
   TIMER_TIC;
 
   if (!cell_is_active(c, e)) return;
-
   if (!cell_are_part_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
@@ -1435,30 +1256,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
-
-#else
-
-          /* Add this interaction to the queue. */
-          r2q1[icount1] = r2;
-          dxq1[3 * icount1 + 0] = dx[0];
-          dxq1[3 * icount1 + 1] = dx[1];
-          dxq1[3 * icount1 + 2] = dx[2];
-          hiq1[icount1] = hj;
-          hjq1[icount1] = hi;
-          piq1[icount1] = pj;
-          pjq1[icount1] = pi;
-          icount1 += 1;
-
-          /* Flush? */
-          if (icount1 == VEC_SIZE) {
-            IACT_NONSYM_VEC(r2q1, dxq1, hiq1, hjq1, piq1, pjq1);
-            icount1 = 0;
-          }
-
-#endif
         }
       } /* loop over all other particles. */
     }
@@ -1495,72 +1293,15 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef WITH_OLD_VECTORIZATION
-
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e))
             IACT(r2, dx, hi, hj, pi, pj);
           else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-#else
-
-          /* Does pj need to be updated too? */
-          if (part_is_active(pj, e)) {
-
-            /* Add this interaction to the symmetric queue. */
-            r2q2[icount2] = r2;
-            dxq2[3 * icount2 + 0] = dx[0];
-            dxq2[3 * icount2 + 1] = dx[1];
-            dxq2[3 * icount2 + 2] = dx[2];
-            hiq2[icount2] = hi;
-            hjq2[icount2] = hj;
-            piq2[icount2] = pi;
-            pjq2[icount2] = pj;
-            icount2 += 1;
-
-            /* Flush? */
-            if (icount2 == VEC_SIZE) {
-              IACT_VEC(r2q2, dxq2, hiq2, hjq2, piq2, pjq2);
-              icount2 = 0;
-            }
-
-          } else {
-
-            /* Add this interaction to the non-symmetric queue. */
-            r2q1[icount1] = r2;
-            dxq1[3 * icount1 + 0] = dx[0];
-            dxq1[3 * icount1 + 1] = dx[1];
-            dxq1[3 * icount1 + 2] = dx[2];
-            hiq1[icount1] = hi;
-            hjq1[icount1] = hj;
-            piq1[icount1] = pi;
-            pjq1[icount1] = pj;
-            icount1 += 1;
-
-            /* Flush? */
-            if (icount1 == VEC_SIZE) {
-              IACT_NONSYM_VEC(r2q1, dxq1, hiq1, hjq1, piq1, pjq1);
-              icount1 = 0;
-            }
-          }
-
-#endif
         }
-
       } /* loop over all other particles. */
     }
-
   } /* loop over all particles. */
-
-#ifdef WITH_OLD_VECTORIZATION
-  /* Pick up any leftovers. */
-  if (icount1 > 0)
-    for (int k = 0; k < icount1; k++)
-      IACT_NONSYM(r2q1[k], &dxq1[3 * k], hiq1[k], hjq1[k], piq1[k], pjq1[k]);
-  if (icount2 > 0)
-    for (int k = 0; k < icount2; k++)
-      IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
-#endif
 
   free(indt);
 
