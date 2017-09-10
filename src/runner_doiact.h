@@ -945,8 +945,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   if (cell_is_active(ci, e)) {
 
-    int last_pj = count_j - 1;
-
     /* Loop over the parts in ci until nothing is within range in cj.
      * We start from the centre and move outwards. */
     for (int pid = count_i - 1; pid >= 0; pid--) {
@@ -964,6 +962,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (di < dj_min) continue;
 
       /* Where do we have to stop when looping over cell j? */
+      int last_pj = count_j - 1;
       while (sort_j[last_pj].d > di && last_pj > 0) last_pj--;
 
       last_pj += 1;
@@ -1000,8 +999,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   if (cell_is_active(cj, e)) {
 
-    int first_pi = 0;
-
     /* Loop over the parts in cj until nothing is within range in ci.
      * We start from the centre and move outwards. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -1018,6 +1015,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (dj > di_max - rshift) continue;
 
       /* Where do we have to stop when looping over cell i? */
+      int first_pi = 0;
       while (sort_i[first_pi].d - rshift < dj && first_pi < count_i - 1)
         first_pi++;
 
