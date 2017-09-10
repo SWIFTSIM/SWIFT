@@ -503,33 +503,33 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
-      double pix[3];
-      for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
-
+      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const float di = hi * kernel_gamma + dxj + pix[0] * runner_shift[sid][0] +
-                       pix[1] * runner_shift[sid][1] +
-                       pix[2] * runner_shift[sid][2];
+      const float di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+                       piy * runner_shift[sid][1] +
+                       piz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const float pjx = pj->x[0] - ci->loc[0];
+        const float pjy = pj->x[1] - ci->loc[1];
+        const float pjz = pj->x[2] - ci->loc[2];
 
         /* Compute the pairwise distance. */
-        float r2 = 0.0f;
-        float dx[3];
-        for (int k = 0; k < 3; k++) {
-          dx[k] = pix[k] - pj->x[k];
-          r2 += dx[k] * dx[k];
-        }
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -543,32 +543,33 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
-      double pix[3];
-      for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
+      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
       const float di =
-          -hi * kernel_gamma - dxj + pix[0] * runner_shift[sid][0] +
-          pix[1] * runner_shift[sid][1] + pix[2] * runner_shift[sid][2];
+          -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+          piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const float pjx = pj->x[0] - ci->loc[0];
+        const float pjy = pj->x[1] - ci->loc[1];
+        const float pjz = pj->x[2] - ci->loc[2];
 
         /* Compute the pairwise distance. */
-        float r2 = 0.0f;
-        float dx[3];
-        for (int k = 0; k < 3; k++) {
-          dx[k] = pix[k] - pj->x[k];
-          r2 += dx[k] * dx[k];
-        }
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
