@@ -503,12 +503,12 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
-      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
-      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
-      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
+      const double pix = pi->x[0] - (shift[0]);
+      const double piy = pi->x[1] - (shift[1]);
+      const double piz = pi->x[2] - (shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const float di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
                        piy * runner_shift[sid][1] +
                        piz * runner_shift[sid][2];
 
@@ -518,9 +518,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
-        const float pjx = pj->x[0] - ci->loc[0];
-        const float pjy = pj->x[1] - ci->loc[1];
-        const float pjz = pj->x[2] - ci->loc[2];
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
 
         /* Compute the pairwise distance. */
         float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
@@ -543,12 +543,12 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
-      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
-      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
-      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
+      const double pix = pi->x[0] - (shift[0]);
+      const double piy = pi->x[1] - (shift[1]);
+      const double piz = pi->x[2] - (shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const float di =
+      const double di =
           -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
           piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
@@ -558,9 +558,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
-        const float pjx = pj->x[0] - ci->loc[0];
-        const float pjy = pj->x[1] - ci->loc[1];
-        const float pjz = pj->x[2] - ci->loc[2];
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
 
         /* Compute the pairwise distance. */
         float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
@@ -590,6 +590,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
  */
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
+
+  const struct engine *e = r->e;
 
   TIMER_TIC;
 
