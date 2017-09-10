@@ -155,12 +155,12 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
+    const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const int pi_active = part_is_active(pi, e);
-    const double pix[3] = {pi->x[0] - ci->loc[0] - shift[0],
-                           pi->x[1] - ci->loc[1] - shift[1],
-                           pi->x[2] - ci->loc[2] - shift[2]};
+    const float pix[3] = {pi->x[0] - (ci->loc[0] + shift[0]),
+                          pi->x[1] - (ci->loc[1] + shift[1]),
+                          pi->x[2] - (ci->loc[2] + shift[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -172,8 +172,8 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
-      const double pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
-                             pj->x[2] - ci->loc[2]};
+      const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+                            pj->x[2] - ci->loc[2]};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -239,25 +239,25 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
+    const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const int pi_active = part_is_active(pi, e);
-    const double pix[3] = {pi->x[0] - ci->loc[0] - shift[0],
-                           pi->x[1] - ci->loc[1] - shift[1],
-                           pi->x[2] - ci->loc[2] - shift[2]};
+    const float pix[3] = {pi->x[0] - (ci->loc[0] + shift[0]),
+                          pi->x[1] - (ci->loc[1] + shift[1]),
+                          pi->x[2] - (ci->loc[2] + shift[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      const int pj_active = part_is_active(pj, e);
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
-      const double pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
-                             pj->x[2] - ci->loc[2]};
+      const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+                            pj->x[2] - ci->loc[2]};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -599,10 +599,15 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts[ind[pid]];
-    const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
+    struct part *pi = &parts[ind[pid]];
+    const float pix[3] = {pi->x[0] - ci->loc[0], pi->x[1] - ci->loc[1],
+                          pi->x[2] - ci->loc[2]};
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
+#endif
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_i; pjd++) {
@@ -611,15 +616,13 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       struct part *restrict pj = &parts_j[pjd];
 
       /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
-      for (int k = 0; k < 3; k++) {
-        dx[k] = pix[k] - pj->x[k];
-        r2 += dx[k] * dx[k];
-      }
+      const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+                            pj->x[2] - ci->loc[2]};
+      float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 > 0.0f && r2 < hig2) {
+      if (r2 > 0.f && r2 < hig2) {
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
       }
@@ -719,9 +722,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
-      const double pix = pi->x[0] - ci->loc[0] - shift[0];
-      const double piy = pi->x[1] - ci->loc[1] - shift[1];
-      const double piz = pi->x[2] - ci->loc[2] - shift[2];
+      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
@@ -783,9 +786,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
         const float hi = pi->h;
-        const float pix = pi->x[0] - ci->loc[0] - shift[0];
-        const float piy = pi->x[1] - ci->loc[1] - shift[1];
-        const float piz = pi->x[2] - ci->loc[2] - shift[2];
+        const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+        const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+        const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
         float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
@@ -968,9 +971,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
-      const float pix = pi->x[0] - ci->loc[0] - shift[0];
-      const float piy = pi->x[1] - ci->loc[1] - shift[1];
-      const float piz = pi->x[2] - ci->loc[2] - shift[2];
+      const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+      const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+      const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
 
       /* Now loop over the relevant particles in cj */
       for (int pjd = 0; pjd <= last_pj; ++pjd) {
@@ -1034,9 +1037,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         struct part *pi = &parts_i[sort_i[pid].i];
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
-        const float pix = pi->x[0] - ci->loc[0] - shift[0];
-        const float piy = pi->x[1] - ci->loc[1] - shift[1];
-        const float piz = pi->x[2] - ci->loc[2] - shift[2];
+        const float pix = pi->x[0] - (ci->loc[0] + shift[0]);
+        const float piy = pi->x[1] - (ci->loc[1] + shift[1]);
+        const float piz = pi->x[2] - (ci->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
         float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
