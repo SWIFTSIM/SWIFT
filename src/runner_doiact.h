@@ -32,14 +32,8 @@
 #define _DOPAIR1(f) PASTE(runner_dopair1, f)
 #define DOPAIR1 _DOPAIR1(FUNCTION)
 
-#define _DOPAIR1_old(f) PASTE(runner_dopair1old, f)
-#define DOPAIR1_old _DOPAIR1_old(FUNCTION)
-
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
-
-#define _DOPAIR2_old(f) PASTE(runner_dopair2old, f)
-#define DOPAIR2_old _DOPAIR2_old(FUNCTION)
 
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset, f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
@@ -128,7 +122,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-// error("Don't use in actual runs ! Slow code !");
+  error("Don't use in actual runs ! Slow code !");
 #endif
 
   TIMER_TIC;
@@ -212,7 +206,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
 
 #ifndef SWIFT_DEBUG_CHECKS
-// error("Don't use in actual runs ! Slow code !");
+  error("Don't use in actual runs ! Slow code !");
 #endif
 
   TIMER_TIC;
@@ -380,6 +374,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+
+#ifndef SWIFT_DEBUG_CHECKS
+  error("Don't use in actual runs ! Slow code !");
+#endif
 
   TIMER_TIC;
 
@@ -601,8 +599,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts[ind[pid]];
-    const float pix[3] = {pi->x[0] - cj->loc[0], pi->x[1] - cj->loc[1],
-                          pi->x[2] - cj->loc[2]};
+    const float pix[3] = {pi->x[0] - ci->loc[0], pi->x[1] - ci->loc[1],
+                          pi->x[2] - ci->loc[2]};
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
@@ -617,8 +615,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       struct part *restrict pj = &parts_j[pjd];
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - cj->loc[0], pj->x[1] - cj->loc[1],
-                            pj->x[2] - cj->loc[2]};
+      const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+                            pj->x[2] - ci->loc[2]};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
