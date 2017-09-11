@@ -587,7 +587,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   const struct engine *e = r->e;
+#endif
 
   TIMER_TIC;
 
