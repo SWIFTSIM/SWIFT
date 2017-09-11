@@ -3337,6 +3337,9 @@ void engine_print_stats(struct engine *e) {
   struct statistics global_stats = stats;
 #endif
 
+  /* Finalize operations */
+  stats_finalize(&stats);
+
   /* Print info */
   if (e->nodeID == 0)
     stats_print_to_file(e->file_stats, &global_stats, e->time);
@@ -4330,7 +4333,7 @@ void engine_init(struct engine *e, struct space *s,
   e->file_timesteps = NULL;
   e->deltaTimeStatistics =
       parser_get_param_double(params, "Statistics:delta_time");
-  e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
+  e->timeLastStatistics = 0;
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
@@ -4498,10 +4501,10 @@ void engine_init(struct engine *e, struct space *s,
     e->file_stats = fopen(energyfileName, "w");
     fprintf(e->file_stats,
             "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-            "%14s %14s %14s\n",
+            "%14s %14s %14s %14s %14s %14s\n",
             "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
             "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
-            "ang_y", "ang_z");
+            "ang_y", "ang_z", "com_x", "com_y", "com_z");
     fflush(e->file_stats);
 
     char timestepsfileName[200] = "";
