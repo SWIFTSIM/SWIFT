@@ -74,6 +74,9 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->ang_mom[0] += b->ang_mom[0];
   a->ang_mom[1] += b->ang_mom[1];
   a->ang_mom[2] += b->ang_mom[2];
+  a->centre_of_mass[0] += b->centre_of_mass[0];
+  a->centre_of_mass[1] += b->centre_of_mass[1];
+  a->centre_of_mass[2] += b->centre_of_mass[2];
 }
 
 /**
@@ -129,8 +132,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Get useful time variables */
     const integertime_t ti_begin =
         get_integer_time_begin(ti_current, p->time_bin);
-    const integertime_t ti_step = get_integer_timestep(p->time_bin);
-    const float dt = (ti_current - (ti_begin + ti_step / 2)) * timeBase;
+    const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
+    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
 
     /* Get the total acceleration */
     float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
@@ -147,9 +150,16 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     const float m = hydro_get_mass(p);
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
+    const float rho = hydro_get_density(p);
+    const float u_int = hydro_get_internal_energy(p);
 
     /* Collect mass */
     stats.mass += m;
+
+    /* Collect centre of mass */
+    stats.centre_of_mass[0] += m * x[0];
+    stats.centre_of_mass[1] += m * x[1];
+    stats.centre_of_mass[2] += m * x[2];
 
     /* Collect momentum */
     stats.mom[0] += m * v[0];
@@ -163,7 +173,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_int += m * hydro_get_internal_energy(p);
+    stats.E_int += m * u_int;
     stats.E_rad += cooling_get_radiated_energy(xp);
     if (gp != NULL) {
       stats.E_pot_self += m * gravity_get_potential(gp);
@@ -172,7 +182,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     }
 
     /* Collect entropy */
-    stats.entropy += m * hydro_get_entropy(p);
+    stats.entropy += m * gas_entropy_from_internal_energy(rho, u_int);
   }
 
   /* Now write back to memory */
@@ -219,8 +229,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Get useful variables */
     const integertime_t ti_begin =
         get_integer_time_begin(ti_current, gp->time_bin);
-    const integertime_t ti_step = get_integer_timestep(gp->time_bin);
-    const float dt = (ti_current - (ti_begin + ti_step / 2)) * timeBase;
+    const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
+    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
 
     /* Extrapolate velocities */
     const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,
@@ -232,6 +242,11 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 
     /* Collect mass */
     stats.mass += m;
+
+    /* Collect centre of mass */
+    stats.centre_of_mass[0] += m * x[0];
+    stats.centre_of_mass[1] += m * x[1];
+    stats.centre_of_mass[2] += m * x[2];
 
     /* Collect momentum */
     stats.mom[0] += m * v[0];
@@ -280,6 +295,18 @@ void stats_collect(const struct space *s, struct statistics *stats) {
 }
 
 /**
+ * @brief Apply final opetations on the #stats.
+ *
+ * @param stats The #stats to work on.
+ */
+void stats_finalize(struct statistics *stats) {
+
+  stats->centre_of_mass[0] /= stats->mass;
+  stats->centre_of_mass[1] /= stats->mass;
+  stats->centre_of_mass[2] /= stats->mass;
+}
+
+/**
  * @brief Prints the content of a #statistics aggregator to a file
  *
  * @param file File to write to.
@@ -294,11 +321,12 @@ void stats_print_to_file(FILE *file, const struct statistics *stats,
 
   fprintf(file,
           " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-          "%14e %14e %14e\n",
+          "%14e %14e %14e %14e %14e %14e\n",
           time, stats->mass, E_tot, stats->E_kin, stats->E_int, E_pot,
           stats->E_pot_self, stats->E_pot_ext, stats->E_rad, stats->entropy,
           stats->mom[0], stats->mom[1], stats->mom[2], stats->ang_mom[0],
-          stats->ang_mom[1], stats->ang_mom[2]);
+          stats->ang_mom[1], stats->ang_mom[2], stats->centre_of_mass[0],
+          stats->centre_of_mass[1], stats->centre_of_mass[2]);
   fflush(file);
 }
 

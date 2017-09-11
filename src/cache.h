@@ -65,6 +65,21 @@ struct cache {
   /* Maximum index into neighbouring cell for particles that are in range. */
   int *restrict max_index SWIFT_CACHE_ALIGN;
 
+  /* Particle density. */
+  float *restrict rho SWIFT_CACHE_ALIGN;
+
+  /* Particle smoothing length gradient. */
+  float *restrict grad_h SWIFT_CACHE_ALIGN;
+
+  /* Pressure over density squared. */
+  float *restrict pOrho2 SWIFT_CACHE_ALIGN;
+
+  /* Balsara switch. */
+  float *restrict balsara SWIFT_CACHE_ALIGN;
+
+  /* Particle sound speed. */
+  float *restrict soundspeed SWIFT_CACHE_ALIGN;
+
   /* Cache size. */
   int count;
 };
@@ -127,6 +142,11 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->vz);
     free(c->h);
     free(c->max_index);
+    free(c->rho);
+    free(c->grad_h);
+    free(c->pOrho2);
+    free(c->balsara);
+    free(c->soundspeed);
   }
 
   error += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
@@ -139,6 +159,15 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
   error += posix_memalign((void **)&c->h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error += posix_memalign((void **)&c->max_index, SWIFT_CACHE_ALIGNMENT,
                           sizeIntBytes);
+  error += posix_memalign((void **)&c->rho, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->grad_h, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->pOrho2, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+  error +=
+      posix_memalign((void **)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -186,6 +215,68 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     vx[i] = parts[i].v[0];
     vy[i] = parts[i].v[1];
     vz[i] = parts[i].v[2];
+  }
+
+#endif
+}
+
+/**
+ * @brief Populate cache for force interactions by reading in the particles in
+ * unsorted order.
+ *
+ * @param ci The #cell.
+ * @param ci_cache The cache.
+ */
+__attribute__((always_inline)) INLINE void cache_read_force_particles(
+    const struct cell *restrict const ci,
+    struct cache *restrict const ci_cache) {
+
+#if defined(GADGET2_SPH)
+
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, rho, ci_cache->rho, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed,
+                            SWIFT_CACHE_ALIGNMENT);
+
+  const struct part *restrict parts = ci->parts;
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
+
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
+  for (int i = 0; i < ci->count; i++) {
+    x[i] = (float)(parts[i].x[0] - loc[0]);
+    y[i] = (float)(parts[i].x[1] - loc[1]);
+    z[i] = (float)(parts[i].x[2] - loc[2]);
+    h[i] = parts[i].h;
+
+    m[i] = parts[i].mass;
+    vx[i] = parts[i].v[0];
+    vy[i] = parts[i].v[1];
+    vz[i] = parts[i].v[2];
+
+    rho[i] = parts[i].rho;
+    grad_h[i] = parts[i].force.f;
+    pOrho2[i] = parts[i].force.P_over_rho2;
+    balsara[i] = parts[i].force.balsara;
+    soundspeed[i] = parts[i].force.soundspeed;
   }
 
 #endif
