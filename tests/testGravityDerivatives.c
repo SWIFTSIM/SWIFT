@@ -954,8 +954,8 @@ int main() {
     const double r_inv = 1. / sqrt(r2);
 
     /* Compute all derivatives */
-    struct potential_derivatives pot;
-    compute_potential_derivatives(dx, dy, dz, r2, r_inv, 0., 0., FLT_MAX, &pot);
+    struct potential_derivatives_M2L pot;
+    compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, 0., FLT_MAX, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;
