@@ -243,14 +243,12 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param di_max Maximal position on the axis that can interact in cell ci
  * @param dj_min Minimal position on the axis that can interact in cell ci
  * @param max_index_i array to hold the maximum distances of pi particles into
- * cell
- * cj
+ * #cell cj
  * @param max_index_j array to hold the maximum distances of pj particles into
- * cell
- * cj
+ * #cell cj
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
- * @param e The #engine.
+ * @param max_active_bin The largest time-bin active during this step.
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const struct cell *ci, const struct cell *cj,

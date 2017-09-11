@@ -128,6 +128,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
  * @param shift A shift to apply to all the particles.
+ * @param cell The cell the #gpart are in.
  */
 __attribute__((always_inline)) INLINE void gravity_cache_populate(
     struct gravity_cache *c, const struct gpart *restrict gparts, int gcount,
