@@ -290,7 +290,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const float first_di = sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
     /* Loop through particles in cell j until they are not in range of pi. */
-    while (temp <= cj->count && first_di > sort_j[temp].d)
+    while (temp < cj->count && first_di > sort_j[temp].d)
       temp++;
 
     max_index_i[first_pi] = temp;
@@ -302,7 +302,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     
       const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
 
-      while (temp <= cj->count && di > sort_j[temp].d)
+      while (temp < cj->count && di > sort_j[temp].d)
         temp++;
 
       max_index_i[i] = temp;
