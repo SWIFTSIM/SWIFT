@@ -670,8 +670,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       for (int i = 0; i < count; i++) {
 
         /* Get a direct pointer on the part. */
-        struct part *restrict p = &parts[pid[i]];
-        struct xpart *restrict xp = &xparts[pid[i]];
+        struct part *p = &parts[pid[i]];
+        struct xpart *xp = &xparts[pid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */

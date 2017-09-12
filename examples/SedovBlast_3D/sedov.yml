@@ -32,4 +32,5 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./sedov.hdf5          # The file to read
+  h_scaling:           3.33
 
