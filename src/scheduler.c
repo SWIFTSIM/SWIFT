@@ -649,18 +649,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                         ci->progeny[k]),
                       s);
         }
-      }
+      } /* Cell is split */
 
-      /* Otherwise, make sure the self task has a drift task */
-      else {
-
-        lock_lock(&ci->lock);
-
-        if (ci->drift_gpart == NULL)
-          ci->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-        lock_unlock_blind(&ci->lock);
-      }
     } /* Self interaction */
 
     /* Pair interaction? */
@@ -674,28 +664,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
         t->skip = 1;
         break;
-      }
-
-      /* Should this task be split-up? */
-      if (0 && ci->split && cj->split) {
-
-        // MATTHIEU: nothing here for now
-
-      } else {
-
-        /* Create the drift for ci. */
-        lock_lock(&ci->lock);
-        if (ci->drift_gpart == NULL && ci->nodeID == engine_rank)
-          ci->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-        lock_unlock_blind(&ci->lock);
-
-        /* Create the drift for cj. */
-        lock_lock(&cj->lock);
-        if (cj->drift_gpart == NULL && cj->nodeID == engine_rank)
-          cj->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, cj, NULL);
-        lock_unlock_blind(&cj->lock);
       }
     } /* pair interaction? */
   }   /* iterate over the current task. */
@@ -727,7 +695,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_top_level ||
                t->type == task_type_grav_ghost) {
-      // MATTHIEU: for the future
+      /* For future use */
     } else {
       error("Unexpected task sub-type");
     }
