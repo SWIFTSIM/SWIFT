@@ -931,7 +931,7 @@ int main() {
   clocks_set_cpufreq(cpufreq);
 
   /* Relative tolerance */
-  const double tol = 1e-4;
+  double tol = 1e-4;
 
   /* Get some randomness going */
   const int seed = time(NULL);
@@ -981,6 +981,8 @@ int main() {
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
+    tol *= 2.;
+
     /* 3rd order terms */
     test(pot.D_300, D_300(dx, dy, dz, r_inv), tol, min, "D_300");
     test(pot.D_030, D_030(dx, dy, dz, r_inv), tol, min, "D_030");
@@ -1014,6 +1016,8 @@ int main() {
 #endif
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+    tol *= 2.;
 
     /* 5th order terms */
     test(pot.D_500, D_500(dx, dy, dz, r_inv), tol, min, "D_500");
