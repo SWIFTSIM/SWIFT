@@ -505,57 +505,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
-  /* Fill the caches */
-  gravity_cache_populate(ci_cache, gparts_i, gcount_i, gcount_padded_i,
-                         loc_mean);
-  gravity_cache_populate(cj_cache, gparts_j, gcount_j, gcount_padded_j,
-                         loc_mean);
-
-  /* Ok... Here we go ! */
-
-  if (ci_active) {
-
-    /* Loop over all particles in ci... */
-    for (int pid = 0; pid < gcount_i; pid++) {
-
-      /* Skip inactive particles */
-      if (!gpart_is_active(&gparts_i[pid], e)) continue;
-
-      const float x_i = ci_cache->x[pid];
-      const float y_i = ci_cache->y[pid];
-      const float z_i = ci_cache->z[pid];
-
-      /* Some powers of the softening length */
-      const float h_i = ci_cache->epsilon[pid];
-      const float h2_i = h_i * h_i;
-      const float h_inv_i = 1.f / h_i;
-      const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
-
-      /* Local accumulators for the acceleration */
-      float a_x = 0.f, a_y = 0.f, a_z = 0.f;
-
-      /* Make the compiler understand we are in happy vectorization land */
-      swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-      swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
-      swift_assume_size(gcount_padded_j, VEC_SIZE);
-
-      /* Loop over every particle in the other cell. */
-      for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
-
-        /* Get info about j */
-        const float x_j = cj_cache->x[pjd];
-        const float y_j = cj_cache->y[pjd];
-        const float z_j = cj_cache->z[pjd];
-        const float mass_j = cj_cache->m[pjd];
-
-        /* Compute the pairwise (square) distance. */
-        const float dx = x_i - x_j;
-        const float dy = y_i - y_j;
-        const float dz = z_i - z_j;
-        const float r2 = dx * dx + dy * dy + dz * dz;
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we fit in cache */
   if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
