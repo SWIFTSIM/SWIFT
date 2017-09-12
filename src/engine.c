@@ -708,11 +708,11 @@ void engine_redistribute(struct engine *e) {
       size_t total = 0, g_total = 0, s_total = 0;
       size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
-        for (int s = 0; s < nr_nodes; s++) {
+        for (int n = 0; n < nr_nodes; n++) {
           total += counts[r];
           g_total += g_counts[r];
           s_total += s_counts[r];
-          if (p == s) {
+          if (p == n) {
             unmoved += counts[r];
             g_unmoved += g_counts[r];
             s_unmoved += s_counts[r];
@@ -2754,47 +2754,30 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the foreign cell is active, we want its ti_end values. */
           if (cell_is_active(ci, e)) scheduler_activate(s, ci->recv_ti);
 
-          /* Look for the local cell cj's send tasks. */
+          /* Is the foreign cell active and will need stuff from us? */
           if (cell_is_active(ci, e)) {
-            struct link *l = NULL;
-            for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_xv task.");
-            scheduler_activate(s, l->t);
+
+            struct link *l =
+                scheduler_activate_send(s, cj->send_xv, ci->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_part(l->t->ci, s);
 
+            /* If the local cell is also active, more stuff will be needed. */
             if (cell_is_active(cj, e)) {
-              struct link *l = NULL;
-              for (l = cj->send_rho;
-                   l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
-                ;
-              if (l == NULL) error("Missing link to send_rho task.");
-              scheduler_activate(s, l->t);
+              scheduler_activate_send(s, cj->send_rho, ci->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              for (l = cj->send_gradient;
-                   l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
-                ;
-              if (l == NULL) error("Missing link to send_gradient task.");
-              scheduler_activate(s, l->t);
+              scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
-          if (cell_is_active(cj, e)) {
-            struct link *l = NULL;
-            for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_ti task.");
-            scheduler_activate(s, l->t);
-          }
+          if (cell_is_active(cj, e))
+            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
         } else if (cj->nodeID != engine_rank) {
 
@@ -2812,48 +2795,31 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the foreign cell is active, we want its ti_end values. */
           if (cell_is_active(cj, e)) scheduler_activate(s, cj->recv_ti);
 
-          /* Look for the local cell ci's send tasks. */
+          /* Is the foreign cell active and will need stuff from us? */
           if (cell_is_active(cj, e)) {
-            struct link *l = NULL;
-            for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_xv task.");
-            scheduler_activate(s, l->t);
+
+            struct link *l =
+                scheduler_activate_send(s, ci->send_xv, cj->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_part(l->t->ci, s);
 
+            /* If the local cell is also active, more stuff will be needed. */
             if (cell_is_active(ci, e)) {
 
-              struct link *l = NULL;
-              for (l = ci->send_rho;
-                   l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
-                ;
-              if (l == NULL) error("Missing link to send_rho task.");
-              scheduler_activate(s, l->t);
+              scheduler_activate_send(s, ci->send_rho, cj->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              for (l = ci->send_gradient;
-                   l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
-                ;
-              if (l == NULL) error("Missing link to send_gradient task.");
-              scheduler_activate(s, l->t);
+              scheduler_activate_send(s, ci->send_gradient, cj->nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
-          if (cell_is_active(ci, e)) {
-            struct link *l = NULL;
-            for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_ti task.");
-            scheduler_activate(s, l->t);
-          }
+          if (cell_is_active(ci, e))
+            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
         }
 #endif
       }

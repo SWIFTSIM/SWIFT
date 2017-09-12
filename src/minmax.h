@@ -43,4 +43,32 @@
     _a > _b ? _a : _b;            \
   })
 
+/**
+ * @brief Minimum of three numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define min3(x, y, z)                        \
+  ({                                         \
+    const __typeof__(x) _x = (x);            \
+    const __typeof__(y) _y = (y);            \
+    const __typeof__(z) _z = (z);            \
+    const __typeof__(x) _temp = min(_x, _y); \
+    min(_temp, _z);                          \
+  })
+
+/**
+ * @brief Maximum of three numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define max3(x, y, z)                        \
+  ({                                         \
+    const __typeof__(x) _x = (x);            \
+    const __typeof__(y) _y = (y);            \
+    const __typeof__(z) _z = (z);            \
+    const __typeof__(x) _temp = max(_x, _y); \
+    max(_temp, _z);                          \
+  })
+
 #endif /* SWIFT_MINMAX_H */
