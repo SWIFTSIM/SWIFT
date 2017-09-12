@@ -35,6 +35,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
+#include "gravity_derivatives.h"
 #include "gravity_properties.h"
 #include "hydro.h"
 #include "hydro_properties.h"

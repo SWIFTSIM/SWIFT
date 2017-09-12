@@ -930,9 +930,6 @@ int main() {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  /* Choke on FP-exceptions */
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-
   /* Relative tolerance */
   const double tol = 1e-4;
 
