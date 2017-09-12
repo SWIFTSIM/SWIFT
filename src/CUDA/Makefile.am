@@ -31,7 +31,7 @@ libswiftCUDA_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 
 libswiftCUDA_la_SOURCES = $(SOURCES_CUDA)
 libswiftCUDA_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) $(CUDA_MYFLAGS) ../libswiftsim_cuda.la ../libswiftsim_mpicuda.la -I../
-libswiftCUDA_la_LIBADD = ../.libs/libswiftsim_cuda.la ../.libs/libswiftsim_mpicuda.la
+libswiftCUDA_la_LIBADD = ../.libs/libswiftsim_cuda.la ../.libs/libswiftsim_mpicuda.la -lcuda -lcudart
 libswiftCUDA_la_LDFLAGS = $(AM_LDFLAGS)
 
 libswiftdummy_la_SOURCES = dummy.c
