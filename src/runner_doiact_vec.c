@@ -243,14 +243,12 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param di_max Maximal position on the axis that can interact in cell ci
  * @param dj_min Minimal position on the axis that can interact in cell ci
  * @param max_index_i array to hold the maximum distances of pi particles into
- * cell
- * cj
+ * #cell cj
  * @param max_index_j array to hold the maximum distances of pj particles into
- * cell
- * cj
+ * #cell cj
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
- * @param e The #engine.
+ * @param max_active_bin The largest time-bin active during this step.
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const struct cell *ci, const struct cell *cj,
@@ -697,6 +695,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
         cell_cache->y[i] = piy.f[0];
         cell_cache->z[i] = piz.f[0];
         cell_cache->h[i] = 1.f;
+        cell_cache->rho[i] = 1.f;
+        cell_cache->grad_h[i] = 1.f;
+        cell_cache->pOrho2[i] = 1.f;
+        cell_cache->balsara[i] = 1.f;
+        cell_cache->soundspeed[i] = 1.f;
       }
     }
 
@@ -737,7 +740,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
       /* Combine all 3 masks and form integer mask. */
-      v_doi_mask.v = vec_and(v_doi_mask.v, v_doi_mask_self_check.v);
+      vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
       doi_mask = vec_form_int_mask(v_doi_mask);
 
       /* If there are any interactions perform them. */

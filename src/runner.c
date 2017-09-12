@@ -557,7 +557,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
   cell_drift_multipole(c, e);
 
   /* Reset the gravity acceleration tensors */
-  gravity_field_tensors_init(&c->multipole->pot);
+  gravity_field_tensors_init(&c->multipole->pot, e->ti_current);
 
   /* Recurse? */
   if (c->split) {
@@ -670,8 +670,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       for (int i = 0; i < count; i++) {
 
         /* Get a direct pointer on the part. */
-        struct part *restrict p = &parts[pid[i]];
-        struct xpart *restrict xp = &xparts[pid[i]];
+        struct part *p = &parts[pid[i]];
+        struct xpart *xp = &xparts[pid[i]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -903,7 +903,7 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_gpart(c, r->e);
+  cell_drift_gpart(c, r->e, 0);
 
   if (timer) TIMER_TOC(timer_drift_gpart);
 }
@@ -1472,17 +1472,19 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (e->policy & engine_policy_self_gravity) {
 
+          /* Let's add a self interaction to simplify the count */
+          gp->num_interacted++;
+
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          gp->num_interacted++;
           if (gp->num_interacted != (long long)e->s->nr_gparts)
             error(
-                "g-particle (id=%lld, type=%d) did not interact "
+                "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally "
                 "with all other gparts gp->num_interacted=%lld, "
                 "total_gparts=%zd",
-                gp->id_or_neg_offset, gp->type, gp->num_interacted,
-                e->s->nr_gparts);
+                gp->id_or_neg_offset, part_type_names[gp->type],
+                gp->num_interacted, e->s->nr_gparts);
         }
 #endif
       }
@@ -1900,10 +1902,6 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
-          else if (t->subtype == task_subtype_grav)
-            runner_dosub_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_external_grav)
-            runner_do_grav_external(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -1917,8 +1915,6 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
-          else if (t->subtype == task_subtype_grav)
-            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;

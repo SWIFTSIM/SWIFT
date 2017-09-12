@@ -21,15 +21,14 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+
+/* This object's header. */
+#include "debug.h"
 
 /* Some standard headers. */
 #include <float.h>
 #include <stdio.h>
 #include <unistd.h>
-
-/* This object's header. */
-#include "debug.h"
 
 /* Local includes. */
 #include "active.h"
@@ -41,7 +40,9 @@
 #include "space.h"
 
 /* Import the right hydro definition */
-#if defined(MINIMAL_SPH)
+#if defined(DEBUG_INTERACTIONS_SPH)
+#include "./hydro/DebugInteractions/hydro_debug.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_debug.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"

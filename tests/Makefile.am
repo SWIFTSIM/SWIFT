@@ -25,7 +25,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
-        testVoronoi1D testVoronoi2D testVoronoi3D \
+        testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh
 
 # List of test programs to compile
@@ -35,7 +35,8 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
-		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC
+		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
+		 testGravityDerivatives
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -92,6 +93,8 @@ testThreadpool_SOURCES = testThreadpool.c
 testDump_SOURCES = testDump.c
 
 testLogger_SOURCES = testLogger.c
+
+testGravityDerivatives_SOURCES = testGravityDerivatives.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
