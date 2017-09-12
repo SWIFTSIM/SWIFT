@@ -79,7 +79,6 @@ struct particle_arrays {
 };
 
 
-__device__ int global_count;
 __device__ struct particle_arrays cuda_parts;
 __constant__ int cuda_nr_parts;
 
@@ -392,8 +391,6 @@ __device__ void unload_cell(int cell_index) {
     /* Copy back the acceleration */
     float3 local_a_hydro = cuda_parts.a_hydro[start + i];
     current->a_hydro[0] = local_a_hydro.x;
-    if(cuda_parts.id[start+i] == 103498)
-      printf("Unloaded value is %e\n", current->a_hydro[0]);
     current->a_hydro[1] = local_a_hydro.y;
     current->a_hydro[2] = local_a_hydro.z;
 
@@ -493,8 +490,6 @@ __device__ void doself_density(struct cell_cuda *ci) {
         /* Compute contribution to the density. */
         rho += mj * w;
         rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
-        /*if(cuda_parts.id[pid] == 103498)
-          printf("%lli %lli %e %e %e %e %e\n", cuda_parts.id[pid], cuda_parts.id[pjd],  temp - rho_dh, hydro_dimension, w, ui, dw_dx);*/
 
         /* Compute contribution to the number of neighbours */
         wcount += w;
@@ -622,8 +617,6 @@ __device__ void dopair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
         /* Compute contribution to the density. */
         rho += mj * w;
         rho_dh -= mj * (hydro_dimension * w + ui * dw_dx);
-        /*if(cuda_parts.id[pid] == 103498)
-          printf("%lli %lli %e %e %e %e %e\n", cuda_parts.id[pid], cuda_parts.id[pjd], temp-rho_dh, hydro_dimension, w, ui, dw_dx);*/
 
         /* Compute contribution to the number of neighbours */
         wcount += w;
@@ -774,21 +767,11 @@ __device__ void doself_force(struct cell_cuda *ci) {
         /* Compute the acceleration */
         const float acc = visc_term + sph_term;
 
-//        if(cuda_parts.id[pid] == 79985 /*&& cuda_parts.id[pjd] == 103660*/){
-  //        printf("%lli %lli %e %e %e \n", cuda_parts.id[pid], cuda_parts.id[pjd], -mj*acc*dx[0],-mj*acc*dx[1],-mj*acc*dx[2]);
-/*          printf("%e %e %e ::: %e %e %e\n", cuda_parts.x_x[pid], cuda_parts.x_y[pid], cuda_parts.x_z[pid], cuda_parts.x_x[pjd], cuda_parts.x_y[pjd], cuda_parts.x_z[pjd]);
-          printf("%e %e %e %e \n", sph_term, visc_term, wi_dr, wj_dr); */
-        //}
         /* Compute the force */
         a_hydro.x -= mj * acc * dx[0];
         a_hydro.y -= mj * acc * dx[1];
         a_hydro.z -= mj * acc * dx[2];
 
-/*        if(cuda_parts.id[pid] == 103498 && cuda_parts.id[pjd] == 103292)
-          printf("%e %e %e %e\n", f_i, f_j, cuda_parts.rho_dh[pid], cuda_parts.rho_dh[pjd]);*/
-
-        if(cuda_parts.id[pid] == 103498)
-          printf("%lli %lli %e %e %e %e\n", cuda_parts.id[pid], cuda_parts.id[pjd], -mj*acc*dx[0], -mj*acc*dx[1], -mj*acc*dx[2], r_inv );
 
         /* Get the time derivative for h. */
         h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
@@ -804,8 +787,6 @@ __device__ void doself_force(struct cell_cuda *ci) {
 
     /* Flush to global stores.*/
     atomicAdd(&cuda_parts.a_hydro[pid].x, a_hydro.x);
-    if(cuda_parts.id[pid] == 103498)
-      printf("global hydro = %e a_hydro = %e\n", cuda_parts.a_hydro[pid].x, a_hydro.x);
     atomicAdd(&cuda_parts.a_hydro[pid].y, a_hydro.y);
     atomicAdd(&cuda_parts.a_hydro[pid].z, a_hydro.z);
     atomicAdd(&cuda_parts.h_dt[pid], h_dt);
@@ -960,10 +941,6 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
         a_hydro.y -= mj * acc * dx[1];
         a_hydro.z -= mj * acc * dx[2];
 
-/*        if(cuda_parts.id[pid] == 103498 && cuda_parts.id[pjd] == 103292)
-          printf("%e %e %e %e\n", f_i, f_j, cuda_parts.rho_dh[pid], cuda_parts.rho_dh[pjd]);*/
-        if(cuda_parts.id[pid] == 103498)
-          printf("%lli %lli %e %e %e %e\n", cuda_parts.id[pid], cuda_parts.id[pjd], -mj*acc*dx[0], -mj*acc*dx[1], -mj*acc*dx[2], r_inv );
         /* Get the time derivative for h. */
         h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
@@ -979,8 +956,6 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
 
     /* Flush to global stores.*/
     atomicAdd(&cuda_parts.a_hydro[pid].x, a_hydro.x);
-    if(cuda_parts.id[pid] == 103498)
-      printf("global hydro = %e a_hydro = %e\n", cuda_parts.a_hydro[pid].x, a_hydro.x);
     atomicAdd(&cuda_parts.a_hydro[pid].y, a_hydro.y);
     atomicAdd(&cuda_parts.a_hydro[pid].z, a_hydro.z);
     atomicAdd(&cuda_parts.h_dt[pid], h_dt);
@@ -1152,35 +1127,11 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
       /* Get r and 1/r */
       const float r = sqrtf(r2);
       const float ri = 1.0f / r;
-/*      if(cuda_parts.id[pid] == 142801)
-        printf("neighbour = %lli, r=%e, h=%e\n", cuda_parts.id[j], r2, hi);*/
 
       /* Compute the kernel function */
       const float hi_inv = 1.0f / hi;
       const float ui = r * hi_inv;
 
-        if( 0 && cuda_parts.id[pid] == 79985 && cuda_parts.id[j] == 103498){
-          printf("pos:: %e %e %e :::: %e %e %e\n",pix[0], pix[1], pix[2], cuda_parts.x_x[j], cuda_parts.x_y[j], cuda_parts.x_z[j]);
-         printf("dx %e %e %e\n", dx[0], dx[1], dx[2]);
-         printf("%e %e %e %e %e %e\n", r2, mj, r, ri, hi_inv, ui);
-        printf("kernel:\n x = %e ind = %i\n", ui*kernel_gamma_inv, (int)(ui*kernel_gamma_inv*kernel_ivals_f ));
-        const float x = ui*kernel_gamma_inv;
-        const int temp = (int)(x*kernel_ivals_f);
-        const int ind = temp > kernel_ivals ? kernel_ivals :temp;
-        const float *coeffs = &cuda_kernel_coeffs[ind*(kernel_degree+1)];
-        w = coeffs[0]*x +coeffs[1];
-        dw_dx = coeffs[0];
-        printf("initial w=%e dw_dx = %e\n", w, dw_dx);
-        for(int k = 2; k <= kernel_degree; k++){
-              printf("step %i coeffs[%i] = %e\n", k,k,coeffs[k]);
-          dw_dx = dw_dx * x + w;
-          w = x*w + coeffs[k];
-          printf("step %i w= %e dw_dx = %e\n", k, w, dw_dx);
-        }
-        w = w * kernel_constant * kernel_gamma_inv_dim;
-        dw_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
-        printf("result w = %e dw_dx = %e\n", w, dw_dx);
-        }
       cuda_kernel_deval(ui, &w, &dw_dx);
 
       /* Compute contribution to the density */
@@ -1207,8 +1158,6 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
       curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
       curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-        if(0 && cuda_parts.id[pid] == 79985 && cuda_parts.id[j] == 103498)
-          printf("%lli %lli %e %e %e %e %i\n", cuda_parts.id[pid], cuda_parts.id[j],w, r, hi_inv , kernel_gamma_inv, kernel_ivals);
       rot_v.x += fac * curlvr[0];
       rot_v.y += fac * curlvr[1];
       rot_v.z += fac * curlvr[2];
@@ -1218,8 +1167,6 @@ __device__ void cuda_doself_subset_density(int pid, int cell) {
   /* Write the data for particle pid */
   atomicAdd(&cuda_parts.rho[pid], rho);
   atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
-  if(cuda_parts.id[pid] == 103498)
-    printf("Hello\n");
   atomicAdd(&cuda_parts.wcount[pid], wcount);
   atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
   atomicAdd(&cuda_parts.div_v[pid], div_v);
@@ -1277,34 +1224,10 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
       const float r = sqrtf(r2);
       const float ri = 1.0f / r;
 
-    /*  if(cuda_parts.id[pid] == 142801)
-        printf("pair neighbour = %lli, r=%e, h=%e\n", cuda_parts.id[j], r2, hi);*/
       /* Compute the kernel function */
       const float hi_inv = 1.0f / hi;
       const float ui = r * hi_inv;
 
-        if(0 &&cuda_parts.id[pid] == 79985 && cuda_parts.id[j] == 103498){
-          printf("pos:: %e %e %e :::: %e %e %e\n",cuda_parts.x_x[pid], cuda_parts.x_y[pid], cuda_parts.x_z[pid], cuda_parts.x_x[j], cuda_parts.x_y[j], cuda_parts.x_z[j]);
-         printf("dx %e %e %e\n", dx[0], dx[1], dx[2]);
-         printf("%e %e %e %e %e %e\n", r2, mj, r, ri, hi_inv, ui);
-        printf("kernel:\n x = %e ind = %i\n", ui*kernel_gamma_inv, (int)(ui*kernel_gamma_inv*kernel_ivals_f ));
-        const float x = ui*kernel_gamma_inv;
-        const int temp = (int)(x*kernel_ivals_f);
-        const int ind = temp > kernel_ivals ? kernel_ivals :temp;
-        const float *coeffs = &cuda_kernel_coeffs[ind*(kernel_degree+1)];
-        w = coeffs[0]*x +coeffs[1];
-        dw_dx = coeffs[0];
-        printf("initial w=%e dw_dx = %e\n", w, dw_dx);
-        for(int k = 2; k <= kernel_degree; k++){
-              printf("step %i coeffs[%i] = %e\n", k,k,coeffs[k]);
-          dw_dx = dw_dx * x + w;
-          w = x*w + coeffs[k];
-          printf("step %i w= %e dw_dx = %e\n", k, w, dw_dx);
-        }
-        w = w * kernel_constant * kernel_gamma_inv_dim;
-        dw_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
-        printf("result w = %e dw_dx = %e\n", w, dw_dx);
-        }
       cuda_kernel_deval(ui, &w, &dw_dx);
 
       /* Compute contribution to the density */
@@ -1331,8 +1254,6 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
       curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
       curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-        if(0 && cuda_parts.id[pid] == 79985 && cuda_parts.id[j] == 103498)
-          printf("%lli %lli %e %e %e %e %i\n", cuda_parts.id[pid], cuda_parts.id[j],w, r, hi_inv , kernel_gamma_inv, kernel_ivals);
       rot_v.x += fac * curlvr[0];
       rot_v.y += fac * curlvr[1];
       rot_v.z += fac * curlvr[2];
@@ -1342,8 +1263,6 @@ __device__ void cuda_dopair_subset_density(int pid, int cell, int pid_cell) {
   /* Write the data for particle pid */
   atomicAdd(&cuda_parts.rho[pid], rho);
   atomicAdd(&cuda_parts.rho_dh[pid], rho_dh);
-  if(cuda_parts.id[pid] == 103498)
-    printf("Hello\n");
   atomicAdd(&cuda_parts.wcount[pid], wcount);
   atomicAdd(&cuda_parts.wcount_dh[pid], wcount_dh);
   atomicAdd(&cuda_parts.div_v[pid], div_v);
@@ -1381,8 +1300,6 @@ __device__ void cuda_hydro_fix_particle(int pid, struct cell_cuda *c) {
         cuda_doself_subset_density(pid, cell);
       else if (tasks[tid].type == task_type_pair ||
                tasks[tid].type == task_type_sub_pair) {
-/*        if(cuda_parts.id[pid] == 142801)
-          printf("cell %lli Task %lli type %i ci %i cj %i \n", cell, (&tasks[tid]-tasks), tasks[tid].type, tasks[tid].ci, tasks[tid].cj);*/
         if (tasks[tid].ci == cell) {
           cuda_dopair_subset_density(pid, tasks[tid].cj, cell);
         } else {
@@ -1425,8 +1342,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
       a++;
       redo = 0;
       float h_new;
-      if(cuda_parts.id[i]==103498)
-        printf("notrho = %.10e, a = %i dhdrho = %.10e\n", cuda_parts.rho[i], a, cuda_parts.rho_dh[i]);
       const float h_old = cuda_parts.h[i];
       const float h_old_dim = cuda_pow_dimension(h_old);//h_old*h_old*h_old;//d);
       const float h_old_dim_minus_one = cuda_pow_dimension_minus_one(h_old);
@@ -1436,8 +1351,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
         /* Finish the density calculation. */
         hydro_end_density(i);
 
-      if(cuda_parts.id[i]==103498)
-        printf("rho = %.10e, a = %i\n", cuda_parts.rho[i], a);
         /* Compute a step of the Newton-Raphson scheme */
         const float n_sum = cuda_parts.wcount[i] * h_old_dim;
         const float n_target = hydro_eta_dim;
@@ -1468,7 +1381,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
   cuda_parts.rot_v[i].y = 0.f;
   cuda_parts.rot_v[i].z = 0.f;
   redo = 1;
-  atomicAdd(&global_count, 1);
         } else {
           /* The particle is a lost cause */
           cuda_parts.h[i] = hydro_h_max;
@@ -1483,8 +1395,6 @@ __device__ void do_ghost(struct cell_cuda *c) {
       }
         
       }
-      if(cuda_parts.id[i]==103498)
-        printf("rho = %.10e, a = %i\n, dh_drho=%e\n", cuda_parts.rho[i], a, cuda_parts.rho_dh[i]);
       /* We now have a particle whose smoothing length has convegered */
       /* Time to set the force variables */
       /* Compute variables required for the force loop */
@@ -1580,8 +1490,9 @@ __global__ void swift_device_kernel() {
     if (type == type_load) {
       load_cell(tasks[tid].ci);
     } else if (type == type_unload) {
+
       unload_cell(tasks[tid].ci);
-    } else if (type == task_type_pair || type == task_type_sub_pair) {
+    }else if (type == task_type_pair || type == task_type_sub_pair) {
       if (subtype == task_subtype_density) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
@@ -1734,12 +1645,6 @@ __device__ void test_27_unload_cell(int cell_index) {
 /* Host function to check cuda functions don't return errors */
 __host__ inline void cudaErrCheck(cudaError_t status) {
   if (status != cudaSuccess) {
-    if(status == cudaErrorMemoryAllocation )
-    {
-      int i = 32;
-      i = i - (7. * rand());
-      printf("HELLO? %i\n", i);
-    }
     printf("cudaErrCheck:  %s\n", cudaGetErrorString(status));
   }
 }
@@ -2294,7 +2199,8 @@ __host__ void create_tasks(struct engine *e) {
       tasks_host[k].ci = t->ci->cuda_ID;
       if(t->cj != NULL)
         tasks_host[k].cj = t->cj->cuda_ID;
-
+      else
+        tasks_host[k].cj = -1;
       /* We have a double linked structure because its easier to create. */
       tasks_host[k].task = t;
       t->cuda_task = k;
@@ -2333,7 +2239,7 @@ __host__ void create_tasks(struct engine *e) {
     if (t->subtype == task_subtype_force) {
       deps++;
       /* If its a pair force task then it needs 2 unlocks. */
-      if (t->type == task_type_pair) {
+      if (t->type == task_type_sub_pair || t->type == task_type_pair) {
         deps++;
       }
     }
@@ -2357,7 +2263,7 @@ __host__ void create_tasks(struct engine *e) {
     /* If it is a force task then add the unload tasks.*/
     if (t->subtype == task_subtype_force) {
       t->unlocks[t->nr_unlock_tasks++] = t->task->ci->unload_task;
-      if (t->type == task_type_pair) {
+      if (t->type == task_type_sub_pair || t->type == task_type_pair) {
         t->unlocks[t->nr_unlock_tasks++] = t->task->cj->unload_task;
       }
     }
@@ -2383,7 +2289,7 @@ __host__ void create_tasks(struct engine *e) {
       tasks_host[t->task->ci->load_task]
           .unlocks[tasks_host[t->task->ci->load_task].nr_unlock_tasks++] = i;
 
-      if (t->type == task_type_pair) {
+      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         /* We may need to stretch the load task's unlocks */
         if (tasks_host[t->task->cj->load_task].nr_unlock_tasks ==
             tasks_host[t->task->cj->load_task].size_unlocks) {
@@ -3238,11 +3144,6 @@ __host__ void run_cuda() {
   printTaskTimers();
 #endif
   cudaErrCheck(cudaDeviceSynchronize());
-  /*int friends;
-  cudaErrCheck(cudaMemcpyFromSymbol(&friends,number_dense_friends, sizeof(int)));
-  printf("!!!!!!!!!!!!!!!!!!!!\nFound %i friends!\n!!!!!!!!!!!!!!!!!!!!!!\n", friends);
-  cudaErrCheck(cudaMemcpyFromSymbol(&friends,number_force_friends, sizeof(int)));
-  printf("!!!!!!!!!!!!!!!!!!!!\nFound %i friends!\n!!!!!!!!!!!!!!!!!!!!!!\n", friends);*/
 }
 #undef float
 #ifdef WITH_CUDA
