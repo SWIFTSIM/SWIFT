@@ -2690,10 +2690,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointers. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+      const int ci_active = cell_is_active(ci, e);
+      const int cj_active = cell_is_active(cj, e);
 
       /* Only activate tasks that involve a local active cell. */
-      if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
-          (cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
+      if ((ci_active && ci->nodeID == engine_rank) ||
+          (cj_active && cj->nodeID == engine_rank)) {
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
@@ -2741,9 +2743,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cell_is_active(cj, e)) {
+          if (cj_active) {
             scheduler_activate(s, ci->recv_xv);
-            if (cell_is_active(ci, e)) {
+            if (ci_active) {
               scheduler_activate(s, ci->recv_rho);
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate(s, ci->recv_gradient);
@@ -2752,10 +2754,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (cell_is_active(ci, e)) scheduler_activate(s, ci->recv_ti);
+          if (ci_active) scheduler_activate(s, ci->recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
-          if (cell_is_active(ci, e)) {
+          if (ci_active) {
 
             struct link *l =
                 scheduler_activate_send(s, cj->send_xv, ci->nodeID);
@@ -2766,7 +2768,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_drift_part(l->t->ci, s);
 
             /* If the local cell is also active, more stuff will be needed. */
-            if (cell_is_active(cj, e)) {
+            if (cj_active) {
               scheduler_activate_send(s, cj->send_rho, ci->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2776,15 +2778,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the local cell is active, send its ti_end values. */
-          if (cell_is_active(cj, e))
-            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+          if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
         } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cell_is_active(ci, e)) {
+          if (ci_active) {
             scheduler_activate(s, cj->recv_xv);
-            if (cell_is_active(cj, e)) {
+            if (cj_active) {
               scheduler_activate(s, cj->recv_rho);
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate(s, cj->recv_gradient);
@@ -2793,10 +2794,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (cell_is_active(cj, e)) scheduler_activate(s, cj->recv_ti);
+          if (cj_active) scheduler_activate(s, cj->recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
-          if (cell_is_active(cj, e)) {
+          if (cj_active) {
 
             struct link *l =
                 scheduler_activate_send(s, ci->send_xv, cj->nodeID);
@@ -2807,7 +2808,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_drift_part(l->t->ci, s);
 
             /* If the local cell is also active, more stuff will be needed. */
-            if (cell_is_active(ci, e)) {
+            if (ci_active) {
 
               scheduler_activate_send(s, ci->send_rho, cj->nodeID);
 
@@ -2818,8 +2819,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the local cell is active, send its ti_end values. */
-          if (cell_is_active(ci, e))
-            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+          if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
         }
 #endif
       }
