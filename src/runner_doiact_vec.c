@@ -491,12 +491,6 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache_fo
 
   }
 
-  for(int i=0; i<ci->count; i++) max_index_i[i] = cj->count - 1;
-  for(int i=0; i<cj->count; i++) max_index_j[i] = 0;
-
-  first_pi = 0;
-  last_pj = cj->count - 1;
-
   *init_pi = first_pi;
   *init_pj = last_pj;
 }
@@ -1502,7 +1496,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
-    for (int pid = count_i - 1; pid >= first_pi_loop && max_ind_j >= 0; pid--) {
+    for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -1645,7 +1639,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (cell_is_active(cj, e)) {
     
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop && max_ind_i < count_i; pjd++) {
+    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
