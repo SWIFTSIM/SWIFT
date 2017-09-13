@@ -470,6 +470,27 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache_fo
     max_index_j[0] = ci->count - 1;
   }
 
+  int first_pi_est = first_pi;
+  int max_index_i_last = max_index_i[ci->count - 1];
+
+  if(max_index_j[0] < first_pi) {
+    first_pi = max_index_j[0];
+
+    for(int i=first_pi; i<ci->count; i++) {
+      max_index_i[i] = last_pj;
+    }
+
+  }
+  
+  if(max_index_i_last > last_pj) {
+    last_pj = max_index_i_last;
+
+    for(int i=0; i<=last_pj; i++) {
+      max_index_j[i] = first_pi_est;
+    }
+
+  }
+
   for(int i=0; i<ci->count; i++) max_index_i[i] = cj->count - 1;
   for(int i=0; i<cj->count; i++) max_index_j[i] = 0;
 
@@ -748,7 +769,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     if (pi->ti_drift != e->ti_current)
       error("Particle pi not drifted to current time");
   }
-}
 #endif
 
 /* Loop over the particles in the cell. */
@@ -1442,21 +1462,21 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               hj_max, di_max, dj_min, max_index_i, max_index_j,
                               &first_pi, &last_pj, e);
 
-  /* Find the maximum index into cj that is required by a particle in ci. */
-  /* Find the maximum index into ci that is required by a particle in cj. */
-  int max_ind_j = max_index_i[count_j - 1];
-  int max_ind_i = max_index_j[0];
-
+  first_pi = 0;
+  last_pj = count_j - 1;
+  
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
   int last_pj_loop = last_pj;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
-  last_pj = max(last_pj, max_ind_j);
-  first_pi = min(first_pi, max_ind_i);
-
+  last_pj = max(last_pj, max_index_i[count_i - 1]);
+  first_pi = min(first_pi, max_index_j[0]);
   
+  first_pi = 0;
+  last_pj = count_j - 1;
+
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
   int last_pj_align = last_pj;
