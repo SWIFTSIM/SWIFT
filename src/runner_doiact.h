@@ -998,6 +998,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Are these particles actually neighbours? */
         if (r2 < hig2 || r2 < hjg2) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
@@ -1051,6 +1060,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Are these particles actually neighbours? */
         if (r2 < hjg2 || r2 < hig2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
