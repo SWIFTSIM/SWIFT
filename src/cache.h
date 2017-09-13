@@ -442,7 +442,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
     const double *const shift, int *first_pi, int *last_pj,
     const int num_vec_proc) {
 
-  int idx, ci_cache_idx;
+  int idx;
   /* Pad number of particles read to the vector size. */
   int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
   if (rem != 0) {
@@ -460,33 +460,53 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
 
   int first_pi_align = *first_pi;
   int last_pj_align = *last_pj;
+  const struct part *restrict parts_i = ci->parts;
+  const struct part *restrict parts_j = cj->parts;
+  double loc[3];
+  loc[0] = ci->loc[0];
+  loc[1] = ci->loc[1];
+  loc[2] = ci->loc[2];
 
-/* Shift the particles positions to a local frame (ci frame) so single precision
- * can be
- * used instead of double precision. Also shift the cell ci, particles positions
- * due to BCs but leave cell cj. */
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma vector aligned
-#endif
-  for (int i = first_pi_align; i < ci->count; i++) {
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, rho, ci_cache->rho, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed, SWIFT_CACHE_ALIGNMENT);
+
+  int ci_cache_count = ci->count - first_pi_align;
+  /* Shift the particles positions to a local frame (ci frame) so single precision
+   * can be
+   * used instead of double precision. Also shift the cell ci, particles positions
+   * due to BCs but leave cell cj. */
+  for (int i = 0; i < ci_cache_count; i++) {
     /* Make sure ci_cache is filled from the first element. */
-    ci_cache_idx = i - first_pi_align;
-    idx = sort_i[i].i;
-    ci_cache->x[ci_cache_idx] = ci->parts[idx].x[0] - ci->loc[0] - shift[0];
-    ci_cache->y[ci_cache_idx] = ci->parts[idx].x[1] - ci->loc[1] - shift[1];
-    ci_cache->z[ci_cache_idx] = ci->parts[idx].x[2] - ci->loc[2] - shift[2];
-    ci_cache->h[ci_cache_idx] = ci->parts[idx].h;
-
-    ci_cache->m[ci_cache_idx] = ci->parts[idx].mass;
-    ci_cache->vx[ci_cache_idx] = ci->parts[idx].v[0];
-    ci_cache->vy[ci_cache_idx] = ci->parts[idx].v[1];
-    ci_cache->vz[ci_cache_idx] = ci->parts[idx].v[2];
     
-    ci_cache->rho[ci_cache_idx] = ci->parts[idx].rho;
-    ci_cache->grad_h[ci_cache_idx] = ci->parts[idx].force.f;
-    ci_cache->pOrho2[ci_cache_idx] = ci->parts[idx].force.P_over_rho2;
-    ci_cache->balsara[ci_cache_idx] = ci->parts[idx].force.balsara;
-    ci_cache->soundspeed[ci_cache_idx] = ci->parts[idx].force.soundspeed;
+    idx = sort_i[i + first_pi_align].i;
+    x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
+    y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
+    z[i] = (float)(parts_i[idx].x[2] - loc[2] - shift[2]);
+    h[i] = parts_i[idx].h;
+
+    m[i] = parts_i[idx].mass;
+    vx[i] = parts_i[idx].v[0];
+    vy[i] = parts_i[idx].v[1];
+    vz[i] = parts_i[idx].v[2];
+
+    rho[i] = parts_i[idx].rho;
+    grad_h[i] = parts_i[idx].force.f;
+    pOrho2[i] = parts_i[idx].force.P_over_rho2;
+    balsara[i] = parts_i[idx].force.balsara;
+    soundspeed[i] = parts_i[idx].force.soundspeed;
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
@@ -494,65 +514,77 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
   float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++) {
-    ci_cache->x[i] = fake_pix;
-    ci_cache->y[i] = 1.f;
-    ci_cache->z[i] = 1.f;
-    ci_cache->h[i] = 1.f;
+    x[i] = fake_pix;
+    y[i] = 1.f;
+    z[i] = 1.f;
+    h[i] = 1.f;
 
-    ci_cache->m[i] = 1.f;
-    ci_cache->vx[i] = 1.f;
-    ci_cache->vy[i] = 1.f;
-    ci_cache->vz[i] = 1.f;
+    m[i] = 1.f;
+    vx[i] = 1.f;
+    vy[i] = 1.f;
+    vz[i] = 1.f;
     
-    ci_cache->rho[i] = 1.f;
-    ci_cache->grad_h[i] = 1.f;
-    ci_cache->pOrho2[i] = 1.f;
-    ci_cache->balsara[i] = 1.f;
-    ci_cache->soundspeed[i] = 1.f;
+    rho[i] = 1.f;
+    grad_h[i] = 1.f;
+    pOrho2[i] = 1.f;
+    balsara[i] = 1.f;
+    soundspeed[i] = 1.f;
   }
 
-#if defined(WITH_VECTORIZATION) && defined(__ICC)
-#pragma vector aligned
-#endif
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, xj, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, yj, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, zj, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, hj, cj_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, mj, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vxj, cj_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vyj, cj_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vzj, cj_cache->vz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, rhoj, cj_cache->rho, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_hj, cj_cache->grad_h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2j, cj_cache->pOrho2, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsaraj, cj_cache->balsara, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeedj, cj_cache->soundspeed, SWIFT_CACHE_ALIGNMENT);
+
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
-    cj_cache->x[i] = cj->parts[idx].x[0] - ci->loc[0];
-    cj_cache->y[i] = cj->parts[idx].x[1] - ci->loc[1];
-    cj_cache->z[i] = cj->parts[idx].x[2] - ci->loc[2];
-    cj_cache->h[i] = cj->parts[idx].h;
+    xj[i] = (float)(parts_j[idx].x[0] - loc[0]);
+    yj[i] = (float)(parts_j[idx].x[1] - loc[1]);
+    zj[i] = (float)(parts_j[idx].x[2] - loc[2]);
+    hj[i] = parts_j[idx].h;
 
-    cj_cache->m[i] = cj->parts[idx].mass;
-    cj_cache->vx[i] = cj->parts[idx].v[0];
-    cj_cache->vy[i] = cj->parts[idx].v[1];
-    cj_cache->vz[i] = cj->parts[idx].v[2];
-    
-    cj_cache->rho[i] = cj->parts[idx].rho;
-    cj_cache->grad_h[i] = cj->parts[idx].force.f;
-    cj_cache->pOrho2[i] = cj->parts[idx].force.P_over_rho2;
-    cj_cache->balsara[i] = cj->parts[idx].force.balsara;
-    cj_cache->soundspeed[i] = cj->parts[idx].force.soundspeed;
+    mj[i] = parts_j[idx].mass;
+    vxj[i] = parts_j[idx].v[0];
+    vyj[i] = parts_j[idx].v[1];
+    vzj[i] = parts_j[idx].v[2];
+
+    rhoj[i] = parts_j[idx].rho;
+    grad_hj[i] = parts_j[idx].force.f;
+    pOrho2j[i] = parts_j[idx].force.P_over_rho2;
+    balsaraj[i] = parts_j[idx].force.balsara;
+    soundspeedj[i] = parts_j[idx].force.soundspeed;
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
   float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
-    cj_cache->x[i] = fake_pjx;
-    cj_cache->y[i] = 1.f;
-    cj_cache->z[i] = 1.f;
-    cj_cache->h[i] = 1.f;
+    xj[i] = fake_pjx;
+    yj[i] = 1.f;
+    zj[i] = 1.f;
+    hj[i] = 1.f;
 
-    cj_cache->m[i] = 1.f;
-    cj_cache->vx[i] = 1.f;
-    cj_cache->vy[i] = 1.f;
-    cj_cache->vz[i] = 1.f;
+    mj[i] = 1.f;
+    vxj[i] = 1.f;
+    vyj[i] = 1.f;
+    vzj[i] = 1.f;
     
-    cj_cache->rho[i] = 1.f;
-    cj_cache->grad_h[i] = 1.f;
-    cj_cache->pOrho2[i] = 1.f;
-    cj_cache->balsara[i] = 1.f;
-    cj_cache->soundspeed[i] = 1.f;
-
+    rhoj[i] = 1.f;
+    grad_hj[i] = 1.f;
+    pOrho2j[i] = 1.f;
+    balsaraj[i] = 1.f;
+    soundspeedj[i] = 1.f;
   }
 }
 
