@@ -940,15 +940,26 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
+
+  /* Maximal displacement since last rebuild */
+  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+
+  /* Position on the axis of the particles closest to the interface */
   const double di_max = sort_i[count_i - 1].d;
   const double dj_min = sort_j[0].d;
-  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+
+  /* Upper bound on maximal distance in the other cell */
+  const double max_i = max(hi_max, hj_max) * kernel_gamma + dx_max - rshift;
+  const double max_j = max(hi_max, hj_max) * kernel_gamma + dx_max;
 
   if (cell_is_active(ci, e)) {
 
     /* Loop over the parts in ci until nothing is within range in cj.
      * We start from the centre and move outwards. */
     for (int pid = count_i - 1; pid >= 0; pid--) {
+
+      /* Did we go beyond the upper bound ? */
+      if (sort_i[pid].d + max_i < dj_min) break;
 
       /* Get a hold of the ith part in ci. */
       struct part *pi = &parts_i[sort_i[pid].i];
@@ -963,11 +974,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (di < dj_min) continue;
 
       /* Where do we have to stop when looping over cell j? */
-      int last_pj = count_j - 1;
-      while (sort_j[last_pj].d > di && last_pj > 0) last_pj--;
-
-      last_pj += 1;
-      if (last_pj >= count_j) last_pj = count_j - 1;
+      int last_pj = 0;
+      while (last_pj < count_j - 1 && sort_j[last_pj].d < di) last_pj++;
 
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
@@ -1004,6 +1012,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
      * We start from the centre and move outwards. */
     for (int pjd = 0; pjd < count_j; pjd++) {
 
+      /* Did we go beyond the upper bound ? */
+      if (sort_j[pjd].d - max_j > di_max - rshift) break;
+
       /* Get a hold of the jth part in cj. */
       struct part *pj = &parts_j[sort_j[pjd].i];
       const float hj = pj->h;
@@ -1016,12 +1027,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       if (dj > di_max - rshift) continue;
 
       /* Where do we have to stop when looping over cell i? */
-      int first_pi = 0;
-      while (sort_i[first_pi].d - rshift < dj && first_pi < count_i - 1)
-        first_pi++;
-
-      first_pi -= 1;
-      if (first_pi < 0) first_pi = 0;
+      int first_pi = count_i;
+      while (first_pi > 0 && sort_i[first_pi].d - rshift > dj) first_pi--;
 
       /* Get some additional information about pj */
       const float hjg2 = hj * hj * kernel_gamma2;
