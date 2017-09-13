@@ -111,16 +111,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Density loop (Vectorized version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_vec_density(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {
-
-  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
-}
-
-/**
  * @brief Density loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
@@ -171,16 +161,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += fac * curlvr[0];
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
-}
-
-/**
- * @brief Density loop (non-symmetric vectorized version)
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
-                               struct part **pi, struct part **pj) {
-
-  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 /**
@@ -285,16 +265,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
- * @brief Force loop (Vectorized version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_vec_force(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {
-
-  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
-}
-
-/**
  * @brief Force loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
@@ -386,16 +356,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * r_inv * dvdr;
-}
-
-/**
- * @brief Force loop (Vectorized non-symmetric version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {
-
-  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H */
