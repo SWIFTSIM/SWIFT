@@ -75,7 +75,6 @@ enum engine_policy {
 extern const char *engine_policy_names[];
 
 #define engine_queue_scale 1.2
-#define engine_maxtaskspercell 96
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
@@ -222,6 +221,10 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Average number of tasks per cell. Used to estimate the sizes
+   * of the various task arrays. */
+  int tasks_per_cell;
+
   /* Are we talkative ? */
   int verbose;
 
@@ -258,6 +261,7 @@ void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
+void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -292,5 +296,6 @@ int engine_is_done(struct engine *e);
 void engine_pin();
 void engine_unpin();
 void engine_clean(struct engine *e);
+int engine_estimate_nr_tasks(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

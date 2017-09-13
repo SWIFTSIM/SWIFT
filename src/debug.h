@@ -19,6 +19,9 @@
 #ifndef SWIFT_DEBUG_H
 #define SWIFT_DEBUG_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "cell.h"
 #include "part.h"
@@ -33,6 +36,7 @@ void printgParticle_single(struct gpart *gp);
 
 int checkSpacehmax(struct space *s);
 int checkCellhdxmax(const struct cell *c, int *depth);
+void dumpCells(const char *prefix, struct space *s);
 
 #ifdef HAVE_METIS
 #include "metis.h"

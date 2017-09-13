@@ -51,17 +51,23 @@ struct gravity_props {
   /*! Tree opening angle (Multipole acceptance criterion) */
   double theta_crit;
 
+  /*! Square of opening angle */
+  double theta_crit2;
+
   /*! Inverse of opening angle */
   double theta_crit_inv;
 
   /*! Softening length */
-  double epsilon;
+  float epsilon;
 
   /*! Square of softening length */
-  double epsilon2;
+  float epsilon2;
 
   /*! Inverse of softening length */
-  double epsilon_inv;
+  float epsilon_inv;
+
+  /*! Cube of the inverse of softening length */
+  float epsilon_inv3;
 };
 
 void gravity_props_print(const struct gravity_props *p);
