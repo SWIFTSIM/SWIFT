@@ -1219,17 +1219,19 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       /* Let's check whether we need to still operate on this pair */
 
       /* Get the distance between the CoMs at the last rebuild*/
-      double dx = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
-      double dy = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
-      double dz = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
+      double dx_rebuild = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
+      double dy_rebuild = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
+      double dz_rebuild = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
 
       /* Apply BC */
       if (periodic) {
-        dx = nearest(dx, dim[0]);
-        dy = nearest(dy, dim[1]);
-        dz = nearest(dz, dim[2]);
+        dx_rebuild = nearest(dx_rebuild, dim[0]);
+        dy_rebuild = nearest(dy_rebuild, dim[1]);
+        dz_rebuild = nearest(dz_rebuild, dim[2]);
       }
-      const double r2_rebuild = dx * dx + dy * dy + dz * dz;
+      const double r2_rebuild = dx_rebuild * dx_rebuild +
+                                dy_rebuild * dy_rebuild +
+                                dz_rebuild * dz_rebuild;
 
       /* Is the criterion violated now but was OK at the last rebuild ? */
       if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,

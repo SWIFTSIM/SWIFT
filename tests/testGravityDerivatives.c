@@ -949,10 +949,13 @@ int main() {
     /* Compute distance */
     const double r2 = dx * dx + dy * dy + dz * dz;
     const double r_inv = 1. / sqrt(r2);
+    const double r = r2 * r_inv;
+    const double eps = r / 10.;
+    const double eps_inv = 1. / eps;
 
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
-    compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, 0., FLT_MAX, &pot);
+    compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

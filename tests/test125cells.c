@@ -632,8 +632,8 @@ int main(int argc, char *argv[]) {
 
     /* Reset particles. */
     for (int i = 0; i < 125; ++i) {
-      for (int n = 0; n < cells[i]->count; ++n)
-        hydro_init_part(&cells[i]->parts[n], &space.hs);
+      for (int pid = 0; pid < cells[i]->count; ++pid)
+        hydro_init_part(&cells[i]->parts[pid], &space.hs);
     }
 
     /* First, sort stuff */
@@ -742,8 +742,8 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < 125; ++i) {
-      for (int n = 0; n < cells[i]->count; ++n)
-        hydro_init_part(&cells[i]->parts[n], &space.hs);
+      for (int pid = 0; pid < cells[i]->count; ++pid)
+        hydro_init_part(&cells[i]->parts[pid], &space.hs);
     }
   }
 

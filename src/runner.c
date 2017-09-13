@@ -324,11 +324,10 @@ void runner_check_sorts(struct cell *c, int flags) {
 void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
                     int clock) {
 
-  struct entry *finger;
   struct entry *fingers[8];
-  struct part *parts = c->parts;
-  struct xpart *xparts = c->xparts;
   const int count = c->count;
+  const struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
   float buff[8];
 
   TIMER_TIC;
@@ -427,7 +426,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
           }
 
       /* For each entry in the new sort list. */
-      finger = c->sort[j];
+      struct entry *finger = c->sort[j];
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -506,7 +505,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    finger = c->sort[j];
+    struct entry *finger = c->sort[j];
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
