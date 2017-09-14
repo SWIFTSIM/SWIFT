@@ -345,21 +345,3 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
 }
-
-//// EMPTY VECTORIZED VERSIONS (gradients methods are missing...)
-
-__attribute__((always_inline)) INLINE static void runner_iact_vec_density(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}
-
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
-                               struct part **pi, struct part **pj) {}
-
-__attribute__((always_inline)) INLINE static void runner_iact_vec_force(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}
-
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
-    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}

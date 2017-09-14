@@ -677,6 +677,7 @@ int main(int argc, char *argv[]) {
 
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);
+  engine_print_stats(&e);
 
   /* Legend */
   if (myrank == 0)
@@ -815,6 +816,7 @@ int main(int argc, char *argv[]) {
 
   /* Write final output. */
   engine_drift_all(&e);
+  engine_print_stats(&e);
   engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI

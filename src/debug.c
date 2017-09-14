@@ -21,17 +21,17 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+
+/* This object's header. */
+#include "debug.h"
 
 /* Some standard headers. */
 #include <float.h>
 #include <stdio.h>
 #include <unistd.h>
 
-/* This object's header. */
-#include "debug.h"
-
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "hydro.h"
@@ -40,7 +40,9 @@
 #include "space.h"
 
 /* Import the right hydro definition */
-#if defined(MINIMAL_SPH)
+#if defined(DEBUG_INTERACTIONS_SPH)
+#include "./hydro/DebugInteractions/hydro_debug.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_debug.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"
@@ -267,6 +269,79 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   }
 
   return result;
+}
+
+/**
+ * @brief map function for dumping cells. In MPI mode locally active cells
+ * only.
+ */
+static void dumpCells_map(struct cell *c, void *data) {
+  uintptr_t *ldata = (uintptr_t *)data;
+  FILE *file = (FILE *)ldata[0];
+  struct engine *e = (struct engine *)ldata[1];
+  float ntasks = c->nr_tasks;
+
+#if SWIFT_DEBUG_CHECKS
+  /* The c->nr_tasks field does not include all the tasks. So let's check this
+   * the hard way. Note pairs share the task 50/50 with the other cell. */
+  ntasks = 0.0f;
+  struct task *tasks = e->sched.tasks;
+  int nr_tasks = e->sched.nr_tasks;
+  for (int k = 0; k < nr_tasks; k++) {
+    if (tasks[k].cj == NULL) {
+      if (c == tasks[k].ci) {
+        ntasks = ntasks + 1.0f;
+      }
+    } else {
+      if (c == tasks[k].ci || c == tasks[k].cj) {
+        ntasks = ntasks + 0.5f;
+      }
+    }
+  }
+#endif
+
+  /* Only locally active cells are dumped. */
+  if (c->count > 0 || c->gcount > 0 || c->scount > 0)
+    fprintf(file,
+            "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d "
+            "%6.1f %20lld %6d %6d %6d %6d\n",
+            c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+            c->width[2], c->count, c->gcount, c->scount, c->depth, ntasks,
+            c->ti_end_min, get_time_bin(c->ti_end_min), (c->super == c),
+            cell_is_active(c, e), c->nodeID);
+}
+
+/**
+ * @brief Dump the location, depth, task counts and timebins and active state,
+ * for all cells to a simple text file.
+ *
+ * @param prefix base output filename
+ * @param s the space holding the cells to dump.
+ */
+void dumpCells(const char *prefix, struct space *s) {
+
+  FILE *file = NULL;
+
+  /* Name of output file. */
+  static int nseq = 0;
+  char fname[200];
+  int uniq = atomic_inc(&nseq);
+  sprintf(fname, "%s_%03d.dat", prefix, uniq);
+
+  file = fopen(fname, "w");
+
+  /* Header. */
+  fprintf(file,
+          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%20s %6s %6s %6s\n",
+          "x", "y", "z", "xw", "yw", "zw", "count", "gcount", "scount", "depth",
+          "tasks", "ti_end_min", "timebin", "issuper", "active", "rank");
+
+  uintptr_t data[2];
+  data[0] = (size_t)file;
+  data[1] = (size_t)s->e;
+  space_map_cells_pre(s, 1, dumpCells_map, &data);
+  fclose(file);
 }
 
 #ifdef HAVE_METIS

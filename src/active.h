@@ -144,6 +144,14 @@ __attribute__((always_inline)) INLINE static int part_is_active(
   return (part_bin <= max_active_bin);
 }
 
+__attribute__((always_inline)) INLINE static int part_is_active_no_debug(
+    const struct part *p, const timebin_t max_active_bin) {
+
+  const timebin_t part_bin = p->time_bin;
+
+  return (part_bin <= max_active_bin);
+}
+
 /**
  * @brief Is this g-particle finishing its time-step now ?
  *

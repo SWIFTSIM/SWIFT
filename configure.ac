@@ -602,10 +602,10 @@ if test "$enable_warn" != "no"; then
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
           gnu | clang)
-             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter"
+             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
           ;;
 	  intel)
-             CFLAGS="$CFLAGS -w2 -Wunused-variable"
+             CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow"
           ;;
 	  *)
 	     AX_CFLAGS_WARN_ALL
@@ -627,7 +627,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -638,6 +638,9 @@ case "$with_hydro" in
    ;; 
    minimal)
       AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
+   ;; 
+   debug)
+      AC_DEFINE([DEBUG_INTERACTIONS_SPH], [1], [Debug SPH])
    ;; 
    hopkins)
       AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
@@ -842,10 +845,10 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravitational field expansion @<:@ default: 4@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 5@:>@]
    )],
    [with_multipole_order="$withval"],
-   [with_multipole_order="4"]
+   [with_multipole_order="5"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
@@ -861,14 +864,14 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
-AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
-AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
+AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
 AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
+AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Save the compilation options

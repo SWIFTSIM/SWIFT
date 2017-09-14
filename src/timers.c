@@ -54,8 +54,9 @@ const char* timers_names[timer_count] = {
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
-    "dopair_grav_pm",
+    "dopair_grav_branch",
     "dopair_grav_mm",
+    "dopair_grav_pm",
     "dopair_grav_pp",
     "dograv_external",
     "dograv_down",
@@ -119,8 +120,9 @@ void timers_reset_all() { timers_reset(timers_mask_all); }
 void timers_print(int step) {
   fprintf(timers_file, "%d\t", step);
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%.3f\t", clocks_from_ticks(timers[k]));
+    fprintf(timers_file, "%18.3f ", clocks_from_ticks(timers[k]));
   fprintf(timers_file, "\n");
+  fflush(timers_file);
 }
 
 /**
@@ -136,7 +138,7 @@ void timers_open_file(int rank) {
 
   fprintf(timers_file, "# timers: \n# step | ");
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%s\t", timers_names[k]);
+    fprintf(timers_file, "%18s ", timers_names[k]);
   fprintf(timers_file, "\n");
 }
 

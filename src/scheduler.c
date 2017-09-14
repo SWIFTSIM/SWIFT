@@ -649,18 +649,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                         ci->progeny[k]),
                       s);
         }
-      }
+      } /* Cell is split */
 
-      /* Otherwise, make sure the self task has a drift task */
-      else {
-
-        lock_lock(&ci->lock);
-
-        if (ci->drift_gpart == NULL)
-          ci->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-        lock_unlock_blind(&ci->lock);
-      }
     } /* Self interaction */
 
     /* Pair interaction? */
@@ -674,28 +664,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
         t->skip = 1;
         break;
-      }
-
-      /* Should this task be split-up? */
-      if (0 && ci->split && cj->split) {
-
-        // MATTHIEU: nothing here for now
-
-      } else {
-
-        /* Create the drift for ci. */
-        lock_lock(&ci->lock);
-        if (ci->drift_gpart == NULL && ci->nodeID == engine_rank)
-          ci->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, ci, NULL);
-        lock_unlock_blind(&ci->lock);
-
-        /* Create the drift for cj. */
-        lock_lock(&cj->lock);
-        if (cj->drift_gpart == NULL && cj->nodeID == engine_rank)
-          cj->drift_gpart = scheduler_addtask(
-              s, task_type_drift_gpart, task_subtype_none, 0, 0, cj, NULL);
-        lock_unlock_blind(&cj->lock);
       }
     } /* pair interaction? */
   }   /* iterate over the current task. */
@@ -727,7 +695,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_top_level ||
                t->type == task_type_grav_ghost) {
-      // MATTHIEU: for the future
+      /* For future use */
     } else {
       error("Unexpected task sub-type");
     }
@@ -772,7 +740,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
-  if (ind >= s->size) error("Task list overflow.");
+  if (ind >= s->size)
+    error(
+        "Task list overflow (%d). Need to increase "
+        "Scheduler:tasks_per_cell.",
+        ind);
 
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
@@ -1377,7 +1349,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    if (qid < 0) qid = rand() % s->nr_queues;
+    /* Note that getticks() is random enough */
+    if (qid < 0) qid = getticks() % s->nr_queues;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -1609,6 +1582,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
+  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 

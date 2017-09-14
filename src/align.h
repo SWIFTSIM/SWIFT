@@ -59,6 +59,22 @@
 #endif
 
 /**
+ * @brief Macro to create a restrict pointer to an array and tell the compiler
+ * that the given array has the specified
+ * alignment.
+ *
+ * Note that this turns into a no-op but gives information to the compiler.
+ *
+ * @param array The array.
+ * @param ptr Pointer to array
+ * @param type Type of array
+ * @param alignment The alignment in bytes of the array.
+ */
+#define swift_declare_aligned_ptr(type, array, ptr, alignment) \
+  type *restrict array = ptr;                                  \
+  swift_align_information(array, alignment);
+
+/**
  * @brief Macro to tell the compiler that a given number is 0 modulo a given
  * size.
  *

@@ -4,19 +4,139 @@
 For completeness, we give here the full expression for the first few
 derivatives of the potential that are used in our FMM scheme. We use
 the notation $\mathbf{r}=(r_x, r_y, r_z)$, $r = |\mathbf{r}|$ and
-$u=r/H$. Starting from the potential (Eq. \ref{eq:fmm:potential},
-reproduced here for clarity), 
+$u=r/H$. We can construct the higher order derivatives by successively
+applying the "chain rule". We show representative examples of the
+first few relevant ones here split by order. We start by constructing
+common quantities that appear in derivatives of multiple orders.
+
 \begin{align}
-\mathsf{D}_{000}(\mathbf{r}) = \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
-\frac{1}{H} \left(-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3\right) & \mbox{if} & u < 1,\\
-\frac{1}{r} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
+  \mathsf{\tilde{D}}_{1}(r, u, H) =
+  \left\lbrace\begin{array}{rcl}
+  \left(-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3\right)\times  H^{-1} & \mbox{if} & u < 1,\\
+  r^{-1} & \mbox{if} & u \geq 1, 
+  \end{array}
+  \right.\nonumber
 \end{align}
-we can construct the higher order terms by successively applying the
-"chain rule". We show representative examples of the first few
-relevant ones here split by order.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{3}(r, u, H) =
+  \left\lbrace\begin{array}{rcl}
+  -\left(21u^5 - 90u^4 + 140u^3 -84u^2 +14\right)\times  H^{-3}& \mbox{if} & u < 1,\\
+  -1 \times r^{-3} & \mbox{if} & u \geq 1, 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{5}(r, u, H) =
+  \left\lbrace\begin{array}{rcl}
+  \left(-105u^3 + 360u^2 - 420u + 168\right)\times  H^{-5}& \mbox{if} & u < 1,\\
+  3\times r^{-5} & \mbox{if} & u \geq 1, 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{7}(r, u, H) =
+  \left\lbrace\begin{array}{rcl}
+  -\left(315u - 720 + 420u^{-1}\right)\times  H^{-7} & \mbox{if} & u < 1,\\
+  -15\times r^{-7} & \mbox{if} & u \geq 1, 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{9}(r, u, H) =
+  \left\lbrace\begin{array}{rcl}
+  \left(-315u^{-1} + 420u^{-3}\right)\times  H^{-9}& \mbox{if} & u < 1,\\
+  105\times r^{-9} & \mbox{if} & u \geq 1.
+  \end{array}
+  \right.\nonumber
+\end{align}
+Starting from the potential (Eq. \ref{eq:fmm:potential},
+reproduced here for completeness), we can now build all the relevent derivatives
+\begin{align}
+  \mathsf{D}_{000}(\mathbf{r}) = \varphi (\mathbf{r},H) =
+    \mathsf{\tilde{D}}_{1}(r, u, H) \nonumber
+\end{align}
+
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+  \mathsf{D}_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \varphi (\mathbf{r},H) =
+    r_x \mathsf{\tilde{D}}_{3}(r, u, H) \nonumber
+\end{align}
+
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+\mathsf{D}_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \varphi (\mathbf{r},H) = 
+r_x^2 \mathsf{\tilde{D}}_{5}(r, u, H) +
+\mathsf{\tilde{D}}_{3}(r, u, H)\nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \varphi (\mathbf{r},H) = 
+   r_x r_y \mathsf{\tilde{D}}_{5}(r, u, H) \nonumber
+\end{align}
+
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+\mathsf{D}_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r},H) = 
+  r_x^3 \mathsf{\tilde{D}}_{7}(r, u, H)
+  + 3 r_x \mathsf{\tilde{D}}_{5}(r, u, H) \nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^2 r_y} \varphi (\mathbf{r},H) = 
+r_x^2 r_y \mathsf{\tilde{D}}_{7}(r, u, H) +
+r_y \mathsf{\tilde{D}}_{5}(r, u, H) \nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{111}(\mathbf{r}) = \frac{\partial^3}{\partial r_x\partial r_y\partial r_z} \varphi (\mathbf{r},H) = 
+  r_x r_y r_z \mathsf{\tilde{D}}_{7}(r, u, H) \nonumber
+\end{align}
+
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+  \mathsf{D}_{400}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^4}
+  \varphi (\mathbf{r},H) =
+  r_x^4 \mathsf{\tilde{D}}_{9}(r, u, H)+
+  6r_x^2 \mathsf{\tilde{D}}_{7}(r, u, H) +
+  3 \mathsf{\tilde{D}}_{5}(r, u, H)
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{310}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^3
+    \partial r_y} \varphi (\mathbf{r},H) =
+  r_x^3 r_y \mathsf{\tilde{D}}_{9}(r, u, H) +
+  3 r_x r_y \mathsf{\tilde{D}}_{7}(r, u, H)
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{220}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^2
+    \partial r_y^2} \varphi (\mathbf{r},H) =
+    r_x^2 r_y^2 \mathsf{\tilde{D}}_{9}(r, u, H) +
+    r_x^2 \mathsf{\tilde{D}}_{7}(r, u, H) +
+    r_y^2 \mathsf{\tilde{D}}_{7}(r, u, H) +
+    \mathsf{\tilde{D}}_{5}(r, u, H)
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{211}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^2
+    \partial r_y   \partial r_z} \varphi (\mathbf{r},H) =
+    r_x^2 r_y r_z \mathsf{\tilde{D}}_{9}(r, u, H) +
+    r_y r_z \mathsf{\tilde{D}}_{7}(r, u, H)
+  \nonumber
+\end{align}
+
+
+
+\begin{comment}
+
+\noindent\rule{6cm}{0.4pt}
 
 \begin{align}
 \mathsf{D}_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \varphi (\mathbf{r},H) = 
@@ -101,3 +221,5 @@ relevant ones here split by order.
   \mathsf{D}_{211}(\mathbf{r}) &=
   \nonumber
 \end{align}
+
+\end{comment}
