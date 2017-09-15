@@ -973,15 +973,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
-      /* Where do we have to stop when looping over cell j? */
-      int last_pj = 0;
-      while (last_pj < count_j - 1 && sort_j[last_pj].d < di) last_pj++;
-
       /* Get some additional information about pi */
       const float hig2 = hi * hi * kernel_gamma2;
       const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
       const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
       const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+
+      /* Where do we have to stop when looping over cell j? */
+      int last_pj = 0;
+      while (last_pj < count_j - 1 && sort_j[last_pj].d < di) last_pj++;
 
       /* Now loop over the relevant particles in cj */
       for (int pjd = 0; pjd <= last_pj; ++pjd) {
@@ -989,6 +989,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
+
+        /* Early abort for this pair now that we have the real hj? */
+        if (sort_i[pid].d + max(hi, hj) * kernel_gamma + dx_max - rshift <
+            dj_min)
+          continue;
+
+        /* Get the position of pj in the right frame */
         const float hjg2 = hj * hj * kernel_gamma2;
         const float pjx = pj->x[0] - cj->loc[0];
         const float pjy = pj->x[1] - cj->loc[1];
@@ -1035,15 +1042,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const double dj = sort_j[pjd].d - max(hj, hi_max) * kernel_gamma - dx_max;
       if (dj > di_max - rshift) continue;
 
-      /* Where do we have to stop when looping over cell i? */
-      int first_pi = count_i;
-      while (first_pi > 0 && sort_i[first_pi].d - rshift > dj) first_pi--;
-
       /* Get some additional information about pj */
       const float hjg2 = hj * hj * kernel_gamma2;
       const float pjx = pj->x[0] - cj->loc[0];
       const float pjy = pj->x[1] - cj->loc[1];
       const float pjz = pj->x[2] - cj->loc[2];
+
+      /* Where do we have to stop when looping over cell i? */
+      int first_pi = count_i;
+      while (first_pi > 0 && sort_i[first_pi].d - rshift > dj) first_pi--;
 
       /* Now loop over the relevant particles in ci */
       for (int pid = count_i - 1; pid >= first_pi; --pid) {
@@ -1051,6 +1058,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
         const float hi = pi->h;
+
+        /* Early abort for this pair now that we have the real hi? */
+        if (sort_j[pjd].d - max(hj, hi) * kernel_gamma - dx_max >
+            di_max - rshift)
+          continue;
+
+        /* Get the position of pi in the right frame */
         const float hig2 = hi * hi * kernel_gamma2;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
         const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
