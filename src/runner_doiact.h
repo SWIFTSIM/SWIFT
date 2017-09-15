@@ -979,12 +979,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
       const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
-      /* Where do we have to stop when looping over cell j? */
-      int last_pj = 0;
-      while (last_pj < count_j - 1 && sort_j[last_pj].d < di) last_pj++;
-
       /* Now loop over the relevant particles in cj */
-      for (int pjd = 0; pjd <= last_pj; ++pjd) {
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; ++pjd) {
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
@@ -1048,12 +1044,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       const float pjy = pj->x[1] - cj->loc[1];
       const float pjz = pj->x[2] - cj->loc[2];
 
-      /* Where do we have to stop when looping over cell i? */
-      int first_pi = count_i;
-      while (first_pi > 0 && sort_i[first_pi].d - rshift > dj) first_pi--;
-
       /* Now loop over the relevant particles in ci */
-      for (int pid = count_i - 1; pid >= first_pi; --pid) {
+      for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
+           --pid) {
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
