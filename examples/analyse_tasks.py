@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    analsyse_tasks.py [options] input.dat
+    analyse_tasks.py [options] input.dat
 
 where input.dat is a thread info file for a step (MPI or non-MPI). Use the
 '-y interval' flag of the swift and swift_mpi commands to create these
