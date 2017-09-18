@@ -71,12 +71,23 @@ parser.add_argument("--nolegend", dest="nolegend",
 parser.add_argument("-v", "--verbose", dest="verbose",
                     help="Show colour assignments and other details (def: False)",
                     default=False, action="store_true")
+parser.add_argument("-r", "--ranks", dest="ranks",
+                    help="Comma delimited list of ranks to process, if MPI in effect",
+                    default=None, type=str)
+parser.add_argument("-m", "--mintic", dest="mintic",
+                    help="Value of the smallest tic (def: least in input file)",
+                    default=-1, type=int)
 
 args = parser.parse_args()
 infile = args.input
 outbase = args.outbase
 delta_t = args.limit
 expand = args.expand
+mintic = args.mintic
+if args.ranks != None:
+    ranks = [int(item) for item in args.ranks.split(',')]
+else:
+    ranks = None
 
 #  Basic plot configuration.
 PLOT_PARAMS = {"axes.labelsize": 10,
@@ -156,10 +167,11 @@ data = pl.loadtxt( infile )
 #  Do we have an MPI file?
 full_step = data[0,:]
 if full_step.size == 13:
-    print "MPI mode"
+    print "# MPI mode"
     mpimode = True
-    nranks = int(max(data[:,0])) + 1
-    print "Number of ranks:", nranks
+    if ranks == None:
+        ranks = range(int(max(data[:,0])) + 1)
+    print "# Number of ranks:", len(ranks)
     rankcol = 0
     threadscol = 1
     taskcol = 2
@@ -167,8 +179,8 @@ if full_step.size == 13:
     ticcol = 5
     toccol = 6
 else:
-    print "non MPI mode"
-    nranks = 1
+    print "# non MPI mode"
+    ranks = [0]
     mpimode = False
     rankcol = -1
     threadscol = 0
@@ -180,10 +192,10 @@ else:
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
-    print "CPU frequency:", CPU_CLOCK * 1000.0
+    print "# CPU frequency:", CPU_CLOCK * 1000.0
 
 nthread = int(max(data[:,threadscol])) + 1
-print "Number of threads:", nthread
+print "# Number of threads:", nthread
 
 # Avoid start and end times of zero.
 sdata = data[data[:,ticcol] != 0]
@@ -194,25 +206,33 @@ sdata = sdata[sdata[:,toccol] != 0]
 # precalculating this, unless the user knows better.
 delta_t = delta_t * CPU_CLOCK
 if delta_t == 0:
-    for rank in range(nranks):
+    for rank in ranks:
         if mpimode:
             data = sdata[sdata[:,rankcol] == rank]
             full_step = data[0,:]
-        tic_step = int(full_step[ticcol])
+
+        #  Start and end times for this rank. Can be changed using the mintic
+        #  option. This moves our zero time to other time. Useful for
+        #  comparing to other plots.
+        if mintic < 0:
+            tic_step = int(full_step[ticcol])
+        else:
+            tic_step = mintic
         toc_step = int(full_step[toccol])
         dt = toc_step - tic_step
         if dt > delta_t:
             delta_t = dt
-    print "Data range: ", delta_t / CPU_CLOCK, "ms"
+    print "# Data range: ", delta_t / CPU_CLOCK, "ms"
 
 # Once more doing the real gather and plots this time.
-for rank in range(nranks):
+for rank in ranks:
     if mpimode:
         data = sdata[sdata[:,rankcol] == rank]
         full_step = data[0,:]
-
-    #  Start and end times for this rank.
-    tic_step = int(full_step[ticcol])
+    if mintic < 0:
+        tic_step = int(full_step[ticcol])
+    else:
+        tic_step = mintic
     toc_step = int(full_step[toccol])
     data = data[1:,:]
     typesseen = []
@@ -220,7 +240,7 @@ for rank in range(nranks):
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
-        print "rank ", rank, " has no tasks"
+        print "# rank ", rank, " has no tasks"
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
