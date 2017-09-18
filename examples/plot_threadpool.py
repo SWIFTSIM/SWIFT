@@ -135,12 +135,11 @@ funcs = pl.array(funcs)
 threads = pl.array(threads)
 chunks = pl.array(chunks)
 
-
 #  Recover the start and end time
 tic_step = min(tics)
 toc_step = max(tocs)
-
-#   Not known.
+print "# Min tic = ", tic_step
+print "# Max toc = ", toc_step
 
 #  Calculate the time range, if not given.
 delta_t = delta_t * CPU_CLOCK
