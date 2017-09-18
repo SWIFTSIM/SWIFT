@@ -45,6 +45,9 @@ if test "$2" != ""; then
     LIMIT=""
 fi
 
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
 #  Find all thread info files. Use version sort to get into correct order.
 files=$(ls -v threadpool_info-step*.dat)
 if test $? != 0; then
@@ -61,8 +64,8 @@ done
 
 #  And process them,
 echo "Processing threadpool info files..."
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./analyse_threadpool_tasks.py \$0 > \$2.stats"
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_threadpool_tasks.py \$0 > \$2.stats"
 
 echo "Writing output threadpool-index.html file"
 #  Construct document - serial.
