@@ -1093,7 +1093,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
      we are out of range of anything in ci (using the maximal hj). */
   for (int pjd = 0;
        pjd < count_j &&
-       sort_j[pjd].d - hj_max * kernel_gamma + dx_max < di_max - rshift;
+       sort_j[pjd].d - hj_max * kernel_gamma - dx_max < di_max - rshift;
        pjd++) {
 
     /* Get a hold of the jth part in cj. */
