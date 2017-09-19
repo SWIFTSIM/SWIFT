@@ -4468,8 +4468,8 @@ void engine_init(struct engine *e, struct space *s,
   /* Avoid (unexpected) interference between engine and runner threads. We can
    * do this once we've made at least one call to engine_entry_affinity and
    * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
-   * pinned. Also unpin this when asked to not pin at all (!with_aff). */
-  engine_unpin();
+   * pinned. */
+  if (with_aff) engine_unpin();
 #endif
 
   if (with_aff) {
