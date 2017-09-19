@@ -332,7 +332,9 @@ for rank in ranks:
     nrow = len(typesseen) / 5
     ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
     ax.set_ylim(0, nethread + 0.5)
-    if data.size > 0:
+    if data.size > 0 and not args.nolegend:
+        ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
+        ax.set_ylim(0, nethread + 0.5)
         ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
@@ -341,7 +343,6 @@ for rank in ranks:
     if mintic < 0:
         ax.plot([0, 0], [0, nethread + nrow + 1], 'k--', linewidth=1)
     else:
-        print tic_step, mintic, tic_step - mintic
         real_start = tic_step - mintic
         ax.plot([real_start, real_start], [0, nethread + nrow + 1], 'k--', linewidth=1)
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], 'k--', linewidth=1)
