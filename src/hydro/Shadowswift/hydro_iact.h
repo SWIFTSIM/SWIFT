@@ -345,4 +345,3 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
 }
-

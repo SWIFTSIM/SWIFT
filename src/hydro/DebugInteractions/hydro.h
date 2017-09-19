@@ -24,6 +24,7 @@
  * @brief Empty SPH implementation used solely to test the SELF/PAIR routines.
  */
 
+#include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "part.h"

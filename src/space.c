@@ -403,7 +403,7 @@ void space_regrid(struct space *s, int verbose) {
       s->width[k] = s->dim[k] / cdim[k];
       s->iwidth[k] = 1.0 / s->width[k];
     }
-    const float dmin = min(s->width[0], min(s->width[1], s->width[2]));
+    const float dmin = min3(s->width[0], s->width[1], s->width[2]);
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
@@ -2693,14 +2693,14 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Decide on the minimal top-level cell size */
-  const double dmax = max(max(s->dim[0], s->dim[1]), s->dim[2]);
+  const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   int maxtcells =
       parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
   s->cell_min = 0.99 * dmax / maxtcells;
 
   /* Check that it is big enough. */
-  const double dmin = min(min(s->dim[0], s->dim[1]), s->dim[2]);
+  const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
   int needtcells = 3 * dmax / dmin;
   if (maxtcells < needtcells)
     error(

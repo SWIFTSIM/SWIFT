@@ -211,13 +211,13 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     vec_init_mask_true(int_mask2);
 
     /* Perform interactions. */
-    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
+    for (int j = 0; j < icount_align; j += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
-          &int_cache->r2q[pjd], &int_cache->dxq[pjd], &int_cache->dyq[pjd],
-          &int_cache->dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
-          &int_cache->vxq[pjd], &int_cache->vyq[pjd], &int_cache->vzq[pjd],
-          &int_cache->mq[pjd], rhoSum, rho_dhSum, wcountSum, wcount_dhSum,
-          div_vSum, curlvxSum, curlvySum, curlvzSum, int_mask, int_mask2, 0);
+          &int_cache->r2q[j], &int_cache->dxq[j], &int_cache->dyq[j],
+          &int_cache->dzq[j], v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[j],
+          &int_cache->vyq[j], &int_cache->vzq[j], &int_cache->mq[j], rhoSum,
+          rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum, curlvySum,
+          curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Reset interaction count. */

@@ -95,7 +95,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
 
   } else {
 
-    const float r = r2 * r_inv;
     const float ui = r * h_inv;
     float W_ij;
 

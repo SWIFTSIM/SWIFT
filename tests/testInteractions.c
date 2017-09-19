@@ -251,7 +251,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   float vjzq[count] __attribute__((aligned(array_align)));
 
   /* Call serial interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (int r = 0; r < runs; r++) {
     /* Reset particle to initial setup */
     pi_serial = test_part;
     for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
@@ -285,7 +285,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     dump_indv_particle_fields(serial_filename, &pj_serial[i]);
 
   /* Call vector interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (int r = 0; r < runs; r++) {
     /* Reset particle to initial setup */
     pi_vec = test_part;
     for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
@@ -293,21 +293,22 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
     /* Setup arrays for vector interaction. */
     for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
+      float my_r2 = 0.0f;
+      float my_dx[3];
       for (int k = 0; k < 3; k++) {
-        dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
-        r2 += dx[k] * dx[k];
+        my_dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
+        my_r2 += my_dx[k] * my_dx[k];
       }
 
-      r2q[i] = r2;
-      dxq[i] = dx[0];
+      r2q[i] = my_r2;
+      dxq[i] = my_dx[0];
+      dyq[i] = my_dx[1];
+      dzq[i] = my_dx[2];
+
       hiq[i] = pi_vec.h;
       piq[i] = &pi_vec;
       pjq[i] = &pj_vec[i];
 
-      dyq[i] = dx[1];
-      dzq[i] = dx[2];
       mjq[i] = pj_vec[i].mass;
       vixq[i] = pi_vec.v[0];
       viyq[i] = pi_vec.v[1];
@@ -354,17 +355,17 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
             &curlvxSum, &curlvySum, &curlvzSum, mask, mask2, 0);
       } else { /* Only use one vector for interaction. */
 
-        vector r2, dx, dy, dz;
-        r2.v = vec_load(&(r2q[i]));
-        dx.v = vec_load(&(dxq[i]));
-        dy.v = vec_load(&(dyq[i]));
-        dz.v = vec_load(&(dzq[i]));
+        vector my_r2, my_dx, my_dy, my_dz;
+        my_r2.v = vec_load(&(r2q[i]));
+        my_dx.v = vec_load(&(dxq[i]));
+        my_dy.v = vec_load(&(dyq[i]));
+        my_dz.v = vec_load(&(dzq[i]));
 
         runner_iact_nonsym_1_vec_density(
-            &r2, &dx, &dy, &dz, (hi_inv_vec), (vix_vec), (viy_vec), (viz_vec),
-            &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]), &rhoSum, &rho_dhSum,
-            &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
-            &curlvzSum, mask);
+            &my_r2, &my_dx, &my_dy, &my_dz, (hi_inv_vec), (vix_vec), (viy_vec),
+            (viz_vec), &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(mjq[i]), &rhoSum,
+            &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum,
+            &curlvySum, &curlvzSum, mask);
       }
     }
 
@@ -465,13 +466,13 @@ void test_force_interactions(struct part test_part, struct part *parts,
   float cjq[count] __attribute__((aligned(array_align)));
 
   /* Call serial interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (int r = 0; r < runs; r++) {
     /* Reset particle to initial setup */
     pi_serial = test_part;
     for (size_t i = 0; i < count; i++) pj_serial[i] = parts[i];
 
     /* Only dump data on first run. */
-    if (k == 0) {
+    if (r == 0) {
       /* Dump state of particles before serial interaction. */
       dump_indv_particle_fields(serial_filename, &pi_serial);
       for (size_t i = 0; i < count; i++)
@@ -511,7 +512,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
     dump_indv_particle_fields(serial_filename, &pj_serial[i]);
 
   /* Call vector interaction a set number of times. */
-  for (int k = 0; k < runs; k++) {
+  for (int r = 0; r < runs; r++) {
     /* Reset particle to initial setup */
     pi_vec = test_part;
     for (size_t i = 0; i < count; i++) pj_vec[i] = parts[i];
@@ -519,20 +520,20 @@ void test_force_interactions(struct part test_part, struct part *parts,
     /* Setup arrays for vector interaction. */
     for (size_t i = 0; i < count; i++) {
       /* Compute the pairwise distance. */
-      float r2 = 0.0f;
-      float dx[3];
+      float my_r2 = 0.0f;
+      float my_dx[3];
       for (int k = 0; k < 3; k++) {
-        dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
-        r2 += dx[k] * dx[k];
+        my_dx[k] = pi_vec.x[k] - pj_vec[i].x[k];
+        my_r2 += my_dx[k] * my_dx[k];
       }
 
       piq[i] = &pi_vec;
       pjq[i] = &pj_vec[i];
 
-      r2q[i] = r2;
-      dxq[i] = dx[0];
-      dyq[i] = dx[1];
-      dzq[i] = dx[2];
+      r2q[i] = my_r2;
+      dxq[i] = my_dx[0];
+      dyq[i] = my_dx[1];
+      dzq[i] = my_dx[2];
 
       hiq[i] = pi_vec.h;
       vixq[i] = pi_vec.v[0];
@@ -557,7 +558,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
     }
 
     /* Only dump data on first run. */
-    if (k == 0) {
+    if (r == 0) {
       /* Dump state of particles before vector interaction. */
       dump_indv_particle_fields(vec_filename, piq[0]);
       for (size_t i = 0; i < count; i++)
@@ -607,16 +608,16 @@ void test_force_interactions(struct part test_part, struct part *parts,
             &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, mask, mask2, 0);
       } else { /* Only use one vector for interaction. */
 
-        vector r2, dx, dy, dz, hj, hj_inv;
-        r2.v = vec_load(&(r2q[i]));
-        dx.v = vec_load(&(dxq[i]));
-        dy.v = vec_load(&(dyq[i]));
-        dz.v = vec_load(&(dzq[i]));
+        vector my_r2, my_dx, my_dy, my_dz, hj, hj_inv;
+        my_r2.v = vec_load(&(r2q[i]));
+        my_dx.v = vec_load(&(dxq[i]));
+        my_dy.v = vec_load(&(dyq[i]));
+        my_dz.v = vec_load(&(dzq[i]));
         hj.v = vec_load(&hj_invq[i]);
         hj_inv = vec_reciprocal(hj);
 
         runner_iact_nonsym_1_vec_force(
-            &r2, &dx, &dy, &dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
+            &my_r2, &my_dx, &my_dy, &my_dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
             grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]),
             &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]),
             &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, hj_inv,
