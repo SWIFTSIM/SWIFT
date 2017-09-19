@@ -55,7 +55,7 @@ parser.add_argument("input", help="Thread data file (-y output)")
 parser.add_argument("outbase", help="Base name for output graphic files (PNG)")
 parser.add_argument("-l", "--limit", dest="limit",
                     help="Upper time limit in millisecs (def: depends on data)",
-                    default=0, type=int)
+                    default=0, type=float)
 parser.add_argument("-e", "--expand", dest="expand",
                     help="Thread expansion factor (def: 1)",
                     default=1, type=int)
@@ -226,30 +226,35 @@ if delta_t == 0:
 
 # Once more doing the real gather and plots this time.
 for rank in ranks:
+    print "# Processing rank: ", rank
     if mpimode:
         data = sdata[sdata[:,rankcol] == rank]
         full_step = data[0,:]
-    if mintic < 0:
-        tic_step = int(full_step[ticcol])
-    else:
-        tic_step = mintic
+    tic_step = int(full_step[ticcol])
     toc_step = int(full_step[toccol])
+    print "# Min tic = ", tic_step
     data = data[1:,:]
     typesseen = []
     nethread = 0
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
-        print "# rank ", rank, " has no tasks"
+        print "# Rank ", rank, " has no tasks"
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
         ax.set_ylim(0, nthread*expand)
-        start_t = tic_step
+        if mintic < 0:
+            start_t = tic_step
+        else:
+            start_t = mintic
         end_t = (toc_step - start_t) / CPU_CLOCK
     else:
 
-        start_t = float(tic_step)
+        if mintic < 0:
+            start_t = float(tic_step)
+        else:
+            start_t = float(mintic)
         data[:,ticcol] -= start_t
         data[:,toccol] -= start_t
         end_t = (toc_step - start_t) / CPU_CLOCK
@@ -333,7 +338,12 @@ for rank in ranks:
         ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
 
     # Start and end of time-step
-    ax.plot([0, 0], [0, nethread + nrow + 1], 'k--', linewidth=1)
+    if mintic < 0:
+        ax.plot([0, 0], [0, nethread + nrow + 1], 'k--', linewidth=1)
+    else:
+        print tic_step, mintic, tic_step - mintic
+        real_start = tic_step - mintic
+        ax.plot([real_start, real_start], [0, nethread + nrow + 1], 'k--', linewidth=1)
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], 'k--', linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
