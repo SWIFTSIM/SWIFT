@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#  Helper for process_plot_taskthreadpools
+range="$1"
+taskfile="$2"
+poolfile="$3"
+step="$4"
+
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
+#  Process tasks and capture minimum tic from start of step and the data
+#  range, if appropriate.
+result=$(${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $range \
+    --width 16 --height 4 $taskfile taskstep${step}r)
+echo "$result"
+mintic=$(echo "$result" | grep 'Min tic'| awk '{print $5}')
+echo "range: $range"
+if test $range -eq 0; then
+    range=$(echo "$result" | grep 'Data range:' | awk '{print $4}')
+    echo "new range: $range"
+fi
+${SCRIPTHOME}/plot_threadpool.py --expand 1 --mintic $mintic --limit $range \
+    --width 16 --height 4 $poolfile poolstep${step}r
+
+exit
