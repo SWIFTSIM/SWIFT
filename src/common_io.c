@@ -315,7 +315,7 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us) {
 
     return;
   } else if (exists < 0) {
-    error("Serious problem with 'Units' group your ICs. H5Lexists gives %d",
+    error("Serious problem with 'Units' group in ICs. H5Lexists gives %d",
           exists);
   }
 
