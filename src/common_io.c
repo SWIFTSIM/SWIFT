@@ -299,8 +299,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
 void io_read_unit_system(hid_t h_file, struct unit_system* us) {
-  // First check if it exists as this is *not* required.
-  int exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
+
+  /* First check if it exists as this is *not* required. */
+  const htri_t exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
 
   if (exists == 0) {
     message("'Units' group not found in ICs. Assuming CGS unit system.");
@@ -314,11 +315,11 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us) {
 
     return;
   } else if (exists < 0) {
-    error("Serious problem with 'Units' group in your ICs. H5Lexists gives %d",
+    error("Serious problem with 'Units' group your ICs. H5Lexists gives %d",
           exists);
   }
-  
-  message("Reading units from your ICs.");
+
+  message("Reading IC units from ICs.");
   hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
   /* Ok, Read the damn thing */
