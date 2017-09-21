@@ -897,8 +897,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  struct entry *restrict sort_i = ci->sort[sid];
+  struct entry *restrict sort_j = cj->sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the dx_max_sort values in the cell are indeed an upper
@@ -940,117 +940,259 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
-  const double di_max = sort_i[count_i - 1].d;
-  const double dj_min = sort_j[0].d;
+
+  /* Maximal displacement since last rebuild */
   const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
-  if (cell_is_active(ci, e)) {
+  /* Position on the axis of the particles closest to the interface */
+  const double di_max = sort_i[count_i - 1].d;
+  const double dj_min = sort_j[0].d;
 
-    /* Loop over the parts in ci until nothing is within range in cj.
-     * We start from the centre and move outwards. */
-    for (int pid = count_i - 1; pid >= 0; pid--) {
+  /* Shifts to apply to the particles to be in a good frame */
+  const double shift_i[3] = {cj->loc[0] + shift[0], cj->loc[1] + shift[1],
+                             cj->loc[2] + shift[2]};
+  const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
 
-      /* Get a hold of the ith part in ci. */
-      struct part *pi = &parts_i[sort_i[pid].i];
-      const float hi = pi->h;
+  int count_active_i = 0, count_active_j = 0;
+  struct entry *restrict sort_active_i = NULL, *restrict sort_active_j = NULL;
 
-      /* Skip inactive particles */
-      if (!part_is_active(pi, e)) continue;
+  if (cell_is_all_active(ci, e)) {
+    /* If everybody is active don't bother copying */
+    sort_active_i = sort_i;
+    count_active_i = count_i;
+  } else if (cell_is_active(ci, e)) {
+    if (posix_memalign((void *)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
+                       sizeof(struct entry) * count_i) != 0)
+      error("Failed to allocate active sortlists.");
 
-      /* Is there anything we need to interact with ? */
-      const double di =
-          sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
-      if (di < dj_min) continue;
+    /* Collect the active particles in ci */
+    for (int k = 0; k < count_i; k++) {
+      if (part_is_active(&parts_i[sort_i[k].i], e)) {
+        sort_active_i[count_active_i] = sort_i[k];
+        count_active_i++;
+      }
+    }
+  }
 
-      /* Where do we have to stop when looping over cell j? */
-      int last_pj = count_j - 1;
-      while (sort_j[last_pj].d > di && last_pj > 0) last_pj--;
+  if (cell_is_all_active(cj, e)) {
+    /* If everybody is active don't bother copying */
+    sort_active_j = sort_j;
+    count_active_j = count_j;
+  } else if (cell_is_active(cj, e)) {
+    if (posix_memalign((void *)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
+                       sizeof(struct entry) * count_j) != 0)
+      error("Failed to allocate active sortlists.");
 
-      last_pj += 1;
-      if (last_pj >= count_j) last_pj = count_j - 1;
+    /* Collect the active particles in cj */
+    for (int k = 0; k < count_j; k++) {
+      if (part_is_active(&parts_j[sort_j[k].i], e)) {
+        sort_active_j[count_active_j] = sort_j[k];
+        count_active_j++;
+      }
+    }
+  }
 
-      /* Get some additional information about pi */
-      const float hig2 = hi * hi * kernel_gamma2;
-      const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
-      const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
-      const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+  /* Loop over *all* the parts in ci starting from the centre until
+     we are out of range of anything in cj (using the maximal hi). */
+  for (int pid = count_i - 1;
+       pid >= 0 &&
+       sort_i[pid].d + hi_max * kernel_gamma + dx_max - rshift > dj_min;
+       pid--) {
 
-      /* Now loop over the relevant particles in cj */
-      for (int pjd = 0; pjd <= last_pj; ++pjd) {
+    /* Get a hold of the ith part in ci. */
+    struct part *pi = &parts_i[sort_i[pid].i];
+    const float hi = pi->h;
+
+    /* Is there anything we need to interact with (for this specific hi) ? */
+    const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+    if (di < dj_min) continue;
+
+    /* Get some additional information about pi */
+    const float hig2 = hi * hi * kernel_gamma2;
+    const float pix = pi->x[0] - shift_i[0];
+    const float piy = pi->x[1] - shift_i[1];
+    const float piz = pi->x[2] - shift_i[2];
+
+    /* Do we need to only check active parts in cj
+       (i.e. pi does not need updating) ? */
+    if (!part_is_active(pi, e)) {
+
+      /* Loop over the *active* parts in cj within range of pi */
+      for (int pjd = 0; pjd < count_active_j && sort_active_j[pjd].d < di;
+           pjd++) {
 
         /* Recover pj */
-        struct part *pj = &parts_j[sort_j[pjd].i];
+        struct part *pj = &parts_j[sort_active_j[pjd].i];
         const float hj = pj->h;
-        const float hjg2 = hj * hj * kernel_gamma2;
-        const float pjx = pj->x[0] - cj->loc[0];
-        const float pjy = pj->x[1] - cj->loc[1];
-        const float pjz = pj->x[2] - cj->loc[2];
 
-        /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-        if (r2 < hig2 || r2 < hjg2) {
-
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-        }
-      } /* Loop over the parts in cj */
-    }   /* Loop over the parts in ci */
-  }     /* Cell ci is active */
-
-  if (cell_is_active(cj, e)) {
-
-    /* Loop over the parts in cj until nothing is within range in ci.
-     * We start from the centre and move outwards. */
-    for (int pjd = 0; pjd < count_j; pjd++) {
-
-      /* Get a hold of the jth part in cj. */
-      struct part *pj = &parts_j[sort_j[pjd].i];
-      const float hj = pj->h;
-
-      /* Skip inactive particles */
-      if (!part_is_active(pj, e)) continue;
-
-      /* Is there anything we need to interact with ? */
-      const double dj = sort_j[pjd].d - max(hj, hi_max) * kernel_gamma - dx_max;
-      if (dj > di_max - rshift) continue;
-
-      /* Where do we have to stop when looping over cell i? */
-      int first_pi = 0;
-      while (sort_i[first_pi].d - rshift < dj && first_pi < count_i - 1)
-        first_pi++;
-
-      first_pi -= 1;
-      if (first_pi < 0) first_pi = 0;
-
-      /* Get some additional information about pj */
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const float pjx = pj->x[0] - cj->loc[0];
-      const float pjy = pj->x[1] - cj->loc[1];
-      const float pjz = pj->x[2] - cj->loc[2];
-
-      /* Now loop over the relevant particles in ci */
-      for (int pid = count_i - 1; pid >= first_pi; --pid) {
-
-        /* Recover pi */
-        struct part *pi = &parts_i[sort_i[pid].i];
-        const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
-        const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
-        const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
-        const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+        /* Get the position of pj in the right frame */
+        const float pjx = pj->x[0] - shift_j[0];
+        const float pjy = pj->x[1] - shift_j[1];
+        const float pjz = pj->x[2] - shift_j[2];
 
         /* Compute the pairwise distance. */
         float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-        if (r2 < hjg2 || r2 < hig2) {
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
 
+        /* Hit or miss?
+           (note that we will do the other condition in the reverse loop) */
+        if (r2 < hig2) {
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
         }
-      } /* Loop over the parts in ci */
-    }   /* Loop over the parts in cj */
-  }     /* Cell cj is active */
+      } /* loop over the active parts in cj. */
+    }
+
+    else { /* pi is active, we may need to update pi and pj */
+
+      /* Loop over *all* the parts in cj in range of pi. */
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+
+        /* Recover pj */
+        struct part *pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+
+        /* Get the position of pj in the right frame */
+        const float pjx = pj->x[0] - shift_j[0];
+        const float pjy = pj->x[1] - shift_j[1];
+        const float pjz = pj->x[2] - shift_j[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+        /* Hit or miss?
+           (note that we will do the other condition in the reverse loop) */
+        if (r2 < hig2) {
+
+          /* Does pj need to be updated too? */
+          if (part_is_active(pj, e))
+            IACT(r2, dx, hi, hj, pi, pj);
+          else
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        }
+      } /* loop over the parts in cj. */
+    }   /* Is pi active? */
+  }     /* Loop over all ci */
+
+  /* Loop over *all* the parts in cj starting from the centre until
+     we are out of range of anything in ci (using the maximal hj). */
+  for (int pjd = 0;
+       pjd < count_j &&
+       sort_j[pjd].d - hj_max * kernel_gamma - dx_max < di_max - rshift;
+       pjd++) {
+
+    /* Get a hold of the jth part in cj. */
+    struct part *pj = &parts_j[sort_j[pjd].i];
+    const float hj = pj->h;
+
+    /* Is there anything we need to interact with (for this specific hj) ? */
+    const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max;
+    if (dj > di_max - rshift) continue;
+
+    /* Get some additional information about pj */
+    const float hjg2 = hj * hj * kernel_gamma2;
+    const float pjx = pj->x[0] - shift_j[0];
+    const float pjy = pj->x[1] - shift_j[1];
+    const float pjz = pj->x[2] - shift_j[2];
+
+    /* Do we need to only check active parts in ci
+       (i.e. pj does not need updating) ? */
+    if (!part_is_active(pj, e)) {
+
+      /* Loop over the *active* parts in ci. */
+      for (int pid = count_active_i - 1;
+           pid >= 0 && sort_active_i[pid].d - rshift > dj; pid--) {
+
+        /* Recover pi */
+        struct part *pi = &parts_i[sort_active_i[pid].i];
+        const float hi = pi->h;
+        const float hig2 = hi * hi * kernel_gamma2;
+
+        /* Get the position of pi in the right frame */
+        const float pix = pi->x[0] - shift_i[0];
+        const float piy = pi->x[1] - shift_i[1];
+        const float piz = pi->x[2] - shift_i[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss?
+           (note that we must avoid the r2 < hig2 cases we already processed) */
+        if (r2 < hjg2 && r2 > hig2) {
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        }
+      } /* loop over the active parts in ci. */
+    }
+
+    else { /* pj is active, we may need to update pj and pi */
+
+      /* Loop over *all* the parts in ci. */
+      for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
+           pid--) {
+
+        /* Recover pi */
+        struct part *pi = &parts_i[sort_i[pid].i];
+        const float hi = pi->h;
+        const float hig2 = hi * hi * kernel_gamma2;
+
+        /* Get the position of pi in the right frame */
+        const float pix = pi->x[0] - shift_i[0];
+        const float piy = pi->x[1] - shift_i[1];
+        const float piz = pi->x[2] - shift_i[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss?
+           (note that we must avoid the r2 < hig2 cases we already processed) */
+        if (r2 < hjg2 && r2 > hig2) {
+
+          /* Does pi need to be updated too? */
+          if (part_is_active(pi, e))
+            IACT(r2, dx, hj, hi, pj, pi);
+          else
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        }
+      } /* loop over the parts in ci. */
+    }   /* Is pj active? */
+  }     /* Loop over all cj */
+
+  /* Clean-up if necessary */
+  if (cell_is_active(ci, e) && !cell_is_all_active(ci, e)) free(sort_active_i);
+  if (cell_is_active(cj, e) && !cell_is_all_active(cj, e)) free(sort_active_j);
 
   TIMER_TOC(TIMER_DOPAIR);
 }

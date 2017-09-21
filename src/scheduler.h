@@ -109,7 +109,7 @@ struct scheduler {
 
 /* Inlined functions (for speed). */
 /**
- * @brief Add a task to the list of active tasks.
+ * @brief Add a regular task to the list of active tasks.
  *
  * @param s The #scheduler.
  * @param t The task to be added.
@@ -121,6 +121,27 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }
+}
+
+/**
+ * @brief Search and add an MPI send task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param nodeID The nodeID of the foreign cell.
+ *
+ * @return The #link to the MPI send task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_send(struct scheduler *s, struct link *link, int nodeID) {
+
+  struct link *l = NULL;
+  for (l = link; l != NULL && l->t->cj->nodeID != nodeID; l = l->next)
+    ;
+  if (l == NULL) error("Missing link to send task.");
+  scheduler_activate(s, l->t);
+  return l;
 }
 
 /* Function prototypes. */

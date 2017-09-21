@@ -45,7 +45,7 @@ parser.add_argument("input", help="Threadpool data file (-Y output)")
 parser.add_argument("outpng", help="Name for output graphic file (PNG)")
 parser.add_argument("-l", "--limit", dest="limit",
                     help="Upper time limit in millisecs (def: depends on data)",
-                    default=0, type=int)
+                    default=0, type=float)
 parser.add_argument("-e", "--expand", dest="expand",
                     help="Thread expansion factor (def: 1)",
                     default=1, type=int)
@@ -61,12 +61,16 @@ parser.add_argument("--nolegend", dest="nolegend",
 parser.add_argument("-v", "--verbose", dest="verbose",
                     help="Show colour assignments and other details (def: False)",
                     default=False, action="store_true")
+parser.add_argument("-m", "--mintic", dest="mintic",
+                    help="Value of the smallest tic (def: least in input file)",
+                    default=-1, type=int)
 
 args = parser.parse_args()
 infile = args.input
 outpng = args.outpng
 delta_t = args.limit
 expand = args.expand
+mintic = args.mintic
 
 #  Basic plot configuration.
 PLOT_PARAMS = {"axes.labelsize": 10,
@@ -135,12 +139,13 @@ funcs = pl.array(funcs)
 threads = pl.array(threads)
 chunks = pl.array(chunks)
 
-
 #  Recover the start and end time
-tic_step = min(tics)
+mintic_step = min(tics)
+tic_step = mintic_step
 toc_step = max(tocs)
-
-#   Not known.
+print "# Min tic = ", mintic_step
+if mintic > 0:
+    tic_step = mintic
 
 #  Calculate the time range, if not given.
 delta_t = delta_t * CPU_CLOCK
@@ -250,7 +255,9 @@ if not args.nolegend:
     ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
     
 # Start and end of time-step
-ax.plot([0, 0], [0, nthread + nrow + 1], 'k--', linewidth=1)
+real_start_t = (mintic_step - tic_step)/ CPU_CLOCK
+ax.plot([real_start_t, real_start_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
+
 ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
 
 ax.set_xlabel("Wall clock time [ms]", labelpad=0.)

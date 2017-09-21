@@ -295,15 +295,17 @@ void stats_collect(const struct space *s, struct statistics *stats) {
 }
 
 /**
- * @brief Apply final opetations on the #stats.
+ * @brief Apply final opetations on the #statistics.
  *
- * @param stats The #stats to work on.
+ * @param stats The #statistics to work on.
  */
 void stats_finalize(struct statistics *stats) {
 
-  stats->centre_of_mass[0] /= stats->mass;
-  stats->centre_of_mass[1] /= stats->mass;
-  stats->centre_of_mass[2] /= stats->mass;
+  if (stats->mass > 0.) {
+    stats->centre_of_mass[0] /= stats->mass;
+    stats->centre_of_mass[1] /= stats->mass;
+    stats->centre_of_mass[2] /= stats->mass;
+  }
 }
 
 /**

@@ -1859,10 +1859,12 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
+    const int ci_active = cell_is_active(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
-    if ((cell_is_active(ci, e) && ci->nodeID == engine_rank) ||
-        (cj != NULL && cell_is_active(cj, e) && cj->nodeID == engine_rank)) {
+    if ((ci_active && ci->nodeID == engine_rank) ||
+        (cj_active && cj->nodeID == engine_rank)) {
       scheduler_activate(s, t);
 
       /* Activate hydro drift */
@@ -1904,9 +1906,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (ci->nodeID != engine_rank) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cell_is_active(cj, e)) {
+        if (cj_active) {
           scheduler_activate(s, ci->recv_xv);
-          if (cell_is_active(ci, e)) {
+          if (ci_active) {
             scheduler_activate(s, ci->recv_rho);
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, ci->recv_gradient);
@@ -1915,55 +1917,36 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cell_is_active(ci, e)) scheduler_activate(s, ci->recv_ti);
+        if (ci_active) scheduler_activate(s, ci->recv_ti);
 
-        /* Look for the local cell cj's send tasks. */
-        if (cell_is_active(ci, e)) {
-          struct link *l = NULL;
-          for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_xv task.");
-          scheduler_activate(s, l->t);
+        /* Is the foreign cell active and will need stuff from us? */
+        if (ci_active) {
+
+          scheduler_activate_send(s, cj->send_xv, ci->nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
 
-          if (cell_is_active(cj, e)) {
-            struct link *l = NULL;
-            for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_rho task.");
-            scheduler_activate(s, l->t);
+          /* If the local cell is also active, more stuff will be needed. */
+          if (cj_active) {
+            scheduler_activate_send(s, cj->send_rho, ci->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            for (l = cj->send_gradient;
-                 l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_gradient task.");
-            scheduler_activate(s, l->t);
+            scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
 #endif
           }
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cell_is_active(cj, e)) {
-          struct link *l = NULL;
-          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_ti task.");
-          scheduler_activate(s, l->t);
-        }
+        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
       } else if (cj->nodeID != engine_rank) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cell_is_active(ci, e)) {
+        if (ci_active) {
           scheduler_activate(s, cj->recv_xv);
-          if (cell_is_active(cj, e)) {
+          if (cj_active) {
             scheduler_activate(s, cj->recv_rho);
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, cj->recv_gradient);
@@ -1972,49 +1955,30 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cell_is_active(cj, e)) scheduler_activate(s, cj->recv_ti);
+        if (cj_active) scheduler_activate(s, cj->recv_ti);
 
-        /* Look for the local cell ci's send tasks. */
-        if (cell_is_active(cj, e)) {
-          struct link *l = NULL;
-          for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_xv task.");
-          scheduler_activate(s, l->t);
+        /* Is the foreign cell active and will need stuff from us? */
+        if (cj_active) {
+
+          scheduler_activate_send(s, ci->send_xv, cj->nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
 
-          if (cell_is_active(ci, e)) {
+          /* If the local cell is also active, more stuff will be needed. */
+          if (ci_active) {
 
-            struct link *l = NULL;
-            for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-                 l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_rho task.");
-            scheduler_activate(s, l->t);
+            scheduler_activate_send(s, ci->send_rho, cj->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            for (l = ci->send_gradient;
-                 l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
-              ;
-            if (l == NULL) error("Missing link to send_gradient task.");
-            scheduler_activate(s, l->t);
+            scheduler_activate_send(s, ci->send_gradient, cj->nodeID);
 #endif
           }
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cell_is_active(ci, e)) {
-          struct link *l = NULL;
-          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-               l = l->next)
-            ;
-          if (l == NULL) error("Missing link to send_ti task.");
-          scheduler_activate(s, l->t);
-        }
+        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
       }
 #endif
     }

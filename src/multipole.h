@@ -989,11 +989,11 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
  *
  * Corresponds to equation (28c).
  *
- * @param m The #multipole (content will  be overwritten).
+ * @param multi The #multipole (content will  be overwritten).
  * @param gparts The #gpart.
  * @param gcount The number of particles.
  */
-INLINE static void gravity_P2M(struct gravity_tensors *m,
+INLINE static void gravity_P2M(struct gravity_tensors *multi,
                                const struct gpart *gparts, int gcount) {
 
   /* Temporary variables */
@@ -1153,96 +1153,96 @@ INLINE static void gravity_P2M(struct gravity_tensors *m,
 #endif
 
   /* Store the data on the multipole. */
-  m->m_pole.M_000 = mass;
-  m->r_max = sqrt(r_max2);
-  m->CoM[0] = com[0];
-  m->CoM[1] = com[1];
-  m->CoM[2] = com[2];
-  m->m_pole.vel[0] = vel[0];
-  m->m_pole.vel[1] = vel[1];
-  m->m_pole.vel[2] = vel[2];
+  multi->m_pole.M_000 = mass;
+  multi->r_max = sqrt(r_max2);
+  multi->CoM[0] = com[0];
+  multi->CoM[1] = com[1];
+  multi->CoM[2] = com[2];
+  multi->m_pole.vel[0] = vel[0];
+  multi->m_pole.vel[1] = vel[1];
+  multi->m_pole.vel[2] = vel[2];
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order terms */
-  m->m_pole.M_100 = M_100;
-  m->m_pole.M_010 = M_010;
-  m->m_pole.M_001 = M_001;
+  multi->m_pole.M_100 = M_100;
+  multi->m_pole.M_010 = M_010;
+  multi->m_pole.M_001 = M_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order terms */
-  m->m_pole.M_200 = M_200;
-  m->m_pole.M_020 = M_020;
-  m->m_pole.M_002 = M_002;
-  m->m_pole.M_110 = M_110;
-  m->m_pole.M_101 = M_101;
-  m->m_pole.M_011 = M_011;
+  multi->m_pole.M_200 = M_200;
+  multi->m_pole.M_020 = M_020;
+  multi->m_pole.M_002 = M_002;
+  multi->m_pole.M_110 = M_110;
+  multi->m_pole.M_101 = M_101;
+  multi->m_pole.M_011 = M_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order terms */
-  m->m_pole.M_300 = M_300;
-  m->m_pole.M_030 = M_030;
-  m->m_pole.M_003 = M_003;
-  m->m_pole.M_210 = M_210;
-  m->m_pole.M_201 = M_201;
-  m->m_pole.M_120 = M_120;
-  m->m_pole.M_021 = M_021;
-  m->m_pole.M_102 = M_102;
-  m->m_pole.M_012 = M_012;
-  m->m_pole.M_111 = M_111;
+  multi->m_pole.M_300 = M_300;
+  multi->m_pole.M_030 = M_030;
+  multi->m_pole.M_003 = M_003;
+  multi->m_pole.M_210 = M_210;
+  multi->m_pole.M_201 = M_201;
+  multi->m_pole.M_120 = M_120;
+  multi->m_pole.M_021 = M_021;
+  multi->m_pole.M_102 = M_102;
+  multi->m_pole.M_012 = M_012;
+  multi->m_pole.M_111 = M_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 4th order terms */
-  m->m_pole.M_400 = M_400;
-  m->m_pole.M_040 = M_040;
-  m->m_pole.M_004 = M_004;
-  m->m_pole.M_310 = M_310;
-  m->m_pole.M_301 = M_301;
-  m->m_pole.M_130 = M_130;
-  m->m_pole.M_031 = M_031;
-  m->m_pole.M_103 = M_103;
-  m->m_pole.M_013 = M_013;
-  m->m_pole.M_220 = M_220;
-  m->m_pole.M_202 = M_202;
-  m->m_pole.M_022 = M_022;
-  m->m_pole.M_211 = M_211;
-  m->m_pole.M_121 = M_121;
-  m->m_pole.M_112 = M_112;
+  multi->m_pole.M_400 = M_400;
+  multi->m_pole.M_040 = M_040;
+  multi->m_pole.M_004 = M_004;
+  multi->m_pole.M_310 = M_310;
+  multi->m_pole.M_301 = M_301;
+  multi->m_pole.M_130 = M_130;
+  multi->m_pole.M_031 = M_031;
+  multi->m_pole.M_103 = M_103;
+  multi->m_pole.M_013 = M_013;
+  multi->m_pole.M_220 = M_220;
+  multi->m_pole.M_202 = M_202;
+  multi->m_pole.M_022 = M_022;
+  multi->m_pole.M_211 = M_211;
+  multi->m_pole.M_121 = M_121;
+  multi->m_pole.M_112 = M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 5th order terms */
-  m->m_pole.M_005 = M_005;
-  m->m_pole.M_014 = M_014;
-  m->m_pole.M_023 = M_023;
-  m->m_pole.M_032 = M_032;
-  m->m_pole.M_041 = M_041;
-  m->m_pole.M_050 = M_050;
-  m->m_pole.M_104 = M_104;
-  m->m_pole.M_113 = M_113;
-  m->m_pole.M_122 = M_122;
-  m->m_pole.M_131 = M_131;
-  m->m_pole.M_140 = M_140;
-  m->m_pole.M_203 = M_203;
-  m->m_pole.M_212 = M_212;
-  m->m_pole.M_221 = M_221;
-  m->m_pole.M_230 = M_230;
-  m->m_pole.M_302 = M_302;
-  m->m_pole.M_311 = M_311;
-  m->m_pole.M_320 = M_320;
-  m->m_pole.M_401 = M_401;
-  m->m_pole.M_410 = M_410;
-  m->m_pole.M_500 = M_500;
+  multi->m_pole.M_005 = M_005;
+  multi->m_pole.M_014 = M_014;
+  multi->m_pole.M_023 = M_023;
+  multi->m_pole.M_032 = M_032;
+  multi->m_pole.M_041 = M_041;
+  multi->m_pole.M_050 = M_050;
+  multi->m_pole.M_104 = M_104;
+  multi->m_pole.M_113 = M_113;
+  multi->m_pole.M_122 = M_122;
+  multi->m_pole.M_131 = M_131;
+  multi->m_pole.M_140 = M_140;
+  multi->m_pole.M_203 = M_203;
+  multi->m_pole.M_212 = M_212;
+  multi->m_pole.M_221 = M_221;
+  multi->m_pole.M_230 = M_230;
+  multi->m_pole.M_302 = M_302;
+  multi->m_pole.M_311 = M_311;
+  multi->m_pole.M_320 = M_320;
+  multi->m_pole.M_401 = M_401;
+  multi->m_pole.M_410 = M_410;
+  multi->m_pole.M_500 = M_500;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  m->m_pole.num_gpart = gcount;
+  multi->m_pole.num_gpart = gcount;
 #endif
 }
 

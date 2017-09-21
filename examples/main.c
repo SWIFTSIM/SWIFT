@@ -153,12 +153,6 @@ int main(int argc, char *argv[]) {
 
 #endif
 
-/* Let's pin the main thread */
-#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if (((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
-    engine_pin();
-#endif
-
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
@@ -328,6 +322,12 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) print_help_message();
     return 1;
   }
+
+/* Let's pin the main thread, now we know if affinity will be used. */
+#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+  if (with_aff && ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
+    engine_pin();
+#endif
 
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
@@ -791,10 +791,10 @@ int main(int argc, char *argv[]) {
     if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
       char dumpfile[40];
 #ifdef WITH_MPI
-      snprintf(dumpfile, 30, "threadpool_info-rank%d-step%d.dat", engine_rank,
+      snprintf(dumpfile, 40, "threadpool_info-rank%d-step%d.dat", engine_rank,
                j + 1);
 #else
-      snprintf(dumpfile, 30, "threadpool_info-step%d.dat", j + 1);
+      snprintf(dumpfile, 40, "threadpool_info-step%d.dat", j + 1);
 #endif  // WITH_MPI
       threadpool_dump_log(&e.threadpool, dumpfile, 1);
     } else {
