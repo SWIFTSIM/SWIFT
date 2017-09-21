@@ -299,10 +299,12 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
 void io_read_unit_system(hid_t h_file, struct unit_system* us) {
+  // First check if it exists as this is *not* required.
+  // This check comes from the H5G documentation.
+  // https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/h5grpexist.c
+  int exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
 
-  hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
-
-  if (h_grp < 0) {
+  if (exists == 0) {
     message("'Units' group not found in ICs. Assuming CGS unit system.");
 
     /* Default to CGS */
@@ -313,7 +315,13 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us) {
     us->UnitTemperature_in_cgs = 1.;
 
     return;
+  } else if (exists < 0) {
+    error("Serious problem with 'Units' group in your ICs. H5Lexists gives %d",
+          exists);
   }
+  
+  message("Reading units from your ICs.");
+  hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
   /* Ok, Read the damn thing */
   io_read_attribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
