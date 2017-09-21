@@ -300,8 +300,6 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  */
 void io_read_unit_system(hid_t h_file, struct unit_system* us) {
   // First check if it exists as this is *not* required.
-  // This check comes from the H5G documentation.
-  // https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/h5grpexist.c
   int exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
 
   if (exists == 0) {
