@@ -40,6 +40,9 @@ fi
 NPROCS=$1
 TIMERANGE=$2
 
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
 #  Find all thread info files. Use version sort to get into correct order.
 files=$(ls -v thread_info_MPI-step*.dat)
 if test $? != 0; then
@@ -61,9 +64,9 @@ nrank=$(($nrank-1))
 
 #  And process them,
 echo "Processing thread info files..."
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks_MPI.py --expand 1 --limit $TIMERANGE \$0 \$2 "
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $TIMERANGE \$0 \$2 "
 for i in $(seq 0 $nrank); do
-    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./analyse_tasks_MPI.py -r $i \$0 > \$2${i}.stats"
+    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py -r $i \$0 > \$2${i}.stats"
 done
 
 echo "Writing output index.html file"

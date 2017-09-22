@@ -792,10 +792,10 @@ int main(int argc, char *argv[]) {
     if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
       char dumpfile[40];
 #ifdef WITH_MPI
-      snprintf(dumpfile, 30, "threadpool_info-rank%d-step%d.dat", engine_rank,
+      snprintf(dumpfile, 40, "threadpool_info-rank%d-step%d.dat", engine_rank,
                j + 1);
 #else
-      snprintf(dumpfile, 30, "threadpool_info-step%d.dat", j + 1);
+      snprintf(dumpfile, 40, "threadpool_info-step%d.dat", j + 1);
 #endif  // WITH_MPI
       threadpool_dump_log(&e.threadpool, dumpfile, 1);
     } else {

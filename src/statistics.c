@@ -301,9 +301,11 @@ void stats_collect(const struct space *s, struct statistics *stats) {
  */
 void stats_finalize(struct statistics *stats) {
 
-  stats->centre_of_mass[0] /= stats->mass;
-  stats->centre_of_mass[1] /= stats->mass;
-  stats->centre_of_mass[2] /= stats->mass;
+  if (stats->mass > 0.) {
+    stats->centre_of_mass[0] /= stats->mass;
+    stats->centre_of_mass[1] /= stats->mass;
+    stats->centre_of_mass[2] /= stats->mass;
+  }
 }
 
 /**
