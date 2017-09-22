@@ -1718,7 +1718,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
-        vector v_dx, v_dy, v_dz, v_r2;
+        vector v_dx, v_dy, v_dz;
 
         /* Load 2 sets of vectors from the particle cache. */
         pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
