@@ -124,10 +124,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
 
-#ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
-#endif
-
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -215,10 +211,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
   const struct engine *e = r->e;
-
-#ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
-#endif
 
   TIMER_TIC;
 
@@ -310,10 +302,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-#ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
-#endif
-
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -391,10 +379,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
-
-#ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
-#endif
 
   TIMER_TIC;
 
@@ -481,10 +465,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
 
-#ifndef SWIFT_DEBUG_CHECKS
-  error("Don't use in actual runs ! Slow code !");
-#endif
-
   TIMER_TIC;
 
   const int count_j = cj->count;
@@ -564,6 +544,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
+  return;
+#endif
 
   TIMER_TIC;
 
@@ -777,8 +762,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
 
-  // DOPAIR1_NAIVE(r, ci, cj);
-  // return;
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR1_NAIVE(r, ci, cj);
+  return;
+#endif
 
   TIMER_TIC;
 
@@ -999,8 +986,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   struct engine *restrict e = r->e;
 
-  // DOPAIR2_NAIVE(r, ci, cj);
-  // return;
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR2_NAIVE(r, ci, cj);
+  return;
+#endif
 
   TIMER_TIC;
 
@@ -1337,6 +1326,11 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOSELF1_NAIVE(r, c);
+  return;
+#endif
+
   TIMER_TIC;
 
   if (!cell_is_active(c, e)) return;
@@ -1468,6 +1462,11 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOSELF2_NAIVE(r, c);
+  return;
+#endif
 
   TIMER_TIC;
 
