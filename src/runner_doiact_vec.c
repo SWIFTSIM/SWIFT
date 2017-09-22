@@ -1474,6 +1474,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                                     hi_max, hj_max, di_max, dj_min, max_index_i,
                                     max_index_j, &first_pi, &last_pj, e);
 
+  first_pi = 0;
+  last_pj = count_j - 1;
+
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
   int last_pj_loop = last_pj;
@@ -1482,6 +1485,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
    * to read into the cache. */
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
+  
+  first_pi = 0;
+  last_pj = count_j - 1;
 
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
@@ -1489,6 +1495,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
                                             sort_j, shift, &first_pi_align,
                                             &last_pj_align, 1);
+
+  for(int i=0; i<count_i; i++) max_index_i[i] = last_pj;
+  for(int i=0; i<count_j; i++) max_index_j[i] = first_pi;
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
