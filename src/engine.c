@@ -4469,8 +4469,7 @@ void engine_init(struct engine *e, struct space *s,
    * do this once we've made at least one call to engine_entry_affinity and
    * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
    * pinned. */
-  if (with_aff)
-    engine_unpin();
+  if (with_aff) engine_unpin();
 #endif
 
   if (with_aff) {

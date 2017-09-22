@@ -452,7 +452,8 @@ void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+                              struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 

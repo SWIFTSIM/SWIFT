@@ -437,7 +437,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * @param num_vec_proc Number of vectors that will be used to process the
  * interaction.
  */
-__attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_force(
+__attribute__((always_inline)) INLINE void
+cache_read_two_partial_cells_sorted_force(
     const struct cell *const ci, const struct cell *const cj,
     struct cache *const ci_cache, struct cache *const cj_cache,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
@@ -480,19 +481,25 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
   swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, rho, ci_cache->rho, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_h, ci_cache->grad_h,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2, ci_cache->pOrho2,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsara, ci_cache->balsara,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed,
+                            SWIFT_CACHE_ALIGNMENT);
 
   int ci_cache_count = ci->count - first_pi_align;
-  /* Shift the particles positions to a local frame (ci frame) so single precision
+  /* Shift the particles positions to a local frame (ci frame) so single
+   * precision
    * can be
-   * used instead of double precision. Also shift the cell ci, particles positions
+   * used instead of double precision. Also shift the cell ci, particles
+   * positions
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
     /* Make sure ci_cache is filled from the first element. */
-    
+
     idx = sort_i[i + first_pi_align].i;
     x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
     y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
@@ -525,7 +532,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
     vx[i] = 1.f;
     vy[i] = 1.f;
     vz[i] = 1.f;
-    
+
     rho[i] = 1.f;
     grad_h[i] = 1.f;
     pOrho2[i] = 1.f;
@@ -544,10 +551,14 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
   swift_declare_aligned_ptr(float, vyj, cj_cache->vy, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vzj, cj_cache->vz, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, rhoj, cj_cache->rho, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, grad_hj, cj_cache->grad_h, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pOrho2j, cj_cache->pOrho2, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, balsaraj, cj_cache->balsara, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, soundspeedj, cj_cache->soundspeed, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, grad_hj, cj_cache->grad_h,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pOrho2j, cj_cache->pOrho2,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, balsaraj, cj_cache->balsara,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, soundspeedj, cj_cache->soundspeed,
+                            SWIFT_CACHE_ALIGNMENT);
 
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
@@ -581,7 +592,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
     vxj[i] = 1.f;
     vyj[i] = 1.f;
     vzj[i] = 1.f;
-    
+
     rhoj[i] = 1.f;
     grad_hj[i] = 1.f;
     pOrho2j[i] = 1.f;

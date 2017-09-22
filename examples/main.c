@@ -325,7 +325,8 @@ int main(int argc, char *argv[]) {
 
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if (with_aff && ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
+  if (with_aff &&
+      ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
     engine_pin();
 #endif
 
