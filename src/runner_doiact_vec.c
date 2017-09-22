@@ -363,13 +363,16 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   *init_pj = last_pj;
 }
 
-__attribute__((always_inline)) INLINE static void populate_max_index_no_cache_force(
-    const struct cell *ci, const struct cell *cj,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const float dx_max, const float rshift, const double hi_max,
-    const double hj_max, const double di_max, const double dj_min,
-    int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
-    const struct engine *e) {
+__attribute__((always_inline)) INLINE static void
+populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
+                                  const struct entry *restrict sort_i,
+                                  const struct entry *restrict sort_j,
+                                  const float dx_max, const float rshift,
+                                  const double hi_max, const double hj_max,
+                                  const double di_max, const double dj_min,
+                                  int *max_index_i, int *max_index_j,
+                                  int *init_pi, int *init_pj,
+                                  const struct engine *e) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -473,22 +476,26 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache_fo
   int first_pi_est = first_pi;
   int max_index_i_last = max_index_i[ci->count - 1];
 
-  if(max_index_j[0] < first_pi) {
+  /* Set the maximum indices for pi particles to last_pj if the first particle
+   * in cj is in range of more particles than first_pi. This ensures that all
+   * interactions are found.*/
+  if (max_index_j[0] < first_pi) {
     first_pi = max_index_j[0];
 
-    for(int i=first_pi; i<ci->count; i++) {
+    for (int i = first_pi; i < ci->count; i++) {
       max_index_i[i] = last_pj;
     }
-
   }
-  
-  if(max_index_i_last > last_pj) {
+
+  /* Set the maximum indices for pj particles to first_pi_est if the last
+   * particle in ci is in range of more particles than last_pj. This ensures
+   * that all interactions are found.*/
+  if (max_index_i_last > last_pj) {
     last_pj = max_index_i_last;
 
-    for(int i=0; i<=last_pj; i++) {
+    for (int i = 0; i <= last_pj; i++) {
       max_index_j[i] = first_pi_est;
     }
-
   }
 
   *init_pi = first_pi;
@@ -1336,7 +1343,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
  * @param cj The second #cell.
  */
 void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj) {
+                              struct cell *cj) {
 
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
@@ -1417,8 +1424,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
   /* Check if any particles are active and return if there are not. */
-  //int numActive = 0;
-  //for (int pid = count_i - 1;
+  // int numActive = 0;
+  // for (int pid = count_i - 1;
   //     pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
   //  struct part *restrict pi = &parts_i[sort_i[pid].i];
   //  if (part_is_active(pi, e)) {
@@ -1427,8 +1434,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   //  }
   //}
 
-  //if (!numActive) {
-  //  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+  // if (!numActive) {
+  //  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max <
+  //  di_max;
   //       pjd++) {
   //    struct part *restrict pj = &parts_j[sort_j[pjd].i];
   //    if (part_is_active(pj, e)) {
@@ -1438,7 +1446,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   //  }
   //}
 
-  //if (numActive == 0) return;
+  // if (numActive == 0) return;
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
@@ -1462,11 +1470,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  //populate_max_d_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max, di_max, dj_min, max_di,
-  //                        max_dj, &first_pi, &last_pj, e);
-  populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
-                              hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, e);
+  populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift,
+                                    hi_max, hj_max, di_max, dj_min, max_index_i,
+                                    max_index_j, &first_pi, &last_pj, e);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -1476,14 +1482,14 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
    * to read into the cache. */
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
-  
+
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
   int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
-                                      sort_j, shift, &first_pi_align,
-                                      &last_pj_align, 1);
-  
+                                            sort_j, shift, &first_pi_align,
+                                            &last_pj_align, 1);
+
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
 
@@ -1501,7 +1507,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
-      const double di_test = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+      const double di_test =
+          sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
@@ -1530,8 +1537,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
       /* Reset cumulative sums of update vectors. */
       vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
-             entropy_dtSum;
-      
+          entropy_dtSum;
+
       /* Get the inverse of hi. */
       vector v_hi_inv;
       v_hi_inv = vec_reciprocal(v_hi);
@@ -1554,7 +1561,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       }
 
       vector pjx, pjy, pjz, hj, hjg2;
-      
+
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
 
@@ -1602,18 +1609,17 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         if (doi_mask) {
           vector v_hj_inv;
           v_hj_inv = vec_reciprocal(hj);
-          
+
           runner_iact_nonsym_1_vec_force(
-              &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, 
-              v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
+              &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi,
+              v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
               &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
-              &cj_cache->vz[cj_cache_idx], &cj_cache->rho[cj_cache_idx], 
-              &cj_cache->grad_h[cj_cache_idx], &cj_cache->pOrho2[cj_cache_idx], 
-              &cj_cache->balsara[cj_cache_idx], &cj_cache->soundspeed[cj_cache_idx], 
-              &cj_cache->m[cj_cache_idx], v_hi_inv, v_hj_inv,
-              &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+              &cj_cache->vz[cj_cache_idx], &cj_cache->rho[cj_cache_idx],
+              &cj_cache->grad_h[cj_cache_idx], &cj_cache->pOrho2[cj_cache_idx],
+              &cj_cache->balsara[cj_cache_idx],
+              &cj_cache->soundspeed[cj_cache_idx], &cj_cache->m[cj_cache_idx],
+              v_hi_inv, v_hj_inv, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
               &h_dtSum, &v_sigSum, &entropy_dtSum, v_doi_mask);
-      
         }
 
       } /* loop over the parts in cj. */
@@ -1626,12 +1632,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       VEC_HADD(h_dtSum, pi->force.h_dt);
       VEC_HMAX(v_sigSum, pi->force.v_sig);
       VEC_HADD(entropy_dtSum, pi->entropy_dt);
-      
+
     } /* loop over the parts in ci. */
   }
 
   if (cell_is_active(cj, e)) {
-    
+
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
 
@@ -1645,7 +1651,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /*TODO: rshift term. */
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
-      const double dj_test = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+      const double dj_test =
+          sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
@@ -1676,7 +1683,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
       /* Reset cumulative sums of update vectors. */
       vector a_hydro_xSum, a_hydro_ySum, a_hydro_zSum, h_dtSum, v_sigSum,
-             entropy_dtSum;
+          entropy_dtSum;
 
       /* Get the inverse of hj. */
       vector v_hj_inv;
@@ -1745,18 +1752,17 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         if (doj_mask) {
           vector v_hi_inv;
           v_hi_inv = vec_reciprocal(hi);
- 
+
           runner_iact_nonsym_1_vec_force(
-              &v_r2, &v_dx, &v_dy, &v_dz, v_vjx, v_vjy, v_vjz, 
-              v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj,
+              &v_r2, &v_dx, &v_dy, &v_dz, v_vjx, v_vjy, v_vjz, v_rhoj,
+              v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj,
               &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
-              &ci_cache->vz[ci_cache_idx], &ci_cache->rho[ci_cache_idx], 
-              &ci_cache->grad_h[ci_cache_idx], &ci_cache->pOrho2[ci_cache_idx], 
-              &ci_cache->balsara[ci_cache_idx], &ci_cache->soundspeed[ci_cache_idx], 
-              &ci_cache->m[ci_cache_idx], v_hj_inv, v_hi_inv,
-              &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
+              &ci_cache->vz[ci_cache_idx], &ci_cache->rho[ci_cache_idx],
+              &ci_cache->grad_h[ci_cache_idx], &ci_cache->pOrho2[ci_cache_idx],
+              &ci_cache->balsara[ci_cache_idx],
+              &ci_cache->soundspeed[ci_cache_idx], &ci_cache->m[ci_cache_idx],
+              v_hj_inv, v_hi_inv, &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum,
               &h_dtSum, &v_sigSum, &entropy_dtSum, v_doj_mask);
-          
         }
       } /* loop over the parts in ci. */
 
