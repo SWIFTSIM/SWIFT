@@ -32,6 +32,9 @@
 #define _DOPAIR1(f) PASTE(runner_dopair1, f)
 #define DOPAIR1 _DOPAIR1(FUNCTION)
 
+#define _DOPAIR2_BRANCH(f) PASTE(runner_dopair2_branch, f)
+#define DOPAIR2_BRANCH _DOPAIR2_BRANCH(FUNCTION)
+
 #define _DOPAIR2(f) PASTE(runner_dopair2, f)
 #define DOPAIR2 _DOPAIR2(FUNCTION)
 
@@ -1198,6 +1201,49 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 }
 
 /**
+ * @brief Determine which version of DOPAIR2 needs to be called depending on the
+ * orientation of the cells or whether DOPAIR2 needs to be called at all.
+ *
+ * @param r #runner
+ * @param ci #cell ci
+ * @param cj #cell cj
+ *
+ */
+void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+
+//  const struct engine *restrict e = r->e;
+//
+//  /* Anything to do here? */
+//  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+//
+//  /* Check that cells are drifted. */
+//  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+//    error("Interacting undrifted cells.");
+//
+//  /* Get the sort ID. */
+//  double shift[3] = {0.0, 0.0, 0.0};
+//  const int sid = space_getsid(e->s, &ci, &cj, shift);
+//
+//  /* Have the cells been sorted? */
+//  if (!(ci->sorted & (1 << sid)) ||
+//      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+//    error("Interacting unsorted cells.");
+//  if (!(cj->sorted & (1 << sid)) ||
+//      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+//    error("Interacting unsorted cells.");
+//
+//#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+//    (DOPAIR2_BRANCH == runner_dopair2_force_branch)
+//  if (!sort_is_corner(sid))
+//    runner_dopair2_force_vec(r, ci, cj, sid, shift);
+//  else
+//    DOPAIR2(r, ci, cj, sid, shift);
+//#else
+//  DOPAIR2(r, ci, cj, sid, shift);
+//#endif
+}
+
+/**
  * @brief Compute the cell self-interaction (non-symmetric).
  *
  * @param r The #runner.
@@ -1992,7 +2038,11 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       error("Interacting unsorted cells.");
 
     /* Compute the interactions. */
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+    runner_dopair2_force_vec(r, ci, cj);
+#else
     DOPAIR2(r, ci, cj);
+#endif
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
