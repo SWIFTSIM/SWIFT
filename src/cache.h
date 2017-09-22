@@ -30,6 +30,8 @@
 #include "sort_part.h"
 #include "vector.h"
 
+#include <float.h>
+
 #define NUM_VEC_PROC 2
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 
@@ -517,7 +519,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
     x[i] = fake_pix;
     y[i] = 1.f;
     z[i] = 1.f;
-    h[i] = 1.f;
+    h[i] = FLT_MIN;
 
     m[i] = 1.f;
     vx[i] = 1.f;
@@ -573,7 +575,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted_f
     xj[i] = fake_pjx;
     yj[i] = 1.f;
     zj[i] = 1.f;
-    hj[i] = 1.f;
+    hj[i] = FLT_MIN;
 
     mj[i] = 1.f;
     vxj[i] = 1.f;
