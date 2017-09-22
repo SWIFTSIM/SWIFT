@@ -970,9 +970,9 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   struct gravity_tensors *const multi_j = cj->multipole;
 
   /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+  double dx = multi_i->CoM_old[0] - multi_j->CoM_old[0];
+  double dy = multi_i->CoM_old[1] - multi_j->CoM_old[1];
+  double dz = multi_i->CoM_old[2] - multi_j->CoM_old[2];
 
   /* Apply BC */
   if (periodic) {
@@ -999,7 +999,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+  if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2, r2)) {
 
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1012,8 +1012,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   /* Alright, we'll have to split and recurse. */
   else {
 
-    const double ri_max = multi_i->r_max;
-    const double rj_max = multi_j->r_max;
+    const double ri_max = multi_i->r_max_old;
+    const double rj_max = multi_j->r_max_old;
 
     /* Split the larger of the two cells and start over again */
     if (ri_max > rj_max) {
@@ -1169,7 +1169,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
-  const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+  const double CoM_i[3] = {multi_i->CoM_old[0], multi_i->CoM_old[1], multi_i->CoM_old[2]};
   const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
@@ -1186,9 +1186,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     if (ci == cj || cj->gcount == 0) continue;
 
     /* Get the distance between the CoMs */
-    double dx = CoM_i[0] - multi_j->CoM[0];
-    double dy = CoM_i[1] - multi_j->CoM[1];
-    double dz = CoM_i[2] - multi_j->CoM[2];
+    double dx = CoM_i[0] - multi_j->CoM_old[0];
+    double dy = CoM_i[1] - multi_j->CoM_old[1];
+    double dz = CoM_i[2] - multi_j->CoM_old[2];
 
     /* Apply BC */
     if (periodic) {
@@ -1209,7 +1209,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     }
 
     /* Check the multipole acceptance criterion */
-    if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+    if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2, r2)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);

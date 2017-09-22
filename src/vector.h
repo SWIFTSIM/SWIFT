@@ -433,7 +433,7 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
 
 #else
 /* Needed for cache alignment. */
-#define VEC_SIZE 16
+#define VEC_SIZE 8
 #endif /* WITH_VECTORIZATION */
 
 #endif /* VEC_MACRO */

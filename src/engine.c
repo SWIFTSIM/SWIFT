@@ -3656,7 +3656,7 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+    printf("  %6d %10lld %3d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->ti_current, e->max_active_bin, e->time,
            e->timeStep, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time);
     fflush(stdout);

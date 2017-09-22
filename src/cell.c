@@ -1692,6 +1692,19 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   const double dim[3] = {sp->dim[0], sp->dim[1], sp->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
 
+  /* Store the current dx_max and h_max values. */
+  ci->multipole->r_max_old = ci->multipole->r_max;
+  ci->multipole->CoM_old[0] = ci->multipole->CoM[0];
+  ci->multipole->CoM_old[1] = ci->multipole->CoM[1];
+  ci->multipole->CoM_old[2] = ci->multipole->CoM[2];
+  if (cj != NULL) {
+    cj->multipole->r_max_old = cj->multipole->r_max;
+    cj->multipole->CoM_old[0] = cj->multipole->CoM[0];
+    cj->multipole->CoM_old[1] = cj->multipole->CoM[1];
+    cj->multipole->CoM_old[2] = cj->multipole->CoM[2];
+  }
+
+
   /* Self interaction? */
   if (cj == NULL) {
 
