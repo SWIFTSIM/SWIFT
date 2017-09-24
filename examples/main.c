@@ -361,6 +361,13 @@ int main(int argc, char *argv[]) {
     message("WARNING: Debugging checks activated. Code will be slower !");
 #endif
 
+/* Do we have debugging checks ? */
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  if (myrank == 0)
+    message(
+        "WARNING: Naive cell interactions activated. Code will be slower !");
+#endif
+
 /* Do we have gravity accuracy checks ? */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   if (myrank == 0)
