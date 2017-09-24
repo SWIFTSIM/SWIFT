@@ -1704,7 +1704,6 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     cj->multipole->CoM_old[2] = cj->multipole->CoM[2];
   }
 
-
   /* Self interaction? */
   if (cj == NULL) {
 

@@ -999,7 +999,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2, r2)) {
+  if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2,
+                         r2)) {
 
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1169,7 +1170,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
-  const double CoM_i[3] = {multi_i->CoM_old[0], multi_i->CoM_old[1], multi_i->CoM_old[2]};
+  const double CoM_i[3] = {multi_i->CoM_old[0], multi_i->CoM_old[1],
+                           multi_i->CoM_old[2]};
   const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
@@ -1209,7 +1211,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     }
 
     /* Check the multipole acceptance criterion */
-    if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2, r2)) {
+    if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2,
+                           r2)) {
 
       /* Go for a (non-symmetric) M-M calculation */
       runner_dopair_grav_mm(r, ci, cj);
