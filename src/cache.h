@@ -327,9 +327,15 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
   double loc[3];
-  loc[0] = ci->loc[0];
-  loc[1] = ci->loc[1];
-  loc[2] = ci->loc[2];
+  loc[0] = cj->loc[0];
+  loc[1] = cj->loc[1];
+  loc[2] = cj->loc[2];
+
+  /* Shift ci particles for boundary conditions and location of cell.*/
+  double total_ci_shift[3];
+  total_ci_shift[0] = loc[0] + shift[0];
+  total_ci_shift[1] = loc[1] + shift[1];
+  total_ci_shift[2] = loc[2] + shift[2];
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
@@ -351,9 +357,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
     idx = sort_i[i + first_pi_align].i;
-    x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
-    y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
-    z[i] = (float)(parts_i[idx].x[2] - loc[2] - shift[2]);
+    x[i] = (float)(parts_i[idx].x[0] - total_ci_shift[0]);
+    y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
+    z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
 
     m[i] = parts_i[idx].mass;
@@ -361,6 +367,31 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     vy[i] = parts_i[idx].v[1];
     vz[i] = parts_i[idx].v[2];
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const float shift_threshold_x = 4. * ci->width[0] * (1. + 2.*space_maxreldx);
+  const float shift_threshold_y = 4. * ci->width[1] * (1. + 2.*space_maxreldx);
+  const float shift_threshold_z = 4. * ci->width[2] * (1. + 2.*space_maxreldx);
+
+  /* Make sure that particle positions have been shifted correctly. */
+  for (int i = 0; i < ci_cache_count; i++) {
+    if (x[i] > shift_threshold_x || x[i] < -shift_threshold_x)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf],cj->loc[%lf,%lf,%lf] Particle %d x pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. x=%f, ci->width[0]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, x[i], ci->width[0]);
+    if (y[i] > shift_threshold_y || y[i] < -shift_threshold_y)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d y pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. y=%f, ci->width[1]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, y[i], ci->width[1]);
+    if (z[i] > shift_threshold_z || z[i] < -shift_threshold_z)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d z pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. z=%f, ci->width[2]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, z[i], ci->width[2]);
+  }
+#endif
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
@@ -401,6 +432,27 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     vyj[i] = parts_j[idx].v[1];
     vzj[i] = parts_j[idx].v[2];
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure that particle positions have been shifted correctly. */
+  for (int i = 0; i <= last_pj_align; i++) {
+    if (xj[i] > shift_threshold_x || xj[i] < -shift_threshold_x)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d xj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. xj=%f, ci->width[0]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, xj[i], ci->width[0]);
+    if (yj[i] > shift_threshold_y || yj[i] < -shift_threshold_y)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d yj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. yj=%f, ci->width[1]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, yj[i], ci->width[1]);
+    if (zj[i] > shift_threshold_z || zj[i] < -shift_threshold_z)
+      error(
+          "Error: ci->loc[%lf,%lf,%lf], cj->loc[%lf,%lf,%lf] Particle %d zj pos is not within "
+          "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + 2*space_maxreldx)]. zj=%f, ci->width[2]=%f", ci->loc[0], ci->loc[1], ci->loc[2],
+          loc[0], loc[1], loc[2], i, zj[i], ci->width[2]);
+  }
+#endif
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/

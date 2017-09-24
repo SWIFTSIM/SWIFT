@@ -272,6 +272,8 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   bzero(cell->parts, count * sizeof(struct part));
   bzero(cell->xparts, count * sizeof(struct xpart));
 
+  float h_max = 0.f;
+
   /* Construct the parts */
   struct part *part = cell->parts;
   struct xpart *xpart = cell->xparts;
@@ -288,6 +290,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
         part->h = size * h / (float)n;
+        h_max = fmax(h_max, part->h);
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
@@ -333,7 +336,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h;
+  cell->h_max = h_max;
   cell->count = count;
   cell->gcount = 0;
   cell->dx_max_part = 0.;

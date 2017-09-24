@@ -290,7 +290,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   struct cell *main_cell = cells[loc_i * (dim * dim) + loc_j * dim + loc_k];
 
   /* Zero the fields */
-  for (int j = 0; j < 512; ++j) zero_particle_fields(cells[j]);
+  for (int j = 0; j < dim * dim * dim; ++j) zero_particle_fields(cells[j]);
 
 /* Run all the pairs */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
@@ -337,7 +337,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  for (int i = 0; i < 512; ++i) zero_particle_fields(cells[i]);
+  for (int i = 0; i < dim * dim * dim; ++i) zero_particle_fields(cells[i]);
 
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
@@ -467,11 +467,12 @@ int main(int argc, char *argv[]) {
   printf("\n");
 
   /* Build the infrastructure */
+  const int dim = 8;
   struct space space;
   space.periodic = 1;
-  space.dim[0] = 8.;
-  space.dim[1] = 8.;
-  space.dim[2] = 8.;
+  space.dim[0] = dim;
+  space.dim[1] = dim;
+  space.dim[2] = dim;
 
   struct hydro_props hp;
   hp.h_max = FLT_MAX;
@@ -487,8 +488,7 @@ int main(int argc, char *argv[]) {
   runner.e = &engine;
 
   /* Construct some cells */
-  struct cell *cells[512];
-  const int dim = 8;
+  struct cell *cells[dim * dim * dim];
   static long long partId = 0;
   for (int i = 0; i < dim; ++i) {
     for (int j = 0; j < dim; ++j) {
@@ -581,7 +581,7 @@ int main(int argc, char *argv[]) {
                            swiftOutputFileName, bruteForceOutputFileName);
 
   /* Clean things to make the sanitizer happy ... */
-  for (int i = 0; i < 512; ++i) clean_up(cells[i]);
+  for (int i = 0; i < dim * dim * dim; ++i) clean_up(cells[i]);
 
   return 0;
 }

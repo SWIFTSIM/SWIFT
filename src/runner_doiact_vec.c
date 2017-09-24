@@ -285,11 +285,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     temp = 0;
 
     const struct part *pi = &parts_i[sort_i[first_pi].i];
+    const float first_di = sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
     /* Loop through particles in cell j until they are not in range of pi. */
-    while (temp <= cj->count &&
-           (sort_i[first_pi].d + (pi->h * kernel_gamma + dx_max - rshift) >
-            sort_j[temp].d))
+    while (temp < cj->count && first_di > sort_j[temp].d)
       temp++;
 
     max_index_i[first_pi] = temp;
@@ -298,10 +297,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     for (int i = first_pi + 1; i < ci->count; i++) {
       temp = max_index_i[i - 1];
       pi = &parts_i[sort_i[i].i];
+    
+      const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
 
-      while (temp <= cj->count &&
-             (sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) >
-              sort_j[temp].d))
+      while (temp < cj->count && di > sort_j[temp].d)
         temp++;
 
       max_index_i[i] = temp;
@@ -333,11 +332,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     temp = ci->count - 1;
 
     const struct part *pj = &parts_j[sort_j[last_pj].i];
+    const float last_dj = sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
 
     /* Loop through particles in cell i until they are not in range of pj. */
-    while (temp > 0 &&
-           sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) <
-               sort_i[temp].d - rshift)
+    while (temp > 0 && last_dj < sort_i[temp].d)
       temp--;
 
     max_index_j[last_pj] = temp;
@@ -346,10 +344,9 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     for (int i = last_pj - 1; i >= 0; i--) {
       temp = max_index_j[i + 1];
       pj = &parts_j[sort_j[i].i];
+      const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
 
-      while (temp > 0 &&
-             sort_j[i].d - dx_max - (pj->h * kernel_gamma) <
-                 sort_i[temp].d - rshift)
+      while (temp > 0 && dj < sort_i[temp].d)
         temp--;
 
       max_index_j[i] = temp;
@@ -855,19 +852,24 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const int active_ci = cell_is_active(ci, e);
+  const int active_cj = cell_is_active(cj, e);
 
   /* Check if any particles are active and return if there are not. */
   int numActive = 0;
-  for (int pid = count_i - 1;
-       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-    struct part *restrict pi = &parts_i[sort_i[pid].i];
-    if (part_is_active_no_debug(pi, max_active_bin)) {
-      numActive++;
-      break;
+
+  if (active_ci) {
+    for (int pid = count_i - 1;
+         pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active(pi, e)) {
+        numActive++;
+        break;
+      }
     }
   }
 
-  if (!numActive) {
+  if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -926,7 +928,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
 
-  if (cell_is_active(ci, e)) {
+  if (active_ci) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -1056,7 +1058,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     } /* loop over the parts in ci. */
   }
 
-  if (cell_is_active(cj, e)) {
+  if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
@@ -1068,11 +1070,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       /* Set the cache index. */
       int cj_cache_idx = pjd;
 
-      /*TODO: rshift term. */
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
-      const double dj_test =
-          sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
+      const double dj_test = sort_j[pjd].d - hj * kernel_gamma - dx_max;
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
@@ -1188,8 +1188,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
     } /* loop over the parts in cj. */
 
-    TIMER_TOC(timer_dopair_density);
   }
+  
+  TIMER_TOC(timer_dopair_density);
 
 #endif /* WITH_VECTORIZATION */
 }
