@@ -231,7 +231,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
         const int kz = (k > N_half ? k - N : k);
         const double kz_d = (double)kz;
         const double fz = k_fac * kz_d;
-        const double sinc_kz_inv = (kz != 0) ? fz / sin(fz) : 1.;
+        const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
 
         /* Norm of vector in Fourier space */
         const double k2 = (kx_d * kx_d + ky_d * ky_d + kz_d * kz_d);
@@ -242,7 +242,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
         /* Green function */
         double W;
         fourier_kernel_long_grav_eval(k2 * a_smooth2, &W);
-        const double green_cor = green_fac * W / k2;
+        const double green_cor = green_fac * W / (k2 + FLT_MIN);
 
         /* Deconvolution of CIC */
         const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
