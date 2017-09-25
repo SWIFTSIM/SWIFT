@@ -20,7 +20,7 @@
 
 /* Local headers. */
 #include "hydro/Shadowswift/voronoi2d_algorithm.h"
-#include "tools.h"
+#include "swift.h"
 
 /* Number of cells used to test the 2D interaction algorithm */
 #define TESTVORONOI2D_NUMCELL 100

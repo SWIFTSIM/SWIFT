@@ -18,13 +18,12 @@
  ******************************************************************************/
 #include "../config.h"
 
-/* Local headers. */
+/* Some standard headers. */
 #include <string.h>
 
-/* Local includes */
-#include "error.h"
+/* Local headers. */
 #include "riemann/riemann_trrs.h"
-#include "tools.h"
+#include "swift.h"
 
 int opposite(float a, float b) {
   if ((a - b)) {

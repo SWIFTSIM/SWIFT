@@ -19,9 +19,6 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <fenv.h>
-#include <math.h>
-#include <stdio.h>
 #include <string.h>
 
 /* Force use of the HLLC Riemann solver */

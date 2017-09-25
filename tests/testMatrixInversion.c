@@ -19,14 +19,10 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdlib.h>
 #include <string.h>
 
-/* Local headers */
-#include "const.h"
-#include "dimension.h"
-#include "error.h"
-#include "tools.h"
+/* Local headers. */
+#include "swift.h"
 
 void setup_matrix(float A[3][3]) {
   A[0][0] = random_uniform(-1.0, 1.0);

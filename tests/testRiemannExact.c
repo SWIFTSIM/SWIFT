@@ -18,16 +18,14 @@
  ******************************************************************************/
 #include "../config.h"
 
-/* Some standard headers. */
-#include <fenv.h>
-#include <stdio.h>
-#include <string.h>
-
 /* Force use of exact Riemann solver */
 #undef RIEMANN_SOLVER_TRRS
 #undef RIEMANN_SOLVER_HLLC
 #undef RIEMANN_SOLVER_EXACT
 #define RIEMANN_SOLVER_EXACT 1
+
+/* Some standard headers. */
+#include <string.h>
 
 /* Local headers. */
 #include "riemann/riemann_exact.h"
