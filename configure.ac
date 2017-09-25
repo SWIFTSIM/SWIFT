@@ -135,14 +135,15 @@ fi
 # Make sure we support inline functions
 AC_C_INLINE
 
+# MATTHIEU: For the future, when we need atomics, uncomment this!
 # Look for C11 atomics support. This is optional in C11, but we require it.
 # Note we make no attempt to force C11 mode, so any special CFLAGS will
 # need to be set in the environment. Other C11 features could also be
 # tested if this isn't also a strong test of C11 support.
-AC_CHECK_HEADERS([stdatomic.h],[have_stdatomic=yes],[have_stdatomic=no])
-if test "x$have_stdatomic" = "xno"; then
-   AC_MSG_ERROR([C11 atomics support is required (stdatomic.h), cannot proceed])
-fi
+# AC_CHECK_HEADERS([stdatomic.h],[have_stdatomic=yes],[have_stdatomic=no])
+# if test "x$have_stdatomic" = "xno"; then
+#    AC_MSG_ERROR([C11 atomics support is required (stdatomic.h), cannot proceed])
+# fi
 
 
 # Interprocedural optimization support. Needs special handling for linking and
