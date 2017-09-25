@@ -155,7 +155,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 #endif
 
   /* Do we need to drift the multipole ? */
-  if (cj->ti_old_multipole != e->ti_current) cell_drift_multipole(cj, e);
+  if (cj->ti_old_multipole != e->ti_current) error("Undrifted multipole");
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
@@ -469,9 +469,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Do we need to drift the multipoles ? */
   if (cj_active && ci->ti_old_multipole != e->ti_current)
-    cell_drift_multipole(ci, e);
+    error("Un-drifted multipole");
   if (ci_active && cj->ti_old_multipole != e->ti_current)
-    cell_drift_multipole(cj, e);
+    error("Un-drifted multipole");
 
   /* Centre of the cell pair */
   const double loc[3] = {ci->loc[0],   // + 0. * ci->width[0],
@@ -970,9 +970,9 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   struct gravity_tensors *const multi_j = cj->multipole;
 
   /* Get the distance between the CoMs */
-  double dx = multi_i->CoM_old[0] - multi_j->CoM_old[0];
-  double dy = multi_i->CoM_old[1] - multi_j->CoM_old[1];
-  double dz = multi_i->CoM_old[2] - multi_j->CoM_old[2];
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
 
   /* Apply BC */
   if (periodic) {
@@ -999,8 +999,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2,
-                         r2)) {
+  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
 
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1013,8 +1012,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   /* Alright, we'll have to split and recurse. */
   else {
 
-    const double ri_max = multi_i->r_max_old;
-    const double rj_max = multi_j->r_max_old;
+    const double ri_max = multi_i->r_max;
+    const double rj_max = multi_j->r_max;
 
     /* Split the larger of the two cells and start over again */
     if (ri_max > rj_max) {
@@ -1170,8 +1169,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
-  const double CoM_i[3] = {multi_i->CoM_old[0], multi_i->CoM_old[1],
-                           multi_i->CoM_old[2]};
+  const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
   const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
@@ -1187,65 +1185,58 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     /* Avoid stupid cases */
     if (ci == cj || cj->gcount == 0) continue;
 
-    /* Get the distance between the CoMs */
-    double dx = CoM_i[0] - multi_j->CoM_old[0];
-    double dy = CoM_i[1] - multi_j->CoM_old[1];
-    double dz = CoM_i[2] - multi_j->CoM_old[2];
+    /* Get the distance between the CoMs at the last rebuild*/
+    double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
+    double dy_r = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
+    double dz_r = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
 
     /* Apply BC */
     if (periodic) {
-      dx = nearest(dx, dim[0]);
-      dy = nearest(dy, dim[1]);
-      dz = nearest(dz, dim[2]);
+      dx_r = nearest(dx_r, dim[0]);
+      dy_r = nearest(dy_r, dim[1]);
+      dz_r = nearest(dz_r, dim[2]);
     }
-    const double r2 = dx * dx + dy * dy + dz * dz;
+    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
 
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (periodic && r2 > max_distance2) {
+    /* Are we in charge of this cell pair? */
+    if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
+                           theta_crit2, r2_rebuild)) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
-#endif
-      continue;
-    }
-
-    /* Check the multipole acceptance criterion */
-    if (gravity_M2L_accept(multi_i->r_max_old, multi_j->r_max_old, theta_crit2,
-                           r2)) {
-
-      /* Go for a (non-symmetric) M-M calculation */
-      runner_dopair_grav_mm(r, ci, cj);
-
-    } else {
-
-      /* Let's check whether we need to still operate on this pair */
-
-      /* Get the distance between the CoMs at the last rebuild*/
-      double dx_rebuild = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
-      double dy_rebuild = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
-      double dz_rebuild = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
+      /* Let's compute the current distance between the cell pair*/
+      double dx = CoM_i[0] - multi_j->CoM[0];
+      double dy = CoM_i[1] - multi_j->CoM[1];
+      double dz = CoM_i[2] - multi_j->CoM[2];
 
       /* Apply BC */
       if (periodic) {
-        dx_rebuild = nearest(dx_rebuild, dim[0]);
-        dy_rebuild = nearest(dy_rebuild, dim[1]);
-        dz_rebuild = nearest(dz_rebuild, dim[2]);
+        dx = nearest(dx, dim[0]);
+        dy = nearest(dy, dim[1]);
+        dz = nearest(dz, dim[2]);
       }
-      const double r2_rebuild = dx_rebuild * dx_rebuild +
-                                dy_rebuild * dy_rebuild +
-                                dz_rebuild * dz_rebuild;
+      const double r2 = dx * dx + dy * dy + dz * dz;
 
-      /* Is the criterion violated now but was OK at the last rebuild ? */
-      if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                             theta_crit2, r2_rebuild)) {
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (periodic && r2 > max_distance2) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Need to account for the interactions we missed */
+        multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+#endif
+        continue;
+      }
+
+      /* Check the multipole acceptance criterion */
+      if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+
+        /* Go for a (non-symmetric) M-M calculation */
+        runner_dopair_grav_mm(r, ci, cj);
+      } else {
         /* Alright, we have to take charge of that pair in a different way. */
         // MATTHIEU: We should actually open the tree-node here and recurse.
         runner_dopair_grav_mm(r, ci, cj);
       }
-    }
-  } /* Loop over top-level cells */
+    } /* We are in charge of this pair */
+  }   /* Loop over top-level cells */
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

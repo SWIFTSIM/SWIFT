@@ -1692,18 +1692,6 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   const double dim[3] = {sp->dim[0], sp->dim[1], sp->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
 
-  /* Store the current dx_max and h_max values. */
-  ci->multipole->r_max_old = ci->multipole->r_max;
-  ci->multipole->CoM_old[0] = ci->multipole->CoM[0];
-  ci->multipole->CoM_old[1] = ci->multipole->CoM[1];
-  ci->multipole->CoM_old[2] = ci->multipole->CoM[2];
-  if (cj != NULL) {
-    cj->multipole->r_max_old = cj->multipole->r_max;
-    cj->multipole->CoM_old[0] = cj->multipole->CoM[0];
-    cj->multipole->CoM_old[1] = cj->multipole->CoM[1];
-    cj->multipole->CoM_old[2] = cj->multipole->CoM[2];
-  }
-
   /* Self interaction? */
   if (cj == NULL) {
 
@@ -1735,6 +1723,9 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
 
     /* Anything to do here? */
     if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+
+    if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+    if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
     /* Recover the multipole information */
     struct gravity_tensors *const multi_i = ci->multipole;
