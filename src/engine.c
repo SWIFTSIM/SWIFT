@@ -126,13 +126,21 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  */
 void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
                        struct task *ghost_out) {
+
+  /* Break the recursion if we have no part to play with */
+  if (c->count == 0) return;
+
+  /* If we have reached the leaf OR have to few particles to play with*/
   if (!c->split || c->count < engine_max_parts_per_ghost) {
+
+    /* Add the ghost task and its dependencies */
     struct scheduler *s = &e->sched;
     c->ghost =
         scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
     scheduler_addunlock(s, ghost_in, c->ghost);
     scheduler_addunlock(s, c->ghost, ghost_out);
   } else {
+    /* Keep recursing */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_add_ghosts(e, c->progeny[k], ghost_in, ghost_out);
@@ -145,7 +153,8 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
- * Note that there is no need to recurse below the super-cell.
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
  *
  * @param e The #engine.
  * @param c The #cell.
@@ -159,12 +168,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   const int is_external_gravity = (e->policy & engine_policy_external_gravity);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
+  const int has_part = (c->count > 0);
+  const int has_gpart = (c->gcount > 0);
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
 
     /* Add the sort task. */
-    if (is_with_hydro) {
+    if (is_with_hydro && has_part) {
       c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
                                    c, NULL);
     }
@@ -173,11 +184,11 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
     if (c->nodeID == e->nodeID) {
 
       /* Add the drift tasks corresponding to the policy. */
-      if (is_with_hydro) {
+      if (is_with_hydro && has_part) {
         c->drift_part = scheduler_addtask(s, task_type_drift_part,
                                           task_subtype_none, 0, 0, c, NULL);
       }
-      if (is_self_gravity || is_external_gravity) {
+      if ((is_self_gravity || is_external_gravity) && has_gpart) {
         c->drift_gpart = scheduler_addtask(s, task_type_drift_gpart,
                                            task_subtype_none, 0, 0, c, NULL);
       }
@@ -197,7 +208,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->timestep, c->kick1);
 
       /* Add the self-gravity tasks */
-      if (is_self_gravity) {
+      if (is_self_gravity && has_gpart) {
 
         /* Initialisation of the multipoles */
         c->init_grav = scheduler_addtask(s, task_type_init_grav,
@@ -218,7 +229,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Add the hydrodynamics tasks */
-      if (is_with_hydro) {
+      if (is_with_hydro && has_part) {
 
         /* Generate the ghost tasks. */
         c->ghost_in =
@@ -237,7 +248,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Cooling task */
-      if (is_with_cooling) {
+      if (is_with_cooling && has_part) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL);
 
@@ -245,7 +256,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* add source terms */
-      if (is_with_sourceterms) {
+      if (is_with_sourceterms && has_part) {
         c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
                                            task_subtype_none, 0, 0, c, NULL);
       }
