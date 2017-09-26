@@ -811,11 +811,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
 
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1114,11 +1114,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] + max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
 
 #endif /* SWIFT_DEBUG_CHECKS */
 
