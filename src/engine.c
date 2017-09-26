@@ -271,6 +271,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
       scheduler_addunlock(s, c->timestep, c->kick1);
+      if (is_logger)
+	scheduler_addunlock(s, c->kick1, c->logger);
     }
 
   } else { /* We are above the super-cell so need to go deeper */
