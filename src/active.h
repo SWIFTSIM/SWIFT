@@ -447,14 +447,14 @@ __attribute__((always_inline)) INLINE static int spart_is_starting(
 /**
  * @brief Should this particle write its data now ?
  *
- * @param p The #part.
+ * @param xp The #xpart.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #part should write, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int part_should_write(
-    const struct part *p, const struct engine *e) {
+__attribute__((always_inline)) INLINE static int xpart_should_write(
+    const struct xpart *xp, const struct engine *e) {
 
-  return (p->last_output > e->logger_max_steps);  
+  return (xp->last_output > e->logger_max_steps);  
 }
 
 /**
@@ -465,9 +465,9 @@ __attribute__((always_inline)) INLINE static int part_should_write(
  * @return 1 if the #gpart should write, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_should_write(
-    const struct gpart *p, const struct engine *e) {
+    const struct gpart *gp, const struct engine *e) {
 
-  return (p->last_output > e->logger_max_steps);  
+  return (gp->last_output > e->logger_max_steps);  
 }
 
 /**
@@ -478,9 +478,9 @@ __attribute__((always_inline)) INLINE static int gpart_should_write(
  * @return 1 if the #spart should write, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_should_write(
-    const struct spart *p, const struct engine *e) {
+    const struct spart *sp, const struct engine *e) {
 
-  return (p->last_output > e->logger_max_steps);  
+  return (sp->last_output > e->logger_max_steps);  
 }
 
 #endif /* SWIFT_ACTIVE_H */

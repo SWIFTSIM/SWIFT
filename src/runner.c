@@ -2705,7 +2705,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   struct part *restrict parts = c->parts;
-  //struct xpart *restrict xparts = c->xparts;
+  struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
   const int count = c->count;
@@ -2730,12 +2730,12 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-      //struct xpart *restrict xp = &xparts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
-	if (part_should_write(p, e))
+	if (xpart_should_write(xp, e))
 	  {
 	    /* Write particle */
 	    logger_log_part(p, logger_mask_x | logger_mask_v | logger_mask_a |
@@ -2744,11 +2744,11 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 			    &p->last_offset, e->logger_dump);
 	    //message("Offset: %lu", p->last_offset);
 	    /* Set counter back to zero */
-	    p->last_output = 0;
+	    xp->last_output = 0;
 	  }
 	else
 	  /* Update counter */
-	  p->last_output += 1;
+	  xp->last_output += 1;
       }
     }
 

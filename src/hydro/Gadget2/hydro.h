@@ -743,8 +743,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->last_output = 0;
   p->last_offset = 0;
+  xp->last_output = 0;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
