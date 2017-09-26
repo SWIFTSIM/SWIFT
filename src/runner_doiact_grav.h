@@ -1130,19 +1130,6 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
  */
 void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
-#if ICHECK > 0
-  for (int pid = 0; pid < ci->gcount; pid++) {
-
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &ci->gparts[pid];
-
-    if (gp->id_or_neg_offset == ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
-              gp->id_or_neg_offset, ci->loc[0], ci->loc[1], ci->loc[2],
-              ci->width[0], ci->gcount);
-  }
-#endif
-
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
