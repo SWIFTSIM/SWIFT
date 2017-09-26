@@ -370,11 +370,11 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
 #ifdef SWIFT_DEBUG_CHECKS
   const float shift_threshold_x =
-      4. * ci->width[0] * (1. + 2. * space_maxreldx);
+      2. * ci->width[0] + max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_y =
-      4. * ci->width[1] * (1. + 2. * space_maxreldx);
+      2. * ci->width[1] + max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_z =
-      4. * ci->width[2] * (1. + 2. * space_maxreldx);
+      2. * ci->width[2] + max(ci->dx_max_part, cj->dx_max_part);
 
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
