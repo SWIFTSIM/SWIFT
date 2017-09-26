@@ -808,6 +808,15 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
           cj->dx_max_sort_old);
   }
+
+  /* Some constants used to checks that the parts are in the right frame */
+  const float shift_threshold_x =
+      2. * ci->width[0] + max(ci->dx_max_part, cj->dx_max_part);
+  const float shift_threshold_y =
+      2. * ci->width[1] + max(ci->dx_max_part, cj->dx_max_part);
+  const float shift_threshold_z =
+      2. * ci->width[2] + max(ci->dx_max_part, cj->dx_max_part);
+
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -859,6 +868,32 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -913,6 +948,32 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1050,6 +1111,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
           cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
           cj->dx_max_sort_old);
   }
+
+  /* Some constants used to checks that the parts are in the right frame */
+  const float shift_threshold_x =
+      2. * ci->width[0] + max(ci->dx_max_part, cj->dx_max_part);
+  const float shift_threshold_y =
+      2. * ci->width[1] + max(ci->dx_max_part, cj->dx_max_part);
+  const float shift_threshold_z =
+      2. * ci->width[2] + max(ci->dx_max_part, cj->dx_max_part);
+
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1154,6 +1224,32 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1188,6 +1284,32 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1252,6 +1374,32 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1288,6 +1436,32 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
