@@ -325,7 +325,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   last_pj = active_id;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
-  if (last_pj > 0) {
+  if (last_pj >= 0) {
 
     /* Start from the last particle in cell i. */
     temp = ci->count - 1;
