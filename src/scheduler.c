@@ -1274,8 +1274,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+          t->buff = malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
                           MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
         } else if (t->subtype == task_subtype_xv ||
@@ -1309,9 +1309,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(integertime_t) * t->ci->pcell_size);
-          cell_pack_ti_ends(t->ci, t->buff);
-          err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(integertime_t),
+          t->buff = malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
+          cell_pack_end_step(t->ci, t->buff);
+          err = MPI_Isend(t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
                           MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
                           &t->req);
         } else if (t->subtype == task_subtype_xv ||

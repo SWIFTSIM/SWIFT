@@ -1961,7 +1961,7 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend) {
-            cell_unpack_ti_ends(ci, t->buff);
+            cell_unpack_end_step(ci, t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
