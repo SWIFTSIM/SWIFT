@@ -12,6 +12,7 @@ python @srcdir@/difffloat.py brute_force_active.dat swift_dopair_active.dat @src
 
 rm -f brute_force_pair_active.dat swift_dopair_active.dat
 
+# Run the special case that triggered a bug. See merge request !435.
 echo "Running ./testActivePair -n 6 -r 1 -d 0 -f active -s 1506434777"
 
 ./testActivePair -n 6 -r 1 -d 0 -f active -s 1506434777
