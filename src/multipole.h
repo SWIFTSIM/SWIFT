@@ -181,19 +181,19 @@ struct gravity_tensors {
 
       /*! Multipole mass */
       struct multipole m_pole;
-
+      
       /*! Field tensor for the potential */
       struct grav_tensor pot;
-
+      
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];
-
+      
       /*! Centre of mass of the matter dsitribution at the last rebuild */
       double CoM_rebuild[3];
-
+      
       /*! Upper limit of the CoM<->gpart distance */
       double r_max;
-
+    
       /*! Upper limit of the CoM<->gpart distance at the last rebuild */
       double r_max_rebuild;
     };

@@ -1476,14 +1476,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != (long long)e->s->nr_gparts)
+          if (gp->num_interacted != (long long)e->total_nr_gparts)
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally "
                 "with all other gparts gp->num_interacted=%lld, "
                 "total_gparts=%zd",
                 gp->id_or_neg_offset, part_type_names[gp->type],
-                gp->num_interacted, e->s->nr_gparts);
+                gp->num_interacted, e->total_nr_gparts);
         }
 #endif
       }

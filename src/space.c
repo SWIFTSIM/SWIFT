@@ -2234,10 +2234,12 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
       } else {
         gravity_multipole_init(&c->multipole->m_pole);
-        c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-        c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-        c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-        c->multipole->r_max = 0.;
+	if(c->nodeID == engine_rank) {
+	  c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+	  c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+	  c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+	  c->multipole->r_max = 0.;
+	}
       }
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];

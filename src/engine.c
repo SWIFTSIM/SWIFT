@@ -1716,11 +1716,83 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 }
 
 /**
+ * @brief Exchanges the top-level multipoles between all the nodes
+ * such that every node has a multipole for each top-level cell.
+ *
+ * @param e The #engine.
+ */
+void engine_exchange_top_multipoles(struct engine *e) {
+  
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for(int i=0; i<e->s->nr_cells; ++i){
+    const struct gravity_tensors *m = &e->s->multipoles_top[i]; 
+    if(e->s->cells_top[i].nodeID == engine_rank) {
+      if(m->m_pole.M_000 > 0.) {
+	if(m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
+	  error("Invalid multipole position in X");
+	if(m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
+	  error("Invalid multipole position in Y");
+	if(m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
+	  error("Invalid multipole position in Z");
+      }
+    } else {
+      if(m->m_pole.M_000 != 0.) error("Non-zero mass for foreign m-pole");
+      if(m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole");
+      if(m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole");
+      if(m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole");
+      if(m->m_pole.num_gpart != 0) error("Non-zero gpart count in foreign m-pole");
+    }
+  }
+#endif
+
+  /* Each node (space) has constructed its own top-level multipoles.  
+   * We now need to make sure every other node knows about them. 
+   *
+   * WARNING: Adult stuff ahead: don't do this at home!
+   *
+   * Since all nodes have their top-level multi-poles computed 
+   * and all foreign ones set to 0 (all bytes), we can gather all the m-poles
+   * by doing a bit-wise OR reduction across all the nodes directly in 
+   * place inside the multi-poles_top array. 
+   * This only works if the foreign m-poles on every nodes are zeroed and no 
+   * multi-pole is present on more than one node (two things guaranteed by the
+   * domain decomposition).
+   */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
+  		e->s->nr_cells*sizeof(struct gravity_tensors), MPI_BYTE,
+  		MPI_BOR, MPI_COMM_WORLD);
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  long long counter = 0;
+
+  /* Let's check that what we received makes sense */
+  for(int i=0; i<e->s->nr_cells; ++i){
+    const struct gravity_tensors *m = &e->s->multipoles_top[i]; 
+    counter += m->m_pole.num_gpart;
+    if(m->m_pole.M_000 > 0.) {
+      if(m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
+	error("Invalid multipole position in X");
+      if(m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
+	error("Invalid multipole position in Y");
+      if(m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
+	error("Invalid multipole position in Z");
+    }
+  }
+  if(counter != e->total_nr_gparts)
+    error("Total particles in multipoles inconsistent with engine");
+#endif
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
- * - One FTT task per MPI rank.
- * - Multiple gravity ghosts for dependencies.
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
@@ -1785,14 +1857,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
-          /* Avoid duplicates */
-          if (cid <= cjd) continue;
+          /* Avoid duplicates that are purely local */
+          if (cid <= cjd && cj->nodeID == nodeID) continue;
 
           /* Skip cells without gravity particles */
           if (cj->gcount == 0) continue;
-
-          /* Is that neighbour local ? */
-          if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
           /* Recover the multipole information */
           const struct gravity_tensors *const multi_j = cj->multipole;
@@ -1826,11 +1895,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
- * interactions.
+ * interactions (master function).
  *
- * - All top-cells get a self task.
- * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
+ * - Create the FFT task and the array of gravity ghosts. 
+ * - Call the mapper function to create the other tasks.
  *
  * @param e The #engine.
  */
@@ -3073,9 +3141,12 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Initial cleaning up session ? */
   if (clean_h_values) space_sanitize(e->s);
 
-/* If in parallel, exchange the cell structure. */
+  /* If in parallel, exchange the cell structure and top-level multipoles. */
 #ifdef WITH_MPI
   engine_exchange_cells(e);
+
+  if(e->policy & engine_policy_self_gravity)
+    engine_exchange_top_multipoles(e);
 #endif
 
   /* Re-build the tasks. */
@@ -3526,11 +3597,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
-    if (num_gpart_mpole != e->s->nr_gparts)
+    if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart s->nr_gpart=%zd, "
           "m_poles=%zd",
-          e->s->nr_gparts, num_gpart_mpole);
+          e->total_nr_gparts, num_gpart_mpole);
   }
 #endif
 
@@ -4294,7 +4365,7 @@ void engine_unpin() {
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int nr_threads, long long Ngas, long long Ndm, int with_aff, int policy,
                  int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,

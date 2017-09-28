@@ -147,7 +147,7 @@ struct engine {
   size_t updates, g_updates, s_updates;
 
   /* Total numbers of particles in the system. */
-  size_t total_nr_parts, total_nr_gparts;
+  long long total_nr_parts, total_nr_gparts;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
@@ -265,7 +265,7 @@ void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int nr_threads, long long Ngas, long long Ndm, int with_aff, int policy,
                  int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,

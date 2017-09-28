@@ -148,7 +148,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
 
-  if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
+  if (multi_j->num_gpart == 0) error("Multipole does not seem to have been set.");
 
   if (ci->multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");

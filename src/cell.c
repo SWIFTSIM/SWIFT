@@ -1100,9 +1100,6 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
 
   const integertime_t ti_drift = *(integertime_t *)data;
 
-  /* Only check local cells */
-  if (c->nodeID != engine_rank) return;
-
   if (c->ti_old_multipole != ti_drift)
     error(
         "Cell multipole in an incorrect time-zone! c->ti_old_multipole=%lld "
