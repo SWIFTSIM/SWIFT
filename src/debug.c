@@ -304,21 +304,24 @@ static void dumpCells_map(struct cell *c, void *data) {
   if (c->count > 0 || c->gcount > 0 || c->scount > 0)
     fprintf(file,
             "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d "
-            "%6.1f %20lld %6d %6d %6d %6d\n",
+            "%6.1f %20lld %6d %6d %6d %6d %6d\n",
             c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
             c->width[2], c->count, c->gcount, c->scount, c->depth, ntasks,
             c->ti_end_min, get_time_bin(c->ti_end_min), (c->super == c),
-            cell_is_active(c, e), c->nodeID);
+            cell_is_active(c, e), c->nodeID, c->nodeID == e->nodeID);
 }
 
 /**
  * @brief Dump the location, depth, task counts and timebins and active state,
  * for all cells to a simple text file.
  *
- * @param prefix base output filename
+ * @param prefix base output filename, result is written to
+ *               <prefix>_<rank>_<step>.dat
  * @param s the space holding the cells to dump.
+ * @param rank node ID of MPI rank, or 0 if not relevant.
+ * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, struct space *s) {
+void dumpCells(const char *prefix, struct space *s, int rank, int step) {
 
   FILE *file = NULL;
 
@@ -327,15 +330,14 @@ void dumpCells(const char *prefix, struct space *s) {
   char fname[200];
   int uniq = atomic_inc(&nseq);
   sprintf(fname, "%s_%03d.dat", prefix, uniq);
-
   file = fopen(fname, "w");
 
   /* Header. */
   fprintf(file,
           "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
-          "%20s %6s %6s %6s\n",
+          "%20s %6s %6s %6s %6s\n",
           "x", "y", "z", "xw", "yw", "zw", "count", "gcount", "scount", "depth",
-          "tasks", "ti_end_min", "timebin", "issuper", "active", "rank");
+          "tasks", "ti_end_min", "timebin", "issuper", "active", "rank", "local");
 
   uintptr_t data[2];
   data[0] = (size_t)file;
