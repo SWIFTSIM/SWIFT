@@ -274,6 +274,10 @@ static void accumulate_counts(struct space *s, int *counts) {
 static void split_metis(struct space *s, int nregions, int *celllist) {
 
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
+
+  /* To check or visualise the partition dump all the cells.
+   * dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);
+   */
 }
 #endif
 
@@ -483,13 +487,16 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
                               int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
-   * assume the same graph structure as used in the part_ calls). */
+   * assume the same graph structure as used in the part_ calls). Note that
+   * we scale edges and vertices independently as they will have very
+   * different ranges of weights. */
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells_top;
-  float wscale = 1.f, wscale_buff = 0.0;
-  int wtot = 0;
-  int wmax = 1e9 / nr_nodes;
-  int wmin;
+  float wscale[2] = {1.f, 1.f};
+  float wscale_buff[2] = {0.0, 0.0};
+  int wmax[2] = {1e9 / nr_nodes, 1e9 / nr_nodes};
+  int wmin[2] = {0, 0};
+  int wtot[2] = {0, 0};
 
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
@@ -522,18 +529,24 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     if (t->cost == 0)
       continue;
 
-    /* Get the task weight. */
-    int w = t->cost * wscale;
+    /* Get the task weight based on costs. */
+    int w = t->cost * wscale[0];
+    wtot[0] += w;
 
     /* Do we need to re-scale? */
-    wtot += w;
-    while (wtot > wmax) {
-      wscale /= 2;
-      wtot /= 2;
-      w /= 2;
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
-      if (taskvweights)
+    if (taskvweights) {
+      while (wtot[0] > wmax[0]) {
+        wscale[0] /= 2;
+        wtot[0] /= 2;
+        w /= 2;
         for (int k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
+      }
+    }
+
+    while (wtot[1] > wmax[1]) {
+      wscale[1] /= 2;
+      wtot[1] /= 2;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
     }
 
     /* Get the top-level cells involved. */
@@ -576,26 +589,53 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
       }
 
-      /* Distinct cells with local ci? */
-      else if (ci->nodeID == nodeID) {
+      /* Distinct cells. */
+      else {
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
-        /* Add half of weight to each cell. */
-        if (taskvweights) {
-          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
+        /* Local cells add weight to vertices. */
+        if (taskvweights && ci->nodeID == nodeID) {
+          weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
-        /* Add weights to edge, reduced by some weight from the expected time
-         * of next interaction -- we want active cells to be clustered. */
+        /* Add weights to edge for all cells based on the expected interaction
+         * time. We want to avoid having active cells on the edges, so we cut
+         * for that. */
+        int dti = num_time_bins - get_time_bin(ci->ti_end_min);
+        int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
+
         int kk;
         for (kk = 26 * cid; inds[kk] != cjd; kk++)
           ;
-        weights_e[kk] += w / get_time_bin(ci->ti_end_max);
+
+        /* If a foreign cell we repeat the interaction remotely, so these get
+         * 1/2 of the local time bin weight. */
+        int dt;
+        if (ci->nodeID == nodeID)
+          dt = dti + dtj/2;
+        else
+          dt = dtj/2;
+        dt = dti + dtj;
+        dt = (1<<dt);
+
+        wtot[1] += dt;
+        weights_e[kk] += dt;
+
+        /* cj */
         for (kk = 26 * cjd; inds[kk] != cid; kk++)
           ;
-        weights_e[kk] += w / get_time_bin(ci->ti_end_max);
+        if (cj->nodeID == nodeID)
+          dt = dtj + dti/2;
+        else
+          dt = dti/2;
+
+        dt = dti + dtj;
+        dt = (1<<dt);
+
+        wtot[1] += dt;
+        weights_e[kk] += dt;
       }
     }
   }
@@ -605,7 +645,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     accumulate_counts(s, weights_v);
 
     /*  Rescale to balance times. */
-    float vwscale = (float)wtot / (float)nr_tasks;
+    float vwscale = (float)wtot[0] / (float)nr_tasks;
     for (int k = 0; k < nr_cells; k++) {
       weights_v[k] *= vwscale;
     }
@@ -613,15 +653,19 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
   /* Get the minimum scaling and re-scale if necessary. */
   int res;
-  if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
+  if ((res = MPI_Allreduce(&wscale, &wscale_buff, 2, MPI_FLOAT, MPI_MIN,
                            MPI_COMM_WORLD)) != MPI_SUCCESS)
     mpi_error(res, "Failed to allreduce the weight scales.");
 
-  if (wscale_buff != wscale) {
-    float scale = wscale_buff / wscale;
-    for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
-    if (bothweights)
+  if (bothweights) {
+    if (wscale_buff[0] != wscale[0]) {
+      float scale = wscale_buff[0] / wscale[0];
       for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
+    }
+  }
+  if (wscale_buff[1] != wscale[1]) {
+    float scale = wscale_buff[1] / wscale[1];
+    for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
   }
 
   /* Merge the weights arrays across all nodes. */
@@ -643,30 +687,36 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
   /* As of here, only one node needs to compute the partition. */
   if (nodeID == 0) {
+
     /* Final rescale of all weights to avoid a large range. Large ranges
      * have been seen to cause an incomplete graph. */
-    wmin = wmax;
-    wmax = 0;
-    for (int k = 0; k < 26 * nr_cells; k++) {
-      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
-      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
-    }
     if (bothweights) {
+      wmin[0] = wmax[0];
+      wmax[0] = 0;
       for (int k = 0; k < nr_cells; k++) {
-        wmax = weights_v[k] > wmax ? weights_v[k] : wmax;
-        wmin = weights_v[k] < wmin ? weights_v[k] : wmin;
+        wmax[0] = weights_v[k] > wmax[0] ? weights_v[k] : wmax[0];
+        wmin[0] = weights_v[k] < wmin[0] ? weights_v[k] : wmin[0];
+      }
+
+      if ((wmax[0] - wmin[0]) > metis_maxweight) {
+        wscale[0] = metis_maxweight / (wmax[0] - wmin[0]);
+        for (int k = 0; k < nr_cells; k++) {
+          weights_v[k] = (weights_v[k] - wmin[0]) * wscale[0] + 1;
+        }
       }
     }
 
-    if ((wmax - wmin) > metis_maxweight) {
-      wscale = metis_maxweight / (wmax - wmin);
+    /* Now edge weights. Unlikely these will ever need scaling. */
+    wmin[1] = wmax[1];
+    wmax[1] = 0;
+    for (int k = 0; k < nr_cells; k++) {
+      wmax[1] = weights_e[k] > wmax[1] ? weights_e[k] : wmax[1];
+      wmin[1] = weights_e[k] < wmin[1] ? weights_e[k] : wmin[1];
+    }
+    if ((wmax[1] - wmin[1]) > metis_maxweight) {
+      wscale[1] = metis_maxweight / (wmax[1] - wmin[1]);
       for (int k = 0; k < 26 * nr_cells; k++) {
-        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
-      }
-      if (bothweights) {
-        for (int k = 0; k < nr_cells; k++) {
-          weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
-        }
+        weights_e[k] = (weights_e[k] - wmin[0]) * wscale[1] + 1;
       }
     }
 
