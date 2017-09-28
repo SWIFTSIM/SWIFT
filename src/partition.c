@@ -383,9 +383,8 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
   /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
    *                weights_v, NULL, weights_e);
    */
-
-  if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, weights_e,
-                          NULL, &idx_nregions, NULL, NULL, options, &objval,
+  if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
+                          weights_e, &idx_nregions, NULL, NULL, options, &objval,
                           regionid) != METIS_OK)
     error("Call to METIS_PartGraphKway failed.");
 
