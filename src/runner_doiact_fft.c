@@ -57,6 +57,7 @@ __attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
  * @param rho The density mesh.
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
  */
 __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
     const struct gravity_tensors* m, double* rho, int N, double fac,
@@ -107,6 +108,7 @@ __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
  * @param pot The potential mesh.
  * @param N the size of the mesh along one axis.
  * @param fac width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
  */
 __attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
     struct gravity_tensors* m, const double* pot, int N, double fac,
