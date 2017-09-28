@@ -2971,7 +2971,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_self_gravity) {
-    n1 += 24;
+    n1 += 32;
     n2 += 1;
 #ifdef WITH_MPI
     n2 += 2;
@@ -3070,13 +3070,6 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Re-build the tasks. */
   engine_maketasks(e);
 
-  /* Run through the tasks and mark as skip or not. */
-  if (engine_marktasks(e))
-    error("engine_marktasks failed after space_rebuild.");
-
-/* Print the status of the system */
-// if (e->verbose) engine_print_task_counts(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
@@ -3084,6 +3077,13 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   space_check_drift_point(e->s, e->ti_old,
                           e->policy & engine_policy_self_gravity);
 #endif
+
+  /* Run through the tasks and mark as skip or not. */
+  if (engine_marktasks(e))
+    error("engine_marktasks failed after space_rebuild.");
+
+  /* Print the status of the system */
+  // if (e->verbose) engine_print_task_counts(e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3692,8 +3692,8 @@ void engine_step(struct engine *e) {
 
     if (e->policy & engine_policy_reconstruct_mpoles)
       engine_reconstruct_multipoles(e);
-    // else
-    //  engine_drift_top_multipoles(e);
+    else
+      engine_drift_top_multipoles(e);
   }
 
   /* Print the number of active tasks ? */
@@ -3901,7 +3901,7 @@ void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
     if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Drift the multipole at this level only */
-      cell_drift_multipole(c, e);
+      if (c->ti_old_multipole != e->ti_current) cell_drift_multipole(c, e);
     }
   }
 }

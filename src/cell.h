@@ -70,23 +70,62 @@ struct link {
   struct link *next;
 };
 
-/* Packed cell. */
+/**
+ * @brief Packed cell for information correct at rebuild time.
+ *
+ * Contains all the information for a tree walk in a non-local cell.
+ */
 struct pcell {
 
-  /* Stats on this cell's particles. */
+  /*! Maximal smoothing length. */
   double h_max;
-  integertime_t ti_end_min, ti_end_max, ti_beg_max, ti_old_part, ti_old_gpart;
 
-  /* Number of particles in this cell. */
-  int count, gcount, scount;
+  /*! Minimal integer end-of-timestep in this cell */
+  integertime_t ti_end_min;
 
-  /* tag used for MPI communication. */
+  /*! Maximal integer end-of-timestep in this cell */
+  integertime_t ti_end_max;
+
+  /*! Maximal integer beginning-of-timestep in this cell */
+  integertime_t ti_beg_max;
+
+  /*! Integer time of the last drift of the #part in this cell */
+  integertime_t ti_old_part;
+
+  /*! Integer time of the last drift of the #gpart in this cell */
+  integertime_t ti_old_gpart;
+
+  /*! Number of #part in this cell. */
+  int count;
+
+  /*! Number of #gpart in this cell. */
+  int gcount;
+
+  /*! Number of #spart in this cell. */
+  int scount;
+
+  /*! tag used for MPI communication. */
   int tag;
 
-  /* Relative indices of the cell's progeny. */
+  /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
 } SWIFT_STRUCT_ALIGN;
+
+/**
+ * @brief Cell information at the end of a time-step.
+ */
+struct pcell_step {
+
+  /*! Minimal integer end-of-timestep in this cell */
+  integertime_t ti_end_min;
+
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
+
+  /*! Maximal distance any #gpart has travelled since last rebuild */
+  float dx_max_gpart;
+};
 
 /**
  * @brief Cell within the tree structure.
@@ -389,8 +428,8 @@ int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
-int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends);
-int cell_unpack_ti_ends(struct cell *c, integertime_t *ti_ends);
+int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
+int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);

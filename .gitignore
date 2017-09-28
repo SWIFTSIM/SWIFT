@@ -132,6 +132,9 @@ m4/lt~obsolete.m4
 /stamp-h1
 /test-driver
 
+# Intel compiler optimization reports
+*.optrpt
+
 # Object files
 .deps/
 *.o

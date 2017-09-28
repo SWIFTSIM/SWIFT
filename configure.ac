@@ -226,6 +226,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check whether we want to default to naive cell interactions
+AC_ARG_ENABLE([naive-interactions],
+   [AS_HELP_STRING([--enable-naive-interactions],
+     [Activate use of naive cell interaction functions @<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions="$enableval"],
+   [enable_naive_interactions="no"]
+)
+if test "$enable_naive_interactions" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS],1,[Enable use of naive cell interaction functions])
+fi
+
 # Check if gravity force checks are on for some particles.
 AC_ARG_ENABLE([gravity-force-checks],
    [AS_HELP_STRING([--enable-gravity-force-checks],
@@ -919,6 +931,7 @@ AC_MSG_RESULT([
    Task debugging       : $enable_task_debugging
    Threadpool debugging : $enable_threadpool_debugging
    Debugging checks     : $enable_debugging_checks
+   Naive interactions   : $enable_naive_interactions
    Gravity checks       : $gravity_force_checks
 
  ------------------------])

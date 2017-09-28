@@ -232,7 +232,7 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt,
   m->CoM[2] += dz;
 
   /* Conservative change in maximal radius containing all gpart */
-  m->r_max = m->r_max_rebuild + 2. * x_diff;
+  m->r_max = m->r_max_rebuild + x_diff;
 }
 
 /**

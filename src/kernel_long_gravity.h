@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void fourier_kernel_long_grav_eval(
 #else
   const double u = sqrt(u2);
   const double arg = M_PI_2 * u;
-  *W = arg / sinh(arg);
+  *W = arg / (sinh(arg) + FLT_MIN);
 #endif
 }
 
