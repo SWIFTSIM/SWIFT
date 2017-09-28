@@ -112,7 +112,6 @@ struct pcell {
 
 } SWIFT_STRUCT_ALIGN;
 
-
 /**
  * @brief Cell information at the end of a time-step.
  */

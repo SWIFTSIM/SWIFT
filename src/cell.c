@@ -209,7 +209,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
  *
  * @return The number of cells created.
  */
-int cell_unpack(struct pcell *restrict pc, struct cell *restrict c, struct space *restrict s) {
+int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
+                struct space *restrict s) {
 
 #ifdef WITH_MPI
 
@@ -275,7 +276,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c, struct space
  *
  * @return The number of packed cells.
  */
-int cell_pack_end_step(struct cell *restrict c, struct pcell_step *restrict pcells) {
+int cell_pack_end_step(struct cell *restrict c,
+                       struct pcell_step *restrict pcells) {
 
 #ifdef WITH_MPI
 
@@ -308,12 +310,13 @@ int cell_pack_end_step(struct cell *restrict c, struct pcell_step *restrict pcel
  *
  * @return The number of cells created.
  */
-int cell_unpack_end_step(struct cell *restrict c, struct pcell_step *restrict pcells) {
+int cell_unpack_end_step(struct cell *restrict c,
+                         struct pcell_step *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->ti_end_min = pcells[0].ti_end_min ;
+  c->ti_end_min = pcells[0].ti_end_min;
   c->dx_max_part = pcells[0].dx_max_part;
   c->dx_max_gpart = pcells[0].dx_max_gpart;
 
