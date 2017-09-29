@@ -1071,9 +1071,9 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param t_gradient The send_gradient #task, if already created.
  * @param t_ti The send_ti #task, if required and has already been created.
  */
-void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
-                          struct task *t_xv, struct task *t_rho,
-                          struct task *t_gradient, struct task *t_ti) {
+void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *cj,
+				struct task *t_xv, struct task *t_rho,
+				struct task *t_gradient, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -1092,15 +1092,15 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 4 * ci->tag,
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 6 * ci->tag + 0,
                                0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                4 * ci->tag + 1, 0, ci, cj);
+                                6 * ci->tag + 1, 0, ci, cj);
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               4 * ci->tag + 2, 0, ci, cj);
+                               6 * ci->tag + 2, 0, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     4 * ci->tag + 3, 0, ci, cj);
+                                     6 * ci->tag + 3, 0, ci, cj);
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1150,8 +1150,67 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_gradient,
-                             t_ti);
+        engine_addtasks_send_hydro(e, ci->progeny[k], cj, t_xv, t_rho, t_gradient,
+				   t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add send tasks to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_grav The send_grav #task, if it has already been created.
+ * @param t_multi The send_multi #task, if it has already been created.
+ */
+void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell *cj,
+				  struct task *t_grav, struct task *t_multi ) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->grav; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    /* Create the tasks and their dependencies? */
+    if (t_grav == NULL) {
+
+      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart, 6 * ci->tag + 4,
+				 0, ci, cj);
+
+      t_multi = scheduler_addtask(s, task_type_send, task_subtype_multipole, 6 * ci->tag + 5,
+				  0, ci, cj);
+
+      /* The sends should unlock the down pass. */
+      scheduler_addunlock(s, t_multi, ci->super->grav_down);
+      scheduler_addunlock(s, t_grav, ci->super->grav_down);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->super->drift_gpart, t_grav);
+    }
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->send_grav, t_grav);
+    engine_addlink(e, &ci->send_multipole, t_multi);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1168,31 +1227,26 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti #task, if required and has already been created.
  */
-void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
-                          struct task *t_rho, struct task *t_gradient,
-                          struct task *t_ti) {
+void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t_xv,
+				struct task *t_rho, struct task *t_gradient,
+				struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  //  if(c->density == NULL && c->grav != NULL)
-  //  return;
-
-  /* Do we need to construct a recv task?
-     Note that since c is a foreign cell, all its density tasks will involve
-     only the current rank, and thus we don't have to check them.*/
+  /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->density != NULL) {
     
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag, 0,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 6 * c->tag + 0, 0,
                              c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                              4 * c->tag + 1, 0, c, NULL);
+                              6 * c->tag + 1, 0, c, NULL);
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             4 * c->tag + 2, 0, c, NULL);
+                             6 * c->tag + 2, 0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                   4 * c->tag + 3, 0, c, NULL);
+                                   6 * c->tag + 3, 0, c, NULL);
 #endif
   }
   
@@ -1201,7 +1255,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   c->recv_gradient = t_gradient;
   c->recv_ti = t_ti;
   
-/* Add dependencies. */
+  /* Add dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -1232,12 +1286,54 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_gradient, t_ti);
+        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
+
+/**
+ * @brief Add recv tasks to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_multi The recv_multipole #task, if it has already been created.
+ */
+void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task *t_grav, struct task *t_multi) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Have we reached a level where there are any gravity tasks ? */
+  if (t_grav == NULL && c->grav != NULL) {
+    
+    /* Create the tasks. */
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart, 6 * c->tag + 4, 0,
+                             c, NULL);
+    t_multi = scheduler_addtask(s, task_type_recv, task_subtype_multipole, 6 * c->tag + 5, 0,
+				c, NULL);
+  }
+
+  c->recv_grav = t_grav;
+  
+  for (struct link *l = c->grav; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_grav, l->t);
+    scheduler_addunlock(s, t_multi, l->t);
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_multi);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
 
 /**
  * @brief Exchange cell structures with other nodes.
@@ -2561,40 +2657,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Constructs the gravity tasks building the multipoles and propagating
- *them to the children
- *
- * Correct implementation is still lacking here.
- *
- * @param e The #engine.
- */
-void engine_make_gravityrecursive_tasks(struct engine *e) {
-
-  /* struct space *s = e->s; */
-  /* struct scheduler *sched = &e->sched; */
-  /* const int nodeID = e->nodeID; */
-  /* const int nr_cells = s->nr_cells; */
-  /* struct cell *cells = s->cells_top; */
-
-  /* for (int k = 0; k < nr_cells; k++) { */
-
-  /*   /\* Only do this for local cells containing gravity particles *\/ */
-  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
-
-  /*     /\* Create tasks at top level. *\/ */
-  /*     struct task *up = NULL; */
-  /*     struct task *down = NULL; */
-  /*         /\* scheduler_addtask(sched, task_type_grav_down,
-   * task_subtype_none, 0, 0, *\/ */
-  /*         /\*                   &cells[k], NULL); *\/ */
-
-  /*     /\* Push tasks down the cell hierarchy. *\/ */
-  /*     engine_addtasks_grav(e, &cells[k], up, down); */
-  /*   } */
-  /* } */
-}
-
-/**
  * @brief Fill the #space's task list.
  *
  * @param e The #engine we are working with.
@@ -2658,10 +2720,6 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  /* Add the gravity up/down tasks at the top-level cells and push them down. */
-  if (e->policy & engine_policy_self_gravity)
-    engine_make_gravityrecursive_tasks(e);
-
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
@@ -2700,14 +2758,24 @@ void engine_maketasks(struct engine *e) {
 
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
-      for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL, NULL);
+      if(e->policy & engine_policy_hydro)
+	for (int k = 0; k < p->nr_cells_in; k++)
+	  engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL, NULL);
+
+      if(e->policy & engine_policy_self_gravity)
+	for (int k = 0; k < p->nr_cells_in; k++)
+	  engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
-      for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
-                             NULL, NULL);
+      if(e->policy & engine_policy_hydro)
+	for (int k = 0; k < p->nr_cells_out; k++)
+	  engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
+				   NULL, NULL);
+
+      if(e->policy & engine_policy_self_gravity)
+	for (int k = 0; k < p->nr_cells_out; k++)
+	  engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL, NULL);
     }
   }
 #endif
@@ -2998,9 +3066,9 @@ void engine_print_task_counts(struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].skip)
-      counts[task_type_count] += 1;
-    else
+    /* if (tasks[k].skip) */
+    /*   counts[task_type_count] += 1; */
+    /* else */
       counts[(int)tasks[k].type] += 1;
   }
   message("Total = %d  (per cell = %d)", nr_tasks,

@@ -1974,7 +1974,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1);
           } else if (t->subtype == task_subtype_multipole) {
-            ci->ti_old_multipole = e->ti_current;
+            cell_unpack_multipoles(ci, t->buff);
+	    free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

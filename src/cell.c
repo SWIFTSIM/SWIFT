@@ -337,6 +337,71 @@ int cell_unpack_end_step(struct cell *restrict c,
 }
 
 /**
+ * @brief Pack the multipole information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The multipole information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_multipoles(struct cell *restrict c,
+			 struct gravity_tensors *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0] = *c->multipole;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_multipoles(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the multipole information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The multipole information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_multipoles(struct cell *restrict c,
+			   struct gravity_tensors *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  *c->multipole = pcells[0];
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_multipoles(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+
+/**
  * @brief Lock a cell for access to its array of #part and hold its parents.
  *
  * @param c The #cell.

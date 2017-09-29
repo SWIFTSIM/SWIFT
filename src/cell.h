@@ -173,9 +173,6 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell that has pair/self tasks */
   struct cell *super;
 
-  /*! The task computing this cell's sorts. */
-  struct task *sorts;
-
   /*! Linked list of the tasks computing this cell's hydro density. */
   struct link *density;
 
@@ -187,6 +184,9 @@ struct cell {
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
+
+  /*! The task computing this cell's sorts. */
+  struct task *sorts;
 
   /*! The multipole initialistation task */
   struct task *init_grav;
@@ -235,26 +235,38 @@ struct cell {
 
 #ifdef WITH_MPI
 
-  /* Task receiving data (positions). */
+  /* Task receiving hydro data (positions). */
   struct task *recv_xv;
 
-  /* Task receiving data (density). */
+  /* Task receiving hydro data (density). */
   struct task *recv_rho;
 
-  /* Task receiving data (gradient). */
+  /* Task receiving hydro data (gradient). */
   struct task *recv_gradient;
+
+  /* Task receiving gpart data. */
+  struct task *recv_grav;
+
+  /* Task receiving multipole data. */
+  struct task *recv_multipole;
 
   /* Task receiving data (time-step). */
   struct task *recv_ti;
 
-  /* Linked list for sending data (positions). */
+  /* Linked list for sending hydro data (positions). */
   struct link *send_xv;
 
-  /* Linked list for sending data (density). */
+  /* Linked list for sending hydro data (density). */
   struct link *send_rho;
 
-  /* Linked list for sending data (gradient). */
+  /* Linked list for sending hydro data (gradient). */
   struct link *send_gradient;
+
+  /* Linked list for sending gpart data. */
+  struct link *send_grav;
+
+  /* Linked list for sending multipole data. */
+  struct link *send_multipole;
 
   /* Linked list for sending data (time-step). */
   struct link *send_ti;
@@ -430,6 +442,8 @@ int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
+int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
+int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);

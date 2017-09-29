@@ -243,11 +243,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->recv_xv = NULL;
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
+    c->recv_grav = NULL;
+    c->recv_multipole = NULL;
     c->recv_ti = NULL;
 
     c->send_xv = NULL;
     c->send_rho = NULL;
     c->send_gradient = NULL;
+    c->send_grav = NULL;
+    c->send_multipole = NULL;
     c->send_ti = NULL;
 #endif
   }
