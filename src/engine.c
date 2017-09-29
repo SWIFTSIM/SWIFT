@@ -1861,19 +1861,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
-          /* /\* Is that neighbour local and does it have particles ? *\/ */
-          /* if (cid <= cjd || cj->count == 0 || */
-          /*     (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-          /*   continue; */
-
-	  /* Avoid duplicates */
-	  if(cid <= cjd) continue;
+	  /* Avoid duplicates of local pairs*/
+	  if(cid <= cjd && cj->nodeID == nodeID) continue;
 
 	  /* Skip cells without gravity particles */
 	  if (cj->gcount == 0) continue;
-
-	  /* Is that neighbour local ? */
-	  if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
           /* Recover the multipole information */
           const struct gravity_tensors *const multi_j = cj->multipole;
