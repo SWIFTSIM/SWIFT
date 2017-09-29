@@ -222,7 +222,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
-        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
+	if(periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -1175,11 +1175,14 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  //  if(c->density == NULL && c->grav != NULL)
+  //  return;
+
   /* Do we need to construct a recv task?
      Note that since c is a foreign cell, all its density tasks will involve
      only the current rank, and thus we don't have to check them.*/
   if (t_xv == NULL && c->density != NULL) {
-
+    
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 4 * c->tag, 0,
                              c, NULL);
@@ -1192,11 +1195,12 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                                    4 * c->tag + 3, 0, c, NULL);
 #endif
   }
+  
   c->recv_xv = t_xv;
   c->recv_rho = t_rho;
   c->recv_gradient = t_gradient;
   c->recv_ti = t_ti;
-
+  
 /* Add dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -1748,7 +1752,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 #endif
 
   /* Each node (space) has constructed its own top-level multipoles.  
-   * We now need to make sure every other node knows about them. 
+   * We now need to make sure every other node has a copy of everything.
    *
    * WARNING: Adult stuff ahead: don't do this at home!
    *
@@ -1857,11 +1861,19 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
-          /* Avoid duplicates that are purely local */
-          if (cid <= cjd && cj->nodeID == nodeID) continue;
+          /* /\* Is that neighbour local and does it have particles ? *\/ */
+          /* if (cid <= cjd || cj->count == 0 || */
+          /*     (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
+          /*   continue; */
 
-          /* Skip cells without gravity particles */
-          if (cj->gcount == 0) continue;
+	  /* Avoid duplicates */
+	  if(cid <= cjd) continue;
+
+	  /* Skip cells without gravity particles */
+	  if (cj->gcount == 0) continue;
+
+	  /* Is that neighbour local ? */
+	  if (cj->nodeID != nodeID) continue;  // MATTHIEU
 
           /* Recover the multipole information */
           const struct gravity_tensors *const multi_j = cj->multipole;
@@ -1938,6 +1950,17 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   void *extra_data[2] = {e, ghosts};
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                  s->nr_cells, 1, 0, extra_data);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if(periodic)
+    for(int i=0; i < s->nr_cells; ++i) {
+      const struct cell *c = &s->cells_top[i];
+      if(c->nodeID == engine_rank && (c->grav_ghost[0] == NULL || c->grav_ghost[0] == NULL))
+	 error("Invalid gravity_ghost for local cell");
+      if(c->nodeID != engine_rank && (c->grav_ghost[0] != NULL || c->grav_ghost[0] != NULL))
+	error("Invalid gravity_ghost for foreign cell");
+    }
+#endif
 
   /* Clean up. */
   if (periodic) free(ghosts);
