@@ -1,33 +1,82 @@
 \subsection{Coupling the FMM to a mesh for periodic long-range forces}
 \label{ssec:mesh_summary}
 
-\begin{equation}
-  S(x) = \frac{e^x}{1 + e^x}
-\end{equation}
+We truncate the potential and forces computed via the FMM using a
+smooth function that drops quickly to zero at some scale $r_s$ set by
+the top-level mesh. Traditionally, implementations have used
+expressions which are cheap to evaluate in Fourier space
+\citep[e.g.][]{Bagla2003,
+  Springel2005}. This, however, implies a large cost for each
+interaction computed within the tree as the real-space truncation
+function won't have a simple analytic form that can be evaluated
+efficiently by computers. Since the FMM scheme involves to not only
+evaluate the forces but higher-order derivatives, a more appropiate
+choice is necessary. We use the sigmoid $S(x) \equiv \frac{e^x}{1 + e^x}$
+as the basis of our truncation function write for the potential:
 
 \begin{align}
-  \varphi_s(r) &= \frac{1}{r}\left[2 - 2S\left(\frac{2r}{r_s}\right)\right] \nonumber\\
-  &= \frac{1}{r}\left[2 - \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}}\right] 
+  \varphi_s(r) &= \frac{1}{r} \chi(r, r_s) = \frac{1}{r}\times\left[2 - 2S\left(\frac{2r}{r_s}\right)\right].% \nonumber\\
+  %&= \frac{1}{r}\left[2 - \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}}.\right] 
 \end{align}
+This function alongside the trunctation function used in \gadget is
+shown on Fig.~\ref{fig:fmm:potential_short}. This choice of $S(x)$ can
+seem rather cumbersome at first but writing $\alpha(x) \equiv (1+e^x)^{-1}$,
+one can expressed all derivatives of $S(x)$ as simple polynomials in
+$\alpha(x)$, which are easy to evaluate. For instance, in the case of
+the direct force evaluation between two particles, we obtain 
+
+
 \begin{align}
-  |\mathbf{f}_s(r)| &= \frac{1}{r^2}\left[\frac{4r}{r_s}S'\left(\frac{2r}{r_s}\right) - 2S\left(\frac{2r}{r_s}\right) + 2\right] \nonumber \\
-  &= \frac{1}{r^2}\left[\frac{4r}{r_s}\frac{e^{\frac{2r}{r_s}}}{(1+e^{\frac{2r}{r_s}})^2} - \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}} + 2\right]
+  |\mathbf{f}_s(r)| &=
+  \frac{1}{r^2}\times\left[\frac{4r}{r_s}S'\left(\frac{2r}{r_s}\right) -
+    2S\left(\frac{2r}{r_s}\right) + 2\right] \nonumber \\
+  %&=
+  %\frac{1}{r^2}\left[\frac{4r}{r_s}\frac{e^{\frac{2r}{r_s}}}{(1+e^{\frac{2r}{r_s}})^2}
+  %- \frac{2e^{\frac{2r}{r_s}}}{1+e^{\frac{2r}{r_s}}} + 2\right]
+  &=
+  \frac{1}{r^2}\times 2 \left[x\alpha(x) - x\alpha(x)^2 - e^x\alpha(x) + 1\right],
 \end{align}
+with $x\equiv2r/r_s$. The truncated force is compared to the Newtonian
+force on Fig.~\ref{fig:fmm:force_short}. At distance $r<r_s/10$, the
+truncation term is negligibly close to one and the truncated forces
+can be replaced by their Newtonian equivalent. We use this
+optimization in \swift and only compute truncated forces between pairs
+of particles that are in tree-leaves larger than $1/10$ of the mesh
+size or between two tree-leaves distant by more than that amount.
+
+The truncation function in Fourier space reads
 
 \begin{equation}
-  \tilde\varphi_l(k) = \frac{1}{k^2}\left[\frac{\upi}{2}kr_s\textrm{csch}\left(\frac{\upi}{2}kr_s\right) \right]
+  \tilde\varphi_l(k) =
+  \frac{1}{k^2}\left[\frac{\upi}{2}kr_s\textrm{csch}\left(\frac{\upi}{2}kr_s\right)
+    \right]
 \end{equation}
 
 \begin{figure}
 \includegraphics[width=\columnwidth]{potential_short.pdf}
-\caption{aa}
+\caption{Truncated potential used in \swift (green line) and \gadget
+  (yellow line) alongside the full Newtonian potential (blue dasheed
+  line). The green dash-dotted line corresponds to the same
+  trunctation function where the exponential in the sigmoid is
+  replaced by a sixth order Taylor expansion. At $r>4r_s$, the
+  truncated potential becomes negligible.}
 \label{fig:fmm:potential_short}
 \end{figure}
 
 
+
 \begin{figure}
 \includegraphics[width=\columnwidth]{force_short.pdf}
-\caption{bb}
+\caption{used in \swift (green line) and \gadget
+  (yellow line) alongside the full Newtonian force term (blue dasheed
+  line). The green dash-dotted line corresponds to the same
+  trunctation function where the exponential in the sigmoid is
+  replaced by a sixth order Taylor expansion. At $r<r_s/10$, the
+  truncated forces becomes almost equal to the Newtonian ones and can
+  safely be replaced by their simpler form. The deviation between the
+  exact expression and the one obtained from Taylor expansion at
+  $r>r_s$ has a small impact since no pairs of particles should
+  interact directly over distances of order the mesh size. }
 \label{fig:fmm:force_short}
 \end{figure}
 

@@ -83,73 +83,6 @@ int cell_getsize(struct cell *c) {
 }
 
 /**
- * @brief Unpack the data of a given cell and its sub-cells.
- *
- * @param pc An array of packed #pcell.
- * @param c The #cell in which to unpack the #pcell.
- * @param s The #space in which the cells are created.
- *
- * @return The number of cells created.
- */
-int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
-
-#ifdef WITH_MPI
-
-  /* Unpack the current pcell. */
-  c->h_max = pc->h_max;
-  c->ti_end_min = pc->ti_end_min;
-  c->ti_end_max = pc->ti_end_max;
-  c->ti_old_part = pc->ti_old_part;
-  c->ti_old_gpart = pc->ti_old_gpart;
-  c->count = pc->count;
-  c->gcount = pc->gcount;
-  c->scount = pc->scount;
-  c->tag = pc->tag;
-
-  /* Number of new cells created. */
-  int count = 1;
-
-  /* Fill the progeny recursively, depth-first. */
-  for (int k = 0; k < 8; k++)
-    if (pc->progeny[k] >= 0) {
-      struct cell *temp;
-      space_getcells(s, 1, &temp);
-      temp->count = 0;
-      temp->gcount = 0;
-      temp->scount = 0;
-      temp->loc[0] = c->loc[0];
-      temp->loc[1] = c->loc[1];
-      temp->loc[2] = c->loc[2];
-      temp->width[0] = c->width[0] / 2;
-      temp->width[1] = c->width[1] / 2;
-      temp->width[2] = c->width[2] / 2;
-      temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->width[0];
-      if (k & 2) temp->loc[1] += temp->width[1];
-      if (k & 1) temp->loc[2] += temp->width[2];
-      temp->depth = c->depth + 1;
-      temp->split = 0;
-      temp->dx_max_part = 0.f;
-      temp->dx_max_gpart = 0.f;
-      temp->dx_max_sort = 0.f;
-      temp->nodeID = c->nodeID;
-      temp->parent = c;
-      c->progeny[k] = temp;
-      c->split = 1;
-      count += cell_unpack(&pc[pc->progeny[k]], temp, s);
-    }
-
-  /* Return the total number of unpacked cells. */
-  c->pcell_size = count;
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
  * @brief Link the cells recursively to the given #part array.
  *
  * @param c The #cell.
@@ -233,7 +166,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
  *
  * @return The number of packed cells.
  */
-int cell_pack(struct cell *c, struct pcell *pc) {
+int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
 
 #ifdef WITH_MPI
 
@@ -268,25 +201,96 @@ int cell_pack(struct cell *c, struct pcell *pc) {
 }
 
 /**
+ * @brief Unpack the data of a given cell and its sub-cells.
+ *
+ * @param pc An array of packed #pcell.
+ * @param c The #cell in which to unpack the #pcell.
+ * @param s The #space in which the cells are created.
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
+                struct space *restrict s) {
+
+#ifdef WITH_MPI
+
+  /* Unpack the current pcell. */
+  c->h_max = pc->h_max;
+  c->ti_end_min = pc->ti_end_min;
+  c->ti_end_max = pc->ti_end_max;
+  c->ti_old_part = pc->ti_old_part;
+  c->ti_old_gpart = pc->ti_old_gpart;
+  c->count = pc->count;
+  c->gcount = pc->gcount;
+  c->scount = pc->scount;
+  c->tag = pc->tag;
+
+  /* Number of new cells created. */
+  int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
+  for (int k = 0; k < 8; k++)
+    if (pc->progeny[k] >= 0) {
+      struct cell *temp;
+      space_getcells(s, 1, &temp);
+      temp->count = 0;
+      temp->gcount = 0;
+      temp->scount = 0;
+      temp->loc[0] = c->loc[0];
+      temp->loc[1] = c->loc[1];
+      temp->loc[2] = c->loc[2];
+      temp->width[0] = c->width[0] / 2;
+      temp->width[1] = c->width[1] / 2;
+      temp->width[2] = c->width[2] / 2;
+      temp->dmin = c->dmin / 2;
+      if (k & 4) temp->loc[0] += temp->width[0];
+      if (k & 2) temp->loc[1] += temp->width[1];
+      if (k & 1) temp->loc[2] += temp->width[2];
+      temp->depth = c->depth + 1;
+      temp->split = 0;
+      temp->dx_max_part = 0.f;
+      temp->dx_max_gpart = 0.f;
+      temp->dx_max_sort = 0.f;
+      temp->nodeID = c->nodeID;
+      temp->parent = c;
+      c->progeny[k] = temp;
+      c->split = 1;
+      count += cell_unpack(&pc[pc->progeny[k]], temp, s);
+    }
+
+  /* Return the total number of unpacked cells. */
+  c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
  * @brief Pack the time information of the given cell and all it's sub-cells.
  *
  * @param c The #cell.
- * @param ti_ends (output) The time information we pack into
+ * @param pcells (output) The end-of-timestep information we pack into
  *
  * @return The number of packed cells.
  */
-int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends) {
+int cell_pack_end_step(struct cell *restrict c,
+                       struct pcell_step *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  ti_ends[0] = c->ti_end_min;
+  pcells[0].ti_end_min = c->ti_end_min;
+  pcells[0].dx_max_part = c->dx_max_part;
+  pcells[0].dx_max_gpart = c->dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_pack_ti_ends(c->progeny[k], &ti_ends[count]);
+      count += cell_pack_end_step(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -302,22 +306,25 @@ int cell_pack_ti_ends(struct cell *c, integertime_t *ti_ends) {
  * @brief Unpack the time information of a given cell and its sub-cells.
  *
  * @param c The #cell
- * @param ti_ends The time information to unpack
+ * @param pcells The end-of-timestep information to unpack
  *
  * @return The number of cells created.
  */
-int cell_unpack_ti_ends(struct cell *c, integertime_t *ti_ends) {
+int cell_unpack_end_step(struct cell *restrict c,
+                         struct pcell_step *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->ti_end_min = ti_ends[0];
+  c->ti_end_min = pcells[0].ti_end_min;
+  c->dx_max_part = pcells[0].dx_max_part;
+  c->dx_max_gpart = pcells[0].dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_unpack_ti_ends(c->progeny[k], &ti_ends[count]);
+      count += cell_unpack_end_step(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
