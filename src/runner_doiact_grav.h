@@ -43,6 +43,13 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   struct gpart *gparts = c->gparts;
   const int gcount = c->gcount;
 
+#if (ICHECK != 0)
+  for(int i=0; i < c->gcount; ++i)
+    if(c->gparts[i].id_or_neg_offset == ICHECK)
+      message("Found gpart depth=%d split=%d m->num_interacted=%lld", 
+	      c->depth, c->split, c->multipole->pot.num_interacted);
+#endif
+
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1136,20 +1143,40 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
 
+#if (ICHECK != 0)
+  int check = 0;
+  int direct_ngbs = 0;
+  int direct_ngbs_gpart = 0;
+  int other_ngbs_gpart = 0;
+  for(int i=0; i < ci->gcount; ++i)
+    if(ci->gparts[i].id_or_neg_offset == ICHECK) {
+      message("Found gpart");
+      check = 1;
+    }
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  long long counter = 0;
+#endif
+
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  struct cell *cells = e->s->cells_top;
-  const int nr_cells = e->s->nr_cells;
+  struct cell *cells = s->cells_top;
+  const int nr_cells = s->nr_cells;
 
   /* Anything to do here? */
   if (!cell_is_active(ci, e)) return;
 
+  if (ci->nodeID != engine_rank)
+    error("Non-local cell in long-range gravity task!");
+  
   /* Check multipole has been drifted */
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
@@ -1157,38 +1184,74 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
   const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
-  const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
-                                   multi_i->CoM_rebuild[1],
-                                   multi_i->CoM_rebuild[2]};
+  /* const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0], */
+  /*                                  multi_i->CoM_rebuild[1], */
+  /*                                  multi_i->CoM_rebuild[2]}; */
+
+  /* Get the cell index. MATTHIEU */
+  const int cid = (ci - cells);// / sizeof(struct cell);
+  const int i = cid / (cdim[1] * cdim[2]);
+  const int j = (cid / cdim[2]) % cdim[1];
+  const int k = cid % cdim[2];
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
-  for (int i = 0; i < nr_cells; ++i) {
+  for (int n = 0; n < nr_cells; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[i];
+    struct cell *cj = &cells[n];
     const struct gravity_tensors *const multi_j = cj->multipole;
 
-    /* Avoid stupid cases */
-    if (ci == cj || cj->gcount == 0) continue;
+    /* Avoid self contributions */
+    if (ci == cj) continue;
 
-    /* Get the distance between the CoMs at the last rebuild*/
-    double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
-    double dy_r = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
-    double dz_r = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
+#ifdef SWIFT_DEBUG_CHECKS
+    counter += multi_j->m_pole.num_gpart;
+#endif
 
-    /* Apply BC */
-    if (periodic) {
-      dx_r = nearest(dx_r, dim[0]);
-      dy_r = nearest(dy_r, dim[1]);
-      dz_r = nearest(dz_r, dim[2]);
-    }
-    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
+    // MATTHIEU
+    const int cjd = (cj - cells);// / sizeof(struct cell);
+    const int ii = cjd / (cdim[1] * cdim[2]);
+    const int jj = (cjd / cdim[2]) % cdim[1];
+    const int kk = cjd % cdim[2];
+    /* if(check) message("cid=%d cjd=%d cj->nodeID=%d cj->gcount=%d",  */
+    /* 		      cid, cjd, cj->nodeID, cj->gcount); */
 
-    /* Are we in charge of this cell pair? */
-    if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                           theta_crit2, r2_rebuild)) {
+    /* /\* Get the distance between the CoMs at the last rebuild*\/ */
+    /* double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0]; */
+    /* double dy_r = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1]; */
+    /* double dz_r = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2]; */
 
+    /* /\* Apply BC *\/ */
+    /* if (periodic) { */
+    /*   dx_r = nearest(dx_r, dim[0]); */
+    /*   dy_r = nearest(dy_r, dim[1]); */
+    /*   dz_r = nearest(dz_r, dim[2]); */
+    /* } */
+    /* const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r; */
+
+    /* Are we in charge of this cell pair? MATTHIEU*/
+    /* if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild, */
+    /*                        theta_crit2, r2_rebuild)) { */
+    if((abs(i-ii) <= 1 || abs(i-ii - cdim[0]) <= 1) && 
+       (abs(j-jj) <= 1 || abs(j-jj - cdim[1]) <= 1) && 
+       (abs(k-kk) <= 1)|| abs(k-kk - cdim[2]) <= 1) {
+
+#if (ICHECK != 0)
+      if(check) {
+	++direct_ngbs;
+	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
+	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d",
+		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID);
+      }
+#endif
+      
+
+    }else{
+
+      if(check)
+	other_ngbs_gpart += cj->multipole->m_pole.num_gpart;
+      
       /* Let's compute the current distance between the cell pair*/
       double dx = CoM_i[0] - multi_j->CoM[0];
       double dy = CoM_i[1] - multi_j->CoM[1];
@@ -1224,6 +1287,18 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       }
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
+
+
+  if(check)
+    message("Interacted with %d indirectly and ignored %d direct interactions (counter=%lld) nr_cells=%d",
+	    other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells);
+	    
+
+#ifdef SWIFT_DEBUG_CHECKS
+  counter += ci->multipole->m_pole.num_gpart;
+  if(counter != e->total_nr_gparts)
+    error("Not found the right number of particles in top-level interactions");
+#endif
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

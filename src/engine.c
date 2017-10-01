@@ -1317,6 +1317,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task 
   }
 
   c->recv_grav = t_grav;
+  c->recv_multipole = t_multi;
   
   for (struct link *l = c->grav; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_grav, l->t);
@@ -1948,13 +1949,32 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     struct gravity_tensors *const multi_i = ci->multipole;
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
-    /* Loop over every other cell */
-    for (int ii = 0; ii < cdim[0]; ii++) {
-      for (int jj = 0; jj < cdim[1]; jj++) {
-        for (int kk = 0; kk < cdim[2]; kk++) {
+    /* /\* Loop over every other cell *\/ */
+    /* for (int ii = 0; ii < cdim[0]; ii++) { */
+    /*   for (int jj = 0; jj < cdim[1]; jj++) { */
+    /*     for (int kk = 0; kk < cdim[2]; kk++) { */
 
-          /* Get the cell */
-          const int cjd = cell_getid(cdim, ii, jj, kk);
+    /*       /\* Get the cell *\/ */
+    /*       const int cjd = cell_getid(cdim, ii, jj, kk); */
+    /*       struct cell *cj = &cells[cjd]; */
+
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
 	  /* Avoid duplicates of local pairs*/
@@ -1980,8 +2000,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_M2L_accept(multi_i->r_max_rebuild,
+          if (1 || !gravity_M2L_accept(multi_i->r_max_rebuild,
                                   multi_j->r_max_rebuild, theta_crit2, r2)) {
+
+	    if(i==11 && j==11 && k==10)
+	      message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID);
+
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -2985,6 +3009,59 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+
+
+      /* Only interested in gravity tasks as of here. */
+      if (t->subtype == task_subtype_grav) {
+
+#ifdef WITH_MPI
+        /* Activate the send/recv tasks. */
+        if (ci->nodeID != engine_rank) {
+
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (cj_active) {
+            scheduler_activate(s, ci->recv_grav);
+            scheduler_activate(s, ci->recv_multipole);
+	  }
+
+          /* Is the foreign cell active and will need stuff from us? */
+          if (ci_active) {
+
+            struct link *l =
+                scheduler_activate_send(s, cj->send_grav, ci->nodeID);
+
+            /* Drift the cell which will be sent at the level at which it is
+               sent, i.e. drift the cell specified in the send task (l->t)
+               itself. */
+            cell_activate_drift_gpart(l->t->ci, s);
+
+	    scheduler_activate_send(s, cj->send_multipole, ci->nodeID);
+	  }
+	} else if (cj->nodeID != engine_rank) {
+
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (ci_active) {
+            scheduler_activate(s, cj->recv_grav);
+            scheduler_activate(s, cj->recv_multipole);
+	  }
+
+          /* Is the foreign cell active and will need stuff from us? */
+          if (cj_active) {
+
+            struct link *l =
+	      scheduler_activate_send(s, ci->send_grav, cj->nodeID);
+
+
+            /* Drift the cell which will be sent at the level at which it is
+               sent, i.e. drift the cell specified in the send task (l->t)
+               itself. */
+            cell_activate_drift_gpart(l->t->ci, s);
+
+	    scheduler_activate_send(s, ci->send_multipole, cj->nodeID);
+	  }
+	}
+#endif
+      }
     }
 
     /* Kick/init ? */
@@ -3066,9 +3143,9 @@ void engine_print_task_counts(struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
-    /* if (tasks[k].skip) */
-    /*   counts[task_type_count] += 1; */
-    /* else */
+    if (tasks[k].skip)
+      counts[task_type_count] += 1;
+    else
       counts[(int)tasks[k].type] += 1;
   }
   message("Total = %d  (per cell = %d)", nr_tasks,

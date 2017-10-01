@@ -1419,6 +1419,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+
+#if (ICHECK != 0)
+  for(int i=0; i < c->gcount; ++i)
+    if(c->gparts[i].id_or_neg_offset == ICHECK)
+      message("Found gpart");
+#endif
+
+
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
@@ -1476,14 +1484,15 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != (long long)e->total_nr_gparts)
+          if (gp->num_interacted != e->total_nr_gparts && gp->id_or_neg_offset == ICHECK)
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally "
                 "with all other gparts gp->num_interacted=%lld, "
-                "total_gparts=%zd",
+                "total_gparts=%zd (local num_gparts=%zd)",
                 gp->id_or_neg_offset, part_type_names[gp->type],
-                gp->num_interacted, e->total_nr_gparts);
+                gp->num_interacted, e->total_nr_gparts,
+	  	e->s->nr_gparts);
         }
 #endif
       }
