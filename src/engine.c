@@ -1977,8 +1977,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-	  if(i==11 && j==0 && k==10)
-	    message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID);
+	  /* if(i==11 && j==0 && k==10) */
+	  /*   message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID); */
 
 
 	  /* Avoid duplicates of local pairs*/
@@ -3947,11 +3947,11 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
-    if (num_gpart_mpole != e->s->nr_gparts)
+    if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart mpoles=%zd "
           "ngparts=%zd",
-          num_gpart_mpole, e->s->nr_gparts);
+          num_gpart_mpole, e->total_nr_gparts);
   }
 #endif
 
@@ -4140,7 +4140,7 @@ void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    if (c != NULL) {
 
       /* Drift the multipole at this level only */
       if (c->ti_old_multipole != e->ti_current) cell_drift_multipole(c, e);

@@ -234,6 +234,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    if(s->gravity)
+      bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
         free(c->sort[i]);
@@ -264,6 +266,7 @@ void space_free_cells(struct space *s) {
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
+  message("Done"); fflush(stdout);
 }
 
 /**
@@ -952,6 +955,8 @@ void space_rebuild(struct space *s, int verbose) {
   }
   // message( "hooking up cells took %.3f %s." ,
   // clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  message("ti_old=%lld", ti_old);
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */

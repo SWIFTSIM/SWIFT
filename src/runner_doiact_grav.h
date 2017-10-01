@@ -1241,8 +1241,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       if(check) {
 	++direct_ngbs;
 	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
-	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d",
-		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID);
+	/* message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d", */
+	/* 	direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID); */
       }
 #endif
       
