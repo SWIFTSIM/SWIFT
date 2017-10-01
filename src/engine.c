@@ -1977,6 +1977,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
+	  if(i==11 && j==0 && k==10)
+	    message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID);
+
+
 	  /* Avoid duplicates of local pairs*/
 	  if(cid <= cjd && cj->nodeID == nodeID) continue;
 
@@ -2002,10 +2006,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Are the cells too close for a MM interaction ? */
           if (1 || !gravity_M2L_accept(multi_i->r_max_rebuild,
                                   multi_j->r_max_rebuild, theta_crit2, r2)) {
-
-	    if(i==11 && j==11 && k==10)
-	      message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID);
-
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,

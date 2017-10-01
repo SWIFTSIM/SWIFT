@@ -1233,9 +1233,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     /* Are we in charge of this cell pair? MATTHIEU*/
     /* if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild, */
     /*                        theta_crit2, r2_rebuild)) { */
-    if((abs(i-ii) <= 1 || abs(i-ii - cdim[0]) <= 1) && 
-       (abs(j-jj) <= 1 || abs(j-jj - cdim[1]) <= 1) && 
-       (abs(k-kk) <= 1)|| abs(k-kk - cdim[2]) <= 1) {
+    if((abs(i-ii) <= 1 || abs(i-ii - cdim[0]) <= 1 || abs(i-ii + cdim[0]) <= 1) && 
+       (abs(j-jj) <= 1 || abs(j-jj - cdim[1]) <= 1 || abs(j-jj + cdim[1]) <= 1) && 
+       (abs(k-kk) <= 1 || abs(k-kk - cdim[2]) <= 1 || abs(k-kk + cdim[2]) <= 1)) {
 
 #if (ICHECK != 0)
       if(check) {
