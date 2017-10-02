@@ -21,6 +21,9 @@
 
 /* Includes. */
 #include "part.h"
+#include "units.h"
+#include "engine.h"
+#include "common_io.h"
 
 /* Forward declaration */
 struct dump;
@@ -85,5 +88,46 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
+
+
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param xp The #xpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int xpart_should_write(
+    const struct xpart *xp, const struct engine *e) {
+
+  return (xp->last_output > e->logger_max_steps);  
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param p The #gpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #gpart should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int gpart_should_write(
+    const struct gpart *gp, const struct engine *e) {
+
+  return (gp->last_output > e->logger_max_steps);  
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param p The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #spart should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_should_write(
+    const struct spart *sp, const struct engine *e) {
+
+  return (sp->last_output > e->logger_max_steps);  
+}
 
 #endif /* SWIFT_LOGGER_H */

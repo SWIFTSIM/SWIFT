@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <hdf5.h>
 
 /* This object's header. */
 #include "logger.h"
@@ -35,6 +36,8 @@
 #include "dump.h"
 #include "error.h"
 #include "part.h"
+#include "units.h"
+#include "engine.h"
 
 /**
  * @brief Compute the size of a message given its mask.
