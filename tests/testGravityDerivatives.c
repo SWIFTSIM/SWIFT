@@ -985,7 +985,7 @@ int main() {
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
-    tol *= 2.;
+    tol *= 2.5;
 
     /* 3rd order terms */
     test(pot.D_300, D_300(dx, dy, dz, r_inv), tol, min, "D_300");
@@ -1018,10 +1018,9 @@ int main() {
     test(pot.D_121, D_121(dx, dy, dz, r_inv), tol, min, "D_121");
     test(pot.D_112, D_112(dx, dy, dz, r_inv), tol, min, "D_112");
 #endif
-
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
-    tol *= 2.;
+    tol *= 2.5;
 
     /* 5th order terms */
     test(pot.D_500, D_500(dx, dy, dz, r_inv), tol, min, "D_500");
