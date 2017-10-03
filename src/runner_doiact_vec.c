@@ -1578,7 +1578,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
       const double di_test =
-          sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+          sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
@@ -1733,11 +1733,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Set the cache index. */
       int cj_cache_idx = pjd;
 
-      /*TODO: rshift term. */
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
       const double dj_test =
-          sort_j[pjd].d - hj * kernel_gamma - dx_max;
+          sort_j[pjd].d - max(hj, hi_max) * kernel_gamma - dx_max;
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
