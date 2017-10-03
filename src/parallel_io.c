@@ -58,20 +58,12 @@
  * @brief Reads a data array from a given HDF5 group.
  *
  * @param grp The group from which to read.
- * @param name The name of the array to read.
- * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
- * @param importance If COMPULSORY, the data must be present in the IC file. If
- *OPTIONAL, the array will be zeroed when the data is not present.
- *
- * @todo A better version using HDF5 hyper-slabs to read the file directly into
- *the part array
- * will be written once the structures have been stabilized.
- *
- * Calls #error() if an error occurs.
+ * @param prop The #io_props of the field to read.
+ * @param N The number of particles on that rank.
+ * @param N_total The total number of particles.
+ * @param offset The offset in the array on disk for this rank.
+ * @param internal_units The #unit_system used internally.
+ * @param ic_units The #unit_system used in the ICs.
  */
 void readArray(hid_t grp, const struct io_props prop, size_t N,
                long long N_total, long long offset,
@@ -190,12 +182,12 @@ void readArray(hid_t grp, const struct io_props prop, size_t N,
  *
  * @param e The #engine we are writing from.
  * @param h_data The HDF5 dataset to write to.
- * @param h_list_id the parallel HDF5 properties.
+ * @param h_plist_id the parallel HDF5 properties.
  * @param props The #io_props of the field to read.
  * @param N The number of particles to write.
- * @param offset Offset in the array where this mpi task starts writing
- * @param internal_units The #unit_system used internally
- * @param snapshot_units The #unit_system used in the snapshots
+ * @param offset Offset in the array where this mpi task starts writing.
+ * @param internal_units The #unit_system used internally.
+ * @param snapshot_units The #unit_system used in the snapshots.
  */
 void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
                       const struct io_props props, size_t N, long long offset,
@@ -309,16 +301,17 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
  *
  * @param e The #engine we are writing from.
  * @param grp The group in which to write.
- * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
+ * @param fileName The name of the file in which the data is written.
+ * @param xmfFile The FILE used to write the XMF description.
  * @param partTypeGroupName The name of the group containing the particles in
  * the HDF5 file.
  * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param N_total Total number of particles across all cores
- * @param offset Offset in the array where this mpi task starts writing
- * @param internal_units The #unit_system used internally
- * @param snapshot_units The #unit_system used in the snapshots
+ * @param N_total Total number of particles across all cores.
+ * @param mpi_rank The rank of this node.
+ * @param offset Offset in the array where this mpi task starts writing.
+ * @param internal_units The #unit_system used internally.
+ * @param snapshot_units The #unit_system used in the snapshots.
  */
 void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
@@ -448,24 +441,22 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param internal_units The system units used internally
  * @param dim (output) The dimension of the volume read from the file.
  * @param parts (output) The array of #part read from the file.
- * @param N (output) The number of particles read from the file.
+ * @param gparts (output) The array of #gpart read from the file.
+ * @param sparts (output) The array of #spart read from the file.
+ * @param Ngas (output) The number of particles read from the file.
+ * @param Ngparts (output) The number of particles read from the file.
+ * @param Nstars (output) The number of particles read from the file.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
+ * @param with_hydro Are we running with hydro ?
+ * @param with_gravity Are we running with gravity ?
+ * @param with_stars Are we running with stars ?
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
  * @param info The MPI information object
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
- *
- * Opens the HDF5 file fileName and reads the particles contained
- * in the parts array. N is the returned number of particles found
- * in the file.
- *
- * @warning Can not read snapshot distributed over more than 1 file !!!
- * @todo Read snapshots distributed in more than one file.
- *
- * Calls #error() if an error occurs.
  *
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
