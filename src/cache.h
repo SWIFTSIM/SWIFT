@@ -409,12 +409,15 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pix = 2.0f * parts_i[sort_i[ci->count - 1].i].x[0];
+  const float max_dx = max(ci->dx_max_part, cj->dx_max_part);
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx),
+                               -(2. * ci->width[2] + max_dx)};
+
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++) {
-    x[i] = fake_pix;
-    y[i] = 1.f;
-    z[i] = 1.f;
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
     h[i] = 1.f;
 
     m[i] = 1.f;
@@ -479,11 +482,12 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
+  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx), -(2. * cj->width[1] + max_dx),
+                               -(2. * cj->width[2] + max_dx)};
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
-    xj[i] = fake_pjx;
-    yj[i] = 1.f;
-    zj[i] = 1.f;
+    xj[i] = pos_padded_j[0];
+    yj[i] = pos_padded_j[1];
+    zj[i] = pos_padded_j[2];
     hj[i] = 1.f;
 
     mj[i] = 1.f;
@@ -593,12 +597,15 @@ cache_read_two_partial_cells_sorted_force(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pix = 2.0f * ci->parts[sort_i[ci->count - 1].i].x[0];
+  const float max_dx = max(ci->dx_max_part, cj->dx_max_part);
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx),
+                               -(2. * ci->width[2] + max_dx)};
+
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++) {
-    x[i] = fake_pix;
-    y[i] = 1.f;
-    z[i] = 1.f;
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
     h[i] = FLT_MIN;
 
     m[i] = 1.f;
@@ -654,11 +661,13 @@ cache_read_two_partial_cells_sorted_force(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  float fake_pjx = 2.0f * cj->parts[sort_j[cj->count - 1].i].x[0];
+  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx), -(2. * cj->width[1] + max_dx),
+                               -(2. * cj->width[2] + max_dx)};
+
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
-    xj[i] = fake_pjx;
-    yj[i] = 1.f;
-    zj[i] = 1.f;
+    xj[i] = pos_padded_j[0];
+    yj[i] = pos_padded_j[1];
+    zj[i] = pos_padded_j[2];
     hj[i] = FLT_MIN;
 
     mj[i] = 1.f;
