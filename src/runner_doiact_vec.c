@@ -395,12 +395,11 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
     temp = 0;
 
     const struct part *pi = &parts_i[sort_i[first_pi].i];
+    const float first_di =
+        sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
     /* Loop through particles in cell j until they are not in range of pi. */
-    while (temp <= cj->count &&
-           (sort_i[first_pi].d + (pi->h * kernel_gamma + dx_max - rshift) >
-            sort_j[temp].d))
-      temp++;
+    while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
 
     max_index_i[first_pi] = temp;
 
@@ -409,11 +408,10 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
       temp = max_index_i[i - 1];
       pi = &parts_i[sort_i[i].i];
 
-      while (temp <= cj->count &&
-             (sort_i[i].d + (pi->h * kernel_gamma + dx_max - rshift) >
-              sort_j[temp].d))
-        temp++;
-
+      const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
+      
+      while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
+      
       max_index_i[i] = temp;
     }
   } else {
@@ -436,19 +434,18 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   last_pj = active_id;
 
   /* Find the maximum index into cell i for each particle in range in cell j. */
-  if (last_pj > 0) {
+  if (last_pj >= 0) {
 
     /* Start from the last particle in cell i. */
     temp = ci->count - 1;
 
     const struct part *pj = &parts_j[sort_j[last_pj].i];
+    const float last_dj =
+        sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
 
     /* Loop through particles in cell i until they are not in range of pj. */
-    while (temp > 0 &&
-           sort_j[last_pj].d - dx_max - (pj->h * kernel_gamma) <
-               sort_i[temp].d - rshift)
-      temp--;
-
+    while (temp > 0 && last_dj < sort_i[temp].d) temp--;
+    
     max_index_j[last_pj] = temp;
 
     /* Populate max_index_j for remaining particles that are within range. */
@@ -456,11 +453,10 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
       temp = max_index_j[i + 1];
       pj = &parts_j[sort_j[i].i];
 
-      while (temp > 0 &&
-             sort_j[i].d - dx_max - (pj->h * kernel_gamma) <
-                 sort_i[temp].d - rshift)
-        temp--;
-
+      const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
+      
+      while (temp > 0 && dj < sort_i[temp].d) temp--;
+   
       max_index_j[i] = temp;
     }
   } else {
@@ -1633,7 +1629,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       vector pjx, pjy, pjz, hj, hjg2;
 
       /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         int cj_cache_idx = pjd;
