@@ -254,6 +254,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -262,6 +263,9 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
+    
     for (int j = 0; j < cj->count; ++j) {
 
       pj = &cj->parts[j];
@@ -292,6 +296,9 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
+    
     for (int i = 0; i < ci->count; ++i) {
 
       pi = &ci->parts[i];
@@ -511,8 +518,7 @@ void shuffle_particles(struct part *parts, const int count) {
       parts[i] = particle;
     }
 
-  } else
-    message("Array not big enough to shuffle!");
+  }
 }
 
 /**
