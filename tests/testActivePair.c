@@ -258,6 +258,18 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
   double offset1[3] = {0, 0, 0};
   struct cell *ci, *cj;
 
+  /* Only one particle in each cell. */
+  ci = make_cell(1, offset1, size, h, rho, partId, perturbation, h_pert,
+                 1.);
+  cj = make_cell(1, offset2, size, h, rho, partId, perturbation, h_pert,
+                 1.);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
+                         bruteForceOutputFileName);
+
+  clean_up(ci);
+  clean_up(cj);
+
   /* All active particles. */
   ci = make_cell(particles, offset1, size, h, rho, partId, perturbation, h_pert,
                  1.);

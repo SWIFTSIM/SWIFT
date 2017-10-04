@@ -512,7 +512,7 @@ void shuffle_particles(struct part *parts, const int count) {
     }
 
   } else
-    error("Array not big enough to shuffle!");
+    message("Array not big enough to shuffle!");
 }
 
 /**
