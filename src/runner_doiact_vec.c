@@ -1464,6 +1464,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const int count_j = cj->count;
   const double hi_max = ci->h_max * kernel_gamma - rshift;
   const double hj_max = cj->h_max * kernel_gamma;
+  const double hi_max_raw = ci->h_max;
+  const double hj_max_raw = cj->h_max;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
@@ -1564,7 +1566,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
       const double di_test =
-          sort_i[pid].d + max(hi, hj_max) * kernel_gamma + dx_max - rshift;
+          sort_i[pid].d + max(hi, hj_max_raw) * kernel_gamma + dx_max - rshift;
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
@@ -1718,7 +1720,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
       const double dj_test =
-          sort_j[pjd].d - max(hj, hi_max) * kernel_gamma - dx_max;
+          sort_j[pjd].d - max(hj, hi_max_raw) * kernel_gamma - dx_max;
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
