@@ -1168,7 +1168,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *
  * @param t_multi The send_multi #task, if it has already been created.
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell *cj,
-				  struct task *t_grav, struct task *t_multi ) {
+				  struct task *t_grav, struct task *t_multi, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -1193,24 +1193,32 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell
       t_multi = scheduler_addtask(s, task_type_send, task_subtype_multipole, 6 * ci->tag + 5,
 				  0, ci, cj);
 
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                               6 * ci->tag + 2, 0, ci, cj);
+
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_multi, ci->super->grav_down);
       scheduler_addunlock(s, t_grav, ci->super->grav_down);
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->super->drift_gpart, t_grav);
+      scheduler_addunlock(s, ci->super->init_grav, t_multi);
+
+      /* The super-cell's timestep task should unlock the send_ti task. */
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->send_grav, t_grav);
     engine_addlink(e, &ci->send_multipole, t_multi);
+    engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi);
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1301,7 +1309,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t
  * @param t_grav The recv_gpart #task, if it has already been created.
  * @param t_multi The recv_multipole #task, if it has already been created.
  */
-void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task *t_grav, struct task *t_multi) {
+void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task *t_grav, struct task *t_multi, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -1314,21 +1322,26 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task 
                              c, NULL);
     t_multi = scheduler_addtask(s, task_type_recv, task_subtype_multipole, 6 * c->tag + 5, 0,
 				c, NULL);
+
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
+                             6 * c->tag + 2, 0, c, NULL);
   }
 
   c->recv_grav = t_grav;
   c->recv_multipole = t_multi;
+  c->recv_ti = t_ti;
   
   for (struct link *l = c->grav; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_grav, l->t);
     scheduler_addunlock(s, t_multi, l->t);
+    scheduler_addunlock(s, l->t, t_ti);
   }
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_multi);
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_multi, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2788,7 +2801,7 @@ void engine_maketasks(struct engine *e) {
 
       if(e->policy & engine_policy_self_gravity)
 	for (int k = 0; k < p->nr_cells_in; k++)
-	  engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL);
+	  engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
@@ -2799,7 +2812,7 @@ void engine_maketasks(struct engine *e) {
 
       if(e->policy & engine_policy_self_gravity)
 	for (int k = 0; k < p->nr_cells_out; k++)
-	  engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL, NULL);
+	  engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL, NULL, NULL);
     }
   }
 #endif
@@ -3024,6 +3037,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, ci->recv_multipole);
 	  }
 
+          /* If the foreign cell is active, we want its ti_end values. */
+          if (ci_active) scheduler_activate(s, ci->recv_ti);
+
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active) {
 
@@ -3037,6 +3053,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 	    scheduler_activate_send(s, cj->send_multipole, ci->nodeID);
 	  }
+
+          /* If the local cell is active, send its ti_end values. */
+          if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+
 	} else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
@@ -3044,6 +3064,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, cj->recv_grav);
             scheduler_activate(s, cj->recv_multipole);
 	  }
+
+          /* If the foreign cell is active, we want its ti_end values. */
+          if (cj_active) scheduler_activate(s, cj->recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active) {
@@ -3059,6 +3082,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 	    scheduler_activate_send(s, ci->send_multipole, cj->nodeID);
 	  }
+
+          /* If the local cell is active, send its ti_end values. */
+          if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
 	}
 #endif
       }

@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
@@ -134,6 +135,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  */
 void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
+
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1237,14 +1239,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
        (abs(j-jj) <= 1 || abs(j-jj - cdim[1]) <= 1 || abs(j-jj + cdim[1]) <= 1) && 
        (abs(k-kk) <= 1 || abs(k-kk - cdim[2]) <= 1 || abs(k-kk + cdim[2]) <= 1)) {
 
-#if (ICHECK != 0)
-      if(check) {
-	++direct_ngbs;
-	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
-	/* message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d", */
-	/* 	direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID); */
-      }
-#endif
+
+/* #if (ICHECK != 0) */
+/*       if(check) { */
+/* 	++direct_ngbs; */
+/* 	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart; */
+/* 	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d", */
+/* 		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID); */
+/*       } */
+/* #endif */
       
 
     }else{
@@ -1287,11 +1290,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       }
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
-
-
-  if(check)
-    message("Interacted with %d indirectly and ignored %d direct interactions (counter=%lld) nr_cells=%d",
-	    other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells);
 	    
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1299,6 +1297,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   if(counter != e->total_nr_gparts)
     error("Not found the right number of particles in top-level interactions");
 #endif
+
+  if(check)
+    message("Interacted with %d indirectly and ignored %d direct interactions (counter=%lld) nr_cells=%d total=%lld",
+	    other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells, e->total_nr_gparts);
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
