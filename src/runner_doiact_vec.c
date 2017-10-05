@@ -793,12 +793,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     /* Get a pointer to the ith particle. */
     pi = &parts[pid];
     
-    if(pi->id == CHECK_PART_ID) {
-      message("Here");
-    }
-
-
-
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
@@ -1564,10 +1558,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       struct part *restrict pi = &parts_i[sort_i[pid].i];
       if (!part_is_active(pi, e)) continue;
 
-      if(pi->id == CHECK_PART_ID) {
-        message("Here");
-      }
-
       /* Set the cache index. */
       int ci_cache_idx = pid - first_pi_align;
 
@@ -1721,10 +1711,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (!part_is_active(pj, e)) continue;
-
-      if(pj->id == CHECK_PART_ID) {
-        message("Here");
-      }
 
       /* Set the cache index. */
       int cj_cache_idx = pjd;
