@@ -363,6 +363,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
                                   const struct entry *restrict sort_i,
                                   const struct entry *restrict sort_j,
                                   const float dx_max, const float rshift,
+                                  const double hi_max_raw, const double hj_max_raw,
                                   const double hi_max, const double hj_max,
                                   const double di_max, const double dj_min,
                                   int *max_index_i, int *max_index_j,
@@ -379,7 +380,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
    * particle in cell j. */
   first_pi = ci->count;
   int active_id = first_pi - 1;
-  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
+  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + max(hi_max, hj_max) > dj_min) {
     first_pi--;
     /* Store the index of the particle if it is active. */
     if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
@@ -396,7 +397,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
 
     const struct part *pi = &parts_i[sort_i[first_pi].i];
     const float first_di =
-        sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
+        sort_i[first_pi].d + max(pi->h, hj_max_raw) * kernel_gamma + dx_max - rshift;
 
     /* Loop through particles in cell j until they are not in range of pi. */
     while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
@@ -408,7 +409,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
       temp = max_index_i[i - 1];
       pi = &parts_i[sort_i[i].i];
 
-      const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
+      const float di = sort_i[i].d + max(pi->h, hj_max_raw) * kernel_gamma + dx_max - rshift;
       
       while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
       
@@ -424,7 +425,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   last_pj = -1;
   active_id = last_pj;
   while (last_pj < cj->count &&
-         sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
+         sort_j[last_pj + 1].d - max(hj_max, hi_max) - dx_max < di_max) {
     last_pj++;
     /* Store the index of the particle if it is active. */
     if (part_is_active(&parts_j[sort_j[last_pj].i], e)) active_id = last_pj;
@@ -441,7 +442,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
 
     const struct part *pj = &parts_j[sort_j[last_pj].i];
     const float last_dj =
-        sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
+        sort_j[last_pj].d - dx_max - max(pj->h, hi_max_raw) * kernel_gamma + rshift;
 
     /* Loop through particles in cell i until they are not in range of pj. */
     while (temp > 0 && last_dj < sort_i[temp].d) temp--;
@@ -453,7 +454,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
       temp = max_index_j[i + 1];
       pj = &parts_j[sort_j[i].i];
 
-      const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
+      const float dj = sort_j[i].d - dx_max - (max(pj->h, hi_max_raw) * kernel_gamma) + rshift;
       
       while (temp > 0 && dj < sort_i[temp].d) temp--;
    
@@ -462,31 +463,6 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   } else {
     /* Make sure that max index is set to last particle in ci.*/
     max_index_j[0] = ci->count - 1;
-  }
-
-  int first_pi_est = first_pi;
-  int max_index_i_last = max_index_i[ci->count - 1];
-
-  /* Set the maximum indices for pi particles to last_pj if the first particle
-   * in cj is in range of more particles than first_pi. This ensures that all
-   * interactions are found.*/
-  if (max_index_j[0] < first_pi) {
-    first_pi = max_index_j[0];
-
-    for (int i = first_pi; i < ci->count; i++) {
-      max_index_i[i] = last_pj;
-    }
-  }
-
-  /* Set the maximum indices for pj particles to first_pi_est if the last
-   * particle in ci is in range of more particles than last_pj. This ensures
-   * that all interactions are found.*/
-  if (max_index_i_last > last_pj) {
-    last_pj = max_index_i_last;
-
-    for (int i = 0; i <= last_pj; i++) {
-      max_index_j[i] = first_pi_est;
-    }
   }
 
   *init_pi = first_pi;
@@ -1520,11 +1496,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift,
-                                    hi_max, hj_max, di_max, dj_min, max_index_i,
+                                    hi_max_raw, hj_max_raw, hi_max, hj_max, di_max, dj_min, max_index_i,
                                     max_index_j, &first_pi, &last_pj, e);
-
-  first_pi = 0;
-  last_pj = count_j - 1;
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -1535,8 +1508,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
   
-  first_pi = 0;
-  last_pj = count_j - 1;
 
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
@@ -1544,9 +1515,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
                                             sort_j, shift, &first_pi_align,
                                             &last_pj_align, 1);
-
-  for(int i=0; i<count_i; i++) max_index_i[i] = last_pj;
-  for(int i=0; i<count_j; i++) max_index_j[i] = first_pi;
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
