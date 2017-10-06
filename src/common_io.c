@@ -375,6 +375,7 @@ void io_write_code_description(hid_t h_file) {
   h_grpcode = H5Gcreate1(h_file, "/Code", 0);
   if (h_grpcode < 0) error("Error while creating code group");
 
+  io_write_attribute_s(h_grpcode, "Code", "SWIFT");
   io_write_attribute_s(h_grpcode, "Code Version", package_version());
   io_write_attribute_s(h_grpcode, "Compiler Name", compiler_name());
   io_write_attribute_s(h_grpcode, "Compiler Version", compiler_version());
