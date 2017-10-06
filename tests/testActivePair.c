@@ -142,7 +142,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
-  cell->ti_end_max = 8;
+  cell->ti_end_max = 10;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -219,6 +219,8 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force_vec(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
+void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 
 /**
@@ -542,7 +544,7 @@ int main(int argc, char *argv[]) {
   
   /* Re-assign function pointers. */
   serial_inter_func = &pairs_all_force;
-  vec_inter_func = &runner_dopair2_force_vec;
+  vec_inter_func = &runner_dopair2_branch_force;
 
   /* Create new output file names. */
   sprintf(swiftOutputFileName, "swift_dopair2_force_%s.dat", outputFileNameExtension);
@@ -554,6 +556,9 @@ int main(int argc, char *argv[]) {
   remove(bruteForceOutputFileName);
   
   /* Test a pair of cells face-on. */
+  offset[0] = 1.;
+  offset[1] = 0.;
+  offset[2] = 0.;
   test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
                              perturbation, h_pert, swiftOutputFileName,
                              bruteForceOutputFileName, serial_inter_func, vec_inter_func);
