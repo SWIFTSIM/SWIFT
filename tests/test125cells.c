@@ -33,15 +33,18 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF2 runner_doself2_force_vec
-#define DOPAIR2 runner_dopair2_force_vec
+#define DOPAIR2 runner_dopair2_branch_force
 #define DOSELF2_NAME "runner_doself2_force_vec"
 #define DOPAIR2_NAME "runner_dopair2_force_vec"
 #endif
 
 #ifndef DOSELF2
 #define DOSELF2 runner_doself2_force
-#define DOPAIR2 runner_dopair2_force
 #define DOSELF2_NAME "runner_doself2_density"
+#endif
+
+#ifndef DOPAIR2
+#define DOPAIR2 runner_dopair2_branch_force
 #define DOPAIR2_NAME "runner_dopair2_force"
 #endif
 
@@ -447,13 +450,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
-void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                              struct cell *cj);
+void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
+                                 struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 

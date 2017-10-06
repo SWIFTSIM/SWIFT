@@ -368,7 +368,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
                                   const double di_max, const double dj_min,
                                   int *max_index_i, int *max_index_j,
                                   int *init_pi, int *init_pj,
-                                  const struct engine *e) {
+                                  const timebin_t max_active_bin) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -383,7 +383,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + max(hi_max, hj_max) > dj_min) {
     first_pi--;
     /* Store the index of the particle if it is active. */
-    if (part_is_active(&parts_i[sort_i[first_pi].i], e)) active_id = first_pi;
+    if (part_is_active_no_debug(&parts_i[sort_i[first_pi].i], max_active_bin)) active_id = first_pi;
   }
 
   /* Set the first active pi in range of any particle in cell j. */
@@ -428,7 +428,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
          sort_j[last_pj + 1].d - max(hj_max, hi_max) - dx_max < di_max) {
     last_pj++;
     /* Store the index of the particle if it is active. */
-    if (part_is_active(&parts_j[sort_j[last_pj].i], e)) active_id = last_pj;
+    if (part_is_active_no_debug(&parts_j[sort_j[last_pj].i], max_active_bin)) active_id = last_pj;
   }
 
   /* Set the last active pj in range of any particle in cell i. */
@@ -950,38 +950,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const struct entry *restrict sort_i = ci->sort[sid];
   const struct entry *restrict sort_j = cj->sort[sid];
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
   const int count_i = ci->count;
@@ -1366,33 +1334,17 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
  * @param cj The second #cell.
  */
 void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                              struct cell *cj) {
+                              struct cell *cj, const int sid,
+                              const double *shift) {
 
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
+  const timebin_t max_active_bin = e->max_active_bin;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
   vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
 
   TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
-
-  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
-    error("Interacting undrifted cells.");
-
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-
-  /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1402,38 +1354,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const struct entry *restrict sort_i = ci->sort[sid];
   const struct entry *restrict sort_j = cj->sort[sid];
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
   const int count_i = ci->count;
@@ -1447,32 +1367,38 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const int active_ci = cell_is_active(ci, e);
+  const int active_cj = cell_is_active(cj, e);
 
   /* Check if any particles are active and return if there are not. */
-  // int numActive = 0;
-  // for (int pid = count_i - 1;
-  //     pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-  //  struct part *restrict pi = &parts_i[sort_i[pid].i];
-  //  if (part_is_active(pi, e)) {
-  //    numActive++;
-  //    break;
-  //  }
-  //}
+  int numActive = 0;
 
-  // if (!numActive) {
-  //  for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max <
-  //  di_max;
-  //       pjd++) {
-  //    struct part *restrict pj = &parts_j[sort_j[pjd].i];
-  //    if (part_is_active(pj, e)) {
-  //      numActive++;
-  //      break;
-  //    }
-  //  }
-  //}
+  const double h_max = max(hi_max, hj_max);
 
-  // if (numActive == 0) return;
+  if (active_ci) {
+    for (int pid = count_i - 1;
+         pid >= 0 && sort_i[pid].d + h_max + dx_max > dj_min; pid--) {
+      struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active(pi, e)) {
+        numActive++;
+        break;
+      }
+    }
+  }
 
+  if (!numActive && active_cj) {
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - h_max - dx_max < di_max;
+         pjd++) {
+      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      if (part_is_active_no_debug(pj, max_active_bin)) {
+        numActive++;
+        break;
+      }
+    }
+  }
+
+  if (numActive == 0) return;
+  
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
   struct cache *restrict ci_cache = &r->ci_cache;
@@ -1497,7 +1423,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift,
                                     hi_max_raw, hj_max_raw, hi_max, hj_max, di_max, dj_min, max_index_i,
-                                    max_index_j, &first_pi, &last_pj, e);
+                                    max_index_j, &first_pi, &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -1519,7 +1445,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
 
-  if (cell_is_active(ci, e)) {
+  if (active_ci) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -1673,7 +1599,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
     } /* loop over the parts in ci. */
   }
 
-  if (cell_is_active(cj, e)) {
+  if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
