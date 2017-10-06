@@ -389,6 +389,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -419,6 +420,12 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
+
+    /* Allocate the indices of local cells */
+    if (posix_memalign((void *)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
+                       s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -495,6 +502,16 @@ void space_regrid(struct space *s, int verbose) {
       free(oldnodeIDs);
     }
 #endif /* WITH_MPI */
+
+    /* Let's rebuild the list of local top-level cells */
+    s->nr_local_cells = 0;
+    for (int i = 0; i < s->nr_cells; ++i)
+      if (s->cells_top[i].nodeID == s->nodeID) {
+        s->local_cells_top[s->nr_local_cells] = i;
+        ++s->nr_local_cells;
+      }
+    if (verbose)
+      message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
 
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
@@ -2652,7 +2669,7 @@ void space_init_sparts(struct space *s) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-void space_init(struct space *s, const struct swift_params *params,
+void space_init(struct space *s, int nodeID, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 struct spart *sparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, int periodic, int replicate, int gravity,
@@ -2662,6 +2679,7 @@ void space_init(struct space *s, const struct swift_params *params,
   bzero(s, sizeof(struct space));
 
   /* Store everything in the space. */
+  s->nodeID = nodeID;
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
@@ -3039,6 +3057,7 @@ void space_clean(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   free(s->cells_top);
   free(s->multipoles_top);
+  free(s->local_cells_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
