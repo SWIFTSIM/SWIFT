@@ -278,19 +278,21 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
 
   /* Select the hyper-salb corresponding to this rank */
   hid_t h_filespace = H5Dget_space(h_data);
-  if(N > 0) {
-    H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+  if (N > 0) {
+    H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
+                        NULL);
   } else {
     H5Sselect_none(h_filespace);
   }
 
-  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset %zd", */
+  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+   * %zd", */
   /* 	  N, props.name, N * props.dimension, N * props.dimension * typeSize, */
   /* 	  (int)(N * props.dimension * typeSize), offset); */
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
-		   h_plist_id, temp);
+                   h_plist_id, temp);
   if (h_err < 0) {
     error("Error while writing data array '%s'.", props.name);
   }
