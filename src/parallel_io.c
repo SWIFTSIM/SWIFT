@@ -52,7 +52,7 @@
 #include "xmf.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
-#define HDF5_PARALLEL_IO_MAX_BYTES 2000000000ll
+#define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
 /**
  * @brief Reads a data array from a given HDF5 group.
