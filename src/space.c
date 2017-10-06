@@ -503,16 +503,6 @@ void space_regrid(struct space *s, int verbose) {
     }
 #endif /* WITH_MPI */
 
-    /* Let's rebuild the list of local top-level cells */
-    s->nr_local_cells = 0;
-    for (int i = 0; i < s->nr_cells; ++i)
-      if (s->cells_top[i].nodeID == s->nodeID) {
-        s->local_cells_top[s->nr_local_cells] = i;
-        ++s->nr_local_cells;
-      }
-    if (verbose)
-      message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
-
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
@@ -2481,6 +2471,19 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
+}
+
+void space_list_cells_with_tasks(struct space *s) {
+
+  /* Let's rebuild the list of local top-level cells */
+  s->nr_local_cells = 0;
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_top[s->nr_local_cells] = i;
+      ++s->nr_local_cells;
+    }
+  if (s->e->verbose)
+    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,

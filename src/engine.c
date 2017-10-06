@@ -3070,6 +3070,9 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Re-build the tasks. */
   engine_maketasks(e);
 
+  /* Make the list of top-level cells that have tasks */
+  space_list_cells_with_tasks(e->s);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
