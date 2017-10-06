@@ -278,15 +278,19 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
 
   /* Select the hyper-salb corresponding to this rank */
   hid_t h_filespace = H5Dget_space(h_data);
-  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+  if(N > 0) {
+    H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+  } else {
+    H5Sselect_none(h_filespace);
+  }
 
-  /* message("Writing %zd elements = %zd bytes (int=%d) at offset %zd", */
-  /* 	  N * props.dimension, N * props.dimension * typeSize, */
+  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset %zd", */
+  /* 	  N, props.name, N * props.dimension, N * props.dimension * typeSize, */
   /* 	  (int)(N * props.dimension * typeSize), offset); */
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
-                   h_plist_id, temp);
+		   h_plist_id, temp);
   if (h_err < 0) {
     error("Error while writing data array '%s'.", props.name);
   }
@@ -296,6 +300,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
 }
+
 /**
  * @brief Writes a data array in given HDF5 group.
  *
@@ -314,7 +319,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
  * @param snapshot_units The #unit_system used in the snapshots.
  */
 void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
-                char* partTypeGroupName, const struct io_props props, size_t N,
+                char* partTypeGroupName, struct io_props props, size_t N,
                 long long N_total, int mpi_rank, long long offset,
                 const struct unit_system* internal_units,
                 const struct unit_system* snapshot_units) {
@@ -359,11 +364,11 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Set chunk size */
-  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
-  if (h_err < 0) {
-    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
-  }
+  /* h_err = H5Pset_chunk(h_prop, rank, chunk_shape); */
+  /* if (h_err < 0) { */
+  /*   error("Error while setting chunk size (%llu, %llu) for field '%s'.", */
+  /*         chunk_shape[0], chunk_shape[1], props.name); */
+  /* } */
 
   /* Create dataset */
   const hid_t h_data = H5Dcreate(grp, props.name, io_hdf5_type(props.type),
@@ -395,6 +400,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
+      props.field += max_chunk_size * props.partSize;
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -403,12 +409,12 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
       redo = 0;
     }
 
-    if (redo && e->verbose && mpi_rank == 0)
-      message("Need to redo one iteration for array '%s'", props.name);
-
     /* Do we need to run again ? */
     MPI_Allreduce(MPI_IN_PLACE, &redo, 1, MPI_SIGNED_CHAR, MPI_MAX,
                   MPI_COMM_WORLD);
+
+    if (redo && e->verbose && mpi_rank == 0)
+      message("Need to redo one iteration for array '%s'", props.name);
   }
 
   /* Write XMF description for this data set */
