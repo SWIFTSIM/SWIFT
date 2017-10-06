@@ -101,7 +101,7 @@ struct space {
   /*! Total number of cells (top- and sub-) */
   int tot_cells;
 
-  /*! Number of *local* top-level cells */
+  /*! Number of *local* top-level cells with tasks */
   int nr_local_cells;
 
   /*! The (level 0) cells themselves. */
@@ -116,7 +116,7 @@ struct space {
   /*! Buffer of unused multipoles for the sub-cells. */
   struct gravity_tensors *multipoles_sub;
 
-  /*! The indices of the *local* top-level cells */
+  /*! The indices of the *local* top-level cells with tasks */
   int *local_cells_top;
 
   /*! The total number of parts in the space. */
