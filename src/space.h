@@ -74,9 +74,6 @@ struct space {
   /*! Extra space information needed for some hydro schemes. */
   struct hydro_space hs;
 
-  /*! The MPI rank of this space */
-  int nodeID;
-
   /*! Are we doing gravity? */
   int gravity;
 
@@ -182,7 +179,7 @@ void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
-void space_init(struct space *s, int nodeID, const struct swift_params *params,
+void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 struct spart *sparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, int periodic, int replicate, int gravity,

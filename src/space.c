@@ -2473,6 +2473,14 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   }
 }
 
+/**
+ * @brief Construct the list of top-level cells that have any tasks in
+ * their hierarchy.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
 void space_list_cells_with_tasks(struct space *s) {
 
   /* Let's rebuild the list of local top-level cells */
@@ -2480,7 +2488,7 @@ void space_list_cells_with_tasks(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i)
     if (cell_has_tasks(&s->cells_top[i])) {
       s->local_cells_top[s->nr_local_cells] = i;
-      ++s->nr_local_cells;
+      s->nr_local_cells++;
     }
   if (s->e->verbose)
     message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
@@ -2672,7 +2680,7 @@ void space_init_sparts(struct space *s) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-void space_init(struct space *s, int nodeID, const struct swift_params *params,
+void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 struct spart *sparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, int periodic, int replicate, int gravity,
@@ -2682,7 +2690,6 @@ void space_init(struct space *s, int nodeID, const struct swift_params *params,
   bzero(s, sizeof(struct space));
 
   /* Store everything in the space. */
-  s->nodeID = nodeID;
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];

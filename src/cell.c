@@ -2064,6 +2064,13 @@ void cell_set_super(struct cell *c, struct cell *super) {
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
 
+/**
+ * @brief Mapper function to set the super pointer of the cells.
+ *
+ * @param map_data The top-level cells.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused parameter.
+ */
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -2071,13 +2078,21 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   }
 }
 
+/**
+ * @brief Does this cell or any of its children have any task ?
+ *
+ * We use the timestep-related tasks to probe this as these always
+ * exist in a cell hierarchy that has any kind of task.
+ *
+ * @param c The #cell to probe.
+ */
 int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
   if (c->timestep != NULL || c->recv_ti != NULL) return 1;
 #else
   if (c->timestep != NULL) return 1;
-#endif /* WITH_MPI */
+#endif
 
   if (c->split) {
     int count = 0;
