@@ -30,8 +30,6 @@
 #include "sort_part.h"
 #include "vector.h"
 
-#include <float.h>
-
 #define NUM_VEC_PROC 2
 #define C2_CACHE_SIZE (NUM_VEC_PROC * VEC_SIZE * 6) + (NUM_VEC_PROC * VEC_SIZE)
 

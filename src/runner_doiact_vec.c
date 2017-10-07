@@ -634,26 +634,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       doi_mask = doi_mask & doi_mask_self_check;
       doi_mask2 = doi_mask2 & doi_mask2_self_check;
 
-#ifdef DEBUG_INTERACTIONS
-      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if (doi_mask & (1 << bit_index)) {
-          if(pi->id == CHECK_PART_ID) {
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
-          }
-          ++pi->num_ngb_density;
-        }
-      }
-      
-      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if (doi_mask2 & (1 << bit_index)) {
-          if(pi->id == CHECK_PART_ID) {
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
-          }
-          ++pi->num_ngb_density;
-        }
-      }
-#endif
-
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
@@ -872,17 +852,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       /* Combine all 3 masks and form integer mask. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
       doi_mask = vec_form_int_mask(v_doi_mask);
-
-#ifdef DEBUG_INTERACTIONS
-      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if (doi_mask & (1 << bit_index)) {
-          if(pi->id == CHECK_PART_ID) {
-            pi->ids_ngbs_force[pi->num_ngb_force] = parts[pjd + bit_index].id;
-          }
-          ++pi->num_ngb_force;
-        }
-      }
-#endif
 
       /* If there are any interactions perform them. */
       if (doi_mask) {
@@ -1142,17 +1111,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form integer mask. */
         doi_mask = vec_form_int_mask(v_doi_mask);
 
-#ifdef DEBUG_INTERACTIONS
-        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (doi_mask & (1 << bit_index)) {
-            if(pi->id == CHECK_PART_ID) {
-              pi->ids_ngbs_density[pi->num_ngb_density] = parts_j[sort_j[pjd + bit_index].i].id;
-            }
-            ++pi->num_ngb_density;
-          }
-        }
-#endif
-
         /* If there are any interactions perform them. */
         if (doi_mask)
           runner_iact_nonsym_1_vec_density(
@@ -1283,17 +1241,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
         /* Form integer mask. */
         doj_mask = vec_form_int_mask(v_doj_mask);
-
-#ifdef DEBUG_INTERACTIONS
-        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (doj_mask & (1 << bit_index)) {
-            if(pj->id == CHECK_PART_ID) {
-              pj->ids_ngbs_density[pj->num_ngb_density] = parts_i[sort_i[ci_cache_idx + first_pi_align + bit_index].i].id;
-            }
-            ++pj->num_ngb_density;
-          }
-        }
-#endif
 
         /* If there are any interactions perform them. */
         if (doj_mask)
@@ -1434,7 +1381,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
   
-
   /* Read the needed particles into the two caches. */
   int first_pi_align = first_pi;
   int last_pj_align = last_pj;
@@ -1556,17 +1502,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* Form integer masks. */
         doi_mask = vec_form_int_mask(v_doi_mask);
-
-#ifdef DEBUG_INTERACTIONS
-        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (doi_mask & (1 << bit_index)) {
-            if(pi->id == CHECK_PART_ID) {
-              pi->ids_ngbs_force[pi->num_ngb_force] = parts_j[sort_j[pjd + bit_index].i].id;
-            }
-            ++pi->num_ngb_force;
-          }
-        }
-#endif
 
         /* If there are any interactions perform them. */
         if (doi_mask) {
@@ -1709,17 +1644,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* Form integer masks. */
         doj_mask = vec_form_int_mask(v_doj_mask);
-
-#ifdef DEBUG_INTERACTIONS
-        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (doj_mask & (1 << bit_index)) {
-            if(pj->id == CHECK_PART_ID) {
-              pj->ids_ngbs_force[pj->num_ngb_force] = parts_i[sort_i[ci_cache_idx + first_pi_align + bit_index].i].id;
-            }
-            ++pj->num_ngb_force;
-          }
-        }
-#endif
 
         /* If there are any interactions perform them. */
         if (doj_mask) {

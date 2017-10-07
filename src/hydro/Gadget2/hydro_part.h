@@ -33,10 +33,6 @@
 
 #include "cooling_struct.h"
 
-#define NUM_OF_NEIGHBOURS 128
-#define CHECK_PART_ID 999999999999999999999
-//#define CHECK_PART_ID 5673486482283
-
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -145,20 +141,6 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
-#endif
-
-#ifdef DEBUG_INTERACTIONS
-  /*! List of interacting particles in the density SELF and PAIR */
-  long long ids_ngbs_density[NUM_OF_NEIGHBOURS];
-
-  /*! List of interacting particles in the force SELF and PAIR */
-  long long ids_ngbs_force[NUM_OF_NEIGHBOURS];
-
-  /*! Number of interactions in the density SELF and PAIR */
-  int num_ngb_density;
-
-  /*! Number of interactions in the force SELF and PAIR */
-  int num_ngb_force;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
