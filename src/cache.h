@@ -321,8 +321,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
 
-  int first_pi_align = *first_pi;
-  int last_pj_align = *last_pj;
+  const int first_pi_align = *first_pi;
+  const int last_pj_align = *last_pj;
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
   double loc[3];
@@ -535,8 +535,8 @@ cache_read_two_partial_cells_sorted_force(
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
 
-  int first_pi_align = *first_pi;
-  int last_pj_align = *last_pj;
+  const int first_pi_align = *first_pi;
+  const int last_pj_align = *last_pj;
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
   double loc[3];

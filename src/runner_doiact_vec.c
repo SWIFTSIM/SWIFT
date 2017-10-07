@@ -1002,14 +1002,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   first_pi = min(first_pi, max_index_j[0]);
 
   /* Read the needed particles into the two caches. */
-  int first_pi_align = first_pi;
-  int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i,
-                                      sort_j, shift, &first_pi_align,
-                                      &last_pj_align);
+                                      sort_j, shift, &first_pi,
+                                      &last_pj);
 
   /* Get the number of particles read into the ci cache. */
-  int ci_cache_count = count_i - first_pi_align;
+  int ci_cache_count = count_i - first_pi;
 
   if (active_ci) {
 
@@ -1021,7 +1019,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
       /* Set the cache index. */
-      int ci_cache_idx = pid - first_pi_align;
+      int ci_cache_idx = pid - first_pi;
 
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
@@ -1071,7 +1069,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (rem != 0) {
         int pad = VEC_SIZE - rem;
 
-        if (exit_iteration_align + pad <= last_pj_align + 1)
+        if (exit_iteration_align + pad <= last_pj + 1)
           exit_iteration_align += pad;
       }
 
@@ -1087,9 +1085,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
-            cj_cache_idx + (VEC_SIZE - 1) > (last_pj_align + 1 + VEC_SIZE)) {
-          error("Unaligned read!!! cj_cache_idx=%d, last_pj_align=%d",
-                cj_cache_idx, last_pj_align);
+            cj_cache_idx + (VEC_SIZE - 1) > (last_pj + 1 + VEC_SIZE)) {
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d",
+                cj_cache_idx, last_pj);
         }
 #endif
 
@@ -1198,7 +1196,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       vector pix, piy, piz;
 
       /* Convert exit iteration to cache indices. */
-      int exit_iteration_align = exit_iteration - first_pi_align;
+      int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
       int rem = exit_iteration_align % VEC_SIZE;
@@ -1214,11 +1212,11 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
         if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0 ||
             ci_cache_idx + (VEC_SIZE - 1) >
-                (count_i - first_pi_align + VEC_SIZE)) {
+                (count_i - first_pi + VEC_SIZE)) {
           error(
-              "Unaligned read!!! ci_cache_idx=%d, first_pi_align=%d, "
+              "Unaligned read!!! ci_cache_idx=%d, first_pi=%d, "
               "count_i=%d",
-              ci_cache_idx, first_pi_align, count_i);
+              ci_cache_idx, first_pi, count_i);
         }
 #endif
 
@@ -1387,14 +1385,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   first_pi = min(first_pi, max_index_j[0]);
 
   /* Read the needed particles into the two caches. */
-  int first_pi_align = first_pi;
-  int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
-                                            sort_j, shift, &first_pi_align,
-                                            &last_pj_align);
+                                            sort_j, shift, &first_pi,
+                                            &last_pj);
 
   /* Get the number of particles read into the ci cache. */
-  int ci_cache_count = count_i - first_pi_align;
+  int ci_cache_count = count_i - first_pi;
 
   if (active_ci) {
 
@@ -1406,7 +1402,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (!part_is_active(pi, e)) continue;
 
       /* Set the cache index. */
-      int ci_cache_idx = pid - first_pi_align;
+      int ci_cache_idx = pid - first_pi;
 
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
@@ -1459,7 +1455,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (rem != 0) {
         int pad = VEC_SIZE - rem;
 
-        if (exit_iteration_align + pad <= last_pj_align + 1)
+        if (exit_iteration_align + pad <= last_pj + 1)
           exit_iteration_align += pad;
       }
 
@@ -1475,9 +1471,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
-            cj_cache_idx + (VEC_SIZE - 1) > (last_pj_align + 1 + VEC_SIZE)) {
-          error("Unaligned read!!! cj_cache_idx=%d, last_pj_align=%d",
-                cj_cache_idx, last_pj_align);
+            cj_cache_idx + (VEC_SIZE - 1) > (last_pj + 1 + VEC_SIZE)) {
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d",
+                cj_cache_idx, last_pj);
         }
 #endif
 
@@ -1600,7 +1596,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       entropy_dtSum.v = vec_setzero();
 
       /* Convert exit iteration to cache indices. */
-      int exit_iteration_align = exit_iteration - first_pi_align;
+      int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
       int rem = exit_iteration_align % VEC_SIZE;
