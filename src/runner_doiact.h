@@ -1072,37 +1072,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   struct entry *restrict sort_j = cj->sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
-  }
-
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
       2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
@@ -1110,7 +1079,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
   const float shift_threshold_z =
       2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
-
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1514,7 +1482,6 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_i = ci->sort[sid];
   const struct entry *restrict sort_j = cj->sort[sid];

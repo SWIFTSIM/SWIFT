@@ -198,11 +198,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   const struct part *restrict parts = ci->parts;
-  double loc[3];
-  loc[0] = ci->loc[0];
-  loc[1] = ci->loc[1];
-  loc[2] = ci->loc[2];
-
+  const double loc[3] = {ci->loc[0], ci->loc[1],ci->loc[2]};
+  
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < ci->count; i++) {
@@ -210,7 +207,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
     y[i] = (float)(parts[i].x[1] - loc[1]);
     z[i] = (float)(parts[i].x[2] - loc[2]);
     h[i] = parts[i].h;
-
     m[i] = parts[i].mass;
     vx[i] = parts[i].v[0];
     vy[i] = parts[i].v[1];
@@ -254,10 +250,7 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
                             SWIFT_CACHE_ALIGNMENT);
 
   const struct part *restrict parts = ci->parts;
-  double loc[3];
-  loc[0] = ci->loc[0];
-  loc[1] = ci->loc[1];
-  loc[2] = ci->loc[2];
+  const double loc[3] = {ci->loc[0], ci->loc[1],ci->loc[2]};
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
@@ -266,12 +259,10 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
     y[i] = (float)(parts[i].x[1] - loc[1]);
     z[i] = (float)(parts[i].x[2] - loc[2]);
     h[i] = parts[i].h;
-
     m[i] = parts[i].mass;
     vx[i] = parts[i].v[0];
     vy[i] = parts[i].v[1];
     vz[i] = parts[i].v[2];
-
     rho[i] = parts[i].rho;
     grad_h[i] = parts[i].force.f;
     pOrho2[i] = parts[i].force.P_over_rho2;
@@ -325,17 +316,13 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   const int last_pj_align = *last_pj;
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
-  double loc[3];
-  loc[0] = cj->loc[0];
-  loc[1] = cj->loc[1];
-  loc[2] = cj->loc[2];
 
-  /* Shift ci particles for boundary conditions and location of cell.*/
-  double total_ci_shift[3];
-  total_ci_shift[0] = loc[0] + shift[0];
-  total_ci_shift[1] = loc[1] + shift[1];
-  total_ci_shift[2] = loc[2] + shift[2];
-
+  /* Shift particles to the local frame and account for boundary conditions.*/
+  const double total_ci_shift[3] = {cj->loc[0] + shift[0], cj->loc[1] + shift[1],
+                             cj->loc[2] + shift[2]};
+  const double total_cj_shift[3] = {cj->loc[0], cj->loc[1],
+                             cj->loc[2]};
+  
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -348,6 +335,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   int ci_cache_count = ci->count - first_pi_align;
+  
   /* Shift the particles positions to a local frame (ci frame) so single
    * precision
    * can be
@@ -355,12 +343,12 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
    * positions
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
+    /* Make sure ci_cache is filled from the first element. */
     idx = sort_i[i + first_pi_align].i;
     x[i] = (float)(parts_i[idx].x[0] - total_ci_shift[0]);
     y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
     z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
-
     m[i] = parts_i[idx].mass;
     vx[i] = parts_i[idx].v[0];
     vy[i] = parts_i[idx].v[1];
@@ -437,11 +425,10 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
-    xj[i] = (float)(parts_j[idx].x[0] - loc[0]);
-    yj[i] = (float)(parts_j[idx].x[1] - loc[1]);
-    zj[i] = (float)(parts_j[idx].x[2] - loc[2]);
+    xj[i] = (float)(parts_j[idx].x[0] - total_cj_shift[0]);
+    yj[i] = (float)(parts_j[idx].x[1] - total_cj_shift[1]);
+    zj[i] = (float)(parts_j[idx].x[2] - total_cj_shift[2]);
     hj[i] = parts_j[idx].h;
-
     mj[i] = parts_j[idx].mass;
     vxj[i] = parts_j[idx].v[0];
     vyj[i] = parts_j[idx].v[1];
@@ -488,7 +475,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     yj[i] = pos_padded_j[1];
     zj[i] = pos_padded_j[2];
     hj[i] = 1.f;
-
     mj[i] = 1.f;
     vxj[i] = 1.f;
     vyj[i] = 1.f;
@@ -539,10 +525,12 @@ cache_read_two_partial_cells_sorted_force(
   const int last_pj_align = *last_pj;
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
-  double loc[3];
-  loc[0] = ci->loc[0];
-  loc[1] = ci->loc[1];
-  loc[2] = ci->loc[2];
+  
+  /* Shift particles to the local frame and account for boundary conditions.*/
+  const double total_ci_shift[3] = {cj->loc[0] + shift[0], cj->loc[1] + shift[1],
+                             cj->loc[2] + shift[2]};
+  const double total_cj_shift[3] = {cj->loc[0], cj->loc[1],
+                             cj->loc[2]};
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
@@ -573,18 +561,15 @@ cache_read_two_partial_cells_sorted_force(
    * due to BCs but leave cell cj. */
   for (int i = 0; i < ci_cache_count; i++) {
     /* Make sure ci_cache is filled from the first element. */
-
     idx = sort_i[i + first_pi_align].i;
-    x[i] = (float)(parts_i[idx].x[0] - loc[0] - shift[0]);
-    y[i] = (float)(parts_i[idx].x[1] - loc[1] - shift[1]);
-    z[i] = (float)(parts_i[idx].x[2] - loc[2] - shift[2]);
+    x[i] = (float)(parts_i[idx].x[0] - total_ci_shift[0]);
+    y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
+    z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
-
     m[i] = parts_i[idx].mass;
     vx[i] = parts_i[idx].v[0];
     vy[i] = parts_i[idx].v[1];
     vz[i] = parts_i[idx].v[2];
-
     rho[i] = parts_i[idx].rho;
     grad_h[i] = parts_i[idx].force.f;
     pOrho2[i] = parts_i[idx].force.P_over_rho2;
@@ -606,12 +591,10 @@ cache_read_two_partial_cells_sorted_force(
     y[i] = pos_padded[1];
     z[i] = pos_padded[2];
     h[i] = h_padded;
-
     m[i] = 1.f;
     vx[i] = 1.f;
     vy[i] = 1.f;
     vz[i] = 1.f;
-
     rho[i] = 1.f;
     grad_h[i] = 1.f;
     pOrho2[i] = 1.f;
@@ -641,16 +624,14 @@ cache_read_two_partial_cells_sorted_force(
 
   for (int i = 0; i <= last_pj_align; i++) {
     idx = sort_j[i].i;
-    xj[i] = (float)(parts_j[idx].x[0] - loc[0]);
-    yj[i] = (float)(parts_j[idx].x[1] - loc[1]);
-    zj[i] = (float)(parts_j[idx].x[2] - loc[2]);
+    xj[i] = (float)(parts_j[idx].x[0] - total_cj_shift[0]);
+    yj[i] = (float)(parts_j[idx].x[1] - total_cj_shift[1]);
+    zj[i] = (float)(parts_j[idx].x[2] - total_cj_shift[2]);
     hj[i] = parts_j[idx].h;
-
     mj[i] = parts_j[idx].mass;
     vxj[i] = parts_j[idx].v[0];
     vyj[i] = parts_j[idx].v[1];
     vzj[i] = parts_j[idx].v[2];
-
     rhoj[i] = parts_j[idx].rho;
     grad_hj[i] = parts_j[idx].force.f;
     pOrho2j[i] = parts_j[idx].force.P_over_rho2;
@@ -670,12 +651,10 @@ cache_read_two_partial_cells_sorted_force(
     yj[i] = pos_padded_j[1];
     zj[i] = pos_padded_j[2];
     hj[i] = h_padded_j;
-
     mj[i] = 1.f;
     vxj[i] = 1.f;
     vyj[i] = 1.f;
     vzj[i] = 1.f;
-
     rhoj[i] = 1.f;
     grad_hj[i] = 1.f;
     pOrho2j[i] = 1.f;
@@ -699,6 +678,11 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->vz);
     free(c->h);
     free(c->max_index);
+    free(c->rho);
+    free(c->grad_h);
+    free(c->pOrho2);
+    free(c->balsara);
+    free(c->soundspeed);
   }
 }
 
