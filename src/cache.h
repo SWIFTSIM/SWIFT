@@ -408,7 +408,8 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
   const float max_dx = max(ci->dx_max_part, cj->dx_max_part);
-  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx),
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+                               -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
 
   for (int i = ci->count - first_pi_align;
@@ -480,8 +481,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx), -(2. * cj->width[1] + max_dx),
-                               -(2. * cj->width[2] + max_dx)};
+  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
+                                 -(2. * cj->width[1] + max_dx),
+                                 -(2. * cj->width[2] + max_dx)};
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
     xj[i] = pos_padded_j[0];
     yj[i] = pos_padded_j[1];
@@ -596,7 +598,8 @@ cache_read_two_partial_cells_sorted_force(
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
   const float max_dx = max(ci->dx_max_part, cj->dx_max_part);
-  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx),
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+                               -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
   const float h_padded = ci->parts[0].h;
 
@@ -660,8 +663,9 @@ cache_read_two_partial_cells_sorted_force(
 
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact.*/
-  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx), -(2. * cj->width[1] + max_dx),
-                               -(2. * cj->width[2] + max_dx)};
+  const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
+                                 -(2. * cj->width[1] + max_dx),
+                                 -(2. * cj->width[2] + max_dx)};
   const float h_padded_j = cj->parts[0].h;
 
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {

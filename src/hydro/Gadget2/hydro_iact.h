@@ -103,7 +103,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
-  
 }
 
 /**
@@ -152,7 +151,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += fac * curlvr[0];
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
-  
 }
 
 #ifdef WITH_VECTORIZATION
@@ -482,7 +480,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
   pj->entropy_dt += mi * visc_term * dvdr;
-  
 }
 
 /**
@@ -572,7 +569,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
-  
 }
 
 #ifdef WITH_VECTORIZATION

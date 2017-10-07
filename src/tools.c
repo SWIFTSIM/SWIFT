@@ -265,7 +265,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
     /* Skip inactive particles. */
     if (!part_is_active(pi, e)) continue;
-    
+
     for (int j = 0; j < cj->count; ++j) {
 
       pj = &cj->parts[j];
@@ -298,7 +298,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
     /* Skip inactive particles. */
     if (!part_is_active(pj, e)) continue;
-    
+
     for (int i = 0; i < ci->count; ++i) {
 
       pi = &ci->parts[i];
@@ -517,7 +517,6 @@ void shuffle_particles(struct part *parts, const int count) {
 
       parts[i] = particle;
     }
-
   }
 }
 

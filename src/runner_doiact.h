@@ -1063,7 +1063,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   TIMER_TIC;
 
-   /* Get the cutoff shift. */
+  /* Get the cutoff shift. */
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
@@ -1524,8 +1524,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pid = 0; pid < ci->count; pid++) {
     const struct part *p = &ci->parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
-      p->x[1] * runner_shift[sid][1] +
-      p->x[2] * runner_shift[sid][2];
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
         1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
       error(
@@ -1538,8 +1538,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pjd = 0; pjd < cj->count; pjd++) {
     const struct part *p = &cj->parts[sort_j[pjd].i];
     const float d = p->x[0] * runner_shift[sid][0] +
-      p->x[1] * runner_shift[sid][1] +
-      p->x[2] * runner_shift[sid][2];
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
         1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
       error(
