@@ -379,6 +379,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
+AC_CHECK_LIB(pthread, pthread_barrier_init,,AC_MSG_ERROR(POSIX implementation does not have barriers!))
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
