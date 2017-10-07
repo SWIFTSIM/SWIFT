@@ -1006,7 +1006,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i,
                                       sort_j, shift, &first_pi_align,
-                                      &last_pj_align, 1);
+                                      &last_pj_align);
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;
@@ -1391,7 +1391,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   int last_pj_align = last_pj;
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
                                             sort_j, shift, &first_pi_align,
-                                            &last_pj_align, 1);
+                                            &last_pj_align);
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi_align;

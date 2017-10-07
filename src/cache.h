@@ -296,7 +296,6 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
  * @param shift The amount to shift the particle positions to account for BCs
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pj The last particle in cell cj that is in range.
- * @param num_vec_proc Number of vectors that will be used to process the
  * interaction.
  */
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
@@ -304,20 +303,20 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     struct cache *restrict const ci_cache,
     struct cache *restrict const cj_cache, const struct entry *restrict sort_i,
     const struct entry *restrict sort_j, const double *restrict const shift,
-    int *first_pi, int *last_pj, const int num_vec_proc) {
+    int *first_pi, int *last_pj) {
 
   int idx;
   /* Pad number of particles read to the vector size. */
-  int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
+  int rem = (ci->count - *first_pi) % VEC_SIZE;
   if (rem != 0) {
-    int pad = (num_vec_proc * VEC_SIZE) - rem;
+    int pad = VEC_SIZE - rem;
 
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
-  rem = *last_pj % (num_vec_proc * VEC_SIZE);
+  rem = *last_pj % VEC_SIZE;
   if (rem != 0) {
-    int pad = (num_vec_proc * VEC_SIZE) - rem;
+    int pad = VEC_SIZE - rem;
 
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
@@ -511,7 +510,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * @param shift The amount to shift the particle positions to account for BCs
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pj The last particle in cell cj that is in range.
- * @param num_vec_proc Number of vectors that will be used to process the
  * interaction.
  */
 __attribute__((always_inline)) INLINE void
@@ -519,21 +517,20 @@ cache_read_two_partial_cells_sorted_force(
     const struct cell *const ci, const struct cell *const cj,
     struct cache *const ci_cache, struct cache *const cj_cache,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const double *const shift, int *first_pi, int *last_pj,
-    const int num_vec_proc) {
+    const double *const shift, int *first_pi, int *last_pj) {
 
   int idx;
   /* Pad number of particles read to the vector size. */
-  int rem = (ci->count - *first_pi) % (num_vec_proc * VEC_SIZE);
+  int rem = (ci->count - *first_pi) % VEC_SIZE;
   if (rem != 0) {
-    int pad = (num_vec_proc * VEC_SIZE) - rem;
+    int pad = VEC_SIZE - rem;
 
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
-  rem = *last_pj % (num_vec_proc * VEC_SIZE);
+  rem = *last_pj % VEC_SIZE;
   if (rem != 0) {
-    int pad = (num_vec_proc * VEC_SIZE) - rem;
+    int pad = VEC_SIZE - rem;
 
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
