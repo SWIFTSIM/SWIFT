@@ -305,7 +305,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
-  rem = *last_pj % VEC_SIZE;
+  rem = (*last_pj + 1) % VEC_SIZE;
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
@@ -514,7 +514,7 @@ cache_read_two_partial_cells_sorted_force(
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
-  rem = *last_pj % VEC_SIZE;
+  rem = (*last_pj + 1) % VEC_SIZE;
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
