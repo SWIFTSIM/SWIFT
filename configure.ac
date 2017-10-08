@@ -379,7 +379,9 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
-AC_CHECK_LIB(pthread, pthread_barrier_init,,AC_MSG_ERROR(POSIX implementation does not have barriers!))
+AC_CHECK_LIB(pthread, pthread_barrier_init,
+	     AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers]),
+	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))		
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we

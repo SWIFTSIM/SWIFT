@@ -3140,10 +3140,10 @@ void engine_prepare(struct engine *e) {
 void engine_barrier(struct engine *e) {
 
   /* Wait at the wait barrier. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 
   /* Wait at the run barrier. */
-  pthread_barrier_wait(&e->run_barrier);
+  swift_barrier_wait(&e->run_barrier);
 }
 
 /**
@@ -3427,7 +3427,7 @@ void engine_launch(struct engine *e) {
   atomic_inc(&e->sched.waiting);
 
   /* Cry havoc and let loose the dogs of war. */
-  pthread_barrier_wait(&e->run_barrier);
+  swift_barrier_wait(&e->run_barrier);
 
   /* Load the tasks. */
   scheduler_start(&e->sched);
@@ -3439,7 +3439,7 @@ void engine_launch(struct engine *e) {
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
   /* Sit back and wait for the runners to come home. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4622,8 +4622,8 @@ void engine_init(struct engine *e, struct space *s,
   threadpool_init(&e->threadpool, e->nr_threads);
 
   /* First of all, init the barrier and lock it. */
-  if (pthread_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
-      pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
+  if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
+      swift_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
     error("Failed to initialize barrier.");
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
@@ -4709,7 +4709,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   /* Wait for the runner threads to be in place. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 }
 
 /**

@@ -32,11 +32,8 @@
 #include <mpi.h>
 #endif
 
-/* Some standard headers. */
-#include <pthread.h>
-#include <stdio.h>
-
 /* Includes. */
+#include "barrier.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
@@ -175,8 +172,8 @@ struct engine {
   int count_step;
 
   /* Data for the threads' barrier. */
-  pthread_barrier_t wait_barrier;
-  pthread_barrier_t run_barrier;
+  swift_barrier_t wait_barrier;
+  swift_barrier_t run_barrier;
 
   /* ID of the node this engine lives on. */
   int nr_nodes, nodeID;
