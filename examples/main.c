@@ -203,7 +203,11 @@ int main(int argc, char *argv[]) {
         with_drift_all = 1;
         break;
       case 'e':
+#ifdef HAVE_FE_ENABLE_EXCEPT
         with_fp_exceptions = 1;
+#else
+        error("Need support for floating point exception on this platform");
+#endif
         break;
       case 'f':
         if (sscanf(optarg, "%llu", &cpufreq) != 1) {
@@ -379,7 +383,9 @@ int main(int argc, char *argv[]) {
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
+#ifdef HAVE_FE_ENABLE_EXCEPT
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
     if (myrank == 0)
       message("WARNING: Floating point exceptions will be reported.");
   }

@@ -381,7 +381,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 
 AC_CHECK_LIB(pthread, pthread_barrier_init,
 	     AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers]),
-	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))		
+	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
@@ -550,6 +550,10 @@ if test "$with_hdf5" = "yes"; then
     fi
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
+
+# Check for floating-point execeptions
+AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
 
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
