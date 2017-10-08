@@ -965,7 +965,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
 
-  /* Check if any particles are active and return if there are not. */
+  /* Check if any particles are active and return if there are none. */
   int numActive = 0;
 
   if (active_ci) {
@@ -1348,9 +1348,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
 
-  /* Check if any particles are active and return if there are not. */
+  /* Check if any particles are active and return if there are none. */
   int numActive = 0;
 
+  /* Use the largest smoothing length to make sure that no interactions are missed. */
   const double h_max = max(hi_max, hj_max);
 
   if (active_ci) {
