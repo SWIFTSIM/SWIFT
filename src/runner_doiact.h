@@ -1050,6 +1050,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param sid The direction of the pair
+ * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
              const double *shift) {
