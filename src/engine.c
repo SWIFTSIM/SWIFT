@@ -1954,7 +1954,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 		p->cells_in[k]->nodeID, p->cells_in[k]->tag, MPI_COMM_WORLD, &requests[this_request]);
 
       /* Move to the next slot in the buffers */
-      this_recv++;
+      this_recv += num_elements;
       this_request++;
     }
 
@@ -1972,7 +1972,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 		p->cells_in[0]->nodeID, p->cells_out[k]->tag, MPI_COMM_WORLD, &requests[this_request]);
       
       /* Move to the next slot in the buffers */
-      this_send++;
+      this_send += num_elements;
       this_request++;
     }    
   }
@@ -1999,11 +1999,24 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
     for (int k = 0; k < p->nr_cells_in; k++) { 
 
+      const int num_elements = p->cells_in[k]->pcell_size;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+      /* Check that the first element (top-level cell's multipole) matches what we received */
+      if(p->cells_in[k]->multipole->m_pole.num_gpart != buffer_recv[this_recv].m_pole.num_gpart)
+	error("Current: M_000=%e num_gpart=%lld\n New: M_000=%e num_gpart=%lld",
+	      p->cells_in[k]->multipole->m_pole.M_000,
+	      p->cells_in[k]->multipole->m_pole.num_gpart,
+	      buffer_recv[this_recv].m_pole.M_000,
+	      buffer_recv[this_recv].m_pole.num_gpart);
+#endif	    
+
       /* Unpack recursively */
       cell_unpack_multipoles(p->cells_in[k], &buffer_recv[this_recv]);
 
       /* Move to the next slot in the buffers */
-      this_recv++;
+      this_recv += num_elements;
     }
   }
 
@@ -3429,6 +3442,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * the tasks ?
  */
 void engine_rebuild(struct engine *e, int clean_h_values) {
+
 
   const ticks tic = getticks();
 
