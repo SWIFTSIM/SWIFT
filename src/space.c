@@ -245,14 +245,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
     c->recv_grav = NULL;
-    // c->recv_multipole = NULL;
     c->recv_ti = NULL;
 
     c->send_xv = NULL;
     c->send_rho = NULL;
     c->send_gradient = NULL;
     c->send_grav = NULL;
-    // c->send_multipole = NULL;
     c->send_ti = NULL;
 #endif
   }
@@ -265,8 +263,6 @@ void space_free_cells(struct space *s) {
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
-  message("Done");
-  fflush(stdout);
 }
 
 /**
@@ -955,8 +951,6 @@ void space_rebuild(struct space *s, int verbose) {
   }
   // message( "hooking up cells took %.3f %s." ,
   // clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  message("ti_old=%lld", ti_old);
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */

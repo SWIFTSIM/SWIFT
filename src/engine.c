@@ -1170,7 +1170,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav,
-                                  struct task *t_multi, struct task *t_ti) {
+                                  struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -1214,8 +1214,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi,
-                                     t_ti);
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1308,8 +1307,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param t_multi The recv_multipole #task, if it has already been created.
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav, struct task *t_multi,
-                                  struct task *t_ti) {
+                                  struct task *t_grav, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -1337,7 +1335,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_multi, t_ti);
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2950,7 +2948,7 @@ void engine_maketasks(struct engine *e) {
 
       if (e->policy & engine_policy_self_gravity)
         for (int k = 0; k < p->nr_cells_in; k++)
-          engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL, NULL);
+          engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
@@ -2962,7 +2960,7 @@ void engine_maketasks(struct engine *e) {
       if (e->policy & engine_policy_self_gravity)
         for (int k = 0; k < p->nr_cells_out; k++)
           engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL,
-                                       NULL, NULL);
+                                       NULL);
     }
   }
 #endif
