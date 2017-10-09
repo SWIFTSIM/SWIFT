@@ -371,7 +371,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. x=%f, ci->width[0]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, x[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, x[i],
           ci->width[0]);
     if (y[i] > shift_threshold_y || y[i] < -shift_threshold_y)
       error(
@@ -379,7 +379,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. y=%f, ci->width[1]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, y[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, y[i],
           ci->width[1]);
     if (z[i] > shift_threshold_z || z[i] < -shift_threshold_z)
       error(
@@ -387,7 +387,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. z=%f, ci->width[2]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, z[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, z[i],
           ci->width[2]);
   }
 #endif
@@ -444,7 +444,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "pos is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. xj=%f, ci->width[0]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, xj[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, xj[i],
           ci->width[0]);
     if (yj[i] > shift_threshold_y || yj[i] < -shift_threshold_y)
       error(
@@ -452,7 +452,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "pos is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. yj=%f, ci->width[1]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, yj[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, yj[i],
           ci->width[1]);
     if (zj[i] > shift_threshold_z || zj[i] < -shift_threshold_z)
       error(
@@ -460,7 +460,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
           "pos is not within "
           "[-4*ci->width*(1 + 2*space_maxreldx), 4*ci->width*(1 + "
           "2*space_maxreldx)]. zj=%f, ci->width[2]=%f",
-          ci->loc[0], ci->loc[1], ci->loc[2], loc[0], loc[1], loc[2], i, zj[i],
+          ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2], i, zj[i],
           ci->width[2]);
   }
 #endif
