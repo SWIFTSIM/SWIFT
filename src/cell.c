@@ -337,7 +337,8 @@ int cell_unpack_end_step(struct cell *restrict c,
 }
 
 /**
- * @brief Pack the multipole information of the given cell and all it's sub-cells.
+ * @brief Pack the multipole information of the given cell and all it's
+ * sub-cells.
  *
  * @param c The #cell.
  * @param pcells (output) The multipole information we pack into
@@ -345,7 +346,7 @@ int cell_unpack_end_step(struct cell *restrict c,
  * @return The number of packed cells.
  */
 int cell_pack_multipoles(struct cell *restrict c,
-			 struct gravity_tensors *restrict pcells) {
+                         struct gravity_tensors *restrict pcells) {
 
 #ifdef WITH_MPI
 
@@ -377,7 +378,7 @@ int cell_pack_multipoles(struct cell *restrict c,
  * @return The number of cells created.
  */
 int cell_unpack_multipoles(struct cell *restrict c,
-			   struct gravity_tensors *restrict pcells) {
+                           struct gravity_tensors *restrict pcells) {
 
 #ifdef WITH_MPI
 
@@ -399,7 +400,6 @@ int cell_unpack_multipoles(struct cell *restrict c,
   return 0;
 #endif
 }
-
 
 /**
  * @brief Lock a cell for access to its array of #part and hold its parents.
@@ -2077,7 +2077,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_subcell_grav_tasks(t->ci, NULL, s);
       } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
-      
+
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
         if (ci->nodeID != engine_rank) {
@@ -2085,7 +2085,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active) {
             scheduler_activate(s, ci->recv_grav);
-	  }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (ci_active) scheduler_activate(s, ci->recv_ti);
@@ -2093,42 +2093,41 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active) {
 
-	    scheduler_activate_send(s, cj->send_grav, ci->nodeID);
+            scheduler_activate_send(s, cj->send_grav, ci->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(cj, s);
-	  }
+          }
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-	} else if (cj->nodeID != engine_rank) {
+        } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active) {
             scheduler_activate(s, cj->recv_grav);
-	  }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (cj_active) scheduler_activate(s, cj->recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active) {
-	    
-	    scheduler_activate_send(s, ci->send_grav, cj->nodeID);
 
+            scheduler_activate_send(s, ci->send_grav, cj->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(ci, s);
-	  }
+          }
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
-	}
+        }
 #endif
       }
     }

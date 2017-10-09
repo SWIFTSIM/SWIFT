@@ -248,7 +248,7 @@ struct cell {
   struct task *recv_grav;
 
   /* Task receiving multipole data. */
-  //struct task *recv_multipole;
+  // struct task *recv_multipole;
 
   /* Task receiving data (time-step). */
   struct task *recv_ti;
@@ -266,7 +266,7 @@ struct cell {
   struct link *send_grav;
 
   /* Linked list for sending multipole data. */
-  //struct link *send_multipole;
+  // struct link *send_multipole;
 
   /* Linked list for sending data (time-step). */
   struct link *send_ti;

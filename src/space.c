@@ -234,8 +234,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
-    if(s->gravity)
-      bzero(c->multipole, sizeof(struct gravity_tensors));
+    if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
         free(c->sort[i]);
@@ -246,14 +245,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
     c->recv_grav = NULL;
-    //c->recv_multipole = NULL;
+    // c->recv_multipole = NULL;
     c->recv_ti = NULL;
 
     c->send_xv = NULL;
     c->send_rho = NULL;
     c->send_gradient = NULL;
     c->send_grav = NULL;
-    //c->send_multipole = NULL;
+    // c->send_multipole = NULL;
     c->send_ti = NULL;
 #endif
   }
@@ -266,7 +265,8 @@ void space_free_cells(struct space *s) {
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
-  message("Done"); fflush(stdout);
+  message("Done");
+  fflush(stdout);
 }
 
 /**
@@ -2243,12 +2243,12 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
       } else {
         gravity_multipole_init(&c->multipole->m_pole);
-	if(c->nodeID == engine_rank) {
-	  c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-	  c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-	  c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-	  c->multipole->r_max = 0.;
-	}
+        if (c->nodeID == engine_rank) {
+          c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+          c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+          c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+          c->multipole->r_max = 0.;
+        }
       }
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];

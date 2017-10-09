@@ -181,19 +181,19 @@ struct gravity_tensors {
 
       /*! Multipole mass */
       struct multipole m_pole;
-      
+
       /*! Field tensor for the potential */
       struct grav_tensor pot;
-      
+
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];
-      
+
       /*! Centre of mass of the matter dsitribution at the last rebuild */
       double CoM_rebuild[3];
-      
+
       /*! Upper limit of the CoM<->gpart distance */
       double r_max;
-    
+
       /*! Upper limit of the CoM<->gpart distance at the last rebuild */
       double r_max_rebuild;
     };
@@ -232,7 +232,7 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt,
   m->CoM[2] += dz;
 
   /* Conservative change in maximal radius containing all gpart */
-  m->r_max = m->r_max_rebuild + 0.*x_diff;
+  m->r_max = m->r_max_rebuild + 0. * x_diff;
 }
 
 /**

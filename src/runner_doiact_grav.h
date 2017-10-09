@@ -45,10 +45,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->gcount;
 
 #if (ICHECK != 0)
-  for(int i=0; i < c->gcount; ++i)
-    if(c->gparts[i].id_or_neg_offset == ICHECK)
-      message("Found gpart depth=%d split=%d m->num_interacted=%lld", 
-	      c->depth, c->split, c->multipole->pot.num_interacted);
+  for (int i = 0; i < c->gcount; ++i)
+    if (c->gparts[i].id_or_neg_offset == ICHECK)
+      message("Found gpart depth=%d split=%d m->num_interacted=%lld", c->depth,
+              c->split, c->multipole->pot.num_interacted);
 #endif
 
   TIMER_TIC;
@@ -136,7 +136,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
-
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
@@ -157,7 +156,8 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
 
-  if (multi_j->num_gpart == 0) error("Multipole does not seem to have been set.");
+  if (multi_j->num_gpart == 0)
+    error("Multipole does not seem to have been set.");
 
   if (ci->multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
@@ -1156,8 +1156,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   int direct_ngbs = 0;
   int direct_ngbs_gpart = 0;
   int other_ngbs_gpart = 0;
-  for(int i=0; i < ci->gcount; ++i)
-    if(ci->gparts[i].id_or_neg_offset == ICHECK) {
+  for (int i = 0; i < ci->gcount; ++i)
+    if (ci->gparts[i].id_or_neg_offset == ICHECK) {
       message("Found gpart");
       check = 1;
     }
@@ -1178,7 +1178,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   if (ci->nodeID != engine_rank)
     error("Non-local cell in long-range gravity task!");
-  
+
   /* Check multipole has been drifted */
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
@@ -1191,7 +1191,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   /*                                  multi_i->CoM_rebuild[2]}; */
 
   /* Get the cell index. MATTHIEU */
-  const int cid = (ci - cells);// / sizeof(struct cell);
+  const int cid = (ci - cells);  // / sizeof(struct cell);
   const int i = cid / (cdim[1] * cdim[2]);
   const int j = (cid / cdim[2]) % cdim[1];
   const int k = cid % cdim[2];
@@ -1212,7 +1212,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 #endif
 
     // MATTHIEU
-    const int cjd = (cj - cells);// / sizeof(struct cell);
+    const int cjd = (cj - cells);  // / sizeof(struct cell);
     const int ii = cjd / (cdim[1] * cdim[2]);
     const int jj = (cjd / cdim[2]) % cdim[1];
     const int kk = cjd % cdim[2];
@@ -1235,27 +1235,29 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     /* Are we in charge of this cell pair? MATTHIEU*/
     /* if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild, */
     /*                        theta_crit2, r2_rebuild)) { */
-    if((abs(i-ii) <= 1 || abs(i-ii - cdim[0]) <= 1 || abs(i-ii + cdim[0]) <= 1) && 
-       (abs(j-jj) <= 1 || abs(j-jj - cdim[1]) <= 1 || abs(j-jj + cdim[1]) <= 1) && 
-       (abs(k-kk) <= 1 || abs(k-kk - cdim[2]) <= 1 || abs(k-kk + cdim[2]) <= 1)) {
-
+    if ((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
+         abs(i - ii + cdim[0]) <= 1) &&
+        (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
+         abs(j - jj + cdim[1]) <= 1) &&
+        (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
+         abs(k - kk + cdim[2]) <= 1)) {
 
 #if (ICHECK != 0)
-      if(check) {
-	++direct_ngbs;
-	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
-	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d",
-		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID);
+      if (check) {
+        ++direct_ngbs;
+        direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
+        message(
+            "Found direct neighbour %d: (i,j,k)=(%d,%d,%d) "
+            "(ii,jj,kk)=(%d,%d,%d) nodeID=%d",
+            direct_ngbs, i, j, k, ii, jj, kk, cj->nodeID);
       }
 #endif
-      
 
-    }else{
+    } else {
 
 #if (ICHECK != 0)
-      if(check)
-	other_ngbs_gpart += cj->multipole->m_pole.num_gpart;
-#endif      
+      if (check) other_ngbs_gpart += cj->multipole->m_pole.num_gpart;
+#endif
 
       /* Let's compute the current distance between the cell pair*/
       double dx = CoM_i[0] - multi_j->CoM[0];
@@ -1292,17 +1294,19 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       }
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
-	    
 
 #ifdef SWIFT_DEBUG_CHECKS
   counter += ci->multipole->m_pole.num_gpart;
-  if(counter != e->total_nr_gparts)
+  if (counter != e->total_nr_gparts)
     error("Not found the right number of particles in top-level interactions");
 #endif
 
-  if(check)
-    message("Interacted with %d indirectly and ignored %d direct interactions (counter=%lld) nr_cells=%d total=%lld",
-	    other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells, e->total_nr_gparts);
+  if (check)
+    message(
+        "Interacted with %d indirectly and ignored %d direct interactions "
+        "(counter=%lld) nr_cells=%d total=%lld",
+        other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells,
+        e->total_nr_gparts);
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

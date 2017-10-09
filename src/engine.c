@@ -222,7 +222,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
-	if(periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
+        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -1071,9 +1071,10 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param t_gradient The send_gradient #task, if already created.
  * @param t_ti The send_ti #task, if required and has already been created.
  */
-void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *cj,
-				struct task *t_xv, struct task *t_rho,
-				struct task *t_gradient, struct task *t_ti) {
+void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
+                                struct cell *cj, struct task *t_xv,
+                                struct task *t_rho, struct task *t_gradient,
+                                struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -1092,8 +1093,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, 6 * ci->tag + 0,
-                               0, ci, cj);
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                               6 * ci->tag + 0, 0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 6 * ci->tag + 1, 0, ci, cj);
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
@@ -1150,8 +1151,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_hydro(e, ci->progeny[k], cj, t_xv, t_rho, t_gradient,
-				   t_ti);
+        engine_addtasks_send_hydro(e, ci->progeny[k], cj, t_xv, t_rho,
+                                   t_gradient, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1167,8 +1168,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci, struct cell *
  * @param t_grav The send_grav #task, if it has already been created.
  * @param t_multi The send_multi #task, if it has already been created.
  */
-void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell *cj,
-				  struct task *t_grav, struct task *t_multi, struct task *t_ti) {
+void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
+                                  struct cell *cj, struct task *t_grav,
+                                  struct task *t_multi, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -1187,8 +1189,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart, 6 * ci->tag + 4,
-				 0, ci, cj);
+      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
+                                 6 * ci->tag + 4, 0, ci, cj);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                6 * ci->tag + 2, 0, ci, cj);
@@ -1212,7 +1214,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi, t_ti);
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_multi,
+                                     t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1229,19 +1232,19 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci, struct cell
  * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti #task, if required and has already been created.
  */
-void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t_xv,
-				struct task *t_rho, struct task *t_gradient,
-				struct task *t_ti) {
+void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
+                                struct task *t_xv, struct task *t_rho,
+                                struct task *t_gradient, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->density != NULL) {
-    
+
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 6 * c->tag + 0, 0,
-                             c, NULL);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 6 * c->tag + 0,
+                             0, c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
                               6 * c->tag + 1, 0, c, NULL);
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
@@ -1251,13 +1254,13 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t
                                    6 * c->tag + 3, 0, c, NULL);
 #endif
   }
-  
+
   c->recv_xv = t_xv;
   c->recv_rho = t_rho;
   c->recv_gradient = t_gradient;
   c->recv_ti = t_ti;
-  
-  /* Add dependencies. */
+
+/* Add dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -1288,7 +1291,8 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient, t_ti);
+        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient,
+                                   t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1303,17 +1307,19 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, struct task *t
  * @param t_grav The recv_gpart #task, if it has already been created.
  * @param t_multi The recv_multipole #task, if it has already been created.
  */
-void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task *t_grav, struct task *t_multi, struct task *t_ti) {
+void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
+                                  struct task *t_grav, struct task *t_multi,
+                                  struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
   /* Have we reached a level where there are any gravity tasks ? */
   if (t_grav == NULL && c->grav != NULL) {
-    
+
     /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart, 6 * c->tag + 4, 0,
-                             c, NULL);
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
+                               6 * c->tag + 4, 0, c, NULL);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
                              6 * c->tag + 2, 0, c, NULL);
@@ -1321,7 +1327,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task 
 
   c->recv_grav = t_grav;
   c->recv_ti = t_ti;
-  
+
   for (struct link *l = c->grav; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_grav, l->t);
     scheduler_addunlock(s, l->t, t_ti);
@@ -1337,7 +1343,6 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c, struct task 
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
-
 
 /**
  * @brief Exchange cell structures with other nodes.
@@ -1826,65 +1831,66 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
  * @param e The #engine.
  */
 void engine_exchange_top_multipoles(struct engine *e) {
-  
+
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for(int i=0; i<e->s->nr_cells; ++i){
-    const struct gravity_tensors *m = &e->s->multipoles_top[i]; 
-    if(e->s->cells_top[i].nodeID == engine_rank) {
-      if(m->m_pole.M_000 > 0.) {
-	if(m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
-	  error("Invalid multipole position in X");
-	if(m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
-	  error("Invalid multipole position in Y");
-	if(m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
-	  error("Invalid multipole position in Z");
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+    const struct gravity_tensors *m = &e->s->multipoles_top[i];
+    if (e->s->cells_top[i].nodeID == engine_rank) {
+      if (m->m_pole.M_000 > 0.) {
+        if (m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
+          error("Invalid multipole position in X");
+        if (m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
+          error("Invalid multipole position in Y");
+        if (m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
+          error("Invalid multipole position in Z");
       }
     } else {
-      if(m->m_pole.M_000 != 0.) error("Non-zero mass for foreign m-pole");
-      if(m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole");
-      if(m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole");
-      if(m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole");
-      if(m->m_pole.num_gpart != 0) error("Non-zero gpart count in foreign m-pole");
+      if (m->m_pole.M_000 != 0.) error("Non-zero mass for foreign m-pole");
+      if (m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole");
+      if (m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole");
+      if (m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole");
+      if (m->m_pole.num_gpart != 0)
+        error("Non-zero gpart count in foreign m-pole");
     }
   }
 #endif
 
-  /* Each node (space) has constructed its own top-level multipoles.  
+  /* Each node (space) has constructed its own top-level multipoles.
    * We now need to make sure every other node has a copy of everything.
    *
    * WARNING: Adult stuff ahead: don't do this at home!
    *
-   * Since all nodes have their top-level multi-poles computed 
+   * Since all nodes have their top-level multi-poles computed
    * and all foreign ones set to 0 (all bytes), we can gather all the m-poles
-   * by doing a bit-wise OR reduction across all the nodes directly in 
-   * place inside the multi-poles_top array. 
-   * This only works if the foreign m-poles on every nodes are zeroed and no 
+   * by doing a bit-wise OR reduction across all the nodes directly in
+   * place inside the multi-poles_top array.
+   * This only works if the foreign m-poles on every nodes are zeroed and no
    * multi-pole is present on more than one node (two things guaranteed by the
    * domain decomposition).
    */
   MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
-  		e->s->nr_cells*sizeof(struct gravity_tensors), MPI_BYTE,
-  		MPI_BOR, MPI_COMM_WORLD);
-  
+                e->s->nr_cells * sizeof(struct gravity_tensors), MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
+
 #ifdef SWIFT_DEBUG_CHECKS
   long long counter = 0;
 
   /* Let's check that what we received makes sense */
-  for(int i=0; i<e->s->nr_cells; ++i){
-    const struct gravity_tensors *m = &e->s->multipoles_top[i]; 
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+    const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
-    if(m->m_pole.M_000 > 0.) {
-      if(m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
-	error("Invalid multipole position in X");
-      if(m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
-	error("Invalid multipole position in Y");
-      if(m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
-	error("Invalid multipole position in Z");
+    if (m->m_pole.M_000 > 0.) {
+      if (m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
+        error("Invalid multipole position in X");
+      if (m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
+        error("Invalid multipole position in Y");
+      if (m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
+        error("Invalid multipole position in Z");
     }
   }
-  if(counter != e->total_nr_gparts)
+  if (counter != e->total_nr_gparts)
     error("Total particles in multipoles inconsistent with engine");
 #endif
 
@@ -1894,7 +1900,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 }
 
 void engine_exchange_proxy_multipoles(struct engine *e) {
-  
+
 #ifdef WITH_MPI
 
   const ticks tic = getticks();
@@ -1907,10 +1913,10 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Loop over the proxies. */
   for (int pid = 0; pid < e->nr_proxies; pid++) {
-    
+
     /* Get a handle on the proxy. */
     const struct proxy *p = &e->proxies[pid];
-    
+
     /* Now collect the number of requests associated */
     count_recv_requests += p->nr_cells_in;
     count_send_requests += p->nr_cells_out;
@@ -1918,22 +1924,23 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
     /* And the actual number of things we are going to ship */
     for (int k = 0; k < p->nr_cells_in; k++)
       count_recv += p->cells_in[k]->pcell_size;
-    
+
     for (int k = 0; k < p->nr_cells_out; k++)
-      count_send += p->cells_out[k]->pcell_size;    
+      count_send += p->cells_out[k]->pcell_size;
   }
 
-  /* Allocate the buffers for the packed data */ 
-  struct gravity_tensors *buffer_send = malloc(sizeof(struct gravity_tensors) * count_send);
-  struct gravity_tensors *buffer_recv = malloc(sizeof(struct gravity_tensors) * count_recv);
-  if(buffer_send == NULL || buffer_recv == NULL)
+  /* Allocate the buffers for the packed data */
+  struct gravity_tensors *buffer_send =
+      malloc(sizeof(struct gravity_tensors) * count_send);
+  struct gravity_tensors *buffer_recv =
+      malloc(sizeof(struct gravity_tensors) * count_recv);
+  if (buffer_send == NULL || buffer_recv == NULL)
     error("Unable to allocate memory for multipole transactions");
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
   MPI_Request *requests = malloc(sizeof(MPI_Request) * count_requests);
-  if(requests == NULL) 
-    error("Unable to allocate memory for MPI requests");
+  if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
   int this_recv = 0;
@@ -1945,13 +1952,15 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
     /* Get a handle on the proxy. */
     const struct proxy *p = &e->proxies[pid];
 
-    for (int k = 0; k < p->nr_cells_in; k++) { 
+    for (int k = 0; k < p->nr_cells_in; k++) {
 
       const int num_elements = p->cells_in[k]->pcell_size;
 
       /* Receive everything */
-      MPI_Irecv(&buffer_recv[this_recv], num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
-		p->cells_in[k]->nodeID, p->cells_in[k]->tag, MPI_COMM_WORLD, &requests[this_request]);
+      MPI_Irecv(&buffer_recv[this_recv],
+                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
+                p->cells_in[k]->nodeID, p->cells_in[k]->tag, MPI_COMM_WORLD,
+                &requests[this_request]);
 
       /* Move to the next slot in the buffers */
       this_recv += num_elements;
@@ -1959,58 +1968,63 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
     }
 
     /* Loop over the proxies to issue the sends. */
-    for (int k = 0; k < p->nr_cells_out; k++) { 
-      
+    for (int k = 0; k < p->nr_cells_out; k++) {
+
       /* Number of multipoles in this cell hierarchy */
       const int num_elements = p->cells_out[k]->pcell_size;
-      
+
       /* Let's pack everything recursively */
       cell_pack_multipoles(p->cells_out[k], &buffer_send[this_send]);
-      
-      /* Send everything (note the use of cells_in[0] to get the correct node ID. */
-      MPI_Isend(&buffer_send[this_send], num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
-		p->cells_in[0]->nodeID, p->cells_out[k]->tag, MPI_COMM_WORLD, &requests[this_request]);
-      
+
+      /* Send everything (note the use of cells_in[0] to get the correct node
+       * ID. */
+      MPI_Isend(&buffer_send[this_send],
+                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
+                p->cells_in[0]->nodeID, p->cells_out[k]->tag, MPI_COMM_WORLD,
+                &requests[this_request]);
+
       /* Move to the next slot in the buffers */
       this_send += num_elements;
       this_request++;
-    }    
+    }
   }
 
   /* Wait for all the requests to arrive home */
   MPI_Status *stats = malloc(count_requests * sizeof(MPI_Status));
   int res;
-  if((res = MPI_Waitall(count_requests, requests, stats)) != MPI_SUCCESS) {
-    for(int k = 0; k < count_requests; ++k) {
-        char buff[MPI_MAX_ERROR_STRING];
-        MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-        message("request from source %i, tag %i has error '%s'.",
-                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+  if ((res = MPI_Waitall(count_requests, requests, stats)) != MPI_SUCCESS) {
+    for (int k = 0; k < count_requests; ++k) {
+      char buff[MPI_MAX_ERROR_STRING];
+      MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
+      message("request from source %i, tag %i has error '%s'.",
+              stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
     }
     error("Failed during waitall for multipole data.");
   }
 
   /* Let's now unpack the multipoles at the right place */
   this_recv = 0;
-  for (int pid = 0; pid < e->nr_proxies; pid++) {  
+  for (int pid = 0; pid < e->nr_proxies; pid++) {
 
     /* Get a handle on the proxy. */
     const struct proxy *p = &e->proxies[pid];
 
-    for (int k = 0; k < p->nr_cells_in; k++) { 
+    for (int k = 0; k < p->nr_cells_in; k++) {
 
       const int num_elements = p->cells_in[k]->pcell_size;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-      /* Check that the first element (top-level cell's multipole) matches what we received */
-      if(p->cells_in[k]->multipole->m_pole.num_gpart != buffer_recv[this_recv].m_pole.num_gpart)
-	error("Current: M_000=%e num_gpart=%lld\n New: M_000=%e num_gpart=%lld",
-	      p->cells_in[k]->multipole->m_pole.M_000,
-	      p->cells_in[k]->multipole->m_pole.num_gpart,
-	      buffer_recv[this_recv].m_pole.M_000,
-	      buffer_recv[this_recv].m_pole.num_gpart);
-#endif	    
+      /* Check that the first element (top-level cell's multipole) matches what
+       * we received */
+      if (p->cells_in[k]->multipole->m_pole.num_gpart !=
+          buffer_recv[this_recv].m_pole.num_gpart)
+        error("Current: M_000=%e num_gpart=%lld\n New: M_000=%e num_gpart=%lld",
+              p->cells_in[k]->multipole->m_pole.M_000,
+              p->cells_in[k]->multipole->m_pole.num_gpart,
+              buffer_recv[this_recv].m_pole.M_000,
+              buffer_recv[this_recv].m_pole.num_gpart);
+#endif
 
       /* Unpack recursively */
       cell_unpack_multipoles(p->cells_in[k], &buffer_recv[this_recv]);
@@ -2019,7 +2033,6 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
       this_recv += num_elements;
     }
   }
-
 
   /* Free everything */
   free(stats);
@@ -2104,7 +2117,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /*       const int cjd = cell_getid(cdim, ii, jj, kk); */
     /*       struct cell *cj = &cells[cjd]; */
 
-
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
@@ -2123,15 +2135,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-	  /* if(i==11 && j==0 && k==10) */
-	  /*   message("Found direct neighbour: (i,j,k)=(%d,%d,%d) (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk, cj->nodeID); */
+          /* if(i==11 && j==0 && k==10) */
+          /*   message("Found direct neighbour: (i,j,k)=(%d,%d,%d)
+           * (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk,
+           * cj->nodeID); */
 
+          /* Avoid duplicates of local pairs*/
+          if (cid <= cjd && cj->nodeID == nodeID) continue;
 
-	  /* Avoid duplicates of local pairs*/
-	  if(cid <= cjd && cj->nodeID == nodeID) continue;
-
-	  /* Skip cells without gravity particles */
-	  if (cj->gcount == 0) continue;
+          /* Skip cells without gravity particles */
+          if (cj->gcount == 0) continue;
 
           /* Recover the multipole information */
           const struct gravity_tensors *const multi_j = cj->multipole;
@@ -2150,7 +2163,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (1 || !gravity_M2L_accept(multi_i->r_max_rebuild,
+          if (1 ||
+              !gravity_M2L_accept(multi_i->r_max_rebuild,
                                   multi_j->r_max_rebuild, theta_crit2, r2)) {
 
             /* Ok, we need to add a direct pair calculation */
@@ -2167,7 +2181,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
  * @brief Constructs the top-level tasks for the short-range gravity
  * interactions (master function).
  *
- * - Create the FFT task and the array of gravity ghosts. 
+ * - Create the FFT task and the array of gravity ghosts.
  * - Call the mapper function to create the other tasks.
  *
  * @param e The #engine.
@@ -2210,13 +2224,15 @@ void engine_make_self_gravity_tasks(struct engine *e) {
                  s->nr_cells, 1, 0, extra_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(periodic)
-    for(int i=0; i < s->nr_cells; ++i) {
+  if (periodic)
+    for (int i = 0; i < s->nr_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
-      if(c->nodeID == engine_rank && (c->grav_ghost[0] == NULL || c->grav_ghost[0] == NULL))
-	 error("Invalid gravity_ghost for local cell");
-      if(c->nodeID != engine_rank && (c->grav_ghost[0] != NULL || c->grav_ghost[0] != NULL))
-	error("Invalid gravity_ghost for foreign cell");
+      if (c->nodeID == engine_rank &&
+          (c->grav_ghost[0] == NULL || c->grav_ghost[0] == NULL))
+        error("Invalid gravity_ghost for local cell");
+      if (c->nodeID != engine_rank &&
+          (c->grav_ghost[0] != NULL || c->grav_ghost[0] != NULL))
+        error("Invalid gravity_ghost for foreign cell");
     }
 #endif
 
@@ -2928,24 +2944,25 @@ void engine_maketasks(struct engine *e) {
 
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
-      if(e->policy & engine_policy_hydro)
-	for (int k = 0; k < p->nr_cells_in; k++)
-	  engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL, NULL);
+      if (e->policy & engine_policy_hydro)
+        for (int k = 0; k < p->nr_cells_in; k++)
+          engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL, NULL);
 
-      if(e->policy & engine_policy_self_gravity)
-	for (int k = 0; k < p->nr_cells_in; k++)
-	  engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL, NULL);
+      if (e->policy & engine_policy_self_gravity)
+        for (int k = 0; k < p->nr_cells_in; k++)
+          engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
-      if(e->policy & engine_policy_hydro)
-	for (int k = 0; k < p->nr_cells_out; k++)
-	  engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
-				   NULL, NULL);
+      if (e->policy & engine_policy_hydro)
+        for (int k = 0; k < p->nr_cells_out; k++)
+          engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL,
+                                     NULL, NULL, NULL);
 
-      if(e->policy & engine_policy_self_gravity)
-	for (int k = 0; k < p->nr_cells_out; k++)
-	  engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL, NULL, NULL);
+      if (e->policy & engine_policy_self_gravity)
+        for (int k = 0; k < p->nr_cells_out; k++)
+          engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL,
+                                       NULL, NULL);
     }
   }
 #endif
@@ -3156,7 +3173,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
-
       /* Only interested in gravity tasks as of here. */
       if (t->subtype == task_subtype_grav) {
 
@@ -3167,7 +3183,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active) {
             scheduler_activate(s, ci->recv_grav);
-	  }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (ci_active) scheduler_activate(s, ci->recv_ti);
@@ -3182,17 +3198,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(l->t->ci, s);
-	  }
+          }
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-	} else if (cj->nodeID != engine_rank) {
+        } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active) {
             scheduler_activate(s, cj->recv_grav);
-	  }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (cj_active) scheduler_activate(s, cj->recv_ti);
@@ -3201,18 +3217,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active) {
 
             struct link *l =
-	      scheduler_activate_send(s, ci->send_grav, cj->nodeID);
-
+                scheduler_activate_send(s, ci->send_grav, cj->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(l->t->ci, s);
-	  }
+          }
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
-	}
+        }
 #endif
       }
     }
@@ -3443,7 +3458,6 @@ int engine_estimate_nr_tasks(struct engine *e) {
  */
 void engine_rebuild(struct engine *e, int clean_h_values) {
 
-
   const ticks tic = getticks();
 
   /* Clear the forcerebuild flag, whatever it was. */
@@ -3455,14 +3469,14 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Initial cleaning up session ? */
   if (clean_h_values) space_sanitize(e->s);
 
-  /* If in parallel, exchange the cell structure, top-level and neighbouring multipoles. */
+/* If in parallel, exchange the cell structure, top-level and neighbouring
+ * multipoles. */
 #ifdef WITH_MPI
   engine_exchange_cells(e);
 
-  if(e->policy & engine_policy_self_gravity)
-    engine_exchange_top_multipoles(e);
+  if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
 
-  if(e->policy & engine_policy_self_gravity)
+  if (e->policy & engine_policy_self_gravity)
     engine_exchange_proxy_multipoles(e);
 #endif
 
@@ -3916,7 +3930,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
-          "Top-level multipoles don't contain the total number of gpart s->nr_gpart=%zd, "
+          "Top-level multipoles don't contain the total number of gpart "
+          "s->nr_gpart=%zd, "
           "m_poles=%zd",
           e->total_nr_gparts, num_gpart_mpole);
   }
@@ -4682,8 +4697,8 @@ void engine_unpin() {
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, long long Ngas, long long Ndm, int with_aff, int policy,
-                 int verbose, struct repartition *reparttype,
+                 int nr_threads, long long Ngas, long long Ndm, int with_aff,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
