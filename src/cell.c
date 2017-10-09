@@ -2085,7 +2085,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active) {
             scheduler_activate(s, ci->recv_grav);
-            scheduler_activate(s, ci->recv_multipole);
 	  }
 
           /* If the foreign cell is active, we want its ti_end values. */
@@ -2100,8 +2099,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(cj, s);
-
-	    scheduler_activate_send(s, cj->send_multipole, ci->nodeID);
 	  }
 
           /* If the local cell is active, send its ti_end values. */
@@ -2112,7 +2109,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active) {
             scheduler_activate(s, cj->recv_grav);
-            scheduler_activate(s, cj->recv_multipole);
 	  }
 
           /* If the foreign cell is active, we want its ti_end values. */
@@ -2128,8 +2124,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(ci, s);
-
-	    scheduler_activate_send(s, ci->send_multipole, cj->nodeID);
 	  }
 
           /* If the local cell is active, send its ti_end values. */

@@ -1240,21 +1240,23 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
        (abs(k-kk) <= 1 || abs(k-kk - cdim[2]) <= 1 || abs(k-kk + cdim[2]) <= 1)) {
 
 
-/* #if (ICHECK != 0) */
-/*       if(check) { */
-/* 	++direct_ngbs; */
-/* 	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart; */
-/* 	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d", */
-/* 		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID); */
-/*       } */
-/* #endif */
+#if (ICHECK != 0)
+      if(check) {
+	++direct_ngbs;
+	direct_ngbs_gpart += cj->multipole->m_pole.num_gpart;
+	message("Found direct neighbour %d: (i,j,k)=(%d,%d,%d) (ii,jj,kk)=(%d,%d,%d) nodeID=%d",
+		direct_ngbs, i,j,k, ii,jj,kk, cj->nodeID);
+      }
+#endif
       
 
     }else{
 
+#if (ICHECK != 0)
       if(check)
 	other_ngbs_gpart += cj->multipole->m_pole.num_gpart;
-      
+#endif      
+
       /* Let's compute the current distance between the cell pair*/
       double dx = CoM_i[0] - multi_j->CoM[0];
       double dy = CoM_i[1] - multi_j->CoM[1];

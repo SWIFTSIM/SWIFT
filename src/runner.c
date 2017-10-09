@@ -553,7 +553,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
   if (!cell_is_active(c, e)) return;
 
   /* Drift the multipole */
-  cell_drift_multipole(c, e);
+  //cell_drift_multipole(c, e);
 
   /* Reset the gravity acceleration tensors */
   gravity_field_tensors_init(&c->multipole->pot, e->ti_current);
