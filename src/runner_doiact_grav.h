@@ -149,7 +149,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active(ci, e) || ci->nodeID != engine_rank) return;
 
   /* Short-cut to the multipole */
   const struct multipole *multi_j = &cj->multipole->m_pole;
