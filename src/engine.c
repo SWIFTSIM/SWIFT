@@ -271,10 +271,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       } else {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
-      scheduler_addunlock(s, c->timestep, c->kick1);
-
 #if defined(WITH_LOGGER)
-      scheduler_addunlock(s, c->kick1, c->logger);
+      scheduler_addunlock(s, c->timestep, c->logger);
+      scheduler_addunlock(s, c->logger, c->kick1);
+#else
+      scheduler_addunlock(s, c->timestep, c->kick1);
 #endif
 }
 
@@ -4448,7 +4449,6 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
 #if defined(WITH_LOGGER)
   n1 += 1;
-  n2 += 1;
 #endif
 
 #ifdef WITH_MPI
@@ -6677,7 +6677,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Logger params */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
   e->logger_max_steps = parser_get_opt_param_int(params, "Snapshots:logger_max_steps", 10);
-  parser_get_opt_param_string(params, "Snapshots:dump_file", logger_name_file, "dump.smew");
+  parser_get_opt_param_string(params, "Snapshots:dump_file", logger_name_file, e->snapshotBaseName);
+  strcat(logger_name_file, ".dump");
   e->logger_dump = malloc(sizeof(struct dump));
   dump_init(e->logger_dump, logger_name_file, 1024 * 1024 * 10);
 #endif
