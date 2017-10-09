@@ -398,13 +398,14 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
+  const float h_padded = ci->parts[0].h;
 
   for (int i = ci->count - first_pi_align;
        i < ci->count - first_pi_align + VEC_SIZE; i++) {
     x[i] = pos_padded[0];
     y[i] = pos_padded[1];
     z[i] = pos_padded[2];
-    h[i] = 1.f;
+    h[i] = h_padded;
 
     m[i] = 1.f;
     vx[i] = 1.f;
@@ -470,11 +471,13 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
                                  -(2. * cj->width[1] + max_dx),
                                  -(2. * cj->width[2] + max_dx)};
+  const float h_padded_j = cj->parts[0].h;
+
   for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
     xj[i] = pos_padded_j[0];
     yj[i] = pos_padded_j[1];
     zj[i] = pos_padded_j[2];
-    hj[i] = 1.f;
+    hj[i] = h_padded_j;
     mj[i] = 1.f;
     vxj[i] = 1.f;
     vyj[i] = 1.f;
