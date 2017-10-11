@@ -32,11 +32,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* This object's header. */
-#include "../src/dump.h"
-
 /* Local headers. */
-#include "../src/threadpool.h"
+#include "swift.h"
 
 void dump_mapper(void *map_data, int num_elements, void *extra_data) {
   struct dump *d = (struct dump *)extra_data;
@@ -51,9 +48,13 @@ int main(int argc, char *argv[]) {
 
   /* Some constants. */
   const int num_threads = 4;
-  const char *filename = "/tmp/dump_test.out";
   const int num_runs = 20;
   const int chunk_size = 1000;
+
+  /* Some constants. */
+  char filename[256];
+  const int now = time(NULL);
+  sprintf(filename, "/tmp/SWIFT_dump_test_%d.out", now);
 
   /* Prepare a threadpool to write to the dump. */
   struct threadpool t;
@@ -84,12 +85,15 @@ int main(int argc, char *argv[]) {
   /* Clean the threads */
   threadpool_clean(&t);
 
+  /* Be clean */
+  remove(filename);
+
   /* Return a happy number. */
   return 0;
 }
 
 #else
 
-int main() { return 0; }
+int main(int argc, char *argv[]) { return 0; }
 
 #endif /* HAVE_POSIX_FALLOCATE */

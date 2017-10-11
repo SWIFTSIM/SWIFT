@@ -28,12 +28,8 @@
 #include <string.h>
 #include <unistd.h>
 
-/* This object's header. */
-#include "../src/logger.h"
-
 /* Local headers. */
-#include "../src/dump.h"
-#include "../src/part.h"
+#include "swift.h"
 
 void test_log_parts(struct dump *d) {
 
@@ -225,7 +221,9 @@ void test_log_timestamps(struct dump *d) {
 int main(int argc, char *argv[]) {
 
   /* Some constants. */
-  const char *filename = "/tmp/dump_test.out";
+  char filename[256];
+  const int now = time(NULL);
+  sprintf(filename, "/tmp/SWIFT_logger_test_%d.out", now);
 
   /* Prepare a dump. */
   struct dump d;
@@ -243,13 +241,15 @@ int main(int argc, char *argv[]) {
   /* Finalize the dump. */
   dump_close(&d);
 
+  /* Be clean */
+  remove(filename);
+
   /* Return a happy number. */
-  printf("PASS\n");
   return 0;
 }
 
 #else
 
-int main() { return 0; }
+int main(int argc, char *argv[]) { return 0; }
 
 #endif /* HAVE_POSIX_FALLOCATE */
