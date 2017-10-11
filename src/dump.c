@@ -18,7 +18,18 @@
  ******************************************************************************/
 
 /* Config parameters. */
+
+/* Config parameters. */
 #include "../config.h"
+
+#ifdef HAVE_POSIX_FALLOCATE
+
+/* This object's header. */
+#include "dump.h"
+
+/* Local headers. */
+#include "atomic.h"
+#include "error.h"
 
 /* Some standard headers. */
 #include <errno.h>
@@ -29,13 +40,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* This object's header. */
-#include "dump.h"
-
-/* Local headers. */
-#include "atomic.h"
-#include "error.h"
-
 /**
  * @brief Obtain a chunk of memory from a dump.
  *
@@ -44,7 +48,6 @@
  * @param offset The offset of the returned memory address within the dump file.
  * @return A pointer to the memory-mapped chunk of data.
  */
-
 void *dump_get(struct dump *d, size_t count, size_t *offset) {
   size_t local_offset = atomic_add(&d->count, count);
   *offset = local_offset + d->file_offset;
@@ -54,7 +57,6 @@ void *dump_get(struct dump *d, size_t count, size_t *offset) {
 /**
  * @brief Ensure that at least size bytes are available in the #dump.
  */
-
 void dump_ensure(struct dump *d, size_t size) {
 
   /* If we have enough space already, just bail. */
@@ -88,7 +90,6 @@ void dump_ensure(struct dump *d, size_t size) {
 /**
  * @brief Flush the #dump to disk.
  */
-
 void dump_sync(struct dump *d) {
   if (msync(d->data, d->count, MS_SYNC) != 0)
     error("Failed to sync memory-mapped data.");
@@ -97,7 +98,6 @@ void dump_sync(struct dump *d) {
 /**
  * @brief Finalize the #dump.
  */
-
 void dump_close(struct dump *d) {
   /* Unmap the data in memory. */
   if (munmap(d->data, d->count) != 0) {
@@ -121,7 +121,6 @@ void dump_close(struct dump *d) {
  *                 note that it will be overwritten.
  * @param size The initial buffer size for this #dump.
  */
-
 void dump_init(struct dump *d, const char *filename, size_t size) {
 
   /* Create the output file. */
@@ -151,3 +150,5 @@ void dump_init(struct dump *d, const char *filename, size_t size) {
   d->file_offset = 0;
   d->page_mask = page_mask;
 }
+
+#endif /* HAVE_POSIX_FALLOCATE */
