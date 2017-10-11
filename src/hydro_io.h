@@ -23,9 +23,7 @@
 #include "../config.h"
 
 /* Import the right functions */
-#if defined(DEBUG_INTERACTIONS_SPH)
-#include "./hydro/DebugInteractions/hydro_io.h"
-#elif defined(MINIMAL_SPH)
+#if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_io.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_io.h"
