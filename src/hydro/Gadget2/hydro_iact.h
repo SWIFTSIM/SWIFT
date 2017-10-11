@@ -105,10 +105,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[2] += facj * curlvr[2];
   
   /* Update ngb counters */
-#ifdef DEBUG_INTERACTIONS
-  if(pi->id == CHECK_PART_ID) pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
+#ifdef DEBUG_INTERACTIONS_SPH
+  pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
   ++pi->num_ngb_density;
-  if(pj->id == CHECK_PART_ID) pj->ids_ngbs_density[pj->num_ngb_density] = pi->id;
+  pj->ids_ngbs_density[pj->num_ngb_density] = pi->id;
   ++pj->num_ngb_density;
 #endif
 
@@ -161,9 +161,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
   
-#ifdef DEBUG_INTERACTIONS
+#ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->id == CHECK_PART_ID) pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
+  pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
   ++pi->num_ngb_density;
 #endif
 
@@ -497,15 +497,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->entropy_dt += mj * visc_term * dvdr;
   pj->entropy_dt += mi * visc_term * dvdr;
   
-#ifdef DEBUG_INTERACTIONS
+#ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->id == CHECK_PART_ID) {
-    pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
-  }
+  pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
   ++pi->num_ngb_force;
-  if(pj->id == CHECK_PART_ID) {
-    pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
-  }
+  pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
   ++pj->num_ngb_force;
 #endif
 
@@ -599,11 +595,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
   
-#ifdef DEBUG_INTERACTIONS
+#ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->id == CHECK_PART_ID) {
-    pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
-  }
+  pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
   ++pi->num_ngb_force;
 #endif
 

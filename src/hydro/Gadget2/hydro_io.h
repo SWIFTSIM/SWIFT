@@ -77,7 +77,7 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
 
   *num_fields = 10;
 
-#ifdef DEBUG_INTERACTIONS
+#ifdef DEBUG_INTERACTIONS_SPH
   *num_fields = 14;
 #endif
 
@@ -103,7 +103,7 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                               parts, rho, convert_u);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
-#ifdef DEBUG_INTERACTIONS
+#ifdef DEBUG_INTERACTIONS_SPH
   list[10] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
                                  parts, num_ngb_density);
   list[11] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
