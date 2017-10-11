@@ -75,6 +75,13 @@ also be switched off for benchmarking purposes. To do so, you can use:
 
     ./configure --disable-vec
 
+Please note that to build SWIFT on MacOS, you will need to configure
+using
+
+    ./configure --disable-vec --disable-compiler-warnings
+
+due to some features not being available on the Mac platform.
+
 
                                  Dependencies
                                  ============

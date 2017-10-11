@@ -36,6 +36,8 @@
 #include "atomic.h"
 #include "error.h"
 
+#ifndef __APPLE__
+
 /**
  * @brief Obtain a chunk of memory from a dump.
  *
@@ -151,3 +153,5 @@ void dump_init(struct dump *d, const char *filename, size_t size) {
   d->file_offset = 0;
   d->page_mask = page_mask;
 }
+
+#endif
