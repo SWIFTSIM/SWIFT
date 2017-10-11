@@ -20,6 +20,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+
 /* Some standard headers. */
 #include <errno.h>
 #include <fcntl.h>
@@ -85,3 +87,9 @@ int main(int argc, char *argv[]) {
   /* Return a happy number. */
   return 0;
 }
+
+#else
+
+int main() { return 0; }
+
+#endif /* HAVE_POSIX_FALLOCATE */
