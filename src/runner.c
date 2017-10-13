@@ -2506,6 +2506,7 @@ void *runner_main(void *data) {
       t->ti_run = e->ti_current;
 #endif
 
+
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
