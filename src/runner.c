@@ -2708,10 +2708,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
-  struct spart *restrict sparts = c->sparts;
   const int count = c->count;
   const int gcount = c->gcount;
-  const int scount = c->scount;
   //const integertime_t ti_current = e->ti_current;
   //const double timeBase = e->timeBase;
 
@@ -2779,26 +2777,6 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
-    for (int k = 0; k < scount; k++) {
-
-      /* Get a handle on the s-part. */
-      struct spart *restrict sp = &sparts[k];
-
-      /* If particle needs to be kicked */
-      if (spart_is_starting(sp, e)) {
-
-	if (spart_should_write(sp, e))
-	  {
-	    message("I am writing sparticle %lli", sp->id);
-	    error("Not implemented");
-	    sp->last_output = 0;
-	  }
-	else
-	  sp->last_output += 1;
-      }
-    }
   }
-
   if (timer) TIMER_TOC(timer_logger);
 }
