@@ -158,7 +158,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_consts) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
     memcpy(buff, &p->id, sizeof(long long));
@@ -222,7 +222,7 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_consts) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
     memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
