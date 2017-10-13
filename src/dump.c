@@ -48,6 +48,10 @@
  */
 void *dump_get(struct dump *d, size_t count, size_t *offset) {
   size_t local_offset = atomic_add(&d->count, count);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (d->count > d->size)
+    error("A new dump file should be created");
+#endif
   *offset = local_offset + d->file_offset;
   return (char *)d->data + local_offset;
 }
