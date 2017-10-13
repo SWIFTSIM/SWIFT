@@ -226,6 +226,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if debugging interactions is switched on.
+AC_ARG_ENABLE([debug-interactions],
+   [AS_HELP_STRING([--enable-debug-interactions],
+     [Activate interaction debugging @<:@yes/no@:>@]
+   )],
+   [enable_debug_interactions="$enableval"],
+   [enable_debug_interactions="no"]
+)
+if test "$enable_debug_interactions" = "yes"; then
+   AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+fi
+
 # Check whether we want to default to naive cell interactions
 AC_ARG_ENABLE([naive-interactions],
    [AS_HELP_STRING([--enable-naive-interactions],
@@ -651,9 +663,6 @@ case "$with_hydro" in
    minimal)
       AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
    ;; 
-   debug)
-      AC_DEFINE([DEBUG_INTERACTIONS_SPH], [1], [Debug SPH])
-   ;; 
    hopkins)
       AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
    ;; 
@@ -927,11 +936,12 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
-   Individual timers    : $enable_timers
-   Task debugging       : $enable_task_debugging
-   Threadpool debugging : $enable_threadpool_debugging
-   Debugging checks     : $enable_debugging_checks
-   Naive interactions   : $enable_naive_interactions
-   Gravity checks       : $gravity_force_checks
+   Individual timers     : $enable_timers
+   Task debugging        : $enable_task_debugging
+   Threadpool debugging  : $enable_threadpool_debugging
+   Debugging checks      : $enable_debugging_checks
+   Interaction debugging : $enable_debug_interactions
+   Naive interactions    : $enable_naive_interactions
+   Gravity checks        : $gravity_force_checks
 
  ------------------------])
