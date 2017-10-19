@@ -532,8 +532,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
-  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
-
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -566,6 +564,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
     vector v_pix, v_piy, v_piz;
+    vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
 
     const float hi = cell_cache->h[pid];
 
@@ -586,9 +585,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
         v_curlvxSum, v_curlvySum, v_curlvzSum;
 
     /* Get the inverse of hi. */
-    vector v_hi_inv;
-
-    v_hi_inv = vec_reciprocal(v_hi);
+    vector v_hi_inv = vec_reciprocal(v_hi);
 
     v_rhoSum.v = vec_setzero();
     v_rho_dhSum.v = vec_setzero();
@@ -754,9 +751,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
-  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
-  vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
-
   TIMER_TIC;
 
   if (!cell_is_active(c, e)) return;
@@ -793,6 +787,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
     vector v_pix, v_piy, v_piz;
+    vector v_hi, v_vix, v_viy, v_viz, v_hig2;
+    vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
 
     const float hi = cell_cache->h[pid];
 
@@ -819,9 +815,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
         v_entropy_dtSum;
 
     /* Get the inverse of hi. */
-    vector v_hi_inv;
-
-    v_hi_inv = vec_reciprocal(v_hi);
+    vector v_hi_inv = vec_reciprocal(v_hi);
 
     v_a_hydro_xSum.v = vec_setzero();
     v_a_hydro_ySum.v = vec_setzero();
@@ -853,13 +847,12 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       }
     }
 
-    vector v_pjx, v_pjy, v_pjz, hj, hjg2;
-
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 1 set of vectors from the particle cache. */
+      vector v_pjx, v_pjy, v_pjz, hj, hjg2;
       v_pjx.v = vec_load(&cell_cache->x[pjd]);
       v_pjy.v = vec_load(&cell_cache->y[pjd]);
       v_pjz.v = vec_load(&cell_cache->z[pjd]);
@@ -867,8 +860,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
 
       /* Compute the pairwise distance. */
-      vector v_dx, v_dy, v_dz;
-
+      vector v_dx, v_dy, v_dz, v_r2;
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
       v_dy.v = vec_sub(v_piy.v, v_pjy.v);
       v_dz.v = vec_sub(v_piz.v, v_pjz.v);
@@ -895,12 +887,10 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
       /* If there are any interactions perform them. */
       if (doi_mask) {
-        vector v_hj_inv;
-        v_hj_inv = vec_reciprocal(hj);
+        vector v_hj_inv = vec_reciprocal(hj);
 
         /* To stop floating point exceptions for when particle separations are
-         * 0.
-        */
+         * 0. */
         v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
         runner_iact_nonsym_1_vec_force(
@@ -946,8 +936,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
-
-  vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
   TIMER_TIC;
 
@@ -1064,6 +1052,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       const int exit_iteration = max_index_i[pid];
 
       vector v_pix, v_piy, v_piz;
+      vector v_hi, v_vix, v_viy, v_viz, v_hig2;
 
       /* Fill particle pi vectors. */
       v_pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
@@ -1082,9 +1071,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
           v_curlvxSum, v_curlvySum, v_curlvzSum;
 
       /* Get the inverse of hi. */
-      vector v_hi_inv;
-
-      v_hi_inv = vec_reciprocal(v_hi);
+      vector v_hi_inv = vec_reciprocal(v_hi);
 
       v_rhoSum.v = vec_setzero();
       v_rho_dhSum.v = vec_setzero();
@@ -1105,14 +1092,13 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
           exit_iteration_align += pad;
       }
 
-      vector v_pjx, v_pjy, v_pjz;
-
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
 
+        vector v_pjx, v_pjy, v_pjz;
         vector v_dx, v_dy, v_dz, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1211,9 +1197,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
           v_curlvxSum, v_curlvySum, v_curlvzSum;
 
       /* Get the inverse of hj. */
-      vector v_hj_inv;
-
-      v_hj_inv = vec_reciprocal(v_hj);
+      vector v_hj_inv = vec_reciprocal(v_hj);
 
       v_rhoSum.v = vec_setzero();
       v_rho_dhSum.v = vec_setzero();
@@ -1223,8 +1207,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       v_curlvxSum.v = vec_setzero();
       v_curlvySum.v = vec_setzero();
       v_curlvzSum.v = vec_setzero();
-
-      vector v_pix, v_piy, v_piz;
 
       /* Convert exit iteration to cache indices. */
       int exit_iteration_align = exit_iteration - first_pi;
@@ -1250,6 +1232,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
+        vector v_pix, v_piy, v_piz;
         vector v_dx, v_dy, v_dz, v_r2;
 
         /* Load 2 sets of vectors from the particle cache. */
@@ -1322,9 +1305,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef WITH_VECTORIZATION
   const struct engine *restrict e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
-
-  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
-  vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
 
   TIMER_TIC;
 
@@ -1448,6 +1428,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       const int exit_iteration = max_index_i[pid];
 
       vector v_pix, v_piy, v_piz;
+      vector v_hi, v_vix, v_viy, v_viz, v_hig2;
+      vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
 
       /* Fill particle pi vectors. */
       v_pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
@@ -1472,8 +1454,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
           v_sigSum, v_entropy_dtSum;
 
       /* Get the inverse of hi. */
-      vector v_hi_inv;
-      v_hi_inv = vec_reciprocal(v_hi);
+      vector v_hi_inv = vec_reciprocal(v_hi);
 
       v_a_hydro_xSum.v = vec_setzero();
       v_a_hydro_ySum.v = vec_setzero();
@@ -1492,8 +1473,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
           exit_iteration_align += pad;
       }
 
-      vector v_pjx, v_pjy, v_pjz, hj, hjg2;
-
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
 
@@ -1501,6 +1480,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         const int cj_cache_idx = pjd;
 
         vector v_dx, v_dy, v_dz;
+        vector v_pjx, v_pjy, v_pjz, v_hj, v_hjg2, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
@@ -1514,8 +1494,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
         v_pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
         v_pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
-        hj.v = vec_load(&cj_cache->h[cj_cache_idx]);
-        hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
+        v_hj.v = vec_load(&cj_cache->h[cj_cache_idx]);
+        v_hjg2.v = vec_mul(vec_mul(v_hj.v, v_hj.v), kernel_gamma2_vec.v);
 
         /* Compute the pairwise distance. */
         v_dx.v = vec_sub(v_pix.v, v_pjx.v);
@@ -1531,7 +1511,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
         vector v_h2;
-        v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
+        v_h2.v = vec_fmax(v_hig2.v, v_hjg2.v);
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
         /* Form integer masks. */
@@ -1539,8 +1519,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* If there are any interactions perform them. */
         if (doi_mask) {
-          vector v_hj_inv;
-          v_hj_inv = vec_reciprocal(hj);
+          vector v_hj_inv = vec_reciprocal(v_hj);
 
           runner_iact_nonsym_1_vec_force(
               &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi,
@@ -1616,9 +1595,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
           v_sigSum, v_entropy_dtSum;
 
       /* Get the inverse of hj. */
-      vector v_hj_inv;
-
-      v_hj_inv = vec_reciprocal(v_hj);
+      vector v_hj_inv = vec_reciprocal(v_hj);
 
       v_a_hydro_xSum.v = vec_setzero();
       v_a_hydro_ySum.v = vec_setzero();
@@ -1637,8 +1614,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       } else
         exit_iteration_align -= rem;
 
-      vector v_pix, v_piy, v_piz, hi, hig2;
-
       /* Loop over the parts in ci. */
       for (int ci_cache_idx = exit_iteration_align;
            ci_cache_idx < ci_cache_count; ci_cache_idx += VEC_SIZE) {
@@ -1649,14 +1624,15 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
-        vector v_dx, v_dy, v_dz;
+        vector v_pix, v_piy, v_piz, v_hi, v_hig2;
+        vector v_dx, v_dy, v_dz, v_r2;
 
         /* Load 2 sets of vectors from the particle cache. */
         v_pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
         v_piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
         v_piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
-        hi.v = vec_load(&ci_cache->h[ci_cache_idx]);
-        hig2.v = vec_mul(vec_mul(hi.v, hi.v), kernel_gamma2_vec.v);
+        v_hi.v = vec_load(&ci_cache->h[ci_cache_idx]);
+        v_hig2.v = vec_mul(vec_mul(v_hi.v, v_hi.v), kernel_gamma2_vec.v);
 
         /* Compute the pairwise distance. */
         v_dx.v = vec_sub(v_pjx.v, v_pix.v);
@@ -1672,7 +1648,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
         vector v_h2;
-        v_h2.v = vec_fmax(v_hjg2.v, hig2.v);
+        v_h2.v = vec_fmax(v_hjg2.v, v_hig2.v);
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
         /* Form integer masks. */
@@ -1680,8 +1656,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
         /* If there are any interactions perform them. */
         if (doj_mask) {
-          vector v_hi_inv;
-          v_hi_inv = vec_reciprocal(hi);
+          vector v_hi_inv = vec_reciprocal(v_hi);
 
           runner_iact_nonsym_1_vec_force(
               &v_r2, &v_dx, &v_dy, &v_dz, v_vjx, v_vjy, v_vjz, v_rhoj,
