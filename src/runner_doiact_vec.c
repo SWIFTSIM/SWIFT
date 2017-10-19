@@ -524,20 +524,19 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const struct engine *e = r->e;
-  struct part *restrict pi;
-  int count_align;
-  int num_vec_proc = NUM_VEC_PROC;
+  const int num_vec_proc = NUM_VEC_PROC;
 
+  /* Get some local variables */
+  const struct engine *e = r->e;
+  const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
-  const timebin_t max_active_bin = e->max_active_bin;
-
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
 
-  TIMER_TIC
+  TIMER_TIC;
 
+  /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
@@ -561,7 +560,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    pi = &parts[pid];
+    struct part *restrict pi = &parts[pid];
 
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
@@ -601,12 +600,10 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     v_curlvzSum.v = vec_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    count_align = count;
-    int rem = count % (num_vec_proc * VEC_SIZE);
+    int count_align = count;
+    const int rem = count % (num_vec_proc * VEC_SIZE);
     if (rem != 0) {
-      int pad = (num_vec_proc * VEC_SIZE) - rem;
-
-      count_align += pad;
+      count_align += (num_vec_proc * VEC_SIZE) - rem;
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
@@ -975,7 +972,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
 
-  /* Check if any particles are active and return if there are none. */
+  /* Count number of particles that are in range and active*/
   int numActive = 0;
 
   if (active_ci) {
@@ -1000,6 +997,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     }
   }
 
+  /* Return if there are no active particles within range */
   if (numActive == 0) return;
 
   /* Get both particle caches from the runner and re-allocate
@@ -1022,8 +1020,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   max_index_j = r->cj_cache.max_index;
 
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
-  */
-  /* Also find the first pi that interacts with any particle in cj and the last
+   * Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
                               hj_max, di_max, dj_min, max_index_i, max_index_j,
@@ -1038,12 +1035,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
 
-  /* Read the needed particles into the two caches. */
+  /* Read the required particles into the two caches. */
   cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i,
                                       sort_j, shift, &first_pi, &last_pj);
 
   /* Get the number of particles read into the ci cache. */
-  int ci_cache_count = count_i - first_pi;
+  const int ci_cache_count = count_i - first_pi;
 
   if (active_ci) {
 
@@ -1055,7 +1052,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
       /* Set the cache index. */
-      int ci_cache_idx = pid - first_pi;
+      const int ci_cache_idx = pid - first_pi;
 
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
@@ -1064,9 +1061,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      int exit_iteration = max_index_i[pid];
-
-      const float hig2 = hi * hi * kernel_gamma2;
+      const int exit_iteration = max_index_i[pid];
 
       vector v_pix, v_piy, v_piz;
 
@@ -1079,6 +1074,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
       v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
 
+      const float hig2 = hi * hi * kernel_gamma2;
       v_hig2.v = vec_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
@@ -1101,9 +1097,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       /* Pad the exit iteration if there is a serial remainder. */
       int exit_iteration_align = exit_iteration;
-      int rem = exit_iteration % VEC_SIZE;
+      const int rem = exit_iteration % VEC_SIZE;
       if (rem != 0) {
-        int pad = VEC_SIZE - rem;
+        const int pad = VEC_SIZE - rem;
 
         if (exit_iteration_align + pad <= last_pj + 1)
           exit_iteration_align += pad;
@@ -1115,7 +1111,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
-        int cj_cache_idx = pjd;
+        const int cj_cache_idx = pjd;
 
         vector v_dx, v_dy, v_dz, v_r2;
 
@@ -1162,8 +1158,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       } /* loop over the parts in cj. */
 
-      /* Perform horizontal adds on vector sums and store result in particle pi.
-      */
+      /* Perform horizontal adds on vector sums and store result in pi. */
       VEC_HADD(v_rhoSum, pi->rho);
       VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
       VEC_HADD(v_wcountSum, pi->density.wcount);
@@ -1186,7 +1181,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (!part_is_active_no_debug(pj, max_active_bin)) continue;
 
       /* Set the cache index. */
-      int cj_cache_idx = pjd;
+      const int cj_cache_idx = pjd;
 
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
@@ -1194,9 +1189,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      int exit_iteration = max_index_j[pjd];
-
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const int exit_iteration = max_index_j[pjd];
 
       vector v_pjx, v_pjy, v_pjz;
       vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
@@ -1210,6 +1203,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       v_vjy.v = vec_set1(cj_cache->vy[cj_cache_idx]);
       v_vjz.v = vec_set1(cj_cache->vz[cj_cache_idx]);
 
+      const float hjg2 = hj * hj * kernel_gamma2;
       v_hjg2.v = vec_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
@@ -1236,7 +1230,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      int rem = exit_iteration_align % VEC_SIZE;
+      const int rem = exit_iteration_align % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
@@ -1293,8 +1287,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
       } /* loop over the parts in ci. */
 
-      /* Perform horizontal adds on vector sums and store result in particle pj.
-      */
+      /* Perform horizontal adds on vector sums and store result in pj. */
       VEC_HADD(v_rhoSum, pj->rho);
       VEC_HADD(v_rho_dhSum, pj->density.rho_dh);
       VEC_HADD(v_wcountSum, pj->density.wcount);
@@ -1358,7 +1351,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
 
-  /* Check if any particles are active and return if there are none. */
+  /* Check if any particles are active and in range */
   int numActive = 0;
 
   /* Use the largest smoothing length to make sure that no interactions are
@@ -1387,6 +1380,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
     }
   }
 
+  /* Return if no active particle in range */
   if (numActive == 0) return;
 
   /* Get both particle caches from the runner and re-allocate
@@ -1417,20 +1411,20 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                                     &first_pi, &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
-  int first_pi_loop = first_pi;
-  int last_pj_loop = last_pj;
+  const int first_pi_loop = first_pi;
+  const int last_pj_loop = last_pj;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
   last_pj = max(last_pj, max_index_i[count_i - 1]);
   first_pi = min(first_pi, max_index_j[0]);
 
-  /* Read the needed particles into the two caches. */
+  /* Read the required particles into the two caches. */
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
                                             sort_j, shift, &first_pi, &last_pj);
 
   /* Get the number of particles read into the ci cache. */
-  int ci_cache_count = count_i - first_pi;
+  const int ci_cache_count = count_i - first_pi;
 
   if (active_ci) {
 
@@ -1442,7 +1436,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (!part_is_active(pi, e)) continue;
 
       /* Set the cache index. */
-      int ci_cache_idx = pid - first_pi;
+      const int ci_cache_idx = pid - first_pi;
 
       /* Skip this particle if no particle in cj is within range of it. */
       const float hi = ci_cache->h[ci_cache_idx];
@@ -1451,9 +1445,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      int exit_iteration = max_index_i[pid];
-
-      const float hig2 = hi * hi * kernel_gamma2;
+      const int exit_iteration = max_index_i[pid];
 
       vector v_pix, v_piy, v_piz;
 
@@ -1472,6 +1464,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_balsara_i.v = vec_set1(ci_cache->balsara[ci_cache_idx]);
       v_ci.v = vec_set1(ci_cache->soundspeed[ci_cache_idx]);
 
+      const float hig2 = hi * hi * kernel_gamma2;
       v_hig2.v = vec_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
@@ -1491,7 +1484,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
       /* Pad the exit iteration if there is a serial remainder. */
       int exit_iteration_align = exit_iteration;
-      int rem = exit_iteration % VEC_SIZE;
+      const int rem = exit_iteration % VEC_SIZE;
       if (rem != 0) {
         int pad = VEC_SIZE - rem;
 
@@ -1505,7 +1498,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
-        int cj_cache_idx = pjd;
+        const int cj_cache_idx = pjd;
 
         vector v_dx, v_dy, v_dz;
 
@@ -1564,8 +1557,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
       } /* loop over the parts in cj. */
 
-      /* Perform horizontal adds on vector sums and store result in particle pi.
-      */
+      /* Perform horizontal adds on vector sums and store result in pi. */
       VEC_HADD(v_a_hydro_xSum, pi->a_hydro[0]);
       VEC_HADD(v_a_hydro_ySum, pi->a_hydro[1]);
       VEC_HADD(v_a_hydro_zSum, pi->a_hydro[2]);
@@ -1586,7 +1578,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (!part_is_active(pj, e)) continue;
 
       /* Set the cache index. */
-      int cj_cache_idx = pjd;
+      const int cj_cache_idx = pjd;
 
       /* Skip this particle if no particle in ci is within range of it. */
       const float hj = cj_cache->h[cj_cache_idx];
@@ -1595,9 +1587,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (dj_test > di_max) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      int exit_iteration = max_index_j[pjd];
-
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const int exit_iteration = max_index_j[pjd];
 
       vector v_pjx, v_pjy, v_pjz;
       vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
@@ -1618,6 +1608,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_balsara_j.v = vec_set1(cj_cache->balsara[cj_cache_idx]);
       v_cj.v = vec_set1(cj_cache->soundspeed[cj_cache_idx]);
 
+      const float hjg2 = hj * hj * kernel_gamma2;
       v_hjg2.v = vec_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
@@ -1640,7 +1631,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      int rem = exit_iteration_align % VEC_SIZE;
+      const int rem = exit_iteration_align % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
@@ -1706,8 +1697,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         }
       } /* loop over the parts in ci. */
 
-      /* Perform horizontal adds on vector sums and store result in particle pj.
-       */
+      /* Perform horizontal adds on vector sums and store result in pj. */
       VEC_HADD(v_a_hydro_xSum, pj->a_hydro[0]);
       VEC_HADD(v_a_hydro_ySum, pj->a_hydro[1]);
       VEC_HADD(v_a_hydro_zSum, pj->a_hydro[2]);
