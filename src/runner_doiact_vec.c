@@ -41,9 +41,11 @@ static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
  * gradient update on pi.
  * @param v_wcountSum (return) #vector holding the cumulative sum of the wcount
  * update on pi.
- * @param v_wcount_dhSum (return) #vector holding the cumulative sum of the wcount
+ * @param v_wcount_dhSum (return) #vector holding the cumulative sum of the
+ * wcount
  * gradient update on pi.
- * @param v_div_vSum (return) #vector holding the cumulative sum of the divergence
+ * @param v_div_vSum (return) #vector holding the cumulative sum of the
+ * divergence
  * update on pi.
  * @param v_curlvxSum (return) #vector holding the cumulative sum of the curl of
  * vx update on pi.
@@ -61,9 +63,9 @@ static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
 __attribute__((always_inline)) INLINE static void calcRemInteractions(
     struct c2_cache *const int_cache, const int icount, vector *v_rhoSum,
     vector *v_rho_dhSum, vector *v_wcountSum, vector *v_wcount_dhSum,
-    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum, vector *v_curlvzSum,
-    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz,
-    int *icount_align) {
+    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum,
+    vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
+    vector v_viz, int *icount_align) {
 
   mask_t int_mask, int_mask2;
 
@@ -108,8 +110,8 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
         v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[*icount_align],
         &int_cache->vyq[*icount_align], &int_cache->vzq[*icount_align],
         &int_cache->mq[*icount_align], v_rhoSum, v_rho_dhSum, v_wcountSum,
-        v_wcount_dhSum, v_div_vSum, v_curlvxSum, v_curlvySum, v_curlvzSum, int_mask,
-        int_mask2, 1);
+        v_wcount_dhSum, v_div_vSum, v_curlvxSum, v_curlvySum, v_curlvzSum,
+        int_mask, int_mask2, 1);
   }
 }
 
@@ -127,20 +129,25 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
  * @param int_cache (return) secondary #cache of interactions between two
  * particles.
  * @param icount Interaction count.
- * @param v_rhoSum #vector holding the cumulative sum of the density update on pi.
+ * @param v_rhoSum #vector holding the cumulative sum of the density update on
+ * pi.
  * @param v_rho_dhSum #vector holding the cumulative sum of the density gradient
  * update on pi.
  * @param v_wcountSum #vector holding the cumulative sum of the wcount update on
  * pi.
- * @param v_wcount_dhSum #vector holding the cumulative sum of the wcount gradient
+ * @param v_wcount_dhSum #vector holding the cumulative sum of the wcount
+ * gradient
  * update on pi.
  * @param v_div_vSum #vector holding the cumulative sum of the divergence update
  * on pi.
- * @param v_curlvxSum #vector holding the cumulative sum of the curl of vx update
+ * @param v_curlvxSum #vector holding the cumulative sum of the curl of vx
+ * update
  * on pi.
- * @param v_curlvySum #vector holding the cumulative sum of the curl of vy update
+ * @param v_curlvySum #vector holding the cumulative sum of the curl of vy
+ * update
  * on pi.
- * @param v_curlvzSum #vector holding the cumulative sum of the curl of vz update
+ * @param v_curlvzSum #vector holding the cumulative sum of the curl of vz
+ * update
  * on pi.
  * @param v_hi_inv #vector of 1/h for pi.
  * @param v_vix #vector of x velocity of pi.
@@ -152,8 +159,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
     vector *v_dz, const struct cache *const cell_cache,
     struct c2_cache *const int_cache, int *icount, vector *v_rhoSum,
     vector *v_rho_dhSum, vector *v_wcountSum, vector *v_wcount_dhSum,
-    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum, vector *v_curlvzSum,
-    vector v_hi_inv, vector v_vix, vector v_viy, vector v_viz) {
+    vector *v_div_vSum, vector *v_curlvxSum, vector *v_curlvySum,
+    vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
+    vector v_viz) {
 
 /* Left-pack values needed into the secondary cache using the interaction mask.
  */
@@ -203,8 +211,9 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
 
     /* Peform remainder interactions. */
     calcRemInteractions(int_cache, *icount, v_rhoSum, v_rho_dhSum, v_wcountSum,
-                        v_wcount_dhSum, v_div_vSum, v_curlvxSum, v_curlvySum, v_curlvzSum,
-                        v_hi_inv, v_vix, v_viy, v_viz, &icount_align);
+                        v_wcount_dhSum, v_div_vSum, v_curlvxSum, v_curlvySum,
+                        v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+                        &icount_align);
 
     mask_t int_mask, int_mask2;
     vec_init_mask_true(int_mask);
@@ -216,8 +225,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
           &int_cache->r2q[j], &int_cache->dxq[j], &int_cache->dyq[j],
           &int_cache->dzq[j], v_hi_inv, v_vix, v_viy, v_viz, &int_cache->vxq[j],
           &int_cache->vyq[j], &int_cache->vzq[j], &int_cache->mq[j], v_rhoSum,
-          v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum, v_curlvxSum, v_curlvySum,
-          v_curlvzSum, int_mask, int_mask2, 0);
+          v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum, v_curlvxSum,
+          v_curlvySum, v_curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Reset interaction count. */
@@ -574,8 +583,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     v_hig2.v = vec_set1(hig2);
 
     /* Reset cumulative sums of update vectors. */
-    vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum, v_curlvxSum,
-        v_curlvySum, v_curlvzSum;
+    vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
+        v_curlvxSum, v_curlvySum, v_curlvzSum;
 
     /* Get the inverse of hi. */
     vector v_hi_inv;
@@ -671,24 +680,25 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
        * cache. */
       if (doi_mask) {
         storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
-                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
-                          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
-                          &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum,
+                          &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                          v_vix, v_viy, v_viz);
       }
       if (doi_mask2) {
         storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
                           &v_dz_2, cell_cache, &int_cache, &icount, &v_rhoSum,
-                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
-                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv, v_vix,
-                          v_viy, v_viz);
+                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+                          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+                          v_hi_inv, v_vix, v_viy, v_viz);
       }
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
-                        &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
-                        &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
-                        &icount_align);
+    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum,
+                        &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                        &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                        v_vix, v_viy, v_viz, &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
@@ -702,9 +712,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
-          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
-          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum, int_mask, int_mask2,
-          0);
+          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
+          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
+          &v_curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
@@ -903,8 +913,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
             &cell_cache->grad_h[pjd], &cell_cache->pOrho2[pjd],
             &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd],
             &cell_cache->m[pjd], v_hi_inv, v_hj_inv, &v_a_hydro_xSum,
-            &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
-            v_doi_mask);
+            &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum,
+            &v_entropy_dtSum, v_doi_mask);
       }
 
     } /* Loop over all other particles. */
@@ -1030,8 +1040,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   /* Read the needed particles into the two caches. */
   cache_read_two_partial_cells_sorted(ci, cj, ci_cache, cj_cache, sort_i,
-                                      sort_j, shift, &first_pi,
-                                      &last_pj);
+                                      sort_j, shift, &first_pi, &last_pj);
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi;
@@ -1073,8 +1082,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       v_hig2.v = vec_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
-      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum, v_curlvxSum,
-          v_curlvySum, v_curlvzSum;
+      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
+          v_curlvxSum, v_curlvySum, v_curlvzSum;
 
       /* Get the inverse of hi. */
       vector v_hi_inv;
@@ -1113,8 +1122,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
             cj_cache_idx + (VEC_SIZE - 1) > (last_pj + 1 + VEC_SIZE)) {
-          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d",
-                cj_cache_idx, last_pj);
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d", cj_cache_idx,
+                last_pj);
         }
 #endif
 
@@ -1146,9 +1155,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
           runner_iact_nonsym_1_vec_density(
               &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
               &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
-              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx], &v_rhoSum,
-              &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum,
-              &v_curlvySum, &v_curlvzSum, v_doi_mask);
+              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx],
+              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+              v_doi_mask);
 
       } /* loop over the parts in cj. */
 
@@ -1203,8 +1213,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       v_hjg2.v = vec_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
-      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum, v_curlvxSum,
-          v_curlvySum, v_curlvzSum;
+      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
+          v_curlvxSum, v_curlvySum, v_curlvzSum;
 
       /* Get the inverse of hj. */
       vector v_hj_inv;
@@ -1238,8 +1248,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ci_cache_idx % VEC_SIZE != 0 || ci_cache_idx < 0 ||
-            ci_cache_idx + (VEC_SIZE - 1) >
-                (count_i - first_pi + VEC_SIZE)) {
+            ci_cache_idx + (VEC_SIZE - 1) > (count_i - first_pi + VEC_SIZE)) {
           error(
               "Unaligned read!!! ci_cache_idx=%d, first_pi=%d, "
               "count_i=%d",
@@ -1277,9 +1286,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
           runner_iact_nonsym_1_vec_density(
               &v_r2, &v_dx, &v_dy, &v_dz, v_hj_inv, v_vjx, v_vjy, v_vjz,
               &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
-              &ci_cache->vz[ci_cache_idx], &ci_cache->m[ci_cache_idx], &v_rhoSum,
-              &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum,
-              &v_curlvySum, &v_curlvzSum, v_doj_mask);
+              &ci_cache->vz[ci_cache_idx], &ci_cache->m[ci_cache_idx],
+              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+              v_doj_mask);
 
       } /* loop over the parts in ci. */
 
@@ -1351,7 +1361,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Check if any particles are active and return if there are none. */
   int numActive = 0;
 
-  /* Use the largest smoothing length to make sure that no interactions are missed. */
+  /* Use the largest smoothing length to make sure that no interactions are
+   * missed. */
   const double h_max = max(hi_max, hj_max);
 
   if (active_ci) {
@@ -1416,8 +1427,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   /* Read the needed particles into the two caches. */
   cache_read_two_partial_cells_sorted_force(ci, cj, ci_cache, cj_cache, sort_i,
-                                            sort_j, shift, &first_pi,
-                                            &last_pj);
+                                            sort_j, shift, &first_pi, &last_pj);
 
   /* Get the number of particles read into the ci cache. */
   int ci_cache_count = count_i - first_pi;
@@ -1465,8 +1475,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_hig2.v = vec_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
-      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum, v_sigSum,
-          v_entropy_dtSum;
+      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
+          v_sigSum, v_entropy_dtSum;
 
       /* Get the inverse of hi. */
       vector v_hi_inv;
@@ -1502,8 +1512,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
             cj_cache_idx + (VEC_SIZE - 1) > (last_pj + 1 + VEC_SIZE)) {
-          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d",
-                cj_cache_idx, last_pj);
+          error("Unaligned read!!! cj_cache_idx=%d, last_pj=%d", cj_cache_idx,
+                last_pj);
         }
 #endif
 
@@ -1547,8 +1557,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &cj_cache->grad_h[cj_cache_idx], &cj_cache->pOrho2[cj_cache_idx],
               &cj_cache->balsara[cj_cache_idx],
               &cj_cache->soundspeed[cj_cache_idx], &cj_cache->m[cj_cache_idx],
-              v_hi_inv, v_hj_inv, &v_a_hydro_xSum, &v_a_hydro_ySum, &v_a_hydro_zSum,
-              &v_h_dtSum, &v_sigSum, &v_entropy_dtSum, v_doi_mask);
+              v_hi_inv, v_hj_inv, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
+              v_doi_mask);
         }
 
       } /* loop over the parts in cj. */
@@ -1610,8 +1621,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_hjg2.v = vec_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
-      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum, v_sigSum,
-          v_entropy_dtSum;
+      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
+          v_sigSum, v_entropy_dtSum;
 
       /* Get the inverse of hj. */
       vector v_hj_inv;
@@ -1689,8 +1700,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &ci_cache->grad_h[ci_cache_idx], &ci_cache->pOrho2[ci_cache_idx],
               &ci_cache->balsara[ci_cache_idx],
               &ci_cache->soundspeed[ci_cache_idx], &ci_cache->m[ci_cache_idx],
-              v_hj_inv, v_hi_inv, &v_a_hydro_xSum, &v_a_hydro_ySum, &v_a_hydro_zSum,
-              &v_h_dtSum, &v_sigSum, &v_entropy_dtSum, v_doj_mask);
+              v_hj_inv, v_hi_inv, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
+              v_doj_mask);
         }
       } /* loop over the parts in ci. */
 
