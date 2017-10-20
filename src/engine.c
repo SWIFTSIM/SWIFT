@@ -67,6 +67,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "logger.h"
 #include "logger_io.h"
 #include "map.h"
 #include "memswap.h"
@@ -5458,6 +5459,11 @@ void engine_step(struct engine *e) {
       ((double)e->g_updates_since_rebuild >
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
+
+#ifdef WITH_LOGGER
+  logger_log_timestamp(e->ti_current, &e->logger_time_offset,
+		       e->logger_dump);
+#endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
