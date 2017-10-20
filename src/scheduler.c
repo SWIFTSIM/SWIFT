@@ -1596,7 +1596,6 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  int test_type;
 
   FILE *file = fopen(fileName, "w");
 
@@ -1604,8 +1603,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   for (int k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
-    test_type = 1 << t->type;
-    if (!(test_type) || t->skip) continue;
+    if (t->skip) continue;
     fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
             subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
   }
