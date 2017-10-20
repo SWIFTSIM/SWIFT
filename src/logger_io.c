@@ -903,6 +903,7 @@ void write_index_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   double dblTime = e->time;
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+  io_write_attribute(h_grp, "Time Offset", UINT, &e->logger_time_offset, 1);
   int dimension = (int)hydro_dimension;
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
 
