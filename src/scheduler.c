@@ -1603,7 +1603,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   for (int k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
-    if (!((1 << t->type)) || t->skip) continue;
+    if (t->skip) continue;
     fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
             subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
   }

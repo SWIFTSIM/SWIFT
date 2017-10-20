@@ -347,7 +347,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   }
 
   /* Make sure the chunks are not larger than the dataset */
-  if (chunk_shape[0] > (hsize_t) N_total) chunk_shape[0] = N_total;
+  if (chunk_shape[0] > (hsize_t)N_total) chunk_shape[0] = N_total;
 
   /* Create the space in the file */
   hid_t h_filespace = H5Screate(H5S_SIMPLE);
