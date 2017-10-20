@@ -319,6 +319,12 @@ struct engine {
   /* File name of the dump file */
   struct dump *logger_dump;
 
+  /* timestamp offset for logger*/
+  size_t logger_time_offset;
+
+  /* Need to dump a snapshot ? */
+  int dump_snapshot;
+
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
