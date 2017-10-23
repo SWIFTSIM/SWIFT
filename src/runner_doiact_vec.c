@@ -652,7 +652,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       /* Form a mask from r2 < hig2 and r2 > 0.*/
       mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
           v_doi_mask2_self_check;
-      int doi_mask, doi_mask_self_check, doi_mask2, doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
@@ -663,16 +662,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
                       vec_cmp_gt(v_r2_2.v, vec_setzero()));
       vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
-      /* Form integer masks. */
-      doi_mask_self_check = vec_form_int_mask(v_doi_mask_self_check);
-      doi_mask = vec_form_int_mask(v_doi_mask);
-
-      doi_mask2_self_check = vec_form_int_mask(v_doi_mask2_self_check);
-      doi_mask2 = vec_form_int_mask(v_doi_mask2);
-
-      /* Combine the two masks. */
-      doi_mask = doi_mask & doi_mask_self_check;
-      doi_mask2 = doi_mask2 & doi_mask2_self_check;
+      /* Combine two masks and form integer masks. */
+      const int doi_mask = vec_is_mask_true(v_doi_mask) & vec_is_mask_true(v_doi_mask_self_check);
+      const int doi_mask2 = vec_is_mask_true(v_doi_mask2) & vec_is_mask_true(v_doi_mask2_self_check);
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
@@ -875,7 +867,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
       /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
       mask_t v_doi_mask, v_doi_mask_self_check;
-      int doi_mask;
 
       /* Form r2 > 0 mask.*/
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
@@ -885,12 +876,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
       v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
       vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
-      /* Combine all 3 masks and form integer mask. */
+      /* Combine all 3 masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
-      doi_mask = vec_form_int_mask(v_doi_mask);
 
       /* If there are any interactions perform them. */
-      if (doi_mask) {
+      if (vec_is_mask_true(v_doi_mask)) {
         vector v_hj_inv = vec_reciprocal(hj);
 
         /* To stop floating point exceptions for when particle separations are
@@ -1130,16 +1120,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
         mask_t v_doi_mask;
-        int doi_mask;
 
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-        /* Form integer mask. */
-        doi_mask = vec_form_int_mask(v_doi_mask);
-
         /* If there are any interactions perform them. */
-        if (doi_mask)
+        if (vec_is_mask_true(v_doi_mask))
           runner_iact_nonsym_1_vec_density(
               &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
               &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
@@ -1256,16 +1242,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
         mask_t v_doj_mask;
-        int doj_mask;
 
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
 
-        /* Form integer mask. */
-        doj_mask = vec_form_int_mask(v_doj_mask);
-
         /* If there are any interactions perform them. */
-        if (doj_mask)
+        if (vec_is_mask_true(v_doj_mask))
           runner_iact_nonsym_1_vec_density(
               &v_r2, &v_dx, &v_dy, &v_dz, v_hj_inv, v_vjx, v_vjy, v_vjz,
               &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
@@ -1515,18 +1497,14 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
         mask_t v_doi_mask;
-        int doi_mask;
 
         /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
         vector v_h2;
         v_h2.v = vec_fmax(v_hig2.v, v_hjg2.v);
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
-        /* Form integer masks. */
-        doi_mask = vec_form_int_mask(v_doi_mask);
-
         /* If there are any interactions perform them. */
-        if (doi_mask) {
+        if (vec_is_mask_true(v_doi_mask)) {
           vector v_hj_inv = vec_reciprocal(v_hj);
 
           runner_iact_nonsym_1_vec_force(
@@ -1652,18 +1630,14 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
         mask_t v_doj_mask;
-        int doj_mask;
 
         /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
         vector v_h2;
         v_h2.v = vec_fmax(v_hjg2.v, v_hig2.v);
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
-        /* Form integer masks. */
-        doj_mask = vec_form_int_mask(v_doj_mask);
-
         /* If there are any interactions perform them. */
-        if (doj_mask) {
+        if (vec_is_mask_true(v_doj_mask)) {
           vector v_hi_inv = vec_reciprocal(v_hi);
 
           runner_iact_nonsym_1_vec_force(
