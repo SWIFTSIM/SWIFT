@@ -296,11 +296,16 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const struct entry *restrict sort_j, const double *restrict const shift,
     int *first_pi, int *last_pj) {
 
-  /* Pad number of particles read to the vector size. */
+  /* Make the number of particles to be read a multiple of the vector size.
+   * This eliminates serial remainder loops where possible when populating the
+   * cache. */
+
+  /* Is the number of particles to read a multiple of the vector size? */
   int rem = (ci->count - *first_pi) % VEC_SIZE;
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
+    /* Decrease first_pi if there are particles in the cell left to read. */
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
@@ -308,6 +313,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
+    /* Increase last_pj if there are particles in the cell left to read. */
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
 
@@ -504,11 +510,16 @@ cache_read_two_partial_cells_sorted_force(
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
     const double *const shift, int *first_pi, int *last_pj) {
 
-  /* Pad number of particles read to the vector size. */
+  /* Make the number of particles to be read a multiple of the vector size.
+   * This eliminates serial remainder loops where possible when populating the
+   * cache. */
+
+  /* Is the number of particles to read a multiple of the vector size? */
   int rem = (ci->count - *first_pi) % VEC_SIZE;
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
+    /* Decrease first_pi if there are particles in the cell left to read. */
     if (*first_pi - pad >= 0) *first_pi -= pad;
   }
 
@@ -516,6 +527,7 @@ cache_read_two_partial_cells_sorted_force(
   if (rem != 0) {
     int pad = VEC_SIZE - rem;
 
+    /* Increase last_pj if there are particles in the cell left to read. */
     if (*last_pj + pad < cj->count) *last_pj += pad;
   }
 
