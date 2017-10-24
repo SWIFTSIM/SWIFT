@@ -45,6 +45,9 @@ struct cell_cuda {
 
   /* IS split? */
   int split;
+  
+  float h_max_old;
+  float dx_max_old;
 
 };
 

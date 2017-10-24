@@ -115,6 +115,36 @@ __device__ __constant__ float cuda_h_tolerance;
 __device__ __constant__ float cuda_eta_neighbours;
 __device__ __constant__ int engine_step_cuda;
 
+__device__ __constant__ int cuda_sortlistID[27] = {
+    /* ( -1 , -1 , -1 ) */ 0,
+    /* ( -1 , -1 ,  0 ) */ 1,
+    /* ( -1 , -1 ,  1 ) */ 2,
+    /* ( -1 ,  0 , -1 ) */ 3,
+    /* ( -1 ,  0 ,  0 ) */ 4,
+    /* ( -1 ,  0 ,  1 ) */ 5,
+    /* ( -1 ,  1 , -1 ) */ 6,
+    /* ( -1 ,  1 ,  0 ) */ 7,
+    /* ( -1 ,  1 ,  1 ) */ 8,
+    /* (  0 , -1 , -1 ) */ 9,
+    /* (  0 , -1 ,  0 ) */ 10,
+    /* (  0 , -1 ,  1 ) */ 11,
+    /* (  0 ,  0 , -1 ) */ 12,
+    /* (  0 ,  0 ,  0 ) */ 0,
+    /* (  0 ,  0 ,  1 ) */ 12,
+    /* (  0 ,  1 , -1 ) */ 11,
+    /* (  0 ,  1 ,  0 ) */ 10,
+    /* (  0 ,  1 ,  1 ) */ 9,
+    /* (  1 , -1 , -1 ) */ 8,
+    /* (  1 , -1 ,  0 ) */ 7,
+    /* (  1 , -1 ,  1 ) */ 6,
+    /* (  1 ,  0 , -1 ) */ 5,
+    /* (  1 ,  0 ,  0 ) */ 4,
+    /* (  1 ,  0 ,  1 ) */ 3,
+    /* (  1 ,  1 , -1 ) */ 2,
+    /* (  1 ,  1 ,  0 ) */ 1,
+    /* (  1 ,  1 ,  1 ) */ 0};
+
+
   int firstrun = 0;
 
 __device__ double atomicAdd(double* address, double val) {
@@ -229,6 +259,27 @@ __device__ float cuda_pow_dimension_minus_one(float x) {
 #endif*/
 }
 
+__device__ __inline__ int cuda_space_getsid(struct cell_cuda *ci, struct cell_cuda *cj){
+  const int periodic = 1; //TODO Assuming periodicity for now
+  double dx[3], shift[3];
+  for(int k = 0; k < 3; k++){
+     dx[k] = cj->loc[k] - ci->loc[k];
+     if(periodic && dx[k] < dim[k] / 2)
+      shift[k] = dim[k];
+     else if (periodic && dx[k] > dim[k] / 2)
+      shift[k] = -dim[k];
+     else
+      shift[k] = 0.0;
+    dx[k] += shift[k]; 
+  }
+  int sid = 0;
+  for(int k = 0; k < 3; k++){
+    sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
+  }
+  sid = cuda_sortlistID[sid];
+ return sid; 
+}
+
 __device__ __inline__ void cuda_kernel_deval(float u, float *restrict W,
                                              float *restrict dW_dx) {
   /* Go to the range [0,1] from [0,H] */
@@ -269,6 +320,8 @@ __device__ void load_cell(int cell_index) {
   if(threadIdx.x == 0){
     cell->ti_end_min = cpu_cell->ti_end_min;
     cell->ti_end_max = cpu_cell->ti_end_max;
+    cell->h_max_old = cpu_cell->h_max_old;
+    cell->dx_max_old = cpu_cell->dx_max_old;
   }
   for (i = threadIdx.x; i < cell->part_count; i += blockDim.x) {
     struct part *current = &parts[i];
@@ -658,6 +711,220 @@ __device__ void dopair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
   }  // Loop over ci.
 }
 
+__device__ int cuda_cell_can_recurse_in_pair_task(struct cell_cuda *c){
+return c->split && ((kernel_gamma * c->h_max_old + c->dx_max_old) < 0.5f * c->dmin);
+}
+
+/*Subpair task, is asymmetric , subcells of ci interact with subcells of cj ONLY*/
+__device__ void dosubpair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
+
+  int sid;
+  sid =  cuda_space_getsid(ci, cj);
+
+  if(cuda_cell_can_recurse_in_pair_task(ci) && cuda_cell_can_recurse_in_pair_task(cj)){
+   
+     /* Different types of flags. */
+     switch (sid) {
+
+       /* Regular sub-cell interactions of a single cell. */
+       case 0: /* (  1 ,  1 ,  1 ) */
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         break;
+
+       case 1: /* (1, 1, 0) */
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         break;
+
+      case 2: /* 1, 1, -1*/
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         break;
+
+      case 3: /* 1 0 1*/
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         break;
+
+      case 4: /* 1 0 0 */
+         if (ci->progeny[4] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 5: /* 1 0 -1 */
+         if (ci->progeny[4] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 6: /* 1 -1 1*/
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         break;
+
+      case 7: /* 1 -1 0*/
+         if (ci->progeny[4] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 8: /* 1 -1 -1*/
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 9: /* 0 1 1*/
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         break;
+
+      case 10: /* 0 1 0 */
+         if (ci->progeny[2] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[5]]);
+         break;
+
+      case 11: /* 0 1 -1*/
+         if (ci->progeny[2] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[5]]);
+         break;
+
+      case 12: /* 0 0 1 */
+         if (ci->progeny[1] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[6]]);
+         break;
+     }
+
+  }else{
+    dopair_density(ci, cj);
+  }
+}
+
+
 /* Task function to perform a self force task. No symmetry */
 __device__ void doself_force(struct cell_cuda *ci) {
   /* Is the cell active? */
@@ -975,6 +1242,216 @@ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj) {
 
   }  // Loop over cell ci.
 }
+
+__device__ void dosubpair_force(struct cell_cuda *ci, struct cell_cuda *cj){
+
+  int sid;
+  sid =  cuda_space_getsid(ci, cj);
+
+  if(cuda_cell_can_recurse_in_pair_task(ci) && cuda_cell_can_recurse_in_pair_task(cj)){
+   
+     /* Different types of flags. */
+     switch (sid) {
+
+       /* Regular sub-cell interactions of a single cell. */
+       case 0: /* (  1 ,  1 ,  1 ) */
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         break;
+
+       case 1: /* (1, 1, 0) */
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         break;
+
+      case 2: /* 1, 1, -1*/
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         break;
+
+      case 3: /* 1 0 1*/
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         break;
+
+      case 4: /* 1 0 0 */
+         if (ci->progeny[4] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 5: /* 1 0 -1 */
+         if (ci->progeny[4] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 6: /* 1 -1 1*/
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         break;
+
+      case 7: /* 1 -1 0*/
+         if (ci->progeny[4] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 8: /* 1 -1 -1*/
+         if (ci->progeny[4] >= 0 && cj->progeny[3] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[4]], &cells_cuda[cj->progeny[3]]);
+         break;
+
+      case 9: /* 0 1 1*/
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         break;
+
+      case 10: /* 0 1 0 */
+         if (ci->progeny[2] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[5]]);
+         break;
+
+      case 11: /* 0 1 -1*/
+         if (ci->progeny[2] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[2] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[2]], &cells_cuda[cj->progeny[5]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[1] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[1]]);
+         if (ci->progeny[6] >= 0 && cj->progeny[5] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[5]]);
+         break;
+
+      case 12: /* 0 0 1 */
+         if (ci->progeny[1] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[1] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[1]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[3] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[3]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[5] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[6]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[4] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[4]]);
+         if (ci->progeny[7] >= 0 && cj->progeny[6] >= 0)
+           dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[6]]);
+         break;
+     }
+
+  }else{
+    dopair_force(ci, cj);
+  }
+}
+
+
 
 /* Device function to finish the density calculation. */
 __device__ void hydro_end_density(int pid) {
@@ -1435,6 +1912,50 @@ __device__ int runner_cuda_gettask(struct queue_cuda *q) {
   return tid;
 }
 
+/* Task function to execute a sub-self-density task.*/
+__device__ void dosubself_density( struct cell_cuda *ci ){
+
+  if(ci->split){
+    /* Loop over all progeny */
+    for(int k = 0; k < 8; k++){
+      if(ci->progeny[k] >= 0){
+        dosubself_density(&cells_cuda[ci->progeny[k]]);
+        for(int j = k+1; j < 8; j++){
+          if(ci->progeny[j] >= 0){
+            //Pair tasks are asymmetric
+            dosubpair_density(&cells_cuda[ci->progeny[k]],&cells_cuda[ci->progeny[j]]);
+            dosubpair_density(&cells_cuda[ci->progeny[j]],&cells_cuda[ci->progeny[k]]);
+          }
+        }
+      }
+    }
+  }else{
+    doself_density(ci);
+  }
+}
+
+__device__ void dosubself_force(struct cell_cuda *ci){
+  if(ci->split){
+    /* Loop over all progeny */
+    for(int k = 0; k < 8; k++){
+      if(ci->progeny[k] >= 0){
+        dosubself_force(&cells_cuda[ci->progeny[k]]);
+        for(int j = k+1; j < 8; j++){
+          if(ci->progeny[j] >= 0){
+            //Pair tasks are asymmetric
+            dosubpair_force(&cells_cuda[ci->progeny[k]],&cells_cuda[ci->progeny[j]]);
+            dosubpair_force(&cells_cuda[ci->progeny[j]],&cells_cuda[ci->progeny[k]]);
+          }
+        }
+      }
+    }
+  }else{
+    doself_force(ci);
+  }
+
+}
+
+
 /* The main kernel. */
 __global__ void swift_device_kernel() {
   __shared__ volatile int tid;
@@ -1492,7 +2013,7 @@ __global__ void swift_device_kernel() {
     } else if (type == type_unload) {
 
       unload_cell(tasks[tid].ci);
-    }else if (type == task_type_pair || type == task_type_sub_pair) {
+    }else if (type == task_type_pair) {
       if (subtype == task_subtype_density) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
@@ -1504,7 +2025,19 @@ __global__ void swift_device_kernel() {
         dopair_force(ci, cj);
         dopair_force(cj, ci);
       }
-    } else if (type == task_type_self || type == task_type_sub_self) {
+    } else if(type == task_type_sub_pair) {
+      if(subtype == task_subtype_density) {
+        struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
+        struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
+        dosubpair_density(ci,cj);
+        dosubpair_density(cj,ci);
+      }else if (subtype == task_subtype_force){
+        struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
+        struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
+        dosubpair_force(ci,cj);
+        dosubpair_force(cj,ci);
+      }
+    }else if (type == task_type_self ) {
       if (subtype == task_subtype_density) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         doself_density(ci);
@@ -1512,7 +2045,15 @@ __global__ void swift_device_kernel() {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         doself_force(ci);
       }
-    } else if (type == task_type_ghost) {
+    } else if (type == task_type_sub_self){
+      if(subtype == task_subtype_density) {
+        struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
+        dosubself_density(ci);
+      }else if (subtype == task_subtype_force){
+        struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
+        dosubself_force(ci);
+      }
+    }else if (type == task_type_ghost) {
       if(! tasks[tid].implicit){
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
 
@@ -1944,6 +2485,26 @@ __host__ void update_tasks(struct engine *e) {
       }
     }
   }
+  
+/*  Relies on assumption implicit unloads are always before unloads in host_tasks, which i believe to be true by conscruction.
+   for(int i = 0; i < nr_gpu_tasks; i++){
+    if(host_tasks[i].type == type_unload && host_tasks[i].type == type_implicit_unload){
+      if(host_tasks[i].wait==1){
+        host_tasks[i].skip = 1;
+        task_count--;
+        struct task_cuda *temp_t = &host_tasks[i];
+        int *unlocks = host_unlock_copy + (temp_t->unlocks-host_unlock_pointer);
+        for(int ii = 0; ii < temp_t->nr_unlock_tasks; ii++){
+          if(!host_tasks[unlocks[ii].skip)
+            host_tasks[unlock[ii]].wait--;
+        }
+        *Find the corresponding load task*
+        Have to search the cells for this at the moment.
+
+      }
+        
+    }
+  }*/
 
   cudaErrCheck(cudaMemcpyToSymbol(tot_num_tasks, &task_count, sizeof(int)));
   /* Reset the queue data.*/
