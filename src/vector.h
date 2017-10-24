@@ -461,6 +461,20 @@ __attribute__((always_inline)) INLINE vector vector_set1(const float x) {
   return temp;
 }
 
+/**
+ * @brief Loads a vector filled with zeros.
+ *
+ * @return temp set #vector.
+ */
+__attribute__((always_inline)) INLINE vector vector_setzero() {
+
+  vector temp;
+
+  temp.v = vec_setzero();
+
+  return temp;
+}
+
 #else
 /* Needed for cache alignment. */
 #define VEC_SIZE 8

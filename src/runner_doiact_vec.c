@@ -583,21 +583,18 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
 
-    /* Reset cumulative sums of update vectors. */
-    vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
-        v_curlvxSum, v_curlvySum, v_curlvzSum;
-
     /* Get the inverse of hi. */
     vector v_hi_inv = vec_reciprocal(v_hi);
 
-    v_rhoSum.v = vec_setzero();
-    v_rho_dhSum.v = vec_setzero();
-    v_wcountSum.v = vec_setzero();
-    v_wcount_dhSum.v = vec_setzero();
-    v_div_vSum.v = vec_setzero();
-    v_curlvxSum.v = vec_setzero();
-    v_curlvySum.v = vec_setzero();
-    v_curlvzSum.v = vec_setzero();
+    /* Reset cumulative sums of update vectors. */
+    vector v_rhoSum = vector_setzero();
+    vector v_rho_dhSum = vector_setzero();
+    vector v_wcountSum = vector_setzero();
+    vector v_wcount_dhSum = vector_setzero();
+    vector v_div_vSum = vector_setzero();
+    vector v_curlvxSum = vector_setzero();
+    vector v_curlvySum = vector_setzero();
+    vector v_curlvzSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
@@ -798,19 +795,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
 
-    /* Reset cumulative sums of update vectors. */
-    vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum, v_sigSum,
-        v_entropy_dtSum;
-
     /* Get the inverse of hi. */
     vector v_hi_inv = vec_reciprocal(v_hi);
 
-    v_a_hydro_xSum.v = vec_setzero();
-    v_a_hydro_ySum.v = vec_setzero();
-    v_a_hydro_zSum.v = vec_setzero();
-    v_h_dtSum.v = vec_setzero();
-    v_sigSum = vector_set1(pi->force.v_sig);
-    v_entropy_dtSum.v = vec_setzero();
+    /* Reset cumulative sums of update vectors. */
+    vector v_a_hydro_xSum = vector_setzero();
+    vector v_a_hydro_ySum = vector_setzero();
+    vector v_a_hydro_zSum = vector_setzero();
+    vector v_h_dtSum = vector_setzero();
+    vector v_sigSum = vector_set1(pi->force.v_sig);
+    vector v_entropy_dtSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
     count_align = count;
@@ -1049,21 +1043,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       const float hig2 = hi * hi * kernel_gamma2;
       const vector v_hig2 = vector_set1(hig2);
 
-      /* Reset cumulative sums of update vectors. */
-      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
-          v_curlvxSum, v_curlvySum, v_curlvzSum;
-
       /* Get the inverse of hi. */
       vector v_hi_inv = vec_reciprocal(v_hi);
 
-      v_rhoSum.v = vec_setzero();
-      v_rho_dhSum.v = vec_setzero();
-      v_wcountSum.v = vec_setzero();
-      v_wcount_dhSum.v = vec_setzero();
-      v_div_vSum.v = vec_setzero();
-      v_curlvxSum.v = vec_setzero();
-      v_curlvySum.v = vec_setzero();
-      v_curlvzSum.v = vec_setzero();
+      /* Reset cumulative sums of update vectors. */
+      vector v_rhoSum = vector_setzero();
+      vector v_rho_dhSum = vector_setzero();
+      vector v_wcountSum = vector_setzero();
+      vector v_wcount_dhSum = vector_setzero();
+      vector v_div_vSum = vector_setzero();
+      vector v_curlvxSum = vector_setzero();
+      vector v_curlvySum = vector_setzero();
+      vector v_curlvzSum = vector_setzero();
 
       /* Pad the exit iteration if there is a serial remainder. */
       int exit_iteration_align = exit_iteration;
@@ -1169,21 +1160,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       const float hjg2 = hj * hj * kernel_gamma2;
       const vector v_hjg2 = vector_set1(hjg2);
 
-      /* Reset cumulative sums of update vectors. */
-      vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
-          v_curlvxSum, v_curlvySum, v_curlvzSum;
-
       /* Get the inverse of hj. */
       vector v_hj_inv = vec_reciprocal(v_hj);
 
-      v_rhoSum.v = vec_setzero();
-      v_rho_dhSum.v = vec_setzero();
-      v_wcountSum.v = vec_setzero();
-      v_wcount_dhSum.v = vec_setzero();
-      v_div_vSum.v = vec_setzero();
-      v_curlvxSum.v = vec_setzero();
-      v_curlvySum.v = vec_setzero();
-      v_curlvzSum.v = vec_setzero();
+      /* Reset cumulative sums of update vectors. */
+      vector v_rhoSum = vector_setzero();
+      vector v_rho_dhSum = vector_setzero();
+      vector v_wcountSum = vector_setzero();
+      vector v_wcount_dhSum = vector_setzero();
+      vector v_div_vSum = vector_setzero();
+      vector v_curlvxSum = vector_setzero();
+      vector v_curlvySum = vector_setzero();
+      vector v_curlvzSum = vector_setzero();
 
       /* Convert exit iteration to cache indices. */
       int exit_iteration_align = exit_iteration - first_pi;
@@ -1416,19 +1404,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       const float hig2 = hi * hi * kernel_gamma2;
       const vector v_hig2 = vector_set1(hig2);
 
-      /* Reset cumulative sums of update vectors. */
-      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
-          v_sigSum, v_entropy_dtSum;
-
       /* Get the inverse of hi. */
       vector v_hi_inv = vec_reciprocal(v_hi);
 
-      v_a_hydro_xSum.v = vec_setzero();
-      v_a_hydro_ySum.v = vec_setzero();
-      v_a_hydro_zSum.v = vec_setzero();
-      v_h_dtSum.v = vec_setzero();
-      v_sigSum = vector_set1(pi->force.v_sig);
-      v_entropy_dtSum.v = vec_setzero();
+      /* Reset cumulative sums of update vectors. */
+      vector v_a_hydro_xSum = vector_setzero();
+      vector v_a_hydro_ySum = vector_setzero();
+      vector v_a_hydro_zSum = vector_setzero();
+      vector v_h_dtSum = vector_setzero();
+      vector v_sigSum = vector_set1(pi->force.v_sig);
+      vector v_entropy_dtSum = vector_setzero();
 
       /* Pad the exit iteration if there is a serial remainder. */
       int exit_iteration_align = exit_iteration;
@@ -1550,19 +1535,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       const float hjg2 = hj * hj * kernel_gamma2;
       const vector v_hjg2 = vector_set1(hjg2);
 
-      /* Reset cumulative sums of update vectors. */
-      vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
-          v_sigSum, v_entropy_dtSum;
-
       /* Get the inverse of hj. */
       vector v_hj_inv = vec_reciprocal(v_hj);
 
-      v_a_hydro_xSum.v = vec_setzero();
-      v_a_hydro_ySum.v = vec_setzero();
-      v_a_hydro_zSum.v = vec_setzero();
-      v_h_dtSum.v = vec_setzero();
-      v_sigSum = vector_set1(pj->force.v_sig);
-      v_entropy_dtSum.v = vec_setzero();
+      /* Reset cumulative sums of update vectors. */
+      vector v_a_hydro_xSum = vector_setzero();
+      vector v_a_hydro_ySum = vector_setzero();
+      vector v_a_hydro_zSum = vector_setzero();
+      vector v_h_dtSum = vector_setzero();
+      vector v_sigSum = vector_set1(pj->force.v_sig);
+      vector v_entropy_dtSum = vector_setzero();
 
       /* Convert exit iteration to cache indices. */
       int exit_iteration_align = exit_iteration - first_pi;
