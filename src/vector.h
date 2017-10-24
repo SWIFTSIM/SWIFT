@@ -446,6 +446,21 @@ __attribute__((always_inline)) INLINE vector vector_load(float *const x) {
   return temp;
 }
 
+/**
+ * @brief Loads a vector filled with one value.
+ *
+ * @param x value to set each element.
+ * @return temp set #vector.
+ */
+__attribute__((always_inline)) INLINE vector vector_set1(const float x) {
+
+  vector temp;
+
+  temp.v = vec_set1(x);
+
+  return temp;
+}
+
 #else
 /* Needed for cache alignment. */
 #define VEC_SIZE 8

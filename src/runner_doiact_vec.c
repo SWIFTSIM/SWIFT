@@ -567,22 +567,21 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
-    vector v_pix, v_piy, v_piz;
-    vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
+    vector v_r2;
 
     const float hi = cell_cache->h[pid];
 
     /* Fill particle pi vectors. */
-    v_pix.v = vec_set1(cell_cache->x[pid]);
-    v_piy.v = vec_set1(cell_cache->y[pid]);
-    v_piz.v = vec_set1(cell_cache->z[pid]);
-    v_hi.v = vec_set1(hi);
-    v_vix.v = vec_set1(cell_cache->vx[pid]);
-    v_viy.v = vec_set1(cell_cache->vy[pid]);
-    v_viz.v = vec_set1(cell_cache->vz[pid]);
+    const vector v_pix = vector_set1(cell_cache->x[pid]);
+    const vector v_piy = vector_set1(cell_cache->y[pid]);
+    const vector v_piz = vector_set1(cell_cache->z[pid]);
+    const vector v_hi = vector_set1(hi);
+    const vector v_vix = vector_set1(cell_cache->vx[pid]);
+    const vector v_viy = vector_set1(cell_cache->vy[pid]);
+    const vector v_viz = vector_set1(cell_cache->vz[pid]);
 
     const float hig2 = hi * hi * kernel_gamma2;
-    v_hig2.v = vec_set1(hig2);
+    const vector v_hig2 = vector_set1(hig2);
 
     /* Reset cumulative sums of update vectors. */
     vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
@@ -779,29 +778,25 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
-    vector v_pix, v_piy, v_piz;
-    vector v_hi, v_vix, v_viy, v_viz, v_hig2;
-    vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
-
     const float hi = cell_cache->h[pid];
 
     /* Fill particle pi vectors. */
-    v_pix.v = vec_set1(cell_cache->x[pid]);
-    v_piy.v = vec_set1(cell_cache->y[pid]);
-    v_piz.v = vec_set1(cell_cache->z[pid]);
-    v_hi.v = vec_set1(hi);
-    v_vix.v = vec_set1(cell_cache->vx[pid]);
-    v_viy.v = vec_set1(cell_cache->vy[pid]);
-    v_viz.v = vec_set1(cell_cache->vz[pid]);
+    const vector v_pix = vector_set1(cell_cache->x[pid]);
+    const vector v_piy = vector_set1(cell_cache->y[pid]);
+    const vector v_piz = vector_set1(cell_cache->z[pid]);
+    const vector v_hi = vector_set1(hi);
+    const vector v_vix = vector_set1(cell_cache->vx[pid]);
+    const vector v_viy = vector_set1(cell_cache->vy[pid]);
+    const vector v_viz = vector_set1(cell_cache->vz[pid]);
 
-    v_rhoi.v = vec_set1(cell_cache->rho[pid]);
-    v_grad_hi.v = vec_set1(cell_cache->grad_h[pid]);
-    v_pOrhoi2.v = vec_set1(cell_cache->pOrho2[pid]);
-    v_balsara_i.v = vec_set1(cell_cache->balsara[pid]);
-    v_ci.v = vec_set1(cell_cache->soundspeed[pid]);
+    const vector v_rhoi = vector_set1(cell_cache->rho[pid]);
+    const vector v_grad_hi = vector_set1(cell_cache->grad_h[pid]);
+    const vector v_pOrhoi2 = vector_set1(cell_cache->pOrho2[pid]);
+    const vector v_balsara_i = vector_set1(cell_cache->balsara[pid]);
+    const vector v_ci = vector_set1(cell_cache->soundspeed[pid]);
 
     const float hig2 = hi * hi * kernel_gamma2;
-    v_hig2.v = vec_set1(hig2);
+    const vector v_hig2 = vector_set1(hig2);
 
     /* Reset cumulative sums of update vectors. */
     vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum, v_sigSum,
@@ -814,7 +809,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     v_a_hydro_ySum.v = vec_setzero();
     v_a_hydro_zSum.v = vec_setzero();
     v_h_dtSum.v = vec_setzero();
-    v_sigSum.v = vec_set1(pi->force.v_sig);
+    v_sigSum = vector_set1(pi->force.v_sig);
     v_entropy_dtSum.v = vec_setzero();
 
     /* Pad cache if there is a serial remainder. */
@@ -1042,20 +1037,17 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       /* Determine the exit iteration of the interaction loop. */
       const int exit_iteration = max_index_i[pid];
 
-      vector v_pix, v_piy, v_piz;
-      vector v_hi, v_vix, v_viy, v_viz, v_hig2;
-
       /* Fill particle pi vectors. */
-      v_pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
-      v_piy.v = vec_set1(ci_cache->y[ci_cache_idx]);
-      v_piz.v = vec_set1(ci_cache->z[ci_cache_idx]);
-      v_hi.v = vec_set1(hi);
-      v_vix.v = vec_set1(ci_cache->vx[ci_cache_idx]);
-      v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
-      v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
+      const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
+      const vector v_piy = vector_set1(ci_cache->y[ci_cache_idx]);
+      const vector v_piz = vector_set1(ci_cache->z[ci_cache_idx]);
+      const vector v_hi = vector_set1(hi);
+      const vector v_vix = vector_set1(ci_cache->vx[ci_cache_idx]);
+      const vector v_viy = vector_set1(ci_cache->vy[ci_cache_idx]);
+      const vector v_viz = vector_set1(ci_cache->vz[ci_cache_idx]);
 
       const float hig2 = hi * hi * kernel_gamma2;
-      v_hig2.v = vec_set1(hig2);
+      const vector v_hig2 = vector_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
       vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
@@ -1165,20 +1157,17 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       /* Determine the exit iteration of the interaction loop. */
       const int exit_iteration = max_index_j[pjd];
 
-      vector v_pjx, v_pjy, v_pjz;
-      vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
-
       /* Fill particle pi vectors. */
-      v_pjx.v = vec_set1(cj_cache->x[cj_cache_idx]);
-      v_pjy.v = vec_set1(cj_cache->y[cj_cache_idx]);
-      v_pjz.v = vec_set1(cj_cache->z[cj_cache_idx]);
-      v_hj.v = vec_set1(hj);
-      v_vjx.v = vec_set1(cj_cache->vx[cj_cache_idx]);
-      v_vjy.v = vec_set1(cj_cache->vy[cj_cache_idx]);
-      v_vjz.v = vec_set1(cj_cache->vz[cj_cache_idx]);
+      const vector v_pjx = vector_set1(cj_cache->x[cj_cache_idx]);
+      const vector v_pjy = vector_set1(cj_cache->y[cj_cache_idx]);
+      const vector v_pjz = vector_set1(cj_cache->z[cj_cache_idx]);
+      const vector v_hj = vector_set1(hj);
+      const vector v_vjx = vector_set1(cj_cache->vx[cj_cache_idx]);
+      const vector v_vjy = vector_set1(cj_cache->vy[cj_cache_idx]);
+      const vector v_vjz = vector_set1(cj_cache->vz[cj_cache_idx]);
 
       const float hjg2 = hj * hj * kernel_gamma2;
-      v_hjg2.v = vec_set1(hjg2);
+      const vector v_hjg2 = vector_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
       vector v_rhoSum, v_rho_dhSum, v_wcountSum, v_wcount_dhSum, v_div_vSum,
@@ -1410,27 +1399,22 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Determine the exit iteration of the interaction loop. */
       const int exit_iteration = max_index_i[pid];
 
-      vector v_pix, v_piy, v_piz;
-      vector v_hi, v_vix, v_viy, v_viz, v_hig2;
-      vector v_rhoi, v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci;
-
       /* Fill particle pi vectors. */
-      v_pix.v = vec_set1(ci_cache->x[ci_cache_idx]);
-      v_piy.v = vec_set1(ci_cache->y[ci_cache_idx]);
-      v_piz.v = vec_set1(ci_cache->z[ci_cache_idx]);
-      v_hi.v = vec_set1(hi);
-      v_vix.v = vec_set1(ci_cache->vx[ci_cache_idx]);
-      v_viy.v = vec_set1(ci_cache->vy[ci_cache_idx]);
-      v_viz.v = vec_set1(ci_cache->vz[ci_cache_idx]);
-
-      v_rhoi.v = vec_set1(ci_cache->rho[ci_cache_idx]);
-      v_grad_hi.v = vec_set1(ci_cache->grad_h[ci_cache_idx]);
-      v_pOrhoi2.v = vec_set1(ci_cache->pOrho2[ci_cache_idx]);
-      v_balsara_i.v = vec_set1(ci_cache->balsara[ci_cache_idx]);
-      v_ci.v = vec_set1(ci_cache->soundspeed[ci_cache_idx]);
+      const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
+      const vector v_piy = vector_set1(ci_cache->y[ci_cache_idx]);
+      const vector v_piz = vector_set1(ci_cache->z[ci_cache_idx]);
+      const vector v_hi = vector_set1(hi);
+      const vector v_vix = vector_set1(ci_cache->vx[ci_cache_idx]);
+      const vector v_viy = vector_set1(ci_cache->vy[ci_cache_idx]);
+      const vector v_viz = vector_set1(ci_cache->vz[ci_cache_idx]);
+      const vector v_rhoi = vector_set1(ci_cache->rho[ci_cache_idx]);
+      const vector v_grad_hi = vector_set1(ci_cache->grad_h[ci_cache_idx]);
+      const vector v_pOrhoi2 = vector_set1(ci_cache->pOrho2[ci_cache_idx]);
+      const vector v_balsara_i = vector_set1(ci_cache->balsara[ci_cache_idx]);
+      const vector v_ci = vector_set1(ci_cache->soundspeed[ci_cache_idx]);
 
       const float hig2 = hi * hi * kernel_gamma2;
-      v_hig2.v = vec_set1(hig2);
+      const vector v_hig2 = vector_set1(hig2);
 
       /* Reset cumulative sums of update vectors. */
       vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
@@ -1443,7 +1427,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_a_hydro_ySum.v = vec_setzero();
       v_a_hydro_zSum.v = vec_setzero();
       v_h_dtSum.v = vec_setzero();
-      v_sigSum.v = vec_set1(pi->force.v_sig);
+      v_sigSum = vector_set1(pi->force.v_sig);
       v_entropy_dtSum.v = vec_setzero();
 
       /* Pad the exit iteration if there is a serial remainder. */
@@ -1549,27 +1533,22 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Determine the exit iteration of the interaction loop. */
       const int exit_iteration = max_index_j[pjd];
 
-      vector v_pjx, v_pjy, v_pjz;
-      vector v_hj, v_vjx, v_vjy, v_vjz, v_hjg2;
-      vector v_rhoj, v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj;
-
       /* Fill particle pi vectors. */
-      v_pjx.v = vec_set1(cj_cache->x[cj_cache_idx]);
-      v_pjy.v = vec_set1(cj_cache->y[cj_cache_idx]);
-      v_pjz.v = vec_set1(cj_cache->z[cj_cache_idx]);
-      v_hj.v = vec_set1(hj);
-      v_vjx.v = vec_set1(cj_cache->vx[cj_cache_idx]);
-      v_vjy.v = vec_set1(cj_cache->vy[cj_cache_idx]);
-      v_vjz.v = vec_set1(cj_cache->vz[cj_cache_idx]);
-
-      v_rhoj.v = vec_set1(cj_cache->rho[cj_cache_idx]);
-      v_grad_hj.v = vec_set1(cj_cache->grad_h[cj_cache_idx]);
-      v_pOrhoj2.v = vec_set1(cj_cache->pOrho2[cj_cache_idx]);
-      v_balsara_j.v = vec_set1(cj_cache->balsara[cj_cache_idx]);
-      v_cj.v = vec_set1(cj_cache->soundspeed[cj_cache_idx]);
+      const vector v_pjx = vector_set1(cj_cache->x[cj_cache_idx]);
+      const vector v_pjy = vector_set1(cj_cache->y[cj_cache_idx]);
+      const vector v_pjz = vector_set1(cj_cache->z[cj_cache_idx]);
+      const vector v_hj = vector_set1(hj);
+      const vector v_vjx = vector_set1(cj_cache->vx[cj_cache_idx]);
+      const vector v_vjy = vector_set1(cj_cache->vy[cj_cache_idx]);
+      const vector v_vjz = vector_set1(cj_cache->vz[cj_cache_idx]);
+      const vector v_rhoj = vector_set1(cj_cache->rho[cj_cache_idx]);
+      const vector v_grad_hj = vector_set1(cj_cache->grad_h[cj_cache_idx]);
+      const vector v_pOrhoj2 = vector_set1(cj_cache->pOrho2[cj_cache_idx]);
+      const vector v_balsara_j = vector_set1(cj_cache->balsara[cj_cache_idx]);
+      const vector v_cj = vector_set1(cj_cache->soundspeed[cj_cache_idx]);
 
       const float hjg2 = hj * hj * kernel_gamma2;
-      v_hjg2.v = vec_set1(hjg2);
+      const vector v_hjg2 = vector_set1(hjg2);
 
       /* Reset cumulative sums of update vectors. */
       vector v_a_hydro_xSum, v_a_hydro_ySum, v_a_hydro_zSum, v_h_dtSum,
@@ -1582,7 +1561,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       v_a_hydro_ySum.v = vec_setzero();
       v_a_hydro_zSum.v = vec_setzero();
       v_h_dtSum.v = vec_setzero();
-      v_sigSum.v = vec_set1(pj->force.v_sig);
+      v_sigSum = vector_set1(pj->force.v_sig);
       v_entropy_dtSum.v = vec_setzero();
 
       /* Convert exit iteration to cache indices. */
