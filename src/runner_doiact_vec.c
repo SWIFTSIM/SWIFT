@@ -615,21 +615,18 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       }
     }
 
-    vector v_pjx, v_pjy, v_pjz;
-    vector v_pjx2, v_pjy2, v_pjz2;
-
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
-      v_pjx.v = vec_load(&cell_cache->x[pjd]);
-      v_pjy.v = vec_load(&cell_cache->y[pjd]);
-      v_pjz.v = vec_load(&cell_cache->z[pjd]);
+      const vector v_pjx = vector_load(&cell_cache->x[pjd]);
+      const vector v_pjy = vector_load(&cell_cache->y[pjd]);
+      const vector v_pjz = vector_load(&cell_cache->z[pjd]);
 
-      v_pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
-      v_pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
-      v_pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      const vector v_pjx2 = vector_load(&cell_cache->x[pjd + VEC_SIZE]);
+      const vector v_pjy2 = vector_load(&cell_cache->y[pjd + VEC_SIZE]);
+      const vector v_pjz2 = vector_load(&cell_cache->z[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
       vector v_dx, v_dy, v_dz;
@@ -848,11 +845,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 1 set of vectors from the particle cache. */
-      vector v_pjx, v_pjy, v_pjz, hj, hjg2;
-      v_pjx.v = vec_load(&cell_cache->x[pjd]);
-      v_pjy.v = vec_load(&cell_cache->y[pjd]);
-      v_pjz.v = vec_load(&cell_cache->z[pjd]);
-      hj.v = vec_load(&cell_cache->h[pjd]);
+      vector hjg2;
+      const vector v_pjx = vector_load(&cell_cache->x[pjd]);
+      const vector v_pjy = vector_load(&cell_cache->y[pjd]);
+      const vector v_pjz = vector_load(&cell_cache->z[pjd]);
+      const vector hj = vector_load(&cell_cache->h[pjd]);
       hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
 
       /* Compute the pairwise distance. */
@@ -1094,7 +1091,6 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
 
-        vector v_pjx, v_pjy, v_pjz;
         vector v_dx, v_dy, v_dz, v_r2;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1106,9 +1102,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #endif
 
         /* Load 2 sets of vectors from the particle cache. */
-        v_pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
-        v_pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
-        v_pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
+        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
+        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
+        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
 
         /* Compute the pairwise distance. */
         v_dx.v = vec_sub(v_pix.v, v_pjx.v);
@@ -1224,13 +1220,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
-        vector v_pix, v_piy, v_piz;
         vector v_dx, v_dy, v_dz, v_r2;
 
         /* Load 2 sets of vectors from the particle cache. */
-        v_pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
-        v_piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
-        v_piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
+        const vector v_pix = vector_load(&ci_cache->x[ci_cache_idx]);
+        const vector v_piy = vector_load(&ci_cache->y[ci_cache_idx]);
+        const vector v_piz = vector_load(&ci_cache->z[ci_cache_idx]);
 
         /* Compute the pairwise distance. */
         v_dx.v = vec_sub(v_pjx.v, v_pix.v);
@@ -1469,8 +1464,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
 
-        vector v_dx, v_dy, v_dz;
-        vector v_pjx, v_pjy, v_pjz, v_hj, v_hjg2, v_r2;
+        vector v_dx, v_dy, v_dz, v_r2;
+        vector v_hjg2;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cj_cache_idx % VEC_SIZE != 0 || cj_cache_idx < 0 ||
@@ -1481,10 +1476,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #endif
 
         /* Load 2 sets of vectors from the particle cache. */
-        v_pjx.v = vec_load(&cj_cache->x[cj_cache_idx]);
-        v_pjy.v = vec_load(&cj_cache->y[cj_cache_idx]);
-        v_pjz.v = vec_load(&cj_cache->z[cj_cache_idx]);
-        v_hj.v = vec_load(&cj_cache->h[cj_cache_idx]);
+        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
+        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
+        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
+        const vector v_hj = vector_load(&cj_cache->h[cj_cache_idx]);
         v_hjg2.v = vec_mul(vec_mul(v_hj.v, v_hj.v), kernel_gamma2_vec.v);
 
         /* Compute the pairwise distance. */
@@ -1610,14 +1605,14 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
-        vector v_pix, v_piy, v_piz, v_hi, v_hig2;
+        vector v_hig2;
         vector v_dx, v_dy, v_dz, v_r2;
 
         /* Load 2 sets of vectors from the particle cache. */
-        v_pix.v = vec_load(&ci_cache->x[ci_cache_idx]);
-        v_piy.v = vec_load(&ci_cache->y[ci_cache_idx]);
-        v_piz.v = vec_load(&ci_cache->z[ci_cache_idx]);
-        v_hi.v = vec_load(&ci_cache->h[ci_cache_idx]);
+        const vector v_pix = vector_load(&ci_cache->x[ci_cache_idx]);
+        const vector v_piy = vector_load(&ci_cache->y[ci_cache_idx]);
+        const vector v_piz = vector_load(&ci_cache->z[ci_cache_idx]);
+        const vector v_hi = vector_load(&ci_cache->h[ci_cache_idx]);
         v_hig2.v = vec_mul(vec_mul(v_hi.v, v_hi.v), kernel_gamma2_vec.v);
 
         /* Compute the pairwise distance. */

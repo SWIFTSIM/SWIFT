@@ -431,6 +431,21 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
   return x_inv;
 }
 
+/**
+ * @brief Loads a vector from memory.
+ *
+ * @param *x memory to load from.
+ * @return temp loaded #vector.
+ */
+__attribute__((always_inline)) INLINE vector vector_load(float *const x) {
+
+  vector temp;
+
+  temp.v = vec_load(x);
+
+  return temp;
+}
+
 #else
 /* Needed for cache alignment. */
 #define VEC_SIZE 8
