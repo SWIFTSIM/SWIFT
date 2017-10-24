@@ -656,8 +656,10 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
 
       /* Combine two masks and form integer masks. */
-      const int doi_mask = vec_is_mask_true(v_doi_mask) & vec_is_mask_true(v_doi_mask_self_check);
-      const int doi_mask2 = vec_is_mask_true(v_doi_mask2) & vec_is_mask_true(v_doi_mask2_self_check);
+      const int doi_mask = vec_is_mask_true(v_doi_mask) &
+                           vec_is_mask_true(v_doi_mask_self_check);
+      const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
+                            vec_is_mask_true(v_doi_mask2_self_check);
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */

@@ -607,7 +607,8 @@ runner_iact_nonsym_1_vec_force(
   const vector balsara_j = vector_load(Balsara_j);
   const vector cj = vector_load(Cj);
 
-  const vector fac_mu = vector_set1(1.f); /* Will change with cosmological integration */
+  const vector fac_mu =
+      vector_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
@@ -772,7 +773,8 @@ runner_iact_nonsym_2_vec_force(
   const vector hj_inv = vector_load(Hj_inv);
   const vector hj_inv_2 = vector_load(&Hj_inv[VEC_SIZE]);
 
-  const vector fac_mu = vector_set1(1.f); /* Will change with cosmological integration */
+  const vector fac_mu =
+      vector_set1(1.f); /* Will change with cosmological integration */
 
   /* Find the balsara switch. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);

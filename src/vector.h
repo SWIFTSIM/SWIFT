@@ -20,9 +20,6 @@
 #ifndef SWIFT_VECTOR_H
 #define SWIFT_VECTOR_H
 
-/* Have I already read this file? */
-#ifndef VEC_MACRO
-
 /* Config parameters. */
 #include "../config.h"
 
@@ -432,46 +429,41 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
 }
 
 /**
- * @brief Loads a vector from memory.
+ * @brief Returns a new vector with data loaded from a memory address.
  *
- * @param *x memory to load from.
- * @return temp loaded #vector.
+ * @param x memory address to load from.
+ * @return Loaded #vector.
  */
 __attribute__((always_inline)) INLINE vector vector_load(float *const x) {
 
   vector temp;
-
   temp.v = vec_load(x);
-
   return temp;
 }
 
 /**
- * @brief Loads a vector filled with one value.
+ * @brief Returns a vector filled with one value.
  *
  * @param x value to set each element.
- * @return temp set #vector.
+ * @return A #vector filled with a given constant.
  */
 __attribute__((always_inline)) INLINE vector vector_set1(const float x) {
 
   vector temp;
-
   temp.v = vec_set1(x);
-
   return temp;
 }
 
 /**
- * @brief Loads a vector filled with zeros.
+ * @brief Returns a new vector filled with zeros.
  *
  * @return temp set #vector.
+ * @return A #vector filled with zeros.
  */
 __attribute__((always_inline)) INLINE vector vector_setzero() {
 
   vector temp;
-
   temp.v = vec_setzero();
-
   return temp;
 }
 
@@ -479,7 +471,5 @@ __attribute__((always_inline)) INLINE vector vector_setzero() {
 /* Needed for cache alignment. */
 #define VEC_SIZE 8
 #endif /* WITH_VECTORIZATION */
-
-#endif /* VEC_MACRO */
 
 #endif /* SWIFT_VECTOR_H */
