@@ -76,8 +76,8 @@ DomainDecomposition:
   initial_grid_x:   10      # (Optional) Grid size if the "grid" strategy is chosen.
   initial_grid_y:   10      # ""
   initial_grid_z:   10      # ""
-  repartition_type: task_weights # (Optional) The re-decomposition strategy: "none", "task_weights", "particle_weights",
-                                 #            "edge_task_weights" or "hybrid_weights".
+  repartition_type: task_costs # (Optional) The re-decomposition strategy: "none", "task_costs", "particle_weights",
+                               #            "edge_task_costs", "hybrid_weights" or "bin_weights"
   trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
                             # new decomposition, or number of steps (>1) between decompositions
   minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
