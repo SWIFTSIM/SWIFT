@@ -63,10 +63,13 @@ const char *initial_partition_name[] = {
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "no", "METIS edge and vertex time weighted cells",
-    "METIS particle count vertex weighted cells",
-    "METIS time edge weighted cells",
-    "METIS particle count vertex and time edge cells"};
+    "none",
+    "METIS edge and vertex cost weights",
+    "METIS particle count vertex weights",
+    "METIS cost edge weights",
+    "METIS particle count vertex and cost edge weights",
+    "METIS vertex costs and edge delta timebin weights",
+};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
@@ -476,15 +479,16 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
  * @param partweights whether particle counts will be used as vertex weights.
  * @param bothweights whether vertex and edge weights will be used, otherwise
  *                    only edge weights will be used.
+ * @param timebins use timebins as edge weights.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-static void repart_edge_metis(int partweights, int bothweights, int nodeID,
-                              int nr_nodes, struct space *s, struct task *tasks,
-                              int nr_tasks) {
+static void repart_edge_metis(int partweights, int bothweights, int timebins,
+                              int nodeID, int nr_nodes, struct space *s,
+                              struct task *tasks, int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). Note that
@@ -599,42 +603,39 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
-        /* Add weights to edge for all cells based on the expected interaction
-         * time. We want to avoid having active cells on the edges, so we cut
-         * for that. */
-        int dti = num_time_bins - get_time_bin(ci->ti_end_min);
-        int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
+        if (timebins) {
+          /* Add weights to edge for all cells based on the expected
+           * interaction time (calculated as the time to the last expected
+           * time) as we want to avoid having active cells on the edges, so we
+           * cut for that. Note that weight is added to the local and remote
+           * cells, as we want to keep both away from any cuts. */
+          int dti = num_time_bins - get_time_bin(ci->ti_end_min);
+          int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
+          int dt = (1<<(dti + dtj));
 
-        int kk;
-        for (kk = 26 * cid; inds[kk] != cjd; kk++)
-          ;
+          /* ci */
+          int kk;
+          for (kk = 26 * cid; inds[kk] != cjd; kk++);
+          wtot[1] += dt;
+          weights_e[kk] += dt;
 
-        /* If a foreign cell we repeat the interaction remotely, so these get
-         * 1/2 of the local time bin weight. */
-        int dt;
-        if (ci->nodeID == nodeID)
-          dt = dti + dtj/2;
-        else
-          dt = dtj/2;
-        dt = dti + dtj;
-        dt = (1<<dt);
+          /* cj */
+          for (kk = 26 * cjd; inds[kk] != cid; kk++);
+          wtot[1] += dt;
+          weights_e[kk] += dt;
+        } else {
 
-        wtot[1] += dt;
-        weights_e[kk] += dt;
+          /* Add weights from task costs to the edge. */
 
-        /* cj */
-        for (kk = 26 * cjd; inds[kk] != cid; kk++)
-          ;
-        if (cj->nodeID == nodeID)
-          dt = dtj + dti/2;
-        else
-          dt = dti/2;
+          /* ci */
+          int kk;
+          for (kk = 26 * cid; inds[kk] != cjd; kk++);
+          weights_e[kk] += w;
 
-        dt = dti + dtj;
-        dt = (1<<dt);
-
-        wtot[1] += dt;
-        weights_e[kk] += dt;
+          /* cj */
+          for (kk = 26 * cjd; inds[kk] != cid; kk++);
+          weights_e[kk] += w;
+        }
       }
     }
   }
@@ -705,7 +706,8 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
       }
     }
 
-    /* Now edge weights. Unlikely these will ever need scaling. */
+    /* Now edge weights. XXX need to balance weights if very different in
+     * range. */
     wmin[1] = wmax[1];
     wmax[1] = 0;
     for (int k = 0; k < nr_cells; k++) {
@@ -838,35 +840,26 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  if (reparttype->type == REPART_METIS_BOTH ||
-      reparttype->type == REPART_METIS_EDGE ||
-      reparttype->type == REPART_METIS_VERTEX_EDGE) {
+  if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_COSTS) {
+    repart_edge_metis(1, 1, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
-    int partweights;
-    int bothweights;
-    if (reparttype->type == REPART_METIS_VERTEX_EDGE)
-      partweights = 1;
-    else
-      partweights = 0;
+  } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
+    repart_edge_metis(0, 0, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
-    if (reparttype->type == REPART_METIS_BOTH)
-      bothweights = 1;
-    else
-      bothweights = 0;
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS_EDGE_COSTS) {
+    repart_edge_metis(1, 0, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
-    repart_edge_metis(partweights, bothweights, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
+  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS) {
+    repart_edge_metis(1, 1, 1, nodeID, nr_nodes, s, tasks, nr_tasks);
 
-  } else if (reparttype->type == REPART_METIS_VERTEX) {
-
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
     repart_vertex_metis(s, nodeID, nr_nodes);
 
   } else if (reparttype->type == REPART_NONE) {
-
     /* Doing nothing. */
 
   } else {
-    error("Unknown repartition type");
+    error("Impossible repartition type");
   }
 #else
   error("SWIFT was not compiled with METIS support.");
@@ -1020,7 +1013,7 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  const char *default_repart = "task_weights";
+  const char *default_repart = "task_costs";
   const char *default_part = "simple_metis";
 #else
   const char *default_repart = "none";
@@ -1086,22 +1079,25 @@ void partition_init(struct partition *partition,
       break;
 #ifdef HAVE_METIS
     case 't':
-      repartition->type = REPART_METIS_BOTH;
+      repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_COSTS;
       break;
     case 'e':
-      repartition->type = REPART_METIS_EDGE;
+      repartition->type = REPART_METIS_EDGE_COSTS;
       break;
     case 'p':
-      repartition->type = REPART_METIS_VERTEX;
+      repartition->type = REPART_METIS_VERTEX_COUNTS;
       break;
     case 'h':
-      repartition->type = REPART_METIS_VERTEX_EDGE;
+      repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_COSTS;
+      break;
+    case 'b':
+      repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS;
       break;
     default:
       message("Invalid choice of re-partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'none', 'task_weights', 'particle_weights',"
-          "'edge_task_weights' or 'hybrid_weights'");
+          "Permitted values are: 'none', 'task_costs', 'particle_weights',"
+          "'edge_task_costs', 'hybrid_weights' or 'bin_weights'");
 #else
     default:
       message("Invalid choice of re-partition type '%s'.", part_type);

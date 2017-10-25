@@ -316,7 +316,7 @@ static void dumpCells_map(struct cell *c, void *data) {
  * for all cells to a simple text file.
  *
  * @param prefix base output filename, result is written to
- *               <prefix>_<rank>_<step>.dat
+ *               %prefix%_%rank%_%step%.dat
  * @param s the space holding the cells to dump.
  * @param rank node ID of MPI rank, or 0 if not relevant.
  * @param step the current engine step, or some unique integer.
