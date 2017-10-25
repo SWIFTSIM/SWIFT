@@ -581,6 +581,431 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 #endif /* WITH_VECTORIZATION */
 }
 
+__attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
+    struct runner *r, struct cell *restrict c, struct part *restrict parts, int *restrict ind, int pi_count) {
+
+#ifdef WITH_VECTORIZATION
+  const struct engine *e = r->e;
+  struct part *restrict pi;
+  int count_align;
+  int num_vec_proc = NUM_VEC_PROC;
+
+  //struct part *restrict parts = c->parts;
+  const int count = c->count;
+
+  int intCount = 0;
+
+  const timebin_t max_active_bin = e->max_active_bin;
+
+  vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
+
+  TIMER_TIC
+
+  if (!cell_is_active(c, e)) return;
+
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->ci_cache;
+
+  if (cell_cache->count < count) {
+    cache_init(cell_cache, count);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(c, cell_cache);
+
+  /* Create secondary cache to store particle interactions. */
+  struct c2_cache int_cache;
+  int icount = 0, icount_align = 0;
+
+  /* Loop over the particles in the cell. */
+  for (int pid = 0; pid < pi_count; pid++) {
+
+    const int pi_index = ind[pid];
+
+    /* Get a pointer to the ith particle. */
+    pi = &parts[pi_index];
+
+    /* Is the ith particle active? */
+    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
+
+    vector pix, piy, piz;
+
+    const float hi = cell_cache->h[pi_index];
+
+    /* Fill particle pi vectors. */
+    pix.v = vec_set1(cell_cache->x[pi_index]);
+    piy.v = vec_set1(cell_cache->y[pi_index]);
+    piz.v = vec_set1(cell_cache->z[pi_index]);
+    v_hi.v = vec_set1(hi);
+    v_vix.v = vec_set1(cell_cache->vx[pi_index]);
+    v_viy.v = vec_set1(cell_cache->vy[pi_index]);
+    v_viz.v = vec_set1(cell_cache->vz[pi_index]);
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    v_hig2.v = vec_set1(hig2);
+
+    /* Reset cumulative sums of update vectors. */
+    vector rhoSum, rho_dhSum, wcountSum, wcount_dhSum, div_vSum, curlvxSum,
+        curlvySum, curlvzSum;
+
+    /* Get the inverse of hi. */
+    vector v_hi_inv;
+
+    v_hi_inv = vec_reciprocal(v_hi);
+
+    rhoSum.v = vec_setzero();
+    rho_dhSum.v = vec_setzero();
+    wcountSum.v = vec_setzero();
+    wcount_dhSum.v = vec_setzero();
+    div_vSum.v = vec_setzero();
+    curlvxSum.v = vec_setzero();
+    curlvySum.v = vec_setzero();
+    curlvzSum.v = vec_setzero();
+
+    /* Pad cache if there is a serial remainder. */
+    count_align = count;
+    int rem = count % (num_vec_proc * VEC_SIZE);
+    if (rem != 0) {
+      int pad = (num_vec_proc * VEC_SIZE) - rem;
+
+      count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = pix.f[0];
+        cell_cache->y[i] = piy.f[0];
+        cell_cache->z[i] = piz.f[0];
+      }
+    }
+
+    vector pjx, pjy, pjz;
+    vector pjx2, pjy2, pjz2;
+
+    /* Find all of particle pi's interacions and store needed values in the
+     * secondary cache.*/
+    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+
+      /* Load 2 sets of vectors from the particle cache. */
+      pjx.v = vec_load(&cell_cache->x[pjd]);
+      pjy.v = vec_load(&cell_cache->y[pjd]);
+      pjz.v = vec_load(&cell_cache->z[pjd]);
+
+      pjx2.v = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
+      pjy2.v = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
+      pjz2.v = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+
+      /* Compute the pairwise distance. */
+      vector v_dx, v_dy, v_dz;
+      vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
+
+      v_dx.v = vec_sub(pix.v, pjx.v);
+      v_dx_2.v = vec_sub(pix.v, pjx2.v);
+      v_dy.v = vec_sub(piy.v, pjy.v);
+      v_dy_2.v = vec_sub(piy.v, pjy2.v);
+      v_dz.v = vec_sub(piz.v, pjz.v);
+      v_dz_2.v = vec_sub(piz.v, pjz2.v);
+
+      v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
+      v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dy_2.v, v_dy_2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dz_2.v, v_dz_2.v, v_r2_2.v);
+
+      /* Form a mask from r2 < hig2 and r2 > 0.*/
+      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
+          v_doi_mask2_self_check;
+      int doi_mask, doi_mask_self_check, doi_mask2, doi_mask2_self_check;
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      vec_create_mask(v_doi_mask2_self_check,
+                      vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
+
+      /* Form integer masks. */
+      doi_mask_self_check = vec_form_int_mask(v_doi_mask_self_check);
+      doi_mask = vec_form_int_mask(v_doi_mask);
+
+      doi_mask2_self_check = vec_form_int_mask(v_doi_mask2_self_check);
+      doi_mask2 = vec_form_int_mask(v_doi_mask2);
+
+      /* Combine the two masks. */
+      doi_mask = doi_mask & doi_mask_self_check;
+      doi_mask2 = doi_mask2 & doi_mask2_self_check;
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask) {
+        storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
+                          &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum,
+                          &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                          &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+      }
+      if (doi_mask2) {
+        storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
+                          &v_dz_2, cell_cache, &int_cache, &icount, &rhoSum,
+                          &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
+                          &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix,
+                          v_viy, v_viz);
+      }
+    }
+
+    /* Perform padded vector remainder interactions if any are present. */
+    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
+                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
+                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+                        &icount_align);
+
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    mask_t int_mask, int_mask2;
+    vec_init_mask_true(int_mask);
+    vec_init_mask_true(int_mask2);
+
+    /* Perform interaction with 2 vectors. */
+    for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
+      runner_iact_nonsym_2_vec_density(
+          &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
+          &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
+          &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
+          &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
+          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
+          0);
+    }
+
+    /* Perform horizontal adds on vector sums and store result in particle pi.
+     */
+    VEC_HADD(rhoSum, pi->rho);
+    VEC_HADD(rho_dhSum, pi->density.rho_dh);
+    VEC_HADD(wcountSum, pi->density.wcount);
+    VEC_HADD(wcount_dhSum, pi->density.wcount_dh);
+    VEC_HADD(div_vSum, pi->density.div_v);
+    VEC_HADD(curlvxSum, pi->density.rot_v[0]);
+    VEC_HADD(curlvySum, pi->density.rot_v[1]);
+    VEC_HADD(curlvzSum, pi->density.rot_v[2]);
+
+    intCount += icount;
+
+    /* Reset interaction count. */
+    icount = 0;
+  } /* loop over all particles. */
+
+  message("No. of interactions: %d", intCount);
+
+  TIMER_TOC(timer_doself_density);
+#endif /* WITH_VECTORIZATION */
+}
+
+//void runner_doself_subset_density_vec_1(struct runner *r, struct cell *restrict ci,
+//                   struct part *restrict parts, int *restrict ind, int count) {
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//  const struct engine *e = r->e;
+//#endif
+//
+//  TIMER_TIC;
+//
+//  const int count_i = ci->count;
+//  struct part *restrict parts_j = ci->parts;
+//
+//  /* Get the particle cache from the runner and re-allocate
+//   * the cache if it is not big enough for the cell. */
+//  struct cache *restrict cell_cache = &r->ci_cache;
+//
+//  if (cell_cache->count < count_i) {
+//    cache_init(cell_cache, count_i);
+//  }
+//
+//  /* Read the particles from the cell and store them locally in the cache. */
+//  cache_read_particles(ci, cell_cache);
+//
+//  /* Loop over the parts in ci. */
+//  for (int pid = 0; pid < count; pid++) {
+//
+//    /* Get a hold of the ith part in ci. */
+//    struct part *pi = &parts[ind[pid]];
+//    //const float pix[3] = {pi->x[0] - ci->loc[0], pi->x[1] - ci->loc[1],
+//    //                      pi->x[2] - ci->loc[2]};
+//    //const float hi = pi->h;
+//
+//    const float pix = cell_cache->x[ind[pid]];
+//    const float piy = cell_cache->y[ind[pid]];
+//    const float piz = cell_cache->z[ind[pid]];
+//    
+//    const float hi = cell_cache->h[ind[pid]];
+//
+//    //const float hi_inv = 1.0f / hi;
+//    const float hig2 = hi * hi * kernel_gamma2;
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//    if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
+//#endif
+//
+//    //float rhoSum = 0, rho_dhSum = 0, wcountSum = 0, wcount_dhSum = 0,div_vSum = 0, curlvxSum = 0, curlvySum = 0, curlvzSum = 0;
+//
+//    //swift_align_information(cell_cache->x, SWIFT_CACHE_ALIGNMENT);
+//    //swift_align_information(cell_cache->y, SWIFT_CACHE_ALIGNMENT);
+//    //swift_align_information(cell_cache->z, SWIFT_CACHE_ALIGNMENT);
+//
+//    /* Loop over the parts in cj. */
+////#pragma simd
+//    for (int pjd = 0; pjd < count_i; pjd++) {
+//
+//      /* Get a pointer to the jth particle. */
+//      struct part *restrict pj = &parts_j[pjd];
+//
+//      const float pjx = cell_cache->x[pjd];
+//      const float pjy = cell_cache->y[pjd];
+//      const float pjz = cell_cache->z[pjd];
+//
+//      /* Compute the pairwise distance. */
+//      //float dx[3] = {pix[0] - pjx, pix[1] - pjy, pix[2] - pjz};
+//      float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+//      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//      //const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+//      //                      pj->x[2] - ci->loc[2]};
+//      //float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+//      //const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//      /* Check that particles have been drifted to the current time */
+//      if (pi->ti_drift != e->ti_current)
+//        error("Particle pi not drifted to current time");
+//      if (pj->ti_drift != e->ti_current)
+//        error("Particle pj not drifted to current time");
+//#endif
+//
+//      //runner_iact_nonsym_density_self_cond(r2, hig2, dx, hi_inv, pj->h, pi, pj, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum);//, cell_cache, pjd);
+//      if (r2 > 0.f && r2 < hig2) {
+//        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+//      }
+//
+//    } /* loop over the parts in cj. */
+//
+//    //message("No. of interactions: %d.", intCount);
+//    //pi->rho += rhoSum;
+//    //pi->density.rho_dh += rho_dhSum;
+//    //pi->density.wcount += wcountSum;
+//    //pi->density.wcount_dh += wcount_dhSum;
+//    //pi->density.div_v += div_vSum;
+//    //pi->density.rot_v[0] += curlvxSum;
+//    //pi->density.rot_v[1] += curlvySum;
+//    //pi->density.rot_v[2] += curlvzSum;
+//  }   /* loop over the parts in ci. */
+//
+//  TIMER_TOC(timer_doself_subset);
+//}
+//
+//void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict ci,
+//                   struct part *restrict parts, int *restrict ind, int count) {
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//  const struct engine *e = r->e;
+//#endif
+//
+//  TIMER_TIC;
+//
+//  const int count_i = ci->count;
+//  struct part *restrict parts_j = ci->parts;
+//
+//  /* Get the particle cache from the runner and re-allocate
+//   * the cache if it is not big enough for the cell. */
+//  struct cache *restrict cell_cache = &r->ci_cache;
+//
+//  if (cell_cache->count < count_i) {
+//    cache_init(cell_cache, count_i);
+//  }
+//
+//  /* Read the particles from the cell and store them locally in the cache. */
+//  cache_read_particles(ci, cell_cache);
+//
+//  /* Loop over the parts in ci. */
+//  for (int pid = 0; pid < count; pid++) {
+//
+//    /* Get a hold of the ith part in ci. */
+//    struct part *pi = &parts[ind[pid]];
+//    //const float pix[3] = {pi->x[0] - ci->loc[0], pi->x[1] - ci->loc[1],
+//    //                      pi->x[2] - ci->loc[2]};
+//    //const float hi = pi->h;
+//
+//    const float pix = cell_cache->x[ind[pid]];
+//    const float piy = cell_cache->y[ind[pid]];
+//    const float piz = cell_cache->z[ind[pid]];
+//    
+//    const float hi = cell_cache->h[ind[pid]];
+//
+//    //const float hi_inv = 1.0f / hi;
+//    const float hig2 = hi * hi * kernel_gamma2;
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//    if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
+//#endif
+//
+//    //float rhoSum = 0, rho_dhSum = 0, wcountSum = 0, wcount_dhSum = 0,div_vSum = 0, curlvxSum = 0, curlvySum = 0, curlvzSum = 0;
+//
+//    //swift_align_information(cell_cache->x, SWIFT_CACHE_ALIGNMENT);
+//    //swift_align_information(cell_cache->y, SWIFT_CACHE_ALIGNMENT);
+//    //swift_align_information(cell_cache->z, SWIFT_CACHE_ALIGNMENT);
+//
+//    /* Loop over the parts in cj. */
+////#pragma simd
+//    for (int pjd = 0; pjd < count_i; pjd++) {
+//
+//      /* Get a pointer to the jth particle. */
+//      struct part *restrict pj = &parts_j[pjd];
+//
+//      const float pjx = cell_cache->x[pjd];
+//      const float pjy = cell_cache->y[pjd];
+//      const float pjz = cell_cache->z[pjd];
+//
+//      /* Compute the pairwise distance. */
+//      //float dx[3] = {pix[0] - pjx, pix[1] - pjy, pix[2] - pjz};
+//      float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+//      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//      //const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
+//      //                      pj->x[2] - ci->loc[2]};
+//      //float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+//      //const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//      /* Check that particles have been drifted to the current time */
+//      if (pi->ti_drift != e->ti_current)
+//        error("Particle pi not drifted to current time");
+//      if (pj->ti_drift != e->ti_current)
+//        error("Particle pj not drifted to current time");
+//#endif
+//
+//      //runner_iact_nonsym_density_self_cond(r2, hig2, dx, hi_inv, pj->h, pi, pj, &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum, &curlvzSum);//, cell_cache, pjd);
+//      if (r2 > 0.f && r2 < hig2) {
+//        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+//      }
+//
+//    } /* loop over the parts in cj. */
+//
+//    //message("No. of interactions: %d.", intCount);
+//    //pi->rho += rhoSum;
+//    //pi->density.rho_dh += rho_dhSum;
+//    //pi->density.wcount += wcountSum;
+//    //pi->density.wcount_dh += wcount_dhSum;
+//    //pi->density.div_v += div_vSum;
+//    //pi->density.rot_v[0] += curlvxSum;
+//    //pi->density.rot_v[1] += curlvySum;
+//    //pi->density.rot_v[2] += curlvzSum;
+//  }   /* loop over the parts in ci. */
+//
+//  TIMER_TOC(timer_doself_subset);
+//}
+
 /**
  * @brief Compute the force cell self-interaction (non-symmetric) using vector
  * intrinsics with one particle pi at a time.
