@@ -2383,8 +2383,11 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Otherwise, compute self-interaction. */
     else
+#ifdef WITH_VECTORIZATION
+      runner_doself_subset_density_vec(r, ci, parts, ind, count);
+#else
       DOSELF_SUBSET(r, ci, parts, ind, count);
-
+#endif
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
