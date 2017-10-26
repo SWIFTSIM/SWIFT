@@ -32,6 +32,7 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
+#define DOSELF1_SUBSET runner_doself_subset_density_vec
 #define DOPAIR1 runner_dopair1_branch_density
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
@@ -39,6 +40,7 @@
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
+#define DOSELF1_SUBSET runner_doself_subset_density
 #define DOSELF1_NAME "runner_doself1_density"
 #endif
 
@@ -300,6 +302,10 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
+void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
+                   struct part *restrict parts, int *restrict ind, int count);
+void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict ci,
+                                      struct part *restrict parts, int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -469,10 +475,20 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    int *pid = NULL;
+    int count = 0;
+    if ((pid = malloc(sizeof(int) * main_cell->count)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < main_cell->count; k++)
+      if (part_is_active(&main_cell->parts[k], &engine)) {
+        pid[count] = k;
+        ++count;
+      }
+
     /* And now the self-interaction */
     const ticks self_tic = getticks();
 
-    DOSELF1(&runner, main_cell);
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts,pid,count);
 
     const ticks self_toc = getticks();
 
