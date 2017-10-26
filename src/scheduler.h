@@ -102,6 +102,10 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
+    
+  /* Maximum size of task messages, in bytes, to sent using non-buffered
+   * MPI. */
+  int mpi_message_limit;
 
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
