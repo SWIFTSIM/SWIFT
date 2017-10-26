@@ -593,8 +593,6 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
   //struct part *restrict parts = c->parts;
   const int count = c->count;
 
-  int intCount = 0;
-
   const timebin_t max_active_bin = e->max_active_bin;
 
   vector v_hi, v_vix, v_viy, v_viz, v_hig2, v_r2;
@@ -633,16 +631,25 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 
     vector pix, piy, piz;
 
-    const float hi = cell_cache->h[pi_index];
+    //const float hi = cell_cache->h[pi_index];
+    const float hi = pi->h;
 
     /* Fill particle pi vectors. */
-    pix.v = vec_set1(cell_cache->x[pi_index]);
-    piy.v = vec_set1(cell_cache->y[pi_index]);
-    piz.v = vec_set1(cell_cache->z[pi_index]);
+    //pix.v = vec_set1(cell_cache->x[pi_index]);
+    //piy.v = vec_set1(cell_cache->y[pi_index]);
+    //piz.v = vec_set1(cell_cache->z[pi_index]);
+    //v_hi.v = vec_set1(hi);
+    //v_vix.v = vec_set1(cell_cache->vx[pi_index]);
+    //v_viy.v = vec_set1(cell_cache->vy[pi_index]);
+    //v_viz.v = vec_set1(cell_cache->vz[pi_index]);
+
+    pix.v = vec_set1(pi->x[0] - c->loc[0]);
+    piy.v = vec_set1(pi->x[1] - c->loc[1]);
+    piz.v = vec_set1(pi->x[2] - c->loc[2]);
     v_hi.v = vec_set1(hi);
-    v_vix.v = vec_set1(cell_cache->vx[pi_index]);
-    v_viy.v = vec_set1(cell_cache->vy[pi_index]);
-    v_viz.v = vec_set1(cell_cache->vz[pi_index]);
+    v_vix.v = vec_set1(pi->v[0]);
+    v_viy.v = vec_set1(pi->v[1]);
+    v_viz.v = vec_set1(pi->v[2]);
 
     const float hig2 = hi * hi * kernel_gamma2;
     v_hig2.v = vec_set1(hig2);
@@ -792,13 +799,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     VEC_HADD(curlvySum, pi->density.rot_v[1]);
     VEC_HADD(curlvzSum, pi->density.rot_v[2]);
 
-    intCount += icount;
-
     /* Reset interaction count. */
     icount = 0;
   } /* loop over all particles. */
-
-  message("No. of interactions: %d", intCount);
 
   TIMER_TOC(timer_doself_density);
 #endif /* WITH_VECTORIZATION */
