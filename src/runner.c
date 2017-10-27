@@ -1889,7 +1889,7 @@ void *runner_main(void *data) {
             runner_dopair1_branch_gradient(r, ci, cj);
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dopair2_force(r, ci, cj);
+            runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_grav(r, ci, cj, 1);
           else

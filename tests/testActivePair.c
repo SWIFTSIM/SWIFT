@@ -29,6 +29,9 @@
 /* Local headers. */
 #include "swift.h"
 
+/* Typdef function pointer for interaction function. */
+typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *);
+
 /**
  * @brief Constructs a cell and all of its particle in a valid state prior to
  * a DOPAIR or DOSELF calcuation.
@@ -108,6 +111,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         else
           part->time_bin = num_time_bins + 1;
 
+        part->rho = 1.f;
+        part->force.f = 1.f;
+        part->force.P_over_rho2 = 1.f;
+        part->force.balsara = 1.f;
+        part->force.soundspeed = 1.f;
+
 #ifdef SWIFT_DEBUG_CHECKS
         part->ti_drift = 8;
         part->ti_kick = 8;
@@ -133,7 +142,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->ti_old_part = 8;
   cell->ti_end_min = 8;
-  cell->ti_end_max = 8;
+  cell->ti_end_max = 10;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -156,6 +165,11 @@ void clean_up(struct cell *ci) {
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
     hydro_init_part(&c->parts[pid], NULL);
+    c->parts[pid].rho = 1.f;
+    c->parts[pid].force.f = 1.f;
+    c->parts[pid].force.P_over_rho2 = 1.f;
+    c->parts[pid].force.balsara = 1.f;
+    c->parts[pid].force.soundspeed = 1.f;
   }
 }
 
@@ -179,20 +193,20 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   FILE *file = fopen(fileName, "a");
 
   /* Write header */
-  fprintf(file, "# %4s %13s\n", "ID", "wcount");
+  fprintf(file, "# %4s %13s %13s\n", "ID", "wcount", "h_dt");
 
   fprintf(file, "# ci --------------------------------------------\n");
 
   for (int pid = 0; pid < ci->count; pid++) {
-    fprintf(file, "%6llu %13e\n", ci->parts[pid].id,
-            ci->parts[pid].density.wcount);
+    fprintf(file, "%6llu %13e %13e\n", ci->parts[pid].id,
+            ci->parts[pid].density.wcount, ci->parts[pid].force.h_dt);
   }
 
   fprintf(file, "# cj --------------------------------------------\n");
 
   for (int pjd = 0; pjd < cj->count; pjd++) {
-    fprintf(file, "%6llu %13e\n", cj->parts[pjd].id,
-            cj->parts[pjd].density.wcount);
+    fprintf(file, "%6llu %13e %13e\n", cj->parts[pjd].id,
+            cj->parts[pjd].density.wcount, cj->parts[pjd].force.h_dt);
   }
 
   fclose(file);
@@ -200,9 +214,13 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+                              struct cell *cj);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
+void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
+                                 struct cell *cj);
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
@@ -210,7 +228,9 @@ void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
  */
 void test_pair_interactions(struct runner *runner, struct cell **ci,
                             struct cell **cj, char *swiftOutputFileName,
-                            char *bruteForceOutputFileName) {
+                            char *bruteForceOutputFileName,
+                            interaction_func serial_interaction,
+                            interaction_func vec_interaction) {
 
   runner_do_sort(runner, *ci, 0x1FFF, 0, 0);
   runner_do_sort(runner, *cj, 0x1FFF, 0, 0);
@@ -220,7 +240,7 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   zero_particle_fields(*cj);
 
   /* Run the test */
-  runner_dopair1_branch_density(runner, *ci, *cj);
+  vec_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
   end_calculation(*ci);
@@ -236,7 +256,7 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   zero_particle_fields(*cj);
 
   /* Run the brute-force test */
-  pairs_all_density(runner, *ci, *cj);
+  serial_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
   end_calculation(*ci);
@@ -248,15 +268,25 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
 /**
  * @brief Computes the pair interactions of two cells in various configurations.
  */
-void test_all_pair_interactions(struct runner *runner, double *offset2,
-                                size_t particles, double size, double h,
-                                double rho, long long *partId,
-                                double perturbation, double h_pert,
-                                char *swiftOutputFileName,
-                                char *bruteForceOutputFileName) {
+void test_all_pair_interactions(
+    struct runner *runner, double *offset2, size_t particles, double size,
+    double h, double rho, long long *partId, double perturbation, double h_pert,
+    char *swiftOutputFileName, char *bruteForceOutputFileName,
+    interaction_func serial_interaction, interaction_func vec_interaction) {
 
   double offset1[3] = {0, 0, 0};
   struct cell *ci, *cj;
+
+  /* Only one particle in each cell. */
+  ci = make_cell(1, offset1, size, h, rho, partId, perturbation, h_pert, 1.);
+  cj = make_cell(1, offset2, size, h, rho, partId, perturbation, h_pert, 1.);
+
+  test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
+
+  clean_up(ci);
+  clean_up(cj);
 
   /* All active particles. */
   ci = make_cell(particles, offset1, size, h, rho, partId, perturbation, h_pert,
@@ -265,7 +295,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  1.);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -277,7 +308,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.5);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -289,7 +321,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -301,7 +334,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.1);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -313,7 +347,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -325,7 +360,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  1.0);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -335,7 +371,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
   cj = make_cell(2, offset2, size, h, rho, partId, perturbation, h_pert, 1.0);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -345,7 +382,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
   cj = make_cell(3, offset2, size, h, rho, partId, perturbation, h_pert, 0.75);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -357,7 +395,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   clean_up(ci);
   clean_up(cj);
@@ -369,7 +408,8 @@ void test_all_pair_interactions(struct runner *runner, double *offset2,
                  0.5);
 
   test_pair_interactions(runner, &ci, &cj, swiftOutputFileName,
-                         bruteForceOutputFileName);
+                         bruteForceOutputFileName, serial_interaction,
+                         vec_interaction);
 
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);
@@ -470,7 +510,7 @@ int main(int argc, char *argv[]) {
 
   /* Create output file names. */
   sprintf(swiftOutputFileName, "swift_dopair_%s.dat", outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_pair_%s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */
@@ -486,10 +526,15 @@ int main(int argc, char *argv[]) {
 
   double offset[3] = {1., 0., 0.};
 
+  /* Define which interactions to call */
+  interaction_func serial_inter_func = &pairs_all_density;
+  interaction_func vec_inter_func = &runner_dopair1_branch_density;
+
   /* Test a pair of cells face-on. */
   test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
                              perturbation, h_pert, swiftOutputFileName,
-                             bruteForceOutputFileName);
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
 
   /* Test a pair of cells edge-on. */
   offset[0] = 1.;
@@ -497,7 +542,8 @@ int main(int argc, char *argv[]) {
   offset[2] = 0.;
   test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
                              perturbation, h_pert, swiftOutputFileName,
-                             bruteForceOutputFileName);
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
 
   /* Test a pair of cells corner-on. */
   offset[0] = 1.;
@@ -505,6 +551,48 @@ int main(int argc, char *argv[]) {
   offset[2] = 1.;
   test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
                              perturbation, h_pert, swiftOutputFileName,
-                             bruteForceOutputFileName);
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
+
+  /* Re-assign function pointers. */
+  serial_inter_func = &pairs_all_force;
+  vec_inter_func = &runner_dopair2_branch_force;
+
+  /* Create new output file names. */
+  sprintf(swiftOutputFileName, "swift_dopair2_force_%s.dat",
+          outputFileNameExtension);
+  sprintf(bruteForceOutputFileName, "brute_force_dopair2_%s.dat",
+          outputFileNameExtension);
+
+  /* Delete files if they already exist. */
+  remove(swiftOutputFileName);
+  remove(bruteForceOutputFileName);
+
+  /* Test a pair of cells face-on. */
+  offset[0] = 1.;
+  offset[1] = 0.;
+  offset[2] = 0.;
+  test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
+                             perturbation, h_pert, swiftOutputFileName,
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
+
+  /* Test a pair of cells edge-on. */
+  offset[0] = 1.;
+  offset[1] = 1.;
+  offset[2] = 0.;
+  test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
+                             perturbation, h_pert, swiftOutputFileName,
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
+
+  /* Test a pair of cells corner-on. */
+  offset[0] = 1.;
+  offset[1] = 1.;
+  offset[2] = 1.;
+  test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
+                             perturbation, h_pert, swiftOutputFileName,
+                             bruteForceOutputFileName, serial_inter_func,
+                             vec_inter_func);
   return 0;
 }
