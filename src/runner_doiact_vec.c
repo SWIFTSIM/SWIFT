@@ -567,8 +567,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
-    vector v_r2;
-
     const float hi = cell_cache->h[pid];
 
     /* Fill particle pi vectors. */
@@ -625,7 +623,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       const vector v_pjz2 = vector_load(&cell_cache->z[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
-      vector v_dx, v_dy, v_dz;
+      vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
@@ -773,16 +771,16 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     const float hi = pi->h;
 
     /* Fill particle pi vectors. */
-    const vector pix = vec_set1(pi->x[0] - c->loc[0]);
-    const vector piy = vec_set1(pi->x[1] - c->loc[1]);
-    const vector piz = vec_set1(pi->x[2] - c->loc[2]);
-    const vector v_hi = vec_set1(hi);
-    const vector v_vix = vec_set1(pi->v[0]);
-    const vector v_viy = vec_set1(pi->v[1]);
-    const vector v_viz = vec_set1(pi->v[2]);
+    const vector v_pix = vector_set1(pi->x[0] - c->loc[0]);
+    const vector v_piy = vector_set1(pi->x[1] - c->loc[1]);
+    const vector v_piz = vector_set1(pi->x[2] - c->loc[2]);
+    const vector v_hi = vector_set1(hi);
+    const vector v_vix = vector_set1(pi->v[0]);
+    const vector v_viy = vector_set1(pi->v[1]);
+    const vector v_viz = vector_set1(pi->v[2]);
 
     const float hig2 = hi * hi * kernel_gamma2;
-    const vector v_hig2 = vec_set1(hig2);
+    const vector v_hig2 = vector_set1(hig2);
 
     /* Get the inverse of hi. */
     vector v_hi_inv = vec_reciprocal(v_hi);
@@ -808,9 +806,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
       for (int i = count; i < count_align; i++) {
-        cell_cache->x[i] = pix.f[0];
-        cell_cache->y[i] = piy.f[0];
-        cell_cache->z[i] = piz.f[0];
+        cell_cache->x[i] = v_pix.f[0];
+        cell_cache->y[i] = v_piy.f[0];
+        cell_cache->z[i] = v_piz.f[0];
       }
     }
 
@@ -819,24 +817,24 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
-      const vector pjx = vec_load(&cell_cache->x[pjd]);
-      const vector pjy = vec_load(&cell_cache->y[pjd]);
-      const vector pjz = vec_load(&cell_cache->z[pjd]);
+      const vector v_pjx = vector_load(&cell_cache->x[pjd]);
+      const vector v_pjy = vector_load(&cell_cache->y[pjd]);
+      const vector v_pjz = vector_load(&cell_cache->z[pjd]);
 
-      const vector pjx2 = vec_load(&cell_cache->x[pjd + VEC_SIZE]);
-      const vector pjy2 = vec_load(&cell_cache->y[pjd + VEC_SIZE]);
-      const vector pjz2 = vec_load(&cell_cache->z[pjd + VEC_SIZE]);
+      const vector v_pjx2 = vector_load(&cell_cache->x[pjd + VEC_SIZE]);
+      const vector v_pjy2 = vector_load(&cell_cache->y[pjd + VEC_SIZE]);
+      const vector v_pjz2 = vector_load(&cell_cache->z[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
-      vector v_dx, v_dy, v_dz;
+      vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
-      v_dx.v = vec_sub(pix.v, pjx.v);
-      v_dx_2.v = vec_sub(pix.v, pjx2.v);
-      v_dy.v = vec_sub(piy.v, pjy.v);
-      v_dy_2.v = vec_sub(piy.v, pjy2.v);
-      v_dz.v = vec_sub(piz.v, pjz.v);
-      v_dz_2.v = vec_sub(piz.v, pjz2.v);
+      v_dx.v = vec_sub(v_pix.v, v_pjx.v);
+      v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
+      v_dy.v = vec_sub(v_piy.v, v_pjy.v);
+      v_dy_2.v = vec_sub(v_piy.v, v_pjy2.v);
+      v_dz.v = vec_sub(v_piz.v, v_pjz.v);
+      v_dz_2.v = vec_sub(v_piz.v, v_pjz2.v);
 
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
       v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
@@ -868,23 +866,23 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
        * cache. */
       if (doi_mask) {
         storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
-                          &int_cache, &icount, &rhoSum, &rho_dhSum, &wcountSum,
-                          &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
-                          &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
+                          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
+                          &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
       }
       if (doi_mask2) {
         storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
-                          &v_dz_2, cell_cache, &int_cache, &icount, &rhoSum,
-                          &rho_dhSum, &wcountSum, &wcount_dhSum, &div_vSum,
-                          &curlvxSum, &curlvySum, &curlvzSum, v_hi_inv, v_vix,
+                          &v_dz_2, cell_cache, &int_cache, &icount, &v_rhoSum,
+                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv, v_vix,
                           v_viy, v_viz);
       }
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &rhoSum, &rho_dhSum, &wcountSum,
-                        &wcount_dhSum, &div_vSum, &curlvxSum, &curlvySum,
-                        &curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
+    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
+                        &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
+                        &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
                         &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
@@ -899,21 +897,21 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
-          &int_cache.mq[pjd], &rhoSum, &rho_dhSum, &wcountSum, &wcount_dhSum,
-          &div_vSum, &curlvxSum, &curlvySum, &curlvzSum, int_mask, int_mask2,
+          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum, int_mask, int_mask2,
           0);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
      */
-    VEC_HADD(rhoSum, pi->rho);
-    VEC_HADD(rho_dhSum, pi->density.rho_dh);
-    VEC_HADD(wcountSum, pi->density.wcount);
-    VEC_HADD(wcount_dhSum, pi->density.wcount_dh);
-    VEC_HADD(div_vSum, pi->density.div_v);
-    VEC_HADD(curlvxSum, pi->density.rot_v[0]);
-    VEC_HADD(curlvySum, pi->density.rot_v[1]);
-    VEC_HADD(curlvzSum, pi->density.rot_v[2]);
+    VEC_HADD(v_rhoSum, pi->rho);
+    VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
+    VEC_HADD(v_wcountSum, pi->density.wcount);
+    VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
+    VEC_HADD(v_div_vSum, pi->density.div_v);
+    VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
+    VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
+    VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
 
     /* Reset interaction count. */
     icount = 0;
