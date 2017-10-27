@@ -32,6 +32,7 @@
 #include "cooling.h"
 #include "cycle.h"
 #include "debug.h"
+#include "dump.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
