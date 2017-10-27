@@ -150,8 +150,7 @@ if test "$ac_test_CFLAGS" != "set"; then
      # default optimization flags for clang on all systems
      CFLAGS="-O3 -fomit-frame-pointer"
 
-     # -malign-double for x86 systems
-     AX_CHECK_COMPILE_FLAG(-malign-double, CFLAGS="$CFLAGS -malign-double")
+     # Always good optimisation to have
      AX_CHECK_COMPILE_FLAG(-fstrict-aliasing, CFLAGS="$CFLAGS -fstrict-aliasing")
 
      # note that we enable "unsafe" fp optimization with other compilers, too
