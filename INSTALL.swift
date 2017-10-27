@@ -78,9 +78,11 @@ also be switched off for benchmarking purposes. To do so, you can use:
 Please note that to build SWIFT on MacOS, you will need to configure
 using
 
-    ./configure --disable-vec --disable-compiler-warnings
+    ./configure --disable-compiler-warnings
 
-due to some features not being available on the Mac platform.
+due to the incorrect behaviour of the LLVM compiler on this platform
+that raises warnings when the pthread flags are passed to the linker.
+
 
 
                                  Dependencies
