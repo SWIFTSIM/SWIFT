@@ -34,14 +34,22 @@
 #define DOSELF1 runner_doself1_density_vec
 #define DOSELF1_SUBSET runner_doself_subset_density_vec
 #define DOPAIR1 runner_dopair1_branch_density
-#define DOSELF1_NAME "runner_doself1_density_vec"
+#ifdef DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_density_vec"
+#else
+#define DOSELF1_NAME "runner_doself_density_vec"
+#endif
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
 #define DOSELF1_SUBSET runner_doself_subset_density
+#ifdef DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself1_subset_density"
+#else
 #define DOSELF1_NAME "runner_doself1_density"
+#endif
 #endif
 
 #ifndef DOPAIR1
@@ -470,11 +478,11 @@ int main(int argc, char *argv[]) {
 
         DOPAIR1(&runner, main_cell, cells[j]);
 
-        const ticks sub_toc = getticks();
-        timings[j] += sub_toc - sub_tic;
+        timings[j] += getticks() - sub_tic;
       }
     }
 
+#ifdef DOSELF_SUBSET
     int *pid = NULL;
     int count = 0;
     if ((pid = malloc(sizeof(int) * main_cell->count)) == NULL)
@@ -484,15 +492,18 @@ int main(int argc, char *argv[]) {
         pid[count] = k;
         ++count;
       }
+#endif
 
     /* And now the self-interaction */
     const ticks self_tic = getticks();
 
-    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts,pid,count);
+#ifdef DOSELF_SUBSET
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts, pid, count);
+#else
+    DOSELF1(&runner, main_cell);
+#endif
 
-    const ticks self_toc = getticks();
-
-    timings[13] += self_toc - self_tic;
+    timings[13] += getticks() - self_tic;
 
 #endif
 
