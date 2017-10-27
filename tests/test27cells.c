@@ -311,9 +311,12 @@ void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts, int *restrict ind, int count);
-void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict ci,
-                                      struct part *restrict parts, int *restrict ind, int count);
+                                  struct part *restrict parts,
+                                  int *restrict ind, int count);
+void runner_doself_subset_density_vec(struct runner *r,
+                                      struct cell *restrict ci,
+                                      struct part *restrict parts,
+                                      int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {

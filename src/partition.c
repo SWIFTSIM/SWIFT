@@ -384,8 +384,8 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
    *                weights_v, NULL, weights_e);
    */
   if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
-                          weights_e, &idx_nregions, NULL, NULL, options, &objval,
-                          regionid) != METIS_OK)
+                          weights_e, &idx_nregions, NULL, NULL, options,
+                          &objval, regionid) != METIS_OK)
     error("Call to METIS_PartGraphKway failed.");
 
   /* Check that the regionids are ok. */
@@ -519,8 +519,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0)
-      continue;
+    if (t->cost == 0) continue;
 
     /* Get the task weight. */
     int w = t->cost * wscale;

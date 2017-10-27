@@ -730,7 +730,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
  * @param pi_count The number of particles in @c ind.
  */
 __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
-    struct runner *r, struct cell *restrict c, struct part *restrict parts, int *restrict ind, int pi_count) {
+    struct runner *r, struct cell *restrict c, struct part *restrict parts,
+    int *restrict ind, int pi_count) {
 
 #ifdef WITH_VECTORIZATION
   struct part *restrict pi;
@@ -861,29 +862,30 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
                            vec_is_mask_true(v_doi_mask_self_check);
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
-      
+
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
         storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
-                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
-                          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
-                          &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz);
+                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum,
+                          &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                          v_vix, v_viy, v_viz);
       }
       if (doi_mask2) {
         storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
                           &v_dz_2, cell_cache, &int_cache, &icount, &v_rhoSum,
-                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
-                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv, v_vix,
-                          v_viy, v_viz);
+                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+                          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+                          v_hi_inv, v_vix, v_viy, v_viz);
       }
     }
 
     /* Perform padded vector remainder interactions if any are present. */
-    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
-                        &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
-                        &v_curlvzSum, v_hi_inv, v_vix, v_viy, v_viz,
-                        &icount_align);
+    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum,
+                        &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                        &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                        v_vix, v_viy, v_viz, &icount_align);
 
     /* Initialise masks to true in case remainder interactions have been
      * performed. */
@@ -897,9 +899,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
           &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
-          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
-          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum, int_mask, int_mask2,
-          0);
+          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
+          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
+          &v_curlvzSum, int_mask, int_mask2, 0);
     }
 
     /* Perform horizontal adds on vector sums and store result in particle pi.
