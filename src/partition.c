@@ -64,11 +64,13 @@ const char *initial_partition_name[] = {
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "none",
-    "METIS edge and vertex cost weights",
+    "METIS edge and vertex task cost weights",
     "METIS particle count vertex weights",
-    "METIS cost edge weights",
-    "METIS particle count vertex and cost edge weights",
-    "METIS vertex costs and edge delta timebin weights",
+    "METIS task cost edge weights",
+    "METIS particle count vertex and task cost edge weights",
+    "METIS vertex task costs and edge delta timebin weights",
+    "METIS particle count vertex and edge delta timebin weights",
+    "METIS edge delta timebin weights",
 };
 
 /* Local functions, if needed. */
@@ -841,16 +843,22 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
   if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_COSTS) {
-    repart_edge_metis(1, 1, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
+    repart_edge_metis(0, 1, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
     repart_edge_metis(0, 0, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS_EDGE_COSTS) {
-    repart_edge_metis(1, 0, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
+    repart_edge_metis(1, 1, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS) {
+    repart_edge_metis(0, 1, 1, nodeID, nr_nodes, s, tasks, nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS) {
     repart_edge_metis(1, 1, 1, nodeID, nr_nodes, s, tasks, nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_EDGE_TIMEBINS) {
+    repart_edge_metis(0, 0, 1, nodeID, nr_nodes, s, tasks, nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
     repart_vertex_metis(s, nodeID, nr_nodes);
@@ -1013,10 +1021,10 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  const char *default_repart = "task_costs";
+  const char *default_repart = "costs/costs";
   const char *default_part = "simple_metis";
 #else
-  const char *default_repart = "none";
+  const char *default_repart = "none/none";
   const char *default_part = "grid";
 #endif
 
@@ -1073,35 +1081,41 @@ void partition_init(struct partition *partition,
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
-  switch (part_type[0]) {
-    case 'n':
+
+  if (strcmp("none/none", part_type) == 0) {
       repartition->type = REPART_NONE;
-      break;
+
 #ifdef HAVE_METIS
-    case 't':
+  } else if (strcmp("costs/costs", part_type) == 0) {
       repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_COSTS;
-      break;
-    case 'e':
-      repartition->type = REPART_METIS_EDGE_COSTS;
-      break;
-    case 'p':
+
+  } else if (strcmp("counts/none", part_type) == 0) {
       repartition->type = REPART_METIS_VERTEX_COUNTS;
-      break;
-    case 'h':
+
+  } else if (strcmp("none/costs", part_type) == 0) {
+      repartition->type = REPART_METIS_EDGE_COSTS;
+
+  } else if (strcmp("counts/costs", part_type) == 0) {
       repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_COSTS;
-      break;
-    case 'b':
+
+  } else if (strcmp("costs/time", part_type) == 0) {
       repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS;
-      break;
-    default:
+
+  } else if (strcmp("counts/time", part_type) == 0) {
+      repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS;
+
+  } else if (strcmp("none/time", part_type) == 0) {
+      repartition->type = REPART_METIS_EDGE_TIMEBINS;
+  } else {
       message("Invalid choice of re-partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'none', 'task_costs', 'particle_weights',"
-          "'edge_task_costs', 'hybrid_weights' or 'bin_weights'");
+            "Permitted values are: 'none/none', 'costs/costs',"
+            "'counts/none', 'none/costs', 'counts/costs', "
+            "'costs/time', 'counts/time' or 'none/time'");
 #else
-    default:
+  } else {
       message("Invalid choice of re-partition type '%s'.", part_type);
-      error("Permitted values are: 'none' when compiled without METIS.");
+      error("Permitted values are: 'none/none' when compiled without METIS.");
 #endif
   }
 
