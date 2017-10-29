@@ -776,7 +776,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
               runner_doself_subset_density_vec(r, finger, parts, pid, count);
 #else
               runner_doself_subset_density(r, finger, parts, pid, count);

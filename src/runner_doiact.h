@@ -2424,7 +2424,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Otherwise, compute self-interaction. */
     else
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
       runner_doself_subset_density_vec(r, ci, parts, ind, count);
 #else
       DOSELF_SUBSET(r, ci, parts, ind, count);
