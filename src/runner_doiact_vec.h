@@ -39,5 +39,8 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c);
 void runner_dopair1_density_vec(struct runner *r, struct cell *restrict ci,
                                 struct cell *restrict cj, const int sid,
                                 const double *shift);
+void runner_dopair2_force_vec(struct runner *r, struct cell *restrict ci,
+                              struct cell *restrict cj, const int sid,
+                              const double *shift);
 
 #endif /* SWIFT_RUNNER_VEC_H */

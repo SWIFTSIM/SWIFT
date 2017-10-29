@@ -20,7 +20,7 @@ Valid options are:
   -C                Run with cooling.
   -d                Dry run. Read the parameter file, allocate memory but does not read
                     the particles from ICs and exit before the start of time integration.
-                    Allows user to check validy of parameter and IC files as well as memory limits.
+                    Allows user to check validity of parameter and IC files as well as memory limits.
   -D                Always drift all particles even the ones far from active particles. This emulates
                     Gadget-[23] and GIZMO's default behaviours.
   -e                Enable floating-point exceptions (debugging mode).
