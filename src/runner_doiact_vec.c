@@ -1169,7 +1169,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      const int rem = (ci_cache_count - exit_iteration_align) % VEC_SIZE;
+      const int rem = exit_iteration_align % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
@@ -1532,7 +1532,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      const int rem = (ci_cache_count - exit_iteration_align) % VEC_SIZE;
+      const int rem = exit_iteration_align % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
