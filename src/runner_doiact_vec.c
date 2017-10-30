@@ -1058,20 +1058,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       vector v_curlvySum = vector_setzero();
       vector v_curlvzSum = vector_setzero();
 
-      /* Pad the exit iteration if there is a serial remainder. */
-      int exit_iteration_align = exit_iteration;
-      const int rem = exit_iteration % VEC_SIZE;
-      if (rem != 0) {
-        const int pad = VEC_SIZE - rem;
-
-        if (exit_iteration_align + pad <= last_pj + 1)
-          exit_iteration_align += pad;
-      }
-
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1179,7 +1169,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      const int rem = exit_iteration_align % VEC_SIZE;
+      const int rem = (ci_cache_count - exit_iteration_align) % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
@@ -1417,20 +1407,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       vector v_sigSum = vector_set1(pi->force.v_sig);
       vector v_entropy_dtSum = vector_setzero();
 
-      /* Pad the exit iteration if there is a serial remainder. */
-      int exit_iteration_align = exit_iteration;
-      const int rem = exit_iteration % VEC_SIZE;
-      if (rem != 0) {
-        int pad = VEC_SIZE - rem;
-
-        if (exit_iteration_align + pad <= last_pj + 1)
-          exit_iteration_align += pad;
-      }
-
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1552,7 +1532,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       int exit_iteration_align = exit_iteration - first_pi;
 
       /* Pad the exit iteration align so cache reads are aligned. */
-      const int rem = exit_iteration_align % VEC_SIZE;
+      const int rem = (ci_cache_count - exit_iteration_align) % VEC_SIZE;
       if (exit_iteration_align < VEC_SIZE) {
         exit_iteration_align = 0;
       } else
