@@ -171,7 +171,7 @@ if test "$ac_test_CFLAGS" != "set"; then
 
      #  -fstrict-aliasing for gcc-2.95+
      AX_CHECK_COMPILE_FLAG(-fstrict-aliasing,
-       CFLAGS="$CFLAGS -fstrict-aliasing")
+        CFLAGS="$CFLAGS -fstrict-aliasing")
 
      # note that we enable "unsafe" fp optimization with other compilers, too
      AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")
