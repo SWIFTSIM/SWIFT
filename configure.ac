@@ -380,9 +380,13 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     non-standard location.]))
 
 # Check whether POSIX thread barriers are implemented (e.g. OSX does not have them)
+have_pthread_barrier="no"
 AC_CHECK_LIB(pthread, pthread_barrier_init,
-	     AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers]),
+	     have_pthread_barrier="yes",
 	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))
+if test "x$have_pthread_barrier" == "xyes"; then
+  AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers])
+fi
 
 # Check whether POSIX file allocation functions exist (e.g. OSX does not have them)
 AC_CHECK_LIB(pthread, posix_fallocate,
@@ -914,19 +918,20 @@ AC_MSG_RESULT([
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
 
-   Compiler        : $CC
-    - vendor       : $ax_cv_c_compiler_vendor
-    - version      : $ax_cv_c_compiler_version
-    - flags        : $CFLAGS
-   MPI enabled     : $enable_mpi
-   HDF5 enabled    : $with_hdf5
-    - parallel     : $have_parallel_hdf5
-   Metis enabled   : $have_metis
-   FFTW3 enabled   : $have_fftw3
-   libNUMA enabled : $have_numa
-   Using tcmalloc  : $have_tcmalloc
-   Using jemalloc  : $have_jemalloc
-   CPU profiler    : $have_profiler
+   Compiler         : $CC
+    - vendor        : $ax_cv_c_compiler_vendor
+    - version       : $ax_cv_c_compiler_version
+    - flags         : $CFLAGS
+   MPI enabled      : $enable_mpi
+   HDF5 enabled     : $with_hdf5
+    - parallel      : $have_parallel_hdf5
+   Metis enabled    : $have_metis
+   FFTW3 enabled    : $have_fftw3
+   libNUMA enabled  : $have_numa
+   Using tcmalloc   : $have_tcmalloc
+   Using jemalloc   : $have_jemalloc
+   CPU profiler     : $have_profiler
+   Pthread barriers : $have_pthread_barrier
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

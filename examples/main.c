@@ -390,6 +390,13 @@ int main(int argc, char *argv[]) {
       message("WARNING: Floating point exceptions will be reported.");
   }
 
+/* Do we have slow barriers? */
+#ifdef HAVE_PTHREAD_BARRIERS
+  if (myrank == 0)
+    message(
+        "WARNING: Slow homemade thread barriers in use. Code will be slower.");
+#endif
+
   /* How large are the parts? */
   if (myrank == 0) {
     message("sizeof(part)        is %4zi bytes.", sizeof(struct part));

@@ -386,6 +386,7 @@ void io_write_code_description(hid_t h_file) {
                        configuration_options());
   io_write_attribute_s(h_grpcode, "CFLAGS", compilation_cflags());
   io_write_attribute_s(h_grpcode, "HDF5 library version", hdf5_version());
+  io_write_attribute_s(h_grpcode, "Thread barriers", thread_barrier_version());
 #ifdef HAVE_FFTW
   io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
