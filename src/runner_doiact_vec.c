@@ -1453,6 +1453,184 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 }
 
 /**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci. (Vectorised)
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts_i The #part to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
+                   struct part *restrict parts_i, int *restrict ind, int count,
+                   struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
+  return;
+#endif
+
+  TIMER_TIC;
+
+  const int count_j = cj->count;
+  struct part *restrict parts_j = cj->parts;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                         ? 0
+                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+
+  /* Switch the cells around? */
+  const int flipped = runner_flip[sid];
+  sid = sortlistID[sid];
+
+  /* Has the cell cj been sorted? */
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_j = cj->sort[sid];
+  const float dxj = cj->dx_max_sort;
+
+  /* Get both particle caches from the runner and re-allocate
+   * them if they are not big enough for the cells. */
+  struct cache *restrict cj_cache = &r->cj_cache;
+
+  if (cj_cache->count < count_j) {
+    cache_init(cj_cache, count_j);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(cj, cj_cache);
+  
+  /* Parts are on the left? */
+  if (!flipped) {
+
+    /* Loop over the parts_i. */
+    for (int pid = 0; pid < count; pid++) {
+
+      /* Get a hold of the ith part in ci. */
+      struct part *restrict pi = &parts_i[ind[pid]];
+      const double pix = pi->x[0] - (shift[0]);
+      const double piy = pi->x[1] - (shift[1]);
+      const double piz = pi->x[2] - (shift[2]);
+      const float hi = pi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      //int last_pj = 0;
+      //
+      //for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) last_pj++;
+
+      //int exit_iteration_align = last_pj;
+      //const int rem = last_pj % VEC_SIZE;
+      //if (rem != 0) {
+      //  const int pad = VEC_SIZE - rem;
+
+      //  if (exit_iteration_align + pad <= last_pj + 1)
+      //    exit_iteration_align += pad;
+      //}
+
+      /* Loop over the parts in cj. */
+      //for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+
+          runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj);
+        }
+      } /* loop over the parts in cj. */
+    }   /* loop over the parts in ci. */
+  }
+
+  /* Parts are on the right. */
+  else {
+
+    /* Loop over the parts_i. */
+    for (int pid = 0; pid < count; pid++) {
+
+      /* Get a hold of the ith part in ci. */
+      struct part *restrict pi = &parts_i[ind[pid]];
+      const double pix = pi->x[0] - (shift[0]);
+      const double piy = pi->x[1] - (shift[1]);
+      const double piz = pi->x[2] - (shift[2]);
+      const float hi = pi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      /* Loop over the parts in cj. */
+      for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
+
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const float hj = pj->h;
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+
+          runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj);
+        }
+      } /* loop over the parts in cj. */
+    }   /* loop over the parts in ci. */
+  }
+
+  TIMER_TOC(timer_dopair_subset);
+}
+
+/**
  * @brief Compute the force interactions between a cell pair (non-symmetric)
  * using vector intrinsics.
  *

@@ -317,7 +317,9 @@ void runner_doself_subset_density_vec(struct runner *r,
                                       struct cell *restrict ci,
                                       struct part *restrict parts,
                                       int *restrict ind, int count);
-
+void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
+                   struct part *restrict parts_i, int *restrict ind, int count,
+                   struct cell *restrict cj);
 /* And go... */
 int main(int argc, char *argv[]) {
 
@@ -474,12 +476,23 @@ int main(int argc, char *argv[]) {
     cache_init(&runner.cj_cache, 512);
 #endif
 
+    int *pid = NULL;
+    int count = 0;
+    if ((pid = malloc(sizeof(int) * main_cell->count)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < main_cell->count; k++)
+      if (part_is_active(&main_cell->parts[k], &engine)) {
+        pid[count] = k;
+        ++count;
+      }
+    
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j) {
       if (cells[j] != main_cell) {
         const ticks sub_tic = getticks();
 
-        DOPAIR1(&runner, main_cell, cells[j]);
+        //DOPAIR1(&runner, main_cell, cells[j]);
+        runner_dopair_subset_density_vec(&runner, main_cell, main_cell->parts, pid, count, cells[j]);
 
         timings[j] += getticks() - sub_tic;
       }
