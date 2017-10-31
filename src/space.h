@@ -101,6 +101,9 @@ struct space {
   /*! Total number of cells (top- and sub-) */
   int tot_cells;
 
+  /*! Number of *local* top-level cells with tasks */
+  int nr_local_cells;
+
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
@@ -112,6 +115,9 @@ struct space {
 
   /*! Buffer of unused multipoles for the sub-cells. */
   struct gravity_tensors *multipoles_sub;
+
+  /*! The indices of the *local* top-level cells with tasks */
+  int *local_cells_top;
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
@@ -204,6 +210,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
+void space_list_cells_with_tasks(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
                                 int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
