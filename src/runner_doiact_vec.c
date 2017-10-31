@@ -541,6 +541,14 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < count; i++) {
+    /* Check that particles have been drifted to the current time */
+    if (parts[i].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  }
+#endif
+
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
@@ -944,6 +952,14 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < count; i++) {
+    /* Check that particles have been drifted to the current time */
+    if (parts[i].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  }
+#endif
+
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
@@ -954,15 +970,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_force_particles(c, cell_cache);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < count; i++) {
-    pi = &c->parts[i];
-    /* Check that particles have been drifted to the current time */
-    if (pi->ti_drift != e->ti_current)
-      error("Particle pi not drifted to current time");
-  }
-#endif
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -1137,6 +1144,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that particles have been drifted to the current time */
+  for(int pid = 0; pid < count_i; pid++) 
+    if (parts_i[pid].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  for(int pjd = 0; pjd < count_j; pjd++) 
+    if (parts_j[pjd].ti_drift != e->ti_current)
+      error("Particle pj not drifted to current time");
+#endif
 
   /* Count number of particles that are in range and active*/
   int numActive = 0;
@@ -1478,6 +1495,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
   const int active_ci = cell_is_active(ci, e);
   const int active_cj = cell_is_active(cj, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that particles have been drifted to the current time */
+  for(int pid = 0; pid < count_i; pid++) 
+    if (parts_i[pid].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  for(int pjd = 0; pjd < count_j; pjd++) 
+    if (parts_j[pjd].ti_drift != e->ti_current)
+      error("Particle pj not drifted to current time");
+#endif
 
   /* Check if any particles are active and in range */
   int numActive = 0;
