@@ -656,6 +656,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
                            vec_is_mask_true(v_doi_mask_self_check);
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
+
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
@@ -869,6 +870,19 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
                            vec_is_mask_true(v_doi_mask_self_check);
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
+
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (doi_mask & (1 << bit_index)) {
+          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+        if (doi_mask2 & (1 << bit_index)) {
+          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+      }
+#endif
 
       /* If there are any interactions left pack interaction values into c2
        * cache. */
