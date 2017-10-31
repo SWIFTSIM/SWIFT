@@ -50,6 +50,7 @@
 #include "active.h"
 #include "atomic.h"
 #include "drift.h"
+#include "engine.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
