@@ -32,14 +32,24 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
+#define DOSELF1_SUBSET runner_doself_subset_density_vec
 #define DOPAIR1 runner_dopair1_branch_density
-#define DOSELF1_NAME "runner_doself1_density_vec"
+#ifdef DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_density_vec"
+#else
+#define DOSELF1_NAME "runner_doself_density_vec"
+#endif
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_density
+#define DOSELF1_SUBSET runner_doself_subset_density
+#ifdef DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself1_subset_density"
+#else
 #define DOSELF1_NAME "runner_doself1_density"
+#endif
 #endif
 
 #ifndef DOPAIR1
@@ -300,6 +310,13 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
+void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
+                                  struct part *restrict parts,
+                                  int *restrict ind, int count);
+void runner_doself_subset_density_vec(struct runner *r,
+                                      struct cell *restrict ci,
+                                      struct part *restrict parts,
+                                      int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -464,19 +481,32 @@ int main(int argc, char *argv[]) {
 
         DOPAIR1(&runner, main_cell, cells[j]);
 
-        const ticks sub_toc = getticks();
-        timings[j] += sub_toc - sub_tic;
+        timings[j] += getticks() - sub_tic;
       }
     }
+
+#ifdef DOSELF_SUBSET
+    int *pid = NULL;
+    int count = 0;
+    if ((pid = malloc(sizeof(int) * main_cell->count)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < main_cell->count; k++)
+      if (part_is_active(&main_cell->parts[k], &engine)) {
+        pid[count] = k;
+        ++count;
+      }
+#endif
 
     /* And now the self-interaction */
     const ticks self_tic = getticks();
 
+#ifdef DOSELF_SUBSET
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts, pid, count);
+#else
     DOSELF1(&runner, main_cell);
+#endif
 
-    const ticks self_toc = getticks();
-
-    timings[13] += self_toc - self_tic;
+    timings[13] += getticks() - self_tic;
 
 #endif
 

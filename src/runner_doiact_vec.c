@@ -528,8 +528,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int num_vec_proc = NUM_VEC_PROC;
-
   /* Get some local variables */
   const struct engine *e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
@@ -567,8 +565,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
-    vector v_r2;
-
     const float hi = cell_cache->h[pid];
 
     /* Fill particle pi vectors. */
@@ -598,9 +594,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
-    const int rem = count % (num_vec_proc * VEC_SIZE);
+    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
-      count_align += (num_vec_proc * VEC_SIZE) - rem;
+      count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
@@ -613,7 +609,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
-    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < count_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
       const vector v_pjx = vector_load(&cell_cache->x[pjd]);
@@ -625,7 +621,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       const vector v_pjz2 = vector_load(&cell_cache->z[pjd + VEC_SIZE]);
 
       /* Compute the pairwise distance. */
-      vector v_dx, v_dy, v_dz;
+      vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
@@ -692,7 +688,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     vec_init_mask_true(int_mask2);
 
     /* Perform interaction with 2 vectors. */
-    for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
@@ -722,6 +718,207 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 }
 
 /**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci. (Vectorised)
+ *
+ * @param r The #runner.
+ * @param c The first #cell.
+ * @param parts The #part to interact.
+ * @param ind The list of indices of particles in @c c to interact with.
+ * @param pi_count The number of particles in @c ind.
+ */
+__attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
+    struct runner *r, struct cell *restrict c, struct part *restrict parts,
+    int *restrict ind, int pi_count) {
+
+#ifdef WITH_VECTORIZATION
+  const int count = c->count;
+
+  TIMER_TIC
+
+  /* Get the particle cache from the runner and re-allocate
+   * the cache if it is not big enough for the cell. */
+  struct cache *restrict cell_cache = &r->ci_cache;
+
+  if (cell_cache->count < count) {
+    cache_init(cell_cache, count);
+  }
+
+  /* Read the particles from the cell and store them locally in the cache. */
+  cache_read_particles(c, cell_cache);
+
+  /* Create secondary cache to store particle interactions. */
+  struct c2_cache int_cache;
+  int icount = 0, icount_align = 0;
+
+  /* Loop over the subset of particles in the parts that need updating. */
+  for (int pid = 0; pid < pi_count; pid++) {
+
+    /* Get a pointer to the ith particle. */
+    struct part *pi = &parts[ind[pid]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    const struct engine *e = r->e;
+    if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
+#endif
+
+    const float hi = pi->h;
+
+    /* Fill particle pi vectors. */
+    const vector v_pix = vector_set1(pi->x[0] - c->loc[0]);
+    const vector v_piy = vector_set1(pi->x[1] - c->loc[1]);
+    const vector v_piz = vector_set1(pi->x[2] - c->loc[2]);
+    const vector v_hi = vector_set1(hi);
+    const vector v_vix = vector_set1(pi->v[0]);
+    const vector v_viy = vector_set1(pi->v[1]);
+    const vector v_viz = vector_set1(pi->v[2]);
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    const vector v_hig2 = vector_set1(hig2);
+
+    /* Get the inverse of hi. */
+    vector v_hi_inv = vec_reciprocal(v_hi);
+
+    /* Reset cumulative sums of update vectors. */
+    vector v_rhoSum = vector_setzero();
+    vector v_rho_dhSum = vector_setzero();
+    vector v_wcountSum = vector_setzero();
+    vector v_wcount_dhSum = vector_setzero();
+    vector v_div_vSum = vector_setzero();
+    vector v_curlvxSum = vector_setzero();
+    vector v_curlvySum = vector_setzero();
+    vector v_curlvzSum = vector_setzero();
+
+    /* Pad cache if there is a serial remainder. */
+    int count_align = count;
+    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+    if (rem != 0) {
+      const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
+
+      count_align += pad;
+
+      /* Set positions to the same as particle pi so when the r2 > 0 mask is
+       * applied these extra contributions are masked out.*/
+      for (int i = count; i < count_align; i++) {
+        cell_cache->x[i] = v_pix.f[0];
+        cell_cache->y[i] = v_piy.f[0];
+        cell_cache->z[i] = v_piz.f[0];
+      }
+    }
+
+    /* Find all of particle pi's interacions and store needed values in the
+     * secondary cache.*/
+    for (int pjd = 0; pjd < count_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
+
+      /* Load 2 sets of vectors from the particle cache. */
+      const vector v_pjx = vector_load(&cell_cache->x[pjd]);
+      const vector v_pjy = vector_load(&cell_cache->y[pjd]);
+      const vector v_pjz = vector_load(&cell_cache->z[pjd]);
+
+      const vector v_pjx2 = vector_load(&cell_cache->x[pjd + VEC_SIZE]);
+      const vector v_pjy2 = vector_load(&cell_cache->y[pjd + VEC_SIZE]);
+      const vector v_pjz2 = vector_load(&cell_cache->z[pjd + VEC_SIZE]);
+
+      /* Compute the pairwise distance. */
+      vector v_dx, v_dy, v_dz, v_r2;
+      vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
+
+      /* p_i - p_j */
+      v_dx.v = vec_sub(v_pix.v, v_pjx.v);
+      v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
+      v_dy.v = vec_sub(v_piy.v, v_pjy.v);
+      v_dy_2.v = vec_sub(v_piy.v, v_pjy2.v);
+      v_dz.v = vec_sub(v_piz.v, v_pjz.v);
+      v_dz_2.v = vec_sub(v_piz.v, v_pjz2.v);
+
+      /* r2 = dx^2 + dy^2 + dz^2 */
+      v_r2.v = vec_mul(v_dx.v, v_dx.v);
+      v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
+      v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dy_2.v, v_dy_2.v, v_r2_2.v);
+      v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+      v_r2_2.v = vec_fma(v_dz_2.v, v_dz_2.v, v_r2_2.v);
+
+      /* Form a mask from r2 < hig2 and r2 > 0.*/
+      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
+          v_doi_mask2_self_check;
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
+
+      /* Form r2 > 0 mask and r2 < hig2 mask. */
+      vec_create_mask(v_doi_mask2_self_check,
+                      vec_cmp_gt(v_r2_2.v, vec_setzero()));
+      vec_create_mask(v_doi_mask2, vec_cmp_lt(v_r2_2.v, v_hig2.v));
+
+      /* Combine two masks and form integer masks. */
+      const int doi_mask = vec_is_mask_true(v_doi_mask) &
+                           vec_is_mask_true(v_doi_mask_self_check);
+      const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
+                            vec_is_mask_true(v_doi_mask2_self_check);
+
+      /* If there are any interactions left pack interaction values into c2
+       * cache. */
+      if (doi_mask) {
+        storeInteractions(doi_mask, pjd, &v_r2, &v_dx, &v_dy, &v_dz, cell_cache,
+                          &int_cache, &icount, &v_rhoSum, &v_rho_dhSum,
+                          &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                          &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                          v_vix, v_viy, v_viz);
+      }
+      if (doi_mask2) {
+        storeInteractions(doi_mask2, pjd + VEC_SIZE, &v_r2_2, &v_dx_2, &v_dy_2,
+                          &v_dz_2, cell_cache, &int_cache, &icount, &v_rhoSum,
+                          &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+                          &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+                          v_hi_inv, v_vix, v_viy, v_viz);
+      }
+    }
+
+    /* Perform padded vector remainder interactions if any are present. */
+    calcRemInteractions(&int_cache, icount, &v_rhoSum, &v_rho_dhSum,
+                        &v_wcountSum, &v_wcount_dhSum, &v_div_vSum,
+                        &v_curlvxSum, &v_curlvySum, &v_curlvzSum, v_hi_inv,
+                        v_vix, v_viy, v_viz, &icount_align);
+
+    /* Initialise masks to true in case remainder interactions have been
+     * performed. */
+    mask_t int_mask, int_mask2;
+    vec_init_mask_true(int_mask);
+    vec_init_mask_true(int_mask2);
+
+    /* Perform interaction with 2 vectors. */
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
+      runner_iact_nonsym_2_vec_density(
+          &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
+          &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
+          &int_cache.vxq[pjd], &int_cache.vyq[pjd], &int_cache.vzq[pjd],
+          &int_cache.mq[pjd], &v_rhoSum, &v_rho_dhSum, &v_wcountSum,
+          &v_wcount_dhSum, &v_div_vSum, &v_curlvxSum, &v_curlvySum,
+          &v_curlvzSum, int_mask, int_mask2, 0);
+    }
+
+    /* Perform horizontal adds on vector sums and store result in particle pi.
+     */
+    VEC_HADD(v_rhoSum, pi->rho);
+    VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
+    VEC_HADD(v_wcountSum, pi->density.wcount);
+    VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
+    VEC_HADD(v_div_vSum, pi->density.div_v);
+    VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
+    VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
+    VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
+
+    /* Reset interaction count. */
+    icount = 0;
+  } /* loop over all particles. */
+
+  TIMER_TOC(timer_doself_subset);
+#endif /* WITH_VECTORIZATION */
+}
+
+/**
  * @brief Compute the force cell self-interaction (non-symmetric) using vector
  * intrinsics with one particle pi at a time.
  *
@@ -735,7 +932,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   const struct engine *e = r->e;
   struct part *restrict pi;
   int count_align;
-  const int num_vec_proc = 1;
 
   const timebin_t max_active_bin = e->max_active_bin;
 
@@ -810,9 +1006,9 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
     /* Pad cache if there is a serial remainder. */
     count_align = count;
-    int rem = count % (num_vec_proc * VEC_SIZE);
+    int rem = count % VEC_SIZE;
     if (rem != 0) {
-      int pad = (num_vec_proc * VEC_SIZE) - rem;
+      int pad = VEC_SIZE - rem;
 
       count_align += pad;
 
@@ -833,7 +1029,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
-    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < count_align; pjd += VEC_SIZE) {
 
       /* Load 1 set of vectors from the particle cache. */
       vector hjg2;
