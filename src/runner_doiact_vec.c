@@ -732,7 +732,6 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     int *restrict ind, int pi_count) {
 
 #ifdef WITH_VECTORIZATION
-  struct part *restrict pi;
   const int count = c->count;
 
   TIMER_TIC
@@ -755,10 +754,8 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
   /* Loop over the subset of particles in the parts that need updating. */
   for (int pid = 0; pid < pi_count; pid++) {
 
-    const int pi_index = ind[pid];
-
     /* Get a pointer to the ith particle. */
-    pi = &parts[pi_index];
+    struct part *pi = &parts[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
     const struct engine *e = r->e;
@@ -794,9 +791,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
-    int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
-      int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
+      const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       count_align += pad;
 
@@ -826,6 +823,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
+      /* p_i - p_j */
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
       v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
       v_dy.v = vec_sub(v_piy.v, v_pjy.v);
@@ -833,6 +831,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       v_dz.v = vec_sub(v_piz.v, v_pjz.v);
       v_dz_2.v = vec_sub(v_piz.v, v_pjz2.v);
 
+      /* r2 = dx^2 + dy^2 + dz^2 */
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
       v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
