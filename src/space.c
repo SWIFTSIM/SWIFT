@@ -389,6 +389,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -419,6 +420,12 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
+
+    /* Allocate the indices of local cells */
+    if (posix_memalign((void *)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
+                       s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2466,6 +2473,27 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   }
 }
 
+/**
+ * @brief Construct the list of top-level cells that have any tasks in
+ * their hierarchy.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
+void space_list_cells_with_tasks(struct space *s) {
+
+  /* Let's rebuild the list of local top-level cells */
+  s->nr_local_cells = 0;
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_top[s->nr_local_cells] = i;
+      s->nr_local_cells++;
+    }
+  if (s->e->verbose)
+    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
+}
+
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
                                                  void *extra_data) {
   /* Unpack the data */
@@ -3039,6 +3067,7 @@ void space_clean(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   free(s->cells_top);
   free(s->multipoles_top);
+  free(s->local_cells_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);

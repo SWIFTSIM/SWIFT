@@ -152,7 +152,7 @@ if test "$enable_mpi" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
-# Indicate that MPIRUN can be modified by an environement variable
+# Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Add libtool support (now that CC is defined).
@@ -392,7 +392,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     non-standard location.]))
 
 
-# Check for metis. Note AX_LIB_METIS exists, but cannot be configured
+# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
 have_metis="no"
