@@ -30,7 +30,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testActivePair test27cells test125cells testParser \
+		 testSPHStep testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths \
                  testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
@@ -59,6 +59,10 @@ testSingle_SOURCES = testSingle.c
 testActivePair_SOURCES = testActivePair.c
 
 test27cells_SOURCES = test27cells.c
+
+test27cells_subset_SOURCES = test27cells.c
+
+test27cells_subset_CFLAGS = $(AM_CFLAGS) -DDOSELF_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
