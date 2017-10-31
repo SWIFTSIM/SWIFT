@@ -226,18 +226,6 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
-# Check if debugging interactions is switched on.
-AC_ARG_ENABLE([debug-interactions],
-   [AS_HELP_STRING([--enable-debug-interactions],
-     [Activate interaction debugging @<:@yes/no@:>@]
-   )],
-   [enable_debug_interactions="$enableval"],
-   [enable_debug_interactions="no"]
-)
-if test "$enable_debug_interactions" = "yes"; then
-   AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
-fi
-
 # Check whether we want to default to naive cell interactions
 AC_ARG_ENABLE([naive-interactions],
    [AS_HELP_STRING([--enable-naive-interactions],
@@ -680,6 +668,22 @@ case "$with_hydro" in
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
+
+# Check if debugging interactions is switched on.
+AC_ARG_ENABLE([debug-interactions],
+   [AS_HELP_STRING([--enable-debug-interactions],
+     [Activate interaction debugging @<:@yes/no@:>@]
+   )],
+   [enable_debug_interactions="$enableval"],
+   [enable_debug_interactions="no"]
+)
+if test "$enable_debug_interactions" = "yes"; then
+  if test "$with_hydro" = "gadget2"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+  else 
+    [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
+  fi
+fi
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
