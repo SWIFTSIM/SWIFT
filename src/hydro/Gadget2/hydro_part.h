@@ -33,7 +33,9 @@
 
 #include "cooling_struct.h"
 
+#ifdef DEBUG_INTERACTIONS_SPH
 #define NUM_OF_NEIGHBOURS 128
+#endif
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
