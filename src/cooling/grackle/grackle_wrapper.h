@@ -13,12 +13,12 @@
 #ifndef SWIFT_COOLING_GRACKLE_WRAPPER_H
 #define SWIFT_COOLING_GRACKLE_WRAPPER_H
 
-#include "../../../config.h"
 #include <grackle.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "config.h"
 #include "error.h"
 

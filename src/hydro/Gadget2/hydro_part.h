@@ -45,6 +45,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /* Radiated energy */
+  float e_radcool;
+
   /* Entropy at the last full step. */
   float entropy_full;
 
