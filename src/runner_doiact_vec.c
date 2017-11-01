@@ -1123,6 +1123,14 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
+#ifdef WITH_MPI
+const int ci_local = (ci->nodeID == e->nodeID) ? 1 : 0; 
+const int cj_local = (cj->nodeID == e->nodeID) ? 1 : 0; 
+#else
+const int ci_local = 1; 
+const int cj_local = 1; 
+#endif
+
   /* Get the cutoff shift. */
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -1214,7 +1222,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   /* Get the number of particles read into the ci cache. */
   const int ci_cache_count = count_i - first_pi;
 
-  if (active_ci) {
+  if (active_ci && ci_local) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -1332,7 +1340,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
     } /* loop over the parts in ci. */
   }
 
-  if (active_cj) {
+  if (active_cj && cj_local) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
