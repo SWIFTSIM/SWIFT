@@ -27,20 +27,17 @@ matplotlib.use("Agg")
 import pylab as pl
 import glob
 import os
+import sys
+import multiprocessing as mp
 
 pl.rcParams["figure.figsize"] = (12, 6)
 pl.rcParams["text.usetex"] = True
 
-M = 1./6.67408e-8 # total mass of the sphere
-R = 1. # radius of the sphere
-
-for filename in sorted(glob.glob("evrard_????.hdf5")):
-  print "processing", filename, "..."
+def plot_file(filename):
   imagefile = "{0}.png".format(filename[:-5])
   if os.path.exists(imagefile) and \
      os.path.getmtime(imagefile) > os.path.getmtime(filename):
-    print "already processed, skipping..."
-    continue
+    return filename
   file = h5py.File(filename, 'r')
   coords = np.array(file["/PartType0/Coordinates"])
   box = np.array(file["/Header"].attrs["BoxSize"])
@@ -69,3 +66,29 @@ for filename in sorted(glob.glob("evrard_????.hdf5")):
 
   pl.tight_layout()
   pl.savefig(imagefile)
+  pl.close()
+
+  return filename
+
+num_threads = 1
+first_snap = 0
+last_snap = len(glob.glob("evrard_????.hdf5"))
+
+if len(sys.argv) > 1:
+  num_threads = int(sys.argv[1])
+if len(sys.argv) > 2:
+  first_snap = int(sys.argv[2])
+if len(sys.argv) > 3:
+  last_snap = int(sys.argv[3]) + 1
+
+print "Plotting snapshots {0} to {1} using {2} threads...".format(
+  first_snap, last_snap - 1, num_threads)
+
+pool = mp.Pool(num_threads)
+results = []
+for i in range(first_snap, last_snap):
+  filename = "evrard_{0:04d}.hdf5".format(i)
+  results.append(pool.apply_async(plot_file, (filename,)))
+
+for result in results:
+  print result.get(), "done"

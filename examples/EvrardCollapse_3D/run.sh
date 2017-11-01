@@ -11,4 +11,4 @@ fi
 ../swift -s -G -t 4 evrard.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plot_density_profile.py
+python plot_density_profile.py 4
