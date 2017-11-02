@@ -2551,7 +2551,7 @@ void space_synchronize_particle_positions(struct space *s) {
  *
  * Calls hydro_first_init_part() on all the particles
  */
-void space_init_parts(struct space *s) {
+void space_first_init_parts(struct space *s) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2583,7 +2583,7 @@ void space_init_parts(struct space *s) {
  *
  * Calls cooling_init_xpart() on all the particles
  */
-void space_init_xparts(struct space *s) {
+void space_first_init_xparts(struct space *s) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2600,7 +2600,7 @@ void space_init_xparts(struct space *s) {
  *
  * Calls gravity_first_init_gpart() on all the particles
  */
-void space_init_gparts(struct space *s) {
+void space_first_init_gparts(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
@@ -2631,7 +2631,7 @@ void space_init_gparts(struct space *s) {
  *
  * Calls star_first_init_spart() on all the particles
  */
-void space_init_sparts(struct space *s) {
+void space_first_init_sparts(struct space *s) {
 
   const size_t nr_sparts = s->nr_sparts;
   struct spart *restrict sp = s->sparts;
@@ -2655,6 +2655,62 @@ void space_init_sparts(struct space *s) {
     sp->ti_kick = 0;
 #endif
   }
+}
+
+/**
+ * @brief Calls the #part initialisation function on all particles in the space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_parts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  for (size_t k = 0; k < s->nr_parts; k++)
+    hydro_init_part(&s->parts[k], &s->hs);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Calls the #gpart initialisation function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_gparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Calls the #part quantities conversion function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_convert_quantities(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Apply the conversion */
+  for (size_t i = 0; i < s->nr_parts; ++i)
+    hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2845,11 +2901,15 @@ void space_init(struct space *s, const struct swift_params *params,
 
   hydro_space_init(&s->hs, s);
 
+  ticks tic = getticks();
+  message("first init...");
   /* Set the particles in a state where they are ready for a run */
-  space_init_parts(s);
-  space_init_xparts(s);
-  space_init_gparts(s);
-  space_init_sparts(s);
+  space_first_init_parts(s);
+  space_first_init_xparts(s);
+  space_first_init_gparts(s);
+  space_first_init_sparts(s);
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

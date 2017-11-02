@@ -3527,10 +3527,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-  /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    hydro_init_part(&s->parts[k], &e->s->hs);
-  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+  /* Init the particle data (by hand). */
+  space_init_parts(s, e->verbose);
+  space_init_gparts(s, e->verbose);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -3542,9 +3541,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
-    /* Apply the conversion */
-    for (size_t i = 0; i < s->nr_parts; ++i)
-      hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
+    space_convert_quantities(e->s, e->verbose);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {
@@ -3577,10 +3574,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* No drift this time */
   engine_skip_drift(e);
 
-  /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    hydro_init_part(&s->parts[k], &e->s->hs);
-  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+  /* Init the particle data (by hand). */
+  space_init_parts(e->s, e->verbose);
+  space_init_gparts(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);

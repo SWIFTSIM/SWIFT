@@ -221,9 +221,9 @@ void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
-void space_init_parts(struct space *s);
-void space_init_gparts(struct space *s);
-void space_init_sparts(struct space *s);
+void space_init_parts(struct space *s, int verbose);
+void space_init_gparts(struct space *s, int verbose);
+void space_convert_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);
