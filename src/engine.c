@@ -3646,10 +3646,6 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_stars)
     e->size_links += s->tot_cells * stars_tasks_per_cell;
 
-#if defined(WITH_LOGGER)
-  e->size_links += s->tot_cells;
-#endif
-
   /* Allocate the new link list */
   if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
       NULL)
