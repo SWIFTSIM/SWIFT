@@ -33,7 +33,7 @@ SPH:
 
 EoS:
   isothermal_internal_energy: 20.267845
-  
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Disc-Patch.hdf5       # The file to read
