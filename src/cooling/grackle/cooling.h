@@ -47,7 +47,7 @@
  *  between step t0 and t1.
  */
 
-static INLINE double DoCooling_GRACKLE(double energy, double density, double dtime, double *ne, double Z, double a_now)
+static INLINE double do_cooling_grackle(double energy, double density, double dtime, double *ne, double Z, double a_now)
 {
 
   
@@ -57,7 +57,7 @@ static INLINE double DoCooling_GRACKLE(double energy, double density, double dti
    *********************************************************************/
   
   if (wrap_do_cooling(density, &energy, dtime,Z, a_now) == 0) {
-    fprintf(stderr, "Error in do_cooling.\n");
+    error("Error in do_cooling.\n");
     return 0;
   }
   
@@ -66,10 +66,6 @@ static INLINE double DoCooling_GRACKLE(double energy, double density, double dti
 
 
 }
-
-
-
-
 
 
 /**
@@ -85,7 +81,7 @@ static INLINE double DoCooling_GRACKLE(double energy, double density, double dti
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us,
+    const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
     
@@ -93,7 +89,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
 
   /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
+  const float u_old = hydro_get_internal_energy(p);
   /* Get current density */
   const float rho = hydro_get_density(p);
   /* Actual scaling fractor */
@@ -108,7 +104,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   float u_new;
   float delta_u;
   
-  u_new = DoCooling_GRACKLE(u_old, rho, dt, &ne, Z, a_now);
+  u_new = do_cooling_grackle(u_old, rho, dt, &ne, Z, a_now);
   //u_new = u_old * 0.99;
 
 
@@ -129,11 +125,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  
   
   /* Update the internal energy */
-  hydro_set_internal_energy(p, u_new);  
-
-
-
-
+  hydro_set_internal_energy_dt(p, delta_u / dt);  
     
 }
 
@@ -150,7 +142,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us, const struct part* restrict p) {
 
   return FLT_MAX;
 }
@@ -188,7 +180,8 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param cooling The cooling properties to initialize
  */
 static INLINE void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct UnitSystem* us,
+    const struct swift_params* parameter_file,
+    const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
     

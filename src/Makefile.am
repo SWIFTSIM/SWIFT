@@ -116,6 +116,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
+		 cooling/grackle/grackle_wrapper.h \
                  memswap.h dump.h logger.h
 
 
