@@ -2657,6 +2657,14 @@ void space_first_init_sparts(struct space *s) {
   }
 }
 
+void space_init_parts_mapper(void *restrict map_data, int count,
+                             void *restrict extra_data) {
+
+  struct part *restrict parts = map_data;
+  const struct hydro_space *restrict hs = extra_data;
+  for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
+}
+
 /**
  * @brief Calls the #part initialisation function on all particles in the space.
  *
@@ -2667,12 +2675,19 @@ void space_init_parts(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  for (size_t k = 0; k < s->nr_parts; k++)
-    hydro_init_part(&s->parts[k], &s->hs);
-
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 0, &s->hs);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void space_init_gparts_mapper(void *restrict map_data, int count,
+                              void *restrict extra_data) {
+
+  struct gpart *gparts = map_data;
+  for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
 }
 
 /**
@@ -2686,11 +2701,22 @@ void space_init_gparts(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
-
+  if (s->nr_gparts > 0)
+    threadpool_map(&s->e->threadpool, space_init_gparts_mapper, s->gparts,
+                   s->nr_gparts, sizeof(struct part), 0, NULL);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void space_convert_quantities_mapper(void *restrict map_data, int count,
+                                     void *restrict extra_data) {
+  struct space *s = extra_data;
+  struct part *restrict parts = map_data;
+  const ptrdiff_t index = parts - s->parts;
+  struct xpart *restrict xparts = s->xparts + index;
+  for (int k = 0; k < count; k++)
+    hydro_convert_quantities(&parts[k], &xparts[k]);
 }
 
 /**
@@ -2704,9 +2730,9 @@ void space_convert_quantities(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Apply the conversion */
-  for (size_t i = 0; i < s->nr_parts; ++i)
-    hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
