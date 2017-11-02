@@ -466,7 +466,6 @@ AC_ARG_WITH([grackle],
     [with_grackle="no"]
 )
 if test "x$with_grackle" != "xno"; then
-   AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
       GRACKLE_LIBS="-L$with_grackle/lib -lgrackle $FCLIBS"
