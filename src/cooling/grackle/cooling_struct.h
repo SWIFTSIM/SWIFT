@@ -33,7 +33,6 @@ struct cooling_function_data {
   int UVbackground;
   double GrackleRedshift;
   double GrackleHSShieldingDensityThreshold;
-
 };
 
 /**
@@ -43,8 +42,6 @@ struct cooling_xpart_data {
 
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
-
-
 };
 
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */

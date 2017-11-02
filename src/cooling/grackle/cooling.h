@@ -39,34 +39,25 @@
 /* include the grackle wrapper */
 #include "grackle_wrapper.h"
 
-
-
-
-
 /*! This function computes the new entropy due to the cooling,
  *  between step t0 and t1.
  */
 
-static INLINE double do_cooling_grackle(double energy, double density, double dtime, double *ne, double Z, double a_now)
-{
-
-  
+static INLINE double do_cooling_grackle(double energy, double density,
+                                        double dtime, double* ne, double Z,
+                                        double a_now) {
 
   /*********************************************************************
    call to the main chemistry solver
    *********************************************************************/
-  
-  if (wrap_do_cooling(density, &energy, dtime,Z, a_now) == 0) {
+
+  if (wrap_do_cooling(density, &energy, dtime, Z, a_now) == 0) {
     error("Error in do_cooling.\n");
     return 0;
   }
-  
-    
+
   return energy;
-
-
 }
-
 
 /**
  * @brief Apply the cooling function to a particle.
@@ -84,49 +75,41 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
-    
-
-
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p);
   /* Get current density */
   const float rho = hydro_get_density(p);
   /* Actual scaling fractor */
-  const float a_now =  1. / (1. + cooling->GrackleRedshift); ;			/*  must be chaged !!! */
+  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
+  const float a_now = 1. / (1. + cooling->GrackleRedshift);
+  ; /*  must be chaged !!! */
 
-  double ne,Z;
+  double ne, Z;
 
-  Z =  0.02041;					/* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in Grackle v2.1) */
-  ne=  0.0;					/* mass fraction of eletron */          	/* useless for GRACKLE_CHEMISTRY = 0 */
- 
- 
+  Z = 0.02041; /* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in
+                  Grackle v2.1) */
+  ne = 0.0;
+      /* mass fraction of eletron */ /* useless for GRACKLE_CHEMISTRY = 0 */
+
   float u_new;
   float delta_u;
-  
+
   u_new = do_cooling_grackle(u_old, rho, dt, &ne, Z, a_now);
-  //u_new = u_old * 0.99;
+  // u_new = u_old * 0.99;
 
+  // if (u_new < 0)
+  // if (p->id==50356)
+  //  printf("WARNING !!! ID=%llu  u_old=%g  u_new=%g rho=%g dt=%g ne=%g Z=%g
+  //  a_now=%g\n",p->id,u_old,u_new,rho,dt,ne,Z,a_now);
 
-
-
-
-  
-  //if (u_new < 0)
-  //if (p->id==50356)
-  //  printf("WARNING !!! ID=%llu  u_old=%g  u_new=%g rho=%g dt=%g ne=%g Z=%g a_now=%g\n",p->id,u_old,u_new,rho,dt,ne,Z,a_now);
-
-  
   delta_u = u_new - u_old;
 
   /* record energy lost */
-  xp->cooling_data.radiated_energy += -delta_u * hydro_get_mass(p);  
-  
- 
-  
+  xp->cooling_data.radiated_energy += -delta_u * hydro_get_mass(p);
+
   /* Update the internal energy */
-  hydro_set_internal_energy_dt(p, delta_u / dt);  
-    
+  hydro_set_internal_energy_dt(p, delta_u / dt);
 }
 
 /**
@@ -157,7 +140,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 __attribute__((always_inline)) INLINE static void cooling_init_part(
     const struct part* restrict p, struct xpart* restrict xp) {
 
-  xp->cooling_data.radiated_energy = 0.f;    
+  xp->cooling_data.radiated_energy = 0.f;
 }
 
 /**
@@ -180,59 +163,56 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param cooling The cooling properties to initialize
  */
 static INLINE void cooling_init_backend(
-    const struct swift_params* parameter_file,
-    const struct unit_system* us,
+    const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
-    
 
-
-  char cloudytable[200];
   double units_density, units_length, units_time;
   int grackle_chemistry;
   int UVbackground;
 
+  parser_get_param_string(parameter_file, "GrackleCooling:GrackleCloudyTable",
+                          cooling->GrackleCloudyTable);
+  cooling->UVbackground =
+      parser_get_param_int(parameter_file, "GrackleCooling:UVbackground");
+  cooling->GrackleRedshift =
+      parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
+  cooling->GrackleHSShieldingDensityThreshold = parser_get_param_double(
+      parameter_file, "GrackleCooling:GrackleHSShieldingDensityThreshold");
 
-  parser_get_param_string(parameter_file,"GrackleCooling:GrackleCloudyTable",cooling->GrackleCloudyTable);
-  cooling->UVbackground = parser_get_param_int(parameter_file, "GrackleCooling:UVbackground");
-  cooling->GrackleRedshift = parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
-  cooling->GrackleHSShieldingDensityThreshold = parser_get_param_double(parameter_file, "GrackleCooling:GrackleHSShieldingDensityThreshold");
+  UVbackground = cooling->UVbackground;
+  grackle_chemistry = 0; /* forced to be zero : read table */
 
-  // FIXME : Why a strcpy ?
-  strcpy(cloudytable,cooling->GrackleCloudyTable);
-  
-  
-  UVbackground  =  cooling->UVbackground;
-  grackle_chemistry = 0;			/* forced to be zero : read table */ 
-  
-  units_density = us->UnitMass_in_cgs/pow(us->UnitLength_in_cgs,3);
-  units_length  = us->UnitLength_in_cgs;
-  units_time    = us->UnitTime_in_cgs;
-    
-    
+  units_density = us->UnitMass_in_cgs / pow(us->UnitLength_in_cgs, 3);
+  units_length = us->UnitLength_in_cgs;
+  units_time = us->UnitTime_in_cgs;
 
-  printf("          ***************************************\n");
-  printf("          initializing grackle cooling function\n");
-  printf("          \n");
-  
-  printf("          CloudyTable                        = %s\n",cloudytable);
-  printf("          UVbackground                       = %d\n",UVbackground);
-  printf("          GrackleRedshift                    = %g\n",cooling->GrackleRedshift);
-  printf("          GrackleHSShieldingDensityThreshold = %g atom/cc\n",cooling->GrackleHSShieldingDensityThreshold);
-  
+#ifdef SWIFT_DEBUG_CHECKS
+  float threshold = cooling->GrackleHSShieldingDensityThreshold;
 
-  if(wrap_init_cooling(cloudytable,UVbackground,units_density, units_length, units_time, grackle_chemistry) != 1)
-    {
-      fprintf(stderr,"Error in initialize_chemistry_data.");
-      exit(-1);
-    }
-  
-  printf("          \n");
-  printf("          ***************************************\n");
+  threshold /= phys_const->const_proton_mass;
+  threshold /= pow(us->UnitLength_in_cgs, 3);
 
+  message("***************************************");
+  message("initializing grackle cooling function");
+  message("");
+  message("CloudyTable                        = %s",
+          cooling->GrackleCloudyTable);
+  message("UVbackground                       = %d", UVbackground);
+  message("GrackleRedshift                    = %g", cooling->GrackleRedshift);
+  message("GrackleHSShieldingDensityThreshold = %g atom/cc", threshold);
+#endif
 
+  if (wrap_init_cooling(cooling->GrackleCloudyTable, UVbackground,
+                        units_density, units_length, units_time,
+                        grackle_chemistry) != 1) {
+    error("Error in initialize_chemistry_data.");
+  }
 
-    
+#ifdef SWIFT_DEBUG_CHECKS
+  message("");
+  message("***************************************");
+#endif
 }
 
 /**
