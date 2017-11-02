@@ -463,6 +463,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
   if (with_hydro) hydro_props_init(&hydro_properties, params);
+  if (with_hydro) eos_init(&eos, params);
 
   /* Initialise the gravity properties */
   struct gravity_props gravity_properties;

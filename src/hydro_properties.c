@@ -77,17 +77,10 @@ void hydro_props_init(struct hydro_props *p,
 
 void hydro_props_print(const struct hydro_props *p) {
 
-#if defined(EOS_IDEAL_GAS)
-  message("Equation of state: Ideal gas.");
-#elif defined(EOS_ISOTHERMAL_GAS)
-  message(
-      "Equation of state: Isothermal with internal energy "
-      "per unit mass set to %f.",
-      const_isothermal_internal_energy);
-#endif
+  /* Print equation of state first */
+  eos_print(&eos);
 
-  message("Adiabatic index gamma: %f.", hydro_gamma);
-
+  /* Now SPH */
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
           (int)hydro_dimension);
 
@@ -115,7 +108,8 @@ void hydro_props_print(const struct hydro_props *p) {
 #if defined(HAVE_HDF5)
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
-  io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
+  eos_print_snapshot(h_grpsph, &eos);
+
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Kernel function", kernel_name);
