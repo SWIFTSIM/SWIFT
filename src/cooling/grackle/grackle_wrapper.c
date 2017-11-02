@@ -36,6 +36,10 @@ const int grid_rank = 1;
 
 int wrap_init_cooling(char* CloudyTable, int UVbackground, double udensity, double ulength, double utime, int grackle_chemistry){
 
+#ifdef GRACKLE_DEBUG
+  grackle_verbose = 1;
+#endif
+  message("cooling");
   double velocity_units;
   
   // First, set up the units system.

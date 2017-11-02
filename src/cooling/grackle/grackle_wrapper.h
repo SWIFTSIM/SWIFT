@@ -14,6 +14,7 @@
 #define SWIFT_COOLING_GRACKLE_WRAPPER_H
 
 #include "config.h"
+#include "error.h"
 #include <grackle.h>
 #include <math.h>
 #include <stdio.h>

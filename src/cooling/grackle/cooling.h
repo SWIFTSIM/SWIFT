@@ -218,7 +218,7 @@ static INLINE void cooling_init_backend(
   printf("          CloudyTable                        = %s\n",cloudytable);
   printf("          UVbackground                       = %d\n",UVbackground);
   printf("          GrackleRedshift                    = %g\n",cooling->GrackleRedshift);
-  printf("          GrackleHSShieldingDensityThreshold = %g\n",cooling->GrackleHSShieldingDensityThreshold);
+  printf("          GrackleHSShieldingDensityThreshold = %g atom/cc\n",cooling->GrackleHSShieldingDensityThreshold);
   
 
   if(wrap_init_cooling(cloudytable,UVbackground,units_density, units_length, units_time, grackle_chemistry) != 1)
