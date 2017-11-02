@@ -265,105 +265,112 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const float dx_max, const float rshift, const double hi_max,
     const double hj_max, const double di_max, const double dj_min,
     int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
-    const timebin_t max_active_bin) {
+    const timebin_t max_active_bin, const int ci_local, const int cj_local) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
 
   int first_pi = 0, last_pj = cj->count - 1;
-  int temp;
+  int temp, active_id;
 
-  /* Find the leftmost active particle in cell i that interacts with any
-   * particle in cell j. */
-  first_pi = ci->count;
-  int active_id = first_pi - 1;
-  while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
-    first_pi--;
-    /* Store the index of the particle if it is active. */
-    if (part_is_active_no_debug(&parts_i[sort_i[first_pi].i], max_active_bin))
-      active_id = first_pi;
-  }
+  if(ci_local) {
 
-  /* Set the first active pi in range of any particle in cell j. */
-  first_pi = active_id;
+    /* Find the leftmost active particle in cell i that interacts with any
+     * particle in cell j. */
+    first_pi = ci->count;
+    active_id = first_pi - 1;
+    while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
+      first_pi--;
+      /* Store the index of the particle if it is active. */
+      if (part_is_active_no_debug(&parts_i[sort_i[first_pi].i], max_active_bin))
+        active_id = first_pi;
+    }
 
-  /* Find the maximum index into cell j for each particle in range in cell i. */
-  if (first_pi < ci->count) {
+    /* Set the first active pi in range of any particle in cell j. */
+    first_pi = active_id;
 
-    /* Start from the first particle in cell j. */
-    temp = 0;
+    /* Find the maximum index into cell j for each particle in range in cell i. */
+    if (first_pi < ci->count) {
 
-    const struct part *pi = &parts_i[sort_i[first_pi].i];
-    const float first_di =
+      /* Start from the first particle in cell j. */
+      temp = 0;
+
+      const struct part *pi = &parts_i[sort_i[first_pi].i];
+      const float first_di =
         sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
-    /* Loop through particles in cell j until they are not in range of pi.
-     * Make sure that temp stays between 0 and cj->count - 1.*/
-    while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
+      /* Loop through particles in cell j until they are not in range of pi.
+       * Make sure that temp stays between 0 and cj->count - 1.*/
+      while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
 
-    max_index_i[first_pi] = temp;
+      max_index_i[first_pi] = temp;
 
-    /* Populate max_index_i for remaining particles that are within range. */
-    for (int i = first_pi + 1; i < ci->count; i++) {
-      temp = max_index_i[i - 1];
-      pi = &parts_i[sort_i[i].i];
+      /* Populate max_index_i for remaining particles that are within range. */
+      for (int i = first_pi + 1; i < ci->count; i++) {
+        temp = max_index_i[i - 1];
+        pi = &parts_i[sort_i[i].i];
 
-      const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
+        const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
 
-      /* Make sure that temp stays between 0 and cj->count - 1.*/
-      while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
+        /* Make sure that temp stays between 0 and cj->count - 1.*/
+        while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
 
-      max_index_i[i] = temp;
+        max_index_i[i] = temp;
+      }
+    } else {
+      /* Make sure that max index is set to first particle in cj.*/
+      max_index_i[ci->count - 1] = 0;
     }
-  } else {
-    /* Make sure that max index is set to first particle in cj.*/
-    max_index_i[ci->count - 1] = 0;
   }
+  else first_pi = ci->count - 1; 
 
-  /* Find the rightmost active particle in cell j that interacts with any
-   * particle in cell i. */
-  last_pj = -1;
-  active_id = last_pj;
-  while (last_pj < cj->count &&
-         sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
-    last_pj++;
-    /* Store the index of the particle if it is active. */
-    if (part_is_active_no_debug(&parts_j[sort_j[last_pj].i], max_active_bin))
-      active_id = last_pj;
-  }
+  if(cj_local) {
+    /* Find the rightmost active particle in cell j that interacts with any
+     * particle in cell i. */
+    last_pj = -1;
+    active_id = last_pj;
+    while (last_pj < cj->count &&
+        sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
+      last_pj++;
+      /* Store the index of the particle if it is active. */
+      if (part_is_active_no_debug(&parts_j[sort_j[last_pj].i], max_active_bin))
+        active_id = last_pj;
+    }
 
-  /* Set the last active pj in range of any particle in cell i. */
-  last_pj = active_id;
+    /* Set the last active pj in range of any particle in cell i. */
+    last_pj = active_id;
 
-  /* Find the maximum index into cell i for each particle in range in cell j. */
-  if (last_pj >= 0) {
+    /* Find the maximum index into cell i for each particle in range in cell j. */
+    if (last_pj >= 0) {
 
-    /* Start from the last particle in cell i. */
-    temp = ci->count - 1;
+      /* Start from the last particle in cell i. */
+      temp = ci->count - 1;
 
-    const struct part *pj = &parts_j[sort_j[last_pj].i];
-    const float last_dj =
+      const struct part *pj = &parts_j[sort_j[last_pj].i];
+      const float last_dj =
         sort_j[last_pj].d - dx_max - pj->h * kernel_gamma + rshift;
 
-    /* Loop through particles in cell i until they are not in range of pj. */
-    while (temp > 0 && last_dj < sort_i[temp].d) temp--;
+      /* Loop through particles in cell i until they are not in range of pj. */
+      while (temp > 0 && last_dj < sort_i[temp].d) temp--;
 
-    max_index_j[last_pj] = temp;
+      max_index_j[last_pj] = temp;
 
-    /* Populate max_index_j for remaining particles that are within range. */
-    for (int i = last_pj - 1; i >= 0; i--) {
-      temp = max_index_j[i + 1];
-      pj = &parts_j[sort_j[i].i];
-      const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
+      /* Populate max_index_j for remaining particles that are within range. */
+      for (int i = last_pj - 1; i >= 0; i--) {
+        temp = max_index_j[i + 1];
+        pj = &parts_j[sort_j[i].i];
+        const float dj = sort_j[i].d - dx_max - (pj->h * kernel_gamma) + rshift;
 
-      while (temp > 0 && dj < sort_i[temp].d) temp--;
+        while (temp > 0 && dj < sort_i[temp].d) temp--;
 
-      max_index_j[i] = temp;
+        max_index_j[i] = temp;
+      }
+    } else {
+      /* Make sure that max index is set to last particle in ci.*/
+      max_index_j[0] = ci->count - 1;
     }
-  } else {
-    /* Make sure that max index is set to last particle in ci.*/
-    max_index_j[0] = ci->count - 1;
   }
+  else last_pj = 0;
 
   *init_pi = first_pi;
   *init_pj = last_pj;
@@ -1155,7 +1162,7 @@ const int cj_local = 1;
   /* Count number of particles that are in range and active*/
   int numActive = 0;
 
-  if (active_ci) {
+  if (active_ci && ci_local) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -1166,7 +1173,7 @@ const int cj_local = 1;
     }
   }
 
-  if (!numActive && active_cj) {
+  if (!numActive && active_cj && cj_local) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1204,7 +1211,7 @@ const int cj_local = 1;
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
                               hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, max_active_bin);
+                              &first_pi, &last_pj, max_active_bin, ci_local, cj_local);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
