@@ -13,14 +13,15 @@
 #ifndef SWIFT_COOLING_GRACKLE_WRAPPER_H
 #define SWIFT_COOLING_GRACKLE_WRAPPER_H
 
+#include "config.h"
+#include "error.h"
+
 #include <grackle.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
-#include "error.h"
 
 int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
                       double ulength, double utime, int grackle_chemistry);
