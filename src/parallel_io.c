@@ -74,6 +74,10 @@ void readArray(hid_t grp, const struct io_props prop, size_t N,
   const size_t copySize = typeSize * prop.dimension;
   const size_t num_elements = N * prop.dimension;
 
+  /* Can't handle reads of more than 2GB */
+  if (N * props.dimension * typeSize > HDF5_PARALLEL_IO_MAX_BYTES)
+    error("Dataset too large to be read in one pass!");
+
   /* Check whether the dataspace exists or not */
   const htri_t exist = H5Lexists(grp, prop.name, 0);
   if (exist < 0) {
