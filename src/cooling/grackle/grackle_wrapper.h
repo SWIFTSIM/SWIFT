@@ -21,7 +21,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "config.h"
+#include "error.h"
 
+int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
+                      double ulength, double utime, int grackle_chemistry);
 
 int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
                       double ulength, double utime, int grackle_chemistry);
