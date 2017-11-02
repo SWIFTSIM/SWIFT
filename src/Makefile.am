@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+AUTOMAKE_OPTIONS = subdir-objects
 # Add the debug flag to the whole thing
 AM_CFLAGS = $(HDF5_CPPFLAGS)
 
@@ -25,11 +26,11 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(GRACKLE_LIB) $(MPI_THREAD_LIBS)
-MPI_FLAGS = -DWITH_MPI $(METIS_INCS) $(GRACKLE_LIB)
+MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
 
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
@@ -57,7 +58,8 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
-    collectgroup.c hydro_space.c equation_of_state.c
+    collectgroup.c hydro_space.c equation_of_state.c \
+    cooling/grackle/grackle_wrapper.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \

@@ -12,7 +12,7 @@
 ************************************************************************/
 
 
-#include <cooling/grackle/grackle_wrapper.h>
+#include "grackle_wrapper.h"
 
 #define GRACKLE_DEBUG
 
