@@ -431,7 +431,6 @@ AC_ARG_WITH([grackle],
     [with_grackle="no"]
 )
 if test "x$with_grackle" != "xno"; then
-   AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
       GRACKLE_LIBS="-L$with_grackle/lib -lgrackle $FCLIBS"
@@ -440,19 +439,17 @@ if test "x$with_grackle" != "xno"; then
       GRACKLE_LIBS="-lgrackle $FCLIBS"
       GRACKLE_INCS=""
    fi
+   
    have_grackle="yes"
+      
    AC_CHECK_LIB(
       [grackle],
       [initialize_grackle],
-      [AC_CHECK_HEADERS(
-         [grackle.h grackle_types.h grackle_macros.h],
-         [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.]),
-	  AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
-	  ],
-         [AC_MSG_ERROR(Cannot find grackle headers!)]
-      )],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.]),
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
       [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS]
+      [$GRACKLE_LIBS $GRACKLE_INCS]
    )
 fi
 AC_SUBST([GRACKLE_LIBS])
