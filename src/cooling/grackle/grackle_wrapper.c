@@ -134,6 +134,8 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
 
 int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
 
+  GRACKLE_ASSERT(FIELD_SIZE == 1);
+
   gr_float den_factor = 1.0;
   gr_float u_factor = 1.0;
 
@@ -148,8 +150,6 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
   int grid_dimension[3] = {1, 0, 0};
   int grid_start[3] = {0, 0, 0};
   int grid_end[3] = {0, 0, 0};
-
-  GRACKLE_ASSERT(FIELD_SIZE == 1);
 
   if (solve_chemistry_table(&my_units, a_now, dt, grid_rank, grid_dimension,
                             grid_start, grid_end, density, energy, x_velocity,
