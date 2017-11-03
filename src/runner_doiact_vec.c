@@ -1211,7 +1211,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
-  int last_pj_loop = last_pj;
+  int last_pj_loop_end = last_pj + 1;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
@@ -1244,7 +1244,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      const int exit_iteration = max_index_i[pid];
+      const int exit_iteration_end = max_index_i[pid] + 1;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
@@ -1274,7 +1274,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < exit_iteration_end; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1336,7 +1336,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
+    for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1567,7 +1567,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
-  const int last_pj_loop = last_pj;
+  const int last_pj_loop_end = last_pj + 1;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
@@ -1600,7 +1600,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      const int exit_iteration = max_index_i[pid];
+      const int exit_iteration_end = max_index_i[pid] + 1;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
@@ -1633,7 +1633,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < exit_iteration_end; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1705,7 +1705,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
+    for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
