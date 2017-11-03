@@ -158,7 +158,6 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
     return 0;
   }
   
-
   // return updated chemistry and energy
   for (int i = 0; i < FIELD_SIZE; i++) {
     u[i] = energy[i] / u_factor;
