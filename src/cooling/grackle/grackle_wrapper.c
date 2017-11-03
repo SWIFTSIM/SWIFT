@@ -56,8 +56,7 @@ int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
 
   // Second, create a chemistry object for parameters and rate data.
   if (set_default_chemistry_parameters() == 0) {
-    fprintf(stderr, "Error in set_default_chemistry_parameters.\n");
-    return 0;
+    error("Error in set_default_chemistry_parameters.");
   }
 
   // Set parameter values for chemistry.
@@ -77,8 +76,7 @@ int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
 
   // Finally, initialize the chemistry object.
   if (initialize_chemistry_data(&my_units, a_value) == 0) {
-    fprintf(stderr, "Error in initialize_chemistry_data.\n");
-    return 0;
+    error("Error in initialize_chemistry_data.");
   }
 
   return 1;
@@ -116,8 +114,7 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
   int grid_end[3] = {0, 0, 0};
 
   if (FIELD_SIZE != 1) {
-    fprintf(stderr, "field_size must currently be set to 1.\n");
-    return 0;
+    error("field_size must currently be set to 1.");
   }
 
   // passed density and energy are proper
@@ -135,8 +132,7 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
                                    grid_start, grid_end, density, energy,
                                    x_velocity, y_velocity, z_velocity,
                                    metal_density, cooling_time) == 0) {
-    fprintf(stderr, "Error in calculate_cooling_time.\n");
-    return 0;
+    error("Error in calculate_cooling_time.");
   }
 
   // return updated chemistry and energy
@@ -169,13 +165,17 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
 #ifdef SWIFT_DEBUG_CHECKS
   double old_value = energy[0];
 #endif
+  message("dt = %f", dt);
   if (solve_chemistry_table(&my_units, a_now, dt, grid_rank, grid_dimension,
                             grid_start, grid_end, density, energy, x_velocity,
                             y_velocity, z_velocity, metal_density) == 0) {
     error("Error in solve_chemistry.");
     return 0;
   }
+  
+#ifdef SWIFT_DEBUG_CHECKS
   GRACKLE_ASSERT(old_value != energy[0]);
+#endif
 
   // return updated chemistry and energy
   for (int i = 0; i < FIELD_SIZE; i++) {
