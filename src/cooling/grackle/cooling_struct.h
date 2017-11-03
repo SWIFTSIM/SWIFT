@@ -29,9 +29,16 @@
  */
 struct cooling_function_data {
 
+  /* Filename of the Cloudy Table */
   char GrackleCloudyTable[200];
+
+  /* Enable/Disable UV backgroud */
   int UVbackground;
+
+  /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double GrackleRedshift;
+
+  /* Density Threshold for the shielding */
   double GrackleHSShieldingDensityThreshold;
 };
 

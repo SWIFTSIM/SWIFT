@@ -39,24 +39,44 @@
 /* include the grackle wrapper */
 #include "grackle_wrapper.h"
 
-/*! This function computes the new entropy due to the cooling,
- *  between step t0 and t1.
+
+/**
+ * @brief Compute the cooling rate
+ *
+ * We do nothing.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param dt The time-step of this particle.
  */
+__attribute__((always_inline)) INLINE static double cooling_rate(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling,
+    struct part* restrict p, float dt) {
 
-static INLINE double do_cooling_grackle(double energy, double density,
-                                        double dtime, double* ne, double Z,
-                                        double a_now) {
+  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
 
-  /*********************************************************************
-   call to the main chemistry solver
-   *********************************************************************/
+  /* Get current internal energy (dt=0) */
+  double u_old = hydro_get_internal_energy(p);
+  /* Get current density */
+  const float rho = hydro_get_density(p);
+  /* Actual scaling fractor */
+  const float a_now = 1. / (1. + cooling->GrackleRedshift);
 
-  if (wrap_do_cooling(density, &energy, dtime, Z, a_now) == 0) {
+  /* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in
+     Grackle v2.1) */
+  double Z = 0.02041;
+
+  
+  if (wrap_do_cooling(rho, &u_old, dt, Z, a_now) == 0) {
     error("Error in do_cooling.\n");
     return 0;
   }
 
-  return energy;
+  return u_old;
 }
 
 /**
@@ -76,32 +96,18 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
+  if (dt == 0.)
+    return;
+
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p);
-  /* Get current density */
-  const float rho = hydro_get_density(p);
-  /* Actual scaling fractor */
-  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
-  const float a_now = 1. / (1. + cooling->GrackleRedshift);
-  ; /*  must be chaged !!! */
-
-  double ne, Z;
-
-  Z = 0.02041; /* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in
-                  Grackle v2.1) */
-  ne = 0.0;
-      /* mass fraction of eletron */ /* useless for GRACKLE_CHEMISTRY = 0 */
+  /* Current du_dt */
+  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
   float u_new;
   float delta_u;
 
-  u_new = do_cooling_grackle(u_old, rho, dt, &ne, Z, a_now);
-  // u_new = u_old * 0.99;
-
-  // if (u_new < 0)
-  // if (p->id==50356)
-  //  printf("WARNING !!! ID=%llu  u_old=%g  u_new=%g rho=%g dt=%g ne=%g Z=%g
-  //  a_now=%g\n",p->id,u_old,u_new,rho,dt,ne,Z,a_now);
+  u_new = cooling_rate(phys_const, us, cooling, p, dt);
 
   delta_u = u_new - u_old;
 
@@ -109,7 +115,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   xp->cooling_data.radiated_energy += -delta_u * hydro_get_mass(p);
 
   /* Update the internal energy */
-  hydro_set_internal_energy_dt(p, delta_u / dt);
+  hydro_set_internal_energy_dt(p, hydro_du_dt + delta_u / dt);
 }
 
 /**
@@ -200,7 +206,7 @@ static INLINE void cooling_init_backend(
           cooling->GrackleCloudyTable);
   message("UVbackground                       = %d", UVbackground);
   message("GrackleRedshift                    = %g", cooling->GrackleRedshift);
-  message("GrackleHSShieldingDensityThreshold = %g atom/cc", threshold);
+  message("GrackleHSShieldingDensityThreshold = %g atom/cm3", threshold);
 #endif
 
   if (wrap_init_cooling(cooling->GrackleCloudyTable, UVbackground,

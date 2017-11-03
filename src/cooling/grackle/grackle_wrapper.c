@@ -117,17 +117,6 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
     error("field_size must currently be set to 1.");
   }
 
-  // passed density and energy are proper
-  /*
-  if(my_units.comoving_coordinates){
-    den_factor = pow(a_now, 3);
-    u_factor   = pow(a_now, 0);
-  } else {
-    den_factor = 1.0;
-    u_factor   = 1.0;
-  }
-  */
-
   if (calculate_cooling_time_table(&my_units, a_now, grid_rank, grid_dimension,
                                    grid_start, grid_end, density, energy,
                                    x_velocity, y_velocity, z_velocity,
@@ -137,7 +126,7 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
 
   // return updated chemistry and energy
   for (int i = 0; i < FIELD_SIZE; i++) {
-    *coolingtime = cooling_time[i];
+    coolingtime[i] = cooling_time[i];
   }
 
   return 1;
@@ -162,10 +151,6 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
 
   GRACKLE_ASSERT(FIELD_SIZE == 1);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  double old_value = energy[0];
-#endif
-  message("dt = %f", dt);
   if (solve_chemistry_table(&my_units, a_now, dt, grid_rank, grid_dimension,
                             grid_start, grid_end, density, energy, x_velocity,
                             y_velocity, z_velocity, metal_density) == 0) {
@@ -173,13 +158,10 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
     return 0;
   }
   
-#ifdef SWIFT_DEBUG_CHECKS
-  GRACKLE_ASSERT(old_value != energy[0]);
-#endif
 
   // return updated chemistry and energy
   for (int i = 0; i < FIELD_SIZE; i++) {
-    *u = energy[i] / u_factor;
+    u[i] = energy[i] / u_factor;
   }
 
   return 1;
