@@ -3922,15 +3922,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
-  size_t num_gpart_mpole = 0;
+  long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Top-level multipoles don't contain the total number of gpart "
-          "s->nr_gpart=%zd, "
-          "m_poles=%zd",
+          "s->nr_gpart=%lld, "
+          "m_poles=%lld",
           e->total_nr_gparts, num_gpart_mpole);
   }
 #endif
@@ -4113,14 +4113,14 @@ void engine_step(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
-  size_t num_gpart_mpole = 0;
+  long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
-          "Multipoles don't contain the total number of gpart mpoles=%zd "
-          "ngparts=%zd",
+          "Multipoles don't contain the total number of gpart mpoles=%lld "
+          "ngparts=%lld",
           num_gpart_mpole, e->total_nr_gparts);
   }
 #endif

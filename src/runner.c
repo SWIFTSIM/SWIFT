@@ -1490,7 +1490,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally "
                 "with all other gparts gp->num_interacted=%lld, "
-                "total_gparts=%zd (local num_gparts=%zd)",
+                "total_gparts=%lld (local num_gparts=%zd)",
                 gp->id_or_neg_offset, part_type_names[gp->type],
                 gp->num_interacted, e->total_nr_gparts, e->s->nr_gparts);
         }
