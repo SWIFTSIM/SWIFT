@@ -470,6 +470,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+int cell_has_tasks(struct cell *c);
 
 /* Inlined functions (for speed). */
 

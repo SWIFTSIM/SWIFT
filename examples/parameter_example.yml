@@ -50,6 +50,9 @@ SPH:
   max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
 
+EoS:
+  isothermal_internal_energy: 20.26784 # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025    # Constant dimensionless multiplier for time integration.
