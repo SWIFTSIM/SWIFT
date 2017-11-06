@@ -176,19 +176,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     }
   }
 
-  /* Work out properties of the array in the file */
-  int rank;
-  hsize_t shape_total[2];
-  if (props.dimension > 1) {
-    rank = 2;
-    shape_total[0] = N_total;
-    shape_total[1] = props.dimension;
-  } else {
-    rank = 1;
-    shape_total[0] = N_total;
-    shape_total[1] = 0;
-  }
-
   /* Open data space in file */
   const hid_t h_data = H5Dopen2(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
