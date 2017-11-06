@@ -54,24 +54,21 @@
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
-
 /**
  * @brief Reads a chunk of data from an open HDF5 dataset
  *
- * @param e The #engine we are writing from.
  * @param h_data The HDF5 dataset to write to.
  * @param h_plist_id the parallel HDF5 properties.
  * @param props The #io_props of the field to read.
  * @param N The number of particles to write.
  * @param offset Offset in the array where this mpi task starts writing.
  * @param internal_units The #unit_system used internally.
- * @param snapshot_units The #unit_system used in the snapshots.
+ * @param ic_units The #unit_system used in the snapshots.
  */
 void readArray_chunk(hid_t h_data, hid_t h_plist_id,
-		     const struct io_props props, size_t N, long long offset,
-		     const struct unit_system* internal_units,
-		     const struct unit_system* ic_units) {
-
+                     const struct io_props props, size_t N, long long offset,
+                     const struct unit_system* internal_units,
+                     const struct unit_system* ic_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -157,8 +154,8 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the ICs.
  */
-void readArray(hid_t grp, struct io_props props, size_t N,
-               long long N_total, int mpi_rank, long long offset,
+void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
+               int mpi_rank, long long offset,
                const struct unit_system* internal_units,
                const struct unit_system* ic_units) {
 
@@ -191,7 +188,7 @@ void readArray(hid_t grp, struct io_props props, size_t N,
     shape_total[0] = N_total;
     shape_total[1] = 0;
   }
-  
+
   /* Open data space in file */
   const hid_t h_data = H5Dopen2(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
@@ -213,12 +210,12 @@ void readArray(hid_t grp, struct io_props props, size_t N,
 
     /* Maximal number of elements */
     const size_t max_chunk_size =
-      HDF5_PARALLEL_IO_MAX_BYTES / (props.dimension * typeSize);
+        HDF5_PARALLEL_IO_MAX_BYTES / (props.dimension * typeSize);
 
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
     readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-		    internal_units, ic_units);
+                    internal_units, ic_units);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -757,8 +754,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank, 
-		  offset[ptype], internal_units, ic_units);
+        readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank,
+                  offset[ptype], internal_units, ic_units);
 
     /* Close particle group */
     H5Gclose(h_grp);
