@@ -1006,8 +1006,12 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    /* Write the state of the system before starting time integration. */
+  /* Write the state of the system before starting time integration. */
+#ifdef WITH_LOGGER
+    engine_dump_index(&e);
+#else
     engine_dump_snapshot(&e);
+#endif
     engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */
