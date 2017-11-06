@@ -4257,6 +4257,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* logger tasks ? */
+    else if (t->type == task_type_logger) {
+      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+    }
+
     /* Gravity stuff ? */
     else if (t_type == task_type_grav_down || t_type == task_type_grav_mesh ||
              t_type == task_type_grav_long_range ||
