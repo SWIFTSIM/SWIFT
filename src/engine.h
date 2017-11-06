@@ -322,12 +322,12 @@ struct engine {
   /* timestamp offset for logger*/
   size_t logger_time_offset;
 
-  /* Need to dump a snapshot ? */
-  int dump_snapshot;
-
   /* Size of the dump file */
   int logger_size;
 #endif
+
+  /* Need to dump a snapshot ? */
+  int dump_snapshot;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;

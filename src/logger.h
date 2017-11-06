@@ -19,6 +19,8 @@
 #ifndef SWIFT_LOGGER_H
 #define SWIFT_LOGGER_H
 
+#ifdef WITH_LOGGER
+
 /* Includes. */
 #include "part.h"
 #include "units.h"
@@ -129,5 +131,7 @@ __attribute__((always_inline)) INLINE static int spart_should_write(
 
   return (sp->last_output > e->logger_max_steps);  
 }
+
+#endif /* WITH_LOGGER */
 
 #endif /* SWIFT_LOGGER_H */

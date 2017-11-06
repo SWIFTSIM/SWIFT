@@ -21,6 +21,7 @@
 #include "../config.h"
 
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+#ifdef WITH_LOGGER
 
 /* Some standard headers. */
 #include <stdint.h>
@@ -432,4 +433,7 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
   return mask;
 }
 
+#endif /* WITH_LOGGER */
+
 #endif /* HAVE_POSIX_FALLOCATE */
+
