@@ -5461,6 +5461,7 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
+
 #ifdef WITH_LOGGER
   logger_log_timestamp(e->ti_old, &e->logger_time_offset,
 		       e->logger_dump);
@@ -6700,10 +6701,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Logger params */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
   e->logger_max_steps = parser_get_opt_param_int(params, "Snapshots:logger_max_steps", 10);
-  parser_get_opt_param_string(params, "Snapshots:dump_file", logger_name_file, e->snapshotBaseName);
+  e->logger_size = parser_get_param_float(params, "Snapshots:logger_size");
+  strcpy(logger_name_file, e->snapshotBaseName);
   strcat(logger_name_file, ".dump");
   e->logger_dump = malloc(sizeof(struct dump));
-  dump_init(e->logger_dump, logger_name_file, 1024 * 1024 * 100);
+  dump_init(e->logger_dump, logger_name_file, e->logger_size);
   e->logger_time_offset = 0;
 #endif
 

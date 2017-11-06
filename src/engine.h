@@ -325,6 +325,10 @@ struct engine {
   /* Need to dump a snapshot ? */
   int dump_snapshot;
 
+  /* Size of the dump file */
+  int logger_size;
+#endif
+
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 

@@ -899,7 +899,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
-
+  
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->hydro.parts;
