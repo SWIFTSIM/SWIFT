@@ -90,12 +90,14 @@ struct dump;
 #define LOGGER_NBER_SIZE 1 // size of the number of elements
 
 struct logger_const {
-  size_t name;
-  size_t offset;
-  size_t mask;
-  size_t nber_mask;
-  size_t *masks;
-  char *masks_name;
+  size_t name; // labels size
+  size_t offset; // offset size
+  size_t mask; // mask size
+  size_t nber_mask; // number of different masks
+  size_t *masks; // value of each masks (e.g. logger_mask_...)
+  size_t *masks_size; // size of each mask
+  char *masks_name; // label of each mask
+  char *masks_type; // type of data (e.g. 'CHAR', 'INT', 'FLOAT')
 };
 
 
@@ -113,7 +115,8 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
 void logger_write_file_header(struct dump *dump);
 void logger_const_init(struct logger_const* log_const);
-
+void logger_const_free(struct logger_const* log_const);
+void logger_ensure_size(size_t total_nr_parts, size_t logger_size);
 
 /**
  * @brief Should this particle write its data now ?

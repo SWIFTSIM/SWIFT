@@ -257,6 +257,26 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
   *offset = offset_new;
 }
 
+
+void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
+  size_t limit, i;
+  struct logger_const log_const;
+  logger_const_init(&log_const);
+
+
+  limit = log_const.offset + log_const.mask;
+
+  for(i=0; i < log_const.nber_mask; i++) {
+    limit += log_const.masks_size[i];
+  }
+
+  limit *= total_nr_parts;
+
+  if (logger_size < limit) error("Need a larger logger size");
+  
+  logger_const_free(&log_const);
+}
+
 /**
  * @brief Write a file header to a logger file
  *
@@ -265,6 +285,8 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
  *
  */
 void logger_write_file_header(struct dump *dump) {
+  message("writing header");
+  
   size_t i, j;
   char *buff, *name_buff, *skip_header;
   size_t *file_offset;
@@ -310,16 +332,21 @@ void logger_write_file_header(struct dump *dump) {
 
   /* last step */
   memcpy(skip_header, file_offset, log_const.offset);
-  
+
+  logger_const_free(&log_const);
 }
 
 void logger_const_init(struct logger_const* log_const) {
-  log_const->name = 10;
+  log_const->name = 20 * sizeof(char);
   log_const->offset = 7;
   log_const->mask = 1;
 
   log_const->nber_mask = 8;
 
+  char *cur_name;
+  char tmp[log_const->name];
+  size_t block_size;
+  
   // masks value
   log_const->masks = malloc(sizeof(size_t)*log_const->nber_mask);
   log_const->masks[0] = logger_mask_x;
@@ -332,44 +359,61 @@ void logger_const_init(struct logger_const* log_const) {
   log_const->masks[7] = logger_mask_timestamp;
 
   // masks name
-  size_t name_size = sizeof(char) * log_const->name;
-  log_const->masks_name = malloc(name_size*log_const->nber_mask);
-  char *tmp = malloc(sizeof(char) * log_const->name);
+  block_size = log_const->name * log_const->nber_mask;
+  log_const->masks_name = malloc(block_size);
+  cur_name = log_const->masks_name;
 
-  tmp = "position";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "position");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "velocity";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "velocity");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "acceleration";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "acceleration");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "entropy";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "entropy");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "cutoff radius";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "cutoff radius");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "density";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "density");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "consts";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "consts");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
 
-  tmp = "timestamp";
-  memcpy(log_const->masks_name, &tmp, log_const->name);
-  log_const->masks_name += log_const->name * sizeof(char);
+  strcpy(tmp, "timestamp");
+  memcpy(cur_name, &tmp, log_const->name);
+  cur_name += log_const->name;
+
+  log_const->masks_size = malloc(sizeof(size_t) * log_const->nber_mask);
+  log_const->masks_size[0] = 3 * sizeof(double);
+  log_const->masks_size[1] = 3 * sizeof(float);
+  log_const->masks_size[2] = 3 * sizeof(float);
+  log_const->masks_size[3] = sizeof(float);
+  log_const->masks_size[4] = sizeof(float);
+  log_const->masks_size[5] = sizeof(float);
+  log_const->masks_size[6] = sizeof(float) + sizeof(long long);
+  log_const->masks_size[7] = 8;
+
+  // todo masks_type
 
 }
 
+void logger_const_free(struct logger_const* log_const) {
+  free(log_const->masks);
+  free(log_const->masks_name);
+  free(log_const->masks_size);
+}
 
 /**
  * @brief Read a logger message and store the data in a #part.
