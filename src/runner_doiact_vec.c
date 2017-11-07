@@ -553,16 +553,13 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
 
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
-  int icount = 0, icount_align = 0;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -614,6 +611,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
         cell_cache->z[i] = v_piz.f[0];
       }
     }
+
+    int icount = 0, icount_align = 0;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -748,16 +747,13 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
 
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
-  int icount = 0, icount_align = 0;
 
   /* Loop over the subset of particles in the parts that need updating. */
   for (int pid = 0; pid < pi_count; pid++) {
@@ -813,6 +809,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
         cell_cache->z[i] = v_piz.f[0];
       }
     }
+    int icount = 0, icount_align = 0;
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
@@ -938,11 +935,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
 #ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
-  struct part *restrict pi;
-  int count_align;
-
   const timebin_t max_active_bin = e->max_active_bin;
-
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
@@ -964,9 +957,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
 
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_force_particles(c, cell_cache);
@@ -975,7 +966,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    pi = &parts[pid];
+    struct part *restrict pi = &parts[pid];
 
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
@@ -1012,7 +1003,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     vector v_entropy_dtSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    count_align = count;
+    int count_align = count;
     int rem = count % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
@@ -1188,16 +1179,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
 
-  if (ci_cache->count < count_i) {
-    cache_init(ci_cache, count_i);
-  }
-  if (cj_cache->count < count_j) {
-    cache_init(cj_cache, count_j);
-  }
+  if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
+  if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
   int first_pi, last_pj;
-  int *max_index_i __attribute__((aligned(sizeof(int) * VEC_SIZE)));
-  int *max_index_j __attribute__((aligned(sizeof(int) * VEC_SIZE)));
+  int *restrict max_index_i SWIFT_CACHE_ALIGN;
+  int *restrict max_index_j SWIFT_CACHE_ALIGN;
 
   max_index_i = r->ci_cache.max_index;
   max_index_j = r->cj_cache.max_index;
@@ -1210,8 +1197,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                               &first_pi, &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
-  int first_pi_loop = first_pi;
-  int last_pj_loop_end = last_pj + 1;
+  const int first_pi_loop = first_pi;
+  const int last_pj_loop_end = last_pj + 1;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
@@ -1543,16 +1530,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
 
-  if (ci_cache->count < count_i) {
-    cache_init(ci_cache, count_i);
-  }
-  if (cj_cache->count < count_j) {
-    cache_init(cj_cache, count_j);
-  }
+  if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
+  if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
   int first_pi, last_pj;
-  int *max_index_i SWIFT_CACHE_ALIGN;
-  int *max_index_j SWIFT_CACHE_ALIGN;
+  int *restrict max_index_i SWIFT_CACHE_ALIGN;
+  int *restrict max_index_j SWIFT_CACHE_ALIGN;
 
   max_index_i = r->ci_cache.max_index;
   max_index_j = r->cj_cache.max_index;
