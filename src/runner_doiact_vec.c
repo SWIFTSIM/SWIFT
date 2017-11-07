@@ -322,7 +322,12 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
       max_index_i[ci->count - 1] = 0;
     }
   }
-  else first_pi = ci->count - 1; 
+  else {
+    /* Make sure that foreign cells are only read into the cache if the local cell requires it. 
+     * Also ensure that it does not require any particles from cj. */
+    first_pi = ci->count - 1; 
+    max_index_i[ci->count - 1] = 0;
+  }
 
   if(cj_local) {
     /* Find the rightmost active particle in cell j that interacts with any
@@ -370,7 +375,12 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
       max_index_j[0] = ci->count - 1;
     }
   }
-  else last_pj = 0;
+  else {
+    /* Make sure that foreign cells are only read into the cache if the local cell requires it. 
+     * Also ensure that it does not require any particles from ci. */
+    last_pj = 0;
+    max_index_j[0] = ci->count - 1;
+  }
 
   *init_pi = first_pi;
   *init_pj = last_pj;
