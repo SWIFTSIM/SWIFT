@@ -29,6 +29,7 @@
 
 /* Forward declaration */
 struct dump;
+#define LOGGER_VERSION "0.1"
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -78,6 +79,26 @@ struct dump;
 #define logger_mask_consts 64
 #define logger_mask_timestamp 128
 
+/* header constants
+ * Thoses are definitions from the format and therefore should not be changed!
+ * Size in bytes
+ */
+#define LOGGER_VERSION_SIZE 20 // size of the version message
+#define LOGGER_OFFSET_SIZE 1// size of the offset size information
+#define LOGGER_NAME_SIZE 2 // size of the labels
+#define LOGGER_MASK_SIZE 1 // size of the masks
+#define LOGGER_NBER_SIZE 1 // size of the number of elements
+
+struct logger_const {
+  size_t name;
+  size_t offset;
+  size_t mask;
+  size_t nber_mask;
+  size_t *masks;
+  char *masks_name;
+};
+
+
 /* Function prototypes. */
 int logger_size(unsigned int mask);
 void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
@@ -90,7 +111,8 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
-
+void logger_write_file_header(struct dump *dump);
+void logger_const_init(struct logger_const* log_const);
 
 
 /**

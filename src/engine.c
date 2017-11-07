@@ -6701,11 +6701,17 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Logger params */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
   e->logger_max_steps = parser_get_opt_param_int(params, "Snapshots:logger_max_steps", 10);
-  e->logger_size = parser_get_param_float(params, "Snapshots:logger_size");
+  e->logger_size = parser_get_param_float(params, "Snapshots:logger_size") * 1e6;
+
+  /* generate dump filename */
   strcpy(logger_name_file, e->snapshotBaseName);
   strcat(logger_name_file, ".dump");
+
+  /* init dump */
   e->logger_dump = malloc(sizeof(struct dump));
-  dump_init(e->logger_dump, logger_name_file, e->logger_size);
+  struct dump *dump_file = e->logger_dump;
+  dump_init(dump_file, logger_name_file, e->logger_size);
+  logger_write_file_header(dump_file);
   e->logger_time_offset = 0;
 #endif
 

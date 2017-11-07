@@ -56,6 +56,7 @@ void *dump_get(struct dump *d, size_t count, size_t *offset) {
   return (char *)d->data + local_offset;
 }
 
+
 /**
  * @brief Ensure that at least size bytes are available in the #dump.
  */

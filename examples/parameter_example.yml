@@ -91,8 +91,8 @@ Snapshots:
   output_list_on:      0  # (Optional) Enable the output list
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   logger_max_steps:    10 # (Optional) Number of particle steps between two chunk writing if using logger
-  logger_size:         1e7 # buffer size of the logger file in bytes
-
+  logger_size:         10. # buffer size of the logger file in MB
+  
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2     # Time between statistics output

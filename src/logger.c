@@ -258,6 +258,120 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
 }
 
 /**
+ * @brief Write a file header to a logger file
+ *
+ * @param offset Pointer to the offset of the previous log of this particle.
+ * @param dump The #dump in which to log the particle data.
+ *
+ */
+void logger_write_file_header(struct dump *dump) {
+  size_t i, j;
+  char *buff, *name_buff, *skip_header;
+  size_t *file_offset;
+  size_t mask_size;
+
+  struct logger_const log_const;
+  logger_const_init(&log_const);
+
+  file_offset = &dump->file_offset;
+    
+  if (*file_offset != 0) error("Something was already written in the dump file");
+
+  /* Write version information */
+  buff = dump_get(dump, LOGGER_VERSION_SIZE, file_offset);
+  memcpy(buff, LOGGER_VERSION, LOGGER_VERSION_SIZE);
+ 
+  /* write number of bytes used for the offsets */
+  buff = dump_get(dump, LOGGER_OFFSET_SIZE, file_offset);
+  memcpy(buff, &log_const.offset, LOGGER_OFFSET_SIZE);
+
+  /* will write the offset of the first particle here */
+  skip_header = dump_get(dump, log_const.name, file_offset);
+
+  /* write number of bytes used for names */
+  buff = dump_get(dump, LOGGER_NAME_SIZE, file_offset);
+  memcpy(buff, &log_const.name, LOGGER_NAME_SIZE);
+
+
+  mask_size = log_const.nber_mask * (log_const.name + log_const.mask);
+  name_buff = dump_get(dump, mask_size, file_offset);
+  for(i=0; i<log_const.nber_mask; i++) {
+    j = i * (log_const.name + log_const.mask);
+
+    // name
+    memcpy(name_buff, &log_const.masks_name[j], log_const.name);
+    name_buff += j;
+
+    // mask
+    memcpy(name_buff, &log_const.masks[i], log_const.mask);
+    name_buff += log_const.mask;
+  }
+  
+
+  /* last step */
+  memcpy(skip_header, file_offset, log_const.offset);
+  
+}
+
+void logger_const_init(struct logger_const* log_const) {
+  log_const->name = 10;
+  log_const->offset = 7;
+  log_const->mask = 1;
+
+  log_const->nber_mask = 8;
+
+  // masks value
+  log_const->masks = malloc(sizeof(size_t)*log_const->nber_mask);
+  log_const->masks[0] = logger_mask_x;
+  log_const->masks[1] = logger_mask_v;
+  log_const->masks[2] = logger_mask_a;
+  log_const->masks[3] = logger_mask_u;
+  log_const->masks[4] = logger_mask_h;
+  log_const->masks[5] = logger_mask_rho;
+  log_const->masks[6] = logger_mask_consts;
+  log_const->masks[7] = logger_mask_timestamp;
+
+  // masks name
+  size_t name_size = sizeof(char) * log_const->name;
+  log_const->masks_name = malloc(name_size*log_const->nber_mask);
+  char *tmp = malloc(sizeof(char) * log_const->name);
+
+  tmp = "position";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "velocity";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "acceleration";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "entropy";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "cutoff radius";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "density";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "consts";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+  tmp = "timestamp";
+  memcpy(log_const->masks_name, &tmp, log_const->name);
+  log_const->masks_name += log_const->name * sizeof(char);
+
+}
+
+
+/**
  * @brief Read a logger message and store the data in a #part.
  *
  * @param p The #part in which to store the values.
