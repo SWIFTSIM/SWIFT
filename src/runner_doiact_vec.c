@@ -612,6 +612,8 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       }
     }
 
+    /* The number of interactions for pi and the padded version of it to 
+     * make it a multiple of VEC_SIZE. */
     int icount = 0, icount_align = 0;
 
     /* Find all of particle pi's interacions and store needed values in the
@@ -809,6 +811,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
         cell_cache->z[i] = v_piz.f[0];
       }
     }
+    
+    /* The number of interactions for pi and the padded version of it to 
+     * make it a multiple of VEC_SIZE. */
     int icount = 0, icount_align = 0;
 
     /* Find all of particle pi's interacions and store needed values in the
