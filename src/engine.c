@@ -880,6 +880,9 @@ void engine_redistribute(struct engine *e) {
             nodeID, nr_parts, nr_sparts, nr_gparts, my_cells);
   }
 
+  /* Flag that a redistribute has taken place */
+  e->step_props |= engine_step_prop_redistribute;
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -944,6 +947,9 @@ void engine_repartition(struct engine *e) {
 
   /* Tell the engine it should re-build whenever possible */
   e->forcerebuild = 1;
+
+  /* Flag that a repartition has taken place */
+  e->step_props |= engine_step_prop_repartition;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3098,6 +3104,9 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Print the status of the system */
   // if (e->verbose) engine_print_task_counts(e);
 
+  /* Flag that a rebuild has taken place */
+  e->step_props |= engine_step_prop_rebuild;
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -3697,14 +3706,14 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
            e->timeStep, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time);
+           e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
+    fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
             e->step, e->time, e->timeStep, e->updates, e->g_updates,
-            e->s_updates, e->wallclock_time);
+            e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -3716,6 +3725,7 @@ void engine_step(struct engine *e) {
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+  e->step_props = engine_step_prop_none;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -3805,6 +3815,9 @@ void engine_step(struct engine *e) {
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
+
+    /* Flag that we dumped a snapshot */
+    e->step_props |= engine_step_prop_snapshot;
   }
 
   /* Save some  statistics */
@@ -3815,6 +3828,9 @@ void engine_step(struct engine *e) {
 
     /* and move on */
     e->timeLastStatistics += e->deltaTimeStatistics;
+
+    /* Flag that we dumped some statistics */
+    e->step_props |= engine_step_prop_statistics;
   }
 
   /* Now apply all the collected time step updates and particle counts. */
@@ -4353,6 +4369,7 @@ void engine_init(struct engine *e, struct space *s,
   e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->save_stats = 0;
+  e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;
   e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
@@ -4576,9 +4593,16 @@ void engine_init(struct engine *e, struct space *s,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %10s %16s [%s]\n",
+    fprintf(e->file_timesteps,
+            "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+            "Statistics=%d, Snapshot=%d\n",
+            engine_step_prop_rebuild, engine_step_prop_redistribute,
+            engine_step_prop_repartition, engine_step_prop_statistics,
+            engine_step_prop_snapshot);
+
+    fprintf(e->file_timesteps, "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n",
             "Step", "Time", "Time-step", "Updates", "g-Updates", "s-Updates",
-            "Wall-clock time", clocks_getunit());
+            "Wall-clock time", clocks_getunit(), "Props");
     fflush(e->file_timesteps);
   }
 
