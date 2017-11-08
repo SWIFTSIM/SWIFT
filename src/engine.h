@@ -51,7 +51,9 @@
 #include "task.h"
 #include "units.h"
 
-/* Some constants. */
+/**
+ * @brief The different policies the #engine can follow.
+ */
 enum engine_policy {
   engine_policy_none = 0,
   engine_policy_rand = (1 << 0),
@@ -74,7 +76,19 @@ enum engine_policy {
 #define engine_maxpolicy 15
 extern const char *engine_policy_names[];
 
-#define engine_queue_scale 1.2
+/**
+ * @brief The different unusual events that can take place in a time-step.
+ */
+enum engine_step_properties {
+  engine_step_prop_none = 0,
+  engine_step_prop_rebuild = (1 << 0),
+  engine_step_prop_redistribute = (1 << 1),
+  engine_step_prop_repartition = (1 << 2),
+  engine_step_prop_statistics = (1 << 3),
+  engine_step_prop_snapshot = (1 << 4)
+};
+
+/* Some constants */
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
@@ -83,7 +97,9 @@ extern const char *engine_policy_names[];
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
 
-/* The rank of the engine as a global variable (for messages). */
+/**
+ * @brief The rank of the engine as a global variable (for messages).
+ */
 extern int engine_rank;
 
 /* Data structure for the engine. */
@@ -143,8 +159,11 @@ struct engine {
   /* Maximal ti_beg for the next time-step */
   integertime_t ti_beg_max;
 
-  /* Number of particles updated */
+  /* Number of particles updated in the previous step */
   size_t updates, g_updates, s_updates;
+
+  /* Properties of the previous step */
+  enum engine_step_properties step_props;
 
   /* Total numbers of particles in the system. */
   size_t total_nr_parts, total_nr_gparts;
