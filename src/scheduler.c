@@ -109,6 +109,44 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
   atomic_inc(&s->completed_unlock_writes);
+  
+  int test = ta->ci->ti_end_min == 0 && tb->ci->ti_end_min == 0;
+  test = test && ta->ci->parent == NULL && tb->ci->parent == NULL;
+  if (test)
+    {
+      char tmp[200];
+      char *line = NULL;
+      size_t len = 0;
+      ssize_t read;
+      FILE *f;
+      
+      sprintf(tmp, "%s->%s;\n", taskID_names[ta->type], taskID_names[tb->type]);
+
+      f = fopen("test_graph.viz", "r");
+
+      if (f != NULL)
+	{
+	  test = 1;
+	  while (test && (read = getline(&line, &len, f)) != -1)
+	    {
+	      if (strcmp(tmp, line) == 0)
+		{
+		  test = 0;
+		}
+	      
+	    }
+      
+	  fclose(f);
+	}
+
+      if (test)
+	{
+	  f = fopen("test_graph.viz", "a");
+	  fprintf(f, tmp);
+	  fclose(f);
+	}
+
+    }
 }
 
 /**
