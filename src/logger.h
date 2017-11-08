@@ -84,15 +84,16 @@ struct dump;
  * Size in bytes
  */
 #define LOGGER_VERSION_SIZE 20 // size of the version message
-#define LOGGER_OFFSET_SIZE 1// size of the offset size information
-#define LOGGER_NAME_SIZE 2 // size of the labels
+#define LOGGER_NAME_SIZE 1 // size of the labels
 #define LOGGER_MASK_SIZE 1 // size of the masks
 #define LOGGER_NBER_SIZE 1 // size of the number of elements
+#define LOGGER_OFFSET_SIZE 1// size of the offset size information
 
 struct logger_const {
   size_t name; // labels size
   size_t offset; // offset size
   size_t mask; // mask size
+  size_t number; // number size
   size_t nber_mask; // number of different masks
   size_t *masks; // value of each masks (e.g. logger_mask_...)
   size_t *masks_size; // size of each mask

@@ -304,16 +304,21 @@ void logger_write_file_header(struct dump *dump) {
   memcpy(buff, LOGGER_VERSION, LOGGER_VERSION_SIZE);
  
   /* write number of bytes used for the offsets */
+  message("Start %lu", *file_offset);
   buff = dump_get(dump, LOGGER_OFFSET_SIZE, file_offset);
+  message("End %lu", *file_offset);
   memcpy(buff, &log_const.offset, LOGGER_OFFSET_SIZE);
 
   /* will write the offset of the first particle here */
-  skip_header = dump_get(dump, log_const.name, file_offset);
+  skip_header = dump_get(dump, log_const.offset, file_offset);
 
   /* write number of bytes used for names */
   buff = dump_get(dump, LOGGER_NAME_SIZE, file_offset);
   memcpy(buff, &log_const.name, LOGGER_NAME_SIZE);
 
+  /* write number of bytes used for numbers */
+  buff = dump_get(dump, LOGGER_NBER_SIZE, file_offset);
+  memcpy(buff, &log_const.number, LOGGER_NBER_SIZE);
 
   mask_size = log_const.nber_mask * (log_const.name + log_const.mask);
   name_buff = dump_get(dump, mask_size, file_offset);
@@ -332,14 +337,14 @@ void logger_write_file_header(struct dump *dump) {
 
   /* last step */
   memcpy(skip_header, file_offset, log_const.offset);
-
   logger_const_free(&log_const);
 }
 
 void logger_const_init(struct logger_const* log_const) {
-  log_const->name = 20 * sizeof(char);
+  log_const->name = 20;
   log_const->offset = 7;
   log_const->mask = 1;
+  log_const->number = 1;
 
   log_const->nber_mask = 8;
 
