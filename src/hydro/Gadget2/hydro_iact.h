@@ -170,17 +170,15 @@ runner_iact_nonsym_1_vec_density(vector *r2, vector *dx, vector *dy, vector *dz,
                                  mask_t mask) {
 
   vector r, ri, ui, wi, wi_dx;
-  vector mj;
   vector dvx, dvy, dvz;
-  vector vjx, vjy, vjz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
 
   /* Fill the vectors. */
-  mj.v = vec_load(Mj);
-  vjx.v = vec_load(Vjx);
-  vjy.v = vec_load(Vjy);
-  vjz.v = vec_load(Vjz);
+  const vector mj = vector_load(Mj);
+  const vector vjx = vector_load(Vjx);
+  const vector vjy = vector_load(Vjy);
+  const vector vjz = vector_load(Vjz);
 
   /* Get the radius and inverse radius. */
   ri = vec_reciprocal_sqrt(*r2);
@@ -245,38 +243,34 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *curlvySum, vector *curlvzSum,
                                  mask_t mask, mask_t mask2, short mask_cond) {
 
-  vector r, ri, r2, ui, wi, wi_dx;
-  vector mj;
-  vector dx, dy, dz, dvx, dvy, dvz;
-  vector vjx, vjy, vjz;
+  vector r, ri, ui, wi, wi_dx;
+  vector dvx, dvy, dvz;
   vector dvdr;
   vector curlvrx, curlvry, curlvrz;
-  vector r_2, ri2, r2_2, ui2, wi2, wi_dx2;
-  vector mj2;
-  vector dx2, dy2, dz2, dvx2, dvy2, dvz2;
-  vector vjx2, vjy2, vjz2;
+  vector r_2, ri2, ui2, wi2, wi_dx2;
+  vector dvx2, dvy2, dvz2;
   vector dvdr2;
   vector curlvrx2, curlvry2, curlvrz2;
 
   /* Fill the vectors. */
-  mj.v = vec_load(Mj);
-  mj2.v = vec_load(&Mj[VEC_SIZE]);
-  vjx.v = vec_load(Vjx);
-  vjx2.v = vec_load(&Vjx[VEC_SIZE]);
-  vjy.v = vec_load(Vjy);
-  vjy2.v = vec_load(&Vjy[VEC_SIZE]);
-  vjz.v = vec_load(Vjz);
-  vjz2.v = vec_load(&Vjz[VEC_SIZE]);
-  dx.v = vec_load(Dx);
-  dx2.v = vec_load(&Dx[VEC_SIZE]);
-  dy.v = vec_load(Dy);
-  dy2.v = vec_load(&Dy[VEC_SIZE]);
-  dz.v = vec_load(Dz);
-  dz2.v = vec_load(&Dz[VEC_SIZE]);
+  const vector mj = vector_load(Mj);
+  const vector mj2 = vector_load(&Mj[VEC_SIZE]);
+  const vector vjx = vector_load(Vjx);
+  const vector vjx2 = vector_load(&Vjx[VEC_SIZE]);
+  const vector vjy = vector_load(Vjy);
+  const vector vjy2 = vector_load(&Vjy[VEC_SIZE]);
+  const vector vjz = vector_load(Vjz);
+  const vector vjz2 = vector_load(&Vjz[VEC_SIZE]);
+  const vector dx = vector_load(Dx);
+  const vector dx2 = vector_load(&Dx[VEC_SIZE]);
+  const vector dy = vector_load(Dy);
+  const vector dy2 = vector_load(&Dy[VEC_SIZE]);
+  const vector dz = vector_load(Dz);
+  const vector dz2 = vector_load(&Dz[VEC_SIZE]);
 
   /* Get the radius and inverse radius. */
-  r2.v = vec_load(R2);
-  r2_2.v = vec_load(&R2[VEC_SIZE]);
+  const vector r2 = vector_load(R2);
+  const vector r2_2 = vector_load(&R2[VEC_SIZE]);
   ri = vec_reciprocal_sqrt(r2);
   ri2 = vec_reciprocal_sqrt(r2_2);
   r.v = vec_mul(r2.v, ri.v);
@@ -592,30 +586,29 @@ runner_iact_nonsym_1_vec_force(
 #ifdef WITH_VECTORIZATION
 
   vector r, ri;
-  vector vjx, vjy, vjz, dvx, dvy, dvz;
-  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj;
+  vector dvx, dvy, dvz;
   vector xi, xj;
   vector hid_inv, hjd_inv;
   vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
-  vector omega_ij, mu_ij, fac_mu, balsara;
+  vector omega_ij, mu_ij, balsara;
   vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
 
   /* Fill vectors. */
-  vjx.v = vec_load(Vjx);
-  vjy.v = vec_load(Vjy);
-  vjz.v = vec_load(Vjz);
-  mj.v = vec_load(Mj);
+  const vector vjx = vector_load(Vjx);
+  const vector vjy = vector_load(Vjy);
+  const vector vjz = vector_load(Vjz);
+  const vector mj = vector_load(Mj);
+  const vector pjrho = vector_load(Pjrho);
+  const vector grad_hj = vector_load(Grad_hj);
+  const vector pjPOrho2 = vector_load(PjPOrho2);
+  const vector balsara_j = vector_load(Balsara_j);
+  const vector cj = vector_load(Cj);
 
-  pjrho.v = vec_load(Pjrho);
-  grad_hj.v = vec_load(Grad_hj);
-  pjPOrho2.v = vec_load(PjPOrho2);
-  balsara_j.v = vec_load(Balsara_j);
-  cj.v = vec_load(Cj);
-
-  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+  const vector fac_mu =
+      vector_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
@@ -634,7 +627,7 @@ runner_iact_nonsym_1_vec_force(
   hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   xj.v = vec_mul(r.v, hj_inv.v);
 
-  /* Calculate the kernel for two particles. */
+  /* Calculate the kernel. */
   kernel_eval_dWdx_force_vec(&xj, &wj_dx);
 
   wj_dr.v = vec_mul(hjd_inv.v, wj_dx.v);
@@ -720,23 +713,19 @@ runner_iact_nonsym_2_vec_force(
 
 #ifdef WITH_VECTORIZATION
 
-  vector r, r2, ri;
-  vector dx, dy, dz, dvx, dvy, dvz;
-  vector vjx, vjy, vjz;
-  vector pjrho, grad_hj, pjPOrho2, balsara_j, cj, mj, hj_inv;
+  vector r, ri;
+  vector dvx, dvy, dvz;
   vector ui, uj;
   vector hid_inv, hjd_inv;
   vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
-  vector omega_ij, mu_ij, fac_mu, balsara;
+  vector omega_ij, mu_ij, balsara;
   vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
 
-  vector r_2, r2_2, ri_2;
-  vector dx_2, dy_2, dz_2, dvx_2, dvy_2, dvz_2;
-  vector vjx_2, vjy_2, vjz_2;
-  vector pjrho_2, grad_hj_2, pjPOrho2_2, balsara_j_2, cj_2, mj_2, hj_inv_2;
+  vector r_2, ri_2;
+  vector dvx_2, dvy_2, dvz_2;
   vector ui_2, uj_2;
   vector hjd_inv_2;
   vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
@@ -747,44 +736,45 @@ runner_iact_nonsym_2_vec_force(
   vector rho_ij_2, visc_2, visc_term_2, sph_term_2, acc_2, entropy_dt_2;
 
   /* Fill vectors. */
-  mj.v = vec_load(Mj);
-  mj_2.v = vec_load(&Mj[VEC_SIZE]);
-  vjx.v = vec_load(Vjx);
-  vjx_2.v = vec_load(&Vjx[VEC_SIZE]);
-  vjy.v = vec_load(Vjy);
-  vjy_2.v = vec_load(&Vjy[VEC_SIZE]);
-  vjz.v = vec_load(Vjz);
-  vjz_2.v = vec_load(&Vjz[VEC_SIZE]);
-  dx.v = vec_load(Dx);
-  dx_2.v = vec_load(&Dx[VEC_SIZE]);
-  dy.v = vec_load(Dy);
-  dy_2.v = vec_load(&Dy[VEC_SIZE]);
-  dz.v = vec_load(Dz);
-  dz_2.v = vec_load(&Dz[VEC_SIZE]);
+  const vector mj = vector_load(Mj);
+  const vector mj_2 = vector_load(&Mj[VEC_SIZE]);
+  const vector vjx = vector_load(Vjx);
+  const vector vjx_2 = vector_load(&Vjx[VEC_SIZE]);
+  const vector vjy = vector_load(Vjy);
+  const vector vjy_2 = vector_load(&Vjy[VEC_SIZE]);
+  const vector vjz = vector_load(Vjz);
+  const vector vjz_2 = vector_load(&Vjz[VEC_SIZE]);
+  const vector dx = vector_load(Dx);
+  const vector dx_2 = vector_load(&Dx[VEC_SIZE]);
+  const vector dy = vector_load(Dy);
+  const vector dy_2 = vector_load(&Dy[VEC_SIZE]);
+  const vector dz = vector_load(Dz);
+  const vector dz_2 = vector_load(&Dz[VEC_SIZE]);
 
   /* Get the radius and inverse radius. */
-  r2.v = vec_load(R2);
-  r2_2.v = vec_load(&R2[VEC_SIZE]);
+  const vector r2 = vector_load(R2);
+  const vector r2_2 = vector_load(&R2[VEC_SIZE]);
   ri = vec_reciprocal_sqrt(r2);
   ri_2 = vec_reciprocal_sqrt(r2_2);
   r.v = vec_mul(r2.v, ri.v);
   r_2.v = vec_mul(r2_2.v, ri_2.v);
 
   /* Get remaining properties. */
-  pjrho.v = vec_load(Pjrho);
-  pjrho_2.v = vec_load(&Pjrho[VEC_SIZE]);
-  grad_hj.v = vec_load(Grad_hj);
-  grad_hj_2.v = vec_load(&Grad_hj[VEC_SIZE]);
-  pjPOrho2.v = vec_load(PjPOrho2);
-  pjPOrho2_2.v = vec_load(&PjPOrho2[VEC_SIZE]);
-  balsara_j.v = vec_load(Balsara_j);
-  balsara_j_2.v = vec_load(&Balsara_j[VEC_SIZE]);
-  cj.v = vec_load(Cj);
-  cj_2.v = vec_load(&Cj[VEC_SIZE]);
-  hj_inv.v = vec_load(Hj_inv);
-  hj_inv_2.v = vec_load(&Hj_inv[VEC_SIZE]);
+  const vector pjrho = vector_load(Pjrho);
+  const vector pjrho_2 = vector_load(&Pjrho[VEC_SIZE]);
+  const vector grad_hj = vector_load(Grad_hj);
+  const vector grad_hj_2 = vector_load(&Grad_hj[VEC_SIZE]);
+  const vector pjPOrho2 = vector_load(PjPOrho2);
+  const vector pjPOrho2_2 = vector_load(&PjPOrho2[VEC_SIZE]);
+  const vector balsara_j = vector_load(Balsara_j);
+  const vector balsara_j_2 = vector_load(&Balsara_j[VEC_SIZE]);
+  const vector cj = vector_load(Cj);
+  const vector cj_2 = vector_load(&Cj[VEC_SIZE]);
+  const vector hj_inv = vector_load(Hj_inv);
+  const vector hj_inv_2 = vector_load(&Hj_inv[VEC_SIZE]);
 
-  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+  const vector fac_mu =
+      vector_set1(1.f); /* Will change with cosmological integration */
 
   /* Find the balsara switch. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);

@@ -37,8 +37,12 @@
 #include "debug.h"
 #include "inline.h"
 
+extern struct eos_parameters eos;
+
 /* ------------------------------------------------------------------------- */
 #if defined(EOS_IDEAL_GAS)
+
+struct eos_parameters {};
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -172,6 +176,12 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 /* ------------------------------------------------------------------------- */
 #elif defined(EOS_ISOTHERMAL_GAS)
 
+struct eos_parameters {
+
+  /*! Thermal energy per unit mass */
+  float isothermal_internal_energy;
+};
+
 /**
  * @brief Returns the internal energy given density and entropy
  *
@@ -184,7 +194,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy) {
 
-  return const_isothermal_internal_energy;
+  return eos.isothermal_internal_energy;
 }
 /**
  * @brief Returns the pressure given density and entropy
@@ -198,7 +208,7 @@ gas_internal_energy_from_entropy(float density, float entropy) {
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
     float density, float entropy) {
 
-  return hydro_gamma_minus_one * const_isothermal_internal_energy * density;
+  return hydro_gamma_minus_one * eos.isothermal_internal_energy * density;
 }
 
 /**
@@ -213,7 +223,7 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
     float density, float pressure) {
 
-  return hydro_gamma_minus_one * const_isothermal_internal_energy *
+  return hydro_gamma_minus_one * eos.isothermal_internal_energy *
          pow_minus_gamma_minus_one(density);
 }
 
@@ -229,7 +239,7 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
     float density, float entropy) {
 
-  return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+  return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
 }
 
@@ -245,7 +255,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 __attribute__((always_inline)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u) {
 
-  return hydro_gamma_minus_one * const_isothermal_internal_energy *
+  return hydro_gamma_minus_one * eos.isothermal_internal_energy *
          pow_minus_gamma_minus_one(density);
 }
 
@@ -261,7 +271,7 @@ gas_entropy_from_internal_energy(float density, float u) {
 __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
-  return hydro_gamma_minus_one * const_isothermal_internal_energy * density;
+  return hydro_gamma_minus_one * eos.isothermal_internal_energy * density;
 }
 
 /**
@@ -275,7 +285,7 @@ gas_pressure_from_internal_energy(float density, float u) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_pressure(float density, float pressure) {
-  return const_isothermal_internal_energy;
+  return eos.isothermal_internal_energy;
 }
 
 /**
@@ -290,7 +300,7 @@ gas_internal_energy_from_pressure(float density, float pressure) {
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u) {
 
-  return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+  return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
 }
 
@@ -306,7 +316,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
     float density, float P) {
 
-  return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+  return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
 }
 
@@ -315,6 +325,13 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 
 #error "An Equation of state needs to be chosen in const.h !"
 
+#endif
+
+void eos_init(struct eos_parameters *e, const struct swift_params *params);
+void eos_print(const struct eos_parameters *e);
+
+#if defined(HAVE_HDF5)
+void eos_print_snapshot(hid_t h_grpsph, const struct eos_parameters *e);
 #endif
 
 #endif /* SWIFT_EQUATION_OF_STATE_H */

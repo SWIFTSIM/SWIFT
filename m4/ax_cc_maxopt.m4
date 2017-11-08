@@ -146,6 +146,22 @@ if test "$ac_test_CFLAGS" != "set"; then
         fi
 	;;
 
+    clang)
+     # default optimization flags for clang on all systems
+     CFLAGS="-O3 -fomit-frame-pointer"
+
+     # Always good optimisation to have
+     AX_CHECK_COMPILE_FLAG(-fstrict-aliasing, CFLAGS="$CFLAGS -fstrict-aliasing")
+
+     # note that we enable "unsafe" fp optimization with other compilers, too
+     AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")
+
+     # not all codes will benefit from this.
+     AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
+
+     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     ;;
+
     gnu)
      # default optimization flags for gcc on all systems
      CFLAGS="-O3 -fomit-frame-pointer"
@@ -155,7 +171,7 @@ if test "$ac_test_CFLAGS" != "set"; then
 
      #  -fstrict-aliasing for gcc-2.95+
      AX_CHECK_COMPILE_FLAG(-fstrict-aliasing,
-	CFLAGS="$CFLAGS -fstrict-aliasing")
+        CFLAGS="$CFLAGS -fstrict-aliasing")
 
      # note that we enable "unsafe" fp optimization with other compilers, too
      AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")

@@ -20,9 +20,6 @@
 #ifndef SWIFT_VECTOR_H
 #define SWIFT_VECTOR_H
 
-/* Have I already read this file? */
-#ifndef VEC_MACRO
-
 /* Config parameters. */
 #include "../config.h"
 
@@ -84,7 +81,7 @@
 #define vec_cmp_lte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_LE_OQ)
 #define vec_cmp_gte(a, b) _mm512_cmp_ps_mask(a, b, _CMP_GE_OQ)
 #define vec_cmp_result(a) ({ a; })
-#define vec_form_int_mask(a) ({ a; })
+#define vec_is_mask_true(a) ({ a; })
 #define vec_and(a, b) _mm512_and_ps(a, b)
 #define vec_mask_and(a, b) _mm512_kand(a, b)
 #define vec_and_mask(a, mask) _mm512_maskz_mov_ps(mask, a)
@@ -182,7 +179,7 @@
 #define vec_cmp_lte(a, b) _mm256_cmp_ps(a, b, _CMP_LE_OQ)
 #define vec_cmp_gte(a, b) _mm256_cmp_ps(a, b, _CMP_GE_OQ)
 #define vec_cmp_result(a) _mm256_movemask_ps(a)
-#define vec_form_int_mask(a) _mm256_movemask_ps(a.v)
+#define vec_is_mask_true(a) _mm256_movemask_ps(a.v)
 #define vec_and(a, b) _mm256_and_ps(a, b)
 #define vec_mask_and(a, b) _mm256_and_ps(a.v, b.v)
 #define vec_and_mask(a, mask) _mm256_and_ps(a, mask.v)
@@ -431,11 +428,48 @@ __attribute__((always_inline)) INLINE vector vec_reciprocal_sqrt(vector x) {
   return x_inv;
 }
 
+/**
+ * @brief Returns a new vector with data loaded from a memory address.
+ *
+ * @param x memory address to load from.
+ * @return Loaded #vector.
+ */
+__attribute__((always_inline)) INLINE vector vector_load(float *const x) {
+
+  vector temp;
+  temp.v = vec_load(x);
+  return temp;
+}
+
+/**
+ * @brief Returns a vector filled with one value.
+ *
+ * @param x value to set each element.
+ * @return A #vector filled with a given constant.
+ */
+__attribute__((always_inline)) INLINE vector vector_set1(const float x) {
+
+  vector temp;
+  temp.v = vec_set1(x);
+  return temp;
+}
+
+/**
+ * @brief Returns a new vector filled with zeros.
+ *
+ * @return temp set #vector.
+ * @return A #vector filled with zeros.
+ */
+__attribute__((always_inline)) INLINE vector vector_setzero() {
+
+  vector temp;
+  temp.v = vec_setzero();
+  return temp;
+}
+
 #else
 /* Needed for cache alignment. */
 #define VEC_SIZE 8
 #endif /* WITH_VECTORIZATION */
-
-#endif /* VEC_MACRO */
 
 #endif /* SWIFT_VECTOR_H */

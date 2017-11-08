@@ -33,13 +33,18 @@
 
 #if defined(WITH_VECTORIZATION)
 #define DOSELF2 runner_doself2_force_vec
+#define DOPAIR2 runner_dopair2_branch_force
 #define DOSELF2_NAME "runner_doself2_force_vec"
-#define DOPAIR2_NAME "runner_dopair2_force"
+#define DOPAIR2_NAME "runner_dopair2_force_vec"
 #endif
 
 #ifndef DOSELF2
 #define DOSELF2 runner_doself2_force
 #define DOSELF2_NAME "runner_doself2_density"
+#endif
+
+#ifndef DOPAIR2
+#define DOPAIR2 runner_dopair2_branch_force
 #define DOPAIR2_NAME "runner_dopair2_force"
 #endif
 
@@ -445,11 +450,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
-void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
+                                 struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
@@ -469,8 +474,10 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  /* Choke on FP-exceptions */
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   /* Get some randomness going */
   srand(0);
@@ -625,7 +632,6 @@ int main(int argc, char *argv[]) {
 
   /* Start the test */
   ticks time = 0;
-  ticks self_force_time = 0;
   for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
@@ -696,6 +702,14 @@ int main(int argc, char *argv[]) {
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
+#ifdef WITH_VECTORIZATION
+    /* Initialise the cache. */
+    runner.ci_cache.count = 0;
+    runner.cj_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    cache_init(&runner.cj_cache, 512);
+#endif
+
     int ctr = 0;
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
@@ -708,27 +722,19 @@ int main(int argc, char *argv[]) {
 
             const ticks sub_tic = getticks();
 
-            runner_dopair2_force(&runner, main_cell, cj);
+            DOPAIR2(&runner, main_cell, cj);
 
-            const ticks sub_toc = getticks();
-            timings[ctr++] += sub_toc - sub_tic;
+            timings[ctr++] += getticks() - sub_tic;
           }
         }
       }
     }
-
-#ifdef WITH_VECTORIZATION
-    /* Initialise the cache. */
-    runner.ci_cache.count = 0;
-    cache_init(&runner.ci_cache, 512);
-#endif
 
     ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
     DOSELF2(&runner, main_cell);
 
-    self_force_time += getticks() - self_tic;
     timings[26] += getticks() - self_tic;
 #endif
 
@@ -761,11 +767,12 @@ int main(int argc, char *argv[]) {
   ticks face_time = timings[4] + timings[10] + timings[12] + timings[13] +
                     timings[15] + timings[21];
 
+  ticks self_time = timings[26];
+
   message("Corner calculations took       : %15lli ticks.", corner_time / runs);
   message("Edge calculations took         : %15lli ticks.", edge_time / runs);
   message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.",
-          self_force_time / runs);
+  message("Self calculations took         : %15lli ticks.", self_time / runs);
   message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)

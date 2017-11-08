@@ -30,7 +30,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testActivePair test27cells test125cells testParser \
+		 testSPHStep testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths \
                  testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
@@ -59,6 +59,10 @@ testSingle_SOURCES = testSingle.c
 testActivePair_SOURCES = testActivePair.c
 
 test27cells_SOURCES = test27cells.c
+
+test27cells_subset_SOURCES = test27cells.c
+
+test27cells_subset_CFLAGS = $(AM_CFLAGS) -DDOSELF_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -102,5 +106,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
 	     difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
-	     tolerance_testInteractions.dat tolerance_pair_active.dat \
+	     tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
 	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat

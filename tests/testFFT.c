@@ -76,7 +76,9 @@ int main() {
   engine.max_active_bin = num_time_bins;
   engine.gravity_properties = &gravity_properties;
   engine.nr_threads = 1;
-
+  engine.nodeID = 0;
+  engine_rank = 0;
+  
   struct runner runner;
   runner.e = &engine;
 

@@ -19,8 +19,13 @@
 #ifndef SWIFT_DUMP_H
 #define SWIFT_DUMP_H
 
-/* Includes. */
-#include "lock.h"
+/* Config parameters. */
+#include "../config.h"
+
+#ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+
+/* Standard headers */
+#include <stdlib.h>
 
 /* Some constants. */
 #define dump_grow_ensure_factor 10
@@ -53,5 +58,7 @@ void dump_ensure(struct dump *d, size_t size);
 void dump_sync(struct dump *d);
 void dump_close(struct dump *d);
 void *dump_get(struct dump *d, size_t count, size_t *offset);
+
+#endif /* HAVE_POSIX_FALLOCATE */
 
 #endif /* SWIFT_DUMP_H */
