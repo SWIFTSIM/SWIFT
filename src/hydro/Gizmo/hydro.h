@@ -131,7 +131,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
    energy (as in Gadget) */
 #if defined(EOS_ISOTHERMAL_GAS)
   /* this overwrites the internal energy from the initial condition file */
-  p->conserved.energy = mass * const_isothermal_internal_energy;
+  p->conserved.energy = mass * eos.isothermal_internal_energy;
 #else
   p->conserved.energy *= mass;
 #endif
@@ -608,7 +608,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.momentum[1] += p->conserved.flux.momentum[1];
   p->conserved.momentum[2] += p->conserved.flux.momentum[2];
 #if defined(EOS_ISOTHERMAL_GAS)
-  p->conserved.energy = p->conserved.mass * const_isothermal_internal_energy;
+  p->conserved.energy = p->conserved.mass * eos.isothermal_internal_energy;
 #else
   p->conserved.energy += p->conserved.flux.energy;
 #endif
@@ -709,9 +709,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 
   if (p->primitives.rho > 0.) {
 #ifdef EOS_ISOTHERMAL_GAS
-    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+    return eos.isothermal_internal_energy;
 #else
-    return const_isothermal_internal_energy;
+    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 #endif
   } else {
     return 0.;
@@ -743,7 +743,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
 
   if (p->primitives.rho > 0.) {
 #ifdef EOS_ISOTHERMAL_GAS
-    return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+    return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                  hydro_gamma_minus_one);
 #else
     return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
