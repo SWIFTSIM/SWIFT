@@ -168,5 +168,6 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
+void scheduler_write_dependency(struct task *ta, struct task *tb);
 
 #endif /* SWIFT_SCHEDULER_H */

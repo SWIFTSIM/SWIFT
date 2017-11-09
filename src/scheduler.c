@@ -109,7 +109,11 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
   atomic_inc(&s->completed_unlock_writes);
-  
+
+  scheduler_write_dependency(ta,tb);
+}
+
+void scheduler_write_dependency(struct task *ta, struct task *tb) {
   int test = ta->ci->ti_end_min == 0 && tb->ci->ti_end_min == 0;
   test = test && ta->ci->parent == NULL && tb->ci->parent == NULL;
   if (test)
@@ -120,7 +124,12 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
       ssize_t read;
       FILE *f;
       
-      sprintf(tmp, "%s->%s;\n", taskID_names[ta->type], taskID_names[tb->type]);
+      sprintf(tmp, "\t%s_%s->%s_%s;\n",
+	      taskID_names[ta->type],
+	      subtaskID_names[ta->subtype],
+	      taskID_names[tb->type],
+	      subtaskID_names[tb->subtype]
+	      );
 
       f = fopen("test_graph.viz", "r");
 
@@ -138,6 +147,12 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
       
 	  fclose(f);
 	}
+      else
+	{
+	  f = fopen("test_graph.viz", "w");
+	  fprintf(f,"digraph task_dep {\n\tcompound=true;\n\tratio=0.66;\n\tnode[nodesep=0.15];\n");
+	  fclose(f);
+	}
 
       if (test)
 	{
@@ -147,7 +162,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 	}
 
     }
+
 }
+
 
 /**
  * @brief Split a hydrodynamic task if too large.
