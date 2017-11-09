@@ -52,4 +52,7 @@ int compare_values(double a, double b, double threshold, double *absDiff,
                    double *absSum, double *relDiff);
 int compare_particles(struct part a, struct part b, double threshold);
 
+FILE *open_and_check_file(const char *filename, const char *mode);
+
+
 #endif /* SWIFT_TOOL_H */

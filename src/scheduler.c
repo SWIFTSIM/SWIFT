@@ -50,6 +50,7 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+#include "tools.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -110,61 +111,81 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   s->unlock_ind[ind] = ta - s->tasks;
   atomic_inc(&s->completed_unlock_writes);
 
-  scheduler_write_dependency(ta,tb);
 }
 
-void scheduler_write_dependency(struct task *ta, struct task *tb) {
-  int test = ta->ci->ti_end_min == 0 && tb->ci->ti_end_min == 0;
-  test = test && ta->ci->parent == NULL && tb->ci->parent == NULL;
-  if (test)
+void scheduler_write_dependency(struct scheduler *s) {
+
+  message("Writing dependencies");
+  
+  char filename[200] = "dependency_graph.dot";
+  char tmp[200]; /* text to write */
+  char *line = NULL; /* buff for reading line */
+  size_t len = 0;
+  ssize_t read;
+  FILE *f; /* file containing the output */
+  int test;
+  int i,j;
+
+  struct task *ta, *tb;
+
+  /* create file */
+  f = open_and_check_file(filename, "w");
+
+  /* write header */
+  fprintf(f, "digraph task_dep {\n");
+  fprintf(f, "\t compound=true;\n");
+  fprintf(f, "\t ratio=0.66;\n");
+  fprintf(f, "\t node[nodesep=0.15];\n");
+
+  fclose(f);
+  
+  /* loop over all tasks */
+  for(i=0; i < s->nr_tasks; i++)
     {
-      char tmp[200];
-      char *line = NULL;
-      size_t len = 0;
-      ssize_t read;
-      FILE *f;
-      
-      sprintf(tmp, "\t%s_%s->%s_%s;\n",
-	      taskID_names[ta->type],
-	      subtaskID_names[ta->subtype],
-	      taskID_names[tb->type],
-	      subtaskID_names[tb->subtype]
-	      );
+      ta = &s->tasks[i];
 
-      f = fopen("test_graph.viz", "r");
-
-      if (f != NULL)
+      /* and theirs dependencies */
+      for(j=0; j < ta->nr_unlock_tasks; j++)
 	{
+	  tb = ta->unlock_tasks[j];
+
+	  /* construct line */
+	  sprintf(tmp, "\t %s_%s->%s_%s;\n",
+		  taskID_names[ta->type],
+		  subtaskID_names[ta->subtype],
+		  taskID_names[tb->type],
+		  subtaskID_names[tb->subtype]
+		  );
+
+	  f = open_and_check_file(filename, "r");
+
+	  /* check if dependency already written */
 	  test = 1;
+	  /* loop over all lines */
 	  while (test && (read = getline(&line, &len, f)) != -1)
 	    {
+	      /* check if line == dependency word */
 	      if (strcmp(tmp, line) == 0)
-		{
-		  test = 0;
-		}
-	      
+		  test = 0;	      
 	    }
-      
-	  fclose(f);
-	}
-      else
-	{
-	  f = fopen("test_graph.viz", "w");
-	  fprintf(f,"digraph task_dep {\n\tcompound=true;\n\tratio=0.66;\n\tnode[nodesep=0.15];\n");
-	  fclose(f);
-	}
 
-      if (test)
-	{
-	  f = fopen("test_graph.viz", "a");
-	  fprintf(f, tmp);
 	  fclose(f);
-	}
 
+	  
+	  /* Not written yet => write it */
+	  if (test)
+	    {
+	      f = open_and_check_file(filename, "a");
+	      fprintf(f, tmp);
+	      fclose(f);	  
+	    }
+	}      
     }
 
+  f = open_and_check_file(filename, "a");
+  fprintf(f, "}");
+  fclose(f);
 }
-
 
 /**
  * @brief Split a hydrodynamic task if too large.
