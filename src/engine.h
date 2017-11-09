@@ -160,7 +160,7 @@ struct engine {
   size_t updates, g_updates, s_updates;
 
   /* Properties of the previous step */
-  enum engine_step_properties step_props;
+  int step_props;
 
   /* Total numbers of particles in the system. */
   size_t total_nr_parts, total_nr_gparts;
