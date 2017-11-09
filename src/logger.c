@@ -20,6 +20,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+
 /* Some standard headers. */
 #include <stdint.h>
 #include <stdlib.h>
@@ -41,7 +43,6 @@
  *
  * @return The size of the logger message in bytes.
  */
-
 int logger_size(unsigned int mask) {
 
   /* Start with 8 bytes for the header. */
@@ -95,7 +96,6 @@ int logger_size(unsigned int mask) {
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
  */
-
 void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
                      struct dump *dump) {
 
@@ -176,7 +176,6 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
  */
-
 void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
                       struct dump *dump) {
 
@@ -270,7 +269,6 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
  *
  * @return The mask containing the values read.
  */
-
 int logger_read_part(struct part *p, size_t *offset, const char *buff) {
 
   /* Jump to the offset. */
@@ -349,7 +347,6 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
  *
  * @return The mask containing the values read.
  */
-
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
 
   /* Jump to the offset. */
@@ -416,7 +413,6 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
  *
  * @return The mask containing the values read.
  */
-
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff) {
 
@@ -444,3 +440,5 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
   /* Finally, return the mask of the values we just read. */
   return mask;
 }
+
+#endif /* HAVE_POSIX_FALLOCATE */

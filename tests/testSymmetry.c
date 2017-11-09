@@ -28,8 +28,10 @@
 
 int main(int argc, char *argv[]) {
 
-  /* Choke if need be */
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
 #if defined(SHADOWFAX_SPH)
   /* Initialize the Voronoi simulation box */

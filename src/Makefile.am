@@ -60,7 +60,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     collectgroup.c hydro_space.c equation_of_state.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h equation_of_state.h part_type.h periodic.h \

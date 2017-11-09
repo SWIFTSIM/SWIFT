@@ -24,6 +24,7 @@
 #include "approx_math.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "hydro_properties.h"
 #include "hydro_space.h"
 #include "hydro_unphysical.h"
 #include "hydro_velocities.h"
@@ -130,8 +131,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 /* remember that we store the total thermal energy, not the specific thermal
    energy (as in Gadget) */
 #if defined(EOS_ISOTHERMAL_GAS)
-  /* this overwrites the internal energy from the initial condition file */
-  p->conserved.energy = mass * const_isothermal_internal_energy;
+  /* this overwrites the internal energy from the initial condition file
+   * Note that we call the EoS function just to get the constant u here. */
+  p->conserved.energy = mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
   p->conserved.energy *= mass;
 #endif
@@ -608,7 +610,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.momentum[1] += p->conserved.flux.momentum[1];
   p->conserved.momentum[2] += p->conserved.flux.momentum[2];
 #if defined(EOS_ISOTHERMAL_GAS)
-  p->conserved.energy = p->conserved.mass * const_isothermal_internal_energy;
+  /* We use the EoS equation in a sneaky way here just to get the constant u */
+  p->conserved.energy =
+      p->conserved.mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
   p->conserved.energy += p->conserved.flux.energy;
 #endif
@@ -707,15 +711,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p) {
 
-  if (p->primitives.rho > 0.) {
-#ifdef EOS_ISOTHERMAL_GAS
-    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
-#else
-    return const_isothermal_internal_energy;
-#endif
-  } else {
+  if (p->primitives.rho > 0.)
+    return gas_internal_energy_from_pressure(p->primitives.rho,
+                                             p->primitives.P);
+  else
     return 0.;
-  }
 }
 
 /**
@@ -727,7 +727,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p) {
 
   if (p->primitives.rho > 0.) {
-    return p->primitives.P / pow_gamma(p->primitives.rho);
+    return gas_entropy_from_pressure(p->primitives.rho, p->primitives.P);
   } else {
     return 0.;
   }
@@ -741,16 +741,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p) {
 
-  if (p->primitives.rho > 0.) {
-#ifdef EOS_ISOTHERMAL_GAS
-    return sqrtf(const_isothermal_internal_energy * hydro_gamma *
-                 hydro_gamma_minus_one);
-#else
-    return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
-#endif
-  } else {
+  if (p->primitives.rho > 0.)
+    return gas_soundspeed_from_pressure(p->primitives.rho, p->primitives.P);
+  else
     return 0.;
-  }
 }
 
 /**

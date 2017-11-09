@@ -50,6 +50,7 @@
 #include "active.h"
 #include "atomic.h"
 #include "drift.h"
+#include "engine.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -1924,6 +1925,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
@@ -1935,13 +1937,13 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) ? cell_is_active(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == engine_rank) ||
-        (cj_active && cj->nodeID == engine_rank)) {
+    if ((ci_active && ci->nodeID == nodeID) ||
+        (cj_active && cj->nodeID == nodeID)) {
       scheduler_activate(s, t);
 
       /* Activate hydro drift */
       if (t->type == task_type_self) {
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -1953,8 +1955,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         cj->dx_max_sort_old = cj->dx_max_sort;
 
         /* Activate the drift tasks. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_sorts(ci, t->flags, s);
@@ -1975,7 +1977,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-      if (ci->nodeID != engine_rank) {
+      if (ci->nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
@@ -2013,7 +2015,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, send its ti_end values. */
         if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-      } else if (cj->nodeID != engine_rank) {
+      } else if (cj->nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -2134,7 +2136,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == engine_rank && cell_is_active(c, e)) {
+  if (c->nodeID == nodeID && cell_is_active(c, e)) {
 
     for (struct link *l = c->gradient; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
