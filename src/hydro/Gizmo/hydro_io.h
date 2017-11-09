@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
-#include "equation_of_state.h"
+#include "hydro.h"
 #include "hydro_flux_limiters.h"
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
@@ -72,15 +72,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @return Internal energy of the particle
  */
 float convert_u(struct engine* e, struct part* p) {
-  if (p->primitives.rho > 0.) {
-#ifdef EOS_ISOTHERMAL_GAS
-    return eos.isothermal_internal_energy;
-#else
-    return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
-#endif
-  } else {
-    return 0.;
-  }
+  return hydro_get_internal_energy(p);
 }
 
 /**
@@ -91,11 +83,7 @@ float convert_u(struct engine* e, struct part* p) {
  * @return Entropic function of the particle
  */
 float convert_A(struct engine* e, struct part* p) {
-  if (p->primitives.rho > 0.) {
-    return p->primitives.P / pow_gamma(p->primitives.rho);
-  } else {
-    return 0.;
-  }
+  return hydro_get_entropy(p);
 }
 
 /**
