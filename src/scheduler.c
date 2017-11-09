@@ -115,6 +115,11 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
 void scheduler_write_dependency(struct scheduler *s) {
 
+#ifdef WITH_MPI
+  if (engine_rank != 0)
+    return;
+#endif
+  
   message("Writing dependencies");
   
   char filename[200] = "dependency_graph.dot";
