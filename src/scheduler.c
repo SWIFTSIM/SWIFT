@@ -151,7 +151,7 @@ void scheduler_write_dependency(struct scheduler *s) {
       tb = ta->unlock_tasks[j];
 
       /* construct line */
-      sprintf(tmp, "\t %s_%s->%s_%s;\n", taskID_names[ta->type],
+      sprintf(tmp, "\t \"%s %s\"->\"%s %s\";\n", taskID_names[ta->type],
               subtaskID_names[ta->subtype], taskID_names[tb->type],
               subtaskID_names[tb->subtype]);
 
