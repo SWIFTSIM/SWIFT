@@ -25,7 +25,7 @@ AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 # Add local macro collection.
 AC_CONFIG_MACRO_DIR([m4])
