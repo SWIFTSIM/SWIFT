@@ -54,5 +54,4 @@ int compare_particles(struct part a, struct part b, double threshold);
 
 FILE *open_and_check_file(const char *filename, const char *mode);
 
-
 #endif /* SWIFT_TOOL_H */

@@ -110,26 +110,24 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
   atomic_inc(&s->completed_unlock_writes);
-
 }
 
 void scheduler_write_dependency(struct scheduler *s) {
 
 #ifdef WITH_MPI
-  if (engine_rank != 0)
-    return;
+  if (engine_rank != 0) return;
 #endif
-  
+
   message("Writing dependencies");
-  
+
   char filename[200] = "dependency_graph.dot";
-  char tmp[200]; /* text to write */
+  char tmp[200];     /* text to write */
   char *line = NULL; /* buff for reading line */
   size_t len = 0;
   ssize_t read;
   FILE *f; /* file containing the output */
   int test;
-  int i,j;
+  int i, j;
 
   struct task *ta, *tb;
 
@@ -143,49 +141,40 @@ void scheduler_write_dependency(struct scheduler *s) {
   fprintf(f, "\t node[nodesep=0.15];\n");
 
   fclose(f);
-  
+
   /* loop over all tasks */
-  for(i=0; i < s->nr_tasks; i++)
-    {
-      ta = &s->tasks[i];
+  for (i = 0; i < s->nr_tasks; i++) {
+    ta = &s->tasks[i];
 
-      /* and theirs dependencies */
-      for(j=0; j < ta->nr_unlock_tasks; j++)
-	{
-	  tb = ta->unlock_tasks[j];
+    /* and theirs dependencies */
+    for (j = 0; j < ta->nr_unlock_tasks; j++) {
+      tb = ta->unlock_tasks[j];
 
-	  /* construct line */
-	  sprintf(tmp, "\t %s_%s->%s_%s;\n",
-		  taskID_names[ta->type],
-		  subtaskID_names[ta->subtype],
-		  taskID_names[tb->type],
-		  subtaskID_names[tb->subtype]
-		  );
+      /* construct line */
+      sprintf(tmp, "\t %s_%s->%s_%s;\n", taskID_names[ta->type],
+              subtaskID_names[ta->subtype], taskID_names[tb->type],
+              subtaskID_names[tb->subtype]);
 
-	  f = open_and_check_file(filename, "r");
+      f = open_and_check_file(filename, "r");
 
-	  /* check if dependency already written */
-	  test = 1;
-	  /* loop over all lines */
-	  while (test && (read = getline(&line, &len, f)) != -1)
-	    {
-	      /* check if line == dependency word */
-	      if (strcmp(tmp, line) == 0)
-		  test = 0;	      
-	    }
+      /* check if dependency already written */
+      test = 1;
+      /* loop over all lines */
+      while (test && (read = getline(&line, &len, f)) != -1) {
+        /* check if line == dependency word */
+        if (strcmp(tmp, line) == 0) test = 0;
+      }
 
-	  fclose(f);
+      fclose(f);
 
-	  
-	  /* Not written yet => write it */
-	  if (test)
-	    {
-	      f = open_and_check_file(filename, "a");
-	      fprintf(f, tmp);
-	      fclose(f);	  
-	    }
-	}      
+      /* Not written yet => write it */
+      if (test) {
+        f = open_and_check_file(filename, "a");
+        fprintf(f, tmp);
+        fclose(f);
+      }
     }
+  }
 
   f = open_and_check_file(filename, "a");
   fprintf(f, "}");
