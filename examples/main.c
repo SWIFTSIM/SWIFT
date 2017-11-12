@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   int c;
   char parameters[200] = "acCdDef:FgGhMn:P:sSt:Tv:y:Y:";
 #ifdef SWIFT_DEBUG_CHECKS
-  strcat(parameters, "x:");
+  strcat(parameters, "x");
 #endif
   while ((c = getopt(argc, argv, parameters)) != -1)
     switch (c) {
@@ -703,6 +703,11 @@ int main(int argc, char *argv[]) {
   engine_dump_snapshot(&e);
   engine_print_stats(&e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (write_dependencies)
+    scheduler_write_dependency(&e.sched);
+#endif
+
   /* Legend */
   if (myrank == 0)
     printf("# %6s %14s %14s %10s %10s %10s %16s [%s]\n", "Step", "Time",
@@ -711,11 +716,6 @@ int main(int argc, char *argv[]) {
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (write_dependencies)
-    scheduler_write_dependency(&e.sched);
-#endif
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
