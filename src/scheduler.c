@@ -113,17 +113,34 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 void scheduler_write_dependency(struct scheduler *s) {
-
 #ifdef WITH_MPI
   if (engine_rank != 0) return;
 #endif
+  int i, j;
+
+  int max_nber_dep = 5;
+  /* 2 => we need 1 int for type and 1 for subtype */
+  int nber_relation = 2 * task_type_count * task_subtype_count * max_nber_dep;
+  /* For each type/subtype, a table of 2*max_nber_dep int is available =>
+     max_nber_dep task with subtype available
+     
+     -1 means that it is not set yet
+
+     to get the table of max_nber_dep for a task:
+     ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
+     where ta is the value of task_type and sa is the value of
+     task_subtype
+   */
+  int *table = malloc(nber_relation * sizeof(int));
+  for(i=0; i < nber_relation; i++)
+    table[i] = -1;
 
   message("Writing dependencies");
 
   /* create file */
   char filename[200] = "dependency_graph.dot";
   FILE *f; /* file containing the output */
-  f = open_and_check_file(filename, "wr");
+  f = open_and_check_file(filename, "w");
 
   /* write header */
   fprintf(f, "digraph task_dep {\n");
@@ -132,7 +149,6 @@ void scheduler_write_dependency(struct scheduler *s) {
   fprintf(f, "\t node[nodesep=0.15];\n");
 
   /* loop over all tasks */
-  int i, j;
   for (i = 0; i < s->nr_tasks; i++) {
     struct task *ta;    
     ta = &s->tasks[i];
@@ -141,6 +157,7 @@ void scheduler_write_dependency(struct scheduler *s) {
     for (j = 0; j < ta->nr_unlock_tasks; j++) {
       struct task *tb;
       tb = ta->unlock_tasks[j];
+
 
       char tmp[200];     /* text to write */
       char ta_name[200];
@@ -165,21 +182,40 @@ void scheduler_write_dependency(struct scheduler *s) {
 	      tb_name);
 
       /* check if dependency already written */
-      int test = 1;
+      int written = 0;
 
-      /* loop over all lines */
-      char *line = NULL; /* buff for reading line */
-      size_t len = 0;
-      ssize_t read;
-      fseek(f, 0, SEEK_SET);
-      while (test && (read = getline(&line, &len, f)) != -1) {
-        /* check if line == dependency word */
-        if (strcmp(tmp, line) == 0) test = 0;
-      }
+      int ind = ta->type * task_subtype_count + ta->subtype;
+      ind *= 2 * max_nber_dep;
+      
+      int k = 0;
+      int *cur = &table[ind];
+      while (k < max_nber_dep)
+	{
+	  /* not written yet */
+	  if (cur[0] == -1)
+	    {
+	      cur[0] = tb->type;
+	      cur[1] = tb->subtype;
+	      break;
+	    }
 
-      fseek(f, 0, SEEK_END);
+	  /* already written */
+	  if (cur[0] == tb->type && cur[1] == tb->subtype)
+	    {
+	      written = 1;
+	      break;
+	    }
+
+	  k += 1;
+	  cur = &cur[3];
+	}
+
+      /* max_nber_dep is too small */
+      if (k == max_nber_dep)
+	error("Not enough memory, please increase max_nber_dep");
+	
       /* Not written yet => write it */
-      if (test) {
+      if (!written) {
         fprintf(f, tmp);
       }
     }
@@ -187,6 +223,7 @@ void scheduler_write_dependency(struct scheduler *s) {
 
   fprintf(f, "}");
   fclose(f);
+  free(table);
 }
 
 /**
