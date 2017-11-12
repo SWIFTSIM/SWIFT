@@ -59,6 +59,9 @@ void print_help_message() {
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
+#ifdef SWIFT_DEBUG_CHECKS
+  printf("  %2s %14s %s\n", "-x", "", "Write task dependencies.");
+#endif
   printf("  %2s %14s %s\n", "-a", "", "Pin runners using processor affinity.");
   printf("  %2s %14s %s\n", "-c", "",
          "Run with cosmological time integration.");
@@ -171,6 +174,9 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
+#ifdef SWIFT_DEBUG_CHECKS
+  int write_dependencies = 0;
+#endif
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -181,7 +187,11 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:Y:")) != -1)
+  char parameters[200] = "acCdDef:FgGhMn:P:sSt:Tv:y:Y:";
+#ifdef SWIFT_DEBUG_CHECKS
+  strcat(parameters, "x:");
+#endif
+  while ((c = getopt(argc, argv, parameters)) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -193,6 +203,11 @@ int main(int argc, char *argv[]) {
       case 'c':
         with_cosmology = 1;
         break;
+#ifdef SWIFT_DEBUG_CHECKS
+      case 'x':
+	write_dependencies = 1;
+	break;
+#endif
       case 'C':
         with_cooling = 1;
         break;
@@ -696,6 +711,11 @@ int main(int argc, char *argv[]) {
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (write_dependencies)
+    scheduler_write_dependency(&e.sched);
+#endif
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {

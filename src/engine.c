@@ -2640,10 +2640,6 @@ void engine_maketasks(struct engine *e) {
   /* Set the tasks age. */
   e->tasks_age = 0;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->ti_current == 0) scheduler_write_dependency(sched);
-#endif
-
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());

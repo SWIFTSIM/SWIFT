@@ -120,19 +120,10 @@ void scheduler_write_dependency(struct scheduler *s) {
 
   message("Writing dependencies");
 
-  char filename[200] = "dependency_graph.dot";
-  char tmp[200];     /* text to write */
-  char *line = NULL; /* buff for reading line */
-  size_t len = 0;
-  ssize_t read;
-  FILE *f; /* file containing the output */
-  int test;
-  int i, j;
-
-  struct task *ta, *tb;
-
   /* create file */
-  f = open_and_check_file(filename, "w");
+  char filename[200] = "dependency_graph.dot";
+  FILE *f; /* file containing the output */
+  f = open_and_check_file(filename, "wr");
 
   /* write header */
   fprintf(f, "digraph task_dep {\n");
@@ -140,43 +131,44 @@ void scheduler_write_dependency(struct scheduler *s) {
   fprintf(f, "\t ratio=0.66;\n");
   fprintf(f, "\t node[nodesep=0.15];\n");
 
-  fclose(f);
-
   /* loop over all tasks */
+  int i, j;
   for (i = 0; i < s->nr_tasks; i++) {
+    struct task *ta;    
     ta = &s->tasks[i];
 
     /* and theirs dependencies */
     for (j = 0; j < ta->nr_unlock_tasks; j++) {
+      struct task *tb;
       tb = ta->unlock_tasks[j];
 
+      char tmp[200];     /* text to write */
       /* construct line */
       sprintf(tmp, "\t \"%s %s\"->\"%s %s\";\n", taskID_names[ta->type],
               subtaskID_names[ta->subtype], taskID_names[tb->type],
               subtaskID_names[tb->subtype]);
 
-      f = open_and_check_file(filename, "r");
-
       /* check if dependency already written */
-      test = 1;
+      int test = 1;
+
       /* loop over all lines */
+      char *line = NULL; /* buff for reading line */
+      size_t len = 0;
+      ssize_t read;
+      fseek(f, 0, SEEK_SET);
       while (test && (read = getline(&line, &len, f)) != -1) {
         /* check if line == dependency word */
         if (strcmp(tmp, line) == 0) test = 0;
       }
 
-      fclose(f);
-
+      fseek(f, 0, SEEK_END);
       /* Not written yet => write it */
       if (test) {
-        f = open_and_check_file(filename, "a");
         fprintf(f, tmp);
-        fclose(f);
       }
     }
   }
 
-  f = open_and_check_file(filename, "a");
   fprintf(f, "}");
   fclose(f);
 }
