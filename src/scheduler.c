@@ -112,6 +112,12 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   atomic_inc(&s->completed_unlock_writes);
 }
 
+/**
+ * @brief Write a dot file with the task dependencies.
+ *
+ * See examples/task_graph for an example of how to use it
+ * @param s The #scheduler we are working in.
+ */
 void scheduler_write_dependency(struct scheduler *s) {
 #ifdef WITH_MPI
   if (engine_rank != 0) return;
