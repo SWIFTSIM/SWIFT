@@ -129,7 +129,7 @@ void scheduler_write_dependency(struct scheduler *s) {
   int nber_relation = 2 * task_type_count * task_subtype_count * max_nber_dep;
   /* For each type/subtype, a table of 2*max_nber_dep int is available =>
      max_nber_dep task with subtype available
-     
+
      -1 means that it is not set yet
 
      to get the table of max_nber_dep for a task:
@@ -138,8 +138,7 @@ void scheduler_write_dependency(struct scheduler *s) {
      task_subtype
    */
   int *table = malloc(nber_relation * sizeof(int));
-  for(i=0; i < nber_relation; i++)
-    table[i] = -1;
+  for (i = 0; i < nber_relation; i++) table[i] = -1;
 
   message("Writing dependencies");
 
@@ -156,7 +155,7 @@ void scheduler_write_dependency(struct scheduler *s) {
 
   /* loop over all tasks */
   for (i = 0; i < s->nr_tasks; i++) {
-    struct task *ta;    
+    struct task *ta;
     ta = &s->tasks[i];
 
     /* and theirs dependencies */
@@ -164,62 +163,54 @@ void scheduler_write_dependency(struct scheduler *s) {
       struct task *tb;
       tb = ta->unlock_tasks[j];
 
-
-      char tmp[200];     /* text to write */
+      char tmp[200]; /* text to write */
       char ta_name[200];
       char tb_name[200];
       /* construct line */
       if (ta->subtype == task_subtype_none)
-	sprintf(ta_name, "%s", taskID_names[ta->type]);
+        sprintf(ta_name, "%s", taskID_names[ta->type]);
       else
-	sprintf(ta_name, "\"%s %s\"",
-		taskID_names[ta->type],
-		subtaskID_names[ta->subtype]);
+        sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
+                subtaskID_names[ta->subtype]);
 
       if (tb->subtype == task_subtype_none)
-	sprintf(tb_name, "%s", taskID_names[tb->type]);
+        sprintf(tb_name, "%s", taskID_names[tb->type]);
       else
-	sprintf(tb_name, "\"%s %s\"",
-		taskID_names[tb->type],
-		subtaskID_names[tb->subtype]);
-      
-      sprintf(tmp, "\t %s->%s;\n",
-	      ta_name,
-	      tb_name);
+        sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
+                subtaskID_names[tb->subtype]);
+
+      sprintf(tmp, "\t %s->%s;\n", ta_name, tb_name);
 
       /* check if dependency already written */
       int written = 0;
 
       int ind = ta->type * task_subtype_count + ta->subtype;
       ind *= 2 * max_nber_dep;
-      
+
       int k = 0;
       int *cur = &table[ind];
-      while (k < max_nber_dep)
-	{
-	  /* not written yet */
-	  if (cur[0] == -1)
-	    {
-	      cur[0] = tb->type;
-	      cur[1] = tb->subtype;
-	      break;
-	    }
+      while (k < max_nber_dep) {
+        /* not written yet */
+        if (cur[0] == -1) {
+          cur[0] = tb->type;
+          cur[1] = tb->subtype;
+          break;
+        }
 
-	  /* already written */
-	  if (cur[0] == tb->type && cur[1] == tb->subtype)
-	    {
-	      written = 1;
-	      break;
-	    }
+        /* already written */
+        if (cur[0] == tb->type && cur[1] == tb->subtype) {
+          written = 1;
+          break;
+        }
 
-	  k += 1;
-	  cur = &cur[3];
-	}
+        k += 1;
+        cur = &cur[3];
+      }
 
       /* max_nber_dep is too small */
       if (k == max_nber_dep)
-	error("Not enough memory, please increase max_nber_dep");
-	
+        error("Not enough memory, please increase max_nber_dep");
+
       /* Not written yet => write it */
       if (!written) {
         fprintf(f, tmp);

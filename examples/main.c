@@ -191,8 +191,7 @@ int main(int argc, char *argv[]) {
 #ifdef SWIFT_DEBUG_CHECKS
   strcat(parameters, "x");
 #endif
-  while ((c = getopt(argc, argv, parameters)) != -1)
-    switch (c) {
+  while ((c = getopt(argc, argv, parameters)) != -1) switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
         with_aff = 1;
@@ -205,8 +204,8 @@ int main(int argc, char *argv[]) {
         break;
 #ifdef SWIFT_DEBUG_CHECKS
       case 'x':
-	write_dependencies = 1;
-	break;
+        write_dependencies = 1;
+        break;
 #endif
       case 'C':
         with_cooling = 1;
@@ -704,8 +703,7 @@ int main(int argc, char *argv[]) {
   engine_print_stats(&e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (write_dependencies)
-    scheduler_write_dependency(&e.sched);
+  if (write_dependencies) scheduler_write_dependency(&e.sched);
 #endif
 
   /* Legend */
