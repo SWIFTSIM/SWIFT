@@ -4636,12 +4636,11 @@ void engine_init(struct engine *e, struct space *s,
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
                  (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
-  /* Maximum size of MPI task messages that should not be buffered,
+  /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
    */
   e->sched.mpi_message_limit =
-      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit",
-                               4194304);
+      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
