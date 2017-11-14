@@ -78,7 +78,7 @@ int main() {
   engine.nr_threads = 1;
   engine.nodeID = 0;
   engine_rank = 0;
-  
+
   struct runner runner;
   runner.e = &engine;
 
