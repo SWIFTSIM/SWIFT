@@ -50,7 +50,6 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
-#include "tools.h"
 #include "version.h"
 
 /**
@@ -146,7 +145,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Create file */
   char filename[200] = "dependency_graph.dot";
-  FILE *f = open_and_check_file(filename, "w");
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening depenency graph file.");
 
   /* Write header */
   fprintf(f, "digraph task_dep {\n");

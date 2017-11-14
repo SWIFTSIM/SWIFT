@@ -23,7 +23,6 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <errno.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -694,18 +693,4 @@ int compare_particles(struct part a, struct part b, double threshold) {
   return 0;
 
 #endif
-}
-
-/**
- * @brief Open a file and verify if it was correctly opened
- *
- * @param filename Name of the file
- * @param mode Opening mode (e.g. 'a', 'w', ..)
- */
-FILE *open_and_check_file(const char *filename, const char *mode) {
-  FILE *f = fopen(filename, mode);
-  if (f == NULL)
-    error("Unable to open file '%s' in mode %s, error: %i", filename, mode,
-          errno);
-  return f;
 }
