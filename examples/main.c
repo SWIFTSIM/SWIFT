@@ -59,9 +59,6 @@ void print_help_message() {
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
 
   printf("Valid options are:\n");
-#ifdef SWIFT_DEBUG_CHECKS
-  printf("  %2s %14s %s\n", "-x", "", "Write task dependencies.");
-#endif
   printf("  %2s %14s %s\n", "-a", "", "Pin runners using processor affinity.");
   printf("  %2s %14s %s\n", "-c", "",
          "Run with cosmological time integration.");
@@ -174,9 +171,6 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
-#ifdef SWIFT_DEBUG_CHECKS
-  int write_dependencies = 0;
-#endif
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -202,11 +196,6 @@ int main(int argc, char *argv[]) {
       case 'c':
         with_cosmology = 1;
         break;
-#ifdef SWIFT_DEBUG_CHECKS
-      case 'x':
-        write_dependencies = 1;
-        break;
-#endif
       case 'C':
         with_cooling = 1;
         break;
@@ -701,10 +690,6 @@ int main(int argc, char *argv[]) {
   /* Write the state of the system before starting time integration. */
   engine_dump_snapshot(&e);
   engine_print_stats(&e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (write_dependencies) scheduler_write_dependency(&e.sched);
-#endif
 
   /* Legend */
   if (myrank == 0)

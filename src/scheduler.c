@@ -115,57 +115,54 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 /**
  * @brief Write a dot file with the task dependencies.
  *
- * See examples/task_graph for an example of how to use it
+ * Run plot_task_dependencies.sh for an example of how to use it
+ * to generate the figure.
+ *
  * @param s The #scheduler we are working in.
+ * @param verbose Are we verbose about this?
  */
-void scheduler_write_dependency(struct scheduler *s) {
-#ifdef WITH_MPI
-  if (engine_rank != 0) return;
-#endif
-  int i, j;
+void scheduler_write_dependencies(struct scheduler *s, int verbose) {
+ 
+  const ticks tic = getticks();
 
-  int max_nber_dep = 5;
-  /* 2 => we need 1 int for type and 1 for subtype */
-  int nber_relation = 2 * task_type_count * task_subtype_count * max_nber_dep;
-  /* For each type/subtype, a table of 2*max_nber_dep int is available =>
-     max_nber_dep task with subtype available
+  /* Conservative number of dependencies per task type */
+  const int max_nber_dep = 128;
 
-     -1 means that it is not set yet
+  /* Number of possibble relations between tasks */
+  const int nber_relation = 2 * task_type_count * task_subtype_count * max_nber_dep;
 
-     to get the table of max_nber_dep for a task:
-     ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
-     where ta is the value of task_type and sa is the value of
-     task_subtype
-   */
+  /* To get the table of max_nber_dep for a task:
+   * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
+   * where ta is the value of task_type and sa is the value of
+   * task_subtype  */
   int *table = malloc(nber_relation * sizeof(int));
-  for (i = 0; i < nber_relation; i++) table[i] = -1;
+  if(table == NULL) error("Error allocating memory for task-dependency graph.");
 
-  message("Writing dependencies");
+  /* Reset everything */
+  for (int i = 0; i < nber_relation; i++) table[i] = -1;
 
-  /* create file */
+  /* Create file */
   char filename[200] = "dependency_graph.dot";
-  FILE *f; /* file containing the output */
-  f = open_and_check_file(filename, "w");
+  FILE *f = open_and_check_file(filename, "w");
 
-  /* write header */
+  /* Write header */
   fprintf(f, "digraph task_dep {\n");
   fprintf(f, "\t compound=true;\n");
   fprintf(f, "\t ratio=0.66;\n");
   fprintf(f, "\t node[nodesep=0.15];\n");
 
   /* loop over all tasks */
-  for (i = 0; i < s->nr_tasks; i++) {
-    struct task *ta;
-    ta = &s->tasks[i];
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta = &s->tasks[i];
 
     /* and theirs dependencies */
-    for (j = 0; j < ta->nr_unlock_tasks; j++) {
-      struct task *tb;
-      tb = ta->unlock_tasks[j];
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb = ta->unlock_tasks[j];
 
       char tmp[200]; /* text to write */
       char ta_name[200];
       char tb_name[200];
+
       /* construct line */
       if (ta->subtype == task_subtype_none)
         sprintf(ta_name, "%s", taskID_names[ta->type]);
@@ -190,6 +187,7 @@ void scheduler_write_dependency(struct scheduler *s) {
       int k = 0;
       int *cur = &table[ind];
       while (k < max_nber_dep) {
+
         /* not written yet */
         if (cur[0] == -1) {
           cur[0] = tb->type;
@@ -218,9 +216,14 @@ void scheduler_write_dependency(struct scheduler *s) {
     }
   }
 
+  /* Be clean */
   fprintf(f, "}");
   fclose(f);
   free(table);
+
+  if(verbose)
+    message("Printing task graph took %.3f %s.",
+	    clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
