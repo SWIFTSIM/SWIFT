@@ -20,8 +20,10 @@
 #define SWIFT_LOGGER_H
 
 /* Includes. */
-#include "dump.h"
 #include "part.h"
+
+/* Forward declaration */
+struct dump;
 
 /**
  * Logger entries contain messages representing the particle data at a given
