@@ -102,7 +102,7 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
-    
+
   /* Maximum size of task messages, in bytes, to sent using non-buffered
    * MPI. */
   size_t mpi_message_limit;
