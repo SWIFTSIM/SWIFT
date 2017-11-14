@@ -51,6 +51,7 @@
 #include "task.h"
 #include "timers.h"
 #include "tools.h"
+#include "version.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -149,6 +150,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Write header */
   fprintf(f, "digraph task_dep {\n");
+  fprintf(f, "label=\"Task dependencies for SWIFT %s\"", git_revision());
   fprintf(f, "\t compound=true;\n");
   fprintf(f, "\t ratio=0.66;\n");
   fprintf(f, "\t node[nodesep=0.15];\n");
