@@ -324,7 +324,8 @@ static void dumpCells_map(struct cell *c, void *data) {
 #endif
 
     /* Local cells that are active and are super cells and have MPI tasks. */
-    if (c->nodeID == e->nodeID && cell_is_active(c, e) && (c->super == c) && sendto)
+    if (c->nodeID == e->nodeID && cell_is_active(c, e) && (c->super == c) &&
+        sendto)
       fprintf(file,
               "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
               "%6.1f %20lld %6d %6d %6d %6d %6d\n",
@@ -333,7 +334,6 @@ static void dumpCells_map(struct cell *c, void *data) {
               c->depth, ntasks, c->ti_end_min, get_time_bin(c->ti_end_min),
               (c->super == c), cell_is_active(c, e), c->nodeID,
               c->nodeID == e->nodeID);
-
   }
 }
 
@@ -364,8 +364,8 @@ void dumpCells(const char *prefix, int pactive, struct space *s, int rank,
           "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
           "%20s %6s %6s %6s %6s %6s\n",
           "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
-          "actcount", "depth", "tasks", "ti_end_min", "timebin",
-          "issuper", "active", "rank", "local");
+          "actcount", "depth", "tasks", "ti_end_min", "timebin", "issuper",
+          "active", "rank", "local");
 
   uintptr_t data[3];
   data[0] = (size_t)file;
