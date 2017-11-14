@@ -3587,8 +3587,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
-  if(e->nodeID == 0)
-    scheduler_write_dependencies(&e->sched, e->verbose);
+  if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
 
   /* Run the 0th time-step */
   engine_launch(e);

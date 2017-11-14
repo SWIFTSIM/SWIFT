@@ -122,21 +122,23 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param verbose Are we verbose about this?
  */
 void scheduler_write_dependencies(struct scheduler *s, int verbose) {
- 
+
   const ticks tic = getticks();
 
   /* Conservative number of dependencies per task type */
   const int max_nber_dep = 128;
 
   /* Number of possibble relations between tasks */
-  const int nber_relation = 2 * task_type_count * task_subtype_count * max_nber_dep;
+  const int nber_relation =
+      2 * task_type_count * task_subtype_count * max_nber_dep;
 
   /* To get the table of max_nber_dep for a task:
    * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
    * where ta is the value of task_type and sa is the value of
    * task_subtype  */
   int *table = malloc(nber_relation * sizeof(int));
-  if(table == NULL) error("Error allocating memory for task-dependency graph.");
+  if (table == NULL)
+    error("Error allocating memory for task-dependency graph.");
 
   /* Reset everything */
   for (int i = 0; i < nber_relation; i++) table[i] = -1;
@@ -193,26 +195,26 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
       /* Not written yet => write it */
       if (!written) {
-	
-	/* text to write */
-	char ta_name[200];
-	char tb_name[200];
-	
-	/* construct line */
-	if (ta->subtype == task_subtype_none)
-	  sprintf(ta_name, "%s", taskID_names[ta->type]);
-	else
-	  sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
-		  subtaskID_names[ta->subtype]);
-	
-	if (tb->subtype == task_subtype_none)
-	  sprintf(tb_name, "%s", taskID_names[tb->type]);
-	else
-	  sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
-		  subtaskID_names[tb->subtype]);
 
-	/* Write to the ffile */
-	fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+        /* text to write */
+        char ta_name[200];
+        char tb_name[200];
+
+        /* construct line */
+        if (ta->subtype == task_subtype_none)
+          sprintf(ta_name, "%s", taskID_names[ta->type]);
+        else
+          sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
+                  subtaskID_names[ta->subtype]);
+
+        if (tb->subtype == task_subtype_none)
+          sprintf(tb_name, "%s", taskID_names[tb->type]);
+        else
+          sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
+                  subtaskID_names[tb->subtype]);
+
+        /* Write to the ffile */
+        fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
       }
     }
   }
@@ -222,9 +224,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   fclose(f);
   free(table);
 
-  if(verbose)
+  if (verbose)
     message("Printing task graph took %.3f %s.",
-	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
