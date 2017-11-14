@@ -33,6 +33,16 @@ import numpy as np
 import sys
 import pandas
 
+xcol = 0
+ycol = 1
+zcol = 2
+xwcol = 3
+ywcol = 4
+zwcol = 5
+localcol = 18
+supercol = 15
+activecol = 16
+
 #  Command-line arguments.
 if len(sys.argv) < 5:
     print "usage: ", sys.argv[0], " nx ny nz cell1.dat cell2.dat ..."
@@ -48,28 +58,27 @@ tcount = 0
 for i in range(4, len(sys.argv)):
 
     #  Read the file.
-    #data = pl.loadtxt(sys.argv[i])
-    data = pandas.read_csv(sys.argv[i], sep="\s+").values
+    data = pl.loadtxt(sys.argv[i])
     #print data
 
-    #  Select cells that are on the current rank and are top-level.
-    rdata = data[data[:,16] == 1]
-    tdata = rdata[rdata[:,9] == 0]
+    #  Select cells that are on the current rank and are super cells.
+    rdata = data[data[:,localcol] == 1]
+    tdata = rdata[rdata[:,supercol] == 1]
 
     #  Separation of the cells is in data.
-    xwidth = tdata[0,3]
-    ywidth = tdata[0,4]
-    zwidth = tdata[0,5]
+    xwidth = tdata[0,xwcol]
+    ywidth = tdata[0,ywcol]
+    zwidth = tdata[0,zwcol]
 
     #  Fill space nx, ny,n nz with all toplevel cells and flag their active
     #  state.
     space = np.zeros((nx,ny,nz))
     actives = []
     for line in tdata:
-        ix = int(np.rint(line[0] / xwidth))
-        iy = int(np.rint(line[1] / ywidth))
-        iz = int(np.rint(line[2] / zwidth))
-        active = int(line[14])
+        ix = int(np.rint(line[xcol] / xwidth))
+        iy = int(np.rint(line[ycol] / ywidth))
+        iz = int(np.rint(line[zcol] / zwidth))
+        active = int(line[activecol])
         space[ix,iy,iz] = 1 + active
         tcount = tcount + 1
         if active == 1:
@@ -109,8 +118,6 @@ for i in range(4, len(sys.argv)):
             print active[3][0], active[3][1], active[3][2], 0
 
     allactives.extend(actives)
-
-
 
 print "# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge
 
