@@ -159,28 +159,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
 
-      char tmp[200]; /* text to write */
-      char ta_name[200];
-      char tb_name[200];
-
-      /* construct line */
-      if (ta->subtype == task_subtype_none)
-        sprintf(ta_name, "%s", taskID_names[ta->type]);
-      else
-        sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
-                subtaskID_names[ta->subtype]);
-
-      if (tb->subtype == task_subtype_none)
-        sprintf(tb_name, "%s", taskID_names[tb->type]);
-      else
-        sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
-                subtaskID_names[tb->subtype]);
-
-      sprintf(tmp, "\t %s->%s;\n", ta_name, tb_name);
-
       /* check if dependency already written */
       int written = 0;
 
+      /* Current index */
       int ind = ta->type * task_subtype_count + ta->subtype;
       ind *= 2 * max_nber_dep;
 
@@ -211,7 +193,26 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
       /* Not written yet => write it */
       if (!written) {
-        fprintf(f, tmp);
+	
+	/* text to write */
+	char ta_name[200];
+	char tb_name[200];
+	
+	/* construct line */
+	if (ta->subtype == task_subtype_none)
+	  sprintf(ta_name, "%s", taskID_names[ta->type]);
+	else
+	  sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
+		  subtaskID_names[ta->subtype]);
+	
+	if (tb->subtype == task_subtype_none)
+	  sprintf(tb_name, "%s", taskID_names[tb->type]);
+	else
+	  sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
+		  subtaskID_names[tb->subtype]);
+
+	/* Write to the ffile */
+	fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
       }
     }
   }
