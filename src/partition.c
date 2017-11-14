@@ -528,7 +528,7 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     if (t->cost == 0) continue;
 
     /* Get the task weight based on costs. */
-    double w = (double) t->cost;
+    double w = (double)t->cost;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
@@ -590,15 +590,17 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
            * overflow int, so take care. */
           int dti = num_time_bins - get_time_bin(ci->ti_end_min);
           int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
-          double dt = (double)(1<<dti) + (double)(1<<dtj);
+          double dt = (double)(1 << dti) + (double)(1 << dtj);
 
           /* ci */
           int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++);
+          for (kk = 26 * cid; inds[kk] != cjd; kk++)
+            ;
           weights_e[kk] += dt;
 
           /* cj */
-          for (kk = 26 * cjd; inds[kk] != cid; kk++);
+          for (kk = 26 * cjd; inds[kk] != cid; kk++)
+            ;
           weights_e[kk] += dt;
         } else {
 
@@ -606,11 +608,13 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
 
           /* ci */
           int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++);
+          for (kk = 26 * cid; inds[kk] != cjd; kk++)
+            ;
           weights_e[kk] += w;
 
           /* cj */
-          for (kk = 26 * cjd; inds[kk] != cid; kk++);
+          for (kk = 26 * cjd; inds[kk] != cid; kk++)
+            ;
           weights_e[kk] += w;
         }
       }
@@ -624,14 +628,14 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
   int res;
   if (bothweights) {
     if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                          nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD))
-        != MPI_SUCCESS)
+                          nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD)) !=
+        MPI_SUCCESS)
       mpi_error(res, "Failed to allreduce vertex weights.");
   }
 
   if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                        26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD))
-      != MPI_SUCCESS)
+                        26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+                        MPI_COMM_WORLD)) != MPI_SUCCESS)
     mpi_error(res, "Failed to allreduce edge weights.");
 
   /* Allocate cell list for the partition. */
@@ -642,8 +646,8 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
   if (nodeID == 0) {
 
     /* We need to rescale the weights into the range of an integer for METIS
-     * really range of idx_t). Also we would like the range of vertex and
-     * edges weights to be simila r so they balance. */
+     * (really range of idx_t). Also we would like the range of vertex and
+     * edges weights to be similar so they balance. */
     double wminv = 0.0;
     double wmaxv = 0.0;
     if (bothweights) {
@@ -680,7 +684,6 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
       for (int k = 0; k < nr_cells; k++) {
         weights_v[k] = (weights_v[k] - wminv) * wscalev + 1.0;
       }
-
     }
 
     /* Scale to the METIS range. */
@@ -905,8 +908,8 @@ void partition_initial_partition(struct partition *initial_partition,
       accumulate_counts(s, weights);
 
       /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE,
-                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD) != MPI_SUCCESS)
         error("Failed to allreduce particle cell weights.");
     }
 
@@ -1040,41 +1043,40 @@ void partition_init(struct partition *partition,
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
-
   if (strcmp("none/none", part_type) == 0) {
-      repartition->type = REPART_NONE;
+    repartition->type = REPART_NONE;
 
 #ifdef HAVE_METIS
   } else if (strcmp("costs/costs", part_type) == 0) {
-      repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_COSTS;
+    repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_COSTS;
 
   } else if (strcmp("counts/none", part_type) == 0) {
-      repartition->type = REPART_METIS_VERTEX_COUNTS;
+    repartition->type = REPART_METIS_VERTEX_COUNTS;
 
   } else if (strcmp("none/costs", part_type) == 0) {
-      repartition->type = REPART_METIS_EDGE_COSTS;
+    repartition->type = REPART_METIS_EDGE_COSTS;
 
   } else if (strcmp("counts/costs", part_type) == 0) {
-      repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_COSTS;
+    repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_COSTS;
 
   } else if (strcmp("costs/time", part_type) == 0) {
-      repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS;
+    repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS;
 
   } else if (strcmp("counts/time", part_type) == 0) {
-      repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS;
+    repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS;
 
   } else if (strcmp("none/time", part_type) == 0) {
-      repartition->type = REPART_METIS_EDGE_TIMEBINS;
+    repartition->type = REPART_METIS_EDGE_TIMEBINS;
   } else {
-      message("Invalid choice of re-partition type '%s'.", part_type);
-      error(
-            "Permitted values are: 'none/none', 'costs/costs',"
-            "'counts/none', 'none/costs', 'counts/costs', "
-            "'costs/time', 'counts/time' or 'none/time'");
+    message("Invalid choice of re-partition type '%s'.", part_type);
+    error(
+        "Permitted values are: 'none/none', 'costs/costs',"
+        "'counts/none', 'none/costs', 'counts/costs', "
+        "'costs/time', 'counts/time' or 'none/time'");
 #else
   } else {
-      message("Invalid choice of re-partition type '%s'.", part_type);
-      error("Permitted values are: 'none/none' when compiled without METIS.");
+    message("Invalid choice of re-partition type '%s'.", part_type);
+    error("Permitted values are: 'none/none' when compiled without METIS.");
 #endif
   }
 
