@@ -50,6 +50,7 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+#include "version.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -109,6 +110,125 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
   atomic_inc(&s->completed_unlock_writes);
+}
+
+/**
+ * @brief Write a dot file with the task dependencies.
+ *
+ * Run plot_task_dependencies.sh for an example of how to use it
+ * to generate the figure.
+ *
+ * @param s The #scheduler we are working in.
+ * @param verbose Are we verbose about this?
+ */
+void scheduler_write_dependencies(struct scheduler *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Conservative number of dependencies per task type */
+  const int max_nber_dep = 128;
+
+  /* Number of possible relations between tasks */
+  const int nber_relation =
+      2 * task_type_count * task_subtype_count * max_nber_dep;
+
+  /* To get the table of max_nber_dep for a task:
+   * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
+   * where ta is the value of task_type and sa is the value of
+   * task_subtype  */
+  int *table = malloc(nber_relation * sizeof(int));
+  if (table == NULL)
+    error("Error allocating memory for task-dependency graph.");
+
+  /* Reset everything */
+  for (int i = 0; i < nber_relation; i++) table[i] = -1;
+
+  /* Create file */
+  char filename[200] = "dependency_graph.dot";
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening dependency graph file.");
+
+  /* Write header */
+  fprintf(f, "digraph task_dep {\n");
+  fprintf(f, "label=\"Task dependencies for SWIFT %s\"", git_revision());
+  fprintf(f, "\t compound=true;\n");
+  fprintf(f, "\t ratio=0.66;\n");
+  fprintf(f, "\t node[nodesep=0.15];\n");
+
+  /* loop over all tasks */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta = &s->tasks[i];
+
+    /* and their dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb = ta->unlock_tasks[j];
+
+      /* check if dependency already written */
+      int written = 0;
+
+      /* Current index */
+      int ind = ta->type * task_subtype_count + ta->subtype;
+      ind *= 2 * max_nber_dep;
+
+      int k = 0;
+      int *cur = &table[ind];
+      while (k < max_nber_dep) {
+
+        /* not written yet */
+        if (cur[0] == -1) {
+          cur[0] = tb->type;
+          cur[1] = tb->subtype;
+          break;
+        }
+
+        /* already written */
+        if (cur[0] == tb->type && cur[1] == tb->subtype) {
+          written = 1;
+          break;
+        }
+
+        k += 1;
+        cur = &cur[3];
+      }
+
+      /* max_nber_dep is too small */
+      if (k == max_nber_dep)
+        error("Not enough memory, please increase max_nber_dep");
+
+      /* Not written yet => write it */
+      if (!written) {
+
+        /* text to write */
+        char ta_name[200];
+        char tb_name[200];
+
+        /* construct line */
+        if (ta->subtype == task_subtype_none)
+          sprintf(ta_name, "%s", taskID_names[ta->type]);
+        else
+          sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
+                  subtaskID_names[ta->subtype]);
+
+        if (tb->subtype == task_subtype_none)
+          sprintf(tb_name, "%s", taskID_names[tb->type]);
+        else
+          sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
+                  subtaskID_names[tb->subtype]);
+
+        /* Write to the ffile */
+        fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+      }
+    }
+  }
+
+  /* Be clean */
+  fprintf(f, "}");
+  fclose(f);
+  free(table);
+
+  if (verbose)
+    message("Printing task graph took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
