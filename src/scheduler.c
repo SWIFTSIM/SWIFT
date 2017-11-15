@@ -1317,26 +1317,49 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_tend) {
           t->buff = malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
           cell_pack_end_step(t->ci, t->buff);
-          err = MPI_Isend(
-              t->buff, t->ci->pcell_size * sizeof(struct pcell_step), MPI_BYTE,
-              t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          if ((t->ci->pcell_size * sizeof(struct pcell_step)) >
+              s->mpi_message_limit)
+            err = MPI_Isend(
+                t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
+                MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(
+                t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
+                MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-          err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
-                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          if ((t->ci->count * sizeof(struct part)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->parts, t->ci->count, part_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
           // message( "sending %i parts with tag=%i from %i to %i." ,
           //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
           // fflush(stdout);
         } else if (t->subtype == task_subtype_gpart) {
-          err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
-                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          if ((t->ci->gcount * sizeof(struct gpart)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_spart) {
-          err = MPI_Isend(t->ci->sparts, t->ci->scount, spart_mpi_type,
-                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          if ((t->ci->scount * sizeof(struct spart)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          err = MPI_Isend(t->ci->multipole, 1, multipole_mpi_type,
-                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          if ((t->ci->scount * sizeof(struct gravity_tensors)) >
+              s->mpi_message_limit)
+            err = MPI_Isend(t->ci->multipole, 1, multipole_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->multipole, 1, multipole_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
           error("Unknown communication sub-type");
         }
