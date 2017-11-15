@@ -128,7 +128,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* Conservative number of dependencies per task type */
   const int max_nber_dep = 128;
 
-  /* Number of possibble relations between tasks */
+  /* Number of possible relations between tasks */
   const int nber_relation =
       2 * task_type_count * task_subtype_count * max_nber_dep;
 
@@ -146,7 +146,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* Create file */
   char filename[200] = "dependency_graph.dot";
   FILE *f = fopen(filename, "w");
-  if (f == NULL) error("Error opening depenency graph file.");
+  if (f == NULL) error("Error opening dependency graph file.");
 
   /* Write header */
   fprintf(f, "digraph task_dep {\n");
@@ -159,7 +159,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta = &s->tasks[i];
 
-    /* and theirs dependencies */
+    /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
 
