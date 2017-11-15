@@ -4008,6 +4008,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
+  if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
+
   /* Run the 0th time-step */
   engine_launch(e);
 
@@ -4161,6 +4163,9 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+/* Dump local cells and active particle counts. */
+/* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -5112,6 +5117,12 @@ void engine_init(struct engine *e, struct space *s,
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
                  (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+
+  /* Maximum size of MPI task messages, in KB, that should not be buffered,
+   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
+   */
+  e->sched.mpi_message_limit =
+      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *

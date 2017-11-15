@@ -185,7 +185,8 @@ struct eos_parameters {
 /**
  * @brief Returns the internal energy given density and entropy
  *
- * Since we are using an isothermal EoS, the entropy value is ignored
+ * Since we are using an isothermal EoS, the entropy and density values are
+ * ignored.
  * Computes \f$u = u_{cst}\f$.
  *
  * @param density The density \f$\rho\f$.
@@ -196,10 +197,11 @@ gas_internal_energy_from_entropy(float density, float entropy) {
 
   return eos.isothermal_internal_energy;
 }
+
 /**
  * @brief Returns the pressure given density and entropy
  *
- * Since we are using an isothermal EoS, the entropy value is ignored
+ * Since we are using an isothermal EoS, the entropy value is ignored.
  * Computes \f$P = (\gamma - 1)u_{cst}\rho\f$.
  *
  * @param density The density \f$\rho\f$.
@@ -214,7 +216,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 /**
  * @brief Returns the entropy given density and pressure.
  *
- * Computes \f$A = \frac{P}{\rho^\gamma}\f$.
+ * Since we are using an isothermal EoS, the pressure value is ignored.
+ * Computes \f$A = (\gamma - 1)u_{cst}\rho^{-(\gamma-1)}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param pressure The pressure \f$P\f$ (ignored).
@@ -230,8 +233,9 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 /**
  * @brief Returns the sound speed given density and entropy
  *
- * Since we are using an isothermal EoS, the entropy value is ignored
- * Computes \f$c = \sqrt{u_{cst} \gamma \rho^{\gamma-1}}\f$.
+ * Since we are using an isothermal EoS, the entropy and density values are
+ * ignored.
+ * Computes \f$c = \sqrt{u_{cst} \gamma (\gamma-1)}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
@@ -246,7 +250,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 /**
  * @brief Returns the entropy given density and internal energy
  *
- * Since we are using an isothermal EoS, the energy value is ignored
+ * Since we are using an isothermal EoS, the energy value is ignored.
  * Computes \f$S = \frac{(\gamma - 1)u_{cst}}{\rho^{\gamma-1}}\f$.
  *
  * @param density The density \f$\rho\f$
@@ -262,7 +266,7 @@ gas_entropy_from_internal_energy(float density, float u) {
 /**
  * @brief Returns the pressure given density and internal energy
  *
- * Since we are using an isothermal EoS, the energy value is ignored
+ * Since we are using an isothermal EoS, the energy value is ignored.
  * Computes \f$P = (\gamma - 1)u_{cst}\rho\f$.
  *
  * @param density The density \f$\rho\f$
@@ -291,8 +295,9 @@ gas_internal_energy_from_pressure(float density, float pressure) {
 /**
  * @brief Returns the sound speed given density and internal energy
  *
- * Since we are using an isothermal EoS, the energy value is ignored
- * Computes \f$c = \sqrt{u_{cst} \gamma \rho^{\gamma-1}}\f$.
+ * Since we are using an isothermal EoS, the energy and density values are
+ * ignored.
+ * Computes \f$c = \sqrt{u_{cst} \gamma (\gamma-1)}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
@@ -307,8 +312,9 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 /**
  * @brief Returns the sound speed given density and pressure
  *
- * Since we are using an isothermal EoS, the pressure value is ignored
- * Computes \f$c = \sqrt{u_{cst} \gamma \rho^{\gamma-1}}\f$.
+ * Since we are using an isothermal EoS, the pressure and density values are
+ * ignored.
+ * Computes \f$c = \sqrt{u_{cst} \gamma (\gamma-1)}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$

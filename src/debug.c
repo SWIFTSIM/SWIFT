@@ -276,10 +276,13 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
  * only.
  */
 static void dumpCells_map(struct cell *c, void *data) {
-  uintptr_t *ldata = (uintptr_t *)data;
+  size_t *ldata = (size_t *)data;
   FILE *file = (FILE *)ldata[0];
   struct engine *e = (struct engine *)ldata[1];
   float ntasks = c->nr_tasks;
+  int active = (int)ldata[2];
+  int mpiactive = (int)ldata[3];
+  int pactive = (int)ldata[4];
 
 #if SWIFT_DEBUG_CHECKS
   /* The c->nr_tasks field does not include all the tasks. So let's check this
@@ -300,46 +303,94 @@ static void dumpCells_map(struct cell *c, void *data) {
   }
 #endif
 
-  /* Only locally active cells are dumped. */
-  if (c->count > 0 || c->gcount > 0 || c->scount > 0)
-    fprintf(file,
-            "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d "
-            "%6.1f %20lld %6d %6d %6d %6d\n",
-            c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-            c->width[2], c->count, c->gcount, c->scount, c->depth, ntasks,
-            c->ti_end_min, get_time_bin(c->ti_end_min), (c->super == c),
-            cell_is_active(c, e), c->nodeID);
+  /* Only cells with particles are dumped. */
+  if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
+
+/* In MPI mode we may only output cells with foreign partners.
+ * These define the edges of the partitions. */
+#if WITH_MPI
+    if (mpiactive)
+      mpiactive = (c->send_xv != NULL);
+    else
+      mpiactive = 1;
+#else
+    mpiactive = 1;
+#endif
+
+    /* Active cells, otherwise all. */
+    if (active)
+      active = cell_is_active(c, e);
+    else
+      active = 1;
+
+    /* So output local super cells that are active and have MPI tasks as
+     * requested. */
+    if (c->nodeID == e->nodeID && (c->super == c) && active && mpiactive) {
+
+      /* If requested we work out how many particles are active in this cell. */
+      int pactcount = 0;
+      if (pactive) {
+        const struct part *parts = c->parts;
+        for (int k = 0; k < c->count; k++)
+          if (part_is_active(&parts[k], e)) pactcount++;
+        struct gpart *gparts = c->gparts;
+        for (int k = 0; k < c->gcount; k++)
+          if (gpart_is_active(&gparts[k], e)) pactcount++;
+        struct spart *sparts = c->sparts;
+        for (int k = 0; k < c->scount; k++)
+          if (spart_is_active(&sparts[k], e)) pactcount++;
+      }
+
+      fprintf(file,
+              "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
+              "%6.1f %20lld %6d %6d %6d %6d %6d\n",
+              c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+              c->width[2], e->step, c->count, c->gcount, c->scount, pactcount,
+              c->depth, ntasks, c->ti_end_min, get_time_bin(c->ti_end_min),
+              (c->super == c), cell_is_active(c, e), c->nodeID,
+              c->nodeID == e->nodeID);
+    }
+  }
 }
 
 /**
  * @brief Dump the location, depth, task counts and timebins and active state,
- * for all cells to a simple text file.
+ * for all cells to a simple text file. A more costly count of the active
+ * particles in a cell can also be output.
  *
- * @param prefix base output filename
+ * @param prefix base output filename, result is written to
+ *               %prefix%_%rank%_%step%.dat
+ * @param active just output active cells.
+ * @param mpiactive just output MPI active cells, i.e. those with foreign cells.
+ * @param pactive also output a count of active particles.
  * @param s the space holding the cells to dump.
+ * @param rank node ID of MPI rank, or 0 if not relevant.
+ * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, struct space *s) {
+void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
+               struct space *s, int rank, int step) {
 
   FILE *file = NULL;
 
   /* Name of output file. */
-  static int nseq = 0;
   char fname[200];
-  int uniq = atomic_inc(&nseq);
-  sprintf(fname, "%s_%03d.dat", prefix, uniq);
-
+  sprintf(fname, "%s_%03d_%03d.dat", prefix, rank, step);
   file = fopen(fname, "w");
 
   /* Header. */
   fprintf(file,
-          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
-          "%20s %6s %6s %6s\n",
-          "x", "y", "z", "xw", "yw", "zw", "count", "gcount", "scount", "depth",
-          "tasks", "ti_end_min", "timebin", "issuper", "active", "rank");
+          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%20s %6s %6s %6s %6s %6s\n",
+          "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
+          "actcount", "depth", "tasks", "ti_end_min", "timebin", "issuper",
+          "active", "rank", "local");
 
-  uintptr_t data[2];
+  size_t data[5];
   data[0] = (size_t)file;
   data[1] = (size_t)s->e;
+  data[2] = (size_t)active;
+  data[3] = (size_t)mpiactive;
+  data[4] = (size_t)pactive;
   space_map_cells_pre(s, 1, dumpCells_map, &data);
   fclose(file);
 }

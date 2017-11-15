@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#  Helper for process_cells.
+
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
+step=$(echo $4|sed 's,cells_\(.*\)_\(.*\).dat,\2,')
+echo "${SCRIPTHOME}/analyse_dump_cells.py $* > step${step}-active-cells.dat"
+${SCRIPTHOME}/analyse_dump_cells.py $* > step${step}-active-cells.dat
+
+exit

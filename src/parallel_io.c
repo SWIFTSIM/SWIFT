@@ -146,7 +146,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @brief Reads a data array from a given HDF5 group.
  *
  * @param grp The group from which to read.
- * @param prop The #io_props of the field to read.
+ * @param props The #io_props of the field to read.
  * @param N The number of particles on that rank.
  * @param N_total The total number of particles.
  * @param mpi_rank The MPI rank of this node.

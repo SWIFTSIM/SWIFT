@@ -26,11 +26,13 @@ examples/*/*.xmf
 examples/*/*.hdf5
 examples/*/*.png
 examples/*/*.txt
+examples/*/*.dot
 examples/*/used_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.hdf5
 examples/*/*/*.png
 examples/*/*/*.txt
+examples/*/*/*.dot
 examples/*/*/used_parameters.yml
 examples/*/gravity_checks_*.dat
 
