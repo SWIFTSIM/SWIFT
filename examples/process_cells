@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Usage:
+#  process_cells nx ny nz nprocess
+#
+# Description:
+#  Process all the cell dumps in the current directory.
+
+#  Outputs file per rank with the active cells identified and marked as to
+#  whether they are near an edge or not. Note requires the numbers of cells
+#  per dimension of the space.
+#
+#  Also outputs a graphic showing the fraction of active cells on edges
+#  for each step.
+
+#  Handle command-line
+if test "$4" = ""; then
+    echo "Usage: $0 nx ny nz nprocess"
+    exit 1
+fi
+NX=$1
+NY=$2
+NZ=$3
+NPROCS=$4
+
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
+#  Find all files. Use version sort to get into correct order.
+files=$(ls -v cells_*.dat)
+if test $? != 0; then
+    echo "Failed to find any cell dump files"
+    exit 1
+fi
+
+#  Construct list of names need the number of ranks.
+ranks=$(ls -v cells_*.dat | sed 's,cells_\(.*\)_.*.dat,\1,' | sort | uniq | wc -l)
+echo "Number of ranks = $ranks"
+
+#  Now construct a list of files ordered by rank, not step.
+files=$(ls cells_*.dat | sort -t "_" -k 3,3 -n | xargs -n 4)
+
+#  Need number of steps.
+nfiles=$(echo $files| wc -w)
+echo "Number of files = $nfiles"
+steps=$(( $nfiles / $ranks + 1 ))
+echo "Number of steps = $steps"
+
+#  And process them,
+echo "Processing cell dumps files..."
+#echo $files | xargs -P $NPROCS -n 4 /bin/bash -c "${SCRIPTHOME}/process_cells_helper $NX $NY $NZ \$0 \$1 \$2 \$3"
+
+#  Create summary.
+grep "top cells" step*-active-cells.dat | sort -h > active_cells.log
+
+#  And plot of active cells to edge cells.
+stilts plot2plane ifmt=ascii in=active_cells.log xmin=-0.1 xmax=1.1 ymin=0 ymax=$steps grid=1 \
+       legend=false xpix=600 ypix=500 xlabel="Edge cells/Active cells" ylabel="Step" \
+       layer1=mark x1="col9/1.0/col6" y1="index" size1=3 shading1=aux auxmap=rainbow \
+       aux=col6 auxfunc=log auxlabel="Active cells" layer2=histogram x2="col9/1.0/col6" \
+       color2=grey binsize2=0.01 phase2=0.5 barform2=semi_steps thick2=1 \
+       out=active_cells.png
+
+exit
