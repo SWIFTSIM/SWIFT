@@ -233,6 +233,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
 
         if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
+        if (periodic) scheduler_addunlock(s, c->grav_ghost[0], c->grav_down);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -2490,7 +2491,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
-  const int periodic = e->s->periodic;
+  // const int periodic = e->s->periodic;
 
   for (int k = 0; k < nr_tasks; k++) {
 
@@ -2501,7 +2502,6 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
       engine_make_self_gravity_dependencies(sched, t, t->ci);
-      if (periodic) scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
     }
 
     /* Self-interaction for external gravity ? */
@@ -2517,15 +2517,11 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
 
         engine_make_self_gravity_dependencies(sched, t, t->ci);
-        if (periodic && t->ci->super < t->cj->super)
-          scheduler_addunlock(sched, t->ci->super->grav_ghost[1], t);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_self_gravity_dependencies(sched, t, t->cj);
-        if (periodic && t->ci->super < t->cj->super)
-          scheduler_addunlock(sched, t->cj->super->grav_ghost[1], t);
       }
 
     }
