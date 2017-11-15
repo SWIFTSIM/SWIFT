@@ -2279,9 +2279,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift and the sorts. */
+      /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop. */
