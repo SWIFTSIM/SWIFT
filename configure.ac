@@ -78,6 +78,38 @@ if test "$enable_ipo" = "yes"; then
    fi
 fi
 
+# Compiling with Python wrapper
+AC_ARG_WITH([python],
+    [AS_HELP_STRING([--with-python=PATH],
+        [Root directory of python3]
+    )],
+    [],
+    [with_python="no"]
+)
+
+have_python="no"
+if test "x$with_python" != "xno"; then
+   if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
+     PYTHON_INCS="-I$with_python/include/python3.6m/"
+   else
+     PYTHON_INCS=""
+   fi
+
+   OLD_CPPFLAGS="$CPPFLAGS"
+
+   CPPFLAGS="$CPPFLAGS $PYTHON_INCS"
+   
+   have_python="yes"
+   AC_SUBST([PYTHON_INCS])
+   AC_CHECK_HEADER(
+     Python.h,
+     AC_DEFINE([SWIFT_PYTHON_WRAPPER],1,[Enable the python wrapper]),
+     AC_MSG_ERROR(something is wrong with the python library! PYTHON_INCS=$PYTHON_INCS)
+   )
+   CPPFLAGS="$OLD_CPPFLAGS"
+fi
+
+
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
 # We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
