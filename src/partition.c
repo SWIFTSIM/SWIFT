@@ -354,23 +354,58 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
   /* Init the vertex weights array. */
   if (vertexw != NULL) {
     for (int k = 0; k < ncells; k++) {
-      if (vertexw[k] > 0) {
+      if (vertexw[k] > 1) {
         weights_v[k] = vertexw[k];
       } else {
         weights_v[k] = 1;
       }
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check weights are all in range. */
+    int failed = 0;
+    for (int k = 0; k < ncells; k++) {
+      if ((idx_t)vertexw[k] < 0) {
+        message("Input vertex weight out of range: %ld", (long)vertexw[k]);
+        failed++;
+      }
+      if (weights_v[k] < 1) {
+        message("Used vertex weight  out of range: %d", weights_v[k]);
+        failed++;
+      }
+    }
+    if (failed > 0)
+      error("%d vertex weights are out of range", failed);
+#endif
   }
 
   /* Init the edges weights array. */
   if (edgew != NULL) {
     for (int k = 0; k < 26 * ncells; k++) {
-      if (edgew[k] > 0) {
+      if (edgew[k] > 1) {
         weights_e[k] = edgew[k];
       } else {
         weights_e[k] = 1;
       }
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check weights are all in range. */
+    int failed = 0;
+    for (int k = 0; k < 26 * ncells; k++) {
+
+      if ((idx_t)edgew[k] < 0) {
+        message("Input edge weight out of range: %ld", (long)edgew[k]);
+        failed++;
+      }
+      if (weights_e[k] < 1) {
+        message("Used edge weight out of range: %d", weights_e[k]);
+        failed++;
+      }
+    }
+    if (failed > 0)
+      error("%d edge weights are out of range", failed);
+#endif
   }
 
   /* Set the METIS options. */
@@ -661,35 +696,42 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
 
     double wmine = weights_e[0];
     double wmaxe = weights_e[0];
-    for (int k = 0; 26 * k < nr_cells; k++) {
+    for (int k = 0; k < 26 * nr_cells; k++) {
       wmaxe = weights_e[k] > wmaxe ? weights_e[k] : wmaxe;
       wmine = weights_e[k] < wmine ? weights_e[k] : wmine;
     }
 
-    double wscalev = 1.0;
-    double wscalee = 1.0;
     if (bothweights) {
 
-      /* Make maximum value same in both weights systems. */
-      if (wmaxv > wmaxe) {
-        wscalee = wmaxv / wmaxe;
+      /* Make range the same in both weights systems. */
+      if ((wmaxv - wminv) > (wmaxe - wmine)) {
+        double wscale = (wmaxv - wminv) / (wmaxe - wmine);
+        for (int k = 0; k < 26 * nr_cells; k++) {
+          weights_e[k] = (weights_e[k] - wmine) * wscale + wminv;
+        }
+        wmine = wminv;
         wmaxe = wmaxv;
+
       } else {
-        wscalev = wmaxe / wmaxv;
+        double wscale = (wmaxe - wmine) / (wmaxv - wminv);
+        for (int k = 0; k < nr_cells; k++) {
+          weights_v[k] = (weights_v[k] - wminv) * wscale + wmine;
+        }
+        wminv = wmine;
         wmaxv = wmaxe;
       }
 
       /* Scale to the METIS range. */
-      wscalev *= metis_maxweight / (wmaxv - wminv);
+      double wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
       for (int k = 0; k < nr_cells; k++) {
-        weights_v[k] = (weights_v[k] - wminv) * wscalev + 1.0;
+        weights_v[k] = (weights_v[k] - wminv) * wscale + 1.0;
       }
     }
 
     /* Scale to the METIS range. */
-    wscalee *= metis_maxweight / (wmaxe - wmine);
+    double wscale = (metis_maxweight - 1.0) / (wmaxe - wmine);
     for (int k = 0; k < 26 * nr_cells; k++) {
-      weights_e[k] = (weights_e[k] - wmine) * wscalee + 1.0;
+      weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
     }
 
     /* And partition, use both weights or not as requested. */
