@@ -265,7 +265,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const float dx_max, const float rshift, const double hi_max,
     const double hj_max, const double di_max, const double dj_min,
     int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
-    const timebin_t max_active_bin, const int ci_local, const int cj_local) {
+    const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -273,7 +273,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
   int first_pi = 0, last_pj = cj->count - 1;
   int temp, active_id;
 
-  if(ci_local) {
+  if(active_ci) {
 
     /* Find the leftmost active particle in cell i that interacts with any
      * particle in cell j. */
@@ -329,7 +329,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     max_index_i[ci->count - 1] = 0;
   }
 
-  if(cj_local) {
+  if(active_cj) {
     /* Find the rightmost active particle in cell j that interacts with any
      * particle in cell i. */
     last_pj = -1;
@@ -423,7 +423,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
                                   const double hj_max, const double di_max,
                                   const double dj_min, int *max_index_i,
                                   int *max_index_j, int *init_pi, int *init_pj,
-                                  const timebin_t max_active_bin, const int ci_local, const int cj_local) {
+                                  const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -431,7 +431,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   int first_pi = 0, last_pj = cj->count - 1;
   int temp, active_id;
 
-  if(ci_local) {
+  if(active_ci) {
 
     /* Find the leftmost active particle in cell i that interacts with any
      * particle in cell j. */
@@ -490,7 +490,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
     max_index_i[ci->count - 1] = 0;
   }
 
-  if(cj_local) {
+  if(active_cj) {
     /* Find the rightmost active particle in cell j that interacts with any
      * particle in cell i. */
     last_pj = -1;
@@ -1183,13 +1183,13 @@ const int cj_local = 1;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e);
-  const int active_cj = cell_is_active(cj, e);
+  const int active_ci = cell_is_active(ci, e) & ci_local;
+  const int active_cj = cell_is_active(cj, e) & cj_local;
 
   /* Count number of particles that are in range and active*/
   int numActive = 0;
 
-  if (active_ci && ci_local) {
+  if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -1200,7 +1200,7 @@ const int cj_local = 1;
     }
   }
 
-  if (!numActive && active_cj && cj_local) {
+  if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1238,7 +1238,7 @@ const int cj_local = 1;
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
                               hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, max_active_bin, ci_local, cj_local);
+                              &first_pi, &last_pj, max_active_bin, active_ci, active_cj);
 
   /* Limits of the outer loops. */
   int first_pi_loop = first_pi;
@@ -1256,7 +1256,7 @@ const int cj_local = 1;
   /* Get the number of particles read into the ci cache. */
   const int ci_cache_count = count_i - first_pi;
 
-  if (active_ci && ci_local) {
+  if (active_ci) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -1374,7 +1374,7 @@ const int cj_local = 1;
     } /* loop over the parts in ci. */
   }
 
-  if (active_cj && cj_local) {
+  if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
@@ -1542,8 +1542,8 @@ const int cj_local = 1;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e);
-  const int active_cj = cell_is_active(cj, e);
+  const int active_ci = cell_is_active(ci, e) & ci_local;
+  const int active_cj = cell_is_active(cj, e) & cj_local;
 
   /* Check if any particles are active and in range */
   int numActive = 0;
@@ -1552,7 +1552,7 @@ const int cj_local = 1;
    * missed. */
   const double h_max = max(hi_max, hj_max);
 
-  if (active_ci && ci_local) {
+  if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + h_max + dx_max > dj_min; pid--) {
       struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -1563,7 +1563,7 @@ const int cj_local = 1;
     }
   }
 
-  if (!numActive && active_cj && cj_local) {
+  if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - h_max - dx_max < di_max;
          pjd++) {
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1602,7 +1602,7 @@ const int cj_local = 1;
   populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift,
                                     hi_max_raw, hj_max_raw, hi_max, hj_max,
                                     di_max, dj_min, max_index_i, max_index_j,
-                                    &first_pi, &last_pj, max_active_bin, ci_local, cj_local);
+                                    &first_pi, &last_pj, max_active_bin, active_ci, active_cj);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
@@ -1620,7 +1620,7 @@ const int cj_local = 1;
   /* Get the number of particles read into the ci cache. */
   const int ci_cache_count = count_i - first_pi;
 
-  if (active_ci && ci_local) {
+  if (active_ci) {
 
     /* Loop over the parts in ci until nothing is within range in cj. */
     for (int pid = count_i - 1; pid >= first_pi_loop; pid--) {
@@ -1751,7 +1751,7 @@ const int cj_local = 1;
     } /* loop over the parts in ci. */
   }
 
-  if (active_cj && cj_local) {
+  if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
     for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
