@@ -370,7 +370,7 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
         failed++;
       }
       if (weights_v[k] < 1) {
-        message("Used vertex weight  out of range: %d", weights_v[k]);
+        message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
         failed++;
       }
     }
@@ -399,7 +399,7 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
         failed++;
       }
       if (weights_e[k] < 1) {
-        message("Used edge weight out of range: %d", weights_e[k]);
+        message("Used edge weight out of range: %" PRIDX, weights_e[k]);
         failed++;
       }
     }
