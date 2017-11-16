@@ -90,9 +90,11 @@ AC_ARG_WITH([python],
 have_python="no"
 if test "x$with_python" != "xno"; then
    if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
-     PYTHON_INCS="-I$with_python/include/python3.6m/"
+     PYTHON_INCS=`$with_python/bin/python3-config --includes`
+     PYTHON_LIBS=`$with_python/bin/python3-config --ldflags`
    else
      PYTHON_INCS=""
+     PYTHON_LIBS=""
    fi
 
    OLD_CPPFLAGS="$CPPFLAGS"
@@ -101,6 +103,7 @@ if test "x$with_python" != "xno"; then
    
    have_python="yes"
    AC_SUBST([PYTHON_INCS])
+   AC_SUBST([PYTHON_LIBS])
    AC_CHECK_HEADER(
      Python.h,
      AC_DEFINE([SWIFT_PYTHON_WRAPPER],1,[Enable the python wrapper]),

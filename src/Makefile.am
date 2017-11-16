@@ -19,7 +19,7 @@
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(PYTHON_INCS)
 
 # Assign a "safe" version number
-AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
+AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0 $(PYTHON_LIBS)
 
 # The git command, if available.
 GIT_CMD = @GIT_CMD@
