@@ -584,16 +584,12 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
-
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
-
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c, cell_cache);
@@ -979,28 +975,21 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
 #ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
-  struct part *restrict pi;
-  int count_align;
   const int num_vec_proc = 1;
-
   const timebin_t max_active_bin = e->max_active_bin;
-
   struct part *restrict parts = c->parts;
   const int count = c->count;
 
   TIMER_TIC;
 
+  /* Early abort? */
   if (!cell_is_active(c, e)) return;
-
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
-
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_force_particles(c, cell_cache);
@@ -1018,7 +1007,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a pointer to the ith particle. */
-    pi = &parts[pid];
+    struct part *restrict pi = &parts[pid];
 
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
@@ -1055,7 +1044,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     vector v_entropy_dtSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    count_align = count;
+    int count_align = count;
     int rem = count % (num_vec_proc * VEC_SIZE);
     if (rem != 0) {
       int pad = (num_vec_proc * VEC_SIZE) - rem;
@@ -1224,14 +1213,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
    * them if they are not big enough for the cells. */
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
+  if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
+  if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
-  if (ci_cache->count < count_i) {
-    cache_init(ci_cache, count_i);
-  }
-  if (cj_cache->count < count_j) {
-    cache_init(cj_cache, count_j);
-  }
-
+  /* Get a direct pointer to the index arrays */
   int first_pi, last_pj;
   swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
                             SWIFT_CACHE_ALIGNMENT);
@@ -1568,7 +1553,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - h_max - dx_max < di_max;
          pjd++) {
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -1583,14 +1568,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
    * them if they are not big enough for the cells. */
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
+  if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
+  if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
-  if (ci_cache->count < count_i) {
-    cache_init(ci_cache, count_i);
-  }
-  if (cj_cache->count < count_j) {
-    cache_init(cj_cache, count_j);
-  }
-
+  /* Get a direct pointer to the index arrays */
   int first_pi, last_pj;
   swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
                             SWIFT_CACHE_ALIGNMENT);
