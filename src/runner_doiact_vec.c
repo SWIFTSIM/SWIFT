@@ -1164,13 +1164,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
 /* Check whether cells are local to the node. */
-#ifdef WITH_MPI
-  const int ci_local = (ci->nodeID == e->nodeID) ? 1 : 0;
-  const int cj_local = (cj->nodeID == e->nodeID) ? 1 : 0;
-#else
-  const int ci_local = 1;
-  const int cj_local = 1;
-#endif
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1190,8 +1185,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e) & ci_local;
-  const int active_cj = cell_is_active(cj, e) & cj_local;
+  const int active_ci = cell_is_active(ci, e) && ci_local;
+  const int active_cj = cell_is_active(cj, e) && cj_local;
 
   /* Count number of particles that are in range and active*/
   int numActive = 0;
@@ -1523,13 +1518,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
 /* Check whether cells are local to the node. */
-#ifdef WITH_MPI
-  const int ci_local = (ci->nodeID == e->nodeID) ? 1 : 0;
-  const int cj_local = (cj->nodeID == e->nodeID) ? 1 : 0;
-#else
-  const int ci_local = 1;
-  const int cj_local = 1;
-#endif
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1551,8 +1541,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e) & ci_local;
-  const int active_cj = cell_is_active(cj, e) & cj_local;
+  const int active_ci = cell_is_active(ci, e) && ci_local;
+  const int active_cj = cell_is_active(cj, e) && cj_local;
 
   /* Check if any particles are active and in range */
   int numActive = 0;
