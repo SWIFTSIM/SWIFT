@@ -258,6 +258,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
  * @param max_active_bin The largest time-bin active during this step.
+ * @param active_ci Is any particle in cell ci active?
+ * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const struct cell *ci, const struct cell *cj,
@@ -416,6 +418,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
  * @param max_active_bin The largest time-bin active during this step.
+ * @param active_ci Is any particle in cell ci active?
+ * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void
 populate_max_index_no_cache_force(
@@ -1163,14 +1167,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-/* Check whether cells are local to the node. */
-#ifdef WITH_MPI
-  const int ci_local = (ci->nodeID == e->nodeID) ? 1 : 0;
-  const int cj_local = (cj->nodeID == e->nodeID) ? 1 : 0;
-#else
-  const int ci_local = 1;
-  const int cj_local = 1;
-#endif
+  /* Check whether cells are local to the node. */
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1190,8 +1189,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e) & ci_local;
-  const int active_cj = cell_is_active(cj, e) & cj_local;
+  const int active_ci = cell_is_active(ci, e) && ci_local;
+  const int active_cj = cell_is_active(cj, e) && cj_local;
 
   /* Count number of particles that are in range and active*/
   int numActive = 0;
@@ -1199,8 +1198,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
-      if (part_is_active(pi, e)) {
+      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
       }
@@ -1210,7 +1209,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -1234,11 +1233,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   }
 
   int first_pi, last_pj;
-  int *max_index_i __attribute__((aligned(sizeof(int) * VEC_SIZE)));
-  int *max_index_j __attribute__((aligned(sizeof(int) * VEC_SIZE)));
-
-  max_index_i = r->ci_cache.max_index;
-  max_index_j = r->cj_cache.max_index;
+  swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, max_index_j, r->cj_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
 
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
@@ -1522,14 +1520,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-/* Check whether cells are local to the node. */
-#ifdef WITH_MPI
-  const int ci_local = (ci->nodeID == e->nodeID) ? 1 : 0;
-  const int cj_local = (cj->nodeID == e->nodeID) ? 1 : 0;
-#else
-  const int ci_local = 1;
-  const int cj_local = 1;
-#endif
+  /* Check whether cells are local to the node. */
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
 
   /* Get the cutoff shift. */
   double rshift = 0.0;
@@ -1551,8 +1544,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e) & ci_local;
-  const int active_cj = cell_is_active(cj, e) & cj_local;
+  const int active_ci = cell_is_active(ci, e) && ci_local;
+  const int active_cj = cell_is_active(cj, e) && cj_local;
 
   /* Check if any particles are active and in range */
   int numActive = 0;
@@ -1564,8 +1557,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + h_max + dx_max > dj_min; pid--) {
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
-      if (part_is_active(pi, e)) {
+      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
       }
@@ -1599,11 +1592,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   }
 
   int first_pi, last_pj;
-  int *max_index_i SWIFT_CACHE_ALIGN;
-  int *max_index_j SWIFT_CACHE_ALIGN;
-
-  max_index_i = r->ci_cache.max_index;
-  max_index_j = r->cj_cache.max_index;
+  swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, max_index_j, r->cj_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
