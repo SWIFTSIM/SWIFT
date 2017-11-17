@@ -11,10 +11,33 @@ from Cython.Build import cythonize
 import numpy
 import os
 
+# read makefile in order to get libraries
 makefile = "../src/Makefile"
 
-def getValueFromMakefile(f, value):
-    test = value + " = "
+# save environment
+old = {}
+def saveEnviron(key, old):
+    """ Save environment variable before modifying them
+    Key is the environment variable and old is a dictionary
+    containing all the modified values.
+    """
+    old[key] = ""
+    if key in os.environ:
+        old[key] = os.environ[key]
+    return old
+        
+old = saveEnviron("CC", old)
+old = saveEnviron("LDFLAGS", old)
+
+
+def getValueFromMakefile(f, key):
+    """
+    Read a file and return the value of a variable.
+    f is an open file and value if the requested key.
+    The variable should be matching the following patern:
+    KEY = VALUE
+    """
+    test = key + " = "
     ret = None
     for line in f:
         start = line[:len(test)]
@@ -23,35 +46,34 @@ def getValueFromMakefile(f, value):
 
     f.seek(0)
     if ret is None:
-        raise Exception("Unable to find value %s" % value)
+        raise Exception("Unable to find key %s" % key)
     else:
         # remove last character "\n"
         return ret[:-1]
+
+with open(makefile, "r") as f:
+    hdf5_root = getValueFromMakefile(f, "H5CC")
+    cc = getValueFromMakefile(f, "CC")
 
 # python requirement
 install_requires = []
 
 # include
-with open(makefile, "r") as f:
-    # need to remove \n
-    hdf5_include = getValueFromMakefile(f, "H5CC") + "/include"
-    cc = getValueFromMakefile(f, "CC")
-    
 include = [
     numpy.get_include(),
     "../src",
-    hdf5_include
+    hdf5_root + "/include"
 ]
 
 # libraries
-lib = ["m", "hdf5", "-L../src/.libs/", "swiftsim"]
+lib = ["m", "hdf5", "swiftsim"]
 
 # Extension object required by setup
 ext = []
 
 
 # cooling wrapper
-tmp = Extension("cooling",
+tmp = Extension("pyswiftsim.cooling",
                 ["src/cooling.pyx"],
                 include_dirs=include,
                 libraries=lib)
@@ -62,11 +84,17 @@ ext.extend(tmp)
 scripts = []
 
 # data to copy
-data = ["../src/.libs/libswiftsim.so"] 
-old_cc = ""
-if "CC" in os.environ:
-    old_cc = os.environ['CC']
+data = []
 
+# set environment variables, please save the environment variable before modifying them
+# path to libswiftsim
+ldflags = "LDFLAGS"
+if ldflags not in os.environ:
+    os.environ[ldflags] = ""
+os.environ[ldflags] += " -L" + hdf5_root + "/lib"
+
+
+# compiler
 os.environ["CC"] = cc
 
 setup(
@@ -91,4 +119,9 @@ setup(
 
 )
 
-os.environ["CC"] = old_cc
+
+def restoreEnviron(old):
+    for key, value in old.items():
+        os.environ[key] = value
+
+restoreEnviron(old)
