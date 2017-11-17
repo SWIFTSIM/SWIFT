@@ -79,38 +79,38 @@ if test "$enable_ipo" = "yes"; then
 fi
 
 # Compiling with Python wrapper
-AC_ARG_WITH([python],
-    [AS_HELP_STRING([--with-python=PATH],
-        [Root directory of python3]
-    )],
-    [],
-    [with_python="no"]
-)
+#AC_ARG_WITH([python],
+#    [AS_HELP_STRING([--with-python=PATH],
+#        [Root directory of python3]
+#    )],
+#    [],
+#    [with_python="no"]
+#)
 
-have_python="no"
-if test "x$with_python" != "xno"; then
-   if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
-     PYTHON_INCS=`$with_python/bin/python3-config --includes`
-     PYTHON_LIBS=`$with_python/bin/python3-config --ldflags`
-   else
-     PYTHON_INCS=""
-     PYTHON_LIBS=""
-   fi
+#have_python="no"
+#if test "x$with_python" != "xno"; then
+#   if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
+#     PYTHON_INCS=`$with_python/bin/python3-config --includes`
+#     PYTHON_LIBS=`$with_python/bin/python3-config --ldflags`
+#   else
+#     PYTHON_INCS=""
+#     PYTHON_LIBS=""
+#   fi
 
-   OLD_CPPFLAGS="$CPPFLAGS"
+#   OLD_CPPFLAGS="$CPPFLAGS"
 
-   CPPFLAGS="$CPPFLAGS $PYTHON_INCS"
+#   CPPFLAGS="$CPPFLAGS $PYTHON_INCS"
    
-   have_python="yes"
-   AC_SUBST([PYTHON_INCS])
-   AC_SUBST([PYTHON_LIBS])
-   AC_CHECK_HEADER(
-     Python.h,
-     AC_DEFINE([SWIFT_PYTHON_WRAPPER],1,[Enable the python wrapper]),
-     AC_MSG_ERROR(something is wrong with the python library! PYTHON_INCS=$PYTHON_INCS)
-   )
-   CPPFLAGS="$OLD_CPPFLAGS"
-fi
+#   have_python="yes"
+#   AC_SUBST([PYTHON_INCS])
+#   AC_SUBST([PYTHON_LIBS])
+#   AC_CHECK_HEADER(
+#     Python.h,
+#     AC_DEFINE([SWIFT_PYTHON_WRAPPER],1,[Enable the python wrapper]),
+#     AC_MSG_ERROR(something is wrong with the python library! PYTHON_INCS=$PYTHON_INCS)
+#   )
+#   CPPFLAGS="$OLD_CPPFLAGS"
+#fi
 
 
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
