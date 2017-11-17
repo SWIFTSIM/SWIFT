@@ -71,10 +71,17 @@ lib = ["m", "hdf5", "swiftsim"]
 # Extension object required by setup
 ext = []
 
+# pointer
+tmp = Extension("pyswiftsim.pointer",
+                ["pyswiftsim/pointer.pyx"],
+                include_dirs=include,
+                libraries=lib)
+tmp = cythonize(tmp)
+ext.extend(tmp)
 
 # cooling wrapper
 tmp = Extension("pyswiftsim.cooling",
-                ["src/cooling.pyx"],
+                ["pyswiftsim/cooling.pyx"],
                 include_dirs=include,
                 libraries=lib)
 tmp = cythonize(tmp)

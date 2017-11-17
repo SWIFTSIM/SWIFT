@@ -1,7 +1,7 @@
+from pyswiftsim cimport part_def
+from pyswiftsim.part_def cimport part
+from pyswiftsim.part_def cimport xpart
 
-cdef extern from "clocks.h":
-    void clocks_set_cpufreq(unsigned long long freq);
-    
 cdef extern from "parser.h":
     struct swift_params:
         pass
@@ -14,6 +14,7 @@ cdef extern from "units.h":
         pass
     void units_init(unit_system* us, const swift_params* params,
                     const char* category)
+    void units_print_backend(const unit_system *us)
 
     
 cdef extern from "physical_constants.h":
@@ -25,24 +26,6 @@ cdef extern from "physical_constants.h":
 cdef extern from "cooling_struct.h":
     struct cooling_function_data:
         pass
-
-cdef extern from "part.h":
-    struct part:
-        pass
-    struct xpart:
-        pass
-
-cdef extern from "hydro_space.h":
-    struct hydro_space:
-        pass
-
-cdef extern from "hydro.h":
-    void hydro_init_part(
-        part *p, const hydro_space *hs)
-
-cdef extern from "debug.h":
-    void printParticle(const part *parts, const xpart *xparts,
-                       long long int id, size_t N);
 
 cdef extern from "cooling.h":
     void cooling_init(const swift_params* parameter_file,
@@ -57,3 +40,7 @@ cdef extern from "cooling.h":
         const unit_system* us,
         const cooling_function_data* cooling,
         part* p, xpart* xp, float dt)
+
+    float cooling_rate(
+        const phys_const* const phys_const, const unit_system* us,
+        const cooling_function_data* cooling, const part* p)
