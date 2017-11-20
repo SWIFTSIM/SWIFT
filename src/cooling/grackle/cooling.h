@@ -50,6 +50,8 @@
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
+ *
+ * @return du / dt
  */
 __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct phys_const* restrict phys_const,
@@ -61,6 +63,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 
   /* Get current internal energy (dt=0) */
   double u_old = hydro_get_internal_energy(p);
+  double u_new = u_old;
   /* Get current density */
   const float rho = hydro_get_density(p);
   /* Actual scaling fractor */
@@ -71,12 +74,12 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   double Z = 0.02041;
 
   
-  if (wrap_do_cooling(rho, &u_old, dt, Z, a_now) == 0) {
+  if (wrap_do_cooling(rho, &u_new, dt, Z, a_now) == 0) {
     error("Error in do_cooling.\n");
     return 0;
   }
 
-  return u_old;
+  return (u_new - u_old) / dt;
 }
 
 /**
@@ -99,23 +102,21 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   if (dt == 0.)
     return;
 
-  /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p);
   /* Current du_dt */
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
-  float u_new;
+  float du_dt;
   float delta_u;
 
-  u_new = cooling_rate(phys_const, us, cooling, p, dt);
+  du_dt = cooling_rate(phys_const, us, cooling, p, dt);
 
-  delta_u = u_new - u_old;
+  delta_u = du_dt * dt;
 
   /* record energy lost */
   xp->cooling_data.radiated_energy += -delta_u * hydro_get_mass(p);
 
   /* Update the internal energy */
-  hydro_set_internal_energy_dt(p, hydro_du_dt + delta_u / dt);
+  hydro_set_internal_energy_dt(p, hydro_du_dt + du_dt);
 }
 
 /**
