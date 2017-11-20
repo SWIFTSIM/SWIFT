@@ -3564,9 +3564,14 @@ void engine_prepare(struct engine *e) {
   /* Do we need rebuilding ? */
   if (e->forcerebuild) engine_rebuild(e, 0);
 
-  /* Unskip active tasks and check for rebuild */
-  engine_unskip(e);
+  message("Rebuild done");
 
+  space_print_cells(e->s);
+
+  /* Unskip active tasks and check for rebuild */
+  //engine_unskip(e);
+  engine_marktasks(e);
+  
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     scheduler_reweight(&e->sched, e->verbose);
@@ -4156,7 +4161,7 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
 
-  space_print_cells(e->s);
+  //space_print_cells(e->s);
   //message("nr cells: %d %d", e->s->nr_cells, e->s->tot_cells);
   message("ti_current=%lld ti_old=%lld", e->ti_current, e->ti_old);
 
