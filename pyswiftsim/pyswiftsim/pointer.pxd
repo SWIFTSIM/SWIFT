@@ -3,11 +3,11 @@ cdef extern from "clocks.h":
 
     
 cdef enum pointer_type:
-    swift_params
-    unit_system
-    phys_const
-    cooling_function_data
-    count
+    type_swift_params
+    type_unit_system
+    type_phys_const
+    type_cooling_function_data
+    type_count
 
 cdef const char **pointer_name
 

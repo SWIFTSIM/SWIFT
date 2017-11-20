@@ -11,14 +11,22 @@ cdef extern from "parser.h":
 
 cdef extern from "units.h":
     struct unit_system:
-        pass
+        double UnitMass_in_cgs;
+        double UnitLength_in_cgs;
+        double UnitTime_in_cgs;
+        double UnitCurrent_in_cgs;
+        double UnitTemperature_in_cgs;
     void units_init(unit_system* us, const swift_params* params,
                     const char* category)
     void units_print_backend(const unit_system *us)
 
-    
+cdef extern from "adiabatic_index.h":
+    float hydro_gamma
+
 cdef extern from "physical_constants.h":
     struct phys_const:
+        double const_boltzmann_k
+        double const_proton_mass
         pass
     void phys_const_init(unit_system* us, phys_const* internal_const);
 
