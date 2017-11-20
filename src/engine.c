@@ -446,6 +446,8 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
 
+    message("\n REDISTRIBUTE!!! \n");
+  
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
@@ -2885,7 +2887,7 @@ void engine_maketasks(struct engine *e) {
     error("We have particles but no hydro or gravity tasks were created.");
 
   /* Split the tasks. */
-  scheduler_splittasks(sched);
+  //scheduler_splittasks(sched);
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
@@ -3317,14 +3319,29 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
+  int count_send_ti = 0;
+  int count_recv_ti = 0;
+  int count_send_gpart = 0;
+  int count_recv_gpart = 0;
+  
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
     if (tasks[k].skip)
       counts[task_type_count] += 1;
-    else
+    else {
       counts[(int)tasks[k].type] += 1;
+
+      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_tend)
+	count_send_ti++;
+      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_tend)
+	count_recv_ti++;
+      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_gpart)
+	count_send_gpart++;
+      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_gpart)
+	count_recv_gpart++;
+    }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
           (int)ceil((double)nr_tasks / e->s->tot_cells));
@@ -3339,10 +3356,12 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-
+  //message("nr_parts = %zu.", e->s->nr_parts);
+  //message("nr_gparts = %zu.", e->s->nr_gparts);
+  //message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d",
+	  count_send_ti, count_recv_ti, count_send_gpart, count_recv_gpart);
+  
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4116,9 +4135,9 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time, e->step_props);
+    printf("  %6d %lld %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step,
+           e->ti_current, e->time, e->timeStep, e->updates, e->g_updates,
+           e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
@@ -4136,6 +4155,10 @@ void engine_step(struct engine *e) {
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
+
+  space_print_cells(e->s);
+  //message("nr cells: %d %d", e->s->nr_cells, e->s->tot_cells);
+  message("ti_current=%lld ti_old=%lld", e->ti_current, e->ti_old);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
