@@ -374,8 +374,7 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
         failed++;
       }
     }
-    if (failed > 0)
-      error("%d vertex weights are out of range", failed);
+    if (failed > 0) error("%d vertex weights are out of range", failed);
 #endif
   }
 
@@ -403,8 +402,7 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
         failed++;
       }
     }
-    if (failed > 0)
-      error("%d edge weights are out of range", failed);
+    if (failed > 0) error("%d edge weights are out of range", failed);
 #endif
   }
 
