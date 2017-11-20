@@ -84,7 +84,7 @@ struct dump;
  * Size in bytes
  */
 #define LOGGER_VERSION_SIZE 20 // size of the version message
-#define LOGGER_NAME_SIZE 1 // size of the labels
+#define LOGGER_NAME_SIZE 2 // size of the labels
 #define LOGGER_MASK_SIZE 1 // size of the masks
 #define LOGGER_NBER_SIZE 1 // size of the number of elements
 #define LOGGER_OFFSET_SIZE 1// size of the offset size information
