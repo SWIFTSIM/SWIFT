@@ -75,6 +75,15 @@ also be switched off for benchmarking purposes. To do so, you can use:
 
     ./configure --disable-vec
 
+Please note that to build SWIFT on MacOS, you will need to configure
+using
+
+    ./configure --disable-compiler-warnings
+
+due to the incorrect behaviour of the LLVM compiler on this platform
+that raises warnings when the pthread flags are passed to the linker.
+
+
 
                                  Dependencies
                                  ============

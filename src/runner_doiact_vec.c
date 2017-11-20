@@ -572,8 +572,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #ifdef WITH_VECTORIZATION
-  const int num_vec_proc = NUM_VEC_PROC;
-
   /* Get some local variables */
   const struct engine *e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
@@ -586,6 +584,14 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   if (!cell_is_active(c, e)) return;
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < count; i++) {
+    /* Check that particles have been drifted to the current time */
+    if (parts[i].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  }
+#endif
+
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
@@ -596,7 +602,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
-  int icount = 0, icount_align = 0;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -636,9 +641,9 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
-    const int rem = count % (num_vec_proc * VEC_SIZE);
+    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
-      count_align += (num_vec_proc * VEC_SIZE) - rem;
+      count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
@@ -649,9 +654,13 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       }
     }
 
+    /* The number of interactions for pi and the padded version of it to
+     * make it a multiple of VEC_SIZE. */
+    int icount = 0, icount_align = 0;
+
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
-    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < count_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
       const vector v_pjx = vector_load(&cell_cache->x[pjd]);
@@ -730,7 +739,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     vec_init_mask_true(int_mask2);
 
     /* Perform interaction with 2 vectors. */
-    for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
@@ -774,9 +783,6 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     int *restrict ind, int pi_count) {
 
 #ifdef WITH_VECTORIZATION
-  struct part *restrict pi;
-  int num_vec_proc = NUM_VEC_PROC;
-
   const int count = c->count;
 
   TIMER_TIC
@@ -785,24 +791,19 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
 
-  if (cell_cache->count < count) {
-    cache_init(cell_cache, count);
-  }
+  if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
-  int icount = 0, icount_align = 0;
 
   /* Loop over the subset of particles in the parts that need updating. */
   for (int pid = 0; pid < pi_count; pid++) {
 
-    const int pi_index = ind[pid];
-
     /* Get a pointer to the ith particle. */
-    pi = &parts[pi_index];
+    struct part *pi = &parts[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
     const struct engine *e = r->e;
@@ -838,9 +839,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
-    int rem = count % (num_vec_proc * VEC_SIZE);
+    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
-      int pad = (num_vec_proc * VEC_SIZE) - rem;
+      const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       count_align += pad;
 
@@ -853,9 +854,13 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       }
     }
 
+    /* The number of interactions for pi and the padded version of it to
+     * make it a multiple of VEC_SIZE. */
+    int icount = 0, icount_align = 0;
+
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
-    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < count_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
 
       /* Load 2 sets of vectors from the particle cache. */
       const vector v_pjx = vector_load(&cell_cache->x[pjd]);
@@ -870,6 +875,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       vector v_dx, v_dy, v_dz, v_r2;
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
+      /* p_i - p_j */
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
       v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
       v_dy.v = vec_sub(v_piy.v, v_pjy.v);
@@ -877,6 +883,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       v_dz.v = vec_sub(v_piz.v, v_pjz.v);
       v_dz_2.v = vec_sub(v_piz.v, v_pjz2.v);
 
+      /* r2 = dx^2 + dy^2 + dz^2 */
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
       v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
@@ -934,7 +941,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     vec_init_mask_true(int_mask2);
 
     /* Perform interaction with 2 vectors. */
-    for (int pjd = 0; pjd < icount_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
           &int_cache.dzq[pjd], v_hi_inv, v_vix, v_viy, v_viz,
@@ -975,7 +982,6 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
 #ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
-  const int num_vec_proc = 1;
   const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -986,22 +992,22 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   if (!cell_is_active(c, e)) return;
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < count; i++) {
+    /* Check that particles have been drifted to the current time */
+    if (parts[i].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  }
+#endif
+
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
+
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_force_particles(c, cell_cache);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < count; i++) {
-    pi = &c->parts[i];
-    /* Check that particles have been drifted to the current time */
-    if (pi->ti_drift != e->ti_current)
-      error("Particle pi not drifted to current time");
-  }
-#endif
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -1045,9 +1051,9 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
     /* Pad cache if there is a serial remainder. */
     int count_align = count;
-    int rem = count % (num_vec_proc * VEC_SIZE);
+    int rem = count % VEC_SIZE;
     if (rem != 0) {
-      int pad = (num_vec_proc * VEC_SIZE) - rem;
+      int pad = VEC_SIZE - rem;
 
       count_align += pad;
 
@@ -1068,7 +1074,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
-    for (int pjd = 0; pjd < count_align; pjd += (num_vec_proc * VEC_SIZE)) {
+    for (int pjd = 0; pjd < count_align; pjd += VEC_SIZE) {
 
       /* Load 1 set of vectors from the particle cache. */
       vector hjg2;
@@ -1181,6 +1187,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e) && ci_local;
   const int active_cj = cell_is_active(cj, e) && cj_local;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that particles have been drifted to the current time */
+  for (int pid = 0; pid < count_i; pid++)
+    if (parts_i[pid].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  for (int pjd = 0; pjd < count_j; pjd++)
+    if (parts_j[pjd].ti_drift != e->ti_current)
+      error("Particle pj not drifted to current time");
+#endif
+
   /* Count number of particles that are in range and active*/
   int numActive = 0;
 
@@ -1232,8 +1248,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                               active_cj);
 
   /* Limits of the outer loops. */
-  int first_pi_loop = first_pi;
-  int last_pj_loop = last_pj;
+  const int first_pi_loop = first_pi;
+  const int last_pj_loop_end = last_pj + 1;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
@@ -1266,7 +1282,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      const int exit_iteration = max_index_i[pid];
+      const int exit_iteration_end = max_index_i[pid] + 1;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
@@ -1293,20 +1309,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       vector v_curlvySum = vector_setzero();
       vector v_curlvzSum = vector_setzero();
 
-      /* Pad the exit iteration if there is a serial remainder. */
-      int exit_iteration_align = exit_iteration;
-      const int rem = exit_iteration % VEC_SIZE;
-      if (rem != 0) {
-        const int pad = VEC_SIZE - rem;
-
-        if (exit_iteration_align + pad <= last_pj + 1)
-          exit_iteration_align += pad;
-      }
-
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < exit_iteration_end; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1368,7 +1374,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
+    for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
@@ -1532,6 +1538,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const int active_ci = cell_is_active(ci, e) && ci_local;
   const int active_cj = cell_is_active(cj, e) && cj_local;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that particles have been drifted to the current time */
+  for (int pid = 0; pid < count_i; pid++)
+    if (parts_i[pid].ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+  for (int pjd = 0; pjd < count_j; pjd++)
+    if (parts_j[pjd].ti_drift != e->ti_current)
+      error("Particle pj not drifted to current time");
+#endif
+
   /* Check if any particles are active and in range */
   int numActive = 0;
 
@@ -1588,7 +1604,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
-  const int last_pj_loop = last_pj;
+  const int last_pj_loop_end = last_pj + 1;
 
   /* Take the max/min of both values calculated to work out how many particles
    * to read into the cache. */
@@ -1621,7 +1637,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       if (di_test < dj_min) continue;
 
       /* Determine the exit iteration of the interaction loop. */
-      const int exit_iteration = max_index_i[pid];
+      const int exit_iteration_end = max_index_i[pid] + 1;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(ci_cache->x[ci_cache_idx]);
@@ -1651,20 +1667,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       vector v_sigSum = vector_set1(pi->force.v_sig);
       vector v_entropy_dtSum = vector_setzero();
 
-      /* Pad the exit iteration if there is a serial remainder. */
-      int exit_iteration_align = exit_iteration;
-      const int rem = exit_iteration % VEC_SIZE;
-      if (rem != 0) {
-        int pad = VEC_SIZE - rem;
-
-        if (exit_iteration_align + pad <= last_pj + 1)
-          exit_iteration_align += pad;
-      }
-
       /* Loop over the parts in cj. Making sure to perform an iteration of the
        * loop even if exit_iteration_align is zero and there is only one
        * particle to interact with.*/
-      for (int pjd = 0; pjd <= exit_iteration_align; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < exit_iteration_end; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1736,7 +1742,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (active_cj) {
 
     /* Loop over the parts in cj until nothing is within range in ci. */
-    for (int pjd = 0; pjd <= last_pj_loop; pjd++) {
+    for (int pjd = 0; pjd < last_pj_loop_end; pjd++) {
 
       /* Get a hold of the jth part in cj. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];

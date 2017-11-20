@@ -36,7 +36,8 @@ void printgParticle_single(struct gpart *gp);
 
 int checkSpacehmax(struct space *s);
 int checkCellhdxmax(const struct cell *c, int *depth);
-void dumpCells(const char *prefix, struct space *s);
+void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
+               struct space *s, int rank, int step);
 
 #ifdef HAVE_METIS
 #include "metis.h"

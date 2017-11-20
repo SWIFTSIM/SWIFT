@@ -202,7 +202,5 @@ print "--- Runtime parameters (YAML file): ---"
 print "DiscPatchPotential:surface_density:    ", surface_density
 print "DiscPatchPotential:scale_height:       ", scale_height
 print "DiscPatchPotential:x_disc:             ", 0.5 * boxSize_x
+print "EoS:isothermal_internal_energy: %ef"%u_therm
 print ""
-
-print "--- Constant parameters: ---"
-print "const_isothermal_internal_energy: %ef"%u_therm

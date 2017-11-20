@@ -776,7 +776,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
               runner_doself_subset_density_vec(r, finger, parts, pid, count);
 #else
               runner_doself_subset_density(r, finger, parts, pid, count);
@@ -872,10 +872,11 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  struct space *s = e->s;
+  int *local_cells = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
+    struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) runner_do_unskip(c, e);
   }
 }
