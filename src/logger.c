@@ -285,12 +285,14 @@ void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
  *
  */
 void logger_write_file_header(struct dump *dump) {
+
+#ifdef SWIFT_DEBUG_CHECKS
   message("writing header");
+#endif
   
-  size_t i, j;
-  char *buff, *name_buff, *skip_header;
+  size_t i;
+  char *buff, *skip_header;
   size_t *file_offset;
-  size_t mask_size;
 
   struct logger_const log_const;
   logger_const_init(&log_const);
@@ -318,19 +320,24 @@ void logger_write_file_header(struct dump *dump) {
   buff = dump_get(dump, LOGGER_NBER_SIZE, file_offset);
   memcpy(buff, &log_const.number, LOGGER_NBER_SIZE);
 
+  /* write number of bytes used for masks */
+  buff = dump_get(dump, LOGGER_MASK_SIZE, file_offset);
+  memcpy(buff, &log_const.mask, LOGGER_MASK_SIZE);
+
+  /* write number of masks */
+  buff = dump_get(dump, log_const.number, file_offset);
+  memcpy(buff, &log_const.nber_mask, log_const.number);
+  
   /* write masks */
-  mask_size = log_const.nber_mask * (log_const.name + log_const.mask);
-  name_buff = dump_get(dump, mask_size, file_offset);
+  // loop over all mask type
   for(i=0; i<log_const.nber_mask; i++) {
-    j = i * (log_const.name + log_const.mask);
-
-    // name
-    memcpy(name_buff, &log_const.masks_name[j], log_const.name);
-    name_buff += j;
-
+    // get full mask chunk
+    buff = dump_get(dump, log_const.name, file_offset);
+    memcpy(buff, &log_const.masks_name[i], log_const.name);
+    
     // mask
-    memcpy(name_buff, &log_const.masks[i], log_const.mask);
-    name_buff += log_const.mask;
+    buff = dump_get(dump, log_const.mask, file_offset);
+    memcpy(buff, &log_const.masks[i], log_const.mask);
   }
   
 
@@ -346,7 +353,7 @@ void logger_const_init(struct logger_const* log_const) {
   log_const->mask = 1;
   log_const->number = 1;
 
-  log_const->nber_mask = 1;
+  log_const->nber_mask = 8;
 
   char *cur_name;
   char tmp[log_const->name];
