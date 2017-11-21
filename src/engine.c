@@ -6718,6 +6718,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   struct dump *dump_file = e->logger_dump;
   dump_init(dump_file, logger_name_file, e->logger_size);
   logger_write_file_header(dump_file);
+  dump_ensure(dump_file, e->logger_size);
   e->logger_time_offset = 0;
 #endif
 

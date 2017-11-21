@@ -85,8 +85,14 @@ void dump_ensure(struct dump *d, size_t size) {
   /* Re-map starting at the end of the file. */
   if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd,
                       d->file_offset)) == MAP_FAILED) {
-    error("Failed to allocate map of size %zi bytes (%s).", d->size,
-          strerror(errno));
+    message("Offset %lu, size %lu", d->file_offset, d->size);
+    size_t mega = 1e6;
+    if (d->size > mega)
+      error("Failed to allocate map of size %zi Mbytes (%s).", d->size / mega,
+	    strerror(errno));
+    else
+      error("Failed to allocate map of size %zi bytes (%s).", d->size,
+	    strerror(errno));
   }
 }
 
