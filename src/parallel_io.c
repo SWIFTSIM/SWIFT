@@ -266,8 +266,16 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks tic = getticks();
+
   /* Copy the particle data to the temporary buffer */
   io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message( "Copying for '%s' took %.3f %s." , props.name,
+	     clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
@@ -314,6 +322,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   /* 	  N, props.name, N * props.dimension, N * props.dimension * typeSize, */
   /* 	  (int)(N * props.dimension * typeSize), offset); */
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                    h_plist_id, temp);
@@ -321,6 +332,17 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
     error("Error while writing data array '%s'.", props.name);
   }
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks toc = getticks();
+  float ms = clocks_from_ticks(toc - tic);
+  int megaBytes = N * props.dimension * typeSize / (1024 * 1024);
+  int total = 0;
+  MPI_Reduce(&megaBytes, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  
+  if(engine_rank == 0)
+    message( "H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s)." , props.name, total,
+	     ms, clocks_getunit(), total / (ms / 1000.));
+  
   /* Free and close everything */
   free(temp);
   H5Sclose(h_memspace);
@@ -351,6 +373,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
+  const ticks tic = getticks();
 
   /* Work out properties of the array in the file */
   int rank;
@@ -439,7 +462,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
     MPI_Allreduce(MPI_IN_PLACE, &redo, 1, MPI_SIGNED_CHAR, MPI_MAX,
                   MPI_COMM_WORLD);
 
-    if (redo && e->verbose && mpi_rank == 0)
+    if (redo /* && e->verbose*/ && mpi_rank == 0)
       message("Need to redo one iteration for array '%s'", props.name);
   }
 
@@ -464,6 +487,11 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Pclose(h_plist_id);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message( "'%s' took %.3f %s." , props.name,
+	     clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -796,7 +824,29 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Open HDF5 file */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  //MPI_Info_set(info, "IBM_largeblock_io", "true");
+  MPI_Info_set(info, "romio_cb_write", "enable");
+  MPI_Info_set(info, "romio_ds_write", "disable");
   H5Pset_fapl_mpio(plist_id, comm, info);
+  hid_t h_err = H5Pset_alignment(plist_id, IO_BUFFER_ALIGNMENT, 4096);
+  if(h_err < 0)
+    error("Error setting Hdf5 alignment");
+
+  /* Disable meta-data cache eviction */
+  H5AC_cache_config_t mdc_config;
+  mdc_config.version = H5AC__CURR_CACHE_CONFIG_VERSION;
+  h_err = H5Pget_mdc_config(plist_id, &mdc_config);
+  if( h_err < 0)
+    error("Error getting the MDC config");
+
+  mdc_config.evictions_enabled = 0; /* false */
+  mdc_config.incr_mode = H5C_incr__off;
+  mdc_config.decr_mode = H5C_decr__off;
+  mdc_config.flash_incr_mode   = H5C_flash_incr__off;
+  h_err = H5Pset_mdc_config(plist_id, &mdc_config);
+  if( h_err < 0)
+    error("Error setting the MDC config");
+
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
   if (h_file < 0) {
     error("Error while opening file '%s'.", fileName);

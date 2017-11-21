@@ -30,7 +30,7 @@
 #define FIELD_BUFFER_SIZE 200
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
-#define IO_BUFFER_ALIGNMENT 512
+#define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
 struct io_props;
