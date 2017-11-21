@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local includes. */
+#include "inline.h"
+
 /**
  * @brief The two sorts of data present in the GADGET IC files: compulsory to
  * start a run or optional.
@@ -100,11 +103,10 @@ struct io_props {
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
-                                     enum IO_DATA_TYPE type, int dimension,
-                                     enum DATA_IMPORTANCE importance,
-                                     enum unit_conversion_factor units,
-                                     char* field, size_t partSize) {
+INLINE static struct io_props io_make_input_field_(
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
+    char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
   r.type = type;
@@ -143,10 +145,9 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
-                                      enum IO_DATA_TYPE type, int dimension,
-                                      enum unit_conversion_factor units,
-                                      char* field, size_t partSize) {
+INLINE static struct io_props io_make_output_field_(
+    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
   r.type = type;
@@ -187,7 +188,7 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_output_field_convert_part_FLOAT(
+INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, conversion_func_part_float functionPtr) {
@@ -224,7 +225,7 @@ struct io_props io_make_output_field_convert_part_FLOAT(
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_output_field_convert_part_DOUBLE(
+INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, conversion_func_part_double functionPtr) {
@@ -269,7 +270,7 @@ struct io_props io_make_output_field_convert_part_DOUBLE(
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_output_field_convert_gpart_FLOAT(
+INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
     char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_float functionPtr) {
@@ -306,7 +307,7 @@ struct io_props io_make_output_field_convert_gpart_FLOAT(
  *
  * Do not call this function directly. Use the macro defined above.
  */
-struct io_props io_make_output_field_convert_gpart_DOUBLE(
+INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
     char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_double functionPtr) {

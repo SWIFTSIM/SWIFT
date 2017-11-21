@@ -31,6 +31,10 @@
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
 
+/* Avoid cyclic inclusion problems */
+struct io_props;
+struct engine;
+
 #if defined(HAVE_HDF5)
 
 /**
@@ -71,6 +75,11 @@ void io_write_code_description(hid_t h_file);
 void io_read_unit_system(hid_t h_file, struct unit_system* us);
 void io_write_unit_system(hid_t h_grp, const struct unit_system* us,
                           const char* groupName);
+
+void io_copy_temp_buffer(void* temp, const struct engine* e,
+                         const struct io_props props, size_t N,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units);
 
 #endif /* defined HDF5 */
 

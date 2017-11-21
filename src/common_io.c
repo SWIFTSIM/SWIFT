@@ -40,8 +40,10 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "engine.h"
 #include "error.h"
 #include "hydro.h"
+#include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
@@ -266,7 +268,6 @@ void io_write_attribute_f(hid_t grp, const char* name, float data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-
 void io_write_attribute_i(hid_t grp, const char* name, int data) {
   io_write_attribute(grp, name, INT, &data, 1);
 }
@@ -399,6 +400,97 @@ void io_write_code_description(hid_t h_file) {
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
   H5Gclose(h_grpcode);
+}
+
+/**
+ * @brief Copy the particle data into a temporary buffer ready for i/o.
+ *
+ * @param temp The buffer to be filled. Must be allocated and aligned properly.
+ * @param e The #engine.
+ * @param props The #io_props corresponding to the particle field we are copying.
+ * @param N The number of particles to copy
+ * @param internal_units The system of units used internally.
+ * @param snapshot_units The system of units used for the snapshots.
+ */
+void io_copy_temp_buffer(void* temp, const struct engine* e,
+                         const struct io_props props, size_t N,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units) {
+
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+  const size_t num_elements = N * props.dimension;
+  const size_t dim = props.dimension;
+
+  /* Copy particle data to temporary buffer */
+  if (props.conversion == 0) { /* No conversion */
+
+    char* temp_c = temp;
+    for (size_t i = 0; i < N; ++i)
+      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+
+  } else { /* Converting particle to data */
+
+    if (props.convert_part_f != NULL) {
+
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct part, parts, props.parts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* float conversion for parts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_part_f(e, &parts[i], &temp_f[i * dim]);
+
+    } else if (props.convert_part_d != NULL) {
+
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct part, parts, props.parts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* double conversion for parts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_part_d(e, &parts[i], &temp_d[i * dim]);
+
+    } else if (props.convert_gpart_f != NULL) {
+
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* float conversion for gparts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_gpart_f(e, &gparts[i], &temp_f[i * dim]);
+
+    } else if (props.convert_gpart_d != NULL) {
+
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* double conversion for gparts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_gpart_d(e, &gparts[i], &temp_d[i * dim]);
+
+    } else {
+      error("Missing conversion function");
+    }
+  }
+
+  /* Unit conversion if necessary */
+  const double factor =
+      units_conversion_factor(internal_units, snapshot_units, props.units);
+  if (factor != 1.) {
+
+    /* message("Converting ! factor=%e", factor); */
+
+    if (io_is_double_precision(props.type)) {
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+    } else {
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+    }
+  }
 }
 
 #endif /* HAVE_HDF5 */

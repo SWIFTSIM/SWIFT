@@ -290,9 +290,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
                 const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
-  const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
-  const size_t dim = props.dimension;
 
   /* message("Writing '%s' array...", props.name); */
 
@@ -304,78 +302,11 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   /* Allocate temporary buffer */
   void* temp = NULL;
   if (posix_memalign((void**)&temp, SWIFT_CACHE_ALIGNMENT,
-                     num_elements * io_sizeof_type(props.type)) != 0)
+                     num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
-  /* Copy particle data to temporary buffer */
-  if (props.conversion == 0) { /* No conversion */
-
-    char* temp_c = temp;
-    for (size_t i = 0; i < N; ++i)
-      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
-
-  } else { /* Converting particle to data */
-
-    if (props.convert_part_f != NULL) {
-
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct part, parts, props.parts,
-                                SWIFT_STRUCT_ALIGNMENT);
-
-      /* float conversion for parts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_part_f(e, &parts[i], &temp_f[i * dim]);
-
-    } else if (props.convert_part_d != NULL) {
-
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct part, parts, props.parts,
-                                SWIFT_STRUCT_ALIGNMENT);
-
-      /* double conversion for parts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_part_d(e, &parts[i], &temp_d[i * dim]);
-
-    } else if (props.convert_gpart_f != NULL) {
-
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
-                                SWIFT_STRUCT_ALIGNMENT);
-
-      /* float conversion for gparts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_gpart_f(e, &gparts[i], &temp_f[i * dim]);
-
-    } else if (props.convert_gpart_d != NULL) {
-
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
-                                SWIFT_STRUCT_ALIGNMENT);
-
-      /* double conversion for gparts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_gpart_d(e, &gparts[i], &temp_d[i * dim]);
-
-    } else {
-      error("Missing conversion function");
-    }
-  }
-
-  /* Unit conversion if necessary */
-  const double factor =
-      units_conversion_factor(internal_units, snapshot_units, props.units);
-  if (factor != 1.) {
-
-    /* message("Converting ! factor=%e", factor); */
-
-    if (io_is_double_precision(props.type)) {
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
-    } else {
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
-    }
-  }
+  /* Copy the particle data to the temporary buffer */
+  io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
   /* Construct information for the hyper-slab */
   int rank;
