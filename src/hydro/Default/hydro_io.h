@@ -53,6 +53,20 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
+void convert_part_pos(const struct engine* e, const struct part* p,
+                      double* ret) {
+
+  if (e->s->periodic) {
+    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
+    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
+    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  } else {
+    ret[0] = p->x[0];
+    ret[1] = p->x[1];
+    ret[2] = p->x[2];
+  }
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -66,8 +80,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   *num_fields = 8;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 parts, x);
+  list[0] = io_make_output_field_convert_part(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
   list[1] =
       io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
   list[2] =
