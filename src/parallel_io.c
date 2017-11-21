@@ -254,6 +254,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
+  const size_t dim = props.dimension;
 
   /* Can't handle writes of more than 2GB */
   if (N * props.dimension * typeSize > HDF5_PARALLEL_IO_MAX_BYTES)
@@ -265,25 +266,59 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   void* temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
+
   /* Copy particle data to temporary buffer */
-  if (props.convert_part == NULL &&
-      props.convert_gpart == NULL) { /* No conversion */
+  if (props.conversion == 0) { /* No conversion */
 
     char* temp_c = temp;
     for (size_t i = 0; i < N; ++i)
       memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
 
-  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
+  } else { /* Converting particle to data */
 
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_part(e, &props.parts[i]);
+    if (props.convert_part_f != NULL) {
 
-  } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct part, parts, props.parts,
+                                SWIFT_STRUCT_ALIGNMENT);
 
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
+      /* float conversion for parts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_part_f(e, &parts[i], &temp_f[i * dim]);
+
+    } else if (props.convert_part_d != NULL) {
+
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct part, parts, props.parts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* double conversion for parts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_part_d(e, &parts[i], &temp_d[i * dim]);
+
+    } else if (props.convert_gpart_f != NULL) {
+
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* float conversion for gparts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_gpart_f(e, &gparts[i], &temp_f[i * dim]);
+
+    } else if (props.convert_gpart_d != NULL) {
+
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
+                                SWIFT_STRUCT_ALIGNMENT);
+
+      /* double conversion for gparts */
+      for (size_t i = 0; i < N; i++)
+        props.convert_gpart_d(e, &gparts[i], &temp_d[i * dim]);
+
+    } else {
+      error("Missing conversion function");
+    }
   }
 
   /* Unit conversion if necessary */
@@ -294,10 +329,10 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
+      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = temp;
+      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }
