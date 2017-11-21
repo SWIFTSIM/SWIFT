@@ -45,7 +45,7 @@ pos[:,2] = r * cos_theta
 
 pos += array([R, R, R])
 
-h = ones(numPart) * R / numPart**(1. / 3.)
+h = ones(numPart) * 2. * R / numPart**(1. / 3.)
 
 # Generate extra arrays
 v = zeros((numPart, 3))
