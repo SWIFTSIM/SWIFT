@@ -296,16 +296,19 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * @brief Reads the Unit System from an IC file.
  * @param h_file The (opened) HDF5 file from which to read.
  * @param us The unit_system to fill.
+ * @param mpi_rank The MPI rank we are on.
  *
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
-void io_read_unit_system(hid_t h_file, struct unit_system* us) {
+void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 
   /* First check if it exists as this is *not* required. */
   const htri_t exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
 
   if (exists == 0) {
-    message("'Units' group not found in ICs. Assuming CGS unit system.");
+
+    if (mpi_rank == 0)
+      message("'Units' group not found in ICs. Assuming CGS unit system.");
 
     /* Default to CGS */
     us->UnitMass_in_cgs = 1.;
@@ -320,7 +323,7 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us) {
           exists);
   }
 
-  message("Reading IC units from ICs.");
+  if (mpi_rank == 0) message("Reading IC units from ICs.");
   hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
   /* Ok, Read the damn thing */
@@ -407,7 +410,8 @@ void io_write_code_description(hid_t h_file) {
  *
  * @param temp The buffer to be filled. Must be allocated and aligned properly.
  * @param e The #engine.
- * @param props The #io_props corresponding to the particle field we are copying.
+ * @param props The #io_props corresponding to the particle field we are
+ * copying.
  * @param N The number of particles to copy
  * @param internal_units The system of units used internally.
  * @param snapshot_units The system of units used for the snapshots.
@@ -433,7 +437,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
     if (props.convert_part_f != NULL) {
 
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
       swift_declare_aligned_ptr(const struct part, parts, props.parts,
                                 SWIFT_STRUCT_ALIGNMENT);
 
@@ -443,7 +447,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
     } else if (props.convert_part_d != NULL) {
 
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
       swift_declare_aligned_ptr(const struct part, parts, props.parts,
                                 SWIFT_STRUCT_ALIGNMENT);
 
@@ -453,7 +457,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
     } else if (props.convert_gpart_f != NULL) {
 
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
       swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
                                 SWIFT_STRUCT_ALIGNMENT);
 
@@ -463,7 +467,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
     } else if (props.convert_gpart_d != NULL) {
 
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
       swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
                                 SWIFT_STRUCT_ALIGNMENT);
 
@@ -484,10 +488,10 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      swift_declare_aligned_ptr(double, temp_d, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      swift_declare_aligned_ptr(float, temp_f, temp, SWIFT_CACHE_ALIGNMENT);
+      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }

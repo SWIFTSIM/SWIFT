@@ -262,7 +262,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
-  if (posix_memalign((void**)&temp, SWIFT_CACHE_ALIGNMENT,
+  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -584,7 +584,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Read the unit system used in the ICs */
   struct unit_system* ic_units = malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units);
+  io_read_unit_system(h_file, ic_units, mpi_rank);
 
   /* Tell the user if a conversion will be needed */
   if (mpi_rank == 0) {
@@ -702,7 +702,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         break;
 
       default:
-        message("Particle Type %d not yet supported. Particles ignored", ptype);
+        if (mpi_rank == 0)
+          message("Particle Type %d not yet supported. Particles ignored",
+                  ptype);
     }
 
     /* Read everything */
