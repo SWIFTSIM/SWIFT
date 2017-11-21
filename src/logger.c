@@ -331,19 +331,23 @@ void logger_write_file_header(struct dump *dump) {
   /* write masks */
   // loop over all mask type
   for(i=0; i<log_const.nber_mask; i++) {
-    // get full mask chunk
+    // mask name
+    size_t j = i * log_const.name;
     buff = dump_get(dump, log_const.name, file_offset);
-    memcpy(buff, &log_const.masks_name[i], log_const.name);
+    memcpy(buff, &log_const.masks_name[j], log_const.name);
     
     // mask
     buff = dump_get(dump, log_const.mask, file_offset);
     memcpy(buff, &log_const.masks[i], log_const.mask);
+
+    // mask size
+    buff = dump_get(dump, log_const.number, file_offset);
+    memcpy(buff, &log_const.masks_size[i], log_const.number);
   }
   
 
   /* last step */
   memcpy(skip_header, file_offset, log_const.offset);
-  message("First offset %lu", *file_offset);
   logger_const_free(&log_const);
 }
 
