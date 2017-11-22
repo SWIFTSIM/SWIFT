@@ -46,6 +46,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "threadpool.h"
 #include "units.h"
 #include "version.h"
 
@@ -406,6 +407,102 @@ void io_write_code_description(hid_t h_file) {
 }
 
 /**
+ * @brief Mapper function to copy #part or #gpart fields into a buffer.
+ */
+void io_copy_mapper(void *restrict temp, int N,
+		    void *restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*) extra_data);
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+
+  /* How far are we with this chunk? */
+  char *restrict temp_c = temp;
+  const ptrdiff_t delta = (temp_c - props.start_temp_c) / copySize;
+
+  for(int k = 0; k < N; k++) {
+    memcpy(&temp_c[k * copySize], props.field + (delta + k) * props.partSize, copySize);
+  }
+}
+
+/**
+ * @brief Mapper function to copy #part into a buffer of floats using a conversion function.
+ */
+void io_convert_part_f_mapper(void *restrict temp, int N,
+			      void *restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*) extra_data);
+  const struct part *restrict parts = props.parts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float *restrict temp_f = temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+  
+  for (int i = 0; i < N; i++)
+    props.convert_part_f(e, parts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #part into a buffer of doubles using a conversion function.
+ */
+void io_convert_part_d_mapper(void *restrict temp, int N,
+			      void *restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*) extra_data);
+  const struct part *restrict parts = props.parts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double *restrict temp_d = temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+  
+  for (int i = 0; i < N; i++)
+    props.convert_part_d(e, parts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #gpart into a buffer of floats using a conversion function.
+ */
+void io_convert_gpart_f_mapper(void *restrict temp, int N,
+			      void *restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*) extra_data);
+  const struct gpart *restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float *restrict temp_f = temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+  
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_f(e, gparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #gpart into a buffer of doubles using a conversion function.
+ */
+void io_convert_gpart_d_mapper(void *restrict temp, int N,
+			      void *restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*) extra_data);
+  const struct gpart *restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double *restrict temp_d = temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+  
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_d(e, gparts + delta + i, &temp_d[i * dim]);
+}
+
+
+/**
  * @brief Copy the particle data into a temporary buffer ready for i/o.
  *
  * @param temp The buffer to be filled. Must be allocated and aligned properly.
@@ -417,63 +514,70 @@ void io_write_code_description(hid_t h_file) {
  * @param snapshot_units The system of units used for the snapshots.
  */
 void io_copy_temp_buffer(void* temp, const struct engine* e,
-                         const struct io_props props, size_t N,
+                         struct io_props props, size_t N,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
-  const size_t dim = props.dimension;
 
   /* Copy particle data to temporary buffer */
   if (props.conversion == 0) { /* No conversion */
 
+    /* Prepare some parameters */
     char* temp_c = temp;
-    for (size_t i = 0; i < N; ++i)
-      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+    props.start_temp_c = temp_c;
 
+    /* Copy the whole thing into a buffer */
+    threadpool_map((struct threadpool*) &e->threadpool, io_copy_mapper,
+    		   temp_c, N, copySize, 0, (void*) &props);
+		   
   } else { /* Converting particle to data */
 
     if (props.convert_part_f != NULL) {
 
-      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct part, parts, props.parts,
-                                SWIFT_STRUCT_ALIGNMENT);
+      /* Prepare some parameters */
+      float *temp_f = temp;
+      props.start_temp_f = temp;
+      props.e = e;
 
-      /* float conversion for parts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_part_f(e, &parts[i], &temp_f[i * dim]);
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*) &e->threadpool, io_convert_part_f_mapper,
+		     temp_f, N, copySize, 0, (void*) &props);
 
     } else if (props.convert_part_d != NULL) {
+      
+      /* Prepare some parameters */
+      double *temp_d = temp;
+      props.start_temp_d = temp;
+      props.e = e;
 
-      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct part, parts, props.parts,
-                                SWIFT_STRUCT_ALIGNMENT);
-
-      /* double conversion for parts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_part_d(e, &parts[i], &temp_d[i * dim]);
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*) &e->threadpool, io_convert_part_d_mapper,
+		     temp_d, N, copySize, 0, (void*) &props);
 
     } else if (props.convert_gpart_f != NULL) {
 
-      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
-                                SWIFT_STRUCT_ALIGNMENT);
+      /* Prepare some parameters */
+      float *temp_f = temp;
+      props.start_temp_f = temp;
+      props.e = e;
 
-      /* float conversion for gparts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_gpart_f(e, &gparts[i], &temp_f[i * dim]);
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*) &e->threadpool, io_convert_gpart_f_mapper,
+		     temp_f, N, copySize, 0, (void*) &props);
 
     } else if (props.convert_gpart_d != NULL) {
 
-      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
-      swift_declare_aligned_ptr(const struct gpart, gparts, props.gparts,
-                                SWIFT_STRUCT_ALIGNMENT);
+      /* Prepare some parameters */
+      double *temp_d = temp;
+      props.start_temp_d = temp;
+      props.e = e;
 
-      /* double conversion for gparts */
-      for (size_t i = 0; i < N; i++)
-        props.convert_gpart_d(e, &gparts[i], &temp_d[i * dim]);
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*) &e->threadpool, io_convert_gpart_d_mapper,
+		     temp_d, N, copySize, 0, (void*) &props);
 
     } else {
       error("Missing conversion function");

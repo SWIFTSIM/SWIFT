@@ -64,6 +64,14 @@ struct io_props {
   /* Pointer to the field of the first particle in the array */
   char* field;
 
+  /* Pointer to the start of the temporary buffer used in i/o */
+  char* start_temp_c;
+  float* start_temp_f;
+  double* start_temp_d;
+
+  /* Pointer to the engine */
+  const struct engine* e;
+
   /* The size of the particles */
   size_t partSize;
 
