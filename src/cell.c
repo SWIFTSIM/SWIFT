@@ -177,6 +177,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->ti_end_max = c->ti_end_max;
   pc->ti_old_part = c->ti_old_part;
   pc->ti_old_gpart = c->ti_old_gpart;
+  pc->ti_old_multipole = c->ti_old_multipole;
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
@@ -221,6 +222,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->ti_end_max = pc->ti_end_max;
   c->ti_old_part = pc->ti_old_part;
   c->ti_old_gpart = pc->ti_old_gpart;
+  c->ti_old_multipole = pc->ti_old_multipole;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;

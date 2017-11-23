@@ -4344,10 +4344,11 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 
       /* Drift all the g-particles */
       cell_drift_gpart(c, e, 1);
-
-      /* Drift the multipoles */
-      if (e->policy & engine_policy_self_gravity)
-        cell_drift_all_multipoles(c, e);
+    }
+      
+    /* Drift the multipoles */
+    if (e->policy & engine_policy_self_gravity) {
+      cell_drift_all_multipoles(c, e);
     }
   }
 }

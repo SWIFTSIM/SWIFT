@@ -95,6 +95,9 @@ struct pcell {
   /*! Integer time of the last drift of the #gpart in this cell */
   integertime_t ti_old_gpart;
 
+  /*! Integer time of the last drift of the #multipole in this cell */
+  integertime_t ti_old_multipole;
+
   /*! Number of #part in this cell. */
   int count;
 
