@@ -2887,7 +2887,7 @@ void engine_maketasks(struct engine *e) {
     error("We have particles but no hydro or gravity tasks were created.");
 
   /* Split the tasks. */
-  // scheduler_splittasks(sched);
+  scheduler_splittasks(sched);
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
@@ -3574,7 +3574,7 @@ void engine_prepare(struct engine *e) {
   engine_unskip(e);
   // engine_marktasks(e);
 
-  space_print_cells(e->s);
+  //space_print_cells(e->s);
 
   //  engine_print_task_counts(e);
 
