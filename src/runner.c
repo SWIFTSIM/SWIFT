@@ -840,9 +840,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  */
 static void runner_do_unskip(struct cell *c, struct engine *e) {
 
-  if(c->loc[0] == 0. && c->loc[1] == 0. && c->loc[2] == 0.)
-    message("Found me! active=%d gcount=%d split=%d", cell_is_active(c, e), c->gcount, c->split);
-
   /* Ignore empty cells. */
   if (c->count == 0 && c->gcount == 0) return;
 
@@ -877,7 +874,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
-  
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) runner_do_unskip(c, e);

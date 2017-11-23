@@ -539,7 +539,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
   message("\n REBUILD!!! \n");
-  
+
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
@@ -3175,7 +3175,7 @@ void space_print_cells(const struct space *s) {
   FILE *file = fopen(filename, "w");
 
   fprintf(file, "ti_current=%lld\n", s->e->ti_current);
-  
+
   for (int k = 0; k < s->cdim[2]; ++k) {
 
     fprintf(file, "\n -- k=%d -- \n\n", k);
@@ -3187,7 +3187,10 @@ void space_print_cells(const struct space *s) {
 
         const int cid = cell_getid(s->cdim, i, j, k);
         const struct cell *c = &s->cells_top[cid];
-        fprintf(file, "|(%d-%lld-%d-%d%d-%d)", c->nodeID, c->ti_end_min, c->gcount, (c->recv_grav!=NULL), (c->recv_grav != NULL ? c->recv_grav->skip==0 : 0), (c->send_grav != NULL));
+        fprintf(file, "|(%d-%lld-%d-%d%d-%d)", c->nodeID, c->ti_end_min,
+                c->gcount, (c->recv_grav != NULL),
+                (c->recv_grav != NULL ? c->recv_grav->skip == 0 : 0),
+                (c->send_grav != NULL));
 #endif
       }
       fprintf(file, "|\n");

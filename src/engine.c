@@ -446,8 +446,8 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
 
-    message("\n REDISTRIBUTE!!! \n");
-  
+  message("\n REDISTRIBUTE!!! \n");
+
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
@@ -2887,7 +2887,7 @@ void engine_maketasks(struct engine *e) {
     error("We have particles but no hydro or gravity tasks were created.");
 
   /* Split the tasks. */
-  //scheduler_splittasks(sched);
+  // scheduler_splittasks(sched);
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
@@ -3262,7 +3262,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level ){ //||
+    else if (t->type == task_type_grav_top_level) {  //||
       //             t->type == task_type_grav_ghost) {
       scheduler_activate(s, t);
     }
@@ -3323,7 +3323,7 @@ void engine_print_task_counts(struct engine *e) {
   int count_recv_ti = 0;
   int count_send_gpart = 0;
   int count_recv_gpart = 0;
-  
+
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
@@ -3333,14 +3333,18 @@ void engine_print_task_counts(struct engine *e) {
     else {
       counts[(int)tasks[k].type] += 1;
 
-      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_tend)
-	count_send_ti++;
-      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_tend)
-	count_recv_ti++;
-      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_gpart)
-	count_send_gpart++;
-      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_gpart)
-	count_recv_gpart++;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_tend)
+        count_send_ti++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_tend)
+        count_recv_ti++;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_gpart)
+        count_send_gpart++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_gpart)
+        count_recv_gpart++;
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3356,12 +3360,12 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  //message("nr_parts = %zu.", e->s->nr_parts);
-  //message("nr_gparts = %zu.", e->s->nr_gparts);
-  //message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d",
-	  count_send_ti, count_recv_ti, count_send_gpart, count_recv_gpart);
-  
+  // message("nr_parts = %zu.", e->s->nr_parts);
+  // message("nr_gparts = %zu.", e->s->nr_gparts);
+  // message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d", count_send_ti,
+          count_recv_ti, count_send_gpart, count_recv_gpart);
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -3568,12 +3572,12 @@ void engine_prepare(struct engine *e) {
 
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
-  //engine_marktasks(e);
+  // engine_marktasks(e);
 
   space_print_cells(e->s);
 
   //  engine_print_task_counts(e);
-  
+
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     scheduler_reweight(&e->sched, e->verbose);
@@ -4163,8 +4167,8 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
 
-  //space_print_cells(e->s);
-  //message("nr cells: %d %d", e->s->nr_cells, e->s->tot_cells);
+  // space_print_cells(e->s);
+  // message("nr cells: %d %d", e->s->nr_cells, e->s->tot_cells);
   message("ti_current=%lld ti_old=%lld", e->ti_current, e->ti_old);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
@@ -4218,7 +4222,7 @@ void engine_step(struct engine *e) {
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
-  //error("done");
+// error("done");
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -4310,7 +4314,7 @@ void engine_unskip(struct engine *e) {
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
                  e->s->nr_local_cells, sizeof(int), 1, e);
-  //threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
+  // threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
   //             e->s->nr_cells, sizeof(int), 1, e);
 
   /* And the top level gravity FFT one */
@@ -4345,7 +4349,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
       /* Drift all the g-particles */
       cell_drift_gpart(c, e, 1);
     }
-      
+
     /* Drift the multipoles */
     if (e->policy & engine_policy_self_gravity) {
       cell_drift_all_multipoles(c, e);
