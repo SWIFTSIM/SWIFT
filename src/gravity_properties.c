@@ -52,7 +52,7 @@ void gravity_props_init(struct gravity_props *p,
 
   /* Opening angle */
   p->theta_crit = parser_get_param_double(params, "Gravity:theta");
-  // if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
+  if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
   p->theta_crit2 = p->theta_crit * p->theta_crit;
   p->theta_crit_inv = 1. / p->theta_crit;
 

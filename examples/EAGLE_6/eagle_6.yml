@@ -30,7 +30,7 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration.
-  theta:                 2.5      # Opening angle (Multipole acceptance criterion)
+  theta:                 0.85     # Opening angle (Multipole acceptance criterion)
   epsilon:               0.001    # Softening length (in internal units).
   
 # Parameters for the hydrodynamics scheme

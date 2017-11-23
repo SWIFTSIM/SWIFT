@@ -1301,12 +1301,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     error("Not found the right number of particles in top-level interactions");
 #endif
 
+#ifdef ICHECK
   if (check)
     message(
         "Interacted with %d indirectly and ignored %d direct interactions "
         "(counter=%lld) nr_cells=%d total=%lld",
         other_ngbs_gpart, direct_ngbs_gpart, counter, nr_cells,
         e->total_nr_gparts);
+#endif
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

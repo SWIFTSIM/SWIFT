@@ -2125,37 +2125,14 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     struct gravity_tensors *const multi_i = ci->multipole;
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
-    /* /\* Loop over every other cell *\/ */
-    /* for (int ii = 0; ii < cdim[0]; ii++) { */
-    /*   for (int jj = 0; jj < cdim[1]; jj++) { */
-    /*     for (int kk = 0; kk < cdim[2]; kk++) { */
+    /* Loop over every other cell */
+    for (int ii = 0; ii < cdim[0]; ii++) {
+      for (int jj = 0; jj < cdim[1]; jj++) {
+        for (int kk = 0; kk < cdim[2]; kk++) {
 
-    /*       /\* Get the cell *\/ */
-    /*       const int cjd = cell_getid(cdim, ii, jj, kk); */
-    /*       struct cell *cj = &cells[cjd]; */
-
-    /* Now loop over all the neighbours of this cell */
-    for (int ii = -1; ii < 2; ii++) {
-      int iii = i + ii;
-      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -1; jj < 2; jj++) {
-        int jjj = j + jj;
-        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -1; kk < 2; kk++) {
-          int kkk = k + kk;
-          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
-
-          /* Get the neighbouring cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          /* Get the cell */
+          const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
-
-          /* if(i==11 && j==0 && k==10) */
-          /*   message("Found direct neighbour: (i,j,k)=(%d,%d,%d)
-           * (iii,jjj,kkk)=(%d,%d,%d) nodeID=%d", 	i,j,k, iii,jjj,kkk,
-           * cj->nodeID); */
 
           /* Avoid duplicates of local pairs*/
           if (cid <= cjd && cj->nodeID == nodeID) continue;
@@ -2180,8 +2157,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (1 ||
-              !gravity_M2L_accept(multi_i->r_max_rebuild,
+          if (!gravity_M2L_accept(multi_i->r_max_rebuild,
                                   multi_j->r_max_rebuild, theta_crit2, r2)) {
 
             /* Ok, we need to add a direct pair calculation */
@@ -3262,8 +3238,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level) {  //||
-      //             t->type == task_type_grav_ghost) {
+    else if (t->type == task_type_grav_top_level) {
       scheduler_activate(s, t);
     }
 
@@ -4484,6 +4459,8 @@ void engine_makeproxies(struct engine *e) {
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
   ticks tic = getticks();
+  //const int with_hydro = (e->policy & engine_policy_hydro);
+  //const int with_gravity = (e->policy & engine_policy_self_gravity);
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -4505,25 +4482,12 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-        /* Loop over all its neighbours (periodic). */
-        for (int i = -1; i <= 1; i++) {
-          int ii = ind[0] + i;
-          if (ii >= cdim[0])
-            ii -= cdim[0];
-          else if (ii < 0)
-            ii += cdim[0];
-          for (int j = -1; j <= 1; j++) {
-            int jj = ind[1] + j;
-            if (jj >= cdim[1])
-              jj -= cdim[1];
-            else if (jj < 0)
-              jj += cdim[1];
-            for (int k = -1; k <= 1; k++) {
-              int kk = ind[2] + k;
-              if (kk >= cdim[2])
-                kk -= cdim[2];
-              else if (kk < 0)
-                kk += cdim[2];
+	/* Loop over every other cell */
+	for (int ii = 0; ii < cdim[0]; ii++) {
+	  for (int jj = 0; jj < cdim[1]; jj++) {
+	    for (int kk = 0; kk < cdim[2]; kk++) {
+
+	      //if(with_hydro)
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
