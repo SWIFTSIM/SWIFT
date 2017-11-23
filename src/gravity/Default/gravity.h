@@ -78,7 +78,7 @@ gravity_compute_timestep_self(const struct gpart* const gp,
   const float epsilon = gravity_get_softening(gp);
 
   /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
-  float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
+  const float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }

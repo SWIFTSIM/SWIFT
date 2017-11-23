@@ -2069,8 +2069,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) ? cell_is_active(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == engine_rank) ||
-        (cj_active && cj->nodeID == engine_rank)) {
+    if ((ci_active && ci->nodeID == nodeID) ||
+        (cj_active && cj->nodeID == nodeID)) {
       scheduler_activate(s, t);
 
       /* Set the drifting flags */
@@ -2088,7 +2088,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-      if (ci->nodeID != engine_rank) {
+      if (ci->nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
@@ -2112,7 +2112,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, send its ti_end values. */
         if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-      } else if (cj->nodeID != engine_rank) {
+      } else if (cj->nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -2156,8 +2156,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    // if (c->grav_ghost[0] != NULL) scheduler_activate(s, c->grav_ghost[0]);
-    // if (c->grav_ghost[1] != NULL) scheduler_activate(s, c->grav_ghost[1]);
     if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
     if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
     if (c->cooling != NULL) scheduler_activate(s, c->cooling);

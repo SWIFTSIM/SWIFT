@@ -4314,12 +4314,14 @@ void engine_unskip(struct engine *e) {
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
                  e->s->nr_local_cells, sizeof(int), 1, e);
-  // threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
-  //             e->s->nr_cells, sizeof(int), 1, e);
 
-  /* And the top level gravity FFT one */
-  if (e->s->periodic && (e->policy & engine_policy_self_gravity))
-    scheduler_activate(&e->sched, e->s->grav_top_level);
+  /* And the top level gravity FFT one when periodicity is on.*/
+  if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
+   
+    /* But only if there are other tasks (i.e. something happens on this node) */
+    if(e->sched.active_count > 0)
+      scheduler_activate(&e->sched, e->s->grav_top_level);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
