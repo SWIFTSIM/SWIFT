@@ -21,7 +21,7 @@ Scheduler:
 Snapshots:
   basename:            uniformDMBox # Common part of the name of output files
   time_first:          0.           # Time of the first output (in internal units)
-  delta_time:          0.01         # Time difference between consecutive outputs (in internal units)
+  delta_time:          10.         # Time difference between consecutive outputs (in internal units)
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -31,7 +31,7 @@ Gravity:
  
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
+  delta_time:          5. # Time between statistics output
 
 # Parameters related to the initial conditions
 InitialConditions:

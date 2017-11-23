@@ -3262,8 +3262,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level ||
-             t->type == task_type_grav_ghost) {
+    else if (t->type == task_type_grav_top_level ){ //||
+      //             t->type == task_type_grav_ghost) {
       scheduler_activate(s, t);
     }
 
@@ -3566,11 +3566,13 @@ void engine_prepare(struct engine *e) {
 
   message("Rebuild done");
 
+  /* Unskip active tasks and check for rebuild */
+  engine_unskip(e);
+  //engine_marktasks(e);
+
   space_print_cells(e->s);
 
-  /* Unskip active tasks and check for rebuild */
-  //engine_unskip(e);
-  engine_marktasks(e);
+  //  engine_print_task_counts(e);
   
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -4216,6 +4218,7 @@ void engine_step(struct engine *e) {
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
+  //error("done");
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -4307,6 +4310,8 @@ void engine_unskip(struct engine *e) {
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
                  e->s->nr_local_cells, sizeof(int), 1, e);
+  //threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->cells_top,
+  //             e->s->nr_cells, sizeof(int), 1, e);
 
   /* And the top level gravity FFT one */
   if (e->s->periodic && (e->policy & engine_policy_self_gravity))

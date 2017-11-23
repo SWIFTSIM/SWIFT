@@ -3187,7 +3187,7 @@ void space_print_cells(const struct space *s) {
 
         const int cid = cell_getid(s->cdim, i, j, k);
         const struct cell *c = &s->cells_top[cid];
-        fprintf(file, "|(%d-%lld-%d-%d-%d)", c->nodeID, c->ti_end_min, c->gcount, (c->recv_grav!=NULL), (c->send_grav != NULL));
+        fprintf(file, "|(%d-%lld-%d-%d%d-%d)", c->nodeID, c->ti_end_min, c->gcount, (c->recv_grav!=NULL), (c->recv_grav != NULL ? c->recv_grav->skip==0 : 0), (c->send_grav != NULL));
 #endif
       }
       fprintf(file, "|\n");
