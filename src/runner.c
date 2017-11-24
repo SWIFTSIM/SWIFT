@@ -1421,14 +1421,6 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-#if (ICHECK != 0)
-  for (int i = 0; i < c->gcount; ++i)
-    if (c->gparts[i].id_or_neg_offset == ICHECK) {
-      message("Found gpart");
-      fflush(stdout);
-    }
-#endif
-
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
 
