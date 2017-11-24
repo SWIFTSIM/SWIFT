@@ -538,8 +538,6 @@ void space_rebuild(struct space *s, int verbose) {
   fflush(stdout);
 #endif
 
-  message("\n REBUILD!!! \n");
-
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 

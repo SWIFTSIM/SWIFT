@@ -446,8 +446,6 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  message("\n REDISTRIBUTE!!! \n");
-
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
@@ -3543,15 +3541,8 @@ void engine_prepare(struct engine *e) {
   /* Do we need rebuilding ? */
   if (e->forcerebuild) engine_rebuild(e, 0);
 
-  message("Rebuild done");
-
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
-  // engine_marktasks(e);
-
-  //space_print_cells(e->s);
-
-  //  engine_print_task_counts(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -4142,10 +4133,6 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
 
-  // space_print_cells(e->s);
-  // message("nr cells: %d %d", e->s->nr_cells, e->s->tot_cells);
-  message("ti_current=%lld ti_old=%lld", e->ti_current, e->ti_old);
-
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
@@ -4458,6 +4445,10 @@ void engine_makeproxies(struct engine *e) {
   const struct space *s = e->s;
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const struct gravity_props *props = e->gravity_properties;
+  const double theta_crit2 = props->theta_crit2;
   ticks tic = getticks();
   //const int with_hydro = (e->policy & engine_policy_hydro);
   //const int with_gravity = (e->policy & engine_policy_self_gravity);
@@ -4482,15 +4473,39 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
+	/* Get ci's multipole */
+	const struct gravity_tensors *multi_i = cells[cid].multipole;
+	const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+	const double r_max_i = multi_i->r_max;
+
 	/* Loop over every other cell */
 	for (int ii = 0; ii < cdim[0]; ii++) {
 	  for (int jj = 0; jj < cdim[1]; jj++) {
 	    for (int kk = 0; kk < cdim[2]; kk++) {
 
-	      //if(with_hydro)
-
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
+	      
+	      /* Get cj's multipole */
+	      const struct gravity_tensors *multi_j = cells[cjd].multipole;
+	      const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+	      const double r_max_j = multi_j->r_max;
+
+	      /* Let's compute the current distance between the cell pair*/
+	      double dx = CoM_i[0] - CoM_j[0];
+	      double dy = CoM_i[1] - CoM_j[1];
+	      double dz = CoM_i[2] - CoM_j[2];
+	      
+	      /* Apply BC */
+	      if (periodic) {
+		dx = nearest(dx, dim[0]);
+		dy = nearest(dy, dim[1]);
+		dz = nearest(dz, dim[2]);
+	      }
+	      const double r2 = dx * dx + dy * dy + dz * dz;
+
+	      if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+		continue;
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
