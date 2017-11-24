@@ -234,6 +234,5 @@ void space_replicate(struct space *s, int replicate, int verbose);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
-void space_print_cells(const struct space *s);
 
 #endif /* SWIFT_SPACE_H */

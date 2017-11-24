@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
@@ -43,13 +42,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Cell properties */
   struct gpart *gparts = c->gparts;
   const int gcount = c->gcount;
-
-#if (ICHECK != 0)
-  for (int i = 0; i < c->gcount; ++i)
-    if (c->gparts[i].id_or_neg_offset == ICHECK)
-      message("Found gpart depth=%d split=%d m->num_interacted=%lld", c->depth,
-              c->split, c->multipole->pot.num_interacted);
-#endif
 
   TIMER_TIC;
 
@@ -1145,15 +1137,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
-  /* const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]}; */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  long long counter = 0;
-#endif
 
   TIMER_TIC;
 
@@ -1178,12 +1165,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
 
-  /* /\* Get the cell index. MATTHIEU *\/ */
-  /* const int cid = (ci - cells);  // / sizeof(struct cell); */
-  /* const int i = cid / (cdim[1] * cdim[2]); */
-  /* const int j = (cid / cdim[2]) % cdim[1]; */
-  /* const int k = cid % cdim[2]; */
-
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
   for (int n = 0; n < nr_cells; ++n) {
@@ -1194,18 +1175,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
     /* Avoid self contributions */
     if (ci == cj) continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    counter += multi_j->m_pole.num_gpart;
-#endif
-
-    /* // MATTHIEU */
-    /* const int cjd = (cj - cells);  // / sizeof(struct cell); */
-    /* const int ii = cjd / (cdim[1] * cdim[2]); */
-    /* const int jj = (cjd / cdim[2]) % cdim[1]; */
-    /* const int kk = cjd % cdim[2]; */
-    /* /\* if(check) message("cid=%d cjd=%d cj->nodeID=%d cj->gcount=%d",  *\/ */
-    /* /\* 		      cid, cjd, cj->nodeID, cj->gcount); *\/ */
 
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
@@ -1223,12 +1192,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {
-    /* if ((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 || */
-    /*      abs(i - ii + cdim[0]) <= 1) && */
-    /*     (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 || */
-    /*      abs(j - jj + cdim[1]) <= 1) && */
-    /*     (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 || */
-    /*      abs(k - kk + cdim[2]) <= 1)) { */
 
       /* Let's compute the current distance between the cell pair*/
       double dx = CoM_i[0] - multi_j->CoM[0];
@@ -1252,7 +1215,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 #endif
         continue;
       }
-      
+
       /* Check the multipole acceptance criterion */
       if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
 

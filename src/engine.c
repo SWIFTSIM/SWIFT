@@ -2467,7 +2467,6 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
-  // const int periodic = e->s->periodic;
 
   for (int k = 0; k < nr_tasks; k++) {
 
@@ -3306,18 +3305,18 @@ void engine_print_task_counts(struct engine *e) {
     else {
       counts[(int)tasks[k].type] += 1;
 
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_tend)
-        count_send_ti++;
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_tend)
-        count_recv_ti++;
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_gpart)
-        count_send_gpart++;
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_gpart)
-        count_recv_gpart++;
+      /* if (tasks[k].type == task_type_send && */
+      /*     tasks[k].subtype == task_subtype_tend) */
+      /*   count_send_ti++; */
+      /* if (tasks[k].type == task_type_recv && */
+      /*     tasks[k].subtype == task_subtype_tend) */
+      /*   count_recv_ti++; */
+      /* if (tasks[k].type == task_type_send && */
+      /*     tasks[k].subtype == task_subtype_gpart) */
+      /*   count_send_gpart++; */
+      /* if (tasks[k].type == task_type_recv && */
+      /*     tasks[k].subtype == task_subtype_gpart) */
+      /*   count_recv_gpart++; */
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3333,11 +3332,12 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  // message("nr_parts = %zu.", e->s->nr_parts);
-  // message("nr_gparts = %zu.", e->s->nr_gparts);
-  // message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d", count_send_ti,
-          count_recv_ti, count_send_gpart, count_recv_gpart);
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
+  /* message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d",
+   * count_send_ti, */
+  /*         count_recv_ti, count_send_gpart, count_recv_gpart); */
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4184,7 +4184,6 @@ void engine_step(struct engine *e) {
   engine_launch(e);
   TIMER_TOC(timer_runners);
 
-// error("done");
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -4279,9 +4278,10 @@ void engine_unskip(struct engine *e) {
 
   /* And the top level gravity FFT one when periodicity is on.*/
   if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
-   
-    /* But only if there are other tasks (i.e. something happens on this node) */
-    if(e->sched.active_count > 0)
+
+    /* But only if there are other tasks (i.e. something happens on this node)
+     */
+    if (e->sched.active_count > 0)
       scheduler_activate(&e->sched, e->s->grav_top_level);
   }
 
@@ -4450,8 +4450,8 @@ void engine_makeproxies(struct engine *e) {
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
   ticks tic = getticks();
-  //const int with_hydro = (e->policy & engine_policy_hydro);
-  //const int with_gravity = (e->policy & engine_policy_self_gravity);
+  // const int with_hydro = (e->policy & engine_policy_hydro);
+  // const int with_gravity = (e->policy & engine_policy_self_gravity);
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -4473,39 +4473,41 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-	/* Get ci's multipole */
-	const struct gravity_tensors *multi_i = cells[cid].multipole;
-	const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
-	const double r_max_i = multi_i->r_max;
+        /* Get ci's multipole */
+        const struct gravity_tensors *multi_i = cells[cid].multipole;
+        const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1],
+                                 multi_i->CoM[2]};
+        const double r_max_i = multi_i->r_max;
 
-	/* Loop over every other cell */
-	for (int ii = 0; ii < cdim[0]; ii++) {
-	  for (int jj = 0; jj < cdim[1]; jj++) {
-	    for (int kk = 0; kk < cdim[2]; kk++) {
+        /* Loop over every other cell */
+        for (int ii = 0; ii < cdim[0]; ii++) {
+          for (int jj = 0; jj < cdim[1]; jj++) {
+            for (int kk = 0; kk < cdim[2]; kk++) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
-	      
-	      /* Get cj's multipole */
-	      const struct gravity_tensors *multi_j = cells[cjd].multipole;
-	      const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
-	      const double r_max_j = multi_j->r_max;
 
-	      /* Let's compute the current distance between the cell pair*/
-	      double dx = CoM_i[0] - CoM_j[0];
-	      double dy = CoM_i[1] - CoM_j[1];
-	      double dz = CoM_i[2] - CoM_j[2];
-	      
-	      /* Apply BC */
-	      if (periodic) {
-		dx = nearest(dx, dim[0]);
-		dy = nearest(dy, dim[1]);
-		dz = nearest(dz, dim[2]);
-	      }
-	      const double r2 = dx * dx + dy * dy + dz * dz;
+              /* Get cj's multipole */
+              const struct gravity_tensors *multi_j = cells[cjd].multipole;
+              const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
+                                       multi_j->CoM[2]};
+              const double r_max_j = multi_j->r_max;
 
-	      if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-		continue;
+              /* Let's compute the current distance between the cell pair*/
+              double dx = CoM_i[0] - CoM_j[0];
+              double dy = CoM_i[1] - CoM_j[1];
+              double dz = CoM_i[2] - CoM_j[2];
+
+              /* Apply BC */
+              if (periodic) {
+                dx = nearest(dx, dim[0]);
+                dy = nearest(dy, dim[1]);
+                dz = nearest(dz, dim[2]);
+              }
+              const double r2 = dx * dx + dy * dy + dz * dz;
+
+              if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+                continue;
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
