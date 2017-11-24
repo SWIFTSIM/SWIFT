@@ -3291,10 +3291,10 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
-  int count_send_ti = 0;
-  int count_recv_ti = 0;
-  int count_send_gpart = 0;
-  int count_recv_gpart = 0;
+  /* int count_send_ti = 0; */
+  /* int count_recv_ti = 0; */
+  /* int count_send_gpart = 0; */
+  /* int count_recv_gpart = 0; */
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
@@ -4450,8 +4450,10 @@ void engine_makeproxies(struct engine *e) {
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
   ticks tic = getticks();
-  // const int with_hydro = (e->policy & engine_policy_hydro);
-  // const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  double CoM_i[3] = {0., 0., 0.};
+  double r_max_i;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -4465,20 +4467,23 @@ void engine_makeproxies(struct engine *e) {
      the proxies is identical for all nodes! */
 
   /* Loop over each cell in the space. */
-  int ind[3];
-  for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++)
-    for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++)
-      for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
+  for (int i = 0; i < cdim[0]; i++)
+    for (int j = 0; j < cdim[1]; j++)
+      for (int k = 0; k < cdim[2]; k++) {
 
         /* Get the cell ID. */
-        const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+        const int cid = cell_getid(cdim, i, j, k);
 
-        /* Get ci's multipole */
-        const struct gravity_tensors *multi_i = cells[cid].multipole;
-        const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1],
-                                 multi_i->CoM[2]};
-        const double r_max_i = multi_i->r_max;
+	if (with_gravity) {
 
+	  /* Get ci's multipole */
+	  const struct gravity_tensors *multi_i = cells[cid].multipole;
+	  CoM_i[0] = multi_i->CoM[0];
+	  CoM_i[1] = multi_i->CoM[1];
+	  CoM_i[2] = multi_i->CoM[2];
+	  r_max_i = multi_i->r_max;
+	}
+	  
         /* Loop over every other cell */
         for (int ii = 0; ii < cdim[0]; ii++) {
           for (int jj = 0; jj < cdim[1]; jj++) {
@@ -4487,27 +4492,44 @@ void engine_makeproxies(struct engine *e) {
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
 
-              /* Get cj's multipole */
-              const struct gravity_tensors *multi_j = cells[cjd].multipole;
-              const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
-                                       multi_j->CoM[2]};
-              const double r_max_j = multi_j->r_max;
+	      /* In the gravity case, check distances using the MAC. */
+	      if (with_gravity) {
+		
+		/* Get cj's multipole */
+		const struct gravity_tensors *multi_j = cells[cjd].multipole;
+		const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
+					 multi_j->CoM[2]};
+		const double r_max_j = multi_j->r_max;
+		
+		/* Let's compute the current distance between the cell pair*/
+		double dx = CoM_i[0] - CoM_j[0];
+		double dy = CoM_i[1] - CoM_j[1];
+		double dz = CoM_i[2] - CoM_j[2];
+		
+		/* Apply BC */
+		if (periodic) {
+		  dx = nearest(dx, dim[0]);
+		  dy = nearest(dy, dim[1]);
+		  dz = nearest(dz, dim[2]);
+		}
+		const double r2 = dx * dx + dy * dy + dz * dz;
 
-              /* Let's compute the current distance between the cell pair*/
-              double dx = CoM_i[0] - CoM_j[0];
-              double dy = CoM_i[1] - CoM_j[1];
-              double dz = CoM_i[2] - CoM_j[2];
+		if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+		  continue;
+	      }
 
-              /* Apply BC */
-              if (periodic) {
-                dx = nearest(dx, dim[0]);
-                dy = nearest(dy, dim[1]);
-                dz = nearest(dz, dim[2]);
-              }
-              const double r2 = dx * dx + dy * dy + dz * dz;
+	      /* In the hydro case, only carre about neighbours */
+	      else if(with_hydro) {
 
-              if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-                continue;
+		if (!((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
+		     abs(i - ii + cdim[0]) <= 1) &&
+		    (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
+		     abs(j - jj + cdim[1]) <= 1) &&
+		    (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
+		     abs(k - kk + cdim[2]) <= 1))) 
+		  continue;
+	      }
+
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
