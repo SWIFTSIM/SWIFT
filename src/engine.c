@@ -4474,16 +4474,16 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
 
-	if (with_gravity) {
+        if (with_gravity) {
 
-	  /* Get ci's multipole */
-	  const struct gravity_tensors *multi_i = cells[cid].multipole;
-	  CoM_i[0] = multi_i->CoM[0];
-	  CoM_i[1] = multi_i->CoM[1];
-	  CoM_i[2] = multi_i->CoM[2];
-	  r_max_i = multi_i->r_max;
-	}
-	  
+          /* Get ci's multipole */
+          const struct gravity_tensors *multi_i = cells[cid].multipole;
+          CoM_i[0] = multi_i->CoM[0];
+          CoM_i[1] = multi_i->CoM[1];
+          CoM_i[2] = multi_i->CoM[2];
+          r_max_i = multi_i->r_max;
+        }
+
         /* Loop over every other cell */
         for (int ii = 0; ii < cdim[0]; ii++) {
           for (int jj = 0; jj < cdim[1]; jj++) {
@@ -4492,44 +4492,43 @@ void engine_makeproxies(struct engine *e) {
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
 
-	      /* In the gravity case, check distances using the MAC. */
-	      if (with_gravity) {
-		
-		/* Get cj's multipole */
-		const struct gravity_tensors *multi_j = cells[cjd].multipole;
-		const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
-					 multi_j->CoM[2]};
-		const double r_max_j = multi_j->r_max;
-		
-		/* Let's compute the current distance between the cell pair*/
-		double dx = CoM_i[0] - CoM_j[0];
-		double dy = CoM_i[1] - CoM_j[1];
-		double dz = CoM_i[2] - CoM_j[2];
-		
-		/* Apply BC */
-		if (periodic) {
-		  dx = nearest(dx, dim[0]);
-		  dy = nearest(dy, dim[1]);
-		  dz = nearest(dz, dim[2]);
-		}
-		const double r2 = dx * dx + dy * dy + dz * dz;
+              /* In the gravity case, check distances using the MAC. */
+              if (with_gravity) {
 
-		if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-		  continue;
-	      }
+                /* Get cj's multipole */
+                const struct gravity_tensors *multi_j = cells[cjd].multipole;
+                const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
+                                         multi_j->CoM[2]};
+                const double r_max_j = multi_j->r_max;
 
-	      /* In the hydro case, only carre about neighbours */
-	      else if(with_hydro) {
+                /* Let's compute the current distance between the cell pair*/
+                double dx = CoM_i[0] - CoM_j[0];
+                double dy = CoM_i[1] - CoM_j[1];
+                double dz = CoM_i[2] - CoM_j[2];
 
-		if (!((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-		     abs(i - ii + cdim[0]) <= 1) &&
-		    (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-		     abs(j - jj + cdim[1]) <= 1) &&
-		    (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-		     abs(k - kk + cdim[2]) <= 1))) 
-		  continue;
-	      }
+                /* Apply BC */
+                if (periodic) {
+                  dx = nearest(dx, dim[0]);
+                  dy = nearest(dy, dim[1]);
+                  dz = nearest(dz, dim[2]);
+                }
+                const double r2 = dx * dx + dy * dy + dz * dz;
 
+                if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+                  continue;
+              }
+
+              /* In the hydro case, only carre about neighbours */
+              else if (with_hydro) {
+
+                if (!((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
+                       abs(i - ii + cdim[0]) <= 1) &&
+                      (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
+                       abs(j - jj + cdim[1]) <= 1) &&
+                      (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
+                       abs(k - kk + cdim[2]) <= 1)))
+                  continue;
+              }
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
