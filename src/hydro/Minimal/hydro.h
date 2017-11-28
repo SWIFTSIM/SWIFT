@@ -224,7 +224,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
-  p->density.wcount *= kernel_norm;
+  p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 }
 
