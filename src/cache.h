@@ -349,10 +349,12 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
     z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
-    m[i] = parts_i[idx].mass;
     vx[i] = parts_i[idx].v[0];
     vy[i] = parts_i[idx].v[1];
     vz[i] = parts_i[idx].v[2];
+#ifdef GADGET2_SPH
+    m[i] = parts_i[idx].mass;
+#endif
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -431,10 +433,12 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     yj[i] = (float)(parts_j[idx].x[1] - total_cj_shift[1]);
     zj[i] = (float)(parts_j[idx].x[2] - total_cj_shift[2]);
     hj[i] = parts_j[idx].h;
-    mj[i] = parts_j[idx].mass;
     vxj[i] = parts_j[idx].v[0];
     vyj[i] = parts_j[idx].v[1];
     vzj[i] = parts_j[idx].v[2];
+#ifdef GADGET2_SPH
+    mj[i] = parts_j[idx].mass;
+#endif
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -572,15 +576,17 @@ cache_read_two_partial_cells_sorted_force(
     y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
     z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
     h[i] = parts_i[idx].h;
-    m[i] = parts_i[idx].mass;
     vx[i] = parts_i[idx].v[0];
     vy[i] = parts_i[idx].v[1];
     vz[i] = parts_i[idx].v[2];
+#ifdef GADGET2_SPH
+    m[i] = parts_i[idx].mass;
     rho[i] = parts_i[idx].rho;
     grad_h[i] = parts_i[idx].force.f;
     pOrho2[i] = parts_i[idx].force.P_over_rho2;
     balsara[i] = parts_i[idx].force.balsara;
     soundspeed[i] = parts_i[idx].force.soundspeed;
+#endif
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
@@ -635,15 +641,17 @@ cache_read_two_partial_cells_sorted_force(
     yj[i] = (float)(parts_j[idx].x[1] - total_cj_shift[1]);
     zj[i] = (float)(parts_j[idx].x[2] - total_cj_shift[2]);
     hj[i] = parts_j[idx].h;
-    mj[i] = parts_j[idx].mass;
     vxj[i] = parts_j[idx].v[0];
     vyj[i] = parts_j[idx].v[1];
     vzj[i] = parts_j[idx].v[2];
+#ifdef GADGET2_SPH
+    mj[i] = parts_j[idx].mass;
     rhoj[i] = parts_j[idx].rho;
     grad_hj[i] = parts_j[idx].force.f;
     pOrho2j[i] = parts_j[idx].force.P_over_rho2;
     balsaraj[i] = parts_j[idx].force.balsara;
     soundspeedj[i] = parts_j[idx].force.soundspeed;
+#endif
   }
 
   /* Pad cache with fake particles that exist outside the cell so will not
