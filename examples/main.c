@@ -1232,6 +1232,10 @@ int main(int argc, char *argv[]) {
   if (!force_stop) {
     engine_drift_all(&e);
     engine_print_stats(&e);
+#ifdef WITH_LOGGER
+    engine_dump_index(&e);
+#endif
+    // write a final snapshot with logger, in order to facilitate a restart
     engine_dump_snapshot(&e);
 
 #ifdef HAVE_VELOCIRAPTOR

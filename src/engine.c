@@ -5623,7 +5623,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump everything */
         engine_print_stats(e);
-#if defined(WITH_LOGGER)
+#ifdef WITH_LOGGER
 	engine_dump_index(e);
 #else
 	engine_dump_snapshot(e);
@@ -5657,7 +5657,7 @@ void engine_check_for_dumps(struct engine *e) {
         engine_drift_all(e);
 
         /* Dump snapshot */
-#if defined(WITH_LOGGER)
+#ifdef WITH_LOGGER
 	engine_dump_index(e);
 #else
 	engine_dump_snapshot(e);
@@ -5679,7 +5679,7 @@ void engine_check_for_dumps(struct engine *e) {
         engine_drift_all(e);
 
         /* Dump snapshot */
-#if defined(WITH_LOGGER)
+#ifdef WITH_LOGGER
 	engine_dump_index(e);
 #else
 	engine_dump_snapshot(e);
@@ -5718,7 +5718,7 @@ void engine_check_for_dumps(struct engine *e) {
       engine_drift_all(e);
 
       /* Dump... */
-#if defined(WITH_LOGGER)
+#ifdef WITH_LOGGER
       engine_dump_index(e);
 #else
       engine_dump_snapshot(e);
