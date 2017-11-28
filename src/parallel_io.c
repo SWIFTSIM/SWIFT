@@ -338,10 +338,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   /* int megaBytes = N * props.dimension * typeSize / (1024 * 1024); */
   /* int total = 0; */
   /* MPI_Reduce(&megaBytes, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); */
-
-  if (engine_rank == 0)
-    message("H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s).",
-            props.name, total, ms, clocks_getunit(), total / (ms / 1000.));
+  /* if (engine_rank == 0) */
+  /*   message("H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s).", */
+  /*           props.name, total, ms, clocks_getunit(), total / (ms / 1000.)); */
 
   /* Free and close everything */
   free(temp);
