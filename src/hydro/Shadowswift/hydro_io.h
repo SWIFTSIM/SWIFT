@@ -19,6 +19,7 @@
 
 #include "adiabatic_index.h"
 #include "equation_of_state.h"
+#include "hydro.h"
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
 #include "io_properties.h"
@@ -63,13 +64,8 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @param p Particle.
  * @return Internal energy of the particle
  */
-float convert_u(struct engine* e, struct part* p) {
-  if (p->primitives.rho > 0.) {
-    return gas_internal_energy_from_pressure(p->primitives.rho,
-                                             p->primitives.P);
-  } else {
-    return 0.;
-  }
+void convert_u(const struct engine* e, const struct part* p, float* ret) {
+  ret[0] = hydro_get_internal_energy(p);
 }
 
 /**
@@ -79,12 +75,8 @@ float convert_u(struct engine* e, struct part* p) {
  * @param p Particle.
  * @return Entropic function of the particle
  */
-float convert_A(struct engine* e, struct part* p) {
-  if (p->primitives.rho > 0.) {
-    return gas_entropy_from_pressure(p->primitives.rho, p->primitives.P);
-  } else {
-    return 0.;
-  }
+void convert_A(const struct engine* e, const struct part* p, float* ret) {
+  ret[0] = hydro_get_entropy(p);
 }
 
 /**
@@ -94,7 +86,7 @@ float convert_A(struct engine* e, struct part* p) {
  * @param p Particle.
  * @return Total energy of the particle
  */
-float convert_Etot(struct engine* e, struct part* p) {
+void convert_Etot(const struct engine* e, const struct part* p, float* ret) {
 #ifdef SHADOWFAX_TOTAL_ENERGY
   return p->conserved.energy;
 #else
@@ -105,11 +97,25 @@ float convert_Etot(struct engine* e, struct part* p) {
                 p->conserved.momentum[1] * p->conserved.momentum[1] +
                 p->conserved.momentum[2] * p->conserved.momentum[2];
 
-    return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+    ret[0] = p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
   } else {
-    return 0.;
+    ret[0] = 0.;
   }
 #endif
+}
+
+void convert_part_pos(const struct engine* e, const struct part* p,
+                      double* ret) {
+
+  if (e->s->periodic) {
+    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
+    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
+    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  } else {
+    ret[0] = p->x[0];
+    ret[1] = p->x[1];
+    ret[2] = p->x[2];
+  }
 }
 
 /**
@@ -125,8 +131,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   *num_fields = 13;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 parts, x);
+  list[0] = io_make_output_field_convert_part(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
   list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts,
                                  primitives.v);
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
@@ -135,7 +141,7 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  parts, h);
   list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, primitives.P, convert_u);
+                                              parts, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_output_field("Acceleration", FLOAT, 3,
@@ -147,12 +153,11 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
                                  parts, primitives.gradients.rho);
   list[10] = io_make_output_field_convert_part(
-      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, convert_A);
   list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                   parts, primitives.P);
-  list[12] =
-      io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
-                                        parts, conserved.energy, convert_Etot);
+  list[12] = io_make_output_field_convert_part(
+      "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, convert_Etot);
 }
 
 /**

@@ -4535,7 +4535,7 @@ void engine_init(struct engine *e, struct space *s,
   if (with_aff) engine_unpin();
 #endif
 
-  if (with_aff) {
+  if (with_aff && nodeID == 0) {
 #ifdef HAVE_SETAFFINITY
 #ifdef WITH_MPI
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
