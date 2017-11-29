@@ -51,6 +51,9 @@
 #include "units.h"
 #include "xmf.h"
 
+/* Are we timing the i/o? */
+//#define IO_SPEED_MEASUREMENT
+
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
@@ -266,16 +269,20 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
-  /* MPI_Barrier(MPI_COMM_WORLD); */
-  /* ticks tic = getticks(); */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks tic = getticks();
+#endif
 
   /* Copy the particle data to the temporary buffer */
   io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
-  /* MPI_Barrier(MPI_COMM_WORLD); */
-  /* if(engine_rank == 0) */
-  /*   message( "Copying for '%s' took %.3f %s." , props.name, */
-  /* 	     clocks_from_ticks(getticks() - tic), clocks_getunit()); */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message("Copying for '%s' took %.3f %s." , props.name,
+	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
@@ -318,12 +325,13 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   }
 
   /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
-   * %zd", */
-  /* 	  N, props.name, N * props.dimension, N * props.dimension * typeSize, */
+   * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
   /* 	  (int)(N * props.dimension * typeSize), offset); */
 
-  /* MPI_Barrier(MPI_COMM_WORLD); */
-  /* tic = getticks(); */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+#endif
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
@@ -332,15 +340,17 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
     error("Error while writing data array '%s'.", props.name);
   }
 
-  /* MPI_Barrier(MPI_COMM_WORLD); */
-  /* ticks toc = getticks(); */
-  /* float ms = clocks_from_ticks(toc - tic); */
-  /* int megaBytes = N * props.dimension * typeSize / (1024 * 1024); */
-  /* int total = 0; */
-  /* MPI_Reduce(&megaBytes, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); */
-  /* if (engine_rank == 0) */
-  /*   message("H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s).", */
-  /*           props.name, total, ms, clocks_getunit(), total / (ms / 1000.)); */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks toc = getticks();
+  float ms = clocks_from_ticks(toc - tic);
+  int megaBytes = N * props.dimension * typeSize / (1024 * 1024);
+  int total = 0;
+  MPI_Reduce(&megaBytes, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s).",
+            props.name, total, ms, clocks_getunit(), total / (ms / 1000.));
+#endif
 
   /* Free and close everything */
   free(temp);
@@ -372,7 +382,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
-  /* const ticks tic = getticks(); */
+
+#ifdef IO_SPEED_MEASUREMENT
+  const ticks tic = getticks();
+#endif
 
   /* Work out properties of the array in the file */
   int rank;
@@ -461,7 +474,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
     MPI_Allreduce(MPI_IN_PLACE, &redo, 1, MPI_SIGNED_CHAR, MPI_MAX,
                   MPI_COMM_WORLD);
 
-    if (redo /* && e->verbose*/ && mpi_rank == 0)
+    if (redo && e->verbose && mpi_rank == 0)
       message("Need to redo one iteration for array '%s'", props.name);
   }
 
@@ -487,10 +500,12 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   H5Dclose(h_data);
   H5Pclose(h_plist_id);
 
-  /* MPI_Barrier(MPI_COMM_WORLD); */
-  /* if(engine_rank == 0) */
-  /*   message( "'%s' took %.3f %s." , props.name, */
-  /* 	     clocks_from_ticks(getticks() - tic), clocks_getunit()); */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message("'%s' took %.3f %s." , props.name,
+	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 }
 
 /**
