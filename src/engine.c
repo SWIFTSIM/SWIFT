@@ -4440,6 +4440,7 @@ void engine_reconstruct_multipoles(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
+  const int nodeID = e->nodeID;
   const int *cdim = e->s->cdim;
   const struct space *s = e->s;
   struct cell *cells = s->cells_top;
@@ -4487,6 +4488,22 @@ void engine_makeproxies(struct engine *e) {
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
 
+	      /* Early abort (same cell) */
+	      if(cid == cjd)
+		continue;
+
+	      /* Early abort (both same node) */
+	      if(cells[cid].nodeID == nodeID &&
+	      	 cells[cjd].nodeID == nodeID)
+	      	continue;
+
+	      /* Early abort (both foreign node) */
+	      if(cells[cid].nodeID != nodeID &&
+	      	 cells[cjd].nodeID != nodeID)
+	      	continue;
+
+	      char proxy_type = proxy_cell_type_none;
+
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
@@ -4509,25 +4526,32 @@ void engine_makeproxies(struct engine *e) {
                 }
                 const double r2 = dx * dx + dy * dy + dz * dz;
 
-                if (gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-                  continue;
+		/* Are we too close for M2L? */
+                if (!gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+		  proxy_type |= proxy_cell_type_gravity;
               }
 
-              /* In the hydro case, only carre about neighbours */
-              else if (with_hydro) {
+              /* In the hydro case, only care about neighbours */
+              if (with_hydro) {
 
-                if (!((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-                       abs(i - ii + cdim[0]) <= 1) &&
-                      (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-                       abs(j - jj + cdim[1]) <= 1) &&
-                      (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-                       abs(k - kk + cdim[2]) <= 1)))
-                  continue;
+		/* This is super-ugly but checks for direct neighbours */
+		/* with periodic BC */
+                if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
+		      abs(i - ii + cdim[0]) <= 1) &&
+		     (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
+		      abs(j - jj + cdim[1]) <= 1) &&
+		     (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
+		      abs(k - kk + cdim[2]) <= 1)))
+		  proxy_type |= proxy_cell_type_hydro;
               }
+
+	      /* Abort if not in range at all */
+	      if(proxy_type == proxy_cell_type_none)
+		continue;
 
               /* Add to proxies? */
-              if (cells[cid].nodeID == e->nodeID &&
-                  cells[cjd].nodeID != e->nodeID) {
+              if (cells[cid].nodeID == nodeID &&
+                  cells[cjd].nodeID != nodeID) {
 
 		/* Do we already have a relationship with this node? */
                 int pid = e->proxy_ind[cells[cjd].nodeID];
@@ -4535,7 +4559,7 @@ void engine_makeproxies(struct engine *e) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
-		  /* Ok, start a new proxy for this pair */
+		  /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
                              cells[cjd].nodeID);
 
@@ -4546,16 +4570,16 @@ void engine_makeproxies(struct engine *e) {
                 }
 
 		/* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[pid], &cells[cjd]);
-                proxy_addcell_out(&proxies[pid], &cells[cid]);
+                proxy_addcell_in(&proxies[pid], &cells[cjd], proxy_type);
+                proxy_addcell_out(&proxies[pid], &cells[cid], proxy_type);
 
 		/* Store info about where to send the cell */
                 cells[cid].sendto |= (1ULL << pid);
               }
 
 	      /* Same for the symmetric case? */
-              if (cells[cjd].nodeID == e->nodeID &&
-                  cells[cid].nodeID != e->nodeID) {
+              if (cells[cjd].nodeID == nodeID &&
+                  cells[cid].nodeID != nodeID) {
 
 		/* Do we already have a relationship with this node? */
                 int pid = e->proxy_ind[cells[cid].nodeID];
@@ -4563,7 +4587,7 @@ void engine_makeproxies(struct engine *e) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
-		  /* Ok, start a new proxy for this pair */
+		  /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
                              cells[cid].nodeID);
 
@@ -4574,8 +4598,8 @@ void engine_makeproxies(struct engine *e) {
                 }
 
 		/* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[pid], &cells[cid]);
-                proxy_addcell_out(&proxies[pid], &cells[cjd]);
+                proxy_addcell_in(&proxies[pid], &cells[cid], proxy_type);
+                proxy_addcell_out(&proxies[pid], &cells[cjd], proxy_type);
 
 		/* Store info about where to send the cell */
                 cells[cjd].sendto |= (1ULL << pid);
