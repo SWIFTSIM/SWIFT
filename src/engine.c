@@ -4462,15 +4462,11 @@ void engine_makeproxies(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
-  /* The following loop is super-clunky, but it's necessary
-     to ensure that the order of the send and recv cells in
-     the proxies is identical for all nodes! */
-
   /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++)
-    for (int j = 0; j < cdim[1]; j++)
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-
+	
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
 
@@ -4534,41 +4530,64 @@ void engine_makeproxies(struct engine *e) {
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
                   cells[cjd].nodeID != e->nodeID) {
+
+		/* Do we already have a relationship with this node? */
                 int pid = e->proxy_ind[cells[cjd].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
+
+		  /* Ok, start a new proxy for this pair */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
                              cells[cjd].nodeID);
+
+		  /* Store the information */
                   e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
                   pid = e->nr_proxies;
                   e->nr_proxies += 1;
                 }
+
+		/* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[pid], &cells[cjd]);
                 proxy_addcell_out(&proxies[pid], &cells[cid]);
+
+		/* Store info about where to send the cell */
                 cells[cid].sendto |= (1ULL << pid);
               }
 
+	      /* Same for the symmetric case? */
               if (cells[cjd].nodeID == e->nodeID &&
                   cells[cid].nodeID != e->nodeID) {
+
+		/* Do we already have a relationship with this node? */
                 int pid = e->proxy_ind[cells[cid].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
+
+		  /* Ok, start a new proxy for this pair */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
                              cells[cid].nodeID);
+
+		  /* Store the information */
                   e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
                   pid = e->nr_proxies;
                   e->nr_proxies += 1;
                 }
+
+		/* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[pid], &cells[cid]);
                 proxy_addcell_out(&proxies[pid], &cells[cjd]);
+
+		/* Store info about where to send the cell */
                 cells[cjd].sendto |= (1ULL << pid);
               }
             }
           }
         }
       }
+    }
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
