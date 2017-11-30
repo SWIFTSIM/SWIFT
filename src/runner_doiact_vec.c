@@ -26,7 +26,8 @@
 /* Local headers. */
 #include "active.h"
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
 
 /**
@@ -515,7 +516,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   *init_pj = last_pj;
 }
 
-#endif /* WITH_VECTORIZATION */
+#endif /* WITH_VECTORIZATION && GADGET2_SPH */
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
@@ -527,7 +528,8 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
 __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
   /* Get some local variables */
   const struct engine *e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
@@ -723,6 +725,11 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_density);
+
+#else
+
+  error("Incorrectly calling vectorized Gadget-2 functions!");
+
 #endif /* WITH_VECTORIZATION */
 }
 
@@ -740,10 +747,11 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     struct runner *r, struct cell *restrict c, struct part *restrict parts,
     int *restrict ind, int pi_count) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
   const int count = c->count;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
@@ -925,6 +933,11 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_subset);
+
+#else
+
+  error("Incorrectly calling vectorized Gadget-2 functions!");
+
 #endif /* WITH_VECTORIZATION */
 }
 
@@ -938,7 +951,8 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
     struct runner *r, struct cell *restrict c) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
   const struct engine *e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->parts;
@@ -1097,6 +1111,11 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
   } /* loop over all particles. */
 
   TIMER_TOC(timer_doself_force);
+
+#else
+
+  error("Incorrectly calling vectorized Gadget-2 functions!");
+
 #endif /* WITH_VECTORIZATION */
 }
 
@@ -1114,7 +1133,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                                 struct cell *cj, const int sid,
                                 const double *shift) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
   const struct engine *restrict e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
 
@@ -1442,6 +1462,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TOC(timer_dopair_density);
 
+#else
+
+  error("Incorrectly calling vectorized Gadget-2 functions!");
+
 #endif /* WITH_VECTORIZATION */
 }
 
@@ -1459,7 +1483,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj, const int sid,
                               const double *shift) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
   const struct engine *restrict e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
 
@@ -1815,6 +1840,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
     TIMER_TOC(timer_dopair_density);
   }
+
+#else
+
+  error("Incorrectly calling vectorized Gadget-2 functions!");
 
 #endif /* WITH_VECTORIZATION */
 }

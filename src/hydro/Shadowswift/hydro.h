@@ -22,6 +22,7 @@
 #include "approx_math.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "hydro_properties.h"
 #include "hydro_space.h"
 #include "voronoi_algorithm.h"
 

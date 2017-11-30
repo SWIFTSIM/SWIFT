@@ -51,6 +51,9 @@
 #include "units.h"
 #include "xmf.h"
 
+/* Are we timing the i/o? */
+//#define IO_SPEED_MEASUREMENT
+
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
@@ -252,7 +255,6 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
                       const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
-  const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
   /* Can't handle writes of more than 2GB */
@@ -263,44 +265,24 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
-  if (temp == NULL) error("Unable to allocate memory for temporary buffer");
+  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
+                     num_elements * typeSize) != 0)
+    error("Unable to allocate temporary i/o buffer");
 
-  /* Copy particle data to temporary buffer */
-  if (props.convert_part == NULL &&
-      props.convert_gpart == NULL) { /* No conversion */
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks tic = getticks();
+#endif
 
-    char* temp_c = temp;
-    for (size_t i = 0; i < N; ++i)
-      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+  /* Copy the particle data to the temporary buffer */
+  io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
-  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
-
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_part(e, &props.parts[i]);
-
-  } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
-
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
-  }
-
-  /* Unit conversion if necessary */
-  const double factor =
-      units_conversion_factor(internal_units, snapshot_units, props.units);
-  if (factor != 1.) {
-
-    /* message("Converting ! factor=%e", factor); */
-
-    if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
-    } else {
-      float* temp_f = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
-    }
-  }
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message("Copying for '%s' took %.3f %s." , props.name,
+	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
@@ -343,9 +325,13 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   }
 
   /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
-   * %zd", */
-  /* 	  N, props.name, N * props.dimension, N * props.dimension * typeSize, */
+   * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
   /* 	  (int)(N * props.dimension * typeSize), offset); */
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+#endif
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
@@ -353,6 +339,18 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   if (h_err < 0) {
     error("Error while writing data array '%s'.", props.name);
   }
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks toc = getticks();
+  float ms = clocks_from_ticks(toc - tic);
+  int megaBytes = N * props.dimension * typeSize / (1024 * 1024);
+  int total = 0;
+  MPI_Reduce(&megaBytes, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("H5Dwrite for '%s' (%d MB) took %.3f %s (speed = %f MB/s).",
+            props.name, total, ms, clocks_getunit(), total / (ms / 1000.));
+#endif
 
   /* Free and close everything */
   free(temp);
@@ -384,6 +382,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
+
+#ifdef IO_SPEED_MEASUREMENT
+  const ticks tic = getticks();
+#endif
 
   /* Work out properties of the array in the file */
   int rank;
@@ -497,6 +499,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Pclose(h_plist_id);
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(engine_rank == 0)
+    message("'%s' took %.3f %s." , props.name,
+	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 }
 
 /**
@@ -617,7 +626,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Read the unit system used in the ICs */
   struct unit_system* ic_units = malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units);
+  io_read_unit_system(h_file, ic_units, mpi_rank);
 
   /* Tell the user if a conversion will be needed */
   if (mpi_rank == 0) {
@@ -735,7 +744,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         break;
 
       default:
-        message("Particle Type %d not yet supported. Particles ignored", ptype);
+        if (mpi_rank == 0)
+          message("Particle Type %d not yet supported. Particles ignored",
+                  ptype);
     }
 
     /* Read everything */
@@ -825,16 +836,42 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* Prepare the XMF file for the new entry */
   if (mpi_rank == 0) xmfFile = xmf_prepare_file(baseName);
 
-  /* Open HDF5 file */
+  /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-  H5Pset_fapl_mpio(plist_id, comm, info);
+
+  /* Set some MPI-IO parameters */
+  // MPI_Info_set(info, "IBM_largeblock_io", "true");
+  MPI_Info_set(info, "romio_cb_write", "enable");
+  MPI_Info_set(info, "romio_ds_write", "disable");
+
+  /* Activate parallel i/o */
+  hid_t h_err = H5Pset_fapl_mpio(plist_id, comm, info);
+  if (h_err < 0) error("Error setting parallel i/o");
+  
+  /* Align on 4k pages. */
+  h_err = H5Pset_alignment(plist_id, 1024, 4096);
+  if (h_err < 0) error("Error setting Hdf5 alignment");
+
+  /* Disable meta-data cache eviction */
+  H5AC_cache_config_t mdc_config;
+  mdc_config.version = H5AC__CURR_CACHE_CONFIG_VERSION;
+  h_err = H5Pget_mdc_config(plist_id, &mdc_config);
+  if (h_err < 0) error("Error getting the MDC config");
+
+  mdc_config.evictions_enabled = 0; /* false */
+  mdc_config.incr_mode = H5C_incr__off;
+  mdc_config.decr_mode = H5C_decr__off;
+  mdc_config.flash_incr_mode = H5C_flash_incr__off;
+  h_err = H5Pset_mdc_config(plist_id, &mdc_config);
+  if (h_err < 0) error("Error setting the MDC config");
+
+  /* Open HDF5 file with the chosen parameters */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
   if (h_file < 0) {
     error("Error while opening file '%s'.", fileName);
   }
 
-  /* Compute offset in the file and total number of
-   * particles */
+  /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
@@ -847,8 +884,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
   /* Now everybody konws its offset and the total number of
-   * particles of each
-   * type */
+   * particles of each type */
 
   /* Write the part of the XMF file corresponding to this
    * specific output */

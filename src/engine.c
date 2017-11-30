@@ -2624,9 +2624,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift and the sorts. */
+      /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop. */
@@ -5004,7 +5003,7 @@ void engine_init(struct engine *e, struct space *s,
   if (with_aff) engine_unpin();
 #endif
 
-  if (with_aff) {
+  if (with_aff && nodeID == 0) {
 #ifdef HAVE_SETAFFINITY
 #ifdef WITH_MPI
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
