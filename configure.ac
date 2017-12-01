@@ -469,10 +469,10 @@ if test "x$with_grackle" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
-      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle $FCLIBS"
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
       GRACKLE_INCS="-I$with_grackle/include"
    else
-      GRACKLE_LIBS="-lgrackle $FCLIBS"
+      GRACKLE_LIBS="-lgrackle"
       GRACKLE_INCS=""
    fi
    
@@ -485,7 +485,7 @@ if test "x$with_grackle" != "xno"; then
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
       [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS $GRACKLE_INCS]
+      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
    )
 fi
 AC_SUBST([GRACKLE_LIBS])

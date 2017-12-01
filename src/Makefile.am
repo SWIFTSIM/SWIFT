@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
+
 AM_CFLAGS = $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
@@ -28,7 +29,7 @@ GIT_CMD = @GIT_CMD@
 EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB)
 
 # MPI libraries.
-MPI_LIBS = $(METIS_LIBS) $(GRACKLE_LIB) $(MPI_THREAD_LIBS)
+MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
 MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
 
 # Build the libswiftsim library
@@ -48,6 +49,11 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h
 
+GRACKLE_SRC =
+if HAVEGRACKLE
+GRACKLE_SRC += cooling/grackle/grackle_wrapper.c
+endif
+
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
@@ -58,7 +64,8 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
-    cooling/grackle/grackle_wrapper.c
+    $(GRACKLE_SRC)
+
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -126,12 +133,14 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 libswiftsim_la_SOURCES = $(AM_SOURCES)
 libswiftsim_la_CFLAGS = $(AM_CFLAGS)
 libswiftsim_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
+libswiftsim_la_LIBADD = $(GRACKLE_LIBS)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
+libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS)
 
 
 # Versioning. If any sources change then update the version_string.h file with
