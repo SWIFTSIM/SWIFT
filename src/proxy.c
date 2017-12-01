@@ -456,8 +456,8 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_in =
              (struct cell **)malloc(sizeof(void *) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
-    if ((p->cells_in_type =
-             (char *)malloc(sizeof(char) * p->size_cells_in)) == NULL)
+    if ((p->cells_in_type = (char *)malloc(sizeof(char) * p->size_cells_in)) ==
+        NULL)
       error("Failed to allocate cells_in_type buffer.");
   }
   p->nr_cells_in = 0;
