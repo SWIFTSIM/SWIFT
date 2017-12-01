@@ -49,7 +49,7 @@
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p) {
 
-  return 0.f;
+  return gas_internal_energy_from_entropy(p->rho, p->entropy);
 }
 
 /**
@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p) {
 
-  return 0.f;
+  return gas_pressure_from_entropy(p->rho, p->entropy);
 }
 
 /**
@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part *restrict p) {
 
-  return 0.f;
+  return p->entropy;
 }
 
 /**
@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p) {
 
-  return 0.f;
+  return p->force.soundspeed;
 }
 
 /**
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
 __attribute__((always_inline)) INLINE static float hydro_get_density(
     const struct part *restrict p) {
 
-  return 0.f;
+  return p->rho;
 }
 
 /**
@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_density(
 __attribute__((always_inline)) INLINE static float hydro_get_mass(
     const struct part *restrict p) {
 
-  return 0.f;
+  return p->mass;
 }
 
 /**
@@ -116,12 +116,12 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
     const struct part *restrict p) {
-
+  // TODO: Check if this is true.
   return 0.f;
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Sets the time derivative of internal energy of a particle
  *
  * We assume a constant density.
  *
@@ -129,7 +129,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
  * @param du_dt The new time derivative of the internal energy.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
-    struct part *restrict p, float du_dt) {}
+    struct part *restrict p, float du_dt) {
+  // TODO: Check if this is true.
+  p->energy_dt = 0.f;
+}
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -141,8 +144,14 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct hydro_props *restrict hydro_properties) {
+  
+  const float CFL_condition = hydro_properties->CFL_condition;
 
-  return FLT_MAX;
+  /* CFL condition */
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
+
+  return dt_cfl;;
 }
 
 /**
@@ -166,8 +175,17 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
+  p->rho = 0.f;
+  p->rho_bar = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
+  p->density.rho_dh = 0.f;
+  p->density.pressure_dh = 0.f;
+
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
