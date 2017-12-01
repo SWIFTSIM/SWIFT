@@ -137,4 +137,6 @@ double units_conversion_factor(const struct unit_system* from,
                                const struct unit_system* to,
                                enum unit_conversion_factor unit);
 
+void units_print(const struct unit_system* us);
+
 #endif /* SWIFT_UNITS_H */
