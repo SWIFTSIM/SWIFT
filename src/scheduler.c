@@ -1143,20 +1143,32 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_ghost:
         if (t->ci == t->ci->super) cost = wscale * t->ci->count;
         break;
+      case task_type_extra_ghost:
+        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        break;
       case task_type_drift_part:
         cost = wscale * t->ci->count;
         break;
       case task_type_drift_gpart:
         cost = wscale * t->ci->gcount;
         break;
+      case task_type_init_grav:
+	cost = wscale * t->ci->gcount;
+	break;
+      case task_type_grav_down:
+	cost = wscale * t->ci->gcount;
+	break;
+      case task_type_grav_long_range:
+	cost = wscale * t->ci->gcount;
+	break;
       case task_type_kick1:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_kick2:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_timestep:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_send:
         cost = 10 * wscale * t->ci->count * t->ci->count;

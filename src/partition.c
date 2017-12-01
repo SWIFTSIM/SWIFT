@@ -577,9 +577,11 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
-        t->type == task_type_drift_part || t->type == task_type_drift_gpart) {
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+	t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+	t->type == task_type_kick1 || t->type == task_type_kick2 || 
+	t->type == task_type_timestep || t->type == task_type_init_grav ||
+	t->type == task_type_grav_down || t->type == task_type_grav_long_range) {
 
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
