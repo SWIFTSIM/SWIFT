@@ -1056,28 +1056,6 @@ void engine_repartition_trigger(struct engine *e) {
 }
 
 /**
- * @brief Add up/down gravity tasks to a cell hierarchy.
- *
- * @param e The #engine.
- * @param c The #cell
- * @param up The upward gravity #task.
- * @param down The downward gravity #task.
- */
-void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
-                          struct task *down) {
-
-  /* Link the tasks to this cell. */
-  // c->grav_up = up;
-  c->grav_down = down;
-
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_addtasks_grav(e, c->progeny[k], up, down);
-}
-
-/**
  * @brief Add send tasks to a hierarchy of cells.
  *
  * @param e The #engine.
