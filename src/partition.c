@@ -706,7 +706,10 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
 
       /* Make range the same in both weights systems. */
       if ((wmaxv - wminv) > (wmaxe - wmine)) {
-        double wscale = (wmaxv - wminv) / (wmaxe - wmine);
+        double wscale = 1.0;
+        if ((wmaxe - wmine) > 0.0) {
+          wscale = (wmaxv - wminv) / (wmaxe - wmine);
+        }
         for (int k = 0; k < 26 * nr_cells; k++) {
           weights_e[k] = (weights_e[k] - wmine) * wscale + wminv;
         }
@@ -714,7 +717,10 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
         wmaxe = wmaxv;
 
       } else {
-        double wscale = (wmaxe - wmine) / (wmaxv - wminv);
+        double wscale = 1.0;
+        if ((wmaxv - wminv) > 0.0) {
+          wscale = (wmaxe - wmine) / (wmaxv - wminv);
+        }
         for (int k = 0; k < nr_cells; k++) {
           weights_v[k] = (weights_v[k] - wminv) * wscale + wmine;
         }
@@ -723,14 +729,20 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
       }
 
       /* Scale to the METIS range. */
-      double wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
+      double wscale = 1.0;
+      if ((wmaxv - wminv) > 0.0) {
+         wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
+      }
       for (int k = 0; k < nr_cells; k++) {
         weights_v[k] = (weights_v[k] - wminv) * wscale + 1.0;
       }
     }
 
     /* Scale to the METIS range. */
-    double wscale = (metis_maxweight - 1.0) / (wmaxe - wmine);
+    double wscale = 1.0;
+    if ((wmaxe - wmine) > 0.0) {
+      wscale = (metis_maxweight - 1.0) / (wmaxe - wmine);
+    }
     for (int k = 0; k < 26 * nr_cells; k++) {
       weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
     }
