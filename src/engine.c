@@ -2905,26 +2905,37 @@ void engine_maketasks(struct engine *e) {
       struct proxy *p = &e->proxies[pid];
 
       /* Loop through the proxy's incoming cells and add the
-         recv tasks. */
+         recv tasks for the cells in the proxy that have a hydro connection. */
       if (e->policy & engine_policy_hydro)
         for (int k = 0; k < p->nr_cells_in; k++)
-          engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL, NULL);
+          if (p->cells_in_type[k] & proxy_cell_type_hydro)
+            engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL,
+                                       NULL);
 
+      /* Loop through the proxy's incoming cells and add the
+         recv tasks for the cells in the proxy that have a gravity connection.
+         */
       if (e->policy & engine_policy_self_gravity)
         for (int k = 0; k < p->nr_cells_in; k++)
-          engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL);
+          if (p->cells_in_type[k] & proxy_cell_type_gravity)
+            engine_addtasks_recv_gravity(e, p->cells_in[k], NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
-         send tasks. */
+         send tasks for the cells in the proxy that have a hydro connection. */
       if (e->policy & engine_policy_hydro)
         for (int k = 0; k < p->nr_cells_out; k++)
-          engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL,
-                                     NULL, NULL, NULL);
+          if (p->cells_out_type[k] & proxy_cell_type_hydro)
+            engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL,
+                                       NULL, NULL, NULL);
 
+      /* Loop through the proxy's outgoing cells and add the
+         send tasks for the cells in the proxy that have a gravity connection.
+         */
       if (e->policy & engine_policy_self_gravity)
         for (int k = 0; k < p->nr_cells_out; k++)
-          engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0], NULL,
-                                       NULL);
+          if (p->cells_out_type[k] & proxy_cell_type_gravity)
+            engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0],
+                                         NULL, NULL);
     }
   }
 #endif
