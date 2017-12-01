@@ -1113,15 +1113,32 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
                (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
         break;
+
       case task_type_self:
-        cost = 1 * wscale * t->ci->count * t->ci->count;
-        break;
-      case task_type_pair:
-        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        if (t->subtype == task_subtype_grav)
+          cost = 1 * wscale * t->ci->gcount * t->ci->gcount;
+        else if (t->subtype == task_subtype_external_grav)
+          cost = 1 * wscale * t->ci->gcount;
         else
-          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
+
+      case task_type_pair:
+        if (t->subtype == task_subtype_grav) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost = 3 * wscale * t->ci->gcount * t->cj->gcount;
+          else
+            cost = 2 * wscale * t->ci->gcount * t->cj->gcount;
+        } else {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost =
+                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          else
+            cost =
+                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        }
+        break;
+
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
@@ -1137,6 +1154,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         }
         break;
+
       case task_type_sub_self:
         cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
@@ -1153,14 +1171,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * t->ci->gcount;
         break;
       case task_type_init_grav:
-	cost = wscale * t->ci->gcount;
-	break;
+        cost = wscale * t->ci->gcount;
+        break;
       case task_type_grav_down:
-	cost = wscale * t->ci->gcount;
-	break;
+        cost = wscale * t->ci->gcount;
+        break;
       case task_type_grav_long_range:
-	cost = wscale * t->ci->gcount;
-	break;
+        cost = wscale * t->ci->gcount;
+        break;
       case task_type_kick1:
         cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
