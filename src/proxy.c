@@ -40,6 +40,11 @@
 /* Local headers. */
 #include "error.h"
 
+extern int count_in_hydro;
+extern int count_out_hydro;
+extern int count_in_grav;
+extern int count_out_grav;
+
 /**
  * @brief Exchange cells with a remote node.
  *
@@ -126,16 +131,21 @@ void proxy_cells_exch2(struct proxy *p) {
  * @param c The #cell.
  * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_in(struct proxy *p, struct cell *c, char type) {
+void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
+
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_in; k++)
-    if (p->cells_in[k] == c) return;
+    if (p->cells_in[k] == c) {
+
+      /* Update the type */
+      p->cells_in_type[k] = type;
+      return;
+    }
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
-
-    message("Increasing proxy size");
 
     p->size_cells_in *= proxy_buffgrow;
 
@@ -146,10 +156,10 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, char type) {
     free(p->cells_in);
     p->cells_in = temp_cell;
 
-    char *temp_type;
-    if ((temp_type = malloc(sizeof(char) * p->size_cells_in)) == NULL)
+    int *temp_type;
+    if ((temp_type = malloc(sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell type list.");
-    memcpy(temp_type, p->cells_in_type, sizeof(char) * p->nr_cells_in);
+    memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
     free(p->cells_in_type);
     p->cells_in_type = temp_type;
   }
@@ -167,11 +177,18 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, char type) {
  * @param c The #cell.
  * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_out(struct proxy *p, struct cell *c, char type) {
+void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
+
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_out; k++)
-    if (p->cells_out[k] == c) return;
+    if (p->cells_out[k] == c) {
+
+      /* Update the type */
+      p->cells_out_type[k] |= type;
+      return;
+    }
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
@@ -184,10 +201,10 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, char type) {
     free(p->cells_out);
     p->cells_out = temp_cell;
 
-    char *temp_type;
-    if ((temp_type = malloc(sizeof(char) * p->size_cells_out)) == NULL)
+    int *temp_type;
+    if ((temp_type = malloc(sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell type list.");
-    memcpy(temp_type, p->cells_out_type, sizeof(char) * p->nr_cells_out);
+    memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
     free(p->cells_out_type);
     p->cells_out_type = temp_type;
   }
@@ -456,7 +473,7 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_in =
              (struct cell **)malloc(sizeof(void *) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
-    if ((p->cells_in_type = (char *)malloc(sizeof(char) * p->size_cells_in)) ==
+    if ((p->cells_in_type = (int *)malloc(sizeof(int) * p->size_cells_in)) ==
         NULL)
       error("Failed to allocate cells_in_type buffer.");
   }
@@ -466,8 +483,8 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_out = (struct cell **)malloc(sizeof(void *) *
                                                p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out buffer.");
-    if ((p->cells_out_type =
-             (char *)malloc(sizeof(char) * p->size_cells_out)) == NULL)
+    if ((p->cells_out_type = (int *)malloc(sizeof(int) * p->size_cells_out)) ==
+        NULL)
       error("Failed to allocate cells_out_type buffer.");
   }
   p->nr_cells_out = 0;

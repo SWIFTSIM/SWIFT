@@ -4421,6 +4421,11 @@ void engine_reconstruct_multipoles(struct engine *e) {
             clocks_getunit());
 }
 
+int count_in_hydro;
+int count_out_hydro;
+int count_in_grav;
+int count_out_grav;
+
 /**
  * @brief Create and fill the proxies.
  *
@@ -4438,7 +4443,7 @@ void engine_makeproxies(struct engine *e) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
-  ticks tic = getticks();
+  const ticks tic = getticks();
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   double CoM_i[3] = {0., 0., 0.};
@@ -4488,7 +4493,21 @@ void engine_makeproxies(struct engine *e) {
               if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
                 continue;
 
-              char proxy_type = proxy_cell_type_none;
+              int proxy_type = 0;
+
+              /* In the hydro case, only care about neighbours */
+              if (with_hydro) {
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
+                      abs(i - ii + cdim[0]) <= 1) &&
+                     (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
+                      abs(j - jj + cdim[1]) <= 1) &&
+                     (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
+                      abs(k - kk + cdim[2]) <= 1)))
+                  proxy_type |= (int)proxy_cell_type_hydro;
+              }
 
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
@@ -4514,21 +4533,7 @@ void engine_makeproxies(struct engine *e) {
 
                 /* Are we too close for M2L? */
                 if (!gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-                  proxy_type |= proxy_cell_type_gravity;
-              }
-
-              /* In the hydro case, only care about neighbours */
-              if (with_hydro) {
-
-                /* This is super-ugly but checks for direct neighbours */
-                /* with periodic BC */
-                if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-                      abs(i - ii + cdim[0]) <= 1) &&
-                     (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-                      abs(j - jj + cdim[1]) <= 1) &&
-                     (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-                      abs(k - kk + cdim[2]) <= 1)))
-                  proxy_type |= proxy_cell_type_hydro;
+                  proxy_type |= (int)proxy_cell_type_gravity;
               }
 
               /* Abort if not in range at all */
@@ -4593,6 +4598,28 @@ void engine_makeproxies(struct engine *e) {
       }
     }
   }
+
+  count_in_hydro = 0;
+  count_out_hydro = 0;
+  count_in_grav = 0;
+  count_out_grav = 0;
+  for (int pid = 0; pid < e->nr_proxies; pid++) {
+
+    /* Get a handle on the proxy. */
+    struct proxy *p = &e->proxies[pid];
+
+    for (int k = 0; k < p->nr_cells_in; k++) {
+      if (p->cells_in_type[k] & proxy_cell_type_hydro) ++count_in_hydro;
+      if (p->cells_in_type[k] & proxy_cell_type_gravity) ++count_in_grav;
+    }
+    for (int k = 0; k < p->nr_cells_out; k++) {
+      if (p->cells_out_type[k] & proxy_cell_type_hydro) ++count_out_hydro;
+      if (p->cells_out_type[k] & proxy_cell_type_gravity) ++count_out_grav;
+    }
+  }
+
+  message("in hydro: %d out hydro: %d", count_in_hydro, count_out_hydro);
+  message("in grav: %d out grav: %d", count_in_grav, count_out_grav);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
