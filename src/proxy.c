@@ -140,7 +140,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     if (p->cells_in[k] == c) {
 
       /* Update the type */
-      p->cells_in_type[k] = type;
+      p->cells_in_type[k] |= type;
       return;
     }
 
