@@ -1092,8 +1092,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                6 * ci->tag + 0, 0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 6 * ci->tag + 1, 0, ci, cj);
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               6 * ci->tag + 2, 0, ci, cj);
+      /* t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend, */
+      /*                          6 * ci->tag + 2, 0, ci, cj); */
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      6 * ci->tag + 3, 0, ci, cj);
@@ -1130,7 +1130,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->super->drift_part, t_xv);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
+      /* scheduler_addunlock(s, ci->super->timestep, t_ti); */
     }
 
     /* Add them to the local cell. */
@@ -1139,7 +1139,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->send_gradient, t_gradient);
 #endif
-    engine_addlink(e, &ci->send_ti, t_ti);
+    //engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
@@ -1172,7 +1172,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
-  /* Check if any of the density tasks are for the target node. */
+  /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
@@ -1187,22 +1187,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  6 * ci->tag + 4, 0, ci, cj);
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               6 * ci->tag + 2, 0, ci, cj);
-
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super->grav_down);
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->super->drift_gpart, t_grav);
-
-      /* The super-cell's timestep task should unlock the send_ti task. */
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->send_grav, t_grav);
-    engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
@@ -1215,6 +1208,56 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
+
+void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
+				   struct cell *cj, struct task *t_ti) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Check if any of the gravity tasks are for the target node. */
+  for (l = ci->grav; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* Check whether instead any of the hydro tasks are for the target node. */
+  if (l == NULL)
+    for (l = ci->density; l != NULL; l = l->next)
+      if (l->t->ci->nodeID == nodeID ||
+	  (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+	break;
+
+  /* If found anything, attach send tasks. */
+  if (l != NULL) {
+
+    /* Create the tasks and their dependencies? */
+    if (t_ti == NULL) {
+
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                               6 * ci->tag + 2, 0, ci, cj);
+
+      /* The super-cell's timestep task should unlock the send_ti task. */
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
+    }
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->send_ti, t_ti);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_timestep(e, ci->progeny[k], cj, t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
 
 /**
  * @brief Add recv tasks to a hierarchy of cells.
@@ -1241,8 +1284,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                              0, c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
                               6 * c->tag + 1, 0, c, NULL);
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             6 * c->tag + 2, 0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    6 * c->tag + 3, 0, c, NULL);
@@ -1252,7 +1293,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   c->recv_xv = t_xv;
   c->recv_rho = t_rho;
   c->recv_gradient = t_gradient;
-  c->recv_ti = t_ti;
 
 /* Add dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
@@ -1276,7 +1316,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   }
   for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
@@ -1313,24 +1352,50 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                6 * c->tag + 4, 0, c, NULL);
-
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             6 * c->tag + 2, 0, c, NULL);
   }
 
   c->recv_grav = t_grav;
-  c->recv_ti = t_ti;
 
-  for (struct link *l = c->grav; l != NULL; l = l->next) {
+  for (struct link *l = c->grav; l != NULL; l = l->next)
     scheduler_addunlock(s, t_grav, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
-  }
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
+				   struct task *t_ti) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Have we reached a level where there are any self/pair tasks ? */
+  if (t_ti == NULL && (c->grav != NULL || c->density != NULL)) {
+    
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
+                             6 * c->tag + 2, 0, c, NULL);
+  }
+
+  c->recv_ti = t_ti;
+
+  for (struct link *l = c->grav; l != NULL; l = l->next)
+    scheduler_addunlock(s, l->t, t_ti);
+
+  for (struct link *l = c->force; l != NULL; l = l->next)
+    scheduler_addunlock(s, l->t, t_ti);
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_timestep(e, c->progeny[k], t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2904,6 +2969,12 @@ void engine_maketasks(struct engine *e) {
       /* Get a handle on the proxy. */
       struct proxy *p = &e->proxies[pid];
 
+      for (int k = 0; k < p->nr_cells_in; k++)
+	engine_addtasks_recv_timestep(e, p->cells_in[k], NULL);
+
+      for (int k = 0; k < p->nr_cells_out; k++)
+	engine_addtasks_send_timestep(e, p->cells_out[k], p->cells_in[0], NULL);
+      
       /* Loop through the proxy's incoming cells and add the
          recv tasks for the cells in the proxy that have a hydro connection. */
       if (e->policy & engine_policy_hydro)
