@@ -731,7 +731,7 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
       /* Scale to the METIS range. */
       double wscale = 1.0;
       if ((wmaxv - wminv) > 0.0) {
-         wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
+        wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
       }
       for (int k = 0; k < nr_cells; k++) {
         weights_v[k] = (weights_v[k] - wminv) * wscale + 1.0;
