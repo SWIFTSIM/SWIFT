@@ -244,10 +244,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
         /* Generate the ghost tasks. */
         c->ghost_in =
-            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+            scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
         c->ghost_out =
-            scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+            scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
         engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
 
@@ -3274,7 +3274,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Hydro ghost tasks ? */
-    else if (t->type == task_type_ghost || t->type == task_type_extra_ghost) {
+    else if (t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+	     t->type == task_type_ghost_in || t->type == task_type_ghost_out) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -3285,7 +3286,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level) {
+    else if (t->type == task_type_grav_top_level ||
+	     t->type == task_type_grav_ghost_in || 
+	     t->type == task_type_grav_ghost_out) {
       scheduler_activate(s, t);
     }
 
