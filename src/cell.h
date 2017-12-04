@@ -113,6 +113,11 @@ struct pcell {
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Cell ID (for debugging) */
+  int cellID;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -406,6 +411,9 @@ struct cell {
   char do_sub_sort;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Cell ID (for debugging) */
+  int cellID;
+
   /*! Last (integer) time the cell's sort arrays were updated. */
   integertime_t ti_sort;
 

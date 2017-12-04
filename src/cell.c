@@ -182,6 +182,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->gcount = c->gcount;
   pc->scount = c->scount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
+#ifdef SWIFT_DEBUG_CHECKS
+  pc->cellID = c->cellID;
+#endif
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -227,6 +230,9 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->gcount = pc->gcount;
   c->scount = pc->scount;
   c->tag = pc->tag;
+#ifdef SWIFT_DEBUG_CHECKS
+  c->cellID = pc->cellID;
+#endif
 
   /* Number of new cells created. */
   int count = 1;

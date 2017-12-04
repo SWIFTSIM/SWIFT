@@ -64,6 +64,9 @@ int space_subsize_pair = space_subsize_pair_default;
 int space_subsize_self = space_subsize_self_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_maxsize = space_maxsize_default;
+#ifdef SWIFT_DEBUG_CHECKS
+int last_cell_id;
+#endif
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.
@@ -463,7 +466,7 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_old;
           c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
-          if (s->gravity) c->multipole = &s->multipoles_top[cid];
+	  if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
     /* Be verbose about the change. */
@@ -2082,6 +2085,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      cp->cellID = last_cell_id++;
+#endif
     }
 
     /* Split the cell data. */
