@@ -466,7 +466,7 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_old;
           c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
-	  if (s->gravity) c->multipole = &s->multipoles_top[cid];
+          if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
     /* Be verbose about the change. */

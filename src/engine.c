@@ -3275,7 +3275,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Hydro ghost tasks ? */
     else if (t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-	     t->type == task_type_ghost_in || t->type == task_type_ghost_out) {
+             t->type == task_type_ghost_in || t->type == task_type_ghost_out) {
       if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -3287,8 +3287,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Periodic gravity stuff (Note this is not linked to a cell) ? */
     else if (t->type == task_type_grav_top_level ||
-	     t->type == task_type_grav_ghost_in || 
-	     t->type == task_type_grav_ghost_out) {
+             t->type == task_type_grav_ghost_in ||
+             t->type == task_type_grav_ghost_out) {
       scheduler_activate(s, t);
     }
 
@@ -3386,7 +3386,6 @@ void engine_print_task_counts(struct engine *e) {
       if (tasks[k].type == task_type_recv &&
           tasks[k].subtype == task_subtype_rho)
         count_recv_rho++;
-
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3405,9 +3404,11 @@ void engine_print_task_counts(struct engine *e) {
   /* message("nr_parts = %zu.", e->s->nr_parts); */
   /* message("nr_gparts = %zu.", e->s->nr_gparts); */
   /* message("nr_sparts = %zu.", e->s->nr_sparts); */
-  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d, send_xv=%d, recv_xv=%d, send_rho=%d, recv_rho=%d",
-  count_send_ti,
-          count_recv_ti, count_send_gpart, count_recv_gpart, count_send_xv, count_recv_xv, count_send_rho, count_recv_rho);
+  message(
+      "send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d, send_xv=%d, "
+      "recv_xv=%d, send_rho=%d, recv_rho=%d",
+      count_send_ti, count_recv_ti, count_send_gpart, count_recv_gpart,
+      count_send_xv, count_recv_xv, count_send_rho, count_recv_rho);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3903,7 +3904,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav ||
         t->type == task_type_grav_long_range ||
-        t->type == task_type_grav_ghost_in || t->type == task_type_grav_ghost_out ||
+        t->type == task_type_grav_ghost_in ||
+        t->type == task_type_grav_ghost_out ||
         t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
@@ -4192,7 +4194,7 @@ void engine_step(struct engine *e) {
             e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
-  
+
   message("\n");
 
   /* Move forward in time */

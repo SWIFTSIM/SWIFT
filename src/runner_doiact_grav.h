@@ -945,8 +945,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   const double max_distance2 = max_distance * max_distance;
 
   /* Anything to do here? */
-  if(!((cell_is_active(ci,e) && ci->nodeID == nodeID) ||
-       (cell_is_active(cj,e) && cj->nodeID == nodeID)))
+  if (!((cell_is_active(ci, e) && ci->nodeID == nodeID) ||
+        (cell_is_active(cj, e) && cj->nodeID == nodeID)))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
