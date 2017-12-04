@@ -935,6 +935,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
+  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -942,6 +943,11 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
+
+  /* Anything to do here? */
+  if(!((cell_is_active(ci,e) && ci->nodeID == nodeID) ||
+       (cell_is_active(cj,e) && cj->nodeID == nodeID)))
+    return;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -962,9 +968,6 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
   TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Recover the multipole information */
   struct gravity_tensors *const multi_i = ci->multipole;
