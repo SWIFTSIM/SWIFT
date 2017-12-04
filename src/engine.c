@@ -4492,11 +4492,6 @@ void engine_reconstruct_multipoles(struct engine *e) {
             clocks_getunit());
 }
 
-int count_in_hydro;
-int count_out_hydro;
-int count_in_grav;
-int count_out_grav;
-
 /**
  * @brief Create and fill the proxies.
  *
@@ -4669,28 +4664,6 @@ void engine_makeproxies(struct engine *e) {
       }
     }
   }
-
-  count_in_hydro = 0;
-  count_out_hydro = 0;
-  count_in_grav = 0;
-  count_out_grav = 0;
-  for (int pid = 0; pid < e->nr_proxies; pid++) {
-
-    /* Get a handle on the proxy. */
-    struct proxy *p = &e->proxies[pid];
-
-    for (int k = 0; k < p->nr_cells_in; k++) {
-      if (p->cells_in_type[k] & proxy_cell_type_hydro) ++count_in_hydro;
-      if (p->cells_in_type[k] & proxy_cell_type_gravity) ++count_in_grav;
-    }
-    for (int k = 0; k < p->nr_cells_out; k++) {
-      if (p->cells_out_type[k] & proxy_cell_type_hydro) ++count_out_hydro;
-      if (p->cells_out_type[k] & proxy_cell_type_gravity) ++count_out_grav;
-    }
-  }
-
-  message("in hydro: %d out hydro: %d", count_in_hydro, count_out_hydro);
-  message("in grav: %d out grav: %d", count_in_grav, count_out_grav);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
