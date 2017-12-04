@@ -217,6 +217,18 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
         /* Write to the ffile */
         fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+
+	/* Change style for MPI communications */
+	if(ta->type == task_type_send || ta->type == task_type_recv)
+	  fprintf(f, "\t %s [shape = box];\n", ta_name);
+	if(tb->type == task_type_send || tb->type == task_type_recv)
+	  fprintf(f, "\t %s [shape = box];\n", tb_name);
+
+	/* Change colour of implicit tasks */
+	if(ta->implicit)
+	  fprintf(f, "\t %s [style = filled];\n\t %s [color = grey];\n", ta_name, ta_name);
+	if(tb->implicit)
+	  fprintf(f, "\t %s [style = filled];\n\t %s [color = grey];\n", tb_name, tb_name);
       }
     }
   }
