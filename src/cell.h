@@ -227,7 +227,7 @@ struct cell {
   struct task *timestep;
 
   /*! Task linking the FFT mesh to the rest of gravity tasks */
-  struct task *grav_ghost[2];
+  struct task *grav_ghost_in, *grav_ghost_out;
 
   /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;

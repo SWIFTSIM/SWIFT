@@ -826,7 +826,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_top_level ||
-               t->type == task_type_grav_ghost) {
+               t->type == task_type_grav_ghost_in || 
+	       t->type == task_type_grav_ghost_out) {
       /* For future use */
     } else {
       error("Unexpected task sub-type");
@@ -1321,7 +1322,8 @@ void scheduler_start(struct scheduler *s) {
 
       /* Don't check the FFT task */
       if (t->type == task_type_grav_top_level ||
-          t->type == task_type_grav_ghost)
+          t->type == task_type_grav_ghost_in ||
+	  t->type == task_type_grav_ghost_out)
         continue;
 
       if (ci == NULL && cj == NULL) {

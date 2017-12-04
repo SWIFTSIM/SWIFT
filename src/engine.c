@@ -232,8 +232,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
-        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost[0]);
-        if (periodic) scheduler_addunlock(s, c->grav_ghost[0], c->grav_down);
+        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
+        if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->kick2);
@@ -2150,8 +2150,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
     if (ghost_id > n_ghosts) error("Invalid ghost_id");
     if (periodic) {
-      ci->grav_ghost[0] = ghosts[2 * ghost_id + 0];
-      ci->grav_ghost[1] = ghosts[2 * ghost_id + 1];
+      ci->grav_ghost_in = ghosts[2 * ghost_id + 0];
+      ci->grav_ghost_out = ghosts[2 * ghost_id + 1];
     }
 
     /* Recover the multipole information */
@@ -2236,9 +2236,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     /* Make the ghosts implicit and add the dependencies */
     for (int n = 0; n < n_ghosts / 2; ++n) {
       ghosts[2 * n + 0] = scheduler_addtask(
-          sched, task_type_grav_ghost, task_subtype_none, 0, 1, NULL, NULL);
+          sched, task_type_grav_ghost_in, task_subtype_none, 0, 1, NULL, NULL);
       ghosts[2 * n + 1] = scheduler_addtask(
-          sched, task_type_grav_ghost, task_subtype_none, 0, 1, NULL, NULL);
+          sched, task_type_grav_ghost_out, task_subtype_none, 0, 1, NULL, NULL);
       scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
       scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
     }
@@ -2254,10 +2254,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
     for (int i = 0; i < s->nr_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank &&
-          (c->grav_ghost[0] == NULL || c->grav_ghost[0] == NULL))
+          (c->grav_ghost_in == NULL || c->grav_ghost_out == NULL))
         error("Invalid gravity_ghost for local cell");
       if (c->nodeID != engine_rank &&
-          (c->grav_ghost[0] != NULL || c->grav_ghost[0] != NULL))
+          (c->grav_ghost_in != NULL || c->grav_ghost_out != NULL))
         error("Invalid gravity_ghost for foreign cell");
     }
 #endif
@@ -3900,7 +3900,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav ||
         t->type == task_type_grav_long_range ||
-        t->type == task_type_grav_ghost ||
+        t->type == task_type_grav_ghost_in || t->type == task_type_grav_ghost_out ||
         t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
