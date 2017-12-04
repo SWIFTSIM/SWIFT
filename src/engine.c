@@ -1290,30 +1290,21 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   c->recv_rho = t_rho;
   c->recv_gradient = t_gradient;
 
-/* Add dependencies. */
-#ifdef EXTRA_HYDRO_LOOP
-  for (struct link *l = c->density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
+  /* Add dependencies. */
+  if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
+
+  for (struct link *l = c->density; l != NULL; l = l->next)
     scheduler_addunlock(s, l->t, t_rho);
-  }
+#ifdef EXTRA_HYDRO_LOOP
   for (struct link *l = c->gradient; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
     scheduler_addunlock(s, l->t, t_gradient);
   }
-  for (struct link *l = c->force; l != NULL; l = l->next) {
+  for (struct link *l = c->force; l != NULL; l = l->next)
     scheduler_addunlock(s, t_gradient, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
-  }
-  if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #else
-  for (struct link *l = c->density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
-    scheduler_addunlock(s, l->t, t_rho);
-  }
-  for (struct link *l = c->force; l != NULL; l = l->next) {
+  for (struct link *l = c->force; l != NULL; l = l->next)
     scheduler_addunlock(s, t_rho, l->t);
-  }
-  if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 #endif
 
   /* Recurse? */
@@ -3350,10 +3341,14 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
-  /* int count_send_ti = 0; */
-  /* int count_recv_ti = 0; */
-  /* int count_send_gpart = 0; */
-  /* int count_recv_gpart = 0; */
+  int count_send_ti = 0;
+  int count_recv_ti = 0;
+  int count_send_gpart = 0;
+  int count_recv_gpart = 0;
+  int count_send_xv = 0;
+  int count_recv_xv = 0;
+  int count_send_rho = 0;
+  int count_recv_rho = 0;
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
@@ -3364,18 +3359,31 @@ void engine_print_task_counts(struct engine *e) {
     else {
       counts[(int)tasks[k].type] += 1;
 
-      /* if (tasks[k].type == task_type_send && */
-      /*     tasks[k].subtype == task_subtype_tend) */
-      /*   count_send_ti++; */
-      /* if (tasks[k].type == task_type_recv && */
-      /*     tasks[k].subtype == task_subtype_tend) */
-      /*   count_recv_ti++; */
-      /* if (tasks[k].type == task_type_send && */
-      /*     tasks[k].subtype == task_subtype_gpart) */
-      /*   count_send_gpart++; */
-      /* if (tasks[k].type == task_type_recv && */
-      /*     tasks[k].subtype == task_subtype_gpart) */
-      /*   count_recv_gpart++; */
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_tend)
+        count_send_ti++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_tend)
+        count_recv_ti++;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_gpart)
+        count_send_gpart++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_gpart)
+        count_recv_gpart++;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_xv)
+        count_send_xv++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_xv)
+        count_recv_xv++;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_rho)
+        count_send_rho++;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_rho)
+        count_recv_rho++;
+
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3391,12 +3399,12 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-  /* message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d",
-   * count_send_ti, */
-  /*         count_recv_ti, count_send_gpart, count_recv_gpart); */
+  /* message("nr_parts = %zu.", e->s->nr_parts); */
+  /* message("nr_gparts = %zu.", e->s->nr_gparts); */
+  /* message("nr_sparts = %zu.", e->s->nr_sparts); */
+  message("send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d, send_xv=%d, recv_xv=%d, send_rho=%d, recv_rho=%d",
+  count_send_ti,
+          count_recv_ti, count_send_gpart, count_recv_gpart, count_send_xv, count_recv_xv, count_send_rho, count_recv_rho);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4181,6 +4189,8 @@ void engine_step(struct engine *e) {
             e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
+  
+  message("\n");
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -4213,7 +4223,7 @@ void engine_step(struct engine *e) {
   }
 
   /* Print the number of active tasks ? */
-  if (e->verbose) engine_print_task_counts(e);
+  /*if (e->verbose)*/ engine_print_task_counts(e);
 
 /* Dump local cells and active particle counts. */
 /* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
@@ -4338,8 +4348,7 @@ void engine_unskip(struct engine *e) {
   /* And the top level gravity FFT one when periodicity is on.*/
   if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
 
-    /* But only if there are other tasks (i.e. something happens on this node)
-     */
+    /* Only if there are other tasks (i.e. something happens on this node) */
     if (e->sched.active_count > 0)
       scheduler_activate(&e->sched, e->s->grav_top_level);
   }
