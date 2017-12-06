@@ -40,11 +40,6 @@
 /* Local headers. */
 #include "error.h"
 
-extern int count_in_hydro;
-extern int count_out_hydro;
-extern int count_in_grav;
-extern int count_out_grav;
-
 /**
  * @brief Exchange cells with a remote node.
  *

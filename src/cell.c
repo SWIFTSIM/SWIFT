@@ -1992,8 +1992,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, ci->recv_xv);
           if (ci_active) {
             scheduler_activate(s, ci->recv_rho);
-	    if(e->step == 32)
-	      message("recv_rho: cj->cellID=%ld ci->cellID=%ld", cj-e->s->cells_top, ci-e->s->cells_top);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, ci->recv_gradient);
@@ -2016,8 +2014,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
             scheduler_activate_send(s, cj->send_rho, ci->nodeID);
-	    //if(e->step == 32)
-	    //  message("send_rho: cj->cellID=%ld ci->cellID=%ld", cj-e->s->cells_top, ci-e->s->cells_top);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
@@ -2035,9 +2031,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, cj->recv_xv);
           if (cj_active) {
             scheduler_activate(s, cj->recv_rho);
-	    if(e->step == 32)
-	      message("recv_rho: ci->cellID=%ld cj->cellID=%ld", ci-e->s->cells_top, cj-e->s->cells_top);
-
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, cj->recv_gradient);
@@ -2061,8 +2054,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (ci_active) {
 
             scheduler_activate_send(s, ci->send_rho, cj->nodeID);
-	    //if(e->step == 32)
-	    //  message("send_rho: ci->cellID=%ld cj->cellID=%ld", ci-e->s->cells_top, cj-e->s->cells_top);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate_send(s, ci->send_gradient, cj->nodeID);

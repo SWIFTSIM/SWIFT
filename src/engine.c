@@ -1134,7 +1134,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      scheduler_addunlock(s, t_gradient, ci->super_hydro->kick2);
+      scheduler_addunlock(s, t_gradient, ci->super->kick2);
 
       scheduler_addunlock(s, ci->super_hydro->extra_ghost, t_gradient);
 
@@ -2625,18 +2625,11 @@ static inline void engine_make_hydro_loops_dependencies(
 
   /* density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop  */
+  scheduler_addunlock(sched, c->super_hydro->sorts,  density);
   scheduler_addunlock(sched, density, c->super_hydro->ghost_in);
   scheduler_addunlock(sched, c->super_hydro->ghost_out, gradient);
   scheduler_addunlock(sched, gradient, c->super_hydro->extra_ghost);
   scheduler_addunlock(sched, c->super_hydro->extra_ghost, force);
-
-  if (with_cooling) {
-    /* force loop --> cooling (--> kick2)  */
-    scheduler_addunlock(sched, force, c->super_hydro->cooling);
-  } else {
-    /* force loop --> kick2 */
-    scheduler_addunlock(sched, force, c->super_hydro->kick2);
-  }
 }
 
 #else
@@ -2655,8 +2648,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *force,
                                                         struct cell *c,
                                                         int with_cooling) {
-  /* sort --> density loop --> ghost --> force loop */
-  scheduler_addunlock(sched, c->super_hydro->sorts,  density);
+  /* density loop --> ghost --> force loop */
   scheduler_addunlock(sched, density, c->super_hydro->ghost_in);
   scheduler_addunlock(sched, c->super_hydro->ghost_out, force);
 }
@@ -2730,9 +2722,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all density tasks depend on the drift and the sorts. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
+	scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2792,6 +2786,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2841,9 +2836,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all density tasks depend on the drift. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
+	scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -4226,8 +4223,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %lld %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step,
-           e->ti_current, e->time, e->timeStep, e->updates, e->g_updates,
+    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step,
+           e->time, e->timeStep, e->updates, e->g_updates,
            e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
@@ -4247,14 +4244,10 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
 
-  //MPI_Barrier(MPI_COMM_WORLD);
-
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  //engine_print_task_counts(e);
-
-  //MPI_Barrier(MPI_COMM_WORLD);
+  engine_print_task_counts(e);
 
 #ifdef WITH_MPI
   /* Repartition the space amongst the nodes? */
