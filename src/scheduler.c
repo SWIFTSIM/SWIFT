@@ -220,16 +220,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
         /* Change style for MPI communications */
         if (ta->type == task_type_send || ta->type == task_type_recv)
-          fprintf(f, "\t %s [shape = box];\n", ta_name);
+          fprintf(f, "\t %s [shape = diamond];\n", ta_name);
         if (tb->type == task_type_send || tb->type == task_type_recv)
-          fprintf(f, "\t %s [shape = box];\n", tb_name);
+          fprintf(f, "\t %s [shape = diamond];\n", tb_name);
 
         /* Change colour of implicit tasks */
         if (ta->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = grey];\n",
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
                   ta_name, ta_name);
         if (tb->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = grey];\n",
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
                   tb_name, tb_name);
       }
     }
@@ -976,21 +976,21 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*   /\* Verify that there are no duplicate unlocks. *\/ */
-/*   for (int k = 0; k < s->nr_tasks; k++) { */
-/*     struct task *t = &s->tasks[k]; */
-/*     for (int i = 0; i < t->nr_unlock_tasks; i++) { */
-/*       for (int j = i + 1; j < t->nr_unlock_tasks; j++) { */
-/*         if (t->unlock_tasks[i] == t->unlock_tasks[j]) */
-/*           error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s", */
-/*                 taskID_names[t->type], subtaskID_names[t->subtype], */
-/*                 taskID_names[t->unlock_tasks[i]->type], */
-/*                 subtaskID_names[t->unlock_tasks[i]->subtype]); */
-/*       } */
-/*     } */
-/*   } */
-/* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that there are no duplicate unlocks. */
+  for (int k = 0; k < s->nr_tasks; k++) {
+    struct task *t = &s->tasks[k];
+    for (int i = 0; i < t->nr_unlock_tasks; i++) {
+      for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
+        if (t->unlock_tasks[i] == t->unlock_tasks[j])
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                taskID_names[t->unlock_tasks[i]->type],
+                subtaskID_names[t->unlock_tasks[i]->subtype]);
+      }
+    }
+  }
+#endif
 
   /* Clean up. */
   free(counts);

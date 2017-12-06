@@ -323,9 +323,12 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
-    engine_make_hierarchical_tasks_common(e,c);
+    /* Make the common tasks (time integration) */
+    engine_make_hierarchical_tasks_common(e, c);
+    /* Add the hydro stuff */
     if(is_with_hydro)
       engine_make_hierarchical_tasks_hydro(e, c);
+    /* And the gravity stuff */
     if(is_with_self_gravity || is_with_external_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
   }
@@ -2652,17 +2655,10 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *force,
                                                         struct cell *c,
                                                         int with_cooling) {
-  /* density loop --> ghost --> force loop */
+  /* sort --> density loop --> ghost --> force loop */
+  scheduler_addunlock(sched, c->super_hydro->sorts,  density);
   scheduler_addunlock(sched, density, c->super_hydro->ghost_in);
   scheduler_addunlock(sched, c->super_hydro->ghost_out, force);
-
-  if (with_cooling) {
-    /* force loop --> cooling (--> kick2)  */
-    scheduler_addunlock(sched, force, c->super_hydro->cooling);
-  } else {
-    /* force loop --> kick2 */
-    scheduler_addunlock(sched, force, c->super->kick2);
-  }
 }
 
 #endif
@@ -2724,6 +2720,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
+      scheduler_addunlock(sched, t2, t->ci->super->kick2);
 #endif
     }
 
@@ -2733,11 +2730,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all density tasks depend on the drift and the sorts. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
-        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2778,9 +2773,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
+	scheduler_addunlock(sched, t2, t->ci->super->kick2);
       }
-      if (t->cj->nodeID == nodeID && t->ci->super_hydro != t->cj->super_hydro) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
+      if (t->cj->nodeID == nodeID) { 
+	if(t->ci->super_hydro != t->cj->super_hydro)
+	  engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
+	if(t->ci->super != t->cj->super)
+	  scheduler_addunlock(sched, t2, t->cj->super->kick2);
       }
 
 #endif
@@ -2793,7 +2792,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -2829,7 +2827,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
+	scheduler_addunlock(sched, t2, t->ci->super->kick2);
       }
+      else
+	error("oo");
 #endif
     }
 
@@ -2840,11 +2841,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all density tasks depend on the drift. */
       if (t->ci->nodeID == engine_rank)
         scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
-        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2888,9 +2887,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
+	scheduler_addunlock(sched, t2, t->ci->super->kick2);
       }
-      if (t->cj->nodeID == nodeID && t->ci->super_hydro != t->cj->super_hydro) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
+      if (t->cj->nodeID == nodeID) {
+	if(t->ci->super_hydro != t->cj->super_hydro)
+	  engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
+	if(t->ci->super != t->cj->super)
+	  scheduler_addunlock(sched, t2, t->cj->super->kick2);
       }
 #endif
     }
@@ -4234,8 +4237,6 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
-  message("\n");
-
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -4251,7 +4252,7 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  engine_print_task_counts(e);
+  //engine_print_task_counts(e);
 
   //MPI_Barrier(MPI_COMM_WORLD);
 
