@@ -1391,13 +1391,13 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 
   /* Set the do_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
-  if (c == c->super) {
+  if (c == c->super_hydro) {
     scheduler_activate(s, c->drift_part);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_sub_drift; parent = parent->parent) {
       parent->do_sub_drift = 1;
-      if (parent == c->super) {
+      if (parent == c->super_hydro) {
         scheduler_activate(s, parent->drift_part);
         break;
       }
@@ -1418,14 +1418,14 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 
   /* Set the do_grav_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
-  if (c == c->super) {
+  if (c == c->super_gravity) {
     scheduler_activate(s, c->drift_gpart);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_grav_sub_drift;
          parent = parent->parent) {
       parent->do_grav_sub_drift = 1;
-      if (parent == c->super) {
+      if (parent == c->super_gravity) {
         scheduler_activate(s, parent->drift_gpart);
         break;
       }
@@ -1437,14 +1437,14 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
  * @brief Activate the sorts up a cell hierarchy.
  */
 void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
-  if (c == c->super) {
+  if (c == c->super_hydro) {
     scheduler_activate(s, c->sorts);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
       parent->do_sub_sort = 1;
-      if (parent == c->super) {
+      if (parent == c->super_hydro) {
         scheduler_activate(s, parent->sorts);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
@@ -1992,6 +1992,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, ci->recv_xv);
           if (ci_active) {
             scheduler_activate(s, ci->recv_rho);
+	    if(e->step == 32)
+	      message("recv_rho: cj->cellID=%ld ci->cellID=%ld", cj-e->s->cells_top, ci-e->s->cells_top);
+
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, ci->recv_gradient);
 #endif
@@ -2013,6 +2016,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
             scheduler_activate_send(s, cj->send_rho, ci->nodeID);
+	    //if(e->step == 32)
+	    //  message("send_rho: cj->cellID=%ld ci->cellID=%ld", cj-e->s->cells_top, ci-e->s->cells_top);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
@@ -2030,6 +2035,10 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, cj->recv_xv);
           if (cj_active) {
             scheduler_activate(s, cj->recv_rho);
+	    if(e->step == 32)
+	      message("recv_rho: ci->cellID=%ld cj->cellID=%ld", ci-e->s->cells_top, cj-e->s->cells_top);
+
+
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, cj->recv_gradient);
 #endif
@@ -2052,6 +2061,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
           if (ci_active) {
 
             scheduler_activate_send(s, ci->send_rho, cj->nodeID);
+	    //if(e->step == 32)
+	    //  message("send_rho: ci->cellID=%ld cj->cellID=%ld", ci-e->s->cells_top, cj-e->s->cells_top);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate_send(s, ci->send_gradient, cj->nodeID);
@@ -2194,6 +2205,46 @@ void cell_set_super(struct cell *c, struct cell *super) {
 }
 
 /**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ */
+void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_hydro == NULL && c->density != NULL) super_hydro = c;
+
+  /* Set the super-cell */
+  c->super_hydro = super_hydro;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_set_super_hydro(c->progeny[k], super_hydro);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ */
+void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_gravity == NULL && c->grav != NULL) super_gravity = c;
+
+  /* Set the super-cell */
+  c->super_gravity = super_gravity;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_set_super_gravity(c->progeny[k], super_gravity);
+}
+
+/**
  * @brief Mapper function to set the super pointer of the cells.
  *
  * @param map_data The top-level cells.
@@ -2201,8 +2252,15 @@ void cell_set_super(struct cell *c, struct cell *super) {
  * @param extra_data Unused parameter.
  */
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
+
+  const struct engine *e = (const struct engine*) extra_data;
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+    if(e->policy & engine_policy_hydro)
+      cell_set_super_hydro(c, NULL);
+    if(e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
+      cell_set_super_gravity(c, NULL);
     cell_set_super(c, NULL);
   }
 }
@@ -2216,7 +2274,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
-
+  
 #ifdef WITH_MPI
   if (c->timestep != NULL || c->recv_ti != NULL) return 1;
 #else

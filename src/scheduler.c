@@ -976,21 +976,21 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that there are no duplicate unlocks. */
-  for (int k = 0; k < s->nr_tasks; k++) {
-    struct task *t = &s->tasks[k];
-    for (int i = 0; i < t->nr_unlock_tasks; i++) {
-      for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
-        if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
-                taskID_names[t->type], subtaskID_names[t->subtype],
-                taskID_names[t->unlock_tasks[i]->type],
-                subtaskID_names[t->unlock_tasks[i]->subtype]);
-      }
-    }
-  }
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   /\* Verify that there are no duplicate unlocks. *\/ */
+/*   for (int k = 0; k < s->nr_tasks; k++) { */
+/*     struct task *t = &s->tasks[k]; */
+/*     for (int i = 0; i < t->nr_unlock_tasks; i++) { */
+/*       for (int j = i + 1; j < t->nr_unlock_tasks; j++) { */
+/*         if (t->unlock_tasks[i] == t->unlock_tasks[j]) */
+/*           error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s", */
+/*                 taskID_names[t->type], subtaskID_names[t->subtype], */
+/*                 taskID_names[t->unlock_tasks[i]->type], */
+/*                 subtaskID_names[t->unlock_tasks[i]->subtype]); */
+/*       } */
+/*     } */
+/*   } */
+/* #endif */
 
   /* Clean up. */
   free(counts);
@@ -1174,10 +1174,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
       case task_type_ghost:
-        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
         break;
       case task_type_extra_ghost:
-        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
         break;
       case task_type_drift_part:
         cost = wscale * t->ci->count;
@@ -1427,12 +1427,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
+	if(t->subtype == task_subtype_grav)
+	  qid = t->ci->super_gravity->owner;
+	else
+	  qid = t->ci->super_hydro->owner;
+	break;
       case task_type_sort:
       case task_type_ghost:
+      case task_type_drift_part:
+        qid = t->ci->super_hydro->owner;
+        break;
+      case task_type_drift_gpart:
+        qid = t->ci->super_gravity->owner;
+        break;
       case task_type_kick1:
       case task_type_kick2:
-      case task_type_drift_part:
-      case task_type_drift_gpart:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;

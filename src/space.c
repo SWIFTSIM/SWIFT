@@ -233,6 +233,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
+    c->super_hydro = c;
+    c->super_gravity = c;
     c->parts = NULL;
     c->xparts = NULL;
     c->gparts = NULL;
@@ -462,7 +464,9 @@ void space_regrid(struct space *s, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->scount = 0;
-          c->super = c;
+	  c->super = c;
+          c->super_hydro = c;
+          c->super_gravity = c;
           c->ti_old_part = ti_old;
           c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
@@ -2085,6 +2089,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
+      cp->super_hydro = NULL;
+      cp->super_gravity = NULL;
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
