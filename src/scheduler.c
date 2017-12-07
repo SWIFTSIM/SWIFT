@@ -150,7 +150,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Write header */
   fprintf(f, "digraph task_dep {\n");
-  fprintf(f, "label=\"Task dependencies for SWIFT %s\"", git_revision());
+  fprintf(f, "label=\"Task dependencies for SWIFT %s\";\n", git_revision());
   fprintf(f, "\t compound=true;\n");
   fprintf(f, "\t ratio=0.66;\n");
   fprintf(f, "\t node[nodesep=0.15];\n");
@@ -218,12 +218,6 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         /* Write to the ffile */
         fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
 
-        /* Change style for MPI communications */
-        if (ta->type == task_type_send || ta->type == task_type_recv)
-          fprintf(f, "\t %s [shape = diamond];\n", ta_name);
-        if (tb->type == task_type_send || tb->type == task_type_recv)
-          fprintf(f, "\t %s [shape = diamond];\n", tb_name);
-
         /* Change colour of implicit tasks */
         if (ta->implicit)
           fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
@@ -234,6 +228,70 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
       }
     }
   }
+
+  int density_cluster[4] = {0};
+  int force_cluster[4] = {0};
+  int gravity_cluster[4] = {0};
+
+  /* Modify the style of some tasks on the plot */
+  for (int type = 0; type < task_type_count; ++type) {
+
+    for (int subtype = 0; subtype < task_subtype_count; ++subtype) {
+
+      const int ind = 2 * (type * task_subtype_count + subtype) * max_nber_dep;
+
+      /* Does this task/sub-task exist? */
+      if (table[ind] != -1) {
+
+        /* Make MPI tasks a different shape */
+        if (type == task_type_send || type == task_type_recv)
+          fprintf(f, "\t \"%s %s\" [shape = diamond];\n", taskID_names[type],
+                  subtaskID_names[subtype]);
+
+        for (int k = 0; k < 4; ++k) {
+          if (type == task_type_self + k && subtype == task_subtype_density)
+            density_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_force)
+            force_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_grav)
+            gravity_cluster[k] = 1;
+        }
+        if (type == task_type_grav_top_level) gravity_cluster[2] = 1;
+        if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
+      }
+    }
+  }
+
+  /* Make a cluster for the density tasks */
+  fprintf(f, "\t subgraph cluster0{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (density_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_density]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the force tasks */
+  fprintf(f, "\t subgraph cluster1{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (force_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_force]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gravity tasks */
+  fprintf(f, "\t subgraph cluster2{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 2; ++k)
+    if (gravity_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_grav]);
+  if (gravity_cluster[2])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_top_level]);
+  if (gravity_cluster[3])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
+  fprintf(f, "\t};\n");
 
   /* Be clean */
   fprintf(f, "}");
