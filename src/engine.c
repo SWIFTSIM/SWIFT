@@ -154,6 +154,18 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
   }
 }
 
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- timestep version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
 void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
@@ -191,7 +203,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
 /**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
- * i.e. all the O(Npart) tasks.
+ * i.e. all the O(Npart) tasks -- hydro version
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -211,46 +223,44 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
   if (c->super_hydro == c) {
 
     /* Add the sort task. */
-    c->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0,
-				 c, NULL);
-    
+    c->sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-      
+
       /* Add the drift task. */
-        c->drift_part = scheduler_addtask(s, task_type_drift_part,
-                                          task_subtype_none, 0, 0, c, NULL);
+      c->drift_part = scheduler_addtask(s, task_type_drift_part,
+                                        task_subtype_none, 0, 0, c, NULL);
 
       /* Generate the ghost tasks. */
       c->ghost_in =
-	scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
-			  /* implicit = */ 1, c, NULL);
+          scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
+                            /* implicit = */ 1, c, NULL);
       c->ghost_out =
-	scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0,
-			  /* implicit = */ 1, c, NULL);
+          scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0,
+                            /* implicit = */ 1, c, NULL);
       engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
-					 task_subtype_none, 0, 0, c, NULL);
+                                         task_subtype_none, 0, 0, c, NULL);
 #endif
-
 
       /* Cooling task */
       if (is_with_cooling) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL);
-	
+
         scheduler_addunlock(s, c->cooling, c->super->kick2);
       }
-      
+
       /* add source terms */
       if (is_with_sourceterms) {
         c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
                                            task_subtype_none, 0, 0, c, NULL);
       }
-      
     }
 
   } else { /* We are above the super-cell so need to go deeper */
@@ -263,7 +273,18 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
   }
 }
 
-
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- gravity version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
 void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
@@ -277,29 +298,27 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
     if (c->nodeID == e->nodeID) {
 
       c->drift_gpart = scheduler_addtask(s, task_type_drift_gpart,
-					 task_subtype_none, 0, 0, c, NULL);
+                                         task_subtype_none, 0, 0, c, NULL);
 
+      if (is_self_gravity) {
 
-      if(is_self_gravity) {
+        /* Initialisation of the multipoles */
+        c->init_grav = scheduler_addtask(s, task_type_init_grav,
+                                         task_subtype_none, 0, 0, c, NULL);
 
-      /* Initialisation of the multipoles */
-      c->init_grav = scheduler_addtask(s, task_type_init_grav,
-				       task_subtype_none, 0, 0, c, NULL);
-      
-      /* Gravity non-neighbouring pm calculations */
-      c->grav_long_range = scheduler_addtask(s, task_type_grav_long_range, 
-					     task_subtype_none, 0, 0, c, NULL);
-      
-      /* Gravity recursive down-pass */
-      c->grav_down = scheduler_addtask(s, task_type_grav_down,
-				       task_subtype_none, 0, 0, c, NULL);
-      
-      if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
-      if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
-      scheduler_addunlock(s, c->init_grav, c->grav_long_range);
-      scheduler_addunlock(s, c->grav_long_range, c->grav_down);
-      scheduler_addunlock(s, c->grav_down, c->super->kick2);
+        /* Gravity non-neighbouring pm calculations */
+        c->grav_long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
+        /* Gravity recursive down-pass */
+        c->grav_down = scheduler_addtask(s, task_type_grav_down,
+                                         task_subtype_none, 0, 0, c, NULL);
+
+        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
+        if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
+        scheduler_addunlock(s, c->init_grav, c->grav_long_range);
+        scheduler_addunlock(s, c->grav_long_range, c->grav_down);
+        scheduler_addunlock(s, c->grav_down, c->super->kick2);
       }
     }
 
@@ -313,23 +332,22 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 }
 
-
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
   struct engine *e = (struct engine *)extra_data;
   const int is_with_hydro = (e->policy & engine_policy_hydro);
   const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
-  const int is_with_external_gravity = (e->policy & engine_policy_external_gravity);
+  const int is_with_external_gravity =
+      (e->policy & engine_policy_external_gravity);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if(is_with_hydro)
-      engine_make_hierarchical_tasks_hydro(e, c);
+    if (is_with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
     /* And the gravity stuff */
-    if(is_with_self_gravity || is_with_external_gravity)
+    if (is_with_self_gravity || is_with_external_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
   }
 }
@@ -1138,7 +1156,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
       scheduler_addunlock(s, ci->super_hydro->extra_ghost, t_gradient);
 
-      /* The send_rho task should unlock the super_hydro-cell's extra_ghost task. */
+      /* The send_rho task should unlock the super_hydro-cell's extra_ghost
+       * task. */
       scheduler_addunlock(s, t_rho, ci->super_hydro->extra_ghost);
 
       /* The send_rho task depends on the cell's ghost task. */
@@ -2568,7 +2587,8 @@ void engine_link_gravity_tasks(struct engine *e) {
         engine_make_self_gravity_dependencies(sched, t, t->ci);
       }
 
-      if (t->cj->nodeID == nodeID && t->ci->super_gravity != t->cj->super_gravity) {
+      if (t->cj->nodeID == nodeID &&
+          t->ci->super_gravity != t->cj->super_gravity) {
 
         engine_make_self_gravity_dependencies(sched, t, t->cj);
       }
@@ -2599,7 +2619,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         engine_make_self_gravity_dependencies(sched, t, t->ci);
       }
-      if (t->cj->nodeID == nodeID && t->ci->super_gravity != t->cj->super_gravity) {
+      if (t->cj->nodeID == nodeID &&
+          t->ci->super_gravity != t->cj->super_gravity) {
 
         engine_make_self_gravity_dependencies(sched, t, t->cj);
       }
@@ -2625,7 +2646,7 @@ static inline void engine_make_hydro_loops_dependencies(
 
   /* density loop --> ghost --> gradient loop --> extra_ghost */
   /* extra_ghost --> force loop  */
-  scheduler_addunlock(sched, c->super_hydro->sorts,  density);
+  scheduler_addunlock(sched, c->super_hydro->sorts, density);
   scheduler_addunlock(sched, density, c->super_hydro->ghost_in);
   scheduler_addunlock(sched, c->super_hydro->ghost_out, gradient);
   scheduler_addunlock(sched, gradient, c->super_hydro->extra_ghost);
@@ -2726,7 +2747,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
-	scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
+        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2767,13 +2788,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-	scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->kick2);
       }
-      if (t->cj->nodeID == nodeID) { 
-	if(t->ci->super_hydro != t->cj->super_hydro)
-	  engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
-	if(t->ci->super != t->cj->super)
-	  scheduler_addunlock(sched, t2, t->cj->super->kick2);
+      if (t->cj->nodeID == nodeID) {
+        if (t->ci->super_hydro != t->cj->super_hydro)
+          engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
+                                               with_cooling);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t2, t->cj->super->kick2);
       }
 
 #endif
@@ -2822,10 +2844,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-	scheduler_addunlock(sched, t2, t->ci->super->kick2);
-      }
-      else
-	error("oo");
+        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+      } else
+        error("oo");
 #endif
     }
 
@@ -2840,7 +2861,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->super_hydro != t->cj->super_hydro) {
         if (t->cj->nodeID == engine_rank)
           scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
-	scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
+        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2884,13 +2905,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-	scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->kick2);
       }
       if (t->cj->nodeID == nodeID) {
-	if(t->ci->super_hydro != t->cj->super_hydro)
-	  engine_make_hydro_loops_dependencies(sched, t, t2, t->cj, with_cooling);
-	if(t->ci->super != t->cj->super)
-	  scheduler_addunlock(sched, t2, t->cj->super->kick2);
+        if (t->ci->super_hydro != t->cj->super_hydro)
+          engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
+                                               with_cooling);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t2, t->cj->super->kick2);
       }
 #endif
     }
@@ -3577,8 +3599,6 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
-  message("REBUILD");
-
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
@@ -3615,7 +3635,7 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
     error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
-  // if (e->verbose) engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
@@ -4223,9 +4243,9 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step,
-           e->time, e->timeStep, e->updates, e->g_updates,
-           e->s_updates, e->wallclock_time, e->step_props);
+    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->s_updates,
+           e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
@@ -4246,8 +4266,6 @@ void engine_step(struct engine *e) {
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
-
-  engine_print_task_counts(e);
 
 #ifdef WITH_MPI
   /* Repartition the space amongst the nodes? */

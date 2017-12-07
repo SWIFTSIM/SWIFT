@@ -2199,7 +2199,8 @@ void cell_set_super(struct cell *c, struct cell *super) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of the
+ * tree.
  */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 
@@ -2212,14 +2213,16 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_set_super_hydro(c->progeny[k], super_hydro);
+      if (c->progeny[k] != NULL)
+        cell_set_super_hydro(c->progeny[k], super_hydro);
 }
 
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ * @param super_gravity Pointer to the deepest cell with tasks in this part of
+ * the tree.
  */
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
 
@@ -2232,7 +2235,8 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_set_super_gravity(c->progeny[k], super_gravity);
+      if (c->progeny[k] != NULL)
+        cell_set_super_gravity(c->progeny[k], super_gravity);
 }
 
 /**
@@ -2244,13 +2248,13 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
  */
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
-  const struct engine *e = (const struct engine*) extra_data;
+  const struct engine *e = (const struct engine *)extra_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
-    if(e->policy & engine_policy_hydro)
-      cell_set_super_hydro(c, NULL);
-    if(e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
+    if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);
+    if (e->policy &
+        (engine_policy_self_gravity | engine_policy_external_gravity))
       cell_set_super_gravity(c, NULL);
     cell_set_super(c, NULL);
   }
@@ -2265,7 +2269,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
-  
+
 #ifdef WITH_MPI
   if (c->timestep != NULL || c->recv_ti != NULL) return 1;
 #else

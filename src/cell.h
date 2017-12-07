@@ -181,10 +181,12 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
-  /*! Super cell, i.e. the highest-level parent cell that has a hydro pair/self tasks */
+  /*! Super cell, i.e. the highest-level parent cell that has a hydro pair/self
+   * tasks */
   struct cell *super_hydro;
 
-  /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self tasks */
+  /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
+   * tasks */
   struct cell *super_gravity;
 
   /*! Linked list of the tasks computing this cell's hydro density. */

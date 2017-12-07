@@ -464,7 +464,7 @@ void space_regrid(struct space *s, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->scount = 0;
-	  c->super = c;
+          c->super = c;
           c->super_hydro = c;
           c->super_gravity = c;
           c->ti_old_part = ti_old;
