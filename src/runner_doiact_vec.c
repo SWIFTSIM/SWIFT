@@ -385,8 +385,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
  * @param rshift cutoff shift
  * @param hi_max_raw Maximal smoothing length in cell ci
  * @param hj_max_raw Maximal smoothing length in cell cj
- * @param hi_max Maximal smoothing length in cell ci scaled by kernel_gamma
- * @param hj_max Maximal smoothing length in cell cj scaled by kernel_gamma
+ * @param h_max Maximal smoothing length in both cells scaled by kernel_gamma
  * @param di_max Maximal position on the axis that can interact in cell ci
  * @param dj_min Minimal position on the axis that can interact in cell ci
  * @param max_index_i array to hold the maximum distances of pi particles into
