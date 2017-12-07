@@ -4584,7 +4584,7 @@ void engine_makeproxies(struct engine *e) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   double CoM_i[3] = {0., 0., 0.};
-  double r_max_i;
+  double r_max_i = 0.;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
