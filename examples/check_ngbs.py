@@ -180,8 +180,8 @@ pos_naive = pos_naive[index_naive]
 pos_sort = pos_sort[index_sort]
 
 # First check
-print "\n                   Min    Max"
-print "                   ----------"
+print "\n                         Min    Max"
+print "                         ----------"
 print "Differences for density:  ", min(num_density_naive - num_density_sort), max(num_density_naive - num_density_sort)
 print "Differences for force:    ", min(num_force_naive - num_force_sort), max(num_force_naive - num_force_sort)
 
