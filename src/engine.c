@@ -880,6 +880,9 @@ void engine_redistribute(struct engine *e) {
             nodeID, nr_parts, nr_sparts, nr_gparts, my_cells);
   }
 
+  /* Flag that a redistribute has taken place */
+  e->step_props |= engine_step_prop_redistribute;
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -944,6 +947,9 @@ void engine_repartition(struct engine *e) {
 
   /* Tell the engine it should re-build whenever possible */
   e->forcerebuild = 1;
+
+  /* Flag that a repartition has taken place */
+  e->step_props |= engine_step_prop_repartition;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2273,9 +2279,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift and the sorts. */
+      /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
-      scheduler_addunlock(sched, t->ci->super->sorts, t);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Start by constructing the task for the second  and third hydro loop. */
@@ -3098,6 +3103,9 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Print the status of the system */
   // if (e->verbose) engine_print_task_counts(e);
 
+  /* Flag that a rebuild has taken place */
+  e->step_props |= engine_step_prop_rebuild;
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -3153,10 +3161,10 @@ void engine_prepare(struct engine *e) {
 void engine_barrier(struct engine *e) {
 
   /* Wait at the wait barrier. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 
   /* Wait at the run barrier. */
-  pthread_barrier_wait(&e->run_barrier);
+  swift_barrier_wait(&e->run_barrier);
 }
 
 /**
@@ -3472,7 +3480,7 @@ void engine_launch(struct engine *e) {
   atomic_inc(&e->sched.waiting);
 
   /* Cry havoc and let loose the dogs of war. */
-  pthread_barrier_wait(&e->run_barrier);
+  swift_barrier_wait(&e->run_barrier);
 
   /* Load the tasks. */
   scheduler_start(&e->sched);
@@ -3484,7 +3492,7 @@ void engine_launch(struct engine *e) {
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
   /* Sit back and wait for the runners to come home. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3527,10 +3535,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-  /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    hydro_init_part(&s->parts[k], &e->s->hs);
-  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+  /* Init the particle data (by hand). */
+  space_init_parts(s, e->verbose);
+  space_init_gparts(s, e->verbose);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -3542,9 +3549,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     if (e->nodeID == 0) message("Converting internal energy variable.");
 
-    /* Apply the conversion */
-    for (size_t i = 0; i < s->nr_parts; ++i)
-      hydro_convert_quantities(&s->parts[i], &s->xparts[i]);
+    space_convert_quantities(e->s, e->verbose);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {
@@ -3577,10 +3582,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* No drift this time */
   engine_skip_drift(e);
 
-  /* Init the particle hydro data (by hand). */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    hydro_init_part(&s->parts[k], &e->s->hs);
-  for (size_t k = 0; k < s->nr_gparts; k++) gravity_init_gpart(&s->gparts[k]);
+  /* Init the particle data (by hand). */
+  space_init_parts(e->s, e->verbose);
+  space_init_gparts(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -3590,6 +3594,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_compute(e->s, e);
 #endif
+
+  if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
 
   /* Run the 0th time-step */
   engine_launch(e);
@@ -3701,14 +3707,14 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
+    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
            e->timeStep, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time);
+           e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n",
+    fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
             e->step, e->time, e->timeStep, e->updates, e->g_updates,
-            e->s_updates, e->wallclock_time);
+            e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -3720,6 +3726,7 @@ void engine_step(struct engine *e) {
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+  e->step_props = engine_step_prop_none;
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -3743,6 +3750,9 @@ void engine_step(struct engine *e) {
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+
+/* Dump local cells and active particle counts. */
+/* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -3809,6 +3819,9 @@ void engine_step(struct engine *e) {
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
+
+    /* Flag that we dumped a snapshot */
+    e->step_props |= engine_step_prop_snapshot;
   }
 
   /* Save some  statistics */
@@ -3819,6 +3832,9 @@ void engine_step(struct engine *e) {
 
     /* and move on */
     e->timeLastStatistics += e->deltaTimeStatistics;
+
+    /* Flag that we dumped some statistics */
+    e->step_props |= engine_step_prop_statistics;
   }
 
   /* Now apply all the collected time step updates and particle counts. */
@@ -4357,6 +4373,7 @@ void engine_init(struct engine *e, struct space *s,
   e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->save_stats = 0;
+  e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;
   e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
@@ -4517,7 +4534,7 @@ void engine_init(struct engine *e, struct space *s,
   if (with_aff) engine_unpin();
 #endif
 
-  if (with_aff) {
+  if (with_aff && nodeID == 0) {
 #ifdef HAVE_SETAFFINITY
 #ifdef WITH_MPI
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
@@ -4580,9 +4597,16 @@ void engine_init(struct engine *e, struct space *s,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %10s %10s %10s %16s [%s]\n",
+    fprintf(e->file_timesteps,
+            "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+            "Statistics=%d, Snapshot=%d\n",
+            engine_step_prop_rebuild, engine_step_prop_redistribute,
+            engine_step_prop_repartition, engine_step_prop_statistics,
+            engine_step_prop_snapshot);
+
+    fprintf(e->file_timesteps, "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n",
             "Step", "Time", "Time-step", "Updates", "g-Updates", "s-Updates",
-            "Wall-clock time", clocks_getunit());
+            "Wall-clock time", clocks_getunit(), "Props");
     fflush(e->file_timesteps);
   }
 
@@ -4667,8 +4691,8 @@ void engine_init(struct engine *e, struct space *s,
   threadpool_init(&e->threadpool, e->nr_threads);
 
   /* First of all, init the barrier and lock it. */
-  if (pthread_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
-      pthread_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
+  if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
+      swift_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
     error("Failed to initialize barrier.");
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
@@ -4680,6 +4704,12 @@ void engine_init(struct engine *e, struct space *s,
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
                  (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+
+  /* Maximum size of MPI task messages, in KB, that should not be buffered,
+   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
+   */
+  e->sched.mpi_message_limit =
+      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
@@ -4754,7 +4784,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   /* Wait for the runner threads to be in place. */
-  pthread_barrier_wait(&e->wait_barrier);
+  swift_barrier_wait(&e->wait_barrier);
 }
 
 /**

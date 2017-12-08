@@ -103,6 +103,10 @@ struct scheduler {
   /* The node we are working on. */
   int nodeID;
 
+  /* Maximum size of task messages, in bytes, to sent using non-buffered
+   * MPI. */
+  size_t mpi_message_limit;
+
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
 };
@@ -168,5 +172,6 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
+void scheduler_write_dependencies(struct scheduler *s, int verbose);
 
 #endif /* SWIFT_SCHEDULER_H */

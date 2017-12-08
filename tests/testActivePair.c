@@ -433,8 +433,10 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  /* Choke on FP-exceptions */
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   /* Generate a RNG seed from time. */
   unsigned int seed = time(NULL);
