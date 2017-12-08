@@ -1629,12 +1629,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                                     di_max, dj_min, max_index_i, max_index_j,
                                     &first_pi, &last_pj, max_active_bin);
 
-  //first_pi = 0;
-  //last_pj = count_j - 1;
-
-  //for(int i = 0; i<count_i; i++) max_index_i[i] = last_pj;
-  //for(int i = 0; i<count_j; i++) max_index_j[i] = first_pi;
-
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
   const int last_pj_loop_end = last_pj + 1;
