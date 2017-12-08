@@ -59,7 +59,8 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
-  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
+  if (cooling->GrackleRedshift == -1)
+    error("TODO time dependant redshift");
 
   /* Get current internal energy (dt=0) */
   double u_old = hydro_get_internal_energy(p);
@@ -73,7 +74,6 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
      Grackle v2.1) */
   double Z = 0.02041;
 
-  
   if (wrap_do_cooling(rho, &u_new, dt, Z, a_now) == 0) {
     error("Error in do_cooling.\n");
     return 0;
@@ -217,6 +217,7 @@ static INLINE void cooling_init_backend(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  grackle_print_data();
   message("");
   message("***************************************");
 #endif
@@ -231,6 +232,12 @@ static INLINE void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'Grackle'.");
+  message("CloudyTable                        = %s",
+          cooling->GrackleCloudyTable);
+  message("UVbackground                       = %d", cooling->UVbackground);
+  message("GrackleRedshift                    = %g", cooling->GrackleRedshift);
+  message("GrackleHSShieldingDensityThreshold = %g atom/cm3",
+	  cooling->GrackleHSShieldingDensityThreshold);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

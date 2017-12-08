@@ -17,6 +17,7 @@
 #include "error.h"
 
 #include <grackle.h>
+#include <chemistry_data.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,5 +40,9 @@ int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
 
 int wrap_do_cooling(double density, double *energy, double dtime, double Z,
                     double a_now);
+
+void grackle_print_data();
+
+void cloudy_print_data(const cloudy_data c, const int print_mmw);
 
 #endif /* SWIFT_COOLING_GRACKLE_WRAPPER_H */
