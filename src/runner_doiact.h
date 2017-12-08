@@ -771,11 +771,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR1_NAIVE(r, ci, cj);
-  return;
-#endif
-
   TIMER_TIC;
 
   /* Get the cutoff shift. */
@@ -1039,8 +1034,9 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (DOPAIR1_BRANCH == runner_dopair1_density_branch)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOPAIR1_NAIVE(r, ci, cj);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
   if (!sort_is_corner(sid))
     runner_dopair1_density_vec(r, ci, cj, sid, shift);
   else
@@ -1063,11 +1059,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
              const double *shift) {
 
   struct engine *restrict e = r->e;
-
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR2_NAIVE(r, ci, cj);
-  return;
-#endif
 
   TIMER_TIC;
 
@@ -1526,8 +1517,9 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (DOPAIR2_BRANCH == runner_dopair2_force_branch)
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR2_NAIVE(r, ci, cj);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
   if (!sort_is_corner(sid))
     runner_dopair2_force_vec(r, ci, cj, sid, shift);
   else
