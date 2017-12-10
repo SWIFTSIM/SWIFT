@@ -4509,7 +4509,7 @@ void engine_unskip(struct engine *e) {
   const ticks tic = getticks();
 
   message("unskip");
-  
+
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
                  e->s->nr_local_cells, sizeof(int), 1, e);

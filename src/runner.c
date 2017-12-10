@@ -305,7 +305,7 @@ void runner_check_sorts(struct cell *c, int flags) {
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL && c->progeny[k]->count > 0)
-	runner_check_sorts(c->progeny[k], c->sorted);
+        runner_check_sorts(c->progeny[k], c->sorted);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -887,7 +887,6 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   cell_unskip_gravity_tasks(c, &e->sched);
 }
 
-
 /**
  * @brief Mapper function to unskip active tasks.
  *
@@ -905,10 +904,10 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
-      if(e->policy & engine_policy_hydro)
-	runner_do_unskip_hydro(c, e);
-      if(e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
-	runner_do_unskip_gravity(c, e);
+      if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
+      if (e->policy &
+          (engine_policy_self_gravity | engine_policy_external_gravity))
+        runner_do_unskip_gravity(c, e);
     }
   }
 }
@@ -1283,15 +1282,17 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
 
-	if(p->gpart != NULL) {
+        if (p->gpart != NULL) {
 
-	  /* What is the next sync-point ? */
-	  ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-	  ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
-	  
-	  /* What is the next starting point for this cell ? */
-	  ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);	  
-	}
+          /* What is the next sync-point ? */
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+          ti_gravity_end_max =
+              max(ti_current + ti_new_step, ti_gravity_end_max);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+        }
       }
 
       else { /* part is inactive */
@@ -1305,19 +1306,19 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
-	
+
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
 
-	if(p->gpart != NULL) {
+        if (p->gpart != NULL) {
 
-	  /* What is the next sync-point ? */
-	  ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-	  ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
-	  
-	  /* What is the next starting point for this cell ? */
-	  ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
-	}
+          /* What is the next sync-point ? */
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
       }
     }
 
