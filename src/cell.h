@@ -80,14 +80,23 @@ struct pcell {
   /*! Maximal smoothing length. */
   double h_max;
 
-  /*! Minimal integer end-of-timestep in this cell */
-  integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_end_min;
 
-  /*! Maximal integer end-of-timestep in this cell */
-  integertime_t ti_end_max;
+  /*! Maximal integer end-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_end_max;
 
-  /*! Maximal integer beginning-of-timestep in this cell */
-  integertime_t ti_beg_max;
+  /*! Maximal integer beginning-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_beg_max;
+
+  /*! Minimal integer end-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_end_min;
+
+  /*! Maximal integer end-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_end_max;
+
+  /*! Maximal integer beginning-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_beg_max;
 
   /*! Integer time of the last drift of the #part in this cell */
   integertime_t ti_old_part;
@@ -125,8 +134,11 @@ struct pcell {
  */
 struct pcell_step {
 
-  /*! Minimal integer end-of-timestep in this cell */
-  integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_hydro_end_min;
+
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_gravity_end_min;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -295,14 +307,24 @@ struct cell {
 
 #endif
 
-  /*! Minimum end of (integer) time step in this cell. */
-  integertime_t ti_end_min;
+  /*! Minimum end of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_end_min;
 
-  /*! Maximum end of (integer) time step in this cell. */
-  integertime_t ti_end_max;
+  /*! Maximum end of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_end_max;
 
-  /*! Maximum beginning of (integer) time step in this cell. */
-  integertime_t ti_beg_max;
+  /*! Maximum beginning of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_beg_max;
+
+  /*! Minimum end of (integer) time step in this cell for gravity tasks. */
+  integertime_t ti_gravity_end_min;
+
+  /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+  integertime_t ti_gravity_end_max;
+
+  /*! Maximum beginning of (integer) time step in this cell for gravity tasks.
+   */
+  integertime_t ti_gravity_beg_max;
 
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;
@@ -470,7 +492,8 @@ void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
-int cell_unskip_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
@@ -478,8 +501,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
-void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
-                                 struct scheduler *s);
+void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,

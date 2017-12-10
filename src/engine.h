@@ -147,13 +147,31 @@ struct engine {
   double timeBase;
   double timeBase_inv;
 
-  /* Minimal ti_end for the next time-step */
+  /* Minimal hydro ti_end for the next time-step */
+  integertime_t ti_hydro_end_min;
+
+  /* Maximal hydro ti_end for the next time-step */
+  integertime_t ti_hydro_end_max;
+
+  /* Maximal hydro ti_beg for the next time-step */
+  integertime_t ti_hydro_beg_max;
+
+  /* Minimal gravity ti_end for the next time-step */
+  integertime_t ti_gravity_end_min;
+
+  /* Maximal gravity ti_end for the next time-step */
+  integertime_t ti_gravity_end_max;
+
+  /* Maximal gravity ti_beg for the next time-step */
+  integertime_t ti_gravity_beg_max;
+
+  /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
-  /* Maximal ti_end for the next time-step */
+  /* Maximal overall ti_end for the next time-step */
   integertime_t ti_end_max;
 
-  /* Maximal ti_beg for the next time-step */
+  /* Maximal overall ti_beg for the next time-step */
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */

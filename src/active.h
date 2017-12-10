@@ -82,19 +82,19 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_is_active(
+__attribute__((always_inline)) INLINE static int cell_is_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_end_min < e->ti_current)
+  if (c->ti_hydro_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e)",
-        c->ti_end_min, c->ti_end_min * e->timeBase, e->ti_current,
+        c->ti_hydro_end_min, c->ti_hydro_end_min * e->timeBase, e->ti_current,
         e->ti_current * e->timeBase);
 #endif
 
-  return (c->ti_end_min == e->ti_current);
+  return (c->ti_hydro_end_min == e->ti_current);
 }
 
 /**
@@ -104,18 +104,61 @@ __attribute__((always_inline)) INLINE static int cell_is_active(
  * @param e The #engine containing information about the current time.
  * @return 1 if all particles in a #cell are active, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_is_all_active(
+__attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_end_max < e->ti_current)
+  if (c->ti_hydro_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
-        c->ti_end_max, e->ti_current);
+        c->ti_hydro_end_max, e->ti_current);
 #endif
 
-  return (c->ti_end_max == e->ti_current);
+  return (c->ti_hydro_end_max == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any g-particle finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_active_gravity(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_gravity_end_min < e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e)",
+        c->ti_gravity_end_min, c->ti_gravity_end_min * e->timeBase,
+        e->ti_current, e->ti_current * e->timeBase);
+#endif
+
+  return (c->ti_gravity_end_min == e->ti_current);
+}
+
+/**
+ * @brief Are *all* g-particles in a cell finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if all particles in a #cell are active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_gravity_end_max < e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_end_max=%lld "
+        "e->ti_current=%lld",
+        c->ti_gravity_end_max, e->ti_current);
+#endif
+
+  return (c->ti_gravity_end_max == e->ti_current);
 }
 
 /**
@@ -215,19 +258,41 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_is_starting(
+__attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_beg_max > e->ti_current)
+  if (c->ti_hydro_beg_max > e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e)",
-        c->ti_beg_max, c->ti_beg_max * e->timeBase, e->ti_current,
+        c->ti_hydro_beg_max, c->ti_hydro_beg_max * e->timeBase, e->ti_current,
         e->ti_current * e->timeBase);
 #endif
 
-  return (c->ti_beg_max == e->ti_current);
+  return (c->ti_hydro_beg_max == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any g-particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_gravity_beg_max > e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e)",
+        c->ti_gravity_beg_max, c->ti_gravity_beg_max * e->timeBase,
+        e->ti_current, e->ti_current * e->timeBase);
+#endif
+
+  return (c->ti_gravity_beg_max == e->ti_current);
 }
 
 /**

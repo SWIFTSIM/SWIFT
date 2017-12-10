@@ -130,7 +130,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -218,7 +218,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -308,7 +308,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   const int count = c->count;
   struct part *restrict parts = c->parts;
@@ -386,7 +386,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   const int count = c->count;
   struct part *restrict parts = c->parts;
@@ -801,7 +801,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
 
-  if (cell_is_active(ci, e)) {
+  if (cell_is_active_hydro(ci, e)) {
 
     /* Loop over the parts in ci. */
     for (int pid = count_i - 1;
@@ -881,7 +881,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }   /* loop over the parts in ci. */
   }     /* Cell ci is active */
 
-  if (cell_is_active(cj, e)) {
+  if (cell_is_active_hydro(cj, e)) {
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
@@ -978,7 +978,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -1106,11 +1106,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   int count_active_i = 0, count_active_j = 0;
   struct entry *restrict sort_active_i = NULL, *restrict sort_active_j = NULL;
 
-  if (cell_is_all_active(ci, e)) {
+  if (cell_is_all_active_hydro(ci, e)) {
     /* If everybody is active don't bother copying */
     sort_active_i = sort_i;
     count_active_i = count_i;
-  } else if (cell_is_active(ci, e)) {
+  } else if (cell_is_active_hydro(ci, e)) {
     if (posix_memalign((void *)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct entry) * count_i) != 0)
       error("Failed to allocate active sortlists.");
@@ -1124,11 +1124,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }
   }
 
-  if (cell_is_all_active(cj, e)) {
+  if (cell_is_all_active_hydro(cj, e)) {
     /* If everybody is active don't bother copying */
     sort_active_j = sort_j;
     count_active_j = count_j;
-  } else if (cell_is_active(cj, e)) {
+  } else if (cell_is_active_hydro(cj, e)) {
     if (posix_memalign((void *)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct entry) * count_j) != 0)
       error("Failed to allocate active sortlists.");
@@ -1445,8 +1445,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   }     /* Loop over all cj */
 
   /* Clean-up if necessary */
-  if (cell_is_active(ci, e) && !cell_is_all_active(ci, e)) free(sort_active_i);
-  if (cell_is_active(cj, e) && !cell_is_all_active(cj, e)) free(sort_active_j);
+  if (cell_is_active_hydro(ci, e) && !cell_is_all_active_hydro(ci, e))
+    free(sort_active_i);
+  if (cell_is_active_hydro(cj, e) && !cell_is_all_active_hydro(cj, e))
+    free(sort_active_j);
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -1465,7 +1467,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -1548,7 +1550,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
@@ -1685,7 +1687,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
   if (!cell_are_part_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
@@ -1817,7 +1819,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
   if (ci->count == 0 || cj->count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
@@ -2026,7 +2028,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -2059,7 +2061,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
+  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_task(ci)) {
@@ -2112,7 +2114,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
   if (ci->count == 0 || cj->count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
@@ -2321,7 +2323,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -2354,7 +2356,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active(ci, r->e)) return;
+  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_task(ci)) {
@@ -2391,7 +2393,9 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active(ci, e) && (cj == NULL || !cell_is_active(cj, e))) return;
+  if (!cell_is_active_hydro(ci, e) &&
+      (cj == NULL || !cell_is_active_hydro(cj, e)))
+    return;
   if (ci->count == 0 || (cj != NULL && cj->count == 0)) return;
 
   /* Find out in which sub-cell of ci the parts are. */
@@ -2945,7 +2949,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+    else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
 
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");

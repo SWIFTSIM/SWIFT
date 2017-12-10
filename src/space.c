@@ -2000,7 +2000,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct spart *sparts = c->sparts;
@@ -2115,9 +2118,18 @@ void space_split_recursive(struct space *s, struct cell *c,
         progeny_gbuff += c->progeny[k]->gcount;
         progeny_sbuff += c->progeny[k]->scount;
         h_max = max(h_max, c->progeny[k]->h_max);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-        ti_beg_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
+        ti_hydro_end_min =
+            min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
+        ti_hydro_end_max =
+            max(ti_hydro_end_max, c->progeny[k]->ti_hydro_end_max);
+        ti_hydro_beg_max =
+            max(ti_hydro_beg_max, c->progeny[k]->ti_hydro_beg_max);
+        ti_gravity_end_min =
+            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
+        ti_gravity_end_max =
+            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
+        ti_gravity_beg_max =
+            max(ti_gravity_beg_max, c->progeny[k]->ti_gravity_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -2236,9 +2248,13 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Convert into integer times */
-    ti_end_min = get_integer_time_end(e->ti_current, time_bin_min);
-    ti_end_max = get_integer_time_end(e->ti_current, time_bin_max);
-    ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_hydro_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_gravity_beg_max =
+        get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {
@@ -2272,9 +2288,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Set the values for this cell. */
   c->h_max = h_max;
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-  c->ti_beg_max = ti_beg_max;
+  c->ti_hydro_end_min = ti_hydro_end_min;
+  c->ti_hydro_end_max = ti_hydro_end_max;
+  c->ti_hydro_beg_max = ti_hydro_beg_max;
+  c->ti_gravity_end_min = ti_gravity_end_min;
+  c->ti_gravity_end_max = ti_gravity_end_max;
+  c->ti_gravity_beg_max = ti_gravity_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -3177,4 +3196,37 @@ void space_clean(struct space *s) {
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
+}
+
+void space_print_cells(const struct space *s) {
+
+  char filename[200];
+  sprintf(filename, "space_%d_%d.dat", s->e->step, engine_rank);
+
+  FILE *file = fopen(filename, "w");
+
+  fprintf(file, "ti_current=%lld\n", s->e->ti_current);
+
+  for (int k = 0; k < s->cdim[2]; ++k) {
+
+    fprintf(file, "\n -- k=%d -- \n\n", k);
+
+    for (int j = 0; j < s->cdim[1]; ++j) {
+
+      for (int i = 0; i < s->cdim[0]; ++i) {
+#ifdef WITH_MPI
+
+        const int cid = cell_getid(s->cdim, i, j, k);
+        const struct cell *c = &s->cells_top[cid];
+        fprintf(file, "|(%d-%ld-%lld-%lld-%d)", c->nodeID, c - s->cells_top,
+                c->ti_hydro_end_min, c->ti_gravity_end_min, c->gcount);
+#endif
+      }
+      fprintf(file, "|\n");
+    }
+  }
+
+  fprintf(file, " -- --- --\n");
+
+  fclose(file);
 }

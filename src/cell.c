@@ -173,8 +173,10 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
 
   /* Start by packing the data of the current cell. */
   pc->h_max = c->h_max;
-  pc->ti_end_min = c->ti_end_min;
-  pc->ti_end_max = c->ti_end_max;
+  pc->ti_hydro_end_min = c->ti_hydro_end_min;
+  pc->ti_hydro_end_max = c->ti_hydro_end_max;
+  pc->ti_gravity_end_min = c->ti_gravity_end_min;
+  pc->ti_gravity_end_max = c->ti_gravity_end_max;
   pc->ti_old_part = c->ti_old_part;
   pc->ti_old_gpart = c->ti_old_gpart;
   pc->ti_old_multipole = c->ti_old_multipole;
@@ -221,8 +223,10 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Unpack the current pcell. */
   c->h_max = pc->h_max;
-  c->ti_end_min = pc->ti_end_min;
-  c->ti_end_max = pc->ti_end_max;
+  c->ti_hydro_end_min = pc->ti_hydro_end_min;
+  c->ti_hydro_end_max = pc->ti_hydro_end_max;
+  c->ti_gravity_end_min = pc->ti_gravity_end_min;
+  c->ti_gravity_end_max = pc->ti_gravity_end_max;
   c->ti_old_part = pc->ti_old_part;
   c->ti_old_gpart = pc->ti_old_gpart;
   c->ti_old_multipole = pc->ti_old_multipole;
@@ -291,7 +295,8 @@ int cell_pack_end_step(struct cell *restrict c,
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].ti_end_min = c->ti_end_min;
+  pcells[0].ti_hydro_end_min = c->ti_hydro_end_min;
+  pcells[0].ti_gravity_end_min = c->ti_gravity_end_min;
   pcells[0].dx_max_part = c->dx_max_part;
   pcells[0].dx_max_gpart = c->dx_max_gpart;
 
@@ -325,7 +330,8 @@ int cell_unpack_end_step(struct cell *restrict c,
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->ti_end_min = pcells[0].ti_end_min;
+  c->ti_hydro_end_min = pcells[0].ti_hydro_end_min;
+  c->ti_gravity_end_min = pcells[0].ti_gravity_end_min;
   c->dx_max_part = pcells[0].dx_max_part;
   c->dx_max_gpart = pcells[0].dx_max_gpart;
 
@@ -1487,8 +1493,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
  */
-void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
-                                 struct scheduler *s) {
+void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -1502,7 +1508,7 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
   /* Self interaction? */
   if (cj == NULL) {
     /* Do anything? */
-    if (!cell_is_active(ci, e)) return;
+    if (!cell_is_active_hydro(ci, e)) return;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_task(ci)) {
@@ -1510,10 +1516,11 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_tasks(ci->progeny[j], NULL, s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
-              cell_activate_subcell_tasks(ci->progeny[j], ci->progeny[k], s);
+              cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
+                                                s);
         }
       }
     } else {
@@ -1537,200 +1544,200 @@ void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
       /* Regular sub-cell interactions of a single cell. */
       case 0: /* (  1 ,  1 ,  1 ) */
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         break;
 
       case 1: /* (  1 ,  1 ,  0 ) */
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[0], s);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[1], s);
         break;
 
       case 2: /* (  1 ,  1 , -1 ) */
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         break;
 
       case 3: /* (  1 ,  0 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[0], s);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[2], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[2], s);
         break;
 
       case 4: /* (  1 ,  0 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[0], s);
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[1], s);
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[2], s);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[3], s);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[0], s);
         if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[1], s);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[2], s);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[3], s);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[0], s);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[2], s);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[3], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[1], s);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[2], s);
         if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[3], s);
         break;
 
       case 5: /* (  1 ,  0 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[1], s);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[3], s);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[3], s);
         break;
 
       case 6: /* (  1 , -1 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[2], s);
         break;
 
       case 7: /* (  1 , -1 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[2], s);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[3], s);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[2], s);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[3], s);
         break;
 
       case 8: /* (  1 , -1 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[4], cj->progeny[3], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[4], cj->progeny[3], s);
         break;
 
       case 9: /* (  0 ,  1 ,  1 ) */
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[0], s);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[4], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[4], s);
         break;
 
       case 10: /* (  0 ,  1 ,  0 ) */
         if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[0], s);
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[1], s);
         if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[4], s);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[5], s);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[0], s);
         if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[1], s);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[4], s);
         if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[5], s);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[0], s);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[4], s);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[5], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[1], s);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[4], s);
         if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[5], s);
         break;
 
       case 11: /* (  0 ,  1 , -1 ) */
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[1], s);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[2], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[2], cj->progeny[5], s);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[1], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[1], s);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[6], cj->progeny[5], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[6], cj->progeny[5], s);
         break;
 
       case 12: /* (  0 ,  0 ,  1 ) */
         if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[1], cj->progeny[0], s);
         if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[1], cj->progeny[2], s);
         if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[1], cj->progeny[4], s);
         if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[1], cj->progeny[6], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[1], cj->progeny[6], s);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[0], s);
         if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[2], s);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[4], s);
         if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[3], cj->progeny[6], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[3], cj->progeny[6], s);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[0], s);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[2], s);
         if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[4], s);
         if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[5], cj->progeny[6], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[5], cj->progeny[6], s);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[0], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[0], s);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[2], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[2], s);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[4], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[4], s);
         if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
-          cell_activate_subcell_tasks(ci->progeny[7], cj->progeny[6], s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[7], cj->progeny[6], s);
         break;
     }
 
   }
 
   /* Otherwise, activate the sorts and drifts. */
-  else if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
 
     /* Get the type of pair if not specified explicitly. */
     double shift[3];
@@ -1774,7 +1781,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (!cell_is_active(ci, e)) return;
+    if (!cell_is_active_gravity(ci, e)) return;
 
     /* Recurse? */
     if (ci->split) {
@@ -1800,7 +1807,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Anything to do here? */
-    if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+    if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
+      return;
 
     if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
     if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
@@ -1834,7 +1842,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     else if (!ci->split && !cj->split) {
 
       /* Activate the drifts if the cells are local. */
-      if (cell_is_active(ci, e) || cell_is_active(cj, e)) {
+      if (cell_is_active_gravity(ci, e) || cell_is_active_gravity(cj, e)) {
         if (ci->nodeID == engine_rank) cell_activate_drift_gpart(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_gpart(cj, s);
       }
@@ -1903,7 +1911,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
   const struct engine *e = sp->e;
 
   /* Do anything? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active_gravity(ci, e)) return;
 
   /* Recurse? */
   if (ci->split) {
@@ -1922,7 +1930,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 }
 
 /**
- * @brief Un-skips all the tasks associated with a given cell and checks
+ * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
  * @param c the #cell.
@@ -1930,7 +1938,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
+int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
@@ -1941,8 +1949,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active(cj, e) : 0;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci->nodeID == nodeID) ||
@@ -1972,7 +1980,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       }
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
-        cell_activate_subcell_tasks(t->ci, t->cj, s);
+        cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
       }
     }
 
@@ -2068,13 +2076,50 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+
+    for (struct link *l = c->gradient; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    for (struct link *l = c->force; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+
+    if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
+    if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
+    if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
+    if (c->ghost != NULL) scheduler_activate(s, c->ghost);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->cooling != NULL) scheduler_activate(s, c->cooling);
+    if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
+  }
+
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all the gravity tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+  int rebuild = 0;
+
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active(cj, e) : 0;
+    const int ci_active = cell_is_active_gravity(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci->nodeID == nodeID) ||
@@ -2149,17 +2194,8 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active(c, e)) {
+  if (c->nodeID == nodeID && cell_is_active_gravity(c, e)) {
 
-    for (struct link *l = c->gradient; l != NULL; l = l->next)
-      scheduler_activate(s, l->t);
-    for (struct link *l = c->force; l != NULL; l = l->next)
-      scheduler_activate(s, l->t);
-
-    if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
-    if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
-    if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
-    if (c->ghost != NULL) scheduler_activate(s, c->ghost);
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
     if (c->grav_ghost_in != NULL) scheduler_activate(s, c->grav_ghost_in);
     if (c->grav_ghost_out != NULL) scheduler_activate(s, c->grav_ghost_out);
@@ -2168,8 +2204,6 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
     if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
-    if (c->cooling != NULL) scheduler_activate(s, c->cooling);
-    if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
   }
 
   return rebuild;
@@ -2568,7 +2602,7 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
 void cell_check_timesteps(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if (c->ti_end_min == 0 && c->nr_tasks > 0)
+  if (c->ti_hydro_end_min == 0 && c->ti_gravity_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

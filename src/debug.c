@@ -319,7 +319,7 @@ static void dumpCells_map(struct cell *c, void *data) {
 
     /* Active cells, otherwise all. */
     if (active)
-      active = cell_is_active(c, e);
+      active = cell_is_active_hydro(c, e);
     else
       active = 1;
 
@@ -346,9 +346,9 @@ static void dumpCells_map(struct cell *c, void *data) {
               "%6.1f %20lld %6d %6d %6d %6d %6d\n",
               c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
               c->width[2], e->step, c->count, c->gcount, c->scount, pactcount,
-              c->depth, ntasks, c->ti_end_min, get_time_bin(c->ti_end_min),
-              (c->super == c), cell_is_active(c, e), c->nodeID,
-              c->nodeID == e->nodeID);
+              c->depth, ntasks, c->ti_hydro_end_min,
+              get_time_bin(c->ti_hydro_end_min), (c->super == c),
+              cell_is_active_hydro(c, e), c->nodeID, c->nodeID == e->nodeID);
     }
   }
 }

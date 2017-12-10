@@ -37,7 +37,8 @@
 /* Local collections for MPI reduces. */
 struct mpicollectgroup1 {
   size_t updates, g_updates, s_updates;
-  integertime_t ti_end_min;
+  integertime_t ti_hydro_end_min;
+  integertime_t ti_gravity_end_min;
   int forcerebuild;
 };
 
@@ -75,9 +76,15 @@ void collectgroup_init() {
  * @param e The #engine
  */
 void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
-  e->ti_end_min = grp1->ti_end_min;
-  e->ti_end_max = grp1->ti_end_max;
-  e->ti_beg_max = grp1->ti_beg_max;
+  e->ti_hydro_end_min = grp1->ti_hydro_end_min;
+  e->ti_hydro_end_max = grp1->ti_hydro_end_max;
+  e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
+  e->ti_gravity_end_min = grp1->ti_gravity_end_min;
+  e->ti_gravity_end_max = grp1->ti_gravity_end_max;
+  e->ti_gravity_beg_max = grp1->ti_gravity_beg_max;
+  e->ti_end_min = min(e->ti_hydro_end_min, e->ti_gravity_end_min);
+  e->ti_end_max = max(e->ti_hydro_end_max, e->ti_gravity_end_max);
+  e->ti_beg_max = max(e->ti_hydro_beg_max, e->ti_gravity_beg_max);
   e->updates = grp1->updates;
   e->g_updates = grp1->g_updates;
   e->s_updates = grp1->s_updates;
@@ -99,14 +106,21 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  */
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,
                         size_t g_updates, size_t s_updates,
-                        integertime_t ti_end_min, integertime_t ti_end_max,
-                        integertime_t ti_beg_max, int forcerebuild) {
+                        integertime_t ti_hydro_end_min,
+                        integertime_t ti_hydro_end_max,
+                        integertime_t ti_hydro_beg_max,
+                        integertime_t ti_gravity_end_min,
+                        integertime_t ti_gravity_end_max,
+                        integertime_t ti_gravity_beg_max, int forcerebuild) {
   grp1->updates = updates;
   grp1->g_updates = g_updates;
   grp1->s_updates = s_updates;
-  grp1->ti_end_min = ti_end_min;
-  grp1->ti_end_max = ti_end_max;
-  grp1->ti_beg_max = ti_beg_max;
+  grp1->ti_hydro_end_min = ti_hydro_end_min;
+  grp1->ti_hydro_end_max = ti_hydro_end_max;
+  grp1->ti_hydro_beg_max = ti_hydro_beg_max;
+  grp1->ti_gravity_end_min = ti_gravity_end_min;
+  grp1->ti_gravity_end_max = ti_gravity_end_max;
+  grp1->ti_gravity_beg_max = ti_gravity_beg_max;
   grp1->forcerebuild = forcerebuild;
 }
 
@@ -127,7 +141,8 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.updates = grp1->updates;
   mpigrp11.g_updates = grp1->g_updates;
   mpigrp11.s_updates = grp1->s_updates;
-  mpigrp11.ti_end_min = grp1->ti_end_min;
+  mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
+  mpigrp11.ti_gravity_end_min = grp1->ti_gravity_end_min;
   mpigrp11.forcerebuild = grp1->forcerebuild;
 
   struct mpicollectgroup1 mpigrp12;
@@ -139,7 +154,8 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->updates = mpigrp12.updates;
   grp1->g_updates = mpigrp12.g_updates;
   grp1->s_updates = mpigrp12.s_updates;
-  grp1->ti_end_min = mpigrp12.ti_end_min;
+  grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
+  grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->forcerebuild = mpigrp12.forcerebuild;
 
 #endif
@@ -162,7 +178,10 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   mpigrp11->s_updates += mpigrp12->s_updates;
 
   /* Minimum end time. */
-  mpigrp11->ti_end_min = min(mpigrp11->ti_end_min, mpigrp12->ti_end_min);
+  mpigrp11->ti_hydro_end_min =
+      min(mpigrp11->ti_hydro_end_min, mpigrp12->ti_hydro_end_min);
+  mpigrp11->ti_gravity_end_min =
+      min(mpigrp11->ti_gravity_end_min, mpigrp12->ti_gravity_end_min);
 
   /* Everyone must agree to not rebuild. */
   if (mpigrp11->forcerebuild || mpigrp12->forcerebuild)

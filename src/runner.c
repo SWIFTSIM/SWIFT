@@ -139,7 +139,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -185,7 +185,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -304,7 +304,8 @@ void runner_check_sorts(struct cell *c, int flags) {
   if (flags & ~c->sorted) error("Inconsistent sort flags (downward)!");
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_check_sorts(c->progeny[k], c->sorted);
+      if (c->progeny[k] != NULL && c->progeny[k]->count > 0)
+	runner_check_sorts(c->progeny[k], c->sorted);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -343,7 +344,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
-    error("Sorting un-drifted cell");
+    error("Sorting un-drifted cell c->nodeID=%d", c->nodeID);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
@@ -376,7 +377,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
     float dx_max_sort = 0.0f;
     float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
+      if (c->progeny[k] != NULL && c->progeny[k]->count > 0) {
         /* Only propagate cleanup if the progeny is stale. */
         runner_do_sort(r, c->progeny[k], flags,
                        cleanup && (c->progeny[k]->dx_max_sort >
@@ -550,7 +551,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Reset the gravity acceleration tensors */
   gravity_field_tensors_init(&c->multipole->pot, e->ti_current);
@@ -584,7 +585,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -637,7 +638,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -830,33 +831,62 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Unskip any tasks associated with active cells.
+ * @brief Unskip any hydro tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
  */
-static void runner_do_unskip(struct cell *c, struct engine *e) {
+static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
 
   /* Ignore empty cells. */
-  if (c->count == 0 && c->gcount == 0) return;
+  if (c->count == 0) return;
 
   /* Skip inactive cells. */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        runner_do_unskip(cp, e);
+        runner_do_unskip_hydro(cp, e);
       }
     }
   }
 
   /* Unskip any active tasks. */
-  const int forcerebuild = cell_unskip_tasks(c, &e->sched);
+  const int forcerebuild = cell_unskip_hydro_tasks(c, &e->sched);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
+
+/**
+ * @brief Unskip any gravity tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
+
+  /* Ignore empty cells. */
+  if (c->gcount == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip_gravity(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  cell_unskip_gravity_tasks(c, &e->sched);
+}
+
 
 /**
  * @brief Mapper function to unskip active tasks.
@@ -874,7 +904,12 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
-    if (c != NULL) runner_do_unskip(c, e);
+    if (c != NULL) {
+      if(e->policy & engine_policy_hydro)
+	runner_do_unskip_hydro(c, e);
+      if(e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
+	runner_do_unskip_gravity(c, e);
+    }
   }
 }
 /**
@@ -932,7 +967,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_starting(c, e)) return;
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1057,7 +1092,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1191,7 +1226,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) {
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) {
     c->updated = 0;
     c->g_updated = 0;
     c->s_updated = 0;
@@ -1199,7 +1234,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   }
 
   int updated = 0, g_updated = 0, s_updated = 0;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -1228,7 +1266,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
-        if (p->gpart != NULL) p->gpart->time_bin = get_time_bin(ti_new_step);
+        if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Tell the particle what the new physical time step is */
         float dt = get_timestep(p->time_bin, timeBase);
@@ -1239,11 +1277,21 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) g_updated++;
 
         /* What is the next sync-point ? */
-        ti_end_min = min(ti_current + ti_new_step, ti_end_min);
-        ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+        ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
-        ti_beg_max = max(ti_current, ti_beg_max);
+        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+
+	if(p->gpart != NULL) {
+
+	  /* What is the next sync-point ? */
+	  ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+	  ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+	  
+	  /* What is the next starting point for this cell ? */
+	  ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);	  
+	}
       }
 
       else { /* part is inactive */
@@ -1251,15 +1299,25 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
 
-        /* What is the next sync-point ? */
-        ti_end_min = min(ti_end, ti_end_min);
-        ti_end_max = max(ti_end, ti_end_max);
-
         const integertime_t ti_beg =
             get_integer_time_begin(ti_current + 1, p->time_bin);
 
+        /* What is the next sync-point ? */
+        ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
+	
         /* What is the next starting point for this cell ? */
-        ti_beg_max = max(ti_beg, ti_beg_max);
+        ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
+
+	if(p->gpart != NULL) {
+
+	  /* What is the next sync-point ? */
+	  ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+	  ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+	  
+	  /* What is the next starting point for this cell ? */
+	  ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+	}
       }
     }
 
@@ -1294,11 +1352,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
           g_updated++;
 
           /* What is the next sync-point ? */
-          ti_end_min = min(ti_current + ti_new_step, ti_end_min);
-          ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+          ti_gravity_end_max =
+              max(ti_current + ti_new_step, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
-          ti_beg_max = max(ti_current, ti_beg_max);
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
         } else { /* gpart is inactive */
 
@@ -1306,14 +1366,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
               get_integer_time_end(ti_current, gp->time_bin);
 
           /* What is the next sync-point ? */
-          ti_end_min = min(ti_end, ti_end_min);
-          ti_end_max = max(ti_end, ti_end_max);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
           const integertime_t ti_beg =
               get_integer_time_begin(ti_current + 1, gp->time_bin);
 
           /* What is the next starting point for this cell ? */
-          ti_beg_max = max(ti_beg, ti_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
         }
       }
     }
@@ -1347,11 +1407,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         g_updated++;
 
         /* What is the next sync-point ? */
-        ti_end_min = min(ti_current + ti_new_step, ti_end_min);
-        ti_end_max = max(ti_current + ti_new_step, ti_end_max);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
         /* What is the next starting point for this cell ? */
-        ti_beg_max = max(ti_current, ti_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
       } else { /* star particle is inactive */
 
@@ -1359,14 +1419,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
             get_integer_time_end(ti_current, sp->time_bin);
 
         /* What is the next sync-point ? */
-        ti_end_min = min(ti_end, ti_end_min);
-        ti_end_max = max(ti_end, ti_end_max);
+        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
         const integertime_t ti_beg =
             get_integer_time_begin(ti_current + 1, sp->time_bin);
 
         /* What is the next starting point for this cell ? */
-        ti_beg_max = max(ti_beg, ti_beg_max);
+        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
       }
     }
   } else {
@@ -1383,9 +1443,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->updated;
         g_updated += cp->g_updated;
         s_updated += cp->s_updated;
-        ti_end_min = min(cp->ti_end_min, ti_end_min);
-        ti_end_max = max(cp->ti_end_max, ti_end_max);
-        ti_beg_max = max(cp->ti_beg_max, ti_beg_max);
+        ti_hydro_end_min = min(cp->ti_hydro_end_min, ti_hydro_end_min);
+        ti_hydro_end_max = max(cp->ti_hydro_end_max, ti_hydro_end_max);
+        ti_hydro_beg_max = max(cp->ti_hydro_beg_max, ti_hydro_beg_max);
+        ti_gravity_end_min = min(cp->ti_gravity_end_min, ti_gravity_end_min);
+        ti_gravity_end_max = max(cp->ti_gravity_end_max, ti_gravity_end_max);
+        ti_gravity_beg_max = max(cp->ti_gravity_beg_max, ti_gravity_beg_max);
       }
   }
 
@@ -1393,9 +1456,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->updated = updated;
   c->g_updated = g_updated;
   c->s_updated = s_updated;
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-  c->ti_beg_max = ti_beg_max;
+  c->ti_hydro_end_min = ti_hydro_end_min;
+  c->ti_hydro_end_max = ti_hydro_end_max;
+  c->ti_hydro_beg_max = ti_hydro_beg_max;
+  c->ti_gravity_end_min = ti_gravity_end_min;
+  c->ti_gravity_end_max = ti_gravity_end_max;
+  c->ti_gravity_beg_max = ti_gravity_beg_max;
 
   if (timer) TIMER_TOC(timer_timestep);
 }
@@ -1422,7 +1488,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1526,8 +1592,8 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
 
   TIMER_TIC;
 
-  integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_end_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps;
+  integertime_t ti_hydro_end_max = 0;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
@@ -1551,33 +1617,35 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
     }
 
     /* Convert into a time */
-    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
-    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
+      if (c->progeny[k] != NULL && c->progeny[k]->count > 0) {
         runner_do_recv_part(r, c->progeny[k], clear_sorts, 0);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        ti_hydro_end_min =
+            min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
+        ti_hydro_end_max =
+            max(ti_hydro_end_max, c->progeny[k]->ti_hydro_end_max);
         h_max = max(h_max, c->progeny[k]->h_max);
       }
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_end_min < ti_current)
+  if (ti_hydro_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
-        ti_end_min, ti_current);
+        ti_hydro_end_min, ti_current);
 #endif
 
   /* ... and store. */
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
+  c->ti_hydro_end_min = ti_hydro_end_min;
+  c->ti_hydro_end_max = ti_hydro_end_max;
   c->ti_old_part = ti_current;
   c->h_max = h_max;
 
@@ -1605,8 +1673,8 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_end_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps;
+  integertime_t ti_gravity_end_max = 0;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
 
@@ -1630,32 +1698,34 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Convert into a time */
-    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
-    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
+      if (c->progeny[k] != NULL && c->progeny[k]->gcount > 0) {
         runner_do_recv_gpart(r, c->progeny[k], 0);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        ti_gravity_end_min =
+            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
+        ti_gravity_end_max =
+            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
       }
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_end_min < ti_current)
+  if (ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
-        ti_end_min, ti_current);
+        ti_gravity_end_min, ti_current);
 #endif
 
   /* ... and store. */
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
+  c->ti_gravity_end_min = ti_gravity_end_min;
+  c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_gpart);
@@ -1682,8 +1752,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_end_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps;
+  integertime_t ti_gravity_end_max = 0;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
 
@@ -1707,32 +1777,34 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Convert into a time */
-    ti_end_min = get_integer_time_end(ti_current, time_bin_min);
-    ti_end_max = get_integer_time_end(ti_current, time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
+      if (c->progeny[k] != NULL && c->progeny[k]->scount > 0) {
         runner_do_recv_spart(r, c->progeny[k], 0);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        ti_gravity_end_min =
+            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
+        ti_gravity_end_max =
+            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
       }
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_end_min < ti_current)
+  if (ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
-        ti_end_min, ti_current);
+        ti_gravity_end_min, ti_current);
 #endif
 
   /* ... and store. */
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
+  c->ti_gravity_end_min = ti_gravity_end_min;
+  c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
@@ -1801,54 +1873,62 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       t->ti_run = e->ti_current;
-#ifndef WITH_MPI
-      if (t->type == task_type_grav_top_level) {
-        if (ci != NULL || cj != NULL)
-          error("Top-level gravity task associated with a cell");
-      } else if (ci == NULL && cj == NULL) {
+/* #ifndef WITH_MPI */
+/*       if (t->type == task_type_grav_top_level) { */
+/*         if (ci != NULL || cj != NULL) */
+/*           error("Top-level gravity task associated with a cell"); */
+/*       } else if (ci == NULL && cj == NULL) { */
 
-        error("Task not associated with cells!");
-      } else if (cj == NULL) { /* self */
+/*         error("Task not associated with cells!"); */
+/*       } else if (cj == NULL) { /\* self *\/ */
 
-        if (!cell_is_active(ci, e) && t->type != task_type_sort &&
-            t->type != task_type_send && t->type != task_type_recv &&
-            t->type != task_type_kick1 && t->type != task_type_drift_part &&
-            t->type != task_type_drift_gpart)
-          error(
-              "Task (type='%s/%s') should have been skipped ti_current=%lld "
-              "c->ti_end_min=%lld",
-              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min);
+/*         if (!cell_is_active_hydro(ci, e) && t->type != task_type_sort && */
+/*             t->type != task_type_send && t->type != task_type_recv && */
+/*             t->type != task_type_kick1 && t->type != task_type_drift_part &&
+ */
+/*             t->type != task_type_drift_gpart) */
+/*           error( */
+/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
+ */
+/*               "c->ti_end_min=%lld", */
+/*               taskID_names[t->type], subtaskID_names[t->subtype],
+ * e->ti_current, */
+/*               ci->ti_end_min); */
 
-        /* Special case for sorts */
-        if (!cell_is_active(ci, e) && t->type == task_type_sort &&
-            !(ci->do_sort || ci->do_sub_sort))
-          error(
-              "Task (type='%s/%s') should have been skipped ti_current=%lld "
-              "c->ti_end_min=%lld t->flags=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min, t->flags);
+/*         /\* Special case for sorts *\/ */
+/*         if (!cell_is_active_hydro(ci, e) && t->type == task_type_sort && */
+/*             !(ci->do_sort || ci->do_sub_sort)) */
+/*           error( */
+/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
+ */
+/*               "c->ti_end_min=%lld t->flags=%d", */
+/*               taskID_names[t->type], subtaskID_names[t->subtype],
+ * e->ti_current, */
+/*               ci->ti_end_min, t->flags); */
 
-        /* Special case for kick1 */
-        if (!cell_is_starting(ci, e) && t->type == task_type_kick1 &&
-            t->flags == 0)
-          error(
-              "Task (type='%s/%s') should have been skipped ti_current=%lld "
-              "c->ti_end_min=%lld t->flags=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
-              ci->ti_end_min, t->flags);
+/*         /\* Special case for kick1 *\/ */
+/*         if (!cell_is_starting(ci, e) && t->type == task_type_kick1 && */
+/*             t->flags == 0) */
+/*           error( */
+/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
+ */
+/*               "c->ti_end_min=%lld t->flags=%d", */
+/*               taskID_names[t->type], subtaskID_names[t->subtype],
+ * e->ti_current, */
+/*               ci->ti_end_min, t->flags); */
 
-      } else { /* pair */
-        if (!cell_is_active(ci, e) && !cell_is_active(cj, e))
+/*       } else { /\* pair *\/ */
+/*         if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) */
 
-          if (t->type != task_type_send && t->type != task_type_recv)
-            error(
-                "Task (type='%s/%s') should have been skipped ti_current=%lld "
-                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
-                taskID_names[t->type], subtaskID_names[t->subtype],
-                e->ti_current, ci->ti_end_min, cj->ti_end_min);
-      }
-#endif
+/*           if (t->type != task_type_send && t->type != task_type_recv) */
+/*             error( */
+/*                 "Task (type='%s/%s') should have been skipped ti_current=%lld
+ * " */
+/*                 "ci->ti_end_min=%lld cj->ti_end_min=%lld", */
+/*                 taskID_names[t->type], subtaskID_names[t->subtype], */
+/*                 e->ti_current, ci->ti_end_min, cj->ti_end_min); */
+/*       } */
+/* #endif */
 #endif
 
       /* Different types of tasks... */
