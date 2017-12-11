@@ -11,7 +11,7 @@ cd ../
 ./autogen.sh
 
 # Naive interactions run
-./configure --disable-mpi --enable-debug-interactions --disable-vec --enable-naive-interactions
+./configure --disable-mpi --enable-debug-interactions=1024 --disable-vec --enable-naive-interactions
 make clean; make -j 6
 
 cd examples/SedovBlast_3D/
@@ -39,7 +39,7 @@ echo "# Running SedovBlast_3D and EAGLE_12 with serial interactions and neighbou
 echo
 
 # Serial interactions run
-./configure --disable-mpi --enable-debug-interactions --disable-vec
+./configure --disable-mpi --enable-debug-interactions=1024 --disable-vec
 make clean; make -j 6
 
 cd examples/SedovBlast_3D/
@@ -61,7 +61,7 @@ echo "# Running SedovBlast_3D and EAGLE_12 with vectorised interactions and neig
 echo
 
 # Vectorised interactions run
-./configure --disable-mpi --enable-debug-interactions
+./configure --disable-mpi --enable-debug-interactions=1024
 make clean; make -j 6
 
 cd examples/SedovBlast_3D/
