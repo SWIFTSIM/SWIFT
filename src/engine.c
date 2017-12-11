@@ -4358,21 +4358,21 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  engine_print_task_counts(e);
-  space_print_cells(e->s);
+  /* engine_print_task_counts(e); */
+  /* space_print_cells(e->s); */
 
-  /* Register the time-step information */
-  if (e->step == 3) {
+  /* /\* Register the time-step information *\/ */
+  /* if (e->step == 3) { */
 
-    for (int i = 0; i < e->s->nr_cells; ++i)
-      if (&e->s->cells_top[i] - e->s->cells_top == 12) {
-        message("Found cell!");
-        address_hydro = &e->s->cells_top[i].ti_hydro_end_min;
-        address_gravity = &e->s->cells_top[i].ti_gravity_end_min;
-        message("address: %p time_end=%lld", address_hydro,
-                e->s->cells_top[i].ti_hydro_end_min);
-      }
-  }
+  /*   for (int i = 0; i < e->s->nr_cells; ++i) */
+  /*     if (&e->s->cells_top[i] - e->s->cells_top == 12) { */
+  /*       message("Found cell!"); */
+  /*       address_hydro = &e->s->cells_top[i].ti_hydro_end_min; */
+  /*       address_gravity = &e->s->cells_top[i].ti_gravity_end_min; */
+  /*       message("address: %p time_end=%lld", address_hydro, */
+  /*               e->s->cells_top[i].ti_hydro_end_min); */
+  /*     } */
+  /* } */
 
 #ifdef WITH_MPI
   /* Repartition the space amongst the nodes? */
