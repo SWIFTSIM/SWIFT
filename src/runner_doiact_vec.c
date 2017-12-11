@@ -668,13 +668,20 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if ((doi_mask & (1 << bit_index)) && pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
-          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
-          ++pi->num_ngb_density;
+        if (doi_mask & (1 << bit_index)) { 
+          if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+            ++pi->num_ngb_density;
+          }
+          else ++pi->num_ngb_density;
         }
-        if ((doi_mask2 & (1 << bit_index)) && pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
-          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
-          ++pi->num_ngb_density;
+
+        if (doi_mask2 & (1 << bit_index)) { 
+          if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+            ++pi->num_ngb_density;
+          }
+          else ++pi->num_ngb_density;
         }
       }
 #endif
@@ -889,13 +896,20 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if ((doi_mask & (1 << bit_index)) && pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
-          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
-          ++pi->num_ngb_density;
+        if (doi_mask & (1 << bit_index)) {
+          if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+            ++pi->num_ngb_density;
+          }
+          else ++pi->num_ngb_density;
         }
-        if ((doi_mask2 & (1 << bit_index)) && pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
-          pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
-          ++pi->num_ngb_density;
+        
+        if (doi_mask2 & (1 << bit_index)) {
+          if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+            ++pi->num_ngb_density;
+          }
+          else ++pi->num_ngb_density;
         }
       }
 #endif
@@ -1106,9 +1120,12 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if ((vec_is_mask_true(v_doi_mask) & (1 << bit_index)) && pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
-          pi->ids_ngbs_force[pi->num_ngb_force] = parts[pjd + bit_index].id;
-          ++pi->num_ngb_force;
+        if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+          if(pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
+            pi->ids_ngbs_force[pi->num_ngb_force] = parts[pjd + bit_index].id;
+            ++pi->num_ngb_force;
+          }
+          else ++pi->num_ngb_force;
         }
       }
 #endif
@@ -1355,9 +1372,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if ((vec_is_mask_true(v_doi_mask) & (1 << bit_index)) && pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts_j[sort_j[pjd + bit_index].i].id;
-            ++pi->num_ngb_density;
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) { 
+            if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+              pi->ids_ngbs_density[pi->num_ngb_density] = parts_j[sort_j[pjd + bit_index].i].id;
+              ++pi->num_ngb_density;
+            }
+            else ++pi->num_ngb_density;
           }
         }
 #endif
@@ -1479,9 +1499,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if ((vec_is_mask_true(v_doj_mask) & (1 << bit_index)) && pj->num_ngb_density < NUM_OF_NEIGHBOURS) {
-            pj->ids_ngbs_density[pj->num_ngb_density] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
-            ++pj->num_ngb_density;
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) { 
+            if(pj->num_ngb_density < NUM_OF_NEIGHBOURS) {
+              pj->ids_ngbs_density[pj->num_ngb_density] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+              ++pj->num_ngb_density;
+            }
+            else ++pj->num_ngb_density;
           }
         }
 #endif
@@ -1738,9 +1761,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if ((vec_is_mask_true(v_doi_mask) & (1 << bit_index)) && pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
-            pi->ids_ngbs_force[pi->num_ngb_force] = parts_j[sort_j[pjd + bit_index].i].id;
-            ++pi->num_ngb_force;
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if(pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
+              pi->ids_ngbs_force[pi->num_ngb_force] = parts_j[sort_j[pjd + bit_index].i].id;
+              ++pi->num_ngb_force;
+            }
+            else ++pi->num_ngb_force;
           }
         }
 #endif
@@ -1872,9 +1898,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if ((vec_is_mask_true(v_doj_mask) & (1 << bit_index)) && pj->num_ngb_force < NUM_OF_NEIGHBOURS) {
-            pj->ids_ngbs_force[pj->num_ngb_force] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
-            ++pj->num_ngb_force;
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+            if(pj->num_ngb_force < NUM_OF_NEIGHBOURS) {
+              pj->ids_ngbs_force[pj->num_ngb_force] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+              ++pj->num_ngb_force;
+            }
+            else ++pj->num_ngb_force;
           }
         }
 #endif
