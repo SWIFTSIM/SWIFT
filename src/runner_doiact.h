@@ -1370,7 +1370,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
-        if (r2 < hjg2 && r2 > hig2) {
+        if (r2 < hjg2 && r2 >= hig2) {
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
         }
       } /* loop over the active parts in ci. */
@@ -1432,7 +1432,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
-        if (r2 < hjg2 && r2 > hig2) {
+        if (r2 < hjg2 && r2 >= hig2) {
 
           /* Does pi need to be updated too? */
           if (part_is_active(pi, e))
