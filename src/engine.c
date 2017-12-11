@@ -3416,8 +3416,6 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
   int rebuild_space = 0;
 
-  message("marktask");
-
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
@@ -4312,8 +4310,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
-integertime_t *address_hydro = 0;
-integertime_t *address_gravity = 0;
+/* integertime_t *address_hydro = 0; */
+/* integertime_t *address_gravity = 0; */
 
 /**
  * @brief Let the #engine loose to compute the forces.
@@ -4509,8 +4507,6 @@ int engine_is_done(struct engine *e) {
 void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
-
-  message("unskip");
 
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
