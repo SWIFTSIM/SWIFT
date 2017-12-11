@@ -122,9 +122,9 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
                                  parts, num_ngb_density);
   list[11] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
                                  parts, num_ngb_force);
-  list[12] = io_make_output_field("Ids_ngb_density", LONGLONG, NUM_OF_NEIGHBOURS,
+  list[12] = io_make_output_field("Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
                                  UNIT_CONV_NO_UNITS, parts, ids_ngbs_density);
-  list[13] = io_make_output_field("Ids_ngb_force", LONGLONG, NUM_OF_NEIGHBOURS,
+  list[13] = io_make_output_field("Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
                                  UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
 #endif
 

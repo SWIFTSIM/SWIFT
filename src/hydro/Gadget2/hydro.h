@@ -176,7 +176,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
 #ifdef DEBUG_INTERACTIONS_SPH
-  for (int i = 0; i < NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_density[i] = -1;
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_density[i] = -1;
   p->num_ngb_density = 0;
 #endif
   
@@ -317,7 +317,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part *restrict p) {
 
 #ifdef DEBUG_INTERACTIONS_SPH
-  for (int i = 0; i < NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_force[i] = -1;
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_force[i] = -1;
   p->num_ngb_force = 0;
 #endif
   

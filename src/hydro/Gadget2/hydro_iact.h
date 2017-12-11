@@ -106,13 +106,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+  if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
     pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
     ++pi->num_ngb_density;
   }
   else ++pi->num_ngb_density;
 
-  if(pj->num_ngb_density < NUM_OF_NEIGHBOURS) {
+  if(pj->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
     pj->ids_ngbs_density[pj->num_ngb_density] = pi->id;
     ++pj->num_ngb_density;
   }
@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->num_ngb_density < NUM_OF_NEIGHBOURS) {
+  if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
     pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
     ++pi->num_ngb_density;
   }
@@ -503,13 +503,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
+  if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS) {
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
     ++pi->num_ngb_force;
   }
   else ++pi->num_ngb_force;
 
-  if(pj->num_ngb_force < NUM_OF_NEIGHBOURS) {
+  if(pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS) {
     pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
     ++pj->num_ngb_force;
   }
@@ -608,7 +608,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if(pi->num_ngb_force < NUM_OF_NEIGHBOURS) {
+  if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS) {
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
     ++pi->num_ngb_force;
   }
