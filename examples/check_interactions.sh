@@ -2,13 +2,13 @@
 #
 # Runs the SedovBlast_3D and EAGLE_12 examples using naive, serial and vectorised particle interactions. Then compares the output between versions using check_ngbs.py
 
-./autogen.sh
-
 echo
 echo "# Running SedovBlast_3D and EAGLE_12 with naive interactions and neighbour logging, 16 thread"
 echo
 
 cd ../
+
+./autogen.sh
 
 # Naive interactions run
 ./configure --disable-mpi --enable-debug-interactions --disable-vec --enable-naive-interactions
