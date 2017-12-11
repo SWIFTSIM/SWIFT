@@ -3490,15 +3490,15 @@ void engine_print_task_counts(struct engine *e) {
       if (tasks[k].type == task_type_send &&
           tasks[k].subtype == task_subtype_rho) {
         count_send_rho++;
-        message("Send_rho: nodeID_i=%d cellID_i=%ld nodeID_j=%d cellID_j=%ld",
-                tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top,
-                tasks[k].cj->nodeID, tasks[k].cj - e->s->cells_top);
+        /* message("Send_rho: nodeID_i=%d cellID_i=%ld nodeID_j=%d cellID_j=%ld", */
+        /*         tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top, */
+        /*         tasks[k].cj->nodeID, tasks[k].cj - e->s->cells_top); */
       }
       if (tasks[k].type == task_type_recv &&
           tasks[k].subtype == task_subtype_rho) {
         count_recv_rho++;
-        message("recv_rho: nodeID_i=%d cellID_i=%ld nodeID_j=n/a cellID_j=n/a",
-                tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top);
+        /* message("recv_rho: nodeID_i=%d cellID_i=%ld nodeID_j=n/a cellID_j=n/a", */
+        /*         tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top); */
       }
     }
   }

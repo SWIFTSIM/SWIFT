@@ -296,7 +296,9 @@ int cell_pack_end_step(struct cell *restrict c,
 
   /* Pack this cell's data. */
   pcells[0].ti_hydro_end_min = c->ti_hydro_end_min;
+  pcells[0].ti_hydro_end_max = c->ti_hydro_end_max;
   pcells[0].ti_gravity_end_min = c->ti_gravity_end_min;
+  pcells[0].ti_gravity_end_max = c->ti_gravity_end_max;
   pcells[0].dx_max_part = c->dx_max_part;
   pcells[0].dx_max_gpart = c->dx_max_gpart;
 
@@ -331,7 +333,9 @@ int cell_unpack_end_step(struct cell *restrict c,
 
   /* Unpack this cell's data. */
   c->ti_hydro_end_min = pcells[0].ti_hydro_end_min;
+  c->ti_hydro_end_max = pcells[0].ti_hydro_end_max;
   c->ti_gravity_end_min = pcells[0].ti_gravity_end_min;
+  c->ti_gravity_end_max = pcells[0].ti_gravity_end_max;
   c->dx_max_part = pcells[0].dx_max_part;
   c->dx_max_gpart = pcells[0].dx_max_gpart;
 

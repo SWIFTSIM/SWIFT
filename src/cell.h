@@ -137,8 +137,14 @@ struct pcell_step {
   /*! Minimal integer end-of-timestep in this cell (hydro) */
   integertime_t ti_hydro_end_min;
 
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_hydro_end_max;
+
   /*! Minimal integer end-of-timestep in this cell (gravity) */
   integertime_t ti_gravity_end_min;
+
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_gravity_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
