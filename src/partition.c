@@ -645,8 +645,8 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
              * we cut for that. Note that weight is added to the local and
              * remote cells, as we want to keep both away from any cuts, this
              * can overflow int, so take care. */
-            int dti = num_time_bins - get_time_bin(ci->ti_end_min);
-            int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
+            int dti = num_time_bins - get_time_bin(ci->ti_hydro_end_min);
+            int dtj = num_time_bins - get_time_bin(cj->ti_hydro_end_min);
             double dt = (double)(1 << dti) + (double)(1 << dtj);
             weights_e[ik] += dt;
             weights_e[jk] += dt;

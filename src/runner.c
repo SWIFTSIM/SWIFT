@@ -1645,8 +1645,8 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
 #endif
 
   /* ... and store. */
-  //c->ti_hydro_end_min = ti_hydro_end_min;
-  //c->ti_hydro_end_max = ti_hydro_end_max;
+  // c->ti_hydro_end_min = ti_hydro_end_min;
+  // c->ti_hydro_end_max = ti_hydro_end_max;
   c->ti_old_part = ti_current;
   c->h_max = h_max;
 
@@ -1725,8 +1725,8 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* ... and store. */
-  //c->ti_gravity_end_min = ti_gravity_end_min;
-  //c->ti_gravity_end_max = ti_gravity_end_max;
+  // c->ti_gravity_end_min = ti_gravity_end_min;
+  // c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_gpart);
