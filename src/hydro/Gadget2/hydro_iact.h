@@ -110,10 +110,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
     ++pi->num_ngb_density;
   }
+  else ++pi->num_ngb_density;
+
   if(pj->num_ngb_density < NUM_OF_NEIGHBOURS) {
     pj->ids_ngbs_density[pj->num_ngb_density] = pi->id;
     ++pj->num_ngb_density;
   }
+  else ++pj->num_ngb_density;
 #endif
 
 }
@@ -171,6 +174,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     pi->ids_ngbs_density[pi->num_ngb_density] = pj->id;
     ++pi->num_ngb_density;
   }
+  else ++pi->num_ngb_density;
 #endif
 
 }
@@ -503,10 +507,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
     ++pi->num_ngb_force;
   }
+  else ++pi->num_ngb_force;
+
   if(pj->num_ngb_force < NUM_OF_NEIGHBOURS) {
     pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
     ++pj->num_ngb_force;
   }
+  else ++pj->num_ngb_force;
 #endif
 
 }
@@ -605,6 +612,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
     ++pi->num_ngb_force;
   }
+  else ++pi->num_ngb_force;
 #endif
 
 }
