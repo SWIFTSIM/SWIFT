@@ -4677,19 +4677,23 @@ void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
   const int nodeID = e->nodeID;
-  const int *cdim = e->s->cdim;
   const struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
+  const int *cdim = s->cdim;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Get some info about the physics */
+  const double *dim = s->dim;
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
-  const ticks tic = getticks();
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
-  double CoM_i[3] = {0., 0., 0.};
-  double r_max_i = 0.;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+  struct proxy *proxies = e->proxies;
+
+  /* Let's time this */
+  const ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -4698,13 +4702,24 @@ void engine_makeproxies(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
+  /* Compute how many cells away we need to walk */
+  int delta = 1; /*hydro case */
+  if(with_gravity) {
+    const double distance = 2. * cells[0].width[0] / props->theta_crit;
+    delta = (int)(distance / cells[0].width[0]) + 1;
+  }
+
   /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  int ind[3];
+  for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++) {
+    for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++) {
+      for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
 
         /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k);
+        const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+
+	double CoM_i[3] = {0., 0., 0.};
+	double r_max_i = 0.;
 
         if (with_gravity) {
 
@@ -4715,11 +4730,26 @@ void engine_makeproxies(struct engine *e) {
           CoM_i[2] = multi_i->CoM[2];
           r_max_i = multi_i->r_max;
         }
-
-        /* Loop over every other cell */
-        for (int ii = 0; ii < cdim[0]; ii++) {
-          for (int jj = 0; jj < cdim[1]; jj++) {
-            for (int kk = 0; kk < cdim[2]; kk++) {
+      
+        /* Loop over all its neighbours (periodic). */
+        for (int i = -delta; i <= delta; i++) {
+          int ii = ind[0] + i;
+          if (ii >= cdim[0])
+            ii -= cdim[0];
+          else if (ii < 0)
+            ii += cdim[0];
+          for (int j = -delta; j <= delta; j++) {
+            int jj = ind[1] + j;
+            if (jj >= cdim[1])
+              jj -= cdim[1];
+            else if (jj < 0)
+              jj += cdim[1];
+            for (int k = -delta; k <= delta; k++) {
+              int kk = ind[2] + k;
+              if (kk >= cdim[2])
+                kk -= cdim[2];
+              else if (kk < 0)
+                kk += cdim[2];
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, ii, jj, kk);
@@ -4742,12 +4772,12 @@ void engine_makeproxies(struct engine *e) {
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
-                if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-                      abs(i - ii + cdim[0]) <= 1) &&
-                     (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-                      abs(j - jj + cdim[1]) <= 1) &&
-                     (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-                      abs(k - kk + cdim[2]) <= 1)))
+                if (((abs(ind[0] - ii) <= 1 || abs(ind[0] - ii - cdim[0]) <= 1 ||
+                      abs(ind[0] - ii + cdim[0]) <= 1) &&
+                     (abs(ind[1] - jj) <= 1 || abs(ind[1] - jj - cdim[1]) <= 1 ||
+                      abs(ind[1] - jj + cdim[1]) <= 1) &&
+                     (abs(ind[2] - kk) <= 1 || abs(ind[2] - kk - cdim[2]) <= 1 ||
+                      abs(ind[2] - kk + cdim[2]) <= 1)))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
 
@@ -4841,6 +4871,7 @@ void engine_makeproxies(struct engine *e) {
     }
   }
 
+  /* Be clear about the time */
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
