@@ -68,14 +68,14 @@
 #define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
    GIZMO_UNPHYSICAL_RESCUE is also selected). */
-//#define GIZMO_UNPHYSICAL_WARNING
+#define GIZMO_UNPHYSICAL_WARNING
 
 /* Parameters that control how GIZMO handles pathological particle
    configurations. */
 /* Show a warning message if a pathological configuration has been detected. */
 //#define GIZMO_PATHOLOGICAL_WARNING
 /* Crash if a pathological configuration has been detected. */
-//#define GIZMO_PATHOLOGICAL_ERROR
+#define GIZMO_PATHOLOGICAL_ERROR
 /* Maximum allowed gradient matrix condition number. If the condition number of
    the gradient matrix (defined in equation C1 in Hopkins, 2015) is larger than
    this value, we artificially increase the number of neighbours to get a more

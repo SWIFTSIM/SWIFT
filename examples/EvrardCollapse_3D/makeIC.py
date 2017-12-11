@@ -43,7 +43,8 @@ pos[:,0] = r * sin_theta * cos_phi
 pos[:,1] = r * sin_theta * sin_phi
 pos[:,2] = r * cos_theta
 
-pos += array([R, R, R])
+# shift particles to put the sphere in the centre of the box
+pos += array([50. * R, 50. * R, 50. * R])
 
 h = ones(numPart) * 2. * R / numPart**(1. / 3.)
 
@@ -60,7 +61,7 @@ file = h5py.File(fileName, 'w')
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [2. * R, 2. * R, 2. * R]
+grp.attrs["BoxSize"] = [100. * R, 100. * R, 100. * R]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
