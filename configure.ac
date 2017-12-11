@@ -689,14 +689,21 @@ esac
 # Check if debugging interactions is switched on.
 AC_ARG_ENABLE([debug-interactions],
    [AS_HELP_STRING([--enable-debug-interactions],
-     [Activate interaction debugging @<:@yes/no@:>@]
+     [Activate interaction debugging, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
    )],
    [enable_debug_interactions="$enableval"],
    [enable_debug_interactions="no"]
 )
-if test "$enable_debug_interactions" = "yes"; then
+if test "$enable_debug_interactions" != "no"; then
   if test "$with_hydro" = "gadget2"; then
-    AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+      AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+    if test "$enable_debug_interactions" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS],256,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS], [$enableval] ,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to $enableval neighbours)"]
+    fi
   else 
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi

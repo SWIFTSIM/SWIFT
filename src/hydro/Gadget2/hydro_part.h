@@ -33,10 +33,6 @@
 
 #include "cooling_struct.h"
 
-#ifdef DEBUG_INTERACTIONS_SPH
-#define NUM_OF_NEIGHBOURS 256
-#endif
-
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -149,10 +145,10 @@ struct part {
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /*! List of interacting particles in the density SELF and PAIR */
-  long long ids_ngbs_density[NUM_OF_NEIGHBOURS];
+  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS];
 
   /*! List of interacting particles in the force SELF and PAIR */
-  long long ids_ngbs_force[NUM_OF_NEIGHBOURS];
+  long long ids_ngbs_force[MAX_NUM_OF_NEIGHBOURS];
 
   /*! Number of interactions in the density SELF and PAIR */
   int num_ngb_density;
