@@ -59,17 +59,14 @@ struct part {
   /* Particle smoothing length. */
   float h;
 
-  /* Old internal energy flux */
-  float du_dt;
-
   /* The primitive hydrodynamical variables. */
   struct {
 
-    /* Fluid velocity. */
-    float v[3];
-
     /* Density. */
     float rho;
+
+    /* Fluid velocity. */
+    float v[3];
 
     /* Pressure. */
     float P;
@@ -110,11 +107,11 @@ struct part {
   /* The conserved hydrodynamical variables. */
   struct {
 
-    /* Fluid momentum. */
-    float momentum[3];
-
     /* Fluid mass */
     float mass;
+
+    /* Fluid momentum. */
+    float momentum[3];
 
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
@@ -145,9 +142,6 @@ struct part {
        gradients */
     float matrix_E[3][3];
 
-    /* Total surface area of the particle. */
-    float Atot;
-
     /* Centroid of the "cell". */
     float centroid[3];
 
@@ -167,14 +161,8 @@ struct part {
   /* Quantities used during the volume (=density) loop. */
   struct {
 
-    /* Particle velocity divergence. */
-    float div_v;
-
     /* Derivative of particle number density. */
     float wcount_dh;
-
-    /* Particle velocity curl. */
-    float curl_v[3];
 
     /* Particle number density. */
     float wcount;
@@ -189,15 +177,6 @@ struct part {
 
     /* Needed to drift the primitive variables. */
     float h_dt;
-
-    /* Physical time step of the particle. */
-    float dt;
-
-    /* Flag keeping track of whether this is an active or inactive particle. */
-    char active;
-
-    /* Actual velocity of the particle. */
-    float v_full[3];
 
   } force;
 
