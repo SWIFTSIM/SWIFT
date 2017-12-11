@@ -149,12 +149,17 @@ neighbour_ids_force_sort = file_sort["/PartType0/Ids_ngb_force"][:]
 #wcount_sort = wcount_sort * np.power(h_sort,3) * kernel_norm
 
 # Cross check
+max_density_ngbs_naive = np.max(num_density_naive)
+max_density_ngbs_sort = np.max(num_density_sort)
+max_force_ngbs_naive = np.max(num_force_naive)
+max_force_ngbs_sort = np.max(num_force_sort)
+
 print "                   Min     Mean     Max "
 print "                   ---------------------"
-print "Ngbs density naiv: ", np.min(num_density_naive), np.mean(num_density_naive), np.max(num_density_naive)
-print "Ngbs density sort: ", np.min(num_density_sort), np.mean(num_density_sort), np.max(num_density_sort)
-print "Ngbs force naiv:   ", np.min(num_force_naive), np.mean(num_force_naive), np.max(num_force_naive)
-print "Ngbs force sort:   ", np.min(num_force_sort), np.mean(num_force_sort), np.max(num_force_sort)
+print "Ngbs density naiv: ", np.min(num_density_naive), np.mean(num_density_naive), max_density_ngbs_naive
+print "Ngbs density sort: ", np.min(num_density_sort), np.mean(num_density_sort), max_density_ngbs_sort
+print "Ngbs force naiv:   ", np.min(num_force_naive), np.mean(num_force_naive), max_force_ngbs_naive
+print "Ngbs force sort:   ", np.min(num_force_sort), np.mean(num_force_sort), max_force_ngbs_sort
 #print "Wcount naiv:   ", np.min(wcount_naive), np.mean(wcount_naive), np.max(wcount_naive)
 #print "Wcount sort:   ", np.min(wcount_sort), np.mean(wcount_sort), np.max(wcount_sort)
 
@@ -178,6 +183,23 @@ h_naive = h_naive[index_naive]
 h_sort = h_sort[index_sort]
 pos_naive = pos_naive[index_naive]
 pos_sort = pos_sort[index_sort]
+
+neighbour_length_naive = len(neighbour_ids_density_naive[0])
+neighbour_length_sort = len(neighbour_ids_density_sort[0])
+
+# Check that input files are logging the same number of neighbours
+if neighbour_length_naive != neighbour_length_sort:
+    print "Input files have logged different numbers of neighbour lengths!"
+    print "{} has logged: {} neighbours".format(inputFile1, neighbour_length_naive)
+    print "{} has logged: {} neighbours".format(inputFile2, neighbour_length_sort)
+    exit(1)
+
+if (max_density_ngbs_naive > neighbour_length_naive or max_force_ngbs_naive > neighbour_length_naive or
+    max_density_ngbs_sort > neighbour_length_sort or max_force_ngbs_sort > neighbour_length_sort):
+    print "The number of neighbours has exceeded the number of neighbours logged."
+    print "Modify NUM_OF_NEIGHBOURS in hydro_part.h to log more neighbours."
+    print "The highest neighbour count is: ", max(max_density_ngbs_naive,max_force_ngbs_naive, max_density_ngbs_sort,max_force_ngbs_sort)
+    exit(1)
 
 # First check
 print "\n                         Min    Max"
