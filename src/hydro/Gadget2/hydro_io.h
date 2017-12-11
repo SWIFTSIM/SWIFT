@@ -92,7 +92,7 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
   *num_fields = 10;
 
 #ifdef DEBUG_INTERACTIONS_SPH
-  *num_fields = 14;
+  *num_fields += 4;
 #endif
 
   /* List what we want to write */
