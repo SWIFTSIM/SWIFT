@@ -40,6 +40,14 @@
 #include "units.h"
 #include "engine.h"
 
+
+void logger_write_data(struct dump *d, size_t *offset, size_t size, void *p)
+{
+  char *buff;
+  buff = dump_get(d, size, offset);
+  memcpy(buff, p, size);
+}
+
 /**
  * @brief Compute the size of a message given its mask.
  *
@@ -284,14 +292,14 @@ void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
  * @param dump The #dump in which to log the particle data.
  *
  */
-void logger_write_file_header(struct dump *dump) {
+void logger_write_file_header(struct dump *dump, struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   message("writing header");
 #endif
   
   size_t i;
-  char *buff, *skip_header;
+  char *skip_header;
   size_t *file_offset;
 
   struct logger_const log_const;
@@ -302,48 +310,41 @@ void logger_write_file_header(struct dump *dump) {
   if (*file_offset != 0) error("Something was already written in the dump file");
 
   /* Write version information */
-  buff = dump_get(dump, LOGGER_VERSION_SIZE, file_offset);
-  memcpy(buff, LOGGER_VERSION, LOGGER_VERSION_SIZE);
+  logger_write_data(dump, file_offset, LOGGER_VERSION_SIZE, LOGGER_VERSION);
  
   /* write number of bytes used for the offsets */
-  buff = dump_get(dump, LOGGER_OFFSET_SIZE, file_offset);
-  memcpy(buff, &log_const.offset, LOGGER_OFFSET_SIZE);
+  logger_write_data(dump, file_offset, LOGGER_OFFSET_SIZE, &log_const.offset);
 
   /* will write the offset of the first particle here */
   skip_header = dump_get(dump, log_const.offset, file_offset);
 
   /* write number of bytes used for names */
-  buff = dump_get(dump, LOGGER_NAME_SIZE, file_offset);
-  memcpy(buff, &log_const.name, LOGGER_NAME_SIZE);
+  logger_write_data(dump, file_offset, LOGGER_NAME_SIZE, &log_const.name);
 
   /* write number of bytes used for numbers */
-  buff = dump_get(dump, LOGGER_NBER_SIZE, file_offset);
-  memcpy(buff, &log_const.number, LOGGER_NBER_SIZE);
+  logger_write_data(dump, file_offset, LOGGER_NBER_SIZE, &log_const.number);
 
   /* write number of bytes used for masks */
-  buff = dump_get(dump, LOGGER_MASK_SIZE, file_offset);
-  memcpy(buff, &log_const.mask, LOGGER_MASK_SIZE);
+  logger_write_data(dump, file_offset, LOGGER_MASK_SIZE, &log_const.mask);
 
   /* write number of masks */
-  buff = dump_get(dump, log_const.number, file_offset);
-  memcpy(buff, &log_const.nber_mask, log_const.number);
+  logger_write_data(dump, file_offset, log_const.number, &log_const.nber_mask);
   
   /* write masks */
   // loop over all mask type
   for(i=0; i<log_const.nber_mask; i++) {
     // mask name
     size_t j = i * log_const.name;
-    buff = dump_get(dump, log_const.name, file_offset);
-    memcpy(buff, &log_const.masks_name[j], log_const.name);
+    logger_write_data(dump, file_offset, log_const.name, &log_const.masks_name[j]);
     
     // mask
-    buff = dump_get(dump, log_const.mask, file_offset);
-    memcpy(buff, &log_const.masks[i], log_const.mask);
+    logger_write_data(dump, file_offset, log_const.mask, &log_const.masks[i]);
 
     // mask size
-    buff = dump_get(dump, log_const.number, file_offset);
-    memcpy(buff, &log_const.masks_size[i], log_const.number);
+    logger_write_data(dump, file_offset, log_const.number, &log_const.masks_size[i]);
   }
+
+  /* Write data */
   
 
   /* last step */
