@@ -22,10 +22,11 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
+/* Standard headers */
 #include <pthread.h>
 
 /* Local includes. */
+#include "barrier.h"
 #include "cycle.h"
 
 /* Local defines. */
@@ -70,8 +71,8 @@ struct threadpool {
   pthread_t *threads;
 
   /* This is where threads go to rest. */
-  pthread_barrier_t wait_barrier;
-  pthread_barrier_t run_barrier;
+  swift_barrier_t wait_barrier;
+  swift_barrier_t run_barrier;
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;

@@ -169,10 +169,10 @@ void *threadpool_runner(void *data) {
   while (1) {
 
     /* Let the controller know that this thread is waiting. */
-    pthread_barrier_wait(&tp->wait_barrier);
+    swift_barrier_wait(&tp->wait_barrier);
 
     /* Wait for the controller. */
-    pthread_barrier_wait(&tp->run_barrier);
+    swift_barrier_wait(&tp->run_barrier);
 
     /* If no map function is specified, just die. We use this as a mechanism
        to shut down threads without leaving the barriers in an invalid state. */
@@ -212,8 +212,8 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   if (num_threads == 1) return;
 
   /* Init the barriers. */
-  if (pthread_barrier_init(&tp->wait_barrier, NULL, num_threads) != 0 ||
-      pthread_barrier_init(&tp->run_barrier, NULL, num_threads) != 0)
+  if (swift_barrier_init(&tp->wait_barrier, NULL, num_threads) != 0 ||
+      swift_barrier_init(&tp->run_barrier, NULL, num_threads) != 0)
     error("Failed to initialize barriers.");
 
   /* Set the task counter to zero. */
@@ -237,7 +237,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   }
 
   /* Wait for all the threads to be up and running. */
-  pthread_barrier_wait(&tp->wait_barrier);
+  swift_barrier_wait(&tp->wait_barrier);
 }
 
 /**
@@ -288,13 +288,13 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->num_threads_running = 0;
 
   /* Wait for all the threads to be up and running. */
-  pthread_barrier_wait(&tp->run_barrier);
+  swift_barrier_wait(&tp->run_barrier);
 
   /* Do some work while I'm at it. */
   threadpool_chomp(tp, tp->num_threads - 1);
 
   /* Wait for all threads to be done. */
-  pthread_barrier_wait(&tp->wait_barrier);
+  swift_barrier_wait(&tp->wait_barrier);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   /* Log the total call time to thread id -1. */
@@ -321,15 +321,15 @@ void threadpool_clean(struct threadpool *tp) {
      * and waiting for all the threads to terminate. This ensures that no
      * thread is still waiting at a barrier. */
     tp->map_function = NULL;
-    pthread_barrier_wait(&tp->run_barrier);
+    swift_barrier_wait(&tp->run_barrier);
     for (int k = 0; k < tp->num_threads - 1; k++) {
       void *retval;
       pthread_join(tp->threads[k], &retval);
     }
 
     /* Release the barriers. */
-    if (pthread_barrier_destroy(&tp->wait_barrier) != 0 ||
-        pthread_barrier_destroy(&tp->run_barrier) != 0)
+    if (swift_barrier_destroy(&tp->wait_barrier) != 0 ||
+        swift_barrier_destroy(&tp->run_barrier) != 0)
       error("Failed to destroy threadpool barriers.");
 
     /* Clean up memory. */

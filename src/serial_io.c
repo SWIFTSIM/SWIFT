@@ -176,9 +176,9 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
 
-void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
-                  char* partTypeGroupName, const struct io_props props,
-                  unsigned long long N_total,
+void prepareArray(const struct engine* e, hid_t grp, char* fileName,
+                  FILE* xmfFile, char* partTypeGroupName,
+                  const struct io_props props, unsigned long long N_total,
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
@@ -282,14 +282,14 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
-                char* partTypeGroupName, const struct io_props props, size_t N,
-                long long N_total, int mpi_rank, long long offset,
+void writeArray(const struct engine* e, hid_t grp, char* fileName,
+                FILE* xmfFile, char* partTypeGroupName,
+                const struct io_props props, size_t N, long long N_total,
+                int mpi_rank, long long offset,
                 const struct unit_system* internal_units,
                 const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
-  const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
   /* message("Writing '%s' array...", props.name); */
@@ -300,45 +300,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                  internal_units, snapshot_units);
 
   /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * io_sizeof_type(props.type));
-  if (temp == NULL) error("Unable to allocate memory for temporary buffer");
+  void* temp = NULL;
+  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
+                     num_elements * typeSize) != 0)
+    error("Unable to allocate temporary i/o buffer");
 
-  /* Copy particle data to temporary buffer */
-  if (props.convert_part == NULL &&
-      props.convert_gpart == NULL) { /* No conversion */
-
-    char* temp_c = temp;
-    for (size_t i = 0; i < N; ++i)
-      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
-
-  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
-
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_part(e, &props.parts[i]);
-
-  } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
-
-    float* temp_f = temp;
-    for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
-  }
-
-  /* Unit conversion if necessary */
-  const double factor =
-      units_conversion_factor(internal_units, snapshot_units, props.units);
-  if (factor != 1.) {
-
-    /* message("Converting ! factor=%e", factor); */
-
-    if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
-    } else {
-      float* temp_f = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
-    }
-  }
+  /* Copy the particle data to the temporary buffer */
+  io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
   /* Construct information for the hyper-slab */
   int rank;
@@ -512,7 +480,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     /* Read the unit system used in the ICs */
     if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-    io_read_unit_system(h_file, ic_units);
+    io_read_unit_system(h_file, ic_units, mpi_rank);
 
     if (units_are_equal(ic_units, internal_units)) {
 
@@ -656,8 +624,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             break;
 
           default:
-            message("Particle Type %d not yet supported. Particles ignored",
-                    ptype);
+            if (mpi_rank == 0)
+              message("Particle Type %d not yet supported. Particles ignored",
+                      ptype);
         }
 
         /* Read everything */

@@ -36,9 +36,6 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-/* Thermal energy per unit mass used as a constant for the isothermal EoS */
-#define const_isothermal_internal_energy 20.2678457288f
-
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH
