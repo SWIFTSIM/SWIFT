@@ -259,6 +259,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
  * @param max_active_bin The largest time-bin active during this step.
+ * @param active_ci Is any particle in cell ci active?
+ * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
     const struct cell *ci, const struct cell *cj,
@@ -416,6 +418,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
  * @param init_pi first pi to interact with a pj particle
  * @param init_pj last pj to interact with a pi particle
  * @param max_active_bin The largest time-bin active during this step.
+ * @param active_ci Is any particle in cell ci active?
+ * @param active_cj Is any particle in cell cj active?
  */
 __attribute__((always_inline)) INLINE static void
 populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
@@ -580,7 +584,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
   /* Anything to do here? */
   if (!cell_is_active(c, e)) return;
-
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -594,7 +597,6 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   /* Get the particle cache from the runner and re-allocate
    * the cache if it is not big enough for the cell. */
   struct cache *restrict cell_cache = &r->ci_cache;
-
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
@@ -1036,8 +1038,8 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
   TIMER_TIC;
 
+  /* Early abort? */
   if (!cell_is_active(c, e)) return;
-
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1226,7 +1228,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-/* Check whether cells are local to the node. */
+  /* Check whether cells are local to the node. */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
 
@@ -1267,8 +1269,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (active_ci) {
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
-      if (part_is_active(pi, e)) {
+      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
       }
@@ -1278,7 +1280,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -1293,16 +1295,15 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
    * them if they are not big enough for the cells. */
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
-
   if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
+  /* Get a direct pointer to the index arrays */
   int first_pi, last_pj;
-  int *restrict max_index_i SWIFT_CACHE_ALIGN;
-  int *restrict max_index_j SWIFT_CACHE_ALIGN;
-
-  max_index_i = r->ci_cache.max_index;
-  max_index_j = r->cj_cache.max_index;
+  swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, max_index_j, r->cj_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
 
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
@@ -1603,7 +1604,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-/* Check whether cells are local to the node. */
+  /* Check whether cells are local to the node. */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
 
@@ -1649,9 +1650,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 
   if (active_ci) {
     for (int pid = count_i - 1;
-         pid >= 0 && sort_i[pid].d + h_max + dx_max - rshift > dj_min; pid--) {
-      struct part *restrict pi = &parts_i[sort_i[pid].i];
-      if (part_is_active(pi, e)) {
+         pid >= 0 && sort_i[pid].d + h_max + dx_max > dj_min; pid--) {
+      const struct part *restrict pi = &parts_i[sort_i[pid].i];
+      if (part_is_active_no_debug(pi, max_active_bin)) {
         numActive++;
         break;
       }
@@ -1661,7 +1662,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   if (!numActive && active_cj) {
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - h_max - dx_max < di_max;
          pjd++) {
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const struct part *restrict pj = &parts_j[sort_j[pjd].i];
       if (part_is_active_no_debug(pj, max_active_bin)) {
         numActive++;
         break;
@@ -1676,16 +1677,15 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
    * them if they are not big enough for the cells. */
   struct cache *restrict ci_cache = &r->ci_cache;
   struct cache *restrict cj_cache = &r->cj_cache;
-
   if (ci_cache->count < count_i) cache_init(ci_cache, count_i);
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
+  /* Get a direct pointer to the index arrays */
   int first_pi, last_pj;
-  int *restrict max_index_i SWIFT_CACHE_ALIGN;
-  int *restrict max_index_j SWIFT_CACHE_ALIGN;
-
-  max_index_i = r->ci_cache.max_index;
-  max_index_j = r->cj_cache.max_index;
+  swift_declare_aligned_ptr(int, max_index_i, r->ci_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, max_index_j, r->cj_cache.max_index,
+                            SWIFT_CACHE_ALIGNMENT);
 
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
