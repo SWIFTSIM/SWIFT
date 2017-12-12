@@ -666,6 +666,22 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
 
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (doi_mask & (1 << bit_index)) { 
+          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+
+        if (doi_mask2 & (1 << bit_index)) { 
+          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+      }
+#endif
+
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
@@ -874,6 +890,22 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
 
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (doi_mask & (1 << bit_index)) {
+          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+        
+        if (doi_mask2 & (1 << bit_index)) {
+          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+          ++pi->num_ngb_density;
+        }
+      }
+#endif
+
       /* If there are any interactions left pack interaction values into c2
        * cache. */
       if (doi_mask) {
@@ -1077,6 +1109,16 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
       /* Combine all 3 masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
+
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+          if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_force[pi->num_ngb_force] = parts[pjd + bit_index].id;
+          ++pi->num_ngb_force;
+        }
+      }
+#endif
 
       /* If there are any interactions perform them. */
       if (vec_is_mask_true(v_doi_mask)) {
@@ -1318,6 +1360,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) { 
+            if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+              pi->ids_ngbs_density[pi->num_ngb_density] = parts_j[sort_j[pjd + bit_index].i].id;
+            ++pi->num_ngb_density;
+          }
+        }
+#endif
+
         /* If there are any interactions perform them. */
         if (vec_is_mask_true(v_doi_mask))
           runner_iact_nonsym_1_vec_density(
@@ -1432,6 +1484,16 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
+
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) { 
+            if(pj->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+              pj->ids_ngbs_density[pj->num_ngb_density] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+            ++pj->num_ngb_density;
+          }
+        }
+#endif
 
         /* If there are any interactions perform them. */
         if (vec_is_mask_true(v_doj_mask))
@@ -1683,6 +1745,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_h2.v = vec_fmax(v_hig2.v, v_hjg2.v);
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+              pi->ids_ngbs_force[pi->num_ngb_force] = parts_j[sort_j[pjd + bit_index].i].id;
+            ++pi->num_ngb_force;
+          }
+        }
+#endif
+
         /* If there are any interactions perform them. */
         if (vec_is_mask_true(v_doi_mask)) {
           vector v_hj_inv = vec_reciprocal(v_hj);
@@ -1807,6 +1879,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         vector v_h2;
         v_h2.v = vec_fmax(v_hjg2.v, v_hig2.v);
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+            if(pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+              pj->ids_ngbs_force[pj->num_ngb_force] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+            ++pj->num_ngb_force;
+          }
+        }
+#endif
 
         /* If there are any interactions perform them. */
         if (vec_is_mask_true(v_doj_mask)) {
