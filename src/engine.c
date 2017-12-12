@@ -4705,9 +4705,13 @@ void engine_makeproxies(struct engine *e) {
   /* Compute how many cells away we need to walk */
   int delta = 1; /*hydro case */
   if(with_gravity) {
-    const double distance = 2. * cells[0].width[0] / props->theta_crit;
+    const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
   }
+
+  /* Let's be verbose about this choice */
+  if(e->verbose)
+    message("Looking for proxies up to %d top-level cells away", delta);
 
   /* Loop over each cell in the space. */
   int ind[3];
