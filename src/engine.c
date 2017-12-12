@@ -1470,7 +1470,7 @@ void engine_exchange_cells(struct engine *e) {
   MPI_Request reqs_in[engine_maxproxies];
   MPI_Request reqs_out[engine_maxproxies];
   MPI_Status status;
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
@@ -1543,8 +1543,10 @@ void engine_exchange_cells(struct engine *e) {
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
   for (int k = 0; k < nr_proxies; k++)
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      count_parts_in += e->proxies[k].cells_in[j]->count;
-      count_gparts_in += e->proxies[k].cells_in[j]->gcount;
+      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) 
+	count_parts_in += e->proxies[k].cells_in[j]->count;
+      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) 
+	count_gparts_in += e->proxies[k].cells_in[j]->gcount;
       count_sparts_in += e->proxies[k].cells_in[j]->scount;
     }
   if (count_parts_in > s->size_parts_foreign) {
@@ -1575,11 +1577,18 @@ void engine_exchange_cells(struct engine *e) {
   struct spart *sparts = s->sparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      cell_link_parts(e->proxies[k].cells_in[j], parts);
-      cell_link_gparts(e->proxies[k].cells_in[j], gparts);
+      
+      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+	cell_link_parts(e->proxies[k].cells_in[j], parts);
+	parts = &parts[e->proxies[k].cells_in[j]->count];
+      }
+
+      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+	cell_link_gparts(e->proxies[k].cells_in[j], gparts);
+	gparts = &gparts[e->proxies[k].cells_in[j]->gcount];
+      }
+
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      parts = &parts[e->proxies[k].cells_in[j]->count];
-      gparts = &gparts[e->proxies[k].cells_in[j]->gcount];
       sparts = &sparts[e->proxies[k].cells_in[j]->scount];
     }
   }
