@@ -175,6 +175,11 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
+#ifdef DEBUG_INTERACTIONS_SPH
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_density[i] = -1;
+  p->num_ngb_density = 0;
+#endif
+
   p->rho = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
@@ -310,6 +315,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part *restrict p) {
+
+#ifdef DEBUG_INTERACTIONS_SPH
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_force[i] = -1;
+  p->num_ngb_force = 0;
+#endif
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
