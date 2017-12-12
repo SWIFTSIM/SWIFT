@@ -71,9 +71,29 @@ cd examples/SedovBlast_3D/
 mv sedov_0000.hdf5 sedov_vec.hdf5
 
 # Compare outputs
-python ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
-python ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
-python ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
+if python ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
+then
+  echo "SedovBlast_3D comparison between naive and serial passed"
+else
+  echo "SedovBlast_3D comparison between naive and serial failed"
+  exit 1
+fi
+
+if python ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
+then
+  echo "SedovBlast_3D comparison between naive and vectorised passed"
+else
+  echo "SedovBlast_3D comparison between naive and vectorised failed"
+  exit 1
+fi
+
+if python ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
+then
+  echo "SedovBlast_3D comparison between serial and vectorised passed"
+else
+  echo "SedovBlast_3D comparison between serial and vectorised failed"
+  exit 1
+fi
 
 cd ../EAGLE_12/
 
@@ -82,6 +102,27 @@ cd ../EAGLE_12/
 mv eagle_0000.hdf5 eagle_12_vec.hdf5
 
 # Compare outputs
-python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
-python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
-python ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
+if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
+then
+  echo "EAGLE_12 comparison between naive and serial passed"
+else
+  echo "EAGLE_12 comparison between naive and serial failed"
+  exit 1
+fi
+
+if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
+then
+  echo "EAGLE_12 comparison between naive and vectorised passed"
+else
+  echo "EAGLE_12 comparison between naive and vectorised failed"
+  exit 1
+fi
+
+if python ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
+then
+  echo "EAGLE_12 comparison between serial and vectorised passed"
+  exit 0
+else
+  echo "EAGLE_12 comparison between serial and vectorised failed"
+  exit 1
+fi
