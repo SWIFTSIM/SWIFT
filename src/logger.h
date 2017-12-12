@@ -88,6 +88,7 @@ struct dump;
 #define LOGGER_MASK_SIZE 1 // size of the masks
 #define LOGGER_NBER_SIZE 1 // size of the number of elements
 #define LOGGER_OFFSET_SIZE 1// size of the offset size information
+#define LOGGER_DATATYPE_SIZE 1
 
 struct logger_const {
   size_t name; // labels size
@@ -101,6 +102,12 @@ struct logger_const {
   char *masks_type; // type of data (e.g. 'CHAR', 'INT', 'FLOAT')
 };
 
+enum logger_datatype {
+  logger_data_int,
+  logger_data_float,
+  logger_data_double,
+  logger_data_char,
+};
 
 /* Function prototypes. */
 int logger_size(unsigned int mask);

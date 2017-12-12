@@ -49,6 +49,33 @@ void logger_write_data(struct dump *d, size_t *offset, size_t size, void *p)
 }
 
 /**
+ * WARNING: name should be at max of size log->name
+ */
+void logger_write_general_data(struct dump *d, struct logger_const *log, size_t *offset,
+			       void *p, char* name, size_t data_type)
+{
+  char *buff;
+  /* write name */
+  buff = dump_get(d, log->name, offset);
+  memcpy(buff, name, log->name);
+
+  /* write data type */
+  buff = dump_get(d, LOGGER_DATATYPE_SIZE, offset);
+  memcpy(buff, &data_type, LOGGER_DATATYPE_SIZE);
+
+  /* write value */
+  size_t size = 0;
+  if (data_type == logger_data_double)
+    size = sizeof(double);
+  else
+    error("Not implemented");
+  
+  buff = dump_get(d, size, offset);
+  memcpy(buff, p, size);
+  
+}
+
+/**
  * @brief Compute the size of a message given its mask.
  *
  * @param mask The mask that will be used to dump a #part or #gpart.
@@ -344,8 +371,15 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
     logger_write_data(dump, file_offset, log_const.number, &log_const.masks_size[i]);
   }
 
-  /* Write data */
+  /* write mask data */
+  /* loop over each mask and each data in this mask */
+  /* write number of bytes for each field */
+  /* write data type (float, double, ...) */
+  /* write data name (mass, id, ...) */
   
+  /* Write data */
+  logger_write_general_data(dump, &log_const, file_offset, &e->timeBase,
+			    "timeBase", logger_data_double);
 
   /* last step */
   memcpy(skip_header, file_offset, log_const.offset);
