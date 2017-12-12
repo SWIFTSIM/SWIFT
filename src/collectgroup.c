@@ -99,9 +99,18 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  * @param g_updates the number of updated gravity particles on this node this
  * step.
  * @param s_updates the number of updated star particles on this node this step.
- * @param ti_end_min the minimum end time for next time step after this step.
- * @param ti_end_max the maximum end time for next time step after this step.
- * @param ti_beg_max the maximum begin time for next time step after this step.
+ * @param ti_hydro_end_min the minimum end time for next hydro time step after
+ * this step.
+ * @param ti_hydro_end_max the maximum end time for next hydro time step after
+ * this step.
+ * @param ti_hydro_beg_max the maximum begin time for next hydro time step after
+ * this step.
+ * @param ti_gravity_end_min the minimum end time for next gravity time step
+ * after this step.
+ * @param ti_gravity_end_max the maximum end time for next gravity time step
+ * after this step.
+ * @param ti_gravity_beg_max the maximum begin time for next gravity time step
+ * after this step.
  * @param forcerebuild whether a rebuild is required after this step.
  */
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,

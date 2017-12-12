@@ -1543,10 +1543,10 @@ void engine_exchange_cells(struct engine *e) {
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
   for (int k = 0; k < nr_proxies; k++)
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) 
-	count_parts_in += e->proxies[k].cells_in[j]->count;
-      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) 
-	count_gparts_in += e->proxies[k].cells_in[j]->gcount;
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro)
+        count_parts_in += e->proxies[k].cells_in[j]->count;
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity)
+        count_gparts_in += e->proxies[k].cells_in[j]->gcount;
       count_sparts_in += e->proxies[k].cells_in[j]->scount;
     }
   if (count_parts_in > s->size_parts_foreign) {
@@ -1577,15 +1577,15 @@ void engine_exchange_cells(struct engine *e) {
   struct spart *sparts = s->sparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      
-      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
-	cell_link_parts(e->proxies[k].cells_in[j], parts);
-	parts = &parts[e->proxies[k].cells_in[j]->count];
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+        cell_link_parts(e->proxies[k].cells_in[j], parts);
+        parts = &parts[e->proxies[k].cells_in[j]->count];
       }
 
-      if(e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
-	cell_link_gparts(e->proxies[k].cells_in[j], gparts);
-	gparts = &gparts[e->proxies[k].cells_in[j]->gcount];
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+        cell_link_gparts(e->proxies[k].cells_in[j], gparts);
+        gparts = &gparts[e->proxies[k].cells_in[j]->gcount];
       }
 
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
@@ -3451,65 +3451,14 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
-  int count_send_ti = 0;
-  int count_recv_ti = 0;
-  int count_send_gpart = 0;
-  int count_recv_gpart = 0;
-  int count_send_xv = 0;
-  int count_recv_xv = 0;
-  int count_send_rho = 0;
-  int count_recv_rho = 0;
-
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
     if (tasks[k].skip)
       counts[task_type_count] += 1;
-    else {
+    else
       counts[(int)tasks[k].type] += 1;
-
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_tend) {
-        count_send_ti++;
-        /* message("Send_ti: nodeID_i=%d cellID_i=%ld nodeID_j=%d cellID_j=%ld",
-         */
-        /* 	tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top, */
-        /* 	tasks[k].cj->nodeID, tasks[k].cj - e->s->cells_top); */
-      }
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_tend) {
-        count_recv_ti++;
-        /* message("recv_rho: nodeID_i=%d cellID_i=%ld nodeID_j=n/a
-         * cellID_j=n/a", */
-        /* 	tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top ); */
-      }
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_gpart)
-        count_send_gpart++;
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_gpart)
-        count_recv_gpart++;
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_xv)
-        count_send_xv++;
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_xv)
-        count_recv_xv++;
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_rho) {
-        count_send_rho++;
-        /* message("Send_rho: nodeID_i=%d cellID_i=%ld nodeID_j=%d cellID_j=%ld", */
-        /*         tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top, */
-        /*         tasks[k].cj->nodeID, tasks[k].cj - e->s->cells_top); */
-      }
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_rho) {
-        count_recv_rho++;
-        /* message("recv_rho: nodeID_i=%d cellID_i=%ld nodeID_j=n/a cellID_j=n/a", */
-        /*         tasks[k].ci->nodeID, tasks[k].ci - e->s->cells_top); */
-      }
-    }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
           (int)ceil((double)nr_tasks / e->s->tot_cells));
@@ -3524,15 +3473,9 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  /* message("nr_parts = %zu.", e->s->nr_parts); */
-  /* message("nr_gparts = %zu.", e->s->nr_gparts); */
-  /* message("nr_sparts = %zu.", e->s->nr_sparts); */
-  message("ti_current=%lld", e->ti_current);
-  message(
-      "send_ti=%d, recv_ti=%d, send_gpart=%d, recv_gpart=%d, send_xv=%d, "
-      "recv_xv=%d, send_rho=%d, recv_rho=%d",
-      count_send_ti, count_recv_ti, count_send_gpart, count_recv_gpart,
-      count_send_xv, count_recv_xv, count_send_rho, count_recv_rho);
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4319,9 +4262,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
-/* integertime_t *address_hydro = 0; */
-/* integertime_t *address_gravity = 0; */
-
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -4364,22 +4304,6 @@ void engine_step(struct engine *e) {
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
-
-  /* engine_print_task_counts(e); */
-  /* space_print_cells(e->s); */
-
-  /* /\* Register the time-step information *\/ */
-  /* if (e->step == 3) { */
-
-  /*   for (int i = 0; i < e->s->nr_cells; ++i) */
-  /*     if (&e->s->cells_top[i] - e->s->cells_top == 12) { */
-  /*       message("Found cell!"); */
-  /*       address_hydro = &e->s->cells_top[i].ti_hydro_end_min; */
-  /*       address_gravity = &e->s->cells_top[i].ti_gravity_end_min; */
-  /*       message("address: %p time_end=%lld", address_hydro, */
-  /*               e->s->cells_top[i].ti_hydro_end_min); */
-  /*     } */
-  /* } */
 
 #ifdef WITH_MPI
   /* Repartition the space amongst the nodes? */
@@ -4713,13 +4637,13 @@ void engine_makeproxies(struct engine *e) {
 
   /* Compute how many cells away we need to walk */
   int delta = 1; /*hydro case */
-  if(with_gravity) {
+  if (with_gravity) {
     const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
   }
 
   /* Let's be verbose about this choice */
-  if(e->verbose)
+  if (e->verbose)
     message("Looking for proxies up to %d top-level cells away", delta);
 
   /* Loop over each cell in the space. */
@@ -4731,8 +4655,8 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-	double CoM_i[3] = {0., 0., 0.};
-	double r_max_i = 0.;
+        double CoM_i[3] = {0., 0., 0.};
+        double r_max_i = 0.;
 
         if (with_gravity) {
 
@@ -4743,7 +4667,7 @@ void engine_makeproxies(struct engine *e) {
           CoM_i[2] = multi_i->CoM[2];
           r_max_i = multi_i->r_max;
         }
-      
+
         /* Loop over all its neighbours (periodic). */
         for (int i = -delta; i <= delta; i++) {
           int ii = ind[0] + i;
@@ -4785,11 +4709,14 @@ void engine_makeproxies(struct engine *e) {
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
-                if (((abs(ind[0] - ii) <= 1 || abs(ind[0] - ii - cdim[0]) <= 1 ||
+                if (((abs(ind[0] - ii) <= 1 ||
+                      abs(ind[0] - ii - cdim[0]) <= 1 ||
                       abs(ind[0] - ii + cdim[0]) <= 1) &&
-                     (abs(ind[1] - jj) <= 1 || abs(ind[1] - jj - cdim[1]) <= 1 ||
+                     (abs(ind[1] - jj) <= 1 ||
+                      abs(ind[1] - jj - cdim[1]) <= 1 ||
                       abs(ind[1] - jj + cdim[1]) <= 1) &&
-                     (abs(ind[2] - kk) <= 1 || abs(ind[2] - kk - cdim[2]) <= 1 ||
+                     (abs(ind[2] - kk) <= 1 ||
+                      abs(ind[2] - kk - cdim[2]) <= 1 ||
                       abs(ind[2] - kk + cdim[2]) <= 1)))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }

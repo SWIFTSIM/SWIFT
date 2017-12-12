@@ -3198,35 +3198,3 @@ void space_clean(struct space *s) {
   free(s->sparts);
 }
 
-void space_print_cells(const struct space *s) {
-
-  char filename[200];
-  sprintf(filename, "space_%d_%d.dat", s->e->step, engine_rank);
-
-  FILE *file = fopen(filename, "w");
-
-  fprintf(file, "ti_current=%lld\n", s->e->ti_current);
-
-  for (int k = 0; k < s->cdim[2]; ++k) {
-
-    fprintf(file, "\n -- k=%d -- \n\n", k);
-
-    for (int j = 0; j < s->cdim[1]; ++j) {
-
-      for (int i = 0; i < s->cdim[0]; ++i) {
-#ifdef WITH_MPI
-
-        const int cid = cell_getid(s->cdim, i, j, k);
-        const struct cell *c = &s->cells_top[cid];
-        fprintf(file, "|(%d-%ld-%lld-%lld-%d)", c->nodeID, c - s->cells_top,
-                c->ti_hydro_end_min, c->ti_gravity_end_min, c->gcount);
-#endif
-      }
-      fprintf(file, "|\n");
-    }
-  }
-
-  fprintf(file, " -- --- --\n");
-
-  fclose(file);
-}
