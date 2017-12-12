@@ -397,15 +397,13 @@ __attribute__((always_inline)) INLINE static void populate_max_index_no_cache(
  * @param max_active_bin The largest time-bin active during this step.
  */
 __attribute__((always_inline)) INLINE static void
-populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
-                                  const struct entry *restrict sort_i,
-                                  const struct entry *restrict sort_j,
-                                  const float dx_max, const float rshift,
-                                  const double hi_max_raw,
-                                  const double hj_max_raw, const double h_max,
-                                  const double di_max, const double dj_min, int *max_index_i,
-                                  int *max_index_j, int *init_pi, int *init_pj,
-                                  const timebin_t max_active_bin) {
+populate_max_index_no_cache_force(
+    const struct cell *ci, const struct cell *cj,
+    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
+    const float dx_max, const float rshift, const double hi_max_raw,
+    const double hj_max_raw, const double h_max, const double di_max,
+    const double dj_min, int *max_index_i, int *max_index_j, int *init_pi,
+    int *init_pj, const timebin_t max_active_bin) {
 
   const struct part *restrict parts_i = ci->parts;
   const struct part *restrict parts_j = cj->parts;
@@ -468,7 +466,7 @@ populate_max_index_no_cache_force(const struct cell *ci, const struct cell *cj,
   last_pj = -1;
   active_id = last_pj;
   while (last_pj < cj->count &&
-      sort_j[last_pj + 1].d - h_max - dx_max < di_max) {
+         sort_j[last_pj + 1].d - h_max - dx_max < di_max) {
     last_pj++;
     /* Store the index of the particle if it is active. */
     if (part_is_active_no_debug(&parts_j[sort_j[last_pj].i], max_active_bin))
@@ -668,15 +666,17 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-        if (doi_mask & (1 << bit_index)) { 
-          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+        if (doi_mask & (1 << bit_index)) {
+          if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] =
+                parts[pjd + bit_index].id;
           ++pi->num_ngb_density;
         }
 
-        if (doi_mask2 & (1 << bit_index)) { 
-          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+        if (doi_mask2 & (1 << bit_index)) {
+          if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] =
+                parts[pjd + VEC_SIZE + bit_index].id;
           ++pi->num_ngb_density;
         }
       }
@@ -893,14 +893,16 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
-          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + bit_index].id;
+          if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] =
+                parts[pjd + bit_index].id;
           ++pi->num_ngb_density;
         }
-        
+
         if (doi_mask2 & (1 << bit_index)) {
-          if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-            pi->ids_ngbs_density[pi->num_ngb_density] = parts[pjd + VEC_SIZE + bit_index].id;
+          if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            pi->ids_ngbs_density[pi->num_ngb_density] =
+                parts[pjd + VEC_SIZE + bit_index].id;
           ++pi->num_ngb_density;
         }
       }
@@ -1113,7 +1115,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
-          if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+          if (pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
             pi->ids_ngbs_force[pi->num_ngb_force] = parts[pjd + bit_index].id;
           ++pi->num_ngb_force;
         }
@@ -1362,9 +1364,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) { 
-            if(pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-              pi->ids_ngbs_density[pi->num_ngb_density] = parts_j[sort_j[pjd + bit_index].i].id;
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+              pi->ids_ngbs_density[pi->num_ngb_density] =
+                  parts_j[sort_j[pjd + bit_index].i].id;
             ++pi->num_ngb_density;
           }
         }
@@ -1487,9 +1490,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) { 
-            if(pj->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
-              pj->ids_ngbs_density[pj->num_ngb_density] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+            if (pj->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+              pj->ids_ngbs_density[pj->num_ngb_density] =
+                  parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
             ++pj->num_ngb_density;
           }
         }
@@ -1634,9 +1638,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
   populate_max_index_no_cache_force(ci, cj, sort_i, sort_j, dx_max, rshift,
-                                    hi_max_raw, hj_max_raw, h_max,
-                                    di_max, dj_min, max_index_i, max_index_j,
-                                    &first_pi, &last_pj, max_active_bin);
+                                    hi_max_raw, hj_max_raw, h_max, di_max,
+                                    dj_min, max_index_i, max_index_j, &first_pi,
+                                    &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
@@ -1748,8 +1752,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
-            if(pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
-              pi->ids_ngbs_force[pi->num_ngb_force] = parts_j[sort_j[pjd + bit_index].i].id;
+            if (pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+              pi->ids_ngbs_force[pi->num_ngb_force] =
+                  parts_j[sort_j[pjd + bit_index].i].id;
             ++pi->num_ngb_force;
           }
         }
@@ -1883,8 +1888,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
-            if(pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
-              pj->ids_ngbs_force[pj->num_ngb_force] = parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
+            if (pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+              pj->ids_ngbs_force[pj->num_ngb_force] =
+                  parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id;
             ++pj->num_ngb_force;
           }
         }

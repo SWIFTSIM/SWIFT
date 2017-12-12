@@ -179,7 +179,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_density[i] = -1;
   p->num_ngb_density = 0;
 #endif
-  
+
   p->rho = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
@@ -320,7 +320,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) p->ids_ngbs_force[i] = -1;
   p->num_ngb_force = 0;
 #endif
-  
+
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
