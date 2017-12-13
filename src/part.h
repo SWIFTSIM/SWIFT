@@ -42,10 +42,7 @@
 #define gpart_align 128
 
 /* Import the right hydro particle definition */
-#if defined(DEBUG_INTERACTIONS_SPH)
-#include "./hydro/DebugInteractions/hydro_part.h"
-#define hydro_need_extra_init_loop 0
-#elif defined(MINIMAL_SPH)
+#if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #elif defined(GADGET2_SPH)

@@ -59,8 +59,14 @@
 #define _DOSELF2_NAIVE(f) PASTE(runner_doself2_naive, f)
 #define DOSELF2_NAIVE _DOSELF2_NAIVE(FUNCTION)
 
+#define _DOSELF1_BRANCH(f) PASTE(runner_doself1_branch, f)
+#define DOSELF1_BRANCH _DOSELF1_BRANCH(FUNCTION)
+
 #define _DOSELF1(f) PASTE(runner_doself1, f)
 #define DOSELF1 _DOSELF1(FUNCTION)
+
+#define _DOSELF2_BRANCH(f) PASTE(runner_doself2_branch, f)
+#define DOSELF2_BRANCH _DOSELF2_BRANCH(FUNCTION)
 
 #define _DOSELF2(f) PASTE(runner_doself2, f)
 #define DOSELF2 _DOSELF2(FUNCTION)
@@ -765,11 +771,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR1_NAIVE(r, ci, cj);
-  return;
-#endif
-
   TIMER_TIC;
 
   /* Get the cutoff shift. */
@@ -1033,8 +1034,9 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (DOPAIR1_BRANCH == runner_dopair1_density_branch)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOPAIR1_NAIVE(r, ci, cj);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
   if (!sort_is_corner(sid))
     runner_dopair1_density_vec(r, ci, cj, sid, shift);
   else
@@ -1057,11 +1059,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
              const double *shift) {
 
   struct engine *restrict e = r->e;
-
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR2_NAIVE(r, ci, cj);
-  return;
-#endif
 
   TIMER_TIC;
 
@@ -1522,8 +1519,9 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (DOPAIR2_BRANCH == runner_dopair2_force_branch)
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+  DOPAIR2_NAIVE(r, ci, cj);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
   if (!sort_is_corner(sid))
     runner_dopair2_force_vec(r, ci, cj, sid, shift);
   else
@@ -1543,16 +1541,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOSELF1_NAIVE(r, c);
-  return;
-#endif
-
   TIMER_TIC;
-
-  if (!cell_is_active_hydro(c, e)) return;
-
-  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1671,6 +1660,33 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 }
 
 /**
+ * @brief Determine which version of DOSELF1 needs to be called depending on the
+ * optimisation level.
+ *
+ * @param r #runner
+ * @param c #cell c
+ *
+ */
+void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOSELF1_NAIVE(r, c);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+  runner_doself1_density_vec(r, c);
+#else
+  DOSELF1(r, c);
+#endif
+}
+
+/**
  * @brief Compute the cell self-interaction (symmetric).
  *
  * @param r The #runner.
@@ -1680,15 +1696,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOSELF2_NAIVE(r, c);
-  return;
-#endif
-
   TIMER_TIC;
-
-  if (!cell_is_active_hydro(c, e)) return;
-  if (!cell_are_part_drifted(c, e)) error("Cell is not drifted");
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1796,6 +1804,33 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   free(indt);
 
   TIMER_TOC(TIMER_DOSELF);
+}
+
+/**
+ * @brief Determine which version of DOSELF2 needs to be called depending on the
+ * optimisation level.
+ *
+ * @param r #runner
+ * @param c #cell c
+ *
+ */
+void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOSELF2_NAIVE(r, c);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+  runner_doself2_force_vec(r, c);
+#else
+  DOSELF2(r, c);
+#endif
 }
 
 /**
@@ -2082,12 +2117,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
     /* Drift the cell to the current timestep if needed. */
     if (!cell_are_part_drifted(ci, r->e)) error("Interacting undrifted cell.");
 
-#if (DOSELF1 == runner_doself1_density) && defined(WITH_VECTORIZATION) && \
-    defined(GADGET2_SPH)
-    runner_doself1_density_vec(r, ci);
-#else
-    DOSELF1(r, ci);
-#endif
+    DOSELF1_BRANCH(r, ci);
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
@@ -2374,12 +2404,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Otherwise, compute self-interaction. */
   else {
-#if (DOSELF2 == runner_doself2_force) && defined(WITH_VECTORIZATION) && \
-    defined(GADGET2_SPH)
-    runner_doself2_force_vec(r, ci);
-#else
-    DOSELF2(r, ci);
-#endif
+    DOSELF2_BRANCH(r, ci);
   }
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
