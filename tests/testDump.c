@@ -40,7 +40,7 @@ void dump_mapper(void *map_data, int num_elements, void *extra_data) {
   size_t offset;
   char *out_string = dump_get(d, 7, &offset);
   char out_buff[8];
-  snprintf(out_buff, 8, "%06zi\n", offset / 7);
+  snprintf(out_buff, 8, "%06zi\n", (offset / 7) % 1000000);
   memcpy(out_string, out_buff, 7);
 }
 
