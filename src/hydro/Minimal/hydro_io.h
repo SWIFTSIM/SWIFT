@@ -69,14 +69,28 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-float convert_S(struct engine* e, struct part* p) {
+void convert_S(const struct engine* e, const struct part* p, float* ret) {
 
-  return hydro_get_entropy(p);
+  ret[0] = hydro_get_entropy(p);
 }
 
-float convert_P(struct engine* e, struct part* p) {
+void convert_P(const struct engine* e, const struct part* p, float* ret) {
 
-  return hydro_get_pressure(p);
+  ret[0] = hydro_get_pressure(p);
+}
+
+void convert_part_pos(const struct engine* e, const struct part* p,
+                      double* ret) {
+
+  if (e->s->periodic) {
+    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
+    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
+    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  } else {
+    ret[0] = p->x[0];
+    ret[1] = p->x[1];
+    ret[2] = p->x[2];
+  }
 }
 
 /**
@@ -92,8 +106,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   *num_fields = 10;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 parts, x);
+  list[0] = io_make_output_field_convert_part(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
   list[1] =
       io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
   list[2] =
@@ -108,11 +122,10 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
-                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
-                                              parts, rho, convert_S);
+  list[8] = io_make_output_field_convert_part(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, convert_S);
   list[9] = io_make_output_field_convert_part(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, convert_P);
 }
 
 /**

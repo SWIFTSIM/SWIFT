@@ -27,11 +27,7 @@
 #include "kernel_hydro.h"
 
 /* Import the right functions */
-#if defined(DEBUG_INTERACTIONS_SPH)
-#include "./hydro/DebugInteractions/hydro.h"
-#include "./hydro/DebugInteractions/hydro_iact.h"
-#define SPH_IMPLEMENTATION "Debug SELF/PAIR"
-#elif defined(MINIMAL_SPH)
+#if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro.h"
 #include "./hydro/Minimal/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH (e.g. Price 2010)"

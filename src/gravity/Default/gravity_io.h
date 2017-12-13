@@ -21,6 +21,20 @@
 
 #include "io_properties.h"
 
+void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
+                       double* ret) {
+
+  if (e->s->periodic) {
+    ret[0] = box_wrap(gp->x[0], 0.0, e->s->dim[0]);
+    ret[1] = box_wrap(gp->x[1], 0.0, e->s->dim[1]);
+    ret[2] = box_wrap(gp->x[2], 0.0, e->s->dim[2]);
+  } else {
+    ret[0] = gp->x[0];
+    ret[1] = gp->x[1];
+    ret[2] = gp->x[2];
+  }
+}
+
 /**
  * @brief Specifies which g-particle fields to read from a dataset
  *
@@ -52,15 +66,15 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void darkmatter_write_particles(struct gpart* gparts, struct io_props* list,
-                                int* num_fields) {
+void darkmatter_write_particles(const struct gpart* gparts,
+                                struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 5;
 
   /* List what we want to read */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 gparts, x);
+  list[0] = io_make_output_field_convert_gpart(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos);
   list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
                                  gparts, v_full);
   list[2] =

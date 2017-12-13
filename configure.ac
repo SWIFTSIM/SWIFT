@@ -152,7 +152,7 @@ if test "$enable_mpi" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
-# Indicate that MPIRUN can be modified by an environement variable
+# Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Add libtool support (now that CC is defined).
@@ -379,8 +379,21 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
+# Check whether POSIX thread barriers are implemented (e.g. OSX does not have them)
+have_pthread_barrier="no"
+AC_CHECK_LIB(pthread, pthread_barrier_init,
+	     have_pthread_barrier="yes",
+	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))
+if test "x$have_pthread_barrier" == "xyes"; then
+  AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers])
+fi
 
-# Check for metis. Note AX_LIB_METIS exists, but cannot be configured
+# Check whether POSIX file allocation functions exist (e.g. OSX does not have them)
+AC_CHECK_LIB(pthread, posix_fallocate,
+	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
+	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
+
+# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
 have_metis="no"
@@ -548,6 +561,10 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for floating-point execeptions
+AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
+
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
     [Defined if pthread_setaffinity_np exists.]) )
@@ -651,9 +668,6 @@ case "$with_hydro" in
    minimal)
       AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
    ;; 
-   debug)
-      AC_DEFINE([DEBUG_INTERACTIONS_SPH], [1], [Debug SPH])
-   ;; 
    hopkins)
       AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
    ;; 
@@ -671,6 +685,29 @@ case "$with_hydro" in
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
+
+# Check if debugging interactions is switched on.
+AC_ARG_ENABLE([debug-interactions],
+   [AS_HELP_STRING([--enable-debug-interactions],
+     [Activate interaction debugging, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions="$enableval"],
+   [enable_debug_interactions="no"]
+)
+if test "$enable_debug_interactions" != "no"; then
+  if test "$with_hydro" = "gadget2"; then
+      AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+    if test "$enable_debug_interactions" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS],256,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS], [$enableval] ,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to $enableval neighbours)"]
+    fi
+  else 
+    [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
+  fi
+fi
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
@@ -901,19 +938,20 @@ AC_MSG_RESULT([
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
 
-   Compiler        : $CC
-    - vendor       : $ax_cv_c_compiler_vendor
-    - version      : $ax_cv_c_compiler_version
-    - flags        : $CFLAGS
-   MPI enabled     : $enable_mpi
-   HDF5 enabled    : $with_hdf5
-    - parallel     : $have_parallel_hdf5
-   Metis enabled   : $have_metis
-   FFTW3 enabled   : $have_fftw3
-   libNUMA enabled : $have_numa
-   Using tcmalloc  : $have_tcmalloc
-   Using jemalloc  : $have_jemalloc
-   CPU profiler    : $have_profiler
+   Compiler         : $CC
+    - vendor        : $ax_cv_c_compiler_vendor
+    - version       : $ax_cv_c_compiler_version
+    - flags         : $CFLAGS
+   MPI enabled      : $enable_mpi
+   HDF5 enabled     : $with_hdf5
+    - parallel      : $have_parallel_hdf5
+   Metis enabled    : $have_metis
+   FFTW3 enabled    : $have_fftw3
+   libNUMA enabled  : $have_numa
+   Using tcmalloc   : $have_tcmalloc
+   Using jemalloc   : $have_jemalloc
+   CPU profiler     : $have_profiler
+   Pthread barriers : $have_pthread_barrier
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -927,11 +965,12 @@ AC_MSG_RESULT([
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
 
-   Individual timers    : $enable_timers
-   Task debugging       : $enable_task_debugging
-   Threadpool debugging : $enable_threadpool_debugging
-   Debugging checks     : $enable_debugging_checks
-   Naive interactions   : $enable_naive_interactions
-   Gravity checks       : $gravity_force_checks
+   Individual timers     : $enable_timers
+   Task debugging        : $enable_task_debugging
+   Threadpool debugging  : $enable_threadpool_debugging
+   Debugging checks      : $enable_debugging_checks
+   Interaction debugging : $enable_debug_interactions
+   Naive interactions    : $enable_naive_interactions
+   Gravity checks        : $gravity_force_checks
 
  ------------------------])

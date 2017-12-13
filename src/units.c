@@ -587,3 +587,17 @@ double units_conversion_factor(const struct unit_system* from,
 
   return units_general_conversion_factor(from, to, baseUnitsExp);
 }
+
+/**
+ * @brief print a #unit_system
+ *
+ * @param us The #unit_system
+ */
+void units_print(const struct unit_system* us) {
+  message("Units:");
+  message("\tUnit Mass:        %g", us->UnitMass_in_cgs);
+  message("\tUnit Length:      %g", us->UnitLength_in_cgs);
+  message("\tUnit Time:        %g", us->UnitTime_in_cgs);
+  message("\tUnit Current:     %g", us->UnitCurrent_in_cgs);
+  message("\tUnit Temperature: %g", us->UnitTemperature_in_cgs);
+}

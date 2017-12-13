@@ -333,6 +333,22 @@ const char *fftw3_version(void) {
 }
 
 /**
+ * @brief return the thread barrier used in SWIFT.
+ *
+ * @result description of the thread barriers
+ */
+const char *thread_barrier_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_PTHREAD_BARRIERS)
+  sprintf(version, "%s", "pthread");
+#else
+  sprintf(version, "homemade");
+#endif
+  return version;
+}
+
+/**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
  */

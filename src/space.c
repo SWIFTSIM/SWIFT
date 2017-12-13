@@ -389,6 +389,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -419,6 +420,12 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
+
+    /* Allocate the indices of local cells */
+    if (posix_memalign((void *)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
+                       s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2466,6 +2473,27 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   }
 }
 
+/**
+ * @brief Construct the list of top-level cells that have any tasks in
+ * their hierarchy.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
+void space_list_cells_with_tasks(struct space *s) {
+
+  /* Let's rebuild the list of local top-level cells */
+  s->nr_local_cells = 0;
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_top[s->nr_local_cells] = i;
+      s->nr_local_cells++;
+    }
+  if (s->e->verbose)
+    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
+}
+
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
                                                  void *extra_data) {
   /* Unpack the data */
@@ -2523,7 +2551,7 @@ void space_synchronize_particle_positions(struct space *s) {
  *
  * Calls hydro_first_init_part() on all the particles
  */
-void space_init_parts(struct space *s) {
+void space_first_init_parts(struct space *s) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2555,7 +2583,7 @@ void space_init_parts(struct space *s) {
  *
  * Calls cooling_init_xpart() on all the particles
  */
-void space_init_xparts(struct space *s) {
+void space_first_init_xparts(struct space *s) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2572,7 +2600,7 @@ void space_init_xparts(struct space *s) {
  *
  * Calls gravity_first_init_gpart() on all the particles
  */
-void space_init_gparts(struct space *s) {
+void space_first_init_gparts(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
@@ -2603,7 +2631,7 @@ void space_init_gparts(struct space *s) {
  *
  * Calls star_first_init_spart() on all the particles
  */
-void space_init_sparts(struct space *s) {
+void space_first_init_sparts(struct space *s) {
 
   const size_t nr_sparts = s->nr_sparts;
   struct spart *restrict sp = s->sparts;
@@ -2627,6 +2655,88 @@ void space_init_sparts(struct space *s) {
     sp->ti_kick = 0;
 #endif
   }
+}
+
+void space_init_parts_mapper(void *restrict map_data, int count,
+                             void *restrict extra_data) {
+
+  struct part *restrict parts = map_data;
+  const struct hydro_space *restrict hs = extra_data;
+  for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
+}
+
+/**
+ * @brief Calls the #part initialisation function on all particles in the space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_parts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 0, &s->hs);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_init_gparts_mapper(void *restrict map_data, int count,
+                              void *restrict extra_data) {
+
+  struct gpart *gparts = map_data;
+  for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
+}
+
+/**
+ * @brief Calls the #gpart initialisation function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_gparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_gparts > 0)
+    threadpool_map(&s->e->threadpool, space_init_gparts_mapper, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), 0, NULL);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_convert_quantities_mapper(void *restrict map_data, int count,
+                                     void *restrict extra_data) {
+  struct space *s = extra_data;
+  struct part *restrict parts = map_data;
+  const ptrdiff_t index = parts - s->parts;
+  struct xpart *restrict xparts = s->xparts + index;
+  for (int k = 0; k < count; k++)
+    hydro_convert_quantities(&parts[k], &xparts[k]);
+}
+
+/**
+ * @brief Calls the #part quantities conversion function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_convert_quantities(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 0, s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2817,11 +2927,16 @@ void space_init(struct space *s, const struct swift_params *params,
 
   hydro_space_init(&s->hs, s);
 
+  ticks tic = getticks();
+  if (verbose) message("first init...");
   /* Set the particles in a state where they are ready for a run */
-  space_init_parts(s);
-  space_init_xparts(s);
-  space_init_gparts(s);
-  space_init_sparts(s);
+  space_first_init_parts(s);
+  space_first_init_xparts(s);
+  space_first_init_gparts(s);
+  space_first_init_sparts(s);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
@@ -2843,7 +2958,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
   if (replicate < 1) error("Invalid replicate value: %d", replicate);
 
-  message("Replicating space %d times along each axis.", replicate);
+  if (verbose)
+    message("Replicating space %d times along each axis.", replicate);
 
   const int factor = replicate * replicate * replicate;
 
@@ -3039,6 +3155,7 @@ void space_clean(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   free(s->cells_top);
   free(s->multipoles_top);
+  free(s->local_cells_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);

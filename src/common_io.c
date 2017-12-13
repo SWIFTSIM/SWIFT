@@ -40,10 +40,13 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "engine.h"
 #include "error.h"
 #include "hydro.h"
+#include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "threadpool.h"
 #include "units.h"
 #include "version.h"
 
@@ -266,7 +269,6 @@ void io_write_attribute_f(hid_t grp, const char* name, float data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-
 void io_write_attribute_i(hid_t grp, const char* name, int data) {
   io_write_attribute(grp, name, INT, &data, 1);
 }
@@ -295,16 +297,19 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * @brief Reads the Unit System from an IC file.
  * @param h_file The (opened) HDF5 file from which to read.
  * @param us The unit_system to fill.
+ * @param mpi_rank The MPI rank we are on.
  *
  * If the 'Units' group does not exist in the ICs, cgs units will be assumed
  */
-void io_read_unit_system(hid_t h_file, struct unit_system* us) {
+void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 
   /* First check if it exists as this is *not* required. */
   const htri_t exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
 
   if (exists == 0) {
-    message("'Units' group not found in ICs. Assuming CGS unit system.");
+
+    if (mpi_rank == 0)
+      message("'Units' group not found in ICs. Assuming CGS unit system.");
 
     /* Default to CGS */
     us->UnitMass_in_cgs = 1.;
@@ -319,7 +324,7 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us) {
           exists);
   }
 
-  message("Reading IC units from ICs.");
+  if (mpi_rank == 0) message("Reading IC units from ICs.");
   hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
 
   /* Ok, Read the damn thing */
@@ -386,6 +391,7 @@ void io_write_code_description(hid_t h_file) {
                        configuration_options());
   io_write_attribute_s(h_grpcode, "CFLAGS", compilation_cflags());
   io_write_attribute_s(h_grpcode, "HDF5 library version", hdf5_version());
+  io_write_attribute_s(h_grpcode, "Thread barriers", thread_barrier_version());
 #ifdef HAVE_FFTW
   io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
@@ -398,6 +404,208 @@ void io_write_code_description(hid_t h_file) {
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
   H5Gclose(h_grpcode);
+}
+
+/**
+ * @brief Mapper function to copy #part or #gpart fields into a buffer.
+ */
+void io_copy_mapper(void* restrict temp, int N, void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+
+  /* How far are we with this chunk? */
+  char* restrict temp_c = temp;
+  const ptrdiff_t delta = (temp_c - props.start_temp_c) / copySize;
+
+  for (int k = 0; k < N; k++) {
+    memcpy(&temp_c[k * copySize], props.field + (delta + k) * props.partSize,
+           copySize);
+  }
+}
+
+/**
+ * @brief Mapper function to copy #part into a buffer of floats using a
+ * conversion function.
+ */
+void io_convert_part_f_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float* restrict temp_f = temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_f(e, parts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #part into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_part_d_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double* restrict temp_d = temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_d(e, parts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #gpart into a buffer of floats using a
+ * conversion function.
+ */
+void io_convert_gpart_f_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct gpart* restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float* restrict temp_f = temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_f(e, gparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #gpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_gpart_d_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct gpart* restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double* restrict temp_d = temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_d(e, gparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Copy the particle data into a temporary buffer ready for i/o.
+ *
+ * @param temp The buffer to be filled. Must be allocated and aligned properly.
+ * @param e The #engine.
+ * @param props The #io_props corresponding to the particle field we are
+ * copying.
+ * @param N The number of particles to copy
+ * @param internal_units The system of units used internally.
+ * @param snapshot_units The system of units used for the snapshots.
+ */
+void io_copy_temp_buffer(void* temp, const struct engine* e,
+                         struct io_props props, size_t N,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* snapshot_units) {
+
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+  const size_t num_elements = N * props.dimension;
+
+  /* Copy particle data to temporary buffer */
+  if (props.conversion == 0) { /* No conversion */
+
+    /* Prepare some parameters */
+    char* temp_c = temp;
+    props.start_temp_c = temp_c;
+
+    /* Copy the whole thing into a buffer */
+    threadpool_map((struct threadpool*)&e->threadpool, io_copy_mapper, temp_c,
+                   N, copySize, 0, (void*)&props);
+
+  } else { /* Converting particle to data */
+
+    if (props.convert_part_f != NULL) {
+
+      /* Prepare some parameters */
+      float* temp_f = temp;
+      props.start_temp_f = temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_part_d != NULL) {
+
+      /* Prepare some parameters */
+      double* temp_d = temp;
+      props.start_temp_d = temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_gpart_f != NULL) {
+
+      /* Prepare some parameters */
+      float* temp_f = temp;
+      props.start_temp_f = temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_gpart_d != NULL) {
+
+      /* Prepare some parameters */
+      double* temp_d = temp;
+      props.start_temp_d = temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
+    } else {
+      error("Missing conversion function");
+    }
+  }
+
+  /* Unit conversion if necessary */
+  const double factor =
+      units_conversion_factor(internal_units, snapshot_units, props.units);
+  if (factor != 1.) {
+
+    /* message("Converting ! factor=%e", factor); */
+
+    if (io_is_double_precision(props.type)) {
+      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+    } else {
+      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+    }
+  }
 }
 
 #endif /* HAVE_HDF5 */
