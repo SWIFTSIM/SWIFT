@@ -83,8 +83,6 @@ void dump_ensure(struct dump *d, size_t size) {
   }
 
   /* Re-map starting at the end of the file. */
-  d->file_offset = d->file_offset / getpagesize() + 1;
-  d->file_offset *= getpagesize();
   if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd,
                       d->file_offset)) == MAP_FAILED) {
     size_t mega = 1e6;

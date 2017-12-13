@@ -327,48 +327,48 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   
   size_t i;
   char *skip_header;
-  size_t *file_offset;
+  size_t file_offset;
 
   struct logger_const log_const;
   logger_const_init(&log_const);
-
-  file_offset = &dump->file_offset;
+  
+  file_offset = dump->file_offset;
     
-  if (*file_offset != 0) error("Something was already written in the dump file");
+  if (file_offset != 0) error("Something was already written in the dump file");
 
   /* Write version information */
-  logger_write_data(dump, file_offset, LOGGER_VERSION_SIZE, LOGGER_VERSION);
+  logger_write_data(dump, &file_offset, LOGGER_VERSION_SIZE, LOGGER_VERSION);
  
   /* write number of bytes used for the offsets */
-  logger_write_data(dump, file_offset, LOGGER_OFFSET_SIZE, &log_const.offset);
+  logger_write_data(dump, &file_offset, LOGGER_OFFSET_SIZE, &log_const.offset);
 
   /* will write the offset of the first particle here */
-  skip_header = dump_get(dump, log_const.offset, file_offset);
+  skip_header = dump_get(dump, log_const.offset, &file_offset);
 
   /* write number of bytes used for names */
-  logger_write_data(dump, file_offset, LOGGER_NAME_SIZE, &log_const.name);
+  logger_write_data(dump, &file_offset, LOGGER_NAME_SIZE, &log_const.name);
 
   /* write number of bytes used for numbers */
-  logger_write_data(dump, file_offset, LOGGER_NBER_SIZE, &log_const.number);
+  logger_write_data(dump, &file_offset, LOGGER_NBER_SIZE, &log_const.number);
 
   /* write number of bytes used for masks */
-  logger_write_data(dump, file_offset, LOGGER_MASK_SIZE, &log_const.mask);
+  logger_write_data(dump, &file_offset, LOGGER_MASK_SIZE, &log_const.mask);
 
   /* write number of masks */
-  logger_write_data(dump, file_offset, log_const.number, &log_const.nber_mask);
+  logger_write_data(dump, &file_offset, log_const.number, &log_const.nber_mask);
   
   /* write masks */
   // loop over all mask type
   for(i=0; i<log_const.nber_mask; i++) {
     // mask name
     size_t j = i * log_const.name;
-    logger_write_data(dump, file_offset, log_const.name, &log_const.masks_name[j]);
+    logger_write_data(dump, &file_offset, log_const.name, &log_const.masks_name[j]);
     
     // mask
-    logger_write_data(dump, file_offset, log_const.mask, &log_const.masks[i]);
+    logger_write_data(dump, &file_offset, log_const.mask, &log_const.masks[i]);
 
     // mask size
-    logger_write_data(dump, file_offset, log_const.number, &log_const.masks_size[i]);
+    logger_write_data(dump, &file_offset, log_const.number, &log_const.masks_size[i]);
   }
 
   /* write mask data */
@@ -378,11 +378,11 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   /* write data name (mass, id, ...) */
   
   /* Write data */
-  logger_write_general_data(dump, &log_const, file_offset, &e->timeBase,
+  logger_write_general_data(dump, &log_const, &file_offset, &e->timeBase,
 			    "timeBase", logger_data_double);
 
   /* last step */
-  memcpy(skip_header, file_offset, log_const.offset);
+  memcpy(skip_header, &file_offset, log_const.offset);
   logger_const_free(&log_const);
 }
 
