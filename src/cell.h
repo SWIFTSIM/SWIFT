@@ -548,12 +548,8 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
 __attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
     const struct cell *c) {
 
-  /* Is the cell split ? */
-  /* Note: No need for more checks here as all the sub-pairs and sub-self */
-  /* operations will be executed. So no need for the particle to be at exactly
-   */
-  /* the right place. */
-  return c->split;
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->h_max < 0.5f * c->dmin);
 }
 
 /**
