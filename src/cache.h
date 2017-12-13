@@ -216,6 +216,43 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 #endif
 }
 
+__attribute__((always_inline)) INLINE void cache_read_particles_subpair(
+    const struct cell *restrict const ci,
+    struct cache *restrict const ci_cache, const struct entry *restrict sort_i) {
+
+#if defined(GADGET2_SPH)
+
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
+
+  const struct part *restrict parts = ci->parts;
+  const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
+  for (int i = 0; i < ci->count; i++) {
+    const int idx = sort_i[i].i;
+    x[i] = (float)(parts[idx].x[0] - loc[0]);
+    y[i] = (float)(parts[idx].x[1] - loc[1]);
+    z[i] = (float)(parts[idx].x[2] - loc[2]);
+    h[i] = parts[idx].h;
+    m[i] = parts[idx].mass;
+    vx[i] = parts[idx].v[0];
+    vy[i] = parts[idx].v[1];
+    vz[i] = parts[idx].v[2];
+  }
+
+#endif
+}
+
 /**
  * @brief Populate cache for force interactions by reading in the particles in
  * unsorted order.
