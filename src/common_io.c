@@ -406,6 +406,8 @@ void io_write_code_description(hid_t h_file) {
   H5Gclose(h_grpcode);
 }
 
+#endif /* HAVE_HDF5 */
+
 /**
  * @brief Mapper function to copy #part or #gpart fields into a buffer.
  */
@@ -607,22 +609,6 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     }
   }
 }
-
-#endif /* HAVE_HDF5 */
-
-/* ------------------------------------------------------------------------------------------------
- * This part writes the XMF file descriptor enabling a visualisation through
- * ParaView
- * ------------------------------------------------------------------------------------------------
- */
-
-/**
- * @brief Prepares the XMF file for the new entry
- *
- * Creates a temporary file on the disk in order to copy the right lines.
- *
- * @todo Use a proper XML library to avoid stupid copies.
- */
 
 /**
  * @brief Prepare the DM particles (in gparts) read in for the addition of the
