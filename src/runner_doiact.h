@@ -603,9 +603,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
+//      int ctr = 0;
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
+//        ctr++;
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
@@ -631,6 +633,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
         }
       } /* loop over the parts in cj. */
+//      message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
     }   /* loop over the parts in ci. */
   }
 
@@ -2950,7 +2953,11 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
+#ifdef WITH_VECTORIZATION
+      runner_dopair_subset_density_vec(r, ci, parts, ind, count, cj);
+#else
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
+#endif
     }
 
   } /* otherwise, pair interaction. */
