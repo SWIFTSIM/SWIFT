@@ -1248,7 +1248,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
       const vector v_hig2 = vector_set1(hig2);
 
       /* Get the inverse of hi. */
-      vector v_hi_inv = vec_reciprocal(v_hi);
+      const vector v_hi_inv = vec_reciprocal(v_hi);
 
       /* Reset cumulative sums of update vectors. */
       vector v_rhoSum = vector_setzero();
@@ -1288,7 +1288,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         }
 #endif
 
-        /* Load 2 sets of vectors from the particle cache. */
+        /* Load 1 set of vectors from the particle cache. */
         const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
         const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
         const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
@@ -1467,6 +1467,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
                    struct part *restrict parts_i, int *restrict ind, int count,
                    struct cell *restrict cj) {
 
+#ifdef WITH_VECTORIZATION
   const struct engine *e = r->e;
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
@@ -1512,13 +1513,22 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
    * them if they are not big enough for the cells. */
   struct cache *restrict cj_cache = &r->cj_cache;
 
-  if (cj_cache->count < count_j) {
-    cache_init(cj_cache, count_j);
-  }
+  if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(cj, cj_cache);
+  cache_read_particles_subpair(cj, cj_cache, sort_j);
   
+  const double total_ci_shift[3] = {
+      cj->loc[0] + shift[0], cj->loc[1] + shift[1], cj->loc[2] + shift[2]};
+
+  const double di_shift_correction = cj->loc[0]*runner_shift[sid][0] + 
+                                     cj->loc[1]*runner_shift[sid][1] + 
+                                     cj->loc[2]*runner_shift[sid][2];
+
+  double rshift = 0.0;
+  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
+
   /* Parts are on the left? */
   if (!flipped) {
 
@@ -1527,56 +1537,109 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
-      const double pix = pi->x[0] - (shift[0]);
-      const double piy = pi->x[1] - (shift[1]);
-      const double piz = pi->x[2] - (shift[2]);
+      const float pix = pi->x[0] - total_ci_shift[0];
+      const float piy = pi->x[1] - total_ci_shift[1];
+      const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
       const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
-                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
 
-      //int last_pj = 0;
-      //
-      //for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) last_pj++;
-
-      //int exit_iteration_align = last_pj;
-      //const int rem = last_pj % VEC_SIZE;
-      //if (rem != 0) {
-      //  const int pad = VEC_SIZE - rem;
-
-      //  if (exit_iteration_align + pad <= last_pj + 1)
-      //    exit_iteration_align += pad;
+      //for(int i = 0; i<ci->count; i++) {
+        //message("pid: %lld, sort_i[%i].d: %f", parts_i[ind[i]].id, i, sort_i[i].d + hi * kernel_gamma + dxj - rshift);
+        //message("pid: %lld, di: %f", pi->id, di);
       //}
+      /* Fill particle pi vectors. */
+      const vector v_pix = vector_set1(pix);
+      const vector v_piy = vector_set1(piy);
+      const vector v_piz = vector_set1(piz);
+      const vector v_hi = vector_set1(hi);
+      const vector v_vix = vector_set1(pi->v[0]);
+      const vector v_viy = vector_set1(pi->v[1]);
+      const vector v_viz = vector_set1(pi->v[2]);
+      const vector v_hig2 = vector_set1(hig2);
+      
+      /* Get the inverse of hi. */
+      vector v_hi_inv = vec_reciprocal(v_hi);
+
+      /* Reset cumulative sums of update vectors. */
+      vector v_rhoSum = vector_setzero();
+      vector v_rho_dhSum = vector_setzero();
+      vector v_wcountSum = vector_setzero();
+      vector v_wcount_dhSum = vector_setzero();
+      vector v_div_vSum = vector_setzero();
+      vector v_curlvxSum = vector_setzero();
+      vector v_curlvySum = vector_setzero();
+      vector v_curlvzSum = vector_setzero();
+
+      int last_pj = -1;
+      
+      //message("di: %f", di);
+      //message("sort_j[0].d: %f", sort_j[0].d);
+
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+        //message("sort_j[%d].d: %f, di: %f", pjd, sort_j[pjd].d, di);
+        last_pj++;
+      }
+        //message("pid: %lld, last_pj: %d", pi->id, last_pj);
+
+      //int ctr = 0;
 
       /* Loop over the parts in cj. */
-      //for (int pjd = 0; pjd < exit_iteration_align; pjd += VEC_SIZE) {
-      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+      for (int pjd = 0; pjd <= last_pj; pjd += VEC_SIZE) {
 
-        /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        const float hj = pj->h;
-        const double pjx = pj->x[0];
-        const double pjy = pj->x[1];
-        const double pjz = pj->x[2];
+        //ctr += VEC_SIZE;
+
+        /* Get the cache index to the jth particle. */
+        const int cj_cache_idx = pjd;
+
+        vector v_dx, v_dy, v_dz, v_r2;
+
+        /* Load 1 set of vectors from the particle cache. */
+        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
+        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
+        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        v_dx.v = vec_sub(v_pix.v, v_pjx.v);
+        v_dy.v = vec_sub(v_piy.v, v_pjy.v);
+        v_dz.v = vec_sub(v_piz.v, v_pjz.v);
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
-          error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
-          error("Particle pj not drifted to current time");
-#endif
+        v_r2.v = vec_mul(v_dx.v, v_dx.v);
+        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-        /* Hit or miss? */
-        if (r2 < hig2) {
+        /* Form r2 < hig2 mask. */
+        mask_t v_doi_mask;
+        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-          runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj);
-        }
+        /* If there are any interactions perform them. */
+        if (vec_is_mask_true(v_doi_mask))
+          runner_iact_nonsym_1_vec_density(
+              &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
+              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
+              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx],
+              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+              v_doi_mask);
+
+        //intCount += __builtin_popcount(vec_is_mask_true(v_doi_mask));
+
       } /* loop over the parts in cj. */
+   
+      //message("No. of interactions: %d for pi: %lld", intCount, pi->id);
+
+      /* Perform horizontal adds on vector sums and store result in pi. */
+      VEC_HADD(v_rhoSum, pi->rho);
+      VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
+      VEC_HADD(v_wcountSum, pi->density.wcount);
+      VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
+      VEC_HADD(v_div_vSum, pi->density.div_v);
+      VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
+      VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
+      VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
+
+      //message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
     }   /* loop over the parts in ci. */
   }
 
@@ -1628,6 +1691,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
   }
 
   TIMER_TOC(timer_dopair_subset);
+#endif /* WITH_VECTORIZATION */
 }
 
 /**
