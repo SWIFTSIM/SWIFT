@@ -55,7 +55,7 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
                                 UNIT_CONV_SPEED, gparts, v_full);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 gparts, mass);
-  list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+  list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
 }
 
