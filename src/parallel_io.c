@@ -763,17 +763,17 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     /* Let's initialise a bit of thread parallelism here */
     struct threadpool tp;
-    threadpool_init(&tp, 4);
+    threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    io_prepare_dm_gparts(*gparts, Ndm);
+    io_prepare_dm_gparts(&tp, *gparts, Ndm);
 
     /* Duplicate the hydro particles into gparts */
-    if (with_hydro) io_duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+    if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm);
 
     /* Duplicate the star particles into gparts */
     if (with_stars)
-      io_duplicate_star_gparts(*sparts, *gparts, *Nstars, Ndm + *Ngas);
+      io_duplicate_star_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
     threadpool_clean(&tp);
   }

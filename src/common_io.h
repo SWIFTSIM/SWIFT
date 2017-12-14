@@ -89,10 +89,10 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                           struct gpart* const dmparts, size_t Ndm);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
-void io_duplicate_hydro_gparts(struct part* const parts,
+void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                                struct gpart* const gparts, size_t Ngas,
                                size_t Ndm);
-void io_duplicate_star_gparts(struct spart* const sparts,
+void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
                               struct gpart* const gparts, size_t Nstars,
                               size_t Ndm);
 
