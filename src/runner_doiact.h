@@ -981,11 +981,6 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  /* Did we mess up the recursion? */
-  if (max(ci->h_max, cj->h_max) * kernel_gamma > ci->dmin ||
-      max(ci->h_max, cj->h_max) * kernel_gamma > cj->dmin)
-    error("Cell smaller than smoothing length");
-
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
@@ -1470,11 +1465,6 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-
-  /* Did we mess up the recursion? */
-  if (max(ci->h_max, cj->h_max) * kernel_gamma > ci->dmin ||
-      max(ci->h_max, cj->h_max) * kernel_gamma > cj->dmin)
-    error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
