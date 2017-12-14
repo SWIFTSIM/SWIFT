@@ -1675,7 +1675,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max * kernel_gamma > c->dmin)
+  if (c->h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -1826,7 +1826,7 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max * kernel_gamma > c->dmin)
+  if (c->h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */

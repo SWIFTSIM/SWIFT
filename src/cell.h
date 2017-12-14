@@ -549,7 +549,7 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
     const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->h_max < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * c->h_max_old < 0.5f * c->dmin);
 }
 
 /**
