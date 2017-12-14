@@ -309,9 +309,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     for (k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
       A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wj * hj_inv_dim -
+                 wi * hi_inv_dim -
              Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-                 wi * hi_inv_dim;
+                 wj * hj_inv_dim;
       Anorm += A[k] * A[k];
     }
   } else {
