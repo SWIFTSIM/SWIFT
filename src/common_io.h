@@ -35,6 +35,7 @@
 /* Avoid cyclic inclusion problems */
 struct io_props;
 struct engine;
+struct threadpool;
 
 #if defined(HAVE_HDF5)
 
@@ -86,7 +87,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
 void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                           struct gpart* const dmparts, size_t Ndm);
-void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm);
+void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
+                          size_t Ndm);
 void io_duplicate_hydro_gparts(struct part* const parts,
                                struct gpart* const gparts, size_t Ngas,
                                size_t Ndm);

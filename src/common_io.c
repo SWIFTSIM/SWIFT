@@ -610,6 +610,23 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
   }
 }
 
+void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
+
+  struct gpart* restrict gparts = (struct gpart*)data;
+
+  /* Let's give all these gparts a negative id */
+  for (int i = 0; i < Ndm; ++i) {
+
+    /* 0 or negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset <= 0)
+      error("0 or negative ID for DM particle %i: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_dark_matter;
+  }
+}
+
 /**
  * @brief Prepare the DM particles (in gparts) read in for the addition of the
  * other particle types
@@ -617,21 +634,15 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
  * This function assumes that the DM particles are all at the start of the
  * gparts array
  *
+ * @param tp The current #threadpool.
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
+void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
+                          size_t Ndm) {
 
-  /* Let's give all these gparts a negative id */
-  for (size_t i = 0; i < Ndm; ++i) {
-    /* 0 or negative ids are not allowed */
-    if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %zu: ID=%lld", i,
-            gparts[i].id_or_neg_offset);
-
-    /* Set gpart type */
-    gparts[i].type = swift_type_dark_matter;
-  }
+  threadpool_map(tp, io_prepare_dm_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), 0, NULL);
 }
 
 /**
