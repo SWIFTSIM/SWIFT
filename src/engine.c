@@ -7328,7 +7328,15 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     }
   }
 
-/* Free the affinity stuff */
+#ifdef WITH_LOGGER
+  if (e->nodeID == 0)
+    message("Expected output of over 9000\n Should write a real message...");
+  logger_write_file_header(dump_file, e);
+  dump_ensure(dump_file, e->logger_size);
+  e->logger_time_offset = 0;
+#endif
+
+  /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
   if (with_aff) {
     free(cpuid);
