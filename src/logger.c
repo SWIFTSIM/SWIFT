@@ -40,11 +40,11 @@
 #include "units.h"
 #include "engine.h"
 
+char LOGGER_VERSION[LOGGER_VERSION_SIZE] = "0.1";
 
-void logger_write_data(struct dump *d, size_t *offset, size_t size, void *p)
+void logger_write_data(struct dump *d, size_t *offset, const size_t size, void *const p)
 {
-  char *buff;
-  buff = dump_get(d, size, offset);
+  char *buff = dump_get(d, size, offset);
   memcpy(buff, p, size);
 }
 
@@ -337,7 +337,7 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   if (file_offset != 0) error("Something was already written in the dump file");
 
   /* Write version information */
-  logger_write_data(dump, &file_offset, LOGGER_VERSION_SIZE, LOGGER_VERSION);
+  logger_write_data(dump, &file_offset, LOGGER_VERSION_SIZE, &LOGGER_VERSION);
  
   /* write number of bytes used for the offsets */
   logger_write_data(dump, &file_offset, LOGGER_OFFSET_SIZE, &log_const.offset);
@@ -378,12 +378,16 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   /* write data name (mass, id, ...) */
   
   /* Write data */
+  char *name = malloc(sizeof(char) * log_const.name);
+  strcpy(name, "timeBase");
   logger_write_general_data(dump, &log_const, &file_offset, &e->timeBase,
-			    "timeBase", logger_data_double);
+			    name, logger_data_double);
 
   /* last step */
   memcpy(skip_header, &file_offset, log_const.offset);
   logger_const_free(&log_const);
+
+  free(name);
 }
 
 void logger_const_init(struct logger_const* log_const) {
