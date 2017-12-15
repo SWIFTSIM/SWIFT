@@ -80,20 +80,32 @@ struct pcell {
   /*! Maximal smoothing length. */
   double h_max;
 
-  /*! Minimal integer end-of-timestep in this cell */
-  integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_end_min;
 
-  /*! Maximal integer end-of-timestep in this cell */
-  integertime_t ti_end_max;
+  /*! Maximal integer end-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_end_max;
 
-  /*! Maximal integer beginning-of-timestep in this cell */
-  integertime_t ti_beg_max;
+  /*! Maximal integer beginning-of-timestep in this cell for hydro tasks */
+  integertime_t ti_hydro_beg_max;
+
+  /*! Minimal integer end-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_end_min;
+
+  /*! Maximal integer end-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_end_max;
+
+  /*! Maximal integer beginning-of-timestep in this cell for gravity tasks */
+  integertime_t ti_gravity_beg_max;
 
   /*! Integer time of the last drift of the #part in this cell */
   integertime_t ti_old_part;
 
   /*! Integer time of the last drift of the #gpart in this cell */
   integertime_t ti_old_gpart;
+
+  /*! Integer time of the last drift of the #multipole in this cell */
+  integertime_t ti_old_multipole;
 
   /*! Number of #part in this cell. */
   int count;
@@ -110,6 +122,11 @@ struct pcell {
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Cell ID (for debugging) */
+  int cellID;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -117,8 +134,17 @@ struct pcell {
  */
 struct pcell_step {
 
-  /*! Minimal integer end-of-timestep in this cell */
-  integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_hydro_end_min;
+
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_hydro_end_max;
+
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_gravity_end_min;
+
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_gravity_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -170,11 +196,16 @@ struct cell {
   /*! Parent cell. */
   struct cell *parent;
 
-  /*! Super cell, i.e. the highest-level parent cell that has pair/self tasks */
+  /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
-  /*! The task computing this cell's sorts. */
-  struct task *sorts;
+  /*! Super cell, i.e. the highest-level parent cell that has a hydro pair/self
+   * tasks */
+  struct cell *super_hydro;
+
+  /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
+   * tasks */
+  struct cell *super_gravity;
 
   /*! Linked list of the tasks computing this cell's hydro density. */
   struct link *density;
@@ -187,6 +218,9 @@ struct cell {
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
+
+  /*! The task computing this cell's sorts. */
+  struct task *sorts;
 
   /*! The multipole initialistation task */
   struct task *init_grav;
@@ -219,7 +253,7 @@ struct cell {
   struct task *timestep;
 
   /*! Task linking the FFT mesh to the rest of gravity tasks */
-  struct task *grav_ghost[2];
+  struct task *grav_ghost_in, *grav_ghost_out;
 
   /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
@@ -235,26 +269,32 @@ struct cell {
 
 #ifdef WITH_MPI
 
-  /* Task receiving data (positions). */
+  /* Task receiving hydro data (positions). */
   struct task *recv_xv;
 
-  /* Task receiving data (density). */
+  /* Task receiving hydro data (density). */
   struct task *recv_rho;
 
-  /* Task receiving data (gradient). */
+  /* Task receiving hydro data (gradient). */
   struct task *recv_gradient;
+
+  /* Task receiving gpart data. */
+  struct task *recv_grav;
 
   /* Task receiving data (time-step). */
   struct task *recv_ti;
 
-  /* Linked list for sending data (positions). */
+  /* Linked list for sending hydro data (positions). */
   struct link *send_xv;
 
-  /* Linked list for sending data (density). */
+  /* Linked list for sending hydro data (density). */
   struct link *send_rho;
 
-  /* Linked list for sending data (gradient). */
+  /* Linked list for sending hydro data (gradient). */
   struct link *send_gradient;
+
+  /* Linked list for sending gpart data. */
+  struct link *send_grav;
 
   /* Linked list for sending data (time-step). */
   struct link *send_ti;
@@ -273,14 +313,24 @@ struct cell {
 
 #endif
 
-  /*! Minimum end of (integer) time step in this cell. */
-  integertime_t ti_end_min;
+  /*! Minimum end of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_end_min;
 
-  /*! Maximum end of (integer) time step in this cell. */
-  integertime_t ti_end_max;
+  /*! Maximum end of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_end_max;
 
-  /*! Maximum beginning of (integer) time step in this cell. */
-  integertime_t ti_beg_max;
+  /*! Maximum beginning of (integer) time step in this cell for hydro tasks. */
+  integertime_t ti_hydro_beg_max;
+
+  /*! Minimum end of (integer) time step in this cell for gravity tasks. */
+  integertime_t ti_gravity_end_min;
+
+  /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+  integertime_t ti_gravity_end_max;
+
+  /*! Maximum beginning of (integer) time step in this cell for gravity tasks.
+   */
+  integertime_t ti_gravity_beg_max;
 
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;
@@ -397,6 +447,9 @@ struct cell {
   char do_sub_sort;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Cell ID (for debugging) */
+  int cellID;
+
   /*! Last (integer) time the cell's sort arrays were updated. */
   integertime_t ti_sort;
 
@@ -430,6 +483,8 @@ int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
+int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
+int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -443,7 +498,8 @@ void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
-int cell_unskip_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
@@ -451,8 +507,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
-void cell_activate_subcell_tasks(struct cell *ci, struct cell *cj,
-                                 struct scheduler *s);
+void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
@@ -492,12 +548,8 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
 __attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
     const struct cell *c) {
 
-  /* Is the cell split ? */
-  /* Note: No need for more checks here as all the sub-pairs and sub-self */
-  /* operations will be executed. So no need for the particle to be at exactly
-   */
-  /* the right place. */
-  return c->split;
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->h_max_old < 0.5f * c->dmin);
 }
 
 /**

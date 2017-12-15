@@ -27,7 +27,7 @@ Statistics:
 Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration.
   epsilon:               0.001    # Softening length (in internal units).
-  theta:                 0.7      # Opening angle (Multipole acceptance criterion)
+  theta:                 0.85     # Opening angle (Multipole acceptance criterion)
   
 # Parameters for the hydrodynamics scheme
 SPH:

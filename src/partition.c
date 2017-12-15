@@ -577,9 +577,12 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
-        t->type == task_type_drift_part || t->type == task_type_drift_gpart) {
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep || t->type == task_type_init_grav ||
+        t->type == task_type_grav_down ||
+        t->type == task_type_grav_long_range) {
 
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
@@ -614,41 +617,46 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
-        if (timebins) {
-          /* Add weights to edge for all cells based on the expected
-           * interaction time (calculated as the time to the last expected
-           * time) as we want to avoid having active cells on the edges, so we
-           * cut for that. Note that weight is added to the local and remote
-           * cells, as we want to keep both away from any cuts, this can
-           * overflow int, so take care. */
-          int dti = num_time_bins - get_time_bin(ci->ti_end_min);
-          int dtj = num_time_bins - get_time_bin(cj->ti_end_min);
-          double dt = (double)(1 << dti) + (double)(1 << dtj);
+        /* Find indices of ci/cj neighbours. Note with gravity these cells may
+         * not be neighbours, in that case we ignore any edge weight for that
+         * pair. */
+        int ik = -1;
+        for (int k = 26 * cid; k < 26 * nr_cells; k++) {
+          if (inds[k] == cjd) {
+            ik = k;
+            break;
+          }
+        }
 
-          /* ci */
-          int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++)
-            ;
-          weights_e[kk] += dt;
+        /* cj */
+        int jk = -1;
+        for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
+          if (inds[k] == cid) {
+            jk = k;
+            break;
+          }
+        }
+        if (ik != -1 && jk != -1) {
 
-          /* cj */
-          for (kk = 26 * cjd; inds[kk] != cid; kk++)
-            ;
-          weights_e[kk] += dt;
-        } else {
+          if (timebins) {
+            /* Add weights to edge for all cells based on the expected
+             * interaction time (calculated as the time to the last expected
+             * time) as we want to avoid having active cells on the edges, so
+             * we cut for that. Note that weight is added to the local and
+             * remote cells, as we want to keep both away from any cuts, this
+             * can overflow int, so take care. */
+            int dti = num_time_bins - get_time_bin(ci->ti_hydro_end_min);
+            int dtj = num_time_bins - get_time_bin(cj->ti_hydro_end_min);
+            double dt = (double)(1 << dti) + (double)(1 << dtj);
+            weights_e[ik] += dt;
+            weights_e[jk] += dt;
 
-          /* Add weights from task costs to the edge. */
+          } else {
 
-          /* ci */
-          int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++)
-            ;
-          weights_e[kk] += w;
-
-          /* cj */
-          for (kk = 26 * cjd; inds[kk] != cid; kk++)
-            ;
-          weights_e[kk] += w;
+            /* Add weights from task costs to the edge. */
+            weights_e[ik] += w;
+            weights_e[jk] += w;
+          }
         }
       }
     }

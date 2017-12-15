@@ -64,6 +64,9 @@ int space_subsize_pair = space_subsize_pair_default;
 int space_subsize_self = space_subsize_self_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_maxsize = space_maxsize_default;
+#ifdef SWIFT_DEBUG_CHECKS
+int last_cell_id;
+#endif
 
 /**
  * @brief Interval stack necessary for parallel particle sorting.
@@ -225,15 +228,18 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
-    c->grav_ghost[0] = NULL;
-    c->grav_ghost[1] = NULL;
+    c->grav_ghost_in = NULL;
+    c->grav_ghost_out = NULL;
     c->grav_long_range = NULL;
     c->grav_down = NULL;
     c->super = c;
+    c->super_hydro = c;
+    c->super_gravity = c;
     c->parts = NULL;
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
         free(c->sort[i]);
@@ -243,11 +249,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->recv_xv = NULL;
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
+    c->recv_grav = NULL;
     c->recv_ti = NULL;
 
     c->send_xv = NULL;
     c->send_rho = NULL;
     c->send_gradient = NULL;
+    c->send_grav = NULL;
     c->send_ti = NULL;
 #endif
   }
@@ -457,6 +465,8 @@ void space_regrid(struct space *s, int verbose) {
           c->gcount = 0;
           c->scount = 0;
           c->super = c;
+          c->super_hydro = c;
+          c->super_gravity = c;
           c->ti_old_part = ti_old;
           c->ti_old_gpart = ti_old;
           c->ti_old_multipole = ti_old;
@@ -1990,7 +2000,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  integertime_t ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
   struct spart *sparts = c->sparts;
@@ -2079,6 +2092,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
+      cp->super_hydro = NULL;
+      cp->super_gravity = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      cp->cellID = last_cell_id++;
+#endif
     }
 
     /* Split the cell data. */
@@ -2100,9 +2118,18 @@ void space_split_recursive(struct space *s, struct cell *c,
         progeny_gbuff += c->progeny[k]->gcount;
         progeny_sbuff += c->progeny[k]->scount;
         h_max = max(h_max, c->progeny[k]->h_max);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-        ti_beg_max = max(ti_beg_max, c->progeny[k]->ti_beg_max);
+        ti_hydro_end_min =
+            min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
+        ti_hydro_end_max =
+            max(ti_hydro_end_max, c->progeny[k]->ti_hydro_end_max);
+        ti_hydro_beg_max =
+            max(ti_hydro_beg_max, c->progeny[k]->ti_hydro_beg_max);
+        ti_gravity_end_min =
+            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
+        ti_gravity_end_max =
+            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
+        ti_gravity_beg_max =
+            max(ti_gravity_beg_max, c->progeny[k]->ti_gravity_beg_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
@@ -2221,9 +2248,13 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Convert into integer times */
-    ti_end_min = get_integer_time_end(e->ti_current, time_bin_min);
-    ti_end_max = get_integer_time_end(e->ti_current, time_bin_max);
-    ti_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_hydro_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(e->ti_current, time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_gravity_beg_max =
+        get_integer_time_begin(e->ti_current + 1, time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {
@@ -2241,10 +2272,12 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
       } else {
         gravity_multipole_init(&c->multipole->m_pole);
-        c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-        c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-        c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-        c->multipole->r_max = 0.;
+        if (c->nodeID == engine_rank) {
+          c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+          c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+          c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+          c->multipole->r_max = 0.;
+        }
       }
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
@@ -2255,9 +2288,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Set the values for this cell. */
   c->h_max = h_max;
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-  c->ti_beg_max = ti_beg_max;
+  c->ti_hydro_end_min = ti_hydro_end_min;
+  c->ti_hydro_end_max = ti_hydro_end_max;
+  c->ti_hydro_beg_max = ti_hydro_beg_max;
+  c->ti_gravity_end_min = ti_gravity_end_min;
+  c->ti_gravity_end_max = ti_gravity_end_max;
+  c->ti_gravity_beg_max = ti_gravity_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
