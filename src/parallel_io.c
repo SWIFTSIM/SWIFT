@@ -279,9 +279,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  if(engine_rank == 0)
-    message("Copying for '%s' took %.3f %s." , props.name,
-	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (engine_rank == 0)
+    message("Copying for '%s' took %.3f %s.", props.name,
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Create data space */
@@ -324,9 +324,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
     H5Sselect_none(h_filespace);
   }
 
-  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
-   * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
-  /* 	  (int)(N * props.dimension * typeSize), offset); */
+/* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+ * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
+/* 	  (int)(N * props.dimension * typeSize), offset); */
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -502,9 +502,9 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  if(engine_rank == 0)
-    message("'%s' took %.3f %s." , props.name,
-	    clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (engine_rank == 0)
+    message("'%s' took %.3f %s.", props.name,
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 }
 
@@ -847,7 +847,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* Activate parallel i/o */
   hid_t h_err = H5Pset_fapl_mpio(plist_id, comm, info);
   if (h_err < 0) error("Error setting parallel i/o");
-  
+
   /* Align on 4k pages. */
   h_err = H5Pset_alignment(plist_id, 1024, 4096);
   if (h_err < 0) error("Error setting Hdf5 alignment");
