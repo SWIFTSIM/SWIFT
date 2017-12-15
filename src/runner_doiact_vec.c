@@ -28,6 +28,7 @@
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
+#define DEBUG_PI 8
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
 
 /**
@@ -785,6 +786,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     /* Get a pointer to the ith particle. */
     struct part *pi = &parts[ind[pid]];
 
+    if(pi->id == DEBUG_PI) {
+          message("Before. wcount: %f, wcount_dh: %f, pj[0].id: %lld", pi->density.wcount, pi->density.wcount_dh, parts[0].id);
+      }
 #ifdef SWIFT_DEBUG_CHECKS
     const struct engine *e = r->e;
     if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
@@ -960,6 +964,9 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
     VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
     VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
 
+    if(pi->id == DEBUG_PI) {
+          message("After. wcount: %f, wcount_dh: %f, pj[0].id: %lld", pi->density.wcount, pi->density.wcount_dh, parts[0].id);
+      }
     /* Reset interaction count. */
     icount = 0;
   } /* loop over all particles. */
@@ -1559,6 +1566,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
   TIMER_TIC;
 
   const int count_j = cj->count;
+  struct part *restrict parts_j = cj->parts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1577,7 +1585,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
                          : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
 
   /* Switch the cells around? */
-  const int flipped = runner_flip[sid];
+  //const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
   /* Has the cell cj been sorted? */
@@ -1609,8 +1617,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
 
-  /* Parts are on the left? */
-  if (!flipped) {
+  
 
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
@@ -1625,6 +1632,16 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
       const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
 
+      if(pi->id == DEBUG_PI) {
+          message("Before. wcount: %f, wcount_dh: %f", pi->density.wcount, pi->density.wcount_dh);
+      }
+      if (pi->id == DEBUG_PI) {
+        for(int i=0; i<count_j; i++) {
+          if(parts_j[i].id == 131 || parts_j[i].id == 2479) {
+            message("Found missing neighbour: %lld", parts_j[i].id);
+          }
+        }
+      }
       //for(int i = 0; i<ci->count; i++) {
         //message("pid: %lld, sort_i[%i].d: %f", parts_i[ind[i]].id, i, sort_i[i].d + hi * kernel_gamma + dxj - rshift);
         //message("pid: %lld, di: %f", pi->id, di);
@@ -1695,6 +1712,22 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
         mask_t v_doi_mask;
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
+
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index) && pjd + bit_index < count_j - 1) {
+            if (pi->id == 1 && parts_j[sort_j[pjd + bit_index].i].id == 2479) {
+              //message("Found.");
+            }
+            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+              pi->ids_ngbs_density[pi->num_ngb_density] =
+                  parts_j[pjd + bit_index].id;
+                  //parts_j[sort_j[pjd + bit_index].i].id;
+            ++pi->num_ngb_density;
+          }
+        }
+#endif
+
         /* If there are any interactions perform them. */
         if (vec_is_mask_true(v_doi_mask))
           runner_iact_nonsym_1_vec_density(
@@ -1721,125 +1754,306 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
       VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
       VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
 
+      if(pi->id == DEBUG_PI) {
+          message("After. wcount: %f, wcount_dh: %f, pj[0].id: %lld", pi->density.wcount, pi->density.wcount_dh, parts_j[0].id);
+      }
       //message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
     }   /* loop over the parts in ci. */
-  }
 
-  /* Parts are on the right. */
-  else {
-
-    /* Loop over the parts_i. */
-    for (int pid = 0; pid < count; pid++) {
-
-      /* Get a hold of the ith part in ci. */
-      struct part *restrict pi = &parts_i[ind[pid]];
-      const float pix = pi->x[0] - total_ci_shift[0];
-      const float piy = pi->x[1] - total_ci_shift[1];
-      const float piz = pi->x[2] - total_ci_shift[2];
-      const float hi = pi->h;
-      const float hig2 = hi * hi * kernel_gamma2;
-      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
-                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
-
-      //for(int i = 0; i<ci->count; i++) {
-        //message("pid: %lld, sort_i[%i].d: %f", parts_i[ind[i]].id, i, sort_i[i].d + hi * kernel_gamma + dxj - rshift);
-        //message("pid: %lld, di: %f", pi->id, di);
-      //}
-      /* Fill particle pi vectors. */
-      const vector v_pix = vector_set1(pix);
-      const vector v_piy = vector_set1(piy);
-      const vector v_piz = vector_set1(piz);
-      const vector v_hi = vector_set1(hi);
-      const vector v_vix = vector_set1(pi->v[0]);
-      const vector v_viy = vector_set1(pi->v[1]);
-      const vector v_viz = vector_set1(pi->v[2]);
-      const vector v_hig2 = vector_set1(hig2);
-      
-      /* Get the inverse of hi. */
-      vector v_hi_inv = vec_reciprocal(v_hi);
-
-      /* Reset cumulative sums of update vectors. */
-      vector v_rhoSum = vector_setzero();
-      vector v_rho_dhSum = vector_setzero();
-      vector v_wcountSum = vector_setzero();
-      vector v_wcount_dhSum = vector_setzero();
-      vector v_div_vSum = vector_setzero();
-      vector v_curlvxSum = vector_setzero();
-      vector v_curlvySum = vector_setzero();
-      vector v_curlvzSum = vector_setzero();
-
-      int first_pj = count_j;
-      
-      //message("di: %f", di);
-      //message("sort_j[0].d: %f", sort_j[0].d);
-
-      for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
-        //message("sort_j[%d].d: %f, di: %f", pjd, sort_j[pjd].d, di);
-        first_pj--;
-      }
-      //message("pid: %lld, first_pj: %d", pi->id, first_pj);
-
-      //int ctr = 0;
-
-      first_pj = 0;
-
-      /* Loop over the parts in cj. */
-      for (int pjd = first_pj; pjd < count_j; pjd += VEC_SIZE) {
-
-        //ctr += VEC_SIZE;
-
-        /* Get the cache index to the jth particle. */
-        const int cj_cache_idx = pjd;
-
-        vector v_dx, v_dy, v_dz, v_r2;
-
-        /* Load 1 set of vectors from the particle cache. */
-        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
-        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
-        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
-
-        /* Compute the pairwise distance. */
-        v_dx.v = vec_sub(v_pix.v, v_pjx.v);
-        v_dy.v = vec_sub(v_piy.v, v_pjy.v);
-        v_dz.v = vec_sub(v_piz.v, v_pjz.v);
-
-        v_r2.v = vec_mul(v_dx.v, v_dx.v);
-        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
-        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
-
-        /* Form r2 < hig2 mask. */
-        mask_t v_doi_mask;
-        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
-
-        /* If there are any interactions perform them. */
-        if (vec_is_mask_true(v_doi_mask))
-          runner_iact_nonsym_1_vec_density(
-              &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
-              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
-              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx],
-              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
-              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
-              v_doi_mask);
-
-        //intCount += __builtin_popcount(vec_is_mask_true(v_doi_mask));
-
-      } /* loop over the parts in cj. */
-   
-      //message("No. of interactions: %d for pi: %lld", intCount, pi->id);
-
-      /* Perform horizontal adds on vector sums and store result in pi. */
-      VEC_HADD(v_rhoSum, pi->rho);
-      VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
-      VEC_HADD(v_wcountSum, pi->density.wcount);
-      VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
-      VEC_HADD(v_div_vSum, pi->density.div_v);
-      VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
-      VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
-      VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
-
-      //message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
-    }
-  }   /* loop over the parts in ci. */
+  /* Parts are on the left? */
+//  if (!flipped) {
+//
+//    /* Loop over the parts_i. */
+//    for (int pid = 0; pid < count; pid++) {
+//
+//      /* Get a hold of the ith part in ci. */
+//      struct part *restrict pi = &parts_i[ind[pid]];
+//      const float pix = pi->x[0] - total_ci_shift[0];
+//      const float piy = pi->x[1] - total_ci_shift[1];
+//      const float piz = pi->x[2] - total_ci_shift[2];
+//      const float hi = pi->h;
+//      const float hig2 = hi * hi * kernel_gamma2;
+//      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+//                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+//
+//      if (pi->id == 1) {
+//        for(int i=0; i<count_j; i++) {
+//          if(parts_j[i].id == 131 || parts_j[i].id == 2479) {
+//            message("Found missing neighbour: %lld", parts_j[i].id);
+//          }
+//        }
+//      }
+//      //for(int i = 0; i<ci->count; i++) {
+//        //message("pid: %lld, sort_i[%i].d: %f", parts_i[ind[i]].id, i, sort_i[i].d + hi * kernel_gamma + dxj - rshift);
+//        //message("pid: %lld, di: %f", pi->id, di);
+//      //}
+//      /* Fill particle pi vectors. */
+//      const vector v_pix = vector_set1(pix);
+//      const vector v_piy = vector_set1(piy);
+//      const vector v_piz = vector_set1(piz);
+//      const vector v_hi = vector_set1(hi);
+//      const vector v_vix = vector_set1(pi->v[0]);
+//      const vector v_viy = vector_set1(pi->v[1]);
+//      const vector v_viz = vector_set1(pi->v[2]);
+//      const vector v_hig2 = vector_set1(hig2);
+//      
+//      /* Get the inverse of hi. */
+//      vector v_hi_inv = vec_reciprocal(v_hi);
+//
+//      /* Reset cumulative sums of update vectors. */
+//      vector v_rhoSum = vector_setzero();
+//      vector v_rho_dhSum = vector_setzero();
+//      vector v_wcountSum = vector_setzero();
+//      vector v_wcount_dhSum = vector_setzero();
+//      vector v_div_vSum = vector_setzero();
+//      vector v_curlvxSum = vector_setzero();
+//      vector v_curlvySum = vector_setzero();
+//      vector v_curlvzSum = vector_setzero();
+//
+//      int last_pj = -1;
+//      
+//      //message("di: %f", di);
+//      //message("sort_j[0].d: %f", sort_j[0].d);
+//
+//      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+//        //message("sort_j[%d].d: %f, di: %f", pjd, sort_j[pjd].d, di);
+//        last_pj++;
+//      }
+//        //message("pid: %lld, last_pj: %d", pi->id, last_pj);
+//
+//      //int ctr = 0;
+//
+//      last_pj = count_j - 1;
+//
+//      /* Loop over the parts in cj. */
+//      for (int pjd = 0; pjd <= last_pj; pjd += VEC_SIZE) {
+//
+//        //ctr += VEC_SIZE;
+//
+//        /* Get the cache index to the jth particle. */
+//        const int cj_cache_idx = pjd;
+//
+//        vector v_dx, v_dy, v_dz, v_r2;
+//
+//        /* Load 1 set of vectors from the particle cache. */
+//        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
+//        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
+//        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
+//
+//        /* Compute the pairwise distance. */
+//        v_dx.v = vec_sub(v_pix.v, v_pjx.v);
+//        v_dy.v = vec_sub(v_piy.v, v_pjy.v);
+//        v_dz.v = vec_sub(v_piz.v, v_pjz.v);
+//
+//        v_r2.v = vec_mul(v_dx.v, v_dx.v);
+//        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+//        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+//
+//        /* Form r2 < hig2 mask. */
+//        mask_t v_doi_mask;
+//        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
+//
+//        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+//          if (pjd + bit_index < count_j - 1) {
+//            if (pi->id == 1 && parts_j[sort_j[pjd + bit_index].i].id == 131) {
+//              message("Found neighbour.");
+//              message("pjd: %d, bit_index: %d, mask:", pjd, bit_index);
+//              for (int i= 0; i<VEC_SIZE; i++) message("%f", v_doi_mask.f[i]);
+//              message("r2: %f, hig2: %f", v_r2.f[bit_index], v_hig2.f[0]);
+//            }
+//          }
+//        }
+//
+//#ifdef DEBUG_INTERACTIONS_SPH
+//        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+//          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index) && pjd + bit_index < count_j - 1) {
+//            if (pi->id == 1 && parts_j[sort_j[pjd + bit_index].i].id == 2479) {
+//              //message("Found.");
+//            }
+//            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+//              pi->ids_ngbs_density[pi->num_ngb_density] =
+//                  parts_j[sort_j[pjd + bit_index].i].id;
+//            ++pi->num_ngb_density;
+//          }
+//        }
+//#endif
+//
+//        /* If there are any interactions perform them. */
+//        if (vec_is_mask_true(v_doi_mask))
+//          runner_iact_nonsym_1_vec_density(
+//              &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
+//              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
+//              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx],
+//              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+//              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+//              v_doi_mask);
+//
+//        //intCount += __builtin_popcount(vec_is_mask_true(v_doi_mask));
+//
+//      } /* loop over the parts in cj. */
+//   
+//      //message("No. of interactions: %d for pi: %lld", intCount, pi->id);
+//
+//      /* Perform horizontal adds on vector sums and store result in pi. */
+//      VEC_HADD(v_rhoSum, pi->rho);
+//      VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
+//      VEC_HADD(v_wcountSum, pi->density.wcount);
+//      VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
+//      VEC_HADD(v_div_vSum, pi->density.div_v);
+//      VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
+//      VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
+//      VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
+//
+//      //message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
+//    }   /* loop over the parts in ci. */
+//  }
+//
+//  /* Parts are on the right. */
+//  else {
+//
+//    /* Loop over the parts_i. */
+//    for (int pid = 0; pid < count; pid++) {
+//
+//      /* Get a hold of the ith part in ci. */
+//      struct part *restrict pi = &parts_i[ind[pid]];
+//      const float pix = pi->x[0] - total_ci_shift[0];
+//      const float piy = pi->x[1] - total_ci_shift[1];
+//      const float piz = pi->x[2] - total_ci_shift[2];
+//      const float hi = pi->h;
+//      const float hig2 = hi * hi * kernel_gamma2;
+//      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+//                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+//
+//      if (pi->id == 1) {
+//        for(int i=0; i<count_j; i++) {
+//          if(parts_j[i].id == 131 || parts_j[i].id == 2479) {
+//            message("Found missing neighbour: %lld.", parts_j[i].id);
+//          }
+//        }
+//      }
+//      //for(int i = 0; i<ci->count; i++) {
+//        //message("pid: %lld, sort_i[%i].d: %f", parts_i[ind[i]].id, i, sort_i[i].d + hi * kernel_gamma + dxj - rshift);
+//        //message("pid: %lld, di: %f", pi->id, di);
+//      //}
+//      /* Fill particle pi vectors. */
+//      const vector v_pix = vector_set1(pix);
+//      const vector v_piy = vector_set1(piy);
+//      const vector v_piz = vector_set1(piz);
+//      const vector v_hi = vector_set1(hi);
+//      const vector v_vix = vector_set1(pi->v[0]);
+//      const vector v_viy = vector_set1(pi->v[1]);
+//      const vector v_viz = vector_set1(pi->v[2]);
+//      const vector v_hig2 = vector_set1(hig2);
+//      
+//      /* Get the inverse of hi. */
+//      vector v_hi_inv = vec_reciprocal(v_hi);
+//
+//      /* Reset cumulative sums of update vectors. */
+//      vector v_rhoSum = vector_setzero();
+//      vector v_rho_dhSum = vector_setzero();
+//      vector v_wcountSum = vector_setzero();
+//      vector v_wcount_dhSum = vector_setzero();
+//      vector v_div_vSum = vector_setzero();
+//      vector v_curlvxSum = vector_setzero();
+//      vector v_curlvySum = vector_setzero();
+//      vector v_curlvzSum = vector_setzero();
+//
+//      int first_pj = count_j;
+//      
+//      //message("di: %f", di);
+//      //message("sort_j[0].d: %f", sort_j[0].d);
+//
+//      for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
+//        //message("sort_j[%d].d: %f, di: %f", pjd, sort_j[pjd].d, di);
+//        first_pj--;
+//      }
+//      //message("pid: %lld, first_pj: %d", pi->id, first_pj);
+//
+//      //int ctr = 0;
+//
+//      first_pj = 0;
+//
+//      /* Loop over the parts in cj. */
+//      for (int pjd = first_pj; pjd < count_j; pjd += VEC_SIZE) {
+//
+//        //ctr += VEC_SIZE;
+//
+//        /* Get the cache index to the jth particle. */
+//        const int cj_cache_idx = pjd;
+//
+//        vector v_dx, v_dy, v_dz, v_r2;
+//
+//        /* Load 1 set of vectors from the particle cache. */
+//        const vector v_pjx = vector_load(&cj_cache->x[cj_cache_idx]);
+//        const vector v_pjy = vector_load(&cj_cache->y[cj_cache_idx]);
+//        const vector v_pjz = vector_load(&cj_cache->z[cj_cache_idx]);
+//
+//        /* Compute the pairwise distance. */
+//        v_dx.v = vec_sub(v_pix.v, v_pjx.v);
+//        v_dy.v = vec_sub(v_piy.v, v_pjy.v);
+//        v_dz.v = vec_sub(v_piz.v, v_pjz.v);
+//
+//        v_r2.v = vec_mul(v_dx.v, v_dx.v);
+//        v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
+//        v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+//
+//        /* Form r2 < hig2 mask. */
+//        mask_t v_doi_mask;
+//        vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
+//
+//        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+//          if (pjd + bit_index < count_j - 1) {
+//            if (pi->id == 1 && parts_j[sort_j[pjd + bit_index].i].id == 131) {
+//              message("Found neighbour.");
+//              message("pjd: %d, bit_index: %d, mask:", pjd, bit_index);
+//              for (int i= 0; i<VEC_SIZE; i++) message("%f", v_doi_mask.f[i]);
+//              message("r2: %.10e, hig2: %.10e", v_r2.f[bit_index], v_hig2.f[0]);
+//            }
+//          }
+//        }
+//#ifdef DEBUG_INTERACTIONS_SPH
+//        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+//          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index) && pjd + bit_index < count_j - 1) {
+//            if (pi->id == 1) {
+//              //message("Found.");
+//            }
+//            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+//              pi->ids_ngbs_density[pi->num_ngb_density] =
+//                  parts_j[sort_j[pjd + bit_index].i].id;
+//            ++pi->num_ngb_density;
+//          }
+//        }
+//#endif
+//
+//        /* If there are any interactions perform them. */
+//        if (vec_is_mask_true(v_doi_mask))
+//          runner_iact_nonsym_1_vec_density(
+//              &v_r2, &v_dx, &v_dy, &v_dz, v_hi_inv, v_vix, v_viy, v_viz,
+//              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
+//              &cj_cache->vz[cj_cache_idx], &cj_cache->m[cj_cache_idx],
+//              &v_rhoSum, &v_rho_dhSum, &v_wcountSum, &v_wcount_dhSum,
+//              &v_div_vSum, &v_curlvxSum, &v_curlvySum, &v_curlvzSum,
+//              v_doi_mask);
+//
+//        //intCount += __builtin_popcount(vec_is_mask_true(v_doi_mask));
+//
+//      } /* loop over the parts in cj. */
+//   
+//      //message("No. of interactions: %d for pi: %lld", intCount, pi->id);
+//
+//      /* Perform horizontal adds on vector sums and store result in pi. */
+//      VEC_HADD(v_rhoSum, pi->rho);
+//      VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
+//      VEC_HADD(v_wcountSum, pi->density.wcount);
+//      VEC_HADD(v_wcount_dhSum, pi->density.wcount_dh);
+//      VEC_HADD(v_div_vSum, pi->density.div_v);
+//      VEC_HADD(v_curlvxSum, pi->density.rot_v[0]);
+//      VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
+//      VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
+//
+//      //message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
+//  }   /* loop over the parts in ci. */
+//    }
 
   TIMER_TOC(timer_dopair_subset);
 #endif /* WITH_VECTORIZATION */
