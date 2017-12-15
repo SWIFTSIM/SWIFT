@@ -29,7 +29,6 @@
 
 /* Forward declaration */
 struct dump;
-#define LOGGER_VERSION "0.1"
 
 /**
  * Logger entries contain messages representing the particle data at a given
