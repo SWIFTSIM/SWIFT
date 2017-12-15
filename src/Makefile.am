@@ -94,7 +94,6 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/hydro_slope_limiters_face.h \
                  hydro/Gizmo/hydro_slope_limiters.h \
-                 hydro/Gizmo/hydro_flux_limiters.h \
                  hydro/Gizmo/hydro_unphysical.h \
                  hydro/Gizmo/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
