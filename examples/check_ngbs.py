@@ -94,7 +94,6 @@ def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_
             
             print "Particle {} is missing {}, hig2: {}, hjg2: {}, r2: {}, |r2 - max(hig2,hjg2)|: {}".format(pid,pjd,hig2, hjg2, r2, diff)
 
-            
             if diff < acc * max(hig2,hjg2):
                 print "Missing interaction due to precision issue will be ignored."
             else:

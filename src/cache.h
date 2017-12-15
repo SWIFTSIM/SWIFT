@@ -239,7 +239,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < ci->count; i++) {
-    const int idx = i;//sort_i[i].i;
+    const int idx = sort_i[i].i;
     x[i] = (float)(parts[idx].x[0] - loc[0]);
     y[i] = (float)(parts[idx].x[1] - loc[1]);
     z[i] = (float)(parts[idx].x[2] - loc[2]);
@@ -250,6 +250,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     vz[i] = parts[idx].v[2];
   }
 
+  /* Pad cache with fake particles that exist outside the cell so will not
+   * interact. We use values of the same magnitude (but negative!) as the real
+   * particles to avoid overflow problems. */
   const double max_dx = ci->dx_max_part;
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
