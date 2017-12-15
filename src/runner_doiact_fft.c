@@ -57,23 +57,30 @@ __attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
  * @param rho The density mesh.
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
  */
 __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
-    const struct gravity_tensors* m, double* rho, int N, double fac) {
+    const struct gravity_tensors* m, double* rho, int N, double fac,
+    const double dim[3]) {
 
-  int i = (int)(fac * m->CoM[0]);
+  /* Box wrap the multipole's position */
+  const double CoM_x = box_wrap(m->CoM[0], 0., dim[0]);
+  const double CoM_y = box_wrap(m->CoM[1], 0., dim[1]);
+  const double CoM_z = box_wrap(m->CoM[2], 0., dim[2]);
+
+  int i = (int)(fac * CoM_x);
   if (i >= N) i = N - 1;
-  const double dx = fac * m->CoM[0] - i;
+  const double dx = fac * CoM_x - i;
   const double tx = 1. - dx;
 
-  int j = (int)(fac * m->CoM[1]);
+  int j = (int)(fac * CoM_y);
   if (j >= N) j = N - 1;
-  const double dy = fac * m->CoM[1] - j;
+  const double dy = fac * CoM_y - j;
   const double ty = 1. - dy;
 
-  int k = (int)(fac * m->CoM[2]);
+  int k = (int)(fac * CoM_z);
   if (k >= N) k = N - 1;
-  const double dz = fac * m->CoM[2] - k;
+  const double dz = fac * CoM_z - k;
   const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -101,23 +108,30 @@ __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
  * @param pot The potential mesh.
  * @param N the size of the mesh along one axis.
  * @param fac width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
  */
 __attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
-    struct gravity_tensors* m, double* pot, int N, double fac) {
+    struct gravity_tensors* m, const double* pot, int N, double fac,
+    const double dim[3]) {
 
-  int i = (int)(fac * m->CoM[0]);
+  /* Box wrap the multipole's position */
+  const double CoM_x = box_wrap(m->CoM[0], 0., dim[0]);
+  const double CoM_y = box_wrap(m->CoM[1], 0., dim[1]);
+  const double CoM_z = box_wrap(m->CoM[2], 0., dim[2]);
+
+  int i = (int)(fac * CoM_x);
   if (i >= N) i = N - 1;
-  const double dx = fac * m->CoM[0] - i;
+  const double dx = fac * CoM_x - i;
   const double tx = 1. - dx;
 
-  int j = (int)(fac * m->CoM[1]);
+  int j = (int)(fac * CoM_y);
   if (j >= N) j = N - 1;
-  const double dy = fac * m->CoM[1] - j;
+  const double dy = fac * CoM_y - j;
   const double ty = 1. - dy;
 
-  int k = (int)(fac * m->CoM[2]);
+  int k = (int)(fac * CoM_z);
   if (k >= N) k = N - 1;
-  const double dz = fac * m->CoM[2] - k;
+  const double dz = fac * CoM_z - k;
   const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -155,6 +169,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   const double a_smooth = e->gravity_properties->a_smooth;
   const double box_size = s->dim[0];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   TIMER_TIC;
 
@@ -195,7 +210,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   /* Do a CIC mesh assignment of the multipoles */
   bzero(rho, N * N * N * sizeof(double));
   for (int i = 0; i < nr_cells; ++i)
-    multipole_to_mesh_CIC(&multipoles[i], rho, N, cell_fac);
+    multipole_to_mesh_CIC(&multipoles[i], rho, N, cell_fac, dim);
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
@@ -272,7 +287,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 
   /* Get the potential from the mesh using CIC */
   for (int i = 0; i < nr_cells; ++i)
-    mesh_to_multipole_CIC(&multipoles[i], rho, N, cell_fac);
+    mesh_to_multipole_CIC(&multipoles[i], rho, N, cell_fac, dim);
 
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);

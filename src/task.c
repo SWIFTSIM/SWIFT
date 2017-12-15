@@ -48,14 +48,13 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",           "self",
-    "pair",       "sub_self",       "sub_pair",
-    "init_grav",  "ghost",          "extra_ghost",
-    "drift_part", "drift_gpart",    "kick1",
-    "kick2",      "timestep",       "send",
-    "recv",       "grav_top_level", "grav_long_range",
-    "grav_ghost", "grav_mm",        "grav_down",
-    "cooling",    "sourceterms"};
+    "none",          "sort",           "self",           "pair",
+    "sub_self",      "sub_pair",       "init_grav",      "ghost_in",
+    "ghost",         "ghost_out",      "extra_ghost",    "drift_part",
+    "drift_gpart",   "kick1",          "kick2",          "timestep",
+    "send",          "recv",           "grav_top_level", "grav_long_range",
+    "grav_ghost_in", "grav_ghost_out", "grav_mm",        "grav_down",
+    "cooling",       "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {

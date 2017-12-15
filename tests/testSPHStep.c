@@ -77,8 +77,8 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->width[1] = cellSize;
   cell->width[2] = cellSize;
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_hydro_end_min = 1;
+  cell->ti_hydro_end_max = 1;
 
   cell->sorted = 0;
   for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
