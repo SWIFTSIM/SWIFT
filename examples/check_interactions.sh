@@ -145,13 +145,13 @@ make clean; make -j 6
 
 cd examples/SedovBlast_3D/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv sedov_0000.hdf5 sedov_naive.hdf5
 
 cd ../EAGLE_12/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv eagle_0000.hdf5 eagle_12_naive.hdf5
 
@@ -167,13 +167,13 @@ make clean; make -j 6
 
 cd examples/SedovBlast_3D/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv sedov_0000.hdf5 sedov_serial.hdf5
 
 cd ../EAGLE_12/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv eagle_0000.hdf5 eagle_12_serial.hdf5
 
@@ -189,7 +189,7 @@ make clean; make -j 6
 
 cd examples/SedovBlast_3D/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv sedov_0000.hdf5 sedov_vec.hdf5
 
@@ -220,7 +220,7 @@ fi
 
 cd ../EAGLE_12/
 
-mpirun -np 4 ../swift -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
+mpirun -np 4 ../swift_mpi -s -t 16 -n 5 eagle_12.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7
 
 mv eagle_0000.hdf5 eagle_12_vec.hdf5
 
