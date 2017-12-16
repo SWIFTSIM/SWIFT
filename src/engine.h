@@ -147,13 +147,31 @@ struct engine {
   double timeBase;
   double timeBase_inv;
 
-  /* Minimal ti_end for the next time-step */
+  /* Minimal hydro ti_end for the next time-step */
+  integertime_t ti_hydro_end_min;
+
+  /* Maximal hydro ti_end for the next time-step */
+  integertime_t ti_hydro_end_max;
+
+  /* Maximal hydro ti_beg for the next time-step */
+  integertime_t ti_hydro_beg_max;
+
+  /* Minimal gravity ti_end for the next time-step */
+  integertime_t ti_gravity_end_min;
+
+  /* Maximal gravity ti_end for the next time-step */
+  integertime_t ti_gravity_end_max;
+
+  /* Maximal gravity ti_beg for the next time-step */
+  integertime_t ti_gravity_beg_max;
+
+  /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
-  /* Maximal ti_end for the next time-step */
+  /* Maximal overall ti_end for the next time-step */
   integertime_t ti_end_max;
 
-  /* Maximal ti_beg for the next time-step */
+  /* Maximal overall ti_beg for the next time-step */
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
@@ -163,7 +181,7 @@ struct engine {
   int step_props;
 
   /* Total numbers of particles in the system. */
-  size_t total_nr_parts, total_nr_gparts;
+  long long total_nr_parts, total_nr_gparts;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
@@ -281,8 +299,8 @@ void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
-                 int verbose, struct repartition *reparttype,
+                 int nr_threads, long long Ngas, long long Ndm, int with_aff,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,

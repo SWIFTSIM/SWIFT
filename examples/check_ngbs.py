@@ -18,8 +18,6 @@ inputFile2 = ""
 # Check list of density neighbours and check that they are correct.
 def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_invalid, acc):
 
-    error_val = False
-
     for k in range(0,num_invalid):
 
         # Filter neighbour lists for valid particle ids
@@ -28,7 +26,21 @@ def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, nu
 
         # Check neighbour lists for differences
         id_list = set(filter_neigh_naive).symmetric_difference(set(filter_neigh_sort))
+       
+        # Check for duplicate IDs
+        duplicate_check_naive = len(filter_neigh_naive) != len(set(filter_neigh_naive))
+        duplicate_check_sort = len(filter_neigh_sort) != len(set(filter_neigh_sort))
+
+        if duplicate_check_naive:
+            print "Duplicate neighbour ID found in: ", inputFile1
+            print filter_neigh_naive
+            return True
         
+        if duplicate_check_sort:
+            print "Duplicate neighbour ID found in: ", inputFile2
+            print filter_neigh_sort
+            return True
+
         pid = pids[mask][k]
 
         # Loop over discrepancies and check if they are actually neighbours
@@ -53,9 +65,9 @@ def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, nu
             if diff < acc * hig2:
                 print "Missing interaction due to precision issue will be ignored."
             else:
-                error_val = True
+                return True
 
-    return error_val
+    return False
 
 # Check list of force neighbours and check that they are correct.
 def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_invalid, acc):

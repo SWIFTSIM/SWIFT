@@ -535,7 +535,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
@@ -992,7 +992,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
 
   TIMER_TIC;
 
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
@@ -1200,8 +1200,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e);
-  const int active_cj = cell_is_active(cj, e);
+  const int active_ci = cell_is_active_hydro(ci, e);
+  const int active_cj = cell_is_active_hydro(cj, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
@@ -1574,8 +1574,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
-  const int active_ci = cell_is_active(ci, e);
-  const int active_cj = cell_is_active(cj, e);
+  const int active_ci = cell_is_active_hydro(ci, e);
+  const int active_cj = cell_is_active_hydro(cj, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
