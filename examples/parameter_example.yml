@@ -143,3 +143,9 @@ LambdaCooling:
   hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
   cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
 
+# Cooling with Grackle 2.0
+GrackleCooling:
+  GrackleCloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  UVbackground: 1 # Enable or not the UV background
+  GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
+  GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units

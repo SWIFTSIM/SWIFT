@@ -5311,7 +5311,7 @@ void engine_init(struct engine *e, struct space *s,
   if (e->policy & engine_policy_hydro)
     if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
 
-  /* Print information about the hydro scheme */
+  /* Print information about the gravity scheme */
   if (e->policy & engine_policy_self_gravity)
     if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
