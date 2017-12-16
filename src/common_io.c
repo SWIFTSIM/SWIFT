@@ -692,6 +692,7 @@ void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
  * This function assumes that the DM particles are all at the start of the
  * gparts array and adds the hydro particles afterwards
  *
+ * @param tp The current #threadpool.
  * @param parts The array of #part freshly read in.
  * @param gparts The array of #gpart freshly read in with all the DM particles
  * at the start
@@ -747,6 +748,7 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
  * This function assumes that the DM particles and gas particles are all at
  * the start of the gparts array and adds the star particles afterwards
  *
+ * @param tp The current #threadpool.
  * @param sparts The array of #spart freshly read in.
  * @param gparts The array of #gpart freshly read in with all the DM and gas
  * particles at the start.

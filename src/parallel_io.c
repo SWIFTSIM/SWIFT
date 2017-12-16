@@ -530,6 +530,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
  * @param info The MPI information object
+ * @param n_threads The number of threads to use for local operations.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  */
