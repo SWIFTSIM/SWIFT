@@ -39,7 +39,6 @@
 /* include the grackle wrapper */
 #include "grackle_wrapper.h"
 
-
 /**
  * @brief Compute the cooling rate
  *
@@ -59,8 +58,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
-  if (cooling->GrackleRedshift == -1)
-    error("TODO time dependant redshift");
+  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
 
   /* Get current internal energy (dt=0) */
   double u_old = hydro_get_internal_energy(p);
@@ -99,8 +97,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
-  if (dt == 0.)
-    return;
+  if (dt == 0.) return;
 
   /* Current du_dt */
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
@@ -237,7 +234,7 @@ static INLINE void cooling_print_backend(
   message("UVbackground                       = %d", cooling->UVbackground);
   message("GrackleRedshift                    = %g", cooling->GrackleRedshift);
   message("GrackleHSShieldingDensityThreshold = %g atom/cm3",
-	  cooling->GrackleHSShieldingDensityThreshold);
+          cooling->GrackleHSShieldingDensityThreshold);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

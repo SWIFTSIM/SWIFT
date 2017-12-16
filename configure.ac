@@ -78,7 +78,6 @@ if test "$enable_ipo" = "yes"; then
    fi
 fi
 
-
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
 # We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling

@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-
 AM_CFLAGS = $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
