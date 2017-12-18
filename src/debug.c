@@ -393,7 +393,7 @@ void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
   fclose(file);
 }
 
-#ifdef HAVE_METIS
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 
 /**
  * @brief Dump the METIS graph in standard format, simple format and weights
