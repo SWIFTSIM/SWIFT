@@ -3168,6 +3168,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate the gravity drift */
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_external_grav) {
+        if (cell_is_active_gravity(ci, e)) {
+          scheduler_activate(s, t);
+          cell_activate_drift_gpart(t->ci, s);
+        }
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
