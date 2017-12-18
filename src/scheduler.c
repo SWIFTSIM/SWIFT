@@ -230,6 +230,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   }
 
   int density_cluster[4] = {0};
+  int gradient_cluster[4] = {0};
   int force_cluster[4] = {0};
   int gravity_cluster[4] = {0};
 
@@ -251,6 +252,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         for (int k = 0; k < 4; ++k) {
           if (type == task_type_self + k && subtype == task_subtype_density)
             density_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_gradient)
+            gradient_cluster[k] = 1;
           if (type == task_type_self + k && subtype == task_subtype_force)
             force_cluster[k] = 1;
           if (type == task_type_self + k && subtype == task_subtype_grav)
@@ -280,8 +283,17 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
               subtaskID_names[task_subtype_force]);
   fprintf(f, "\t};\n");
 
-  /* Make a cluster for the gravity tasks */
+  /* Make a cluster for the gradient tasks */
   fprintf(f, "\t subgraph cluster2{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (gradient_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_gradient]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gravity tasks */
+  fprintf(f, "\t subgraph cluster3{\n");
   fprintf(f, "\t\t label=\"\";\n");
   for (int k = 0; k < 2; ++k)
     if (gravity_cluster[k])
