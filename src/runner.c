@@ -1939,7 +1939,7 @@ void *runner_main(void *data) {
             runner_doself1_branch_density(r, ci);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_doself1_gradient(r, ci);
+            runner_doself1_branch_gradient(r, ci);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
