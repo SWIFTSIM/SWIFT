@@ -537,19 +537,24 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* drift the primitive variables based on the old fluxes */
-  p->primitives.rho += p->conserved.flux.mass * dt / p->geometry.volume;
+  if (p->geometry.volume > 0.) {
+    p->primitives.rho += p->conserved.flux.mass * dt / p->geometry.volume;
+  }
 
-  p->primitives.v[0] += p->conserved.flux.momentum[0] * dt / p->conserved.mass;
-  p->primitives.v[1] += p->conserved.flux.momentum[1] * dt / p->conserved.mass;
-  p->primitives.v[2] += p->conserved.flux.momentum[2] * dt / p->conserved.mass;
+  if (p->conserved.mass > 0.) {
+    p->primitives.v[0] +=
+        p->conserved.flux.momentum[0] * dt / p->conserved.mass;
+    p->primitives.v[1] +=
+        p->conserved.flux.momentum[1] * dt / p->conserved.mass;
+    p->primitives.v[2] +=
+        p->conserved.flux.momentum[2] * dt / p->conserved.mass;
 
 #if !defined(EOS_ISOTHERMAL_GAS)
-  if (p->conserved.mass > 0.) {
     const float u = p->conserved.energy + p->conserved.flux.energy * dt;
     p->primitives.P =
         hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
-  }
 #endif
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.) {
