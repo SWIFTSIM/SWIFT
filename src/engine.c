@@ -3148,6 +3148,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
+#ifdef EXTRA_HYDRO_LOOP
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_gradient) {
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
+      }
+
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_gradient) {
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
+      }
+#endif
+
       /* Activate the gravity drift */
       else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
         if (cell_is_active_gravity(ci, e)) {
@@ -3156,10 +3168,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      else if (t->type == task_type_sub_self &&
-               t->subtype == task_subtype_grav) {
-        error("Invalid task sub-type encountered");
+#ifdef SWIFT_DEBUG_CHECKS
+      else {
+        error("Invalid task type / sub-type encountered");
       }
+#endif
     }
 
     /* Pair? */
@@ -3175,6 +3188,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Only activate tasks that involve a local active cell. */
       if ((t->subtype == task_subtype_density ||
+           t->subtype == task_subtype_gradient ||
            t->subtype == task_subtype_force) &&
           ((ci_active_hydro && ci->nodeID == engine_rank) ||
            (cj_active_hydro && cj->nodeID == engine_rank))) {
