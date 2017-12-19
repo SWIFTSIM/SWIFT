@@ -545,6 +545,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Returns the velocities drifted to the current time of a particle.
+ *
+ * @param p The particle of interest
+ * @param xp The extended data of the particle.
+ * @param dt The time since the last kick.
+ * @param v (return) The velocities at the current time.
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
+    const struct part* restrict p, const struct xpart* xp, float dt,
+    float v[3]) {}
+
+/**
  * @brief Returns the density of a particle
  *
  * @param p The particle of interest
