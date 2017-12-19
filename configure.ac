@@ -42,7 +42,7 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
-# and developer code options.
+# any developer code options.
 if test "x$ax_enable_debug" != "xno"; then
    AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
 fi
