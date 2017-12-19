@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
 __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache, const struct entry *restrict sort_i) {
+    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int last_pi, const int flipped) {
 
 #if defined(GADGET2_SPH)
 
@@ -238,38 +238,97 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
-  for (int i = 0; i < ci->count; i++) {
-    const int idx = sort_i[i].i;
-    x[i] = (float)(parts[idx].x[0] - loc[0]);
-    y[i] = (float)(parts[idx].x[1] - loc[1]);
-    z[i] = (float)(parts[idx].x[2] - loc[2]);
-    h[i] = parts[idx].h;
-    m[i] = parts[idx].mass;
-    vx[i] = parts[idx].v[0];
-    vy[i] = parts[idx].v[1];
-    vz[i] = parts[idx].v[2];
+  if(!flipped) {
+    int rem = (last_pi + 1) % VEC_SIZE;
+    if (rem != 0) {
+      int pad = VEC_SIZE - rem;
+
+      /* Increase last_pj if there are particles in the cell left to read. */
+      if (last_pi + pad < ci->count) last_pi += pad;
+    }
+
+    for (int i = 0; i < last_pi; i++) {
+      const int idx = sort_i[i].i;
+      x[i] = (float)(parts[idx].x[0] - loc[0]);
+      y[i] = (float)(parts[idx].x[1] - loc[1]);
+      z[i] = (float)(parts[idx].x[2] - loc[2]);
+      h[i] = parts[idx].h;
+      m[i] = parts[idx].mass;
+      vx[i] = parts[idx].v[0];
+      vy[i] = parts[idx].v[1];
+      vz[i] = parts[idx].v[2];
+    }
+
+    /* Pad cache with fake particles that exist outside the cell so will not
+     * interact. We use values of the same magnitude (but negative!) as the real
+     * particles to avoid overflow problems. */
+    const double max_dx = ci->dx_max_part;
+    const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx), -(2. * ci->width[2] + max_dx)};
+    const float h_padded = ci->parts[0].h;
+
+    for (int i = last_pi; i < last_pi + VEC_SIZE; i++) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
+      h[i] = h_padded;
+
+      m[i] = 1.f;
+      vx[i] = 1.f;
+      vy[i] = 1.f;
+      vz[i] = 1.f;
+    }
+  }
+  else {
+
+    int rem = (ci->count - *first_pi) % VEC_SIZE;
+    if (rem != 0) {
+      int pad = VEC_SIZE - rem;
+
+      /* Decrease first_pi if there are particles in the cell left to read. */
+      if (*first_pi - pad >= 0) *first_pi -= pad;
+    }
+
+    int ci_cache_count = ci->count - *first_pi;
+
+    //message("ci_cache_count: %d, count_i: %d, first_pi: %d", ci_cache_count, ci->count, *first_pi);
+
+    /* Shift the particles positions to a local frame (ci frame) so single
+     * precision can be used instead of double precision.  */
+    for (int i = 0; i < ci_cache_count; i++) {
+      const int idx = sort_i[i + *first_pi].i;
+      x[i] = (float)(parts[idx].x[0] - loc[0]);
+      y[i] = (float)(parts[idx].x[1] - loc[1]);
+      z[i] = (float)(parts[idx].x[2] - loc[2]);
+      h[i] = parts[idx].h;
+      m[i] = parts[idx].mass;
+      vx[i] = parts[idx].v[0];
+      vy[i] = parts[idx].v[1];
+      vz[i] = parts[idx].v[2];
+    }
+
+    /* Pad cache with fake particles that exist outside the cell so will not
+     * interact. We use values of the same magnitude (but negative!) as the real
+     * particles to avoid overflow problems. */
+    const double max_dx = ci->dx_max_part;
+    const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+      -(2. * ci->width[1] + max_dx),
+      -(2. * ci->width[2] + max_dx)};
+    const float h_padded = ci->parts[0].h;
+
+    for (int i = ci->count - *first_pi;
+        i < ci->count - *first_pi + VEC_SIZE; i++) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
+      h[i] = h_padded;
+
+      m[i] = 1.f;
+      vx[i] = 1.f;
+      vy[i] = 1.f;
+      vz[i] = 1.f;
+    }
   }
 
-  /* Pad cache with fake particles that exist outside the cell so will not
-   * interact. We use values of the same magnitude (but negative!) as the real
-   * particles to avoid overflow problems. */
-  const double max_dx = ci->dx_max_part;
-  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
-                               -(2. * ci->width[1] + max_dx),
-                               -(2. * ci->width[2] + max_dx)};
-  const float h_padded = ci->parts[0].h;
-
-  for (int i = ci->count; i < ci->count + VEC_SIZE; i++) {
-    x[i] = pos_padded[0];
-    y[i] = pos_padded[1];
-    z[i] = pos_padded[2];
-    h[i] = h_padded;
-
-    m[i] = 1.f;
-    vx[i] = 1.f;
-    vy[i] = 1.f;
-    vz[i] = 1.f;
-  }
 #endif
 }
 
