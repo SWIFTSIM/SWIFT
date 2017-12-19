@@ -1698,6 +1698,8 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
     /* Read the particles from the cell and store them locally in the cache. */
     cache_read_particles_subpair(cj, cj_cache, sort_j, 0, &last_pj, 0);
 
+    const double dj_min = sort_j[0].d;
+
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
 
@@ -1708,8 +1710,11 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      //const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
-      //  piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+
+      /* Skip this particle if no particle in cj is within range of it. */
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      if (di < dj_min) continue;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(pix);
@@ -1817,6 +1822,8 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;
 
+    const double dj_max = sort_j[count_j - 1].d;
+    
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
 
@@ -1827,8 +1834,11 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      //const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
-      //  piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      
+      /* Skip this particle if no particle in cj is within range of it. */
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      if (di > dj_max) continue;
 
       /* Fill particle pi vectors. */
       const vector v_pix = vector_set1(pix);
