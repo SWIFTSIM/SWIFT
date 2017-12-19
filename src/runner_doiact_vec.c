@@ -1677,11 +1677,11 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
   const double total_ci_shift[3] = {
-    cj->loc[0] + shift[0], cj->loc[1] + shift[1], cj->loc[2] + shift[2]};
+    ci->loc[0] + shift[0], ci->loc[1] + shift[1], ci->loc[2] + shift[2]};
 
-  const double di_shift_correction = cj->loc[0]*runner_shift[sid][0] + 
-    cj->loc[1]*runner_shift[sid][1] + 
-    cj->loc[2]*runner_shift[sid][2];
+  const double di_shift_correction = ci->loc[0]*runner_shift[sid][0] + 
+    ci->loc[1]*runner_shift[sid][1] + 
+    ci->loc[2]*runner_shift[sid][2];
 
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -1696,7 +1696,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
     int last_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, sid, sort_j, max_index_i, 0);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subpair(cj, cj_cache, sort_j, 0, &last_pj, 0);
+    cache_read_particles_subpair(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
 
     const double dj_min = sort_j[0].d;
 
@@ -1817,7 +1817,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
     int first_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, sid, sort_j, max_index_i, 1);
    
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, 1);
+    cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
 
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;

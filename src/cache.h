@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
 __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int *last_pi, const int flipped) {
+    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int *last_pi, const double *loc, const int flipped) {
 
 #if defined(GADGET2_SPH)
 
@@ -234,7 +234,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
   const struct part *restrict parts = ci->parts;
-  const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
