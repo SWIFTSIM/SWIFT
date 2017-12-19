@@ -764,7 +764,17 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  */
 __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     const struct part* restrict p, const struct xpart* xp, float dt,
-    float v[3]) {}
+    float v[3]) {
+
+  if (p->conserved.mass > 0.) {
+    v[0] = p->primitives.v[0] +
+           p->conserved.flux.momentum[0] * dt / p->conserved.mass;
+    v[1] = p->primitives.v[1] +
+           p->conserved.flux.momentum[1] * dt / p->conserved.mass;
+    v[2] = p->primitives.v[2] +
+           p->conserved.flux.momentum[2] * dt / p->conserved.mass;
+  }
+}
 
 /**
  * @brief Returns the density of a particle
