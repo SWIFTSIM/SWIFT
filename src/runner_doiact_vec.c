@@ -28,7 +28,6 @@
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
-#define DEBUG_PI 8
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
 
 /**
@@ -1172,7 +1171,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+__attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
                                 struct cell *cj, const int sid,
                                 const double *shift) {
 
@@ -1545,7 +1544,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
+__attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
     struct part *restrict parts_i, int *restrict ind, int count,
     struct cell *restrict cj) {
 
@@ -1596,9 +1595,6 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
 
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
-  /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles_subpair(cj, cj_cache, sort_j);
-
   const double total_ci_shift[3] = {
     cj->loc[0] + shift[0], cj->loc[1] + shift[1], cj->loc[2] + shift[2]};
 
@@ -1611,6 +1607,25 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
 
   /* Parts are on the left? */
   if (!flipped) {
+
+    int last_pj = 0;
+    
+    for (int pid = 0; pid < count; pid++) {
+      struct part *restrict pi = &parts_i[ind[pid]];
+      const float pix = pi->x[0] - total_ci_shift[0];
+      const float piy = pi->x[1] - total_ci_shift[1];
+      const float piz = pi->x[2] - total_ci_shift[2];
+      const float hi = pi->h;
+
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      for (int pjd = last_pj; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+        last_pj++;
+      }
+    }
+
+    /* Read the particles from the cell and store them locally in the cache. */
+    cache_read_particles_subpair(cj, cj_cache, sort_j, 0, last_pj, flipped);
 
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
@@ -1648,14 +1663,14 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
       vector v_curlvySum = vector_setzero();
       vector v_curlvzSum = vector_setzero();
 
-      int last_pj = -1;
+      int exit_iteration = -1;
 
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-        last_pj++;
+        exit_iteration++;
       }
 
       /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd <= last_pj; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;
@@ -1681,11 +1696,18 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
 #ifdef DEBUG_INTERACTIONS_SPH
+        struct part *restrict parts_j = cj->parts;
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
-            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
+              if( pjd + bit_index > count_j - 1 || pjd + bit_index < 0) {
+                message("pjd: %d, last_pj: %d, bit_index: %d, cj_count: %d, sort.i: %d", pjd, last_pj, bit_index, count_j, sort_j[pjd + bit_index].i);
+                fflush(stdout);
+                error("Incorrect index.");
+              }
               pi->ids_ngbs_density[pi->num_ngb_density] =
                 parts_j[sort_j[pjd + bit_index].i].id;
+            }
             ++pi->num_ngb_density;
           }
         }
@@ -1718,6 +1740,29 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
 
   /* Parts are on the right. */
   else {
+
+    int first_pj = count_j;
+
+    for (int pid = 0; pid < count; pid++) {
+      struct part *restrict pi = &parts_i[ind[pid]];
+      const float pix = pi->x[0] - total_ci_shift[0];
+      const float piy = pi->x[1] - total_ci_shift[1];
+      const float piz = pi->x[2] - total_ci_shift[2];
+      const float hi = pi->h;
+
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      for (int pjd = first_pj; pjd > 0 && di < sort_j[pjd - 1].d; pjd--) {
+        first_pj--;
+      }
+      //message("last_pj_cache: %d", last_pj_cache);
+    }
+
+    /* Read the particles from the cell and store them locally in the cache. */
+    cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, flipped);
+
+    /* Get the number of particles read into the ci cache. */
+    const int cj_cache_count = count_j - first_pj;
 
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
@@ -1755,17 +1800,25 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
       vector v_curlvySum = vector_setzero();
       vector v_curlvzSum = vector_setzero();
 
-      int first_pj = count_j;
+      int exit_iteration = count_j;
 
       for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
-        first_pj--;
+        exit_iteration--;
       }
 
-      /* Loop over the parts in cj. */
-      for (int pjd = first_pj; pjd < count_j; pjd += VEC_SIZE) {
+      /* Convert exit iteration to cache indices. */
+      int exit_iteration_align = exit_iteration - first_pj;
 
-        /* Get the cache index to the jth particle. */
-        const int cj_cache_idx = pjd;
+      /* Pad the exit iteration align so cache reads are aligned. */
+      const int rem = exit_iteration_align % VEC_SIZE;
+      if (exit_iteration_align < VEC_SIZE) {
+        exit_iteration_align = 0;
+      } else
+        exit_iteration_align -= rem;
+
+      /* Loop over the parts in cj. */
+      for (int cj_cache_idx = exit_iteration_align;
+           cj_cache_idx < cj_cache_count; cj_cache_idx += VEC_SIZE) {
 
         vector v_dx, v_dy, v_dz, v_r2;
 
@@ -1788,11 +1841,18 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
 #ifdef DEBUG_INTERACTIONS_SPH
+        struct part *restrict parts_j = cj->parts;
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
-            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+            if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
+              if(cj_cache_idx + first_pj + bit_index > count_j - 1 || cj_cache_idx + first_pj + bit_index < 0) {
+                message("cj_cache_idx: %d, first_pj: %d, bit_index: %d, cj_count: %d, sort.i: %d", cj_cache_idx, first_pj, bit_index, count_j, sort_j[cj_cache_idx + first_pj + bit_index].i);
+                fflush(stdout);
+                error("Incorrect index.");
+              }
               pi->ids_ngbs_density[pi->num_ngb_density] =
-                parts_j[sort_j[pjd + bit_index].i].id;
+                parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id;
+            }
             ++pi->num_ngb_density;
           }
         }
@@ -1837,7 +1897,7 @@ void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+__attribute__((always_inline)) INLINE void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj, const int sid,
                               const double *shift) {
 
