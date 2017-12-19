@@ -67,12 +67,15 @@ void logger_write_general_data(struct dump *d, struct logger_const *log, size_t 
   size_t size = 0;
   if (data_type == logger_data_double)
     size = sizeof(double);
+  else if (data_type == logger_data_longlong)
+    size = sizeof(long long);
   else
     error("Not implemented");
   
   buff = dump_get(d, size, offset);
   memcpy(buff, p, size);
-  
+
+  *offset += size;
 }
 
 /**
@@ -269,9 +272,12 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   *offset = offset_new;
 }
 
-void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
+void logger_log_timestamp(integertime_t timestamp, size_t *offset,
                           struct dump *dump) {
-
+  timestamp = 1000;
+#ifdef SWIFT_DEBUG_CHECKS
+  message("writing timestamp: %llu", timestamp);
+#endif
   /* Start by computing the size of the message. */
   const int size = logger_size(logger_mask_timestamp);
 
@@ -286,7 +292,7 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
   buff += 8;
 
   /* Store the timestamp. */
-  memcpy(buff, &timestamp, sizeof(unsigned long long int));
+  memcpy(buff, &timestamp, sizeof(integertime_t));
 
   /* Update the log message offset. */
   *offset = offset_new;
@@ -458,7 +464,7 @@ void logger_const_init(struct logger_const* log_const) {
   log_const->masks_size[4] = sizeof(float);
   log_const->masks_size[5] = sizeof(float);
   log_const->masks_size[6] = sizeof(float) + sizeof(long long);
-  log_const->masks_size[7] = 8;
+  log_const->masks_size[7] = sizeof(integertime_t);
 
   // todo masks_type
 
