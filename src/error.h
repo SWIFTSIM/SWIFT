@@ -37,9 +37,9 @@
 #include "clocks.h"
 
 #ifdef SWIFT_DEVELOP_MODE
-#define swift_abort(errcode)    abort()
+#define swift_abort(errcode) abort()
 #else
-#define swift_abort(errcode)    exit(errcode)
+#define swift_abort(errcode) exit(errcode)
 #endif
 
 /**
@@ -60,7 +60,7 @@ extern int engine_rank;
   ({                                                                       \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
-    swift_abort(1);                                                         \
+    swift_abort(1);                                                        \
   })
 #endif
 

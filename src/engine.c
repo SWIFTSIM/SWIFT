@@ -3909,47 +3909,48 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   {
-    /* /\* Check the above using the original MPI calls. *\/ */
-    /* integertime_t in_i[1], out_i[1]; */
-    /* in_i[0] = 0; */
-    /* out_i[0] = data.ti_end_min; */
-    /* if (MPI_Allreduce(out_i, in_i, 1, MPI_LONG_LONG_INT, MPI_MIN, */
-    /*                   MPI_COMM_WORLD) != MPI_SUCCESS) */
-    /*   error("Failed to aggregate ti_end_min."); */
-    /* if (in_i[0] != (long long)e->collect_group1.ti_end_min) */
-    /*   error("Failed to get same ti_end_min, is %lld, should be %lld",
-     * in_i[0], */
-    /*         e->collect_group1.ti_end_min); */
+    /* Check the above using the original MPI calls. */
+    integertime_t in_i[2], out_i[2];
+    in_i[0] = 0;
+    in_i[1] = 0;
+    out_i[0] = data.ti_hydro_end_min;
+    out_i[1] = data.ti_gravity_end_min;
+    if (MPI_Allreduce(out_i, in_i, 2, MPI_LONG_LONG_INT, MPI_MIN,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate ti_end_min.");
+    if (in_i[0] != (long long)e->collect_group1.ti_hydro_end_min)
+      error("Failed to get same ti_hydro_end_min, is %lld, should be %lld",
+            in_i[0], e->collect_group1.ti_hydro_end_min);
+    if (in_i[1] != (long long)e->collect_group1.ti_gravity_end_min)
+      error("Failed to get same ti_gravity_end_min, is %lld, should be %lld",
+            in_i[1], e->collect_group1.ti_gravity_end_min);
 
-    /* long long in_ll[3], out_ll[3]; */
-    /* out_ll[0] = data.updates; */
-    /* out_ll[1] = data.g_updates; */
-    /* out_ll[2] = data.s_updates; */
-    /* if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM, */
-    /*                   MPI_COMM_WORLD) != MPI_SUCCESS) */
-    /*   error("Failed to aggregate particle counts."); */
-    /* if (in_ll[0] != (long long)e->collect_group1.updates) */
-    /*   error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
-     */
-    /*         e->collect_group1.updates); */
-    /* if (in_ll[1] != (long long)e->collect_group1.g_updates) */
-    /*   error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
-     */
-    /*         e->collect_group1.g_updates); */
-    /* if (in_ll[2] != (long long)e->collect_group1.s_updates) */
-    /*   error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
-     */
-    /*         e->collect_group1.s_updates); */
+    long long in_ll[3], out_ll[3];
+    out_ll[0] = data.updates;
+    out_ll[1] = data.g_updates;
+    out_ll[2] = data.s_updates;
+    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate particle counts.");
+    if (in_ll[0] != (long long)e->collect_group1.updates)
+      error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
+            e->collect_group1.updates);
+    if (in_ll[1] != (long long)e->collect_group1.g_updates)
+      error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
+            e->collect_group1.g_updates);
+    if (in_ll[2] != (long long)e->collect_group1.s_updates)
+      error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
+            e->collect_group1.s_updates);
 
-    /* int buff = 0; */
-    /* if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX, */
-    /*                   MPI_COMM_WORLD) != MPI_SUCCESS) */
-    /*   error("Failed to aggregate the rebuild flag across nodes."); */
-    /* if (!!buff != !!e->collect_group1.forcerebuild) */
-    /*   error( */
-    /*       "Failed to get same rebuild flag from all nodes, is %d," */
-    /*       "should be %d", */
-    /*       buff, e->collect_group1.forcerebuild); */
+    int buff = 0;
+    if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    if (!!buff != !!e->collect_group1.forcerebuild)
+      error(
+          "Failed to get same rebuild flag from all nodes, is %d,"
+          "should be %d",
+          buff, e->collect_group1.forcerebuild);
   }
 #endif
 #endif
