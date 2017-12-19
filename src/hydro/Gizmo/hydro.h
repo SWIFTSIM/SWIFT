@@ -773,6 +773,10 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
            p->conserved.flux.momentum[1] * dt / p->conserved.mass;
     v[2] = p->primitives.v[2] +
            p->conserved.flux.momentum[2] * dt / p->conserved.mass;
+  } else {
+    v[0] = p->primitives.v[0];
+    v[1] = p->primitives.v[1];
+    v[2] = p->primitives.v[2];
   }
 }
 
