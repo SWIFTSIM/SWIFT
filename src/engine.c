@@ -2321,6 +2321,10 @@ void engine_make_self_gravity_tasks(struct engine *e) {
   if (periodic)
     for (int i = 0; i < s->nr_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
+      /* Skip empty cells */
+      if (c->gcount == 0) continue;
+
+      /* Did we correctly attach the FFT task ghosts? */
       if (c->nodeID == engine_rank &&
           (c->grav_ghost_in == NULL || c->grav_ghost_out == NULL))
         error("Invalid gravity_ghost for local cell");
