@@ -41,6 +41,12 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+# If debug is selected then we also define SWIFT_DEVELOP_MODE to control
+# any developer code options.
+if test "x$ax_enable_debug" != "xno"; then
+   AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
+fi
+
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
