@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 
 __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int last_pi, const int flipped) {
+    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int *last_pi, const int flipped) {
 
 #if defined(GADGET2_SPH)
 
@@ -239,15 +239,15 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   if(!flipped) {
-    int rem = (last_pi + 1) % VEC_SIZE;
+    int rem = (*last_pi + 1) % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
 
       /* Increase last_pj if there are particles in the cell left to read. */
-      if (last_pi + pad < ci->count) last_pi += pad;
+      if (*last_pi + pad < ci->count) *last_pi += pad;
     }
 
-    for (int i = 0; i < last_pi; i++) {
+    for (int i = 0; i < *last_pi; i++) {
       const int idx = sort_i[i].i;
       x[i] = (float)(parts[idx].x[0] - loc[0]);
       y[i] = (float)(parts[idx].x[1] - loc[1]);
@@ -266,7 +266,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx), -(2. * ci->width[2] + max_dx)};
     const float h_padded = ci->parts[0].h;
 
-    for (int i = last_pi; i < last_pi + VEC_SIZE; i++) {
+    for (int i = *last_pi; i < *last_pi + VEC_SIZE; i++) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
