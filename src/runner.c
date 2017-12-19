@@ -1889,62 +1889,6 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       t->ti_run = e->ti_current;
-/* #ifndef WITH_MPI */
-/*       if (t->type == task_type_grav_top_level) { */
-/*         if (ci != NULL || cj != NULL) */
-/*           error("Top-level gravity task associated with a cell"); */
-/*       } else if (ci == NULL && cj == NULL) { */
-
-/*         error("Task not associated with cells!"); */
-/*       } else if (cj == NULL) { /\* self *\/ */
-
-/*         if (!cell_is_active_hydro(ci, e) && t->type != task_type_sort && */
-/*             t->type != task_type_send && t->type != task_type_recv && */
-/*             t->type != task_type_kick1 && t->type != task_type_drift_part &&
- */
-/*             t->type != task_type_drift_gpart) */
-/*           error( */
-/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
- */
-/*               "c->ti_end_min=%lld", */
-/*               taskID_names[t->type], subtaskID_names[t->subtype],
- * e->ti_current, */
-/*               ci->ti_end_min); */
-
-/*         /\* Special case for sorts *\/ */
-/*         if (!cell_is_active_hydro(ci, e) && t->type == task_type_sort && */
-/*             !(ci->do_sort || ci->do_sub_sort)) */
-/*           error( */
-/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
- */
-/*               "c->ti_end_min=%lld t->flags=%d", */
-/*               taskID_names[t->type], subtaskID_names[t->subtype],
- * e->ti_current, */
-/*               ci->ti_end_min, t->flags); */
-
-/*         /\* Special case for kick1 *\/ */
-/*         if (!cell_is_starting(ci, e) && t->type == task_type_kick1 && */
-/*             t->flags == 0) */
-/*           error( */
-/*               "Task (type='%s/%s') should have been skipped ti_current=%lld "
- */
-/*               "c->ti_end_min=%lld t->flags=%d", */
-/*               taskID_names[t->type], subtaskID_names[t->subtype],
- * e->ti_current, */
-/*               ci->ti_end_min, t->flags); */
-
-/*       } else { /\* pair *\/ */
-/*         if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) */
-
-/*           if (t->type != task_type_send && t->type != task_type_recv) */
-/*             error( */
-/*                 "Task (type='%s/%s') should have been skipped ti_current=%lld
- * " */
-/*                 "ci->ti_end_min=%lld cj->ti_end_min=%lld", */
-/*                 taskID_names[t->type], subtaskID_names[t->subtype], */
-/*                 e->ti_current, ci->ti_end_min, cj->ti_end_min); */
-/*       } */
-/* #endif */
 #endif
 
       /* Different types of tasks... */
