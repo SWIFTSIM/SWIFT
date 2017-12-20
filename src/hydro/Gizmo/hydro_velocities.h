@@ -49,18 +49,11 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  * velocities during the force loop.
  *
  * @param p The particle to act upon.
- * @param xp The extended particel data to act upon.
+ * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_velocities_prepare_force(struct part* restrict p,
-                               const struct xpart* restrict xp) {
-
-#ifndef GIZMO_FIX_PARTICLES
-  p->force.v_full[0] = xp->v_full[0];
-  p->force.v_full[1] = xp->v_full[1];
-  p->force.v_full[2] = xp->v_full[2];
-#endif
-}
+                               const struct xpart* restrict xp) {}
 
 /**
  * @brief Set the variables that will be used to update the smoothing length

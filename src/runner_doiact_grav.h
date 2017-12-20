@@ -58,7 +58,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
       struct cell *cp = c->progeny[k];
 
       /* Do we have a progenitor with any active g-particles ? */
-      if (cp != NULL && cell_is_active(cp, e)) {
+      if (cp != NULL && cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->ti_old_multipole != e->ti_current)
@@ -140,7 +140,7 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active_gravity(ci, e) || ci->nodeID != engine_rank) return;
 
   /* Short-cut to the multipole */
   const struct multipole *multi_j = &cj->multipole->m_pole;
@@ -148,7 +148,8 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
 
-  if (multi_j->M_000 == 0.f) error("Multipole does not seem to have been set.");
+  if (multi_j->num_gpart == 0)
+    error("Multipole does not seem to have been set.");
 
   if (ci->multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
@@ -435,7 +436,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
+  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e)) return;
 
   /* Check that we are not doing something stupid */
   if (ci->split || cj->split) error("Running P-P on splitable cells");
@@ -464,8 +465,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   space_getsid(s, &ci, &cj, cell_shift);
 
   /* Record activity status */
-  const int ci_active = cell_is_active(ci, e);
-  const int cj_active = cell_is_active(cj, e);
+  const int ci_active = cell_is_active_gravity(ci, e);
+  const int cj_active = cell_is_active_gravity(cj, e);
 
   /* Do we need to drift the multipoles ? */
   if (cj_active && ci->ti_old_multipole != e->ti_current)
@@ -638,7 +639,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   /* Cell properties */
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  const int c_active = cell_is_active(c, e);
+  const int c_active = cell_is_active_gravity(c, e);
   const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
                          c->loc[1] + 0.5 * c->width[1],
                          c->loc[2] + 0.5 * c->width[2]};
@@ -764,7 +765,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   /* Cell properties */
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  const int c_active = cell_is_active(c, e);
+  const int c_active = cell_is_active_gravity(c, e);
   const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
                          c->loc[1] + 0.5 * c->width[1],
                          c->loc[2] + 0.5 * c->width[2]};
@@ -891,7 +892,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #endif
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* Check that we are not doing something stupid */
   if (c->split) error("Running P-P on a splitable cell");
@@ -934,6 +935,7 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
+  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -941,6 +943,11 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
   const double max_distance2 = max_distance * max_distance;
+
+  /* Anything to do here? */
+  if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
+        (cell_is_active_gravity(cj, e) && cj->nodeID == nodeID)))
+    return;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -954,16 +961,13 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
 
-  if (cell_is_active(ci, e) && ci->ti_old_multipole != e->ti_current)
+  if (cell_is_active_gravity(ci, e) && ci->ti_old_multipole != e->ti_current)
     error("ci->multipole not drifted.");
-  if (cell_is_active(cj, e) && cj->ti_old_multipole != e->ti_current)
+  if (cell_is_active_gravity(cj, e) && cj->ti_old_multipole != e->ti_current)
     error("cj->multipole not drifted.");
 #endif
 
   TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active(ci, e) && !cell_is_active(cj, e)) return;
 
   /* Recover the multipole information */
   struct gravity_tensors *const multi_i = ci->multipole;
@@ -987,9 +991,9 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
-    if (cell_is_active(ci, e))
+    if (cell_is_active_gravity(ci, e))
       multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
-    if (cell_is_active(cj, e))
+    if (cell_is_active_gravity(cj, e))
       multi_j->pot.num_interacted += multi_i->m_pole.num_gpart;
 #endif
     return;
@@ -1090,7 +1094,7 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active(c, e)) return;
+  if (!cell_is_active_gravity(c, e)) return;
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
@@ -1144,11 +1148,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  struct cell *cells = e->s->cells_top;
-  const int nr_cells = e->s->nr_cells;
+  struct cell *cells = s->cells_top;
+  const int nr_cells = s->nr_cells;
 
   /* Anything to do here? */
-  if (!cell_is_active(ci, e)) return;
+  if (!cell_is_active_gravity(ci, e)) return;
+
+  if (ci->nodeID != engine_rank)
+    error("Non-local cell in long-range gravity task!");
 
   /* Check multipole has been drifted */
   if (ci->ti_old_multipole != e->ti_current)
@@ -1163,14 +1170,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
-  for (int i = 0; i < nr_cells; ++i) {
+  for (int n = 0; n < nr_cells; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[i];
+    struct cell *cj = &cells[n];
     const struct gravity_tensors *const multi_j = cj->multipole;
 
-    /* Avoid stupid cases */
-    if (ci == cj || cj->gcount == 0) continue;
+    /* Avoid self contributions */
+    if (ci == cj) continue;
+
+    /* Skip empty cells */
+    if (cj->gcount == 0) continue;
 
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];

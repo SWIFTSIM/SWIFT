@@ -673,6 +673,7 @@ int main(int argc, char *argv[]) {
         break;
       case 's':
         sscanf(optarg, "%lf", &spacing);
+        break;
       case 'n':
         sscanf(optarg, "%zu", &count);
         break;

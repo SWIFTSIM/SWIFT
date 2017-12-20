@@ -56,7 +56,7 @@ void units_init_cgs(struct unit_system* us) {
 
 /**
  * @brief Initialises the unit_system structure with the constants given in
- * rhe parameter file.
+ * the parameter file.
  *
  * @param us The unit_system to initialize.
  * @param params The parsed parameter file.
@@ -81,7 +81,7 @@ void units_init(struct unit_system* us, const struct swift_params* params,
 
 /**
  * @brief Initialises the unit_system structure with the constants given in
- * rhe parameter file. Uses a default if the values are not present in the file.
+ * the parameter file. Uses a default if the values are not present in the file.
  *
  * @param us The unit_system to initialize.
  * @param params The parsed parameter file.
@@ -594,6 +594,7 @@ double units_conversion_factor(const struct unit_system* from,
  * @param us The #unit_system
  */
 void units_print(const struct unit_system* us) {
+
   message("Units:");
   message("\tUnit Mass:        %g", us->UnitMass_in_cgs);
   message("\tUnit Length:      %g", us->UnitLength_in_cgs);

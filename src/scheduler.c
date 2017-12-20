@@ -150,7 +150,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Write header */
   fprintf(f, "digraph task_dep {\n");
-  fprintf(f, "label=\"Task dependencies for SWIFT %s\"", git_revision());
+  fprintf(f, "label=\"Task dependencies for SWIFT %s\";\n", git_revision());
   fprintf(f, "\t compound=true;\n");
   fprintf(f, "\t ratio=0.66;\n");
   fprintf(f, "\t node[nodesep=0.15];\n");
@@ -217,9 +217,93 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
         /* Write to the ffile */
         fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+
+        /* Change colour of implicit tasks */
+        if (ta->implicit)
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
+                  ta_name, ta_name);
+        if (tb->implicit)
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
+                  tb_name, tb_name);
       }
     }
   }
+
+  int density_cluster[4] = {0};
+  int gradient_cluster[4] = {0};
+  int force_cluster[4] = {0};
+  int gravity_cluster[4] = {0};
+
+  /* Modify the style of some tasks on the plot */
+  for (int type = 0; type < task_type_count; ++type) {
+
+    for (int subtype = 0; subtype < task_subtype_count; ++subtype) {
+
+      const int ind = 2 * (type * task_subtype_count + subtype) * max_nber_dep;
+
+      /* Does this task/sub-task exist? */
+      if (table[ind] != -1) {
+
+        /* Make MPI tasks a different shape */
+        if (type == task_type_send || type == task_type_recv)
+          fprintf(f, "\t \"%s %s\" [shape = diamond];\n", taskID_names[type],
+                  subtaskID_names[subtype]);
+
+        for (int k = 0; k < 4; ++k) {
+          if (type == task_type_self + k && subtype == task_subtype_density)
+            density_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_gradient)
+            gradient_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_force)
+            force_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_grav)
+            gravity_cluster[k] = 1;
+        }
+        if (type == task_type_grav_top_level) gravity_cluster[2] = 1;
+        if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
+      }
+    }
+  }
+
+  /* Make a cluster for the density tasks */
+  fprintf(f, "\t subgraph cluster0{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (density_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_density]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the force tasks */
+  fprintf(f, "\t subgraph cluster1{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (force_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_force]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gradient tasks */
+  fprintf(f, "\t subgraph cluster2{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (gradient_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_gradient]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gravity tasks */
+  fprintf(f, "\t subgraph cluster3{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 2; ++k)
+    if (gravity_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_grav]);
+  if (gravity_cluster[2])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_top_level]);
+  if (gravity_cluster[3])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
+  fprintf(f, "\t};\n");
 
   /* Be clean */
   fprintf(f, "}");
@@ -814,7 +898,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_top_level ||
-               t->type == task_type_grav_ghost) {
+               t->type == task_type_grav_ghost_in ||
+               t->type == task_type_grav_ghost_out) {
       /* For future use */
     } else {
       error("Unexpected task sub-type");
@@ -1113,15 +1198,32 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
                (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
         break;
+
       case task_type_self:
-        cost = 1 * wscale * t->ci->count * t->ci->count;
-        break;
-      case task_type_pair:
-        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        if (t->subtype == task_subtype_grav)
+          cost = 1 * wscale * t->ci->gcount * t->ci->gcount;
+        else if (t->subtype == task_subtype_external_grav)
+          cost = 1 * wscale * t->ci->gcount;
         else
-          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
+
+      case task_type_pair:
+        if (t->subtype == task_subtype_grav) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost = 3 * wscale * t->ci->gcount * t->cj->gcount;
+          else
+            cost = 2 * wscale * t->ci->gcount * t->cj->gcount;
+        } else {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost =
+                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          else
+            cost =
+                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        }
+        break;
+
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
@@ -1137,11 +1239,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
         }
         break;
+
       case task_type_sub_self:
         cost = 1 * wscale * t->ci->count * t->ci->count;
         break;
       case task_type_ghost:
-        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
+        break;
+      case task_type_extra_ghost:
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
         break;
       case task_type_drift_part:
         cost = wscale * t->ci->count;
@@ -1149,14 +1255,23 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * t->ci->gcount;
         break;
+      case task_type_init_grav:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_grav_down:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_grav_long_range:
+        cost = wscale * t->ci->gcount;
+        break;
       case task_type_kick1:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_kick2:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_timestep:
-        cost = wscale * t->ci->count;
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_send:
         cost = 10 * wscale * t->ci->count * t->ci->count;
@@ -1259,74 +1374,6 @@ void scheduler_start(struct scheduler *s) {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
 
-/* Check we have not missed an active task */
-#ifdef SWIFT_DEBUG_CHECKS
-
-  const integertime_t ti_current = s->space->e->ti_current;
-
-  if (ti_current > 0) {
-
-    for (int k = 0; k < s->nr_tasks; k++) {
-
-      struct task *t = &s->tasks[k];
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
-
-      if (t->type == task_type_none) continue;
-
-      /* Don't check MPI stuff */
-      if (t->type == task_type_send || t->type == task_type_recv) continue;
-
-      /* Don't check the FFT task */
-      if (t->type == task_type_grav_top_level ||
-          t->type == task_type_grav_ghost)
-        continue;
-
-      if (ci == NULL && cj == NULL) {
-
-        error("Task not associated with cells!");
-
-      } else if (cj == NULL) { /* self */
-
-        if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort && t->type != task_type_drift_part &&
-            t->type != task_type_drift_gpart)
-          error(
-              "Task (type='%s/%s') should not have been skipped "
-              "ti_current=%lld "
-              "c->ti_end_min=%lld",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min);
-
-        /* Special treatment for sort tasks */
-        /* if (ci->ti_end_min == ti_current && t->skip &&
-            t->type == task_type_sort && t->flags == 0)
-          error(
-              "Task (type='%s/%s') should not have been skipped "
-              "ti_current=%lld "
-              "c->ti_end_min=%lld t->flags=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, t->flags); */
-
-      } else { /* pair */
-
-        if (t->skip) {
-
-          /* Check that the pair is active if the local cell is active */
-          if ((ci->ti_end_min == ti_current && ci->nodeID == engine_rank) ||
-              (cj->ti_end_min == ti_current && cj->nodeID == engine_rank))
-            error(
-                "Task (type='%s/%s') should not have been skipped "
-                "ti_current=%lld "
-                "ci->ti_end_min=%lld cj->ti_end_min=%lld",
-                taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-                ci->ti_end_min, cj->ti_end_min);
-        }
-      }
-    }
-  }
-#endif
-
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
@@ -1381,12 +1428,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
+        if (t->subtype == task_subtype_grav)
+          qid = t->ci->super_gravity->owner;
+        else
+          qid = t->ci->super_hydro->owner;
+        break;
       case task_type_sort:
       case task_type_ghost:
+      case task_type_drift_part:
+        qid = t->ci->super_hydro->owner;
+        break;
+      case task_type_drift_gpart:
+        qid = t->ci->super_gravity->owner;
+        break;
       case task_type_kick1:
       case task_type_kick2:
-      case task_type_drift_part:
-      case task_type_drift_gpart:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;
@@ -1419,8 +1475,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          err = MPI_Irecv(t->ci->multipole, 1, multipole_mpi_type,
-                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          t->buff = malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          err = MPI_Irecv(
+              t->buff, sizeof(struct gravity_tensors) * t->ci->pcell_size,
+              MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
           error("Unknown communication sub-type");
         }
@@ -1473,13 +1531,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Issend(t->ci->sparts, t->ci->scount, spart_mpi_type,
                              t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          if ((t->ci->scount * sizeof(struct gravity_tensors)) >
-              s->mpi_message_limit)
-            err = MPI_Isend(t->ci->multipole, 1, multipole_mpi_type,
-                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
-          else
-            err = MPI_Issend(t->ci->multipole, 1, multipole_mpi_type,
-                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          t->buff = malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          cell_pack_multipoles(t->ci, t->buff);
+          err = MPI_Isend(
+              t->buff, t->ci->pcell_size * sizeof(struct gravity_tensors),
+              MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
           error("Unknown communication sub-type");
         }

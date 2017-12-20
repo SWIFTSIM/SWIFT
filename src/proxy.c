@@ -124,26 +124,44 @@ void proxy_cells_exch2(struct proxy *p) {
  *
  * @param p The #proxy.
  * @param c The #cell.
+ * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_in(struct proxy *p, struct cell *c) {
+void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
+
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_in; k++)
-    if (p->cells_in[k] == c) return;
+    if (p->cells_in[k] == c) {
+
+      /* Update the type */
+      p->cells_in_type[k] |= type;
+      return;
+    }
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
+
     p->size_cells_in *= proxy_buffgrow;
-    struct cell **temp;
-    if ((temp = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
+
+    struct cell **temp_cell;
+    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
-    memcpy(temp, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
+    memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
     free(p->cells_in);
-    p->cells_in = temp;
+    p->cells_in = temp_cell;
+
+    int *temp_type;
+    if ((temp_type = malloc(sizeof(int) * p->size_cells_in)) == NULL)
+      error("Failed to allocate incoming cell type list.");
+    memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
+    free(p->cells_in_type);
+    p->cells_in_type = temp_type;
   }
 
   /* Add the cell. */
   p->cells_in[p->nr_cells_in] = c;
+  p->cells_in_type[p->nr_cells_in] = type;
   p->nr_cells_in += 1;
 }
 
@@ -152,26 +170,43 @@ void proxy_addcell_in(struct proxy *p, struct cell *c) {
  *
  * @param p The #proxy.
  * @param c The #cell.
+ * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
-void proxy_addcell_out(struct proxy *p, struct cell *c) {
+void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
+
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_out; k++)
-    if (p->cells_out[k] == c) return;
+    if (p->cells_out[k] == c) {
+
+      /* Update the type */
+      p->cells_out_type[k] |= type;
+      return;
+    }
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
     p->size_cells_out *= proxy_buffgrow;
-    struct cell **temp;
-    if ((temp = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
+
+    struct cell **temp_cell;
+    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
-    memcpy(temp, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
+    memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
     free(p->cells_out);
-    p->cells_out = temp;
+    p->cells_out = temp_cell;
+
+    int *temp_type;
+    if ((temp_type = malloc(sizeof(int) * p->size_cells_out)) == NULL)
+      error("Failed to allocate outgoing cell type list.");
+    memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
+    free(p->cells_out_type);
+    p->cells_out_type = temp_type;
   }
 
   /* Add the cell. */
   p->cells_out[p->nr_cells_out] = c;
+  p->cells_out_type[p->nr_cells_out] = type;
   p->nr_cells_out += 1;
 }
 
@@ -433,6 +468,9 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_in =
              (struct cell **)malloc(sizeof(void *) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
+    if ((p->cells_in_type = (int *)malloc(sizeof(int) * p->size_cells_in)) ==
+        NULL)
+      error("Failed to allocate cells_in_type buffer.");
   }
   p->nr_cells_in = 0;
   if (p->cells_out == NULL) {
@@ -440,6 +478,9 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_out = (struct cell **)malloc(sizeof(void *) *
                                                p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out buffer.");
+    if ((p->cells_out_type = (int *)malloc(sizeof(int) * p->size_cells_out)) ==
+        NULL)
+      error("Failed to allocate cells_out_type buffer.");
   }
   p->nr_cells_out = 0;
 

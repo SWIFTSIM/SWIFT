@@ -135,22 +135,11 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
     const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
 
-    /* Get the total acceleration */
-    float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-    if (gp != NULL) {
-      a_tot[0] += gp->a_grav[0];
-      a_tot[1] += gp->a_grav[1];
-      a_tot[2] += gp->a_grav[2];
-    }
-
-    /* Extrapolate velocities to current time */
-    const float v[3] = {xp->v_full[0] + a_tot[0] * dt,
-                        xp->v_full[1] + a_tot[1] * dt,
-                        xp->v_full[2] + a_tot[2] * dt};
-
-    const float m = hydro_get_mass(p);
+    float v[3];
+    hydro_get_drifted_velocities(p, xp, dt, v);
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
-    const float rho = hydro_get_density(p);
+    const float m = hydro_get_mass(p);
+    const float entropy = hydro_get_entropy(p);
     const float u_int = hydro_get_internal_energy(p);
 
     /* Collect mass */
@@ -182,7 +171,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     }
 
     /* Collect entropy */
-    stats.entropy += m * gas_entropy_from_internal_energy(rho, u_int);
+    stats.entropy += m * entropy;
   }
 
   /* Now write back to memory */

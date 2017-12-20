@@ -20,7 +20,6 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
-#include "hydro_flux_limiters.h"
 #include "hydro_gradients.h"
 #include "riemann.h"
 
@@ -150,53 +149,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  float hi_inv, hi_inv_dim, xi, wi, wi_dx;
-  float hj_inv, hj_inv_dim, xj, wj, wj_dx;
-  float Bi[3][3], Bj[3][3];
-  float Vi, Vj;
-  float A, Anorm;
-  int k, l;
-  float r;
-
-  r = sqrtf(r2);
-
-  hi_inv = 1.0 / hi;
-  hi_inv_dim = pow_dimension(hi_inv);
-  xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-
-  /* Compute kernel of pj. */
-  hj_inv = 1.0 / hj;
-  hj_inv_dim = pow_dimension(hj_inv);
-  xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-
-  for (k = 0; k < 3; k++) {
-    for (l = 0; l < 3; l++) {
-      Bi[k][l] = pi->geometry.matrix_E[k][l];
-      Bj[k][l] = pj->geometry.matrix_E[k][l];
-    }
-  }
-  Vi = pi->geometry.volume;
-  Vj = pj->geometry.volume;
-
-  /* Compute area */
-  /* eqn. (7) */
-  Anorm = 0.0f;
-  for (k = 0; k < 3; k++) {
-    /* we add a minus sign since dx is pi->x - pj->x */
-    A = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
-            hi_inv_dim -
-        Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
-            hj_inv_dim;
-    Anorm += A * A;
-  }
-
-  Anorm = sqrtf(Anorm);
-
-  pi->geometry.Atot += Anorm;
-  pj->geometry.Atot += Anorm;
-
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
 
@@ -217,52 +169,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  float hi_inv, hi_inv_dim, xi, wi, wi_dx;
-  float hj_inv, hj_inv_dim, xj, wj, wj_dx;
-  float Bi[3][3], Bj[3][3];
-  float Vi, Vj;
-  float A, Anorm;
-  int k, l;
-  float r;
-
-  r = sqrtf(r2);
-
-  hi_inv = 1.0 / hi;
-  hi_inv_dim = pow_dimension(hi_inv);
-  xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-
-  /* Compute kernel of pj. */
-  hj_inv = 1.0 / hj;
-  hj_inv_dim = pow_dimension(hj_inv);
-  xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-
-  for (k = 0; k < 3; k++) {
-    for (l = 0; l < 3; l++) {
-      Bi[k][l] = pi->geometry.matrix_E[k][l];
-      Bj[k][l] = pj->geometry.matrix_E[k][l];
-    }
-  }
-  Vi = pi->geometry.volume;
-  Vj = pj->geometry.volume;
-
-  /* Compute area */
-  /* eqn. (7) */
-  Anorm = 0.0f;
-  for (k = 0; k < 3; k++) {
-    /* we add a minus sign since dx is pi->x - pj->x */
-    A = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
-            hi_inv_dim -
-        Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
-            hj_inv_dim;
-    Anorm += A * A;
-  }
-
-  Anorm = sqrtf(Anorm);
-
-  pi->geometry.Atot += Anorm;
-
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
 
@@ -271,9 +177,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  *
  * Since the only difference between the symmetric and non-symmetric version
  * of the flux calculation  is in the update of the conserved variables at the
- * very end (which is not done for particle j if mode is 0 and particle j is
- * active), both runner_iact_force and runner_iact_nonsym_force call this
- * method, with an appropriate mode.
+ * very end (which is not done for particle j if mode is 0), both
+ * runner_iact_force and runner_iact_nonsym_force call this method, with an
+ * appropriate mode.
  *
  * This method calculates the surface area of the interface between particle i
  * and particle j, as well as the interface position and velocity. These are
@@ -310,7 +216,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float vmax, dvdotdx;
   float vi[3], vj[3], vij[3];
   float Wi[5], Wj[5];
-  float dti, dtj, mindt;
   float n_unit[3];
 
   /* Initialize local variables */
@@ -319,8 +224,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
       Bi[k][l] = pi->geometry.matrix_E[k][l];
       Bj[k][l] = pj->geometry.matrix_E[k][l];
     }
-    vi[k] = pi->force.v_full[k]; /* particle velocities */
-    vj[k] = pj->force.v_full[k];
+    vi[k] = pi->v[k]; /* particle velocities */
+    vj[k] = pj->v[k];
   }
   Vi = pi->geometry.volume;
   Vj = pj->geometry.volume;
@@ -334,9 +239,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[2] = pj->primitives.v[1];
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
-
-  dti = pi->force.dt;
-  dtj = pj->force.dt;
 
   /* calculate the maximal signal velocity */
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
@@ -357,10 +259,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (mode == 1) {
     pj->timestepvars.vmax = max(pj->timestepvars.vmax, vmax);
   }
-
-  /* The flux will be exchanged using the smallest time step of the two
-   * particles */
-  mindt = min(dti, dtj);
 
   /* Compute kernel of pi. */
   hi_inv = 1.0 / hi;
@@ -411,9 +309,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     for (k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
       A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wj * hj_inv_dim -
+                 wi * hi_inv_dim -
              Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-                 wi * hi_inv_dim;
+                 wj * hj_inv_dim;
       Anorm += A[k] * A[k];
     }
   } else {
@@ -483,7 +381,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[2] -= vij[1];
   Wj[3] -= vij[2];
 
-  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj, mindt);
+  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
@@ -491,69 +389,63 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
-  hydro_flux_limiters_apply(totflux, pi, pj);
+  /* Multiply with the interface surface area */
+  totflux[0] *= Anorm;
+  totflux[1] *= Anorm;
+  totflux[2] *= Anorm;
+  totflux[3] *= Anorm;
+  totflux[4] *= Anorm;
 
   /* Store mass flux */
-  float mflux = Anorm * totflux[0];
+  float mflux = totflux[0];
   pi->gravity.mflux[0] += mflux * dx[0];
   pi->gravity.mflux[1] += mflux * dx[1];
   pi->gravity.mflux[2] += mflux * dx[2];
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= mindt * Anorm * totflux[0];
-  pi->conserved.flux.momentum[0] -= mindt * Anorm * totflux[1];
-  pi->conserved.flux.momentum[1] -= mindt * Anorm * totflux[2];
-  pi->conserved.flux.momentum[2] -= mindt * Anorm * totflux[3];
-  pi->conserved.flux.energy -= mindt * Anorm * totflux[4];
+  pi->conserved.flux.mass -= totflux[0];
+  pi->conserved.flux.momentum[0] -= totflux[1];
+  pi->conserved.flux.momentum[1] -= totflux[2];
+  pi->conserved.flux.momentum[2] -= totflux[3];
+  pi->conserved.flux.energy -= totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += mindt * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += mindt * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += mindt * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= mindt * Anorm * totflux[0] * ekin;
+  pi->conserved.flux.energy += totflux[1] * pi->primitives.v[0];
+  pi->conserved.flux.energy += totflux[2] * pi->primitives.v[1];
+  pi->conserved.flux.energy += totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy -= totflux[0] * ekin;
 #endif
 
-  /* here is how it works:
-     Mode will only be 1 if both particles are ACTIVE and they are in the same
-     cell. In this case, this method IS the flux calculation for particle j, and
-     we HAVE TO UPDATE it.
-     Mode 0 can mean several things: it can mean that particle j is INACTIVE, in
-     which case we NEED TO UPDATE it, since otherwise the flux is lost from the
-     system and the conserved variable is not conserved.
-     It can also mean that particle j sits in another cell and is ACTIVE. In
-     this case, the flux exchange for particle j is done TWICE and we SHOULD NOT
-     UPDATE particle j.
-     ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
-  */
-
-  if (mode == 1 || pj->force.active == 0) {
+  /* Note that this used to be much more complicated in early implementations of
+   * the GIZMO scheme, as we wanted manifest conservation of conserved variables
+   * and had to do symmetric flux exchanges. Now we don't care about manifest
+   * conservation anymore and just assume the current fluxes are representative
+   * for the flux over the entire time step. */
+  if (mode == 1) {
     /* Store mass flux */
-    mflux = Anorm * totflux[0];
+    mflux = totflux[0];
     pj->gravity.mflux[0] -= mflux * dx[0];
     pj->gravity.mflux[1] -= mflux * dx[1];
     pj->gravity.mflux[2] -= mflux * dx[2];
 
-    pj->conserved.flux.mass += mindt * Anorm * totflux[0];
-    pj->conserved.flux.momentum[0] += mindt * Anorm * totflux[1];
-    pj->conserved.flux.momentum[1] += mindt * Anorm * totflux[2];
-    pj->conserved.flux.momentum[2] += mindt * Anorm * totflux[3];
-    pj->conserved.flux.energy += mindt * Anorm * totflux[4];
+    pj->conserved.flux.mass += totflux[0];
+    pj->conserved.flux.momentum[0] += totflux[1];
+    pj->conserved.flux.momentum[1] += totflux[2];
+    pj->conserved.flux.momentum[2] += totflux[3];
+    pj->conserved.flux.energy += totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -=
-        mindt * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -=
-        mindt * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -=
-        mindt * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += mindt * Anorm * totflux[0] * ekin;
+    pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
+    pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
+    pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy += totflux[0] * ekin;
 #endif
   }
 }

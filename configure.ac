@@ -25,7 +25,7 @@ AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 # Add local macro collection.
 AC_CONFIG_MACRO_DIR([m4])
@@ -40,6 +40,12 @@ AM_CONFIG_HEADER(config.h)
 AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
+
+# If debug is selected then we also define SWIFT_DEVELOP_MODE to control
+# any developer code options.
+if test "x$ax_enable_debug" != "xno"; then
+   AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
+fi
 
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
@@ -420,6 +426,43 @@ fi
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# Check for grackle. 
+have_grackle="no"
+AC_ARG_WITH([grackle],
+    [AS_HELP_STRING([--with-grackle=PATH],
+       [root directory where grackle is installed @<:@yes/no@:>@]
+    )],
+    [],
+    [with_grackle="no"]
+)
+if test "x$with_grackle" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
+      GRACKLE_INCS="-I$with_grackle/include"
+   else
+      GRACKLE_LIBS="-lgrackle"
+      GRACKLE_INCS=""
+   fi
+   
+   have_grackle="yes"
+      
+   AC_CHECK_LIB(
+      [grackle],
+      [initialize_grackle],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.]),
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
+      [AC_MSG_ERROR(Cannot find grackle library!)],
+      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
+   )
+fi
+AC_SUBST([GRACKLE_LIBS])
+AC_SUBST([GRACKLE_INCS])
+AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
+
 
 #  Check for tcmalloc a fast malloc that is part of the gperftools.
 have_tcmalloc="no"
@@ -948,6 +991,7 @@ AC_MSG_RESULT([
    Metis enabled    : $have_metis
    FFTW3 enabled    : $have_fftw3
    libNUMA enabled  : $have_numa
+   GRACKLE enabled  : $have_grackle
    Using tcmalloc   : $have_tcmalloc
    Using jemalloc   : $have_jemalloc
    CPU profiler     : $have_profiler

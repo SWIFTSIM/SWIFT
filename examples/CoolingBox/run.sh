@@ -13,6 +13,13 @@ then
     python makeIC.py
 fi
 
+# Get the Grackle cooling table
+if [ ! -e CloudyData_UVB=HM2012.h5 ]
+then
+    echo "Fetching the Cloudy tables required by Grackle..."
+    ./getCoolingTable.sh
+fi
+
 # Run SWIFT
 ../swift -s -C -t 1 coolingBox.yml
 

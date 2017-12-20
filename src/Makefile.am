@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -48,6 +48,11 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h
 
+GRACKLE_SRC =
+if HAVEGRACKLE
+GRACKLE_SRC += cooling/grackle/grackle_wrapper.c
+endif
+
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
@@ -57,7 +62,9 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
-    collectgroup.c hydro_space.c equation_of_state.c
+    collectgroup.c hydro_space.c equation_of_state.c \
+    $(GRACKLE_SRC)
+
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -86,7 +93,6 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/hydro_slope_limiters_face.h \
                  hydro/Gizmo/hydro_slope_limiters.h \
-                 hydro/Gizmo/hydro_flux_limiters.h \
                  hydro/Gizmo/hydro_unphysical.h \
                  hydro/Gizmo/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
@@ -116,6 +122,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
+		 cooling/grackle/grackle_wrapper.h \
                  memswap.h dump.h logger.h
 
 
@@ -123,12 +131,14 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 libswiftsim_la_SOURCES = $(AM_SOURCES)
 libswiftsim_la_CFLAGS = $(AM_CFLAGS)
 libswiftsim_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
+libswiftsim_la_LIBADD = $(GRACKLE_LIBS)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
+libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS)
 
 
 # Versioning. If any sources change then update the version_string.h file with

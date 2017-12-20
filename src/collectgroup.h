@@ -38,7 +38,8 @@ struct collectgroup1 {
   size_t updates, g_updates, s_updates;
 
   /* Times for the time-step */
-  integertime_t ti_end_min, ti_end_max, ti_beg_max;
+  integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
+  integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
 
   /* Force the engine to rebuild? */
   int forcerebuild;
@@ -48,8 +49,12 @@ void collectgroup_init();
 void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e);
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,
                         size_t g_updates, size_t s_updates,
-                        integertime_t ti_end_min, integertime_t ti_end_max,
-                        integertime_t ti_beg_max, int forcerebuild);
+                        integertime_t ti_hydro_end_min,
+                        integertime_t ti_hydro_end_max,
+                        integertime_t ti_hydro_beg_max,
+                        integertime_t ti_gravity_end_min,
+                        integertime_t ti_gravity_end_max,
+                        integertime_t ti_gravity_beg_max, int forcerebuild);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 
 #endif /* SWIFT_COLLECTGROUP_H */

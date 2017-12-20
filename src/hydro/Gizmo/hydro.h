@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
@@ -19,7 +18,6 @@
  *
  ******************************************************************************/
 
-#include <float.h>
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "equation_of_state.h"
@@ -30,6 +28,8 @@
 #include "hydro_velocities.h"
 #include "minmax.h"
 #include "riemann.h"
+
+#include <float.h>
 
 //#define GIZMO_LLOYD_ITERATION
 
@@ -50,6 +50,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   return CFL_condition;
 #endif
 
+  /* v_full is the actual velocity of the particle, primitives.v is its
+     hydrodynamical velocity. The time step depends on the relative difference
+     of the two. */
   float vrel[3];
   vrel[0] = p->primitives.v[0] - xp->v_full[0];
   vrel[1] = p->primitives.v[1] - xp->v_full[1];
@@ -71,12 +74,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *
- * We use this to store the physical time step, since it is used for the flux
- * exchange during the force loop.
- *
- * We also set the active flag of the particle to inactive. It will be set to
- * active in hydro_init_part, which is called the next time the particle becomes
- * active.
+ * This method is no longer used, as Gizmo is now unaware of the actual particle
+ * time step.
  *
  * @param p The particle to act upon.
  * @param dt Physical time step of the particle during the next step.
@@ -93,9 +92,6 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
     error("NaN time step assigned to particle!");
   }
 #endif
-
-  p->force.dt = dt;
-  p->force.active = 0;
 }
 
 /**
@@ -167,6 +163,11 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   /* initialize the particle velocity based on the primitive fluid velocity */
   hydro_velocities_init(p, xp);
 
+  /* ignore accelerations present in the initial condition */
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+
   /* we cannot initialize wcorr in init_part, as init_part gets called every
      time the density loop is repeated, and the whole point of storing wcorr
      is to have a way of remembering that we need more neighbours for this
@@ -200,10 +201,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
   p->geometry.centroid[2] = 0.0f;
-  p->geometry.Atot = 0.0f;
-
-  /* Set the active flag to active. */
-  p->force.active = 1;
 }
 
 /**
@@ -406,7 +403,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
   p->geometry.centroid[2] = 0.0f;
-  p->geometry.Atot = 1.0f;
 }
 
 /**
@@ -451,6 +447,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
   p->gravity.mflux[2] = 0.0f;
+
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
 
 #ifdef GIZMO_LLOYD_ITERATION
   /* reset the gradients to zero, as we don't want them */
@@ -534,27 +536,25 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->h *= h_corr;
   }
 
-/* we temporarily disabled the primitive variable drift.
-   This should be reenabled once gravity works, and we have time to check that
-   drifting works properly. */
-//  const float w2 = -hydro_dimension * w1;
-//  if (fabsf(w2) < 0.2f) {
-//    p->primitives.rho *= approx_expf(w2);
-//  } else {
-//    p->primitives.rho *= expf(w2);
-//  }
+  /* drift the primitive variables based on the old fluxes */
+  if (p->geometry.volume > 0.) {
+    p->primitives.rho += p->conserved.flux.mass * dt / p->geometry.volume;
+  }
 
-//  p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
-//  p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
-//  p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
+  if (p->conserved.mass > 0.) {
+    p->primitives.v[0] +=
+        p->conserved.flux.momentum[0] * dt / p->conserved.mass;
+    p->primitives.v[1] +=
+        p->conserved.flux.momentum[1] * dt / p->conserved.mass;
+    p->primitives.v[2] +=
+        p->conserved.flux.momentum[2] * dt / p->conserved.mass;
 
-//#if !defined(EOS_ISOTHERMAL_GAS)
-//  if (p->conserved.mass > 0.) {
-//    const float u = p->conserved.energy + p->du_dt * dt;
-//    p->primitives.P =
-//        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
-//  }
-//#endif
+#if !defined(EOS_ISOTHERMAL_GAS)
+    const float u = p->conserved.energy + p->conserved.flux.energy * dt;
+    p->primitives.P =
+        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+#endif
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.) {
@@ -580,12 +580,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* set the variables that are used to drift the primitive variables */
 
-  if (p->force.dt > 0.) {
-    p->du_dt = p->conserved.flux.energy / p->force.dt;
-  } else {
-    p->du_dt = 0.0f;
-  }
-
   hydro_velocities_end_force(p);
 }
 
@@ -605,16 +599,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   float a_grav[3];
 
   /* Update conserved variables. */
-  p->conserved.mass += p->conserved.flux.mass;
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
+  p->conserved.mass += p->conserved.flux.mass * dt;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt;
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt;
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
-  p->conserved.energy += p->conserved.flux.energy;
+  p->conserved.energy += p->conserved.flux.energy * dt;
 #endif
 
   gizmo_check_physical_quantity("mass", p->conserved.mass);
@@ -668,15 +662,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
   }
-
-  /* reset fluxes */
-  /* we can only do this here, since we need to keep the fluxes for inactive
-     particles */
-  p->conserved.flux.mass = 0.0f;
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
 
   hydro_velocities_set(p, xp);
 
@@ -767,6 +752,32 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
     const struct part* restrict p) {
 
   return p->conserved.mass;
+}
+
+/**
+ * @brief Returns the velocities drifted to the current time of a particle.
+ *
+ * @param p The particle of interest
+ * @param xp The extended data of the particle.
+ * @param dt The time since the last kick.
+ * @param v (return) The velocities at the current time.
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
+    const struct part* restrict p, const struct xpart* xp, float dt,
+    float v[3]) {
+
+  if (p->conserved.mass > 0.) {
+    v[0] = p->primitives.v[0] +
+           p->conserved.flux.momentum[0] * dt / p->conserved.mass;
+    v[1] = p->primitives.v[1] +
+           p->conserved.flux.momentum[1] * dt / p->conserved.mass;
+    v[2] = p->primitives.v[2] +
+           p->conserved.flux.momentum[2] * dt / p->conserved.mass;
+  } else {
+    v[0] = p->primitives.v[0];
+    v[1] = p->primitives.v[1];
+    v[2] = p->primitives.v[2];
+  }
 }
 
 /**

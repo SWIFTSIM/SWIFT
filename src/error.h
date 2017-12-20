@@ -36,6 +36,12 @@
 /* Local headers. */
 #include "clocks.h"
 
+#ifdef SWIFT_DEVELOP_MODE
+#define swift_abort(errcode) abort()
+#else
+#define swift_abort(errcode) exit(errcode)
+#endif
+
 /**
  * @brief Error macro. Prints the message given in argument and aborts.
  *
@@ -54,7 +60,7 @@ extern int engine_rank;
   ({                                                                       \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
-    abort();                                                               \
+    swift_abort(1);                                                        \
   })
 #endif
 
@@ -130,7 +136,7 @@ extern int engine_rank;
       fprintf(stderr, "%s %s:%s():%i: FAILED ASSERTION: " #expr " \n",        \
               clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__); \
       fflush(stderr);                                                         \
-      abort();                                                                \
+      swift_abort(1);                                                         \
     }                                                                         \
   })
 #endif

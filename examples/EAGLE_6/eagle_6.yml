@@ -6,6 +6,10 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+Scheduler:
+  max_top_level_cells: 8
+  tasks_per_cell: 50
+  
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
@@ -26,8 +30,8 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                   0.025    # Constant dimensionless multiplier for time integration.
-  theta:                 0.85     # Opening angle (Multipole acceptance criterion)
   epsilon:               0.001    # Softening length (in internal units).
+  theta:                 0.85     # Opening angle (Multipole acceptance criterion)
   
 # Parameters for the hydrodynamics scheme
 SPH:
