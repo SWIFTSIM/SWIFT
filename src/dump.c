@@ -61,13 +61,13 @@ void dump_ensure(struct dump *d, size_t size) {
   if (d->size - d->count > size) return;
 
   /* Unmap the current data. */
-  size_t trunc_count = d->count & d->page_mask;
-  if (munmap(d->data, trunc_count > 0 ? trunc_count : 1) != 0) {
-    error("Failed to unmap %zi bytes of dump data (%s).", trunc_count,
+  if (munmap(d->data, d->size) != 0) {
+    error("Failed to unmap %zi bytes of dump data (%s).", d->size,
           strerror(errno));
   }
 
   /* Update the size and count. */
+  const size_t trunc_count = d->count & d->page_mask;
   d->file_offset += trunc_count;
   d->count -= trunc_count;
   d->size = (size * dump_grow_ensure_factor + ~d->page_mask) & d->page_mask;
