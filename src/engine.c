@@ -5467,9 +5467,8 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
-
-#ifdef WITH_LOGGER
-  logger_log_timestamp(e->ti_old, &e->logger_time_offset,
+ #ifdef WITH_LOGGER
+  logger_log_timestamp(e->ti_current, &e->logger_time_offset,
 		       e->logger_dump);
   logger_ensure_size(e->total_nr_parts, e->logger_size);
   dump_ensure(e->logger_dump, e->logger_size);

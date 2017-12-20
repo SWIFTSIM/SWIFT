@@ -274,7 +274,6 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
 
 void logger_log_timestamp(integertime_t timestamp, size_t *offset,
                           struct dump *dump) {
-  timestamp = 1000;
 #ifdef SWIFT_DEBUG_CHECKS
   message("writing timestamp: %llu", timestamp);
 #endif
