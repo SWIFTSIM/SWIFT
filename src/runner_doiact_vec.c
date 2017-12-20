@@ -1627,44 +1627,13 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct run
  */
 __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
     struct part *restrict parts_i, int *restrict ind, int count,
-    struct cell *restrict cj) {
+    struct cell *restrict cj, const int sid, const int flipped, const double *shift) {
 
 #ifdef WITH_VECTORIZATION
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
-  return;
-#endif
 
   TIMER_TIC;
 
   const int count_j = cj->count;
-
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
-
-  /* Get the sorting index. */
-  int sid = 0;
-  for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-        ? 0
-        : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-
-  /* Switch the cells around? */
-  const int flipped = runner_flip[sid];
-  sid = sortlistID[sid];
-
-  /* Has the cell cj been sorted? */
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = cj->sort[sid];
