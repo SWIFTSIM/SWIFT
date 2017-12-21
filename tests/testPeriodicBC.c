@@ -49,6 +49,8 @@
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
+#define NODE_ID 1
+
 enum velocity_types {
   velocity_zero,
   velocity_random,
@@ -173,6 +175,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_old_part = 8;
   cell->ti_hydro_end_min = 8;
   cell->ti_hydro_end_max = 8;
+  cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->parts, cell->count);
 
@@ -485,6 +488,7 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.hydro_properties = &hp;
+  engine.nodeID = NODE_ID;
 
   struct runner runner;
   runner.e = &engine;
