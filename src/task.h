@@ -43,6 +43,8 @@ enum task_types {
   task_type_unload = -102,
   task_type_implicit_load = -103,
   task_type_implicit_unload = -104,
+  task_type_recv_load = -201,
+  task_type_send_unload = -202,
   task_type_none = 0,
   task_type_sort,
   task_type_self,

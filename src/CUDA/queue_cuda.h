@@ -34,6 +34,8 @@ extern "C" {
 #define type_unload task_type_unload
 #define type_implicit_load task_type_implicit_load
 #define type_implicit_unload task_type_implicit_unload
+#define type_recv_load task_type_recv_load
+#define type_send_unload task_type_send_unload
 
 const int num_gpu_types = 5;
 const int gpu_work_task_array[num_gpu_types] = {task_type_self, task_type_pair, task_type_sub_self,

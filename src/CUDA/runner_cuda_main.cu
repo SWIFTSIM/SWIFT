@@ -475,10 +475,10 @@ __device__ void doself_density(struct cell_cuda *ci) {
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
     if(threadIdx.x ==0)
-    printf(
+/*    printf(
         "Cell isn't active..., ti_end_min=%lli, ti_current=%lli, "
         "max_active_bin=%i, cell_id = %lli\n",
-        ci->ti_end_min, ti_current, max_active_bin, (ci-cells_cuda));
+        ci->ti_end_min, ti_current, max_active_bin, (ci-cells_cuda));*/
     return;
   }
 
@@ -2229,6 +2229,9 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     tasks_host[*k].skip = 0;
     tasks_host[*k].implicit = 0;
     tasks_host[*k].task = NULL;
+#ifdef REDUCED_TRANSFER
+    tasks_host[*k].cell = c;
+#endif
     /* The load implicit tasks unlocks the parent's task */
     if (parent_load_task >= 0) {
       tasks_host[*k].unlocks[tasks_host[*k].nr_unlock_tasks++] =
@@ -2254,7 +2257,9 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     tasks_host[*k].skip = 0;
     tasks_host[*k].implicit = 0;
     tasks_host[*k].task = NULL;
-
+#ifdef REDUCED_TRANSFER
+    tasks_host[*k].cell = c;
+#endif
     /* The unload implicit task is unlocked by the parent task */
     if (parent_unload_task >= 0) {
       tasks_host[parent_unload_task]
@@ -2284,6 +2289,9 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     tasks_host[*k].skip = 0;
     tasks_host[*k].implicit = 0;
     tasks_host[*k].task = NULL;
+#ifdef REDUCED_TRANSFER
+    tasks_host[*k].cell = c;
+#endif
     /* This load task unlocks the parent's task. */
     if (parent_load_task >= 0) {
       tasks_host[*k].unlocks[tasks_host[*k].nr_unlock_tasks++] =
@@ -2305,6 +2313,9 @@ __host__ void create_transfer_tasks(struct cell *c, int *k,
     tasks_host[*k].skip = 0;
     tasks_host[*k].implicit = 0;
     tasks_host[*k].task = NULL;
+#ifdef REDUCED_TRANSFER
+    tasks_host[*k].cell = c;
+#endif
     /* The unload task is unlocked by the parent task */
     if (parent_unload_task >= 0) {
       tasks_host[parent_unload_task]
@@ -2488,7 +2499,7 @@ __host__ void update_tasks(struct engine *e) {
   
 /*  Relies on assumption implicit unloads are always before unloads in host_tasks, which i believe to be true by conscruction.
    for(int i = 0; i < nr_gpu_tasks; i++){
-    if(host_tasks[i].type == type_unload && host_tasks[i].type == type_implicit_unload){
+    if(host_tasks[i].type == type_unload || host_tasks[i].type == type_implicit_unload){
       if(host_tasks[i].wait==1){
         host_tasks[i].skip = 1;
         task_count--;
@@ -2496,15 +2507,23 @@ __host__ void update_tasks(struct engine *e) {
         int *unlocks = host_unlock_copy + (temp_t->unlocks-host_unlock_pointer);
         for(int ii = 0; ii < temp_t->nr_unlock_tasks; ii++){
           if(!host_tasks[unlocks[ii].skip)
-            host_tasks[unlock[ii]].wait--;
+            host_tasks[unlocks[ii]].wait--;
         }
         *Find the corresponding load task*
-        Have to search the cells for this at the moment.
-
+         struct task_cuda *l_task = &host_tasks[host_tasks[i].cell->load_task];
+         l_tasks->skip = 1;
+         task_count--;
+         int *unlocks = host_unlock_copy + (l_task->unlocks-host_unlock_pointer);
+         for(int ii=0; ii < l_task->nr_unlock_tasks; ii++){
+           if(!host_tasks[unlocks[ii].skip)
+             host_tasks[unlocks[ii]].wait--;
+         }
       }
         
     }
   }*/
+
+  /* TODO Reset the waits again.*/
 
   cudaErrCheck(cudaMemcpyToSymbol(tot_num_tasks, &task_count, sizeof(int)));
   /* Reset the queue data.*/

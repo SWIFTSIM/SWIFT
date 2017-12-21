@@ -46,6 +46,11 @@ struct task_cuda {
   /* Size of unlock array during initialisation. */
   int size_unlocks;
 
+#ifdef REDUCED_TRANSFER
+  /* Pointer to the loaded/unloaded cell for load/unload tasks*/
+  struct cell *cell;
+#endif
+
 #ifdef CUDA_TASK_TIMERS
   /* Executing block*/
   int blockID;
