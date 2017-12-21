@@ -48,6 +48,8 @@
 #define DOPAIR2_NAME "runner_dopair2_force"
 #endif
 
+#define NODE_ID 1
+
 enum velocity_field {
   velocity_zero,
   velocity_const,
@@ -356,6 +358,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->ti_old_part = 8;
   cell->ti_hydro_end_min = 8;
   cell->ti_hydro_end_max = 8;
+  cell->nodeID = NODE_ID;
 
   // shuffle_particles(cell->parts, cell->count);
 
@@ -589,6 +592,7 @@ int main(int argc, char *argv[]) {
   engine.time = 0.1f;
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
+  engine.nodeID = NODE_ID;
 
   struct runner runner;
   runner.e = &engine;
