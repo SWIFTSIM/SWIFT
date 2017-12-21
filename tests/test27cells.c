@@ -33,7 +33,7 @@
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_density_vec
 #define DOSELF1_SUBSET runner_doself_subset_density_vec
-#define DOPAIR1_SUBSET runner_dopair_subset_density_vec
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
 #ifdef TEST_DOSELF_SUBSET
 #define DOSELF1_NAME "runner_doself_subset_density_vec"
@@ -41,7 +41,7 @@
 #define DOSELF1_NAME "runner_doself_density_vec"
 #endif
 #ifdef TEST_DOPAIR_SUBSET
-#define DOPAIR1_NAME "runner_dopair_subset_density_vec"
+#define DOPAIR1_NAME "runner_dopair_subset_branch_density"
 #else
 #define DOPAIR1_NAME "runner_dopair_density_vec"
 #endif
@@ -59,9 +59,9 @@
 
 #ifndef DOPAIR1
 #define DOPAIR1 runner_dopair1_branch_density
-#define DOPAIR1_SUBSET runner_dopair_subset_density
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_density
 #ifdef TEST_DOPAIR_SUBSET
-#define DOPAIR1_NAME "runner_dopair1_subset_density"
+#define DOPAIR1_NAME "runner_dopair1_subset_branch_density"
 #else
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
@@ -330,9 +330,10 @@ void runner_doself_subset_density_vec(struct runner *r,
                                       struct cell *restrict ci,
                                       struct part *restrict parts,
                                       int *restrict ind, int count);
-void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
+void runner_dopair_subset_branch_density(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
                    struct cell *restrict cj);
+
 /* And go... */
 int main(int argc, char *argv[]) {
 
