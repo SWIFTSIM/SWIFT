@@ -1814,8 +1814,15 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
       return;
 
+    /* Atomically drift the multipole in ci */
+    lock_lock(&ci->mlock);
     if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+    if (lock_unlock(&ci->mlock) != 0) error("Impossible to unlock m-pole");
+
+    /* Atomically drift the multipole in cj */
+    lock_lock(&cj->mlock);
     if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+    if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Recover the multipole information */
     struct gravity_tensors *const multi_i = ci->multipole;
