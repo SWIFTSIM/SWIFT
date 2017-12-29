@@ -2231,11 +2231,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited g-particle present in space_split()");
 #endif
-      if (gparts[k].type == swift_type_dark_matter) {
-        gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
-        gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
-      }
-
+      gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
       gparts[k].x_diff[0] = 0.f;
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
