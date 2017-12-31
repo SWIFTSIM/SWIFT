@@ -1185,7 +1185,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     if (ci == cj) continue;
 
     /* Skip empty cells */
-    if (cj->gcount == 0) continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
