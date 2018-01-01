@@ -34,7 +34,7 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
                     struct spart** sparts, size_t* Ngas, size_t* Ndm,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int dry_run);
+                    int nr_threads, int dry_run);
 
 void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,

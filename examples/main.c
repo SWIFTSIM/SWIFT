@@ -505,18 +505,20 @@ int main(int argc, char *argv[]) {
   read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   dry_run);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
                  &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                  (with_external_gravity || with_self_gravity), with_stars,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                 dry_run);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
                  &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                  (with_external_gravity || with_self_gravity), with_stars,
-                 dry_run);
+                 nr_threads, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);

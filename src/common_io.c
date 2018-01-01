@@ -406,6 +406,8 @@ void io_write_code_description(hid_t h_file) {
   H5Gclose(h_grpcode);
 }
 
+#endif /* HAVE_HDF5 */
+
 /**
  * @brief Mapper function to copy #part or #gpart fields into a buffer.
  */
@@ -608,39 +610,16 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
   }
 }
 
-#endif /* HAVE_HDF5 */
+void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
 
-/* ------------------------------------------------------------------------------------------------
- * This part writes the XMF file descriptor enabling a visualisation through
- * ParaView
- * ------------------------------------------------------------------------------------------------
- */
-
-/**
- * @brief Prepares the XMF file for the new entry
- *
- * Creates a temporary file on the disk in order to copy the right lines.
- *
- * @todo Use a proper XML library to avoid stupid copies.
- */
-
-/**
- * @brief Prepare the DM particles (in gparts) read in for the addition of the
- * other particle types
- *
- * This function assumes that the DM particles are all at the start of the
- * gparts array
- *
- * @param gparts The array of #gpart freshly read in.
- * @param Ndm The number of DM particles read in.
- */
-void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
+  struct gpart* restrict gparts = (struct gpart*)data;
 
   /* Let's give all these gparts a negative id */
-  for (size_t i = 0; i < Ndm; ++i) {
+  for (int i = 0; i < Ndm; ++i) {
+
     /* 0 or negative ids are not allowed */
     if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %zu: ID=%lld", i,
+      error("0 or negative ID for DM particle %i: ID=%lld", i,
             gparts[i].id_or_neg_offset);
 
     /* Set gpart type */
@@ -649,22 +628,43 @@ void io_prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
 }
 
 /**
- * @brief Copy every #part into the corresponding #gpart and link them.
+ * @brief Prepare the DM particles (in gparts) read in for the addition of the
+ * other particle types
  *
  * This function assumes that the DM particles are all at the start of the
- * gparts array and adds the hydro particles afterwards
+ * gparts array
  *
- * @param parts The array of #part freshly read in.
- * @param gparts The array of #gpart freshly read in with all the DM particles
- * at the start
- * @param Ngas The number of gas particles read in.
+ * @param tp The current #threadpool.
+ * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void io_duplicate_hydro_gparts(struct part* const parts,
-                               struct gpart* const gparts, size_t Ngas,
-                               size_t Ndm) {
+void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
+                          size_t Ndm) {
 
-  for (size_t i = 0; i < Ngas; ++i) {
+  threadpool_map(tp, io_prepare_dm_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), 0, NULL);
+}
+
+struct duplication_data {
+
+  struct part* parts;
+  struct gpart* gparts;
+  struct spart* sparts;
+  int Ndm;
+  int Ngas;
+  int Nstars;
+};
+
+void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
+                                      void* restrict extra_data) {
+
+  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  const int Ndm = temp->Ndm;
+  struct part* parts = (struct part*)data;
+  const ptrdiff_t offset = parts - temp->parts;
+  struct gpart* gparts = temp->gparts + offset;
+
+  for (int i = 0; i < Ngas; ++i) {
 
     /* Duplicate the crucial information */
     gparts[i + Ndm].x[0] = parts[i].x[0];
@@ -687,22 +687,40 @@ void io_duplicate_hydro_gparts(struct part* const parts,
 }
 
 /**
- * @brief Copy every #spart into the corresponding #gpart and link them.
+ * @brief Copy every #part into the corresponding #gpart and link them.
  *
- * This function assumes that the DM particles and gas particles are all at
- * the start of the gparts array and adds the star particles afterwards
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array and adds the hydro particles afterwards
  *
- * @param sparts The array of #spart freshly read in.
- * @param gparts The array of #gpart freshly read in with all the DM and gas
- * particles at the start.
- * @param Nstars The number of stars particles read in.
- * @param Ndm The number of DM and gas particles read in.
+ * @param tp The current #threadpool.
+ * @param parts The array of #part freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM particles
+ * at the start
+ * @param Ngas The number of gas particles read in.
+ * @param Ndm The number of DM particles read in.
  */
-void io_duplicate_star_gparts(struct spart* const sparts,
-                              struct gpart* const gparts, size_t Nstars,
-                              size_t Ndm) {
+void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
+                               struct gpart* const gparts, size_t Ngas,
+                               size_t Ndm) {
+  struct duplication_data data;
+  data.parts = parts;
+  data.gparts = gparts;
+  data.Ndm = Ndm;
 
-  for (size_t i = 0; i < Nstars; ++i) {
+  threadpool_map(tp, io_duplicate_hydro_gparts_mapper, parts, Ngas,
+                 sizeof(struct part), 0, &data);
+}
+
+void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
+                                      void* restrict extra_data) {
+
+  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  const int Ndm = temp->Ndm;
+  struct spart* sparts = (struct spart*)data;
+  const ptrdiff_t offset = sparts - temp->sparts;
+  struct gpart* gparts = temp->gparts + offset;
+
+  for (int i = 0; i < Nstars; ++i) {
 
     /* Duplicate the crucial information */
     gparts[i + Ndm].x[0] = sparts[i].x[0];
@@ -722,6 +740,32 @@ void io_duplicate_star_gparts(struct spart* const sparts,
     gparts[i + Ndm].id_or_neg_offset = -i;
     sparts[i].gpart = &gparts[i + Ndm];
   }
+}
+
+/**
+ * @brief Copy every #spart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles and gas particles are all at
+ * the start of the gparts array and adds the star particles afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param sparts The array of #spart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM and gas
+ * particles at the start.
+ * @param Nstars The number of stars particles read in.
+ * @param Ndm The number of DM and gas particles read in.
+ */
+void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
+                              struct gpart* const gparts, size_t Nstars,
+                              size_t Ndm) {
+
+  struct duplication_data data;
+  data.gparts = gparts;
+  data.sparts = sparts;
+  data.Ndm = Ndm;
+
+  threadpool_map(tp, io_duplicate_hydro_sparts_mapper, sparts, Nstars,
+                 sizeof(struct spart), 0, &data);
 }
 
 /**

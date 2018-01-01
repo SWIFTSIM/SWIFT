@@ -530,6 +530,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
  * @param info The MPI information object
+ * @param n_threads The number of threads to use for local operations.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  */
@@ -539,7 +540,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       size_t* Nstars, int* periodic, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
                       int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int dry_run) {
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -759,16 +760,24 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     H5Gclose(h_grp);
   }
 
-  /* Prepare the DM particles */
-  if (!dry_run && with_gravity) io_prepare_dm_gparts(*gparts, Ndm);
+  if (!dry_run && with_gravity) {
 
-  /* Duplicate the hydro particles into gparts */
-  if (!dry_run && with_gravity && with_hydro)
-    io_duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+    /* Let's initialise a bit of thread parallelism here */
+    struct threadpool tp;
+    threadpool_init(&tp, n_threads);
 
-  /* Duplicate the star particles into gparts */
-  if (!dry_run && with_gravity && with_stars)
-    io_duplicate_star_gparts(*sparts, *gparts, *Nstars, Ndm + *Ngas);
+    /* Prepare the DM particles */
+    io_prepare_dm_gparts(&tp, *gparts, Ndm);
+
+    /* Duplicate the hydro particles into gparts */
+    if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm);
+
+    /* Duplicate the star particles into gparts */
+    if (with_stars)
+      io_duplicate_star_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+
+    threadpool_clean(&tp);
+  }
 
   /* message("Done Reading particles..."); */
 

@@ -8,7 +8,6 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 8
-  tasks_per_cell: 50
   
 # Parameters governing the time integration
 TimeIntegration:
