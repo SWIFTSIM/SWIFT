@@ -1741,11 +1741,6 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
-              if( pjd + bit_index > count_j - 1 || pjd + bit_index < 0) {
-                message("pjd: %d, last_pj: %d, bit_index: %d, cj_count: %d, sort.i: %d", pjd, last_pj, bit_index, count_j, sort_j[pjd + bit_index].i);
-                fflush(stdout);
-                error("Incorrect index.");
-              }
               pi->ids_ngbs_density[pi->num_ngb_density] =
                 parts_j[sort_j[pjd + bit_index].i].id;
             }
@@ -1873,11 +1868,6 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
-              if(cj_cache_idx + first_pj + bit_index > count_j - 1 || cj_cache_idx + first_pj + bit_index < 0) {
-                message("cj_cache_idx: %d, first_pj: %d, bit_index: %d, cj_count: %d, sort.i: %d", cj_cache_idx, first_pj, bit_index, count_j, sort_j[cj_cache_idx + first_pj + bit_index].i);
-                fflush(stdout);
-                error("Incorrect index.");
-              }
               pi->ids_ngbs_density[pi->num_ngb_density] =
                 parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id;
             }
