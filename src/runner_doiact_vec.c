@@ -545,7 +545,9 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     const double *total_ci_shift,
     const float dxj,
     const double di_shift_correction,
-    const int sid,
+    const double runner_shift_x,
+    const double runner_shift_y,
+    const double runner_shift_z,
     const struct entry *restrict sort_j,
     int *max_index_i, const int flipped) {
 
@@ -562,8 +564,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
       const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
 
-      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
-        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift_x +
+        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
       
       for (int pjd = last_pj; pjd < count_j && sort_j[pjd].d < di; pjd++) last_pj++;
       
@@ -582,8 +584,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
       const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
 
-      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
-        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift_x +
+        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
       
       for (int pjd = first_pj; pjd > 0 && di < sort_j[pjd - 1].d; pjd--) first_pj--;
       
@@ -1645,12 +1647,17 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
 
   if (cj_cache->count < count_j) cache_init(cj_cache, count_j);
 
+  /* Pull each runner_shift from memory. */
+  const double runner_shift_x = runner_shift[sid][0];
+  const double runner_shift_y = runner_shift[sid][1];
+  const double runner_shift_z = runner_shift[sid][2];
+
   const double total_ci_shift[3] = {
     ci->loc[0] + shift[0], ci->loc[1] + shift[1], ci->loc[2] + shift[2]};
 
-  const double di_shift_correction = ci->loc[0]*runner_shift[sid][0] + 
-    ci->loc[1]*runner_shift[sid][1] + 
-    ci->loc[2]*runner_shift[sid][2];
+  const double di_shift_correction = ci->loc[0]*runner_shift_x + 
+    ci->loc[1]*runner_shift_y + 
+    ci->loc[2]*runner_shift_z;
 
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -1662,7 +1669,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   /* Parts are on the left? */
   if (!flipped) {
 
-    int last_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, sid, sort_j, max_index_i, 0);
+    int last_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 0);
 
     /* Read the particles from the cell and store them locally in the cache. */
     cache_read_particles_subpair(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
@@ -1681,8 +1688,8 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       const float hig2 = hi * hi * kernel_gamma2;
 
       /* Skip this particle if no particle in cj is within range of it. */
-      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
-        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift_x +
+        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
       if (di < dj_min) continue;
 
       /* Fill particle pi vectors. */
@@ -1777,8 +1784,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   /* Parts are on the right. */
   else {
 
-
-    int first_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, sid, sort_j, max_index_i, 1);
+    int first_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
    
     /* Read the particles from the cell and store them locally in the cache. */
     cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
@@ -1800,8 +1806,8 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       const float hig2 = hi * hi * kernel_gamma2;
       
       /* Skip this particle if no particle in cj is within range of it. */
-      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
-        piy * runner_shift[sid][1] + piz * runner_shift[sid][2] + di_shift_correction;
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift_x +
+        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
       if (di > dj_max) continue;
 
       /* Fill particle pi vectors. */
