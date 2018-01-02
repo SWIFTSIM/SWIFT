@@ -62,14 +62,14 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
+  /* Particle acceleration. */
+  float a_hydro[3];
+  
   /* Particle position. */
   double x[3];
 
   /* Particle predicted velocity. */
   float v[3];
-
-  /* Particle acceleration. */
-  float a_hydro[3];
 
   /* Particle cutoff radius. */
   float h;
