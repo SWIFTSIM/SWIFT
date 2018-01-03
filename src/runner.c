@@ -64,20 +64,30 @@
 #include "timers.h"
 #include "timestep.h"
 
+#define DENSITY 0
+#define GRADIENT 1
+#define FORCE 2
+#define LIMITER 3
+
 /* Import the density loop functions. */
 #define FUNCTION density
+#define FUNCTION_NUM DENSITY
 #include "runner_doiact.h"
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
 #undef FUNCTION
+#undef FUNCTION_NUM
 #define FUNCTION gradient
+#define FUNCTION_NUM GRADIENT
 #include "runner_doiact.h"
 #endif
 
 /* Import the force loop functions. */
 #undef FUNCTION
+#undef FUNCTION_NUM
 #define FUNCTION force
+#define FUNCTION_NUM FORCE
 #include "runner_doiact.h"
 
 /* Import the gravity loop functions. */
