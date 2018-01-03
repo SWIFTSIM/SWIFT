@@ -470,6 +470,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct part *restrict parts_i, int *restrict ind,
@@ -539,6 +540,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param sid The direction of the pair.
+ * @param flipped Flag to check whether the cells have been flipped or not.
+ * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
@@ -569,11 +573,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
-//      int ctr = 0;
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
-//        ctr++;
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
         const float hj = pj->h;
@@ -599,7 +601,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
         }
       } /* loop over the parts in cj. */
-//      message("pi: %lld, iterations in inner loop: %d", pi->id, ctr);
     }   /* loop over the parts in ci. */
   }
 
@@ -783,7 +784,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param sid The direction of the pair
+ * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,

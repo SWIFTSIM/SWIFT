@@ -513,29 +513,25 @@ populate_max_index_force(
 }
 
 /**
- * @brief Populates the arrays max_index_i and max_index_j with the maximum
- * indices of
- * particles into their neighbouring cells. Also finds the first pi that
- * interacts with any particle in cj and the last pj that interacts with any
- * particle in ci.
+ * @brief Populates the array max_index_i with the maximum
+ * index of
+ * particles into the neighbouring cell. Also finds the first/last pj that
+ * interacts with any particle in ci.
  *
- * @param ci #cell pointer to ci
- * @param cj #cell pointer to cj
- * @param sort_i #entry array for particle distance in ci
+ * @param count_i The number of particles in ci.
+ * @param count_j The number of particles in cj.
+ * @param parts_i The #part to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param total_ci_shift The shift vector to apply to the particles in ci.
+ * @param dxj Maximum particle movement allowed in cell cj.
+ * @param di_shift_correction The correction to di after the particles have been shifted to the frame of cell ci.
+ * @param runner_shift_x The runner_shift in the x direction.
+ * @param runner_shift_y The runner_shift in the y direction.
+ * @param runner_shift_z The runner_shift in the z direction.
  * @param sort_j #entry array for particle distance in cj
- * @param dx_max maximum particle movement allowed in cell
- * @param rshift cutoff shift
- * @param hi_max Maximal smoothing length in cell ci
- * @param hj_max Maximal smoothing length in cell cj
- * @param di_max Maximal position on the axis that can interact in cell ci
- * @param dj_min Minimal position on the axis that can interact in cell ci
- * @param max_index_i array to hold the maximum distances of pi particles into
- * #cell cj
- * @param max_index_j array to hold the maximum distances of pj particles into
- * #cell cj
- * @param init_pi first pi to interact with a pj particle
- * @param init_pj last pj to interact with a pi particle
- * @param max_active_bin The largest time-bin active during this step.
+ * @param max_index_i array to hold the maximum distances of pi particles into #cell cj
+ * @param flipped Flag to check whether the cells have been flipped or not.
+ * @return first_pj/last_pj first or last pj to interact with any particle in ci depending whether the cells have been flipped or not.
  */
 __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     const int count_i,
@@ -551,6 +547,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     const struct entry *restrict sort_j,
     int *max_index_i, const int flipped) {
 
+  /* The cell is on the right so read the particles 
+   * into the cache from the start of the cell. */
   if(!flipped) {
     
     /* Find the rightmost particle in cell j that interacts with any
@@ -573,6 +571,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     }
     return last_pj;
   }
+  /* The cell is on the left so read the particles 
+   * into the cache from the end of the cell. */
   else {
 
     int first_pj = count_j - 1;
@@ -1626,6 +1626,9 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct run
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param sid The direction of the pair.
+ * @param flipped Flag to check whether the cells have been flipped or not.
+ * @param shift The shift vector to apply to the particles in ci.
  */
 __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
     struct part *restrict parts_i, int *restrict ind, int count,
@@ -1655,6 +1658,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   const double total_ci_shift[3] = {
     ci->loc[0] + shift[0], ci->loc[1] + shift[1], ci->loc[2] + shift[2]};
 
+  /* Calculate the correction to di after the particles have been shifted to the frame of cell ci. */
   const double di_shift_correction = ci->loc[0]*runner_shift_x + 
     ci->loc[1]*runner_shift_y + 
     ci->loc[2]*runner_shift_z;
@@ -1663,7 +1667,6 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   int *restrict max_index_i SWIFT_CACHE_ALIGN;
-
   max_index_i = r->ci_cache.max_index;
 
   /* Parts are on the left? */
@@ -1715,10 +1718,10 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       vector v_curlvySum = vector_setzero();
       vector v_curlvzSum = vector_setzero();
 
-      int exit_iteration = max_index_i[pid];
+      int exit_iteration_end = max_index_i[pid] + 1;
 
       /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd <= exit_iteration; pjd += VEC_SIZE) {
+      for (int pjd = 0; pjd < exit_iteration_end; pjd += VEC_SIZE) {
 
         /* Get the cache index to the jth particle. */
         const int cj_cache_idx = pjd;

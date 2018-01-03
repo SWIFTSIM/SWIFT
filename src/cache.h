@@ -216,6 +216,21 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
 #endif
 }
 
+/**
+ * @brief Populate cache by only reading particles that are within range of
+ * each other within the adjoining cell. Also read the particles into the cache
+ * in sorted order.
+ *
+ * @param ci The i #cell.
+ * @param ci_cache The #cache for cell ci.
+ * @param sort_i The array of sorted particle indices for cell ci.
+ * @param shift The amount to shift the particle positions to account for BCs
+ * @param first_pi The first particle in cell ci that is in range.
+ * @param last_pi The last particle in cell ci that is in range.
+ * @param last_pi The last particle in cell ci that is in range.
+ * @param loc The cell location to remove from the particle positions.
+ * @param flipped Flag to check whether the cells have been flipped or not.
+ */
 __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
     const struct cell *restrict const ci,
     struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int *last_pi, const double *loc, const int flipped) {
@@ -235,17 +250,19 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
 
   const struct part *restrict parts = ci->parts;
 
-  /* Shift the particles positions to a local frame so single precision can be
-   * used instead of double precision. */
+  /* The cell is on the right so read the particles 
+   * into the cache from the start of the cell. */
   if(!flipped) {
     int rem = (*last_pi + 1) % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
 
-      /* Increase last_pj if there are particles in the cell left to read. */
+      /* Increase last_pi if there are particles in the cell left to read. */
       if (*last_pi + pad < ci->count) *last_pi += pad;
     }
 
+    /* Shift the particles positions to a local frame so single precision can be
+     * used instead of double precision. */
     for (int i = 0; i < *last_pi; i++) {
       const int idx = sort_i[i].i;
       x[i] = (float)(parts[idx].x[0] - loc[0]);
@@ -277,8 +294,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
       vz[i] = 1.f;
     }
   }
+  /* The cell is on the left so read the particles 
+   * into the cache from the end of the cell. */
   else {
-
     int rem = (ci->count - *first_pi) % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
@@ -289,10 +307,8 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
 
     int ci_cache_count = ci->count - *first_pi;
 
-    //message("ci_cache_count: %d, count_i: %d, first_pi: %d", ci_cache_count, ci->count, *first_pi);
-
-    /* Shift the particles positions to a local frame (ci frame) so single
-     * precision can be used instead of double precision.  */
+    /* Shift the particles positions to a local frame so single precision can be
+     * used instead of double precision. */
     for (int i = 0; i < ci_cache_count; i++) {
       const int idx = sort_i[i + *first_pi].i;
       x[i] = (float)(parts[idx].x[0] - loc[0]);
@@ -402,7 +418,6 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
  * @param shift The amount to shift the particle positions to account for BCs
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pj The last particle in cell cj that is in range.
- * interaction.
  */
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const struct cell *restrict const ci, const struct cell *restrict const cj,
@@ -620,7 +635,6 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
  * @param shift The amount to shift the particle positions to account for BCs
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pj The last particle in cell cj that is in range.
- * interaction.
  */
 __attribute__((always_inline)) INLINE void
 cache_read_two_partial_cells_sorted_force(
