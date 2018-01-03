@@ -37,7 +37,7 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* need to rework code if changed */
+/* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 
 
@@ -83,26 +83,47 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
-  if (cooling->GrackleRedshift == -1) error("TODO time dependant redshift");
+  /* set current time */
+  float scale_factor;
+  if (cooling->redshift == -1)
+    error("TODO time dependant redshift");
+  else
+    scale_factor = 1. / (1. + cooling->redshift);
 
   /* Get current internal energy (dt=0) */
-  double u_old = hydro_get_internal_energy(p);
-  double u_new = u_old;
+  const double energy_before = hydro_get_internal_energy(p);
+  
   /* Get current density */
   const float rho = hydro_get_density(p);
-  /* Actual scaling fractor */
-  const float a_now = 1. / (1. + cooling->GrackleRedshift);
-
+  
   /* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in
      Grackle v2.1) */
-  double Z = 0.02041;
+  const double Z = 0.02041;
 
-  if (wrap_do_cooling(rho, &u_new, dt, Z, a_now) == 0) {
-    error("Error in do_cooling.\n");
-    return 0;
+  /* create grackle struct */
+  /* velocities */
+  gr_float x_velocity[GRACKLE_NPART] = {0.0};
+  gr_float y_velocity[GRACKLE_NPART] = {0.0};
+  gr_float z_velocity[GRACKLE_NPART] = {0.0};
+
+  /* particle data */
+  gr_float density[GRACKLE_NPART] = {rho};
+  gr_float metal_density[GRACKLE_NPART] = {Z * density[0]};
+  gr_float energy[GRACKLE_NPART] = {energy_before};
+
+  /* dimensions */
+  int grid_dimension[3] = {GRACKLE_NPART, 0, 0};
+  int grid_start[3] = {0, 0, 0};
+  int grid_end[3] = {0, 0, 0};
+
+  /* solve chemistry with table */
+  if (solve_chemistry_table(&cooling->units, scale_factor, dt, grid_rank, grid_dimension,
+                            grid_start, grid_end, density, energy, x_velocity,
+                            y_velocity, z_velocity, metal_density) == 0) {
+    error("Error in solve_chemistry.");
   }
 
-  return (u_new - u_old) / dt;
+  return (energy[0] - energy_before) / dt;
 }
 
 /**
