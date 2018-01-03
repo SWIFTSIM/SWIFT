@@ -575,7 +575,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
   }
   else {
 
-    int first_pj = count_j;
+    int first_pj = count_j - 1;
 
     for (int pid = 0; pid < count_i; pid++) {
       struct part *restrict pi = &parts_i[ind[pid]];
@@ -587,7 +587,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
       const double di = -hi * kernel_gamma - dxj + pix * runner_shift_x +
         piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
       
-      for (int pjd = first_pj; pjd > 0 && di < sort_j[pjd - 1].d; pjd--) first_pj--;
+      for (int pjd = first_pj; pjd > 0 && di < sort_j[pjd].d; pjd--) first_pj--;
       
       max_index_i[pid] = first_pj;
     }
