@@ -129,8 +129,6 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 /**
  * @brief Apply the cooling function to a particle.
  *
- * We do nothing.
- *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cooling The #cooling_function_data used in the run.
@@ -148,15 +146,11 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Current du_dt */
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
-  float du_dt;
-  float delta_u;
-
-  du_dt = cooling_rate(phys_const, us, cooling, p, dt);
-
-  delta_u = du_dt * dt;
+  /* compute cooling rate */
+  const float du_dt = cooling_rate(phys_const, us, cooling, p, dt);
 
   /* record energy lost */
-  xp->cooling_data.radiated_energy += -delta_u * hydro_get_mass(p);
+  xp->cooling_data.radiated_energy += - du_dt * dt * hydro_get_mass(p);
 
   /* Update the internal energy */
   hydro_set_internal_energy_dt(p, hydro_du_dt + du_dt);
