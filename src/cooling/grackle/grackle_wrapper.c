@@ -82,18 +82,6 @@ int wrap_init_cooling(char *CloudyTable, int UVbackground, double udensity,
   return 1;
 }
 
-int wrap_set_UVbackground_on() {
-  // The UV background rates is enabled
-  grackle_data.UVbackground = 1;
-  return 1;
-}
-
-int wrap_set_UVbackground_off() {
-  // The UV background rates is disabled
-  grackle_data.UVbackground = 0;
-  return 1;
-}
-
 int wrap_get_cooling_time(double rho, double u, double Z, double a_now,
                           double *coolingtime) {
   gr_float den_factor = 1.0;
@@ -165,63 +153,3 @@ int wrap_do_cooling(double rho, double *u, double dt, double Z, double a_now) {
   return 1;
 }
 
-void grackle_print_data() {
-  message("Grackle Data:");
-  message("\t Data file: %s", grackle_data.grackle_data_file);
-  message("\t With grackle: %i", grackle_data.use_grackle);
-  message("\t With radiative cooling: %i", grackle_data.with_radiative_cooling);
-  message("\t With UV background: %i", grackle_data.UVbackground);
-  message("\t With primordial chemistry: %i",
-          grackle_data.primordial_chemistry);
-  message("\t Number temperature bins: %i",
-          grackle_data.NumberOfTemperatureBins);
-  message("\t T = (%g, ..., %g)", grackle_data.TemperatureStart,
-          grackle_data.TemperatureEnd);
-
-  message("Primordial Cloudy");
-  cloudy_print_data(grackle_data.cloudy_primordial, 1);
-  if (grackle_data.metal_cooling) {
-    message("Metal Cooling");
-    cloudy_print_data(grackle_data.cloudy_metal, 0);
-  }
-
-  message("\t Gamma: %g", grackle_data.Gamma);
-
-  /* UVB */
-  if (grackle_data.UVbackground && grackle_data.primordial_chemistry != 0) {
-    struct UVBtable uvb = grackle_data.UVbackground_table;
-    long long N = uvb.Nz;
-    message("\t UV Background");
-    message("\t\t Redshift from %g to %g with %lli steps", uvb.zmin, uvb.zmax,
-            N);
-    message("\t\t z = (%g, ..., %g)", uvb.z[0], uvb.z[N - 1]);
-  }
-}
-
-void cloudy_print_data(const cloudy_data c, const int print_mmw) {
-  long long N = c.data_size;
-  message("\t Data size: %lli", N);
-  message("\t Grid rank: %lli", c.grid_rank);
-
-  char msg[200] = "\t Dimension: (";
-  for (long long i = 0; i < c.grid_rank; i++) {
-    char tmp[200] = "%lli%s";
-    if (i == c.grid_rank - 1)
-      sprintf(tmp, tmp, c.grid_dimension[i], ")");
-    else
-      sprintf(tmp, tmp, c.grid_dimension[i], ", ");
-
-    strcat(msg, tmp);
-  }
-  message("%s", msg);
-
-  if (c.heating_data)
-    message("\t Heating: (%g, ..., %g)", c.heating_data[0],
-            c.heating_data[N - 1]);
-  if (c.cooling_data)
-    message("\t Cooling: (%g, ..., %g)", c.cooling_data[0],
-            c.cooling_data[N - 1]);
-  if (c.mmw_data && print_mmw)
-    message("\t Mean molecular weigth: (%g, ..., %g)", c.mmw_data[0],
-            c.mmw_data[N - 1]);
-}
