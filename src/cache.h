@@ -224,7 +224,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
  * @param ci The i #cell.
  * @param ci_cache The #cache for cell ci.
  * @param sort_i The array of sorted particle indices for cell ci.
- * @param shift The amount to shift the particle positions to account for BCs
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pi The last particle in cell ci that is in range.
  * @param last_pi The last particle in cell ci that is in range.
@@ -232,8 +231,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
  * @param flipped Flag to check whether the cells have been flipped or not.
  */
 __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
-    const struct cell *restrict const ci,
-    struct cache *restrict const ci_cache, const struct entry *restrict sort_i, int *first_pi, int *last_pi, const double *loc, const int flipped) {
+    const struct cell *restrict const ci, struct cache *restrict const ci_cache,
+    const struct entry *restrict sort_i, int *first_pi, int *last_pi,
+    const double *loc, const int flipped) {
 
 #if defined(GADGET2_SPH)
 
@@ -250,9 +250,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
 
   const struct part *restrict parts = ci->parts;
 
-  /* The cell is on the right so read the particles 
+  /* The cell is on the right so read the particles
    * into the cache from the start of the cell. */
-  if(!flipped) {
+  if (!flipped) {
     int rem = (*last_pi + 1) % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
@@ -279,7 +279,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
      * interact. We use values of the same magnitude (but negative!) as the real
      * particles to avoid overflow problems. */
     const double max_dx = ci->dx_max_part;
-    const float pos_padded[3] = {-(2. * ci->width[0] + max_dx), -(2. * ci->width[1] + max_dx), -(2. * ci->width[2] + max_dx)};
+    const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+                                 -(2. * ci->width[1] + max_dx),
+                                 -(2. * ci->width[2] + max_dx)};
     const float h_padded = ci->parts[0].h;
 
     for (int i = *last_pi; i < *last_pi + VEC_SIZE; i++) {
@@ -294,7 +296,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
       vz[i] = 1.f;
     }
   }
-  /* The cell is on the left so read the particles 
+  /* The cell is on the left so read the particles
    * into the cache from the end of the cell. */
   else {
     int rem = (ci->count - *first_pi) % VEC_SIZE;
@@ -326,12 +328,12 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subpair(
      * particles to avoid overflow problems. */
     const double max_dx = ci->dx_max_part;
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
-      -(2. * ci->width[1] + max_dx),
-      -(2. * ci->width[2] + max_dx)};
+                                 -(2. * ci->width[1] + max_dx),
+                                 -(2. * ci->width[2] + max_dx)};
     const float h_padded = ci->parts[0].h;
 
-    for (int i = ci->count - *first_pi;
-        i < ci->count - *first_pi + VEC_SIZE; i++) {
+    for (int i = ci->count - *first_pi; i < ci->count - *first_pi + VEC_SIZE;
+         i++) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];

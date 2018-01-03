@@ -324,15 +324,18 @@ void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
                                   struct part *restrict parts,
                                   int *restrict ind, int count);
 void runner_dopair_subset_density(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj);
+                                  struct part *restrict parts_i,
+                                  int *restrict ind, int count,
+                                  struct cell *restrict cj);
 void runner_doself_subset_density_vec(struct runner *r,
                                       struct cell *restrict ci,
                                       struct part *restrict parts,
                                       int *restrict ind, int count);
-void runner_dopair_subset_branch_density(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj);
+void runner_dopair_subset_branch_density(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct part *restrict parts_i,
+                                         int *restrict ind, int count,
+                                         struct cell *restrict cj);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -510,7 +513,8 @@ int main(int argc, char *argv[]) {
         const ticks sub_tic = getticks();
 
 #ifdef TEST_DOPAIR_SUBSET
-        DOPAIR1_SUBSET(&runner, main_cell, main_cell->parts, pid, count, cells[j]);
+        DOPAIR1_SUBSET(&runner, main_cell, main_cell->parts, pid, count,
+                       cells[j]);
 #else
         DOPAIR1(&runner, main_cell, cells[j]);
 #endif
@@ -518,7 +522,6 @@ int main(int argc, char *argv[]) {
         timings[j] += getticks() - sub_tic;
       }
     }
-
 
     /* And now the self-interaction */
     const ticks self_tic = getticks();

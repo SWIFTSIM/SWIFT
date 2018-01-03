@@ -474,7 +474,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
  */
 void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct part *restrict parts_i, int *restrict ind,
-                         int count, struct cell *restrict cj, const double *shift) {
+                         int count, struct cell *restrict cj,
+                         const double *shift) {
 
   TIMER_TIC;
 
@@ -546,13 +547,14 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj, const int sid, const int flipped, const double *shift) {
+                   struct cell *restrict cj, const int sid, const int flipped,
+                   const double *shift) {
 
   TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
-  
+
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = cj->sort[sid];
   const float dxj = cj->dx_max_sort;
@@ -655,7 +657,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 }
 
 /**
- * @brief Determine which version of DOPAIR_SUBSET needs to be called depending on the
+ * @brief Determine which version of DOPAIR_SUBSET needs to be called depending
+ * on the
  * orientation of the cells or whether DOPAIR_SUBSET needs to be called at all.
  *
  * @param r The #runner.
@@ -666,8 +669,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj) {
+                          struct part *restrict parts_i, int *restrict ind,
+                          int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -702,13 +705,13 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
   DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
   if (sort_is_face(sid))
-    runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
+    runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
+                                     flipped, shift);
   else
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #else
   DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
-
 }
 
 /**

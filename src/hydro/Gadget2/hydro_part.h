@@ -64,7 +64,7 @@ struct part {
 
   /* Particle acceleration. */
   float a_hydro[3];
-  
+
   /* Particle position. */
   double x[3];
 

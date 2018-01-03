@@ -396,8 +396,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index(
  * @param init_pj last pj to interact with a pi particle
  * @param max_active_bin The largest time-bin active during this step.
  */
-__attribute__((always_inline)) INLINE static void
-populate_max_index_force(
+__attribute__((always_inline)) INLINE static void populate_max_index_force(
     const struct cell *ci, const struct cell *cj,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
     const float dx_max, const float rshift, const double hi_max_raw,
@@ -524,37 +523,33 @@ populate_max_index_force(
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param total_ci_shift The shift vector to apply to the particles in ci.
  * @param dxj Maximum particle movement allowed in cell cj.
- * @param di_shift_correction The correction to di after the particles have been shifted to the frame of cell ci.
+ * @param di_shift_correction The correction to di after the particles have been
+ * shifted to the frame of cell ci.
  * @param runner_shift_x The runner_shift in the x direction.
  * @param runner_shift_y The runner_shift in the y direction.
  * @param runner_shift_z The runner_shift in the z direction.
  * @param sort_j #entry array for particle distance in cj
- * @param max_index_i array to hold the maximum distances of pi particles into #cell cj
+ * @param max_index_i array to hold the maximum distances of pi particles into
+ * #cell cj
  * @param flipped Flag to check whether the cells have been flipped or not.
- * @return first_pj/last_pj first or last pj to interact with any particle in ci depending whether the cells have been flipped or not.
+ * @return first_pj/last_pj first or last pj to interact with any particle in ci
+ * depending whether the cells have been flipped or not.
  */
 __attribute__((always_inline)) INLINE static int populate_max_index_subset(
-    const int count_i,
-    const int count_j,
-    struct part *restrict parts_i,
-    int *restrict ind,
-    const double *total_ci_shift,
-    const float dxj,
-    const double di_shift_correction,
-    const double runner_shift_x,
-    const double runner_shift_y,
-    const double runner_shift_z,
-    const struct entry *restrict sort_j,
-    int *max_index_i, const int flipped) {
+    const int count_i, const int count_j, struct part *restrict parts_i,
+    int *restrict ind, const double *total_ci_shift, const float dxj,
+    const double di_shift_correction, const double runner_shift_x,
+    const double runner_shift_y, const double runner_shift_z,
+    const struct entry *restrict sort_j, int *max_index_i, const int flipped) {
 
-  /* The cell is on the right so read the particles 
+  /* The cell is on the right so read the particles
    * into the cache from the start of the cell. */
-  if(!flipped) {
-    
+  if (!flipped) {
+
     /* Find the rightmost particle in cell j that interacts with any
      * particle in cell i. */
     int last_pj = 0;
-    
+
     for (int pid = 0; pid < count_i; pid++) {
       struct part *restrict pi = &parts_i[ind[pid]];
       const float pix = pi->x[0] - total_ci_shift[0];
@@ -563,15 +558,17 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
       const float hi = pi->h;
 
       const double di = hi * kernel_gamma + dxj + pix * runner_shift_x +
-        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
-      
-      for (int pjd = last_pj; pjd < count_j && sort_j[pjd].d < di; pjd++) last_pj++;
-      
+                        piy * runner_shift_y + piz * runner_shift_z +
+                        di_shift_correction;
+
+      for (int pjd = last_pj; pjd < count_j && sort_j[pjd].d < di; pjd++)
+        last_pj++;
+
       max_index_i[pid] = last_pj;
     }
     return last_pj;
   }
-  /* The cell is on the left so read the particles 
+  /* The cell is on the left so read the particles
    * into the cache from the end of the cell. */
   else {
 
@@ -585,10 +582,11 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
       const float hi = pi->h;
 
       const double di = -hi * kernel_gamma - dxj + pix * runner_shift_x +
-        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
-      
+                        piy * runner_shift_y + piz * runner_shift_z +
+                        di_shift_correction;
+
       for (int pjd = first_pj; pjd > 0 && di < sort_j[pjd].d; pjd--) first_pj--;
-      
+
       max_index_i[pid] = first_pj;
     }
     return first_pj;
@@ -1254,9 +1252,9 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
-                                struct cell *cj, const int sid,
-                                const double *shift) {
+__attribute__((always_inline)) INLINE void runner_dopair1_density_vec(
+    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
+    const double *shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1342,9 +1340,9 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct run
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
-                              hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, max_active_bin);
+  populate_max_index(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max,
+                     di_max, dj_min, max_index_i, max_index_j, &first_pi,
+                     &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
@@ -1630,9 +1628,10 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(struct run
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(struct runner *r, struct cell *restrict ci,
-    struct part *restrict parts_i, int *restrict ind, int count,
-    struct cell *restrict cj, const int sid, const int flipped, const double *shift) {
+__attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(
+    struct runner *r, struct cell *restrict ci, struct part *restrict parts_i,
+    int *restrict ind, int count, struct cell *restrict cj, const int sid,
+    const int flipped, const double *shift) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1656,12 +1655,13 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   const double runner_shift_z = runner_shift[sid][2];
 
   const double total_ci_shift[3] = {
-    ci->loc[0] + shift[0], ci->loc[1] + shift[1], ci->loc[2] + shift[2]};
+      ci->loc[0] + shift[0], ci->loc[1] + shift[1], ci->loc[2] + shift[2]};
 
-  /* Calculate the correction to di after the particles have been shifted to the frame of cell ci. */
-  const double di_shift_correction = ci->loc[0]*runner_shift_x + 
-    ci->loc[1]*runner_shift_y + 
-    ci->loc[2]*runner_shift_z;
+  /* Calculate the correction to di after the particles have been shifted to the
+   * frame of cell ci. */
+  const double di_shift_correction = ci->loc[0] * runner_shift_x +
+                                     ci->loc[1] * runner_shift_y +
+                                     ci->loc[2] * runner_shift_z;
 
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
@@ -1672,7 +1672,9 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
   /* Parts are on the left? */
   if (!flipped) {
 
-    int last_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 0);
+    int last_pj = populate_max_index_subset(
+        count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction,
+        runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 0);
 
     /* Read the particles from the cell and store them locally in the cache. */
     cache_read_particles_subpair(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
@@ -1692,7 +1694,8 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
 
       /* Skip this particle if no particle in cj is within range of it. */
       const double di = hi * kernel_gamma + dxj + pix * runner_shift_x +
-        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
+                        piy * runner_shift_y + piz * runner_shift_z +
+                        di_shift_correction;
       if (di < dj_min) continue;
 
       /* Fill particle pi vectors. */
@@ -1752,7 +1755,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
-                parts_j[sort_j[pjd + bit_index].i].id;
+                  parts_j[sort_j[pjd + bit_index].i].id;
             }
             ++pi->num_ngb_density;
           }
@@ -1781,22 +1784,25 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
       VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
 
-    }   /* loop over the parts in ci. */
+    } /* loop over the parts in ci. */
   }
 
   /* Parts are on the right. */
   else {
 
-    int first_pj = populate_max_index_subset(count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction, runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
-   
+    int first_pj = populate_max_index_subset(
+        count, count_j, parts_i, ind, total_ci_shift, dxj, di_shift_correction,
+        runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
+
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
+    cache_read_particles_subpair(cj, cj_cache, sort_j, &first_pj, 0, ci->loc,
+                                 1);
 
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;
 
     const double dj_max = sort_j[count_j - 1].d;
-    
+
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
 
@@ -1807,10 +1813,11 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       const float piz = pi->x[2] - total_ci_shift[2];
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      
+
       /* Skip this particle if no particle in cj is within range of it. */
       const double di = -hi * kernel_gamma - dxj + pix * runner_shift_x +
-        piy * runner_shift_y + piz * runner_shift_z + di_shift_correction;
+                        piy * runner_shift_y + piz * runner_shift_z +
+                        di_shift_correction;
       if (di > dj_max) continue;
 
       /* Fill particle pi vectors. */
@@ -1878,7 +1885,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
-                parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id;
+                  parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id;
             }
             ++pi->num_ngb_density;
           }
@@ -1907,7 +1914,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
       VEC_HADD(v_curlvySum, pi->density.rot_v[1]);
       VEC_HADD(v_curlvzSum, pi->density.rot_v[2]);
 
-    }   /* loop over the parts in ci. */
+    } /* loop over the parts in ci. */
   }
 
   TIMER_TOC(timer_dopair_subset);
@@ -1924,9 +1931,9 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(stru
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
-                              struct cell *cj, const int sid,
-                              const double *shift) {
+__attribute__((always_inline)) INLINE void runner_dopair2_force_vec(
+    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
+    const double *shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -2018,10 +2025,9 @@ __attribute__((always_inline)) INLINE void runner_dopair2_force_vec(struct runne
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index_force(ci, cj, sort_i, sort_j, dx_max, rshift,
-                                    hi_max_raw, hj_max_raw, h_max, di_max,
-                                    dj_min, max_index_i, max_index_j, &first_pi,
-                                    &last_pj, max_active_bin);
+  populate_max_index_force(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max_raw,
+                           hj_max_raw, h_max, di_max, dj_min, max_index_i,
+                           max_index_j, &first_pi, &last_pj, max_active_bin);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;

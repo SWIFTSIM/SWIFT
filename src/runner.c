@@ -785,11 +785,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_branch_density(r, finger, parts, pid, count,
-                                             l->t->cj);
+                runner_dopair_subset_branch_density(r, finger, parts, pid,
+                                                    count, l->t->cj);
               else
-                runner_dopair_subset_branch_density(r, finger, parts, pid, count,
-                                             l->t->ci);
+                runner_dopair_subset_branch_density(r, finger, parts, pid,
+                                                    count, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
