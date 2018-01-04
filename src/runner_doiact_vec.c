@@ -936,18 +936,19 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
                             vec_is_mask_true(v_doi_mask2_self_check);
 
 #ifdef DEBUG_INTERACTIONS_SPH
+      struct part *restrict parts_i = c->parts;
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
             pi->ids_ngbs_density[pi->num_ngb_density] =
-                parts[pjd + bit_index].id;
+                parts_i[pjd + bit_index].id;
           ++pi->num_ngb_density;
         }
 
         if (doi_mask2 & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
             pi->ids_ngbs_density[pi->num_ngb_density] =
-                parts[pjd + VEC_SIZE + bit_index].id;
+                parts_i[pjd + VEC_SIZE + bit_index].id;
           ++pi->num_ngb_density;
         }
       }
