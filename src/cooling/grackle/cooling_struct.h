@@ -47,6 +47,8 @@ struct cooling_function_data {
   /* unit system */
   code_units units;
 
+  /* grackle chemistry data */
+  chemistry_data chemistry;
 };
 
 /**

@@ -39,7 +39,7 @@
 
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
-
+#define GRACKLE_RANK 3
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
@@ -75,6 +75,11 @@ __attribute__((always_inline))INLINE static void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'Grackle'.");
+  message("Using Grackle           = %i", grackle_data->use_grackle);
+  message("Chemical network        = %i", grackle_data->primordial_chemistry);
+  message("Radiative cooling       = %i", grackle_data->with_radiative_cooling);
+  message("Metal cooling           = %i", grackle_data->metal_cooling);
+  
   message("CloudyTable             = %s",
           cooling->cloudy_table);
   message("UVbackground            = %d", cooling->uv_background);
@@ -83,11 +88,13 @@ __attribute__((always_inline))INLINE static void cooling_print_backend(
           cooling->density_self_shielding);
   message("Units:");
   message("\tComoving     = %i", cooling->units.comoving_coordinates);
-  message("\tLength  = %g", cooling->units.length_units);
-  message("\tDensity = %g", cooling->units.density_units);
+  message("\tLength       = %g", cooling->units.length_units);
+  message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
-  message("\tScale Factor = %g", cooling->units.a_units);  
+  message("\tScale Factor = %g", cooling->units.a_units);
+
 }
+
 
 /**
  * @brief Compute the cooling rate
@@ -106,48 +113,77 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
+  cooling_print_backend(cooling);
+
   /* set current time */
-  float scale_factor = 1.;
+  code_units units = cooling->units;
   if (cooling->redshift == -1)
     error("TODO time dependant redshift");
   else
-    scale_factor = 1. / (1. + cooling->redshift);
+    units.a_value = 1. / (1. + cooling->redshift);
 
-  /* Get current internal energy (dt=0) */
+  /* initialize data */
+  grackle_field_data data;
+
+  /* set values */
+  /* grid */
+  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
+  int grid_start[GRACKLE_RANK] = {0, 0, 0};
+  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
+  
+  data.grid_rank = GRACKLE_RANK;
+  data.grid_dimension = grid_dimension;
+  data.grid_start = grid_start;
+  data.grid_end = grid_end;
+
+  /* general particle data */
+  gr_float density = hydro_get_density(p);
   const double energy_before = hydro_get_internal_energy(p);
-  
-  /* Get current density */
-  const float rho = hydro_get_density(p);
-  
-  /* 0.02041 (= 1 Zsun in Grackle v2.0, but = 1.5761 Zsun in
-     Grackle v2.1) */
+  gr_float energy = energy_before;
+  gr_float vx = 0;
+  gr_float vy = 0;
+  gr_float vz = 0;
+
+  data.density = &density;
+  data.internal_energy = &energy;
+  data.x_velocity = &vx;
+  data.y_velocity = &vy;
+  data.z_velocity = &vz;
+
+  /* primordial chemistry >= 1 */
+  data.HI_density = NULL;
+  data.HII_density = NULL;
+  data.HeI_density = NULL;
+  data.HeII_density = NULL;
+  data.HeIII_density = NULL;
+  data.e_density = NULL;
+  /* primordial chemistry >= 2 */
+  data.HM_density = NULL;
+  data.H2I_density = NULL;
+  data.H2II_density = NULL;
+  /* primordial chemistry >= 3 */
+  data.DI_density = NULL;
+  data.DII_density = NULL;
+  data.HDI_density = NULL;
+  /* metal cooling = 1 */
   const double Z = 0.02041;
+  gr_float metal_density = Z * density;
 
-  /* create grackle struct */
-  /* velocities */
-  gr_float x_velocity[GRACKLE_NPART] = {0.0};
-  gr_float y_velocity[GRACKLE_NPART] = {0.0};
-  gr_float z_velocity[GRACKLE_NPART] = {0.0};
+  data.metal_density = &metal_density;
 
-  /* particle data */
-  gr_float density[GRACKLE_NPART] = {rho};
-  gr_float metal_density[GRACKLE_NPART] = {Z * density[0]};
-  gr_float energy[GRACKLE_NPART] = {energy_before};
-
-  /* dimensions */
-  int grid_dimension[3] = {GRACKLE_NPART, 0, 0};
-  int grid_start[3] = {0, 0, 0};
-  int grid_end[3] = {0, 0, 0};
-
+  /* volumetric heating rate */
+  data.volumetric_heating_rate = NULL;
+  /* specific heating rate */
+  data.specific_heating_rate = NULL;
+  
   /* solve chemistry with table */
-  code_units units = cooling->units;
-  if (solve_chemistry_table(&units, scale_factor, dt, GRACKLE_NPART, grid_dimension,
-                            grid_start, grid_end, density, energy, x_velocity,
-                            y_velocity, z_velocity, metal_density) == 0) {
+  if (solve_chemistry(&units, &data, dt) == 0) {
     error("Error in solve_chemistry.");
   }
+  message("Energy: %g, %g, %g", energy, energy_before, dt);
 
-  return (energy[0] - energy_before) / dt;
+  exit(1);
+  return (energy - energy_before) / dt;
 }
 
 /**
@@ -244,28 +280,26 @@ __attribute__((always_inline))INLINE static void cooling_init_backend(
   cooling->units.time_units = us->UnitTime_in_cgs;
   cooling->units.velocity_units =
     cooling->units.a_units * cooling->units.length_units / cooling->units.time_units;
- 
+
+  chemistry_data *chemistry = &cooling->chemistry;
+  
   /* Create a chemistry object for parameters and rate data. */
-  if (set_default_chemistry_parameters() == 0) {
+  if (set_default_chemistry_parameters(chemistry) == 0) {
     error("Error in set_default_chemistry_parameters.");
   }
 
   // Set parameter values for chemistry.
-  grackle_data.use_grackle = 1;
-  grackle_data.with_radiative_cooling = 1;
+  chemistry->use_grackle = 1;
+  chemistry->with_radiative_cooling = 1;
   /* molecular network with H, He, D
    From Cloudy table */
-  grackle_data.primordial_chemistry = 0;
-  grackle_data.metal_cooling = 1;  // metal cooling on
-  grackle_data.UVbackground = cooling->uv_background;
-  grackle_data.grackle_data_file = cooling->cloudy_table;
+  chemistry->primordial_chemistry = 0;
+  chemistry->metal_cooling = 1;  // metal cooling on
+  chemistry->UVbackground = cooling->uv_background;
+  chemistry->grackle_data_file = cooling->cloudy_table;
 
-  /* Initialize the chemistry object.
-     a_value is not the true initial a
-     This should get set before any computation */
-  double a_value = 1.;
-
-  if (initialize_chemistry_data(&cooling->units, a_value) == 0) {
+  /* Initialize the chemistry object. */
+  if (initialize_chemistry_data(&cooling->units) == 0) {
     error("Error in initialize_chemistry_data.");
   }
 
@@ -289,77 +323,5 @@ __attribute__((always_inline))INLINE static void cooling_init_backend(
   message("***************************************");
 #endif
 }
-
-/**
- * @brief print data in cloudy struct
- *
- * Should only be used for debugging
- */
-__attribute__((always_inline))INLINE static void cloudy_print_data(const cloudy_data c, const int print_mmw) {
-  long long N = c.data_size;
-  message("\t Data size: %lli", N);
-  message("\t Grid rank: %lli", c.grid_rank);
-
-  char msg[200] = "\t Dimension: (";
-  for (long long i = 0; i < c.grid_rank; i++) {
-    char tmp[200] = "%lli%s";
-    if (i == c.grid_rank - 1)
-      sprintf(tmp, tmp, c.grid_dimension[i], ")");
-    else
-      sprintf(tmp, tmp, c.grid_dimension[i], ", ");
-
-    strcat(msg, tmp);
-  }
-  message("%s", msg);
-
-  if (c.heating_data)
-    message("\t Heating: (%g, ..., %g)", c.heating_data[0],
-            c.heating_data[N - 1]);
-  if (c.cooling_data)
-    message("\t Cooling: (%g, ..., %g)", c.cooling_data[0],
-            c.cooling_data[N - 1]);
-  if (c.mmw_data && print_mmw)
-    message("\t Mean molecular weigth: (%g, ..., %g)", c.mmw_data[0],
-            c.mmw_data[N - 1]);
-}
-
-/**
- * @brief print data in grackle struct
- *
- * Should only be used for debugging
- */
-__attribute__((always_inline))INLINE static void grackle_print_data() {
-  message("Grackle Data:");
-  message("\t Data file: %s", grackle_data.grackle_data_file);
-  message("\t With grackle: %i", grackle_data.use_grackle);
-  message("\t With radiative cooling: %i", grackle_data.with_radiative_cooling);
-  message("\t With UV background: %i", grackle_data.UVbackground);
-  message("\t With primordial chemistry: %i",
-          grackle_data.primordial_chemistry);
-  message("\t Number temperature bins: %i",
-          grackle_data.NumberOfTemperatureBins);
-  message("\t T = (%g, ..., %g)", grackle_data.TemperatureStart,
-          grackle_data.TemperatureEnd);
-
-  message("Primordial Cloudy");
-  cloudy_print_data(grackle_data.cloudy_primordial, 1);
-  if (grackle_data.metal_cooling) {
-    message("Metal Cooling");
-    cloudy_print_data(grackle_data.cloudy_metal, 0);
-  }
-
-  message("\t Gamma: %g", grackle_data.Gamma);
-
-  /* UVB */
-  if (grackle_data.UVbackground && grackle_data.primordial_chemistry != 0) {
-    struct UVBtable uvb = grackle_data.UVbackground_table;
-    long long N = uvb.Nz;
-    message("\t UV Background");
-    message("\t\t Redshift from %g to %g with %lli steps", uvb.zmin, uvb.zmax,
-            N);
-    message("\t\t z = (%g, ..., %g)", uvb.z[0], uvb.z[N - 1]);
-  }
-}
-
 
 #endif /* SWIFT_COOLING_GRACKLE_H */
