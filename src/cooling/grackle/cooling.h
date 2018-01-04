@@ -67,6 +67,29 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
 
 
 /**
+ * @brief Prints the properties of the cooling model to stdout.
+ *
+ * @param cooling The properties of the cooling function.
+ */
+__attribute__((always_inline))INLINE static void cooling_print_backend(
+    const struct cooling_function_data* cooling) {
+
+  message("Cooling function is 'Grackle'.");
+  message("CloudyTable             = %s",
+          cooling->cloudy_table);
+  message("UVbackground            = %d", cooling->uv_background);
+  message("Redshift                = %g", cooling->redshift);
+  message("Density Self Shielding  = %g",
+          cooling->density_self_shielding);
+  message("Units:");
+  message("\tComoving     = %i", cooling->units.comoving_coordinates);
+  message("\tLength  = %g", cooling->units.length_units);
+  message("\tDensity = %g", cooling->units.density_units);
+  message("\tTime         = %g", cooling->units.time_units);
+  message("\tScale Factor = %g", cooling->units.a_units);  
+}
+
+/**
  * @brief Compute the cooling rate
  *
  * @param phys_const The physical constants in internal units.
@@ -84,7 +107,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     struct part* restrict p, float dt) {
 
   /* set current time */
-  float scale_factor;
+  float scale_factor = 1.;
   if (cooling->redshift == -1)
     error("TODO time dependant redshift");
   else
@@ -117,7 +140,8 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   int grid_end[3] = {0, 0, 0};
 
   /* solve chemistry with table */
-  if (solve_chemistry_table(&cooling->units, scale_factor, dt, grid_rank, grid_dimension,
+  code_units units = cooling->units;
+  if (solve_chemistry_table(&units, scale_factor, dt, GRACKLE_NPART, grid_dimension,
                             grid_start, grid_end, density, energy, x_velocity,
                             y_velocity, z_velocity, metal_density) == 0) {
     error("Error in solve_chemistry.");
@@ -182,7 +206,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-static INLINE void cooling_init_backend(
+__attribute__((always_inline))INLINE static void cooling_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
@@ -212,7 +236,7 @@ static INLINE void cooling_init_backend(
 
   /* We assume here all physical quantities to
      be in proper coordinate (not comobile)  */
-  cooling->comoving_coordinates = 0;
+  cooling->units.comoving_coordinates = 0;
 
   /* then units */
   cooling->units.density_units = us->UnitMass_in_cgs / pow(us->UnitLength_in_cgs, 3);
@@ -267,35 +291,44 @@ static INLINE void cooling_init_backend(
 }
 
 /**
- * @brief Prints the properties of the cooling model to stdout.
+ * @brief print data in cloudy struct
  *
- * @param cooling The properties of the cooling function.
+ * Should only be used for debugging
  */
-static INLINE void cooling_print_backend(
-    const struct cooling_function_data* cooling) {
+__attribute__((always_inline))INLINE static void cloudy_print_data(const cloudy_data c, const int print_mmw) {
+  long long N = c.data_size;
+  message("\t Data size: %lli", N);
+  message("\t Grid rank: %lli", c.grid_rank);
 
-  message("Cooling function is 'Grackle'.");
-  message("CloudyTable             = %s",
-          cooling->cloudy_table);
-  message("UVbackground            = %d", cooling->uv_background);
-  message("Redshift                = %g", cooling->redshift);
-  message("Density Self Shielding  = %g",
-          cooling->density_self_shielding);
-  message("Units:");
-  message("\tComoving     = %g", cooling->units.comoving_coordinates)
-  message("\tLength  = %g", cooling->units.length_units);
-  message("\tDensity = %g", cooling->units.density_units);
-  message("\tTime         = %g", cooling->units.time_units);
-  message("\tScale Factor = %g", cooling->units.a_units);  
+  char msg[200] = "\t Dimension: (";
+  for (long long i = 0; i < c.grid_rank; i++) {
+    char tmp[200] = "%lli%s";
+    if (i == c.grid_rank - 1)
+      sprintf(tmp, tmp, c.grid_dimension[i], ")");
+    else
+      sprintf(tmp, tmp, c.grid_dimension[i], ", ");
+
+    strcat(msg, tmp);
+  }
+  message("%s", msg);
+
+  if (c.heating_data)
+    message("\t Heating: (%g, ..., %g)", c.heating_data[0],
+            c.heating_data[N - 1]);
+  if (c.cooling_data)
+    message("\t Cooling: (%g, ..., %g)", c.cooling_data[0],
+            c.cooling_data[N - 1]);
+  if (c.mmw_data && print_mmw)
+    message("\t Mean molecular weigth: (%g, ..., %g)", c.mmw_data[0],
+            c.mmw_data[N - 1]);
 }
-
 
 /**
  * @brief print data in grackle struct
  *
  * Should only be used for debugging
  */
-void grackle_print_data() {
+__attribute__((always_inline))INLINE static void grackle_print_data() {
   message("Grackle Data:");
   message("\t Data file: %s", grackle_data.grackle_data_file);
   message("\t With grackle: %i", grackle_data.use_grackle);
@@ -328,37 +361,5 @@ void grackle_print_data() {
   }
 }
 
-/**
- * @brief print data in cloudy struct
- *
- * Should only be used for debugging
- */
-void cloudy_print_data(const cloudy_data c, const int print_mmw) {
-  long long N = c.data_size;
-  message("\t Data size: %lli", N);
-  message("\t Grid rank: %lli", c.grid_rank);
-
-  char msg[200] = "\t Dimension: (";
-  for (long long i = 0; i < c.grid_rank; i++) {
-    char tmp[200] = "%lli%s";
-    if (i == c.grid_rank - 1)
-      sprintf(tmp, tmp, c.grid_dimension[i], ")");
-    else
-      sprintf(tmp, tmp, c.grid_dimension[i], ", ");
-
-    strcat(msg, tmp);
-  }
-  message("%s", msg);
-
-  if (c.heating_data)
-    message("\t Heating: (%g, ..., %g)", c.heating_data[0],
-            c.heating_data[N - 1]);
-  if (c.cooling_data)
-    message("\t Cooling: (%g, ..., %g)", c.cooling_data[0],
-            c.cooling_data[N - 1]);
-  if (c.mmw_data && print_mmw)
-    message("\t Mean molecular weigth: (%g, ..., %g)", c.mmw_data[0],
-            c.mmw_data[N - 1]);
-}
 
 #endif /* SWIFT_COOLING_GRACKLE_H */
