@@ -149,6 +149,8 @@ else:
 file_naive = h.File(inputFile1, "r")
 file_sort = h.File(inputFile2, "r")
 
+box_size = file_naive["/Header"].attrs["BoxSize"][0]
+
 # Read input file fields
 ids_naive = file_naive["/PartType0/ParticleIDs"][:]
 ids_sort = file_sort["/PartType0/ParticleIDs"][:]
@@ -171,10 +173,6 @@ neighbour_ids_density_sort = file_sort["/PartType0/Ids_ngb_density"][:]
 neighbour_ids_force_naive = file_naive["/PartType0/Ids_ngb_force"][:]
 neighbour_ids_force_sort = file_sort["/PartType0/Ids_ngb_force"][:]
 
-box_size = 8.47125
-#box_size = file_naive["/Header/BoxSize"]
-
-print("Box Size: %f"%box_size)
 
 #wcount_naive = file_naive["/PartType0/Wcount"][:]
 #wcount_sort = file_sort["/PartType0/Wcount"][:]
