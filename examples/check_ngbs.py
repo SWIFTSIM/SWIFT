@@ -53,7 +53,12 @@ def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, nu
             dx = pi_pos[0][0] - pj_pos[0][0]
             dy = pi_pos[0][1] - pj_pos[0][1]
             dz = pi_pos[0][2] - pj_pos[0][2]
-            
+           
+            # Correct for BCs
+            dx = nearest(dx)
+            dy = nearest(dy)
+            dz = nearest(dz)
+
             r2 = dx*dx + dy*dy + dz*dz
             
             hig2 = hi*hi*kernel_gamma2
@@ -96,7 +101,12 @@ def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_
             dx = pi_pos[0][0] - pj_pos[0][0]
             dy = pi_pos[0][1] - pj_pos[0][1]
             dz = pi_pos[0][2] - pj_pos[0][2]
-            
+ 
+            # Correct for BCs
+            dx = nearest(dx)
+            dy = nearest(dy)
+            dz = nearest(dz)
+           
             r2 = dx*dx + dy*dy + dz*dz
             
             hig2 = hi*hi*kernel_gamma2
@@ -112,6 +122,14 @@ def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_
                 error_val = True
 
     return error_val
+
+def nearest(dx):
+    if(dx > 0.5 * box_size):
+        return dx - box_size
+    elif(dx < -0.5 * box_size):
+        return dx + box_size
+    else: 
+        return dx
 
 # Parse command line arguments
 if len(sys.argv) < 3:
@@ -152,6 +170,11 @@ neighbour_ids_density_sort = file_sort["/PartType0/Ids_ngb_density"][:]
 
 neighbour_ids_force_naive = file_naive["/PartType0/Ids_ngb_force"][:]
 neighbour_ids_force_sort = file_sort["/PartType0/Ids_ngb_force"][:]
+
+box_size = 8.47125
+#box_size = file_naive["/Header/BoxSize"]
+
+print("Box Size: %f"%box_size)
 
 #wcount_naive = file_naive["/PartType0/Wcount"][:]
 #wcount_sort = file_sort["/PartType0/Wcount"][:]
@@ -234,7 +257,7 @@ print ids_naive[mask_density]
 # Check density neighbour lists
 error += check_density_neighbours(ids_naive, neighbour_ids_density_naive,
         neighbour_ids_density_sort, mask_density, pos_naive, h_naive,
-        num_invalid_density, 2e-6)
+        num_invalid_density, 2e-4)
 
 print "Num of density interactions", inputFile1
 print num_density_naive[mask_density]
@@ -249,7 +272,7 @@ print ids_naive[mask_force]
 # Check force neighbour lists
 error += check_force_neighbours(ids_naive, neighbour_ids_force_naive,
         neighbour_ids_force_sort, mask_force, pos_naive, h_naive,
-        num_invalid_force, 2e-6)
+        num_invalid_force, 2e-4)
 
 print "Num of force interactions", inputFile1
 print num_force_naive[mask_force]
