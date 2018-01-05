@@ -249,6 +249,9 @@ struct cell {
   /*! The second kick task */
   struct task *kick2;
 
+  /*! The task to end the force calculation */
+  struct task *end_force;
+
   /*! The task to compute time-steps */
   struct task *timestep;
 

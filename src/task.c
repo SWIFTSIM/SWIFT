@@ -48,13 +48,15 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",          "sort",           "self",           "pair",
-    "sub_self",      "sub_pair",       "init_grav",      "ghost_in",
-    "ghost",         "ghost_out",      "extra_ghost",    "drift_part",
-    "drift_gpart",   "kick1",          "kick2",          "timestep",
-    "send",          "recv",           "grav_top_level", "grav_long_range",
-    "grav_ghost_in", "grav_ghost_out", "grav_mm",        "grav_down",
-    "cooling",       "sourceterms"};
+    "none",          "sort",           "self",
+    "pair",          "sub_self",       "sub_pair",
+    "init_grav",     "ghost_in",       "ghost",
+    "ghost_out",     "extra_ghost",    "drift_part",
+    "drift_gpart",   "end_force",      "kick1",
+    "kick2",         "timestep",       "send",
+    "recv",          "grav_top_level", "grav_long_range",
+    "grav_ghost_in", "grav_ghost_out", "grav_mm",
+    "grav_down",     "cooling",        "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -152,6 +154,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       }
       break;
 
+    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -272,6 +275,7 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
+    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
@@ -361,6 +365,7 @@ int task_lock(struct task *t) {
 #endif
       break;
 
+    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:

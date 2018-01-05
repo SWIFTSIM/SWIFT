@@ -1979,9 +1979,10 @@ void *runner_main(void *data) {
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_kick2:
-          if (!(e->policy & engine_policy_cooling))
-            runner_do_end_force(r, ci, 1);
           runner_do_kick2(r, ci, 1);
+          break;
+        case task_type_end_force:
+          runner_do_end_force(r, ci, 1);
           break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
@@ -2024,7 +2025,6 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_cooling:
-          if (e->policy & engine_policy_cooling) runner_do_end_force(r, ci, 1);
           runner_do_cooling(r, t->ci, 1);
           break;
         case task_type_sourceterms:

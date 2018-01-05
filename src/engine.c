@@ -170,6 +170,7 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int is_with_cooling = (e->policy & engine_policy_cooling);
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
@@ -188,6 +189,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
                                       0, 0, c, NULL);
 
+      /* Add the task finishing the force calculation */
+      c->end_force = scheduler_addtask(s, task_type_end_force,
+                                       task_subtype_none, 0, 0, c, NULL);
+
+      if (!is_with_cooling) scheduler_addunlock(s, c->end_force, c->kick2);
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
     }
@@ -254,6 +260,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL);
 
+        scheduler_addunlock(s, c->super->end_force, c->cooling);
         scheduler_addunlock(s, c->cooling, c->super->kick2);
       }
 
@@ -319,7 +326,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
-        scheduler_addunlock(s, c->grav_down, c->super->kick2);
+        scheduler_addunlock(s, c->grav_down, c->super->end_force);
       }
     }
 
@@ -1169,7 +1176,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #else
       /* The send_rho task should unlock the super_hydro-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->super->kick2);
+      scheduler_addunlock(s, t_rho, ci->super->end_force);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->super_hydro->ghost_out, t_rho);
@@ -2564,7 +2571,7 @@ static inline void engine_make_external_gravity_dependencies(
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super_gravity->drift_gpart, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick2);
+  scheduler_addunlock(sched, gravity, c->super->end_force);
 }
 
 /**
@@ -2749,7 +2756,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-      scheduler_addunlock(sched, t2, t->ci->super->kick2);
+      scheduler_addunlock(sched, t2, t->ci->super->end_force);
 #endif
     }
 
@@ -2808,14 +2815,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->super_hydro != t->cj->super_hydro)
           engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t2, t->cj->super->kick2);
+          scheduler_addunlock(sched, t2, t->cj->super->end_force);
       }
 
 #endif
@@ -2865,7 +2872,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
       } else
         error("oo");
 #endif
@@ -2930,14 +2937,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->super_hydro != t->cj->super_hydro)
           engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t2, t->cj->super->kick2);
+          scheduler_addunlock(sched, t2, t->cj->super->end_force);
       }
 #endif
     }
@@ -3417,7 +3424,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* Kick/init ? */
+    /* End force ? */
+    else if (t->type == task_type_end_force) {
+
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
+    /* Kick ? */
     else if (t->type == task_type_kick1 || t->type == task_type_kick2) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
@@ -3554,7 +3568,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
-    n1 += 36;
+    n1 += 37;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -4046,7 +4060,7 @@ void engine_skip_force_and_kick(struct engine *e) {
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_grav ||
+        t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range ||
         t->type == task_type_grav_ghost_in ||
         t->type == task_type_grav_ghost_out ||
