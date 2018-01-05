@@ -1390,10 +1390,9 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
-                              hj_max, di_max, dj_min, max_index_i, max_index_j,
-                              &first_pi, &last_pj, max_active_bin, active_ci,
-                              active_cj);
+  populate_max_index(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max,
+                     di_max, dj_min, max_index_i, max_index_j, &first_pi,
+                     &last_pj, max_active_bin, active_ci, active_cj);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
@@ -2079,10 +2078,10 @@ __attribute__((always_inline)) INLINE void runner_dopair2_force_vec(
   /* Find particles maximum distance into cj, max_di[] and ci, max_dj[]. */
   /* Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index_force(
-      ci, cj, sort_i, sort_j, dx_max, rshift, hi_max_raw, hj_max_raw, h_max,
-      di_max, dj_min, max_index_i, max_index_j, &first_pi, &last_pj,
-      max_active_bin, active_ci, active_cj);
+  populate_max_index_force(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max_raw,
+                           hj_max_raw, h_max, di_max, dj_min, max_index_i,
+                           max_index_j, &first_pi, &last_pj, max_active_bin,
+                           active_ci, active_cj);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
