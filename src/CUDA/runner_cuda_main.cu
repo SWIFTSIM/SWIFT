@@ -144,8 +144,42 @@ __device__ __constant__ int cuda_sortlistID[27] = {
     /* (  1 ,  1 ,  0 ) */ 1,
     /* (  1 ,  1 ,  1 ) */ 0};
 
+#define MAX_STACK_DEPTH 32
+
+__device__ __constant__ int sid_count[13] = {1, 4, 1, 4,16,4,1,4,1,4,16,4,16};
+__device__ __constant__ int sid_is[13][16] = 
+{{ 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 6, 6, 7, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 5, 5, 7, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7},
+ { 4, 4, 6, 6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 4, 4, 5, 5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 3, 3, 7, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 2, 2, 2, 2, 3, 3, 3, 3, 6, 6, 6, 6, 7, 7, 7, 7},
+ { 2, 2, 6, 6,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 1, 1, 1, 1, 3, 3, 3, 3, 5, 5, 5, 5, 7, 7, 7, 7}};
+ 
+__device__ __constant__ int sid_js[13][16] = 
+{{ 0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 1, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 2, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3},
+ { 1, 3, 1, 3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 2, 3, 2, 3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 4, 0, 4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 1, 4, 5, 0, 1, 4, 5, 0, 1, 4, 5, 0, 1, 4, 5},
+ { 1, 5, 1, 5,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+ { 0, 2, 4, 6, 0, 2, 4, 6, 0, 2, 4, 6, 0, 2, 4, 6}};
 
   int firstrun = 0;
+
+ __device__ void dopair_force(struct cell_cuda *ci, struct cell_cuda *cj);
 
 __device__ double atomicAdd(double* address, double val) {
 unsigned long long int* address_as_ull = (unsigned long long int*)address;
@@ -474,8 +508,8 @@ __device__ void unload_cell(int cell_index) {
 __device__ void doself_density(struct cell_cuda *ci) {
   /* Is the cell active? */
   if (!cuda_cell_is_active(ci)) {
-    if(threadIdx.x ==0)
-/*    printf(
+/*    if(threadIdx.x ==0)
+    printf(
         "Cell isn't active..., ti_end_min=%lli, ti_current=%lli, "
         "max_active_bin=%i, cell_id = %lli\n",
         ci->ti_end_min, ti_current, max_active_bin, (ci-cells_cuda));*/
@@ -715,6 +749,148 @@ __device__ int cuda_cell_can_recurse_in_pair_task(struct cell_cuda *c){
 return c->split && ((kernel_gamma * c->h_max_old + c->dx_max_old) < 0.5f * c->dmin);
 }
 
+__device__ void dosubpair_force_nonrec(struct cell_cuda *ci, struct cell_cuda *cj){
+    int sid;
+    sid = cuda_space_getsid(ci, cj);
+    __shared__ int parent_i[MAX_STACK_DEPTH];
+    __shared__ int parent_j[MAX_STACK_DEPTH];
+    __shared__ int childrenExplored[MAX_STACK_DEPTH];
+    __shared__ int sids[MAX_STACK_DEPTH];
+    
+    struct cell_cuda *child_i = ci;
+    struct cell_cuda *child_j = cj;
+    int cid = ci - cells_cuda;
+    int cjd = cj - cells_cuda;
+    int depth = 0;
+    if(threadIdx.x == 0){
+        parent_i[0] = -1;
+        parent_j[0] = -1;
+        sids[1] = sid;
+    }
+    depth++;
+    while(cid >= 0 && cjd >= 0){
+        __syncthreads();
+        //If we can't recurse then compute it directly!
+        if(!(cuda_cell_can_recurse_in_pair_task(child_i) && cuda_cell_can_recurse_in_pair_task(child_j))){
+            dopair_force(child_i, child_j);
+            //Go up a level.
+            depth--;
+            cid = parent_i[depth];
+            cjd = parent_j[depth];
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            continue;
+        }
+        //Have we explored the section of tree.
+        if(childrenExplored[depth] >= sid_count[sids[depth]]){
+            //Go up a level.
+            depth--;
+            cid = parent_i[depth];
+            cjd = parent_j[depth];
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            continue;
+        }
+        //Otherwise we "recurse" if the children exist.
+        int explored = childrenExplored[depth];
+        cid = child_i->progeny[sid_is[sids[depth]][explored]];
+        cjd = child_j->progeny[sid_js[sids[depth]][explored]];
+        if(cid >= 0 && cjd >= 0){
+            //Children exist so "recurse"
+            if(threadIdx.x == 0){
+                childrenExplored[depth]++;
+            }
+            __threadfence_block();
+            depth++;
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            if(threadIdx.x == 0){
+                childrenExplored[depth] = 0;
+                parent_i[depth] = cid;
+                parent_j[depth] = cjd;
+                sids[depth] = cuda_space_getsid(child_i, child_j);
+            }
+        }else{
+            //Move to next child pair.
+            if(threadIdx.x == 0){
+                childrenExplored[depth]++;
+            }
+            __threadfence_block();
+        }
+    }
+}
+
+__device__ void dosubpair_density_nonrec(struct cell_cuda *ci, struct cell_cuda *cj){
+    int sid;
+    sid = cuda_space_getsid(ci, cj);
+    __shared__ int parent_i[MAX_STACK_DEPTH];
+    __shared__ int parent_j[MAX_STACK_DEPTH];
+    __shared__ int childrenExplored[MAX_STACK_DEPTH];
+    __shared__ int sids[MAX_STACK_DEPTH];
+    
+    struct cell_cuda *child_i = ci;
+    struct cell_cuda *child_j = cj;
+    int cid = ci - cells_cuda;
+    int cjd = cj - cells_cuda;
+    int depth = 0;
+    if(threadIdx.x == 0){
+        parent_i[0] = -1;
+        parent_j[0] = -1;
+        sids[1] = sid;
+    }
+    depth++;
+    while(cid >= 0 && cjd >= 0){
+        __syncthreads();
+        //If we can't recurse then compute it directly!
+        if(!(cuda_cell_can_recurse_in_pair_task(child_i) && cuda_cell_can_recurse_in_pair_task(child_j))){
+            dopair_density(child_i, child_j);
+            //Go up a level.
+            depth--;
+            cid = parent_i[depth];
+            cjd = parent_j[depth];
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            continue;
+        }
+        //Have we explored the section of tree.
+        if(childrenExplored[depth] >= sid_count[sids[depth]]){
+            //Go up a level.
+            depth--;
+            cid = parent_i[depth];
+            cjd = parent_j[depth];
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            continue;
+        }
+        //Otherwise we "recurse" if the children exist.
+        int explored = childrenExplored[depth];
+        cid = child_i->progeny[sid_is[sids[depth]][explored]];
+        cjd = child_j->progeny[sid_js[sids[depth]][explored]];
+        if(cid >= 0 && cjd >= 0){
+            //Children exist so "recurse"
+            if(threadIdx.x == 0){
+                childrenExplored[depth]++;
+            }
+            __threadfence_block();
+            depth++;
+            child_i = &cells_cuda[cid];
+            child_j = &cells_cuda[cjd];
+            if(threadIdx.x == 0){
+                childrenExplored[depth] = 0;
+                parent_i[depth] = cid;
+                parent_j[depth] = cjd;
+                sids[depth] = cuda_space_getsid(child_i, child_j);
+            }
+        }else{
+            //Move to next child pair.
+            if(threadIdx.x == 0){
+                childrenExplored[depth]++;
+            }
+            __threadfence_block();
+        }
+    }
+}
+
 /*Subpair task, is asymmetric , subcells of ci interact with subcells of cj ONLY*/
 __device__ void dosubpair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
 
@@ -753,7 +929,7 @@ __device__ void dosubpair_density(struct cell_cuda *ci, struct cell_cuda *cj) {
            dosubpair_density(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
          if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
            dosubpair_density(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
-         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
            dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
          if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
            dosubpair_density(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
@@ -1280,7 +1456,7 @@ __device__ void dosubpair_force(struct cell_cuda *ci, struct cell_cuda *cj){
            dosubpair_force(&cells_cuda[ci->progeny[5]], &cells_cuda[cj->progeny[0]]);
          if (ci->progeny[5] >= 0 && cj->progeny[2] >= 0)
            dosubpair_force(&cells_cuda[ci->progeny[6]], &cells_cuda[cj->progeny[2]]);
-         if (ci->progeny[7] >= 0 && cj->progeny[1] >= 0)
+         if (ci->progeny[7] >= 0 && cj->progeny[0] >= 0)
            dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[0]]);
          if (ci->progeny[7] >= 0 && cj->progeny[2] >= 0)
            dosubpair_force(&cells_cuda[ci->progeny[7]], &cells_cuda[cj->progeny[2]]);
@@ -1912,16 +2088,151 @@ __device__ int runner_cuda_gettask(struct queue_cuda *q) {
   return tid;
 }
 
+/*__device__ void dosubself_density_nonrec( struct cell_cuda *ci){
+  if(!ci->split){
+    doself_density(ci);
+    return;
+  }
+  for(int k = 0; k < 8; k++){
+    if(ci-progeny[k] >= 0){
+       for(int j = k+1; j < 8; j++){
+          if(ci->progeny[j] >= 0){
+            //Pair tasks are asymmetric
+            dosubpair_density(&cells_cuda[ci->progeny[k]],&cells_cuda[ci->progeny[j]]);
+            dosubpair_density(&cells_cuda[ci->progeny[j]],&cells_cuda[ci->progeny[k]]);
+          }
+       }
+       dosubself_density_nonrec(&cells_cuda[ci->progeny[k]]);
+    }
+  }
+}*/
+
+__device__ void dosubself_force_nonrec( struct cell_cuda *ci){
+  __shared__ int parents[MAX_STACK_DEPTH];
+  __shared__ int childrenExplored[MAX_STACK_DEPTH];
+  int depth = 0;
+  if(threadIdx.x == 0){
+      parents[depth] = -1;
+      childrenExplored[depth] = 0;
+  }
+  __threadfence_block();
+  if(!ci->split){
+    doself_force(ci);
+    return;
+  }
+  int cid = ci - cells_cuda;
+  struct cell_cuda *child = ci;
+  depth++;
+  if(threadIdx.x == 0){
+    parents[depth] = cid;
+    childrenExplored[depth] = 0;
+  }
+  __threadfence_block();
+  while(cid > 0){
+    if(!child->split){
+        doself_density(child);
+        depth--;
+        cid = parents[depth];
+        child = &cells_cuda[cid];
+        continue;
+    }
+    if(childrenExplored[depth] >= 8){
+        //Go back up tree
+        depth--;
+        cid = parents[depth];
+        child = &cells_cuda[cid];
+        continue;
+    }
+    if(child->progeny[childrenExplored[depth]] >= 0){
+        cid = child->progeny[childrenExplored[depth]];
+        child = &cells_cuda[cid];
+        __syncthreads();
+        if(threadIdx.x == 0){
+            childrenExplored[depth]++;
+        }
+        depth++;
+        //Add this to parent queue.
+        if(threadIdx.x == 0){
+            parents[depth] = cid;
+            childrenExplored[depth] = 0;
+        }
+        __threadfence_block();
+    }else if(threadIdx.x == 0){
+        childrenExplored[depth]++;
+    }
+    __threadfence_block();
+  }
+
+}
+
+__device__ void dosubself_density_nonrec( struct cell_cuda *ci){
+  __shared__ int parents[MAX_STACK_DEPTH];
+  __shared__ int childrenExplored[MAX_STACK_DEPTH];
+  int depth = 0;
+  if(threadIdx.x == 0){
+      parents[depth] = -1;
+      childrenExplored[depth] = 0;
+  }
+  __threadfence_block();
+  if(!ci->split){
+    doself_density(ci);
+    return;
+  }
+  int cid = ci - cells_cuda;
+  struct cell_cuda *child = ci;
+  depth++;
+  if(threadIdx.x == 0){
+    parents[depth] = cid;
+    childrenExplored[depth] = 0;
+  }
+  __threadfence_block();
+  while(cid > 0){
+    if(!child->split){
+        doself_density(child);
+        depth--;
+        cid = parents[depth];
+        child = &cells_cuda[cid];
+        continue;
+    }
+    if(childrenExplored[depth] >= 8){
+        //Go back up tree
+        depth--;
+        cid = parents[depth];
+        child = &cells_cuda[cid];
+        continue;
+    }
+    if(child->progeny[childrenExplored[depth]] >= 0){
+        cid = child->progeny[childrenExplored[depth]];
+        child = &cells_cuda[cid];
+        __syncthreads();
+        if(threadIdx.x == 0){
+            childrenExplored[depth]++;
+        }
+        depth++;
+        //Add this to parent queue.
+        if(threadIdx.x == 0){
+            parents[depth] = cid;
+            childrenExplored[depth] = 0;
+        }
+        __threadfence_block();
+    }else if(threadIdx.x == 0){
+        childrenExplored[depth]++;
+    }
+    __threadfence_block();
+  }
+
+}
+
 /* Task function to execute a sub-self-density task.*/
 __device__ void dosubself_density( struct cell_cuda *ci ){
 
   if(ci->split){
     /* Loop over all progeny */
     for(int k = 0; k < 8; k++){
-      if(ci->progeny[k] >= 0){
+      if(ci->progeny[k] >= 0 && ci->progeny[k] < 4428){
         dosubself_density(&cells_cuda[ci->progeny[k]]);
         for(int j = k+1; j < 8; j++){
-          if(ci->progeny[j] >= 0){
+          if(ci->progeny[j] >= 0 && ci->progeny[j] < 4428){
             //Pair tasks are asymmetric
             dosubpair_density(&cells_cuda[ci->progeny[k]],&cells_cuda[ci->progeny[j]]);
             dosubpair_density(&cells_cuda[ci->progeny[j]],&cells_cuda[ci->progeny[k]]);
@@ -1938,10 +2249,10 @@ __device__ void dosubself_force(struct cell_cuda *ci){
   if(ci->split){
     /* Loop over all progeny */
     for(int k = 0; k < 8; k++){
-      if(ci->progeny[k] >= 0){
+      if(ci->progeny[k] >= 0 && ci->progeny[k] < 4428){
         dosubself_force(&cells_cuda[ci->progeny[k]]);
         for(int j = k+1; j < 8; j++){
-          if(ci->progeny[j] >= 0){
+          if(ci->progeny[j] >= 0 && ci->progeny[j] < 4428){
             //Pair tasks are asymmetric
             dosubpair_force(&cells_cuda[ci->progeny[k]],&cells_cuda[ci->progeny[j]]);
             dosubpair_force(&cells_cuda[ci->progeny[j]],&cells_cuda[ci->progeny[k]]);
@@ -1987,7 +2298,7 @@ __global__ void swift_device_kernel() {
           tid = runner_cuda_gettask(&cuda_queues[i]);
         }
       }
-
+      printf("%i\n", tid);
     }  // Get task from queue
 
     /* Threads need to wait until they have work to do */
@@ -2029,13 +2340,13 @@ __global__ void swift_device_kernel() {
       if(subtype == task_subtype_density) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
-        dosubpair_density(ci,cj);
-        dosubpair_density(cj,ci);
+        dosubpair_density_nonrec(ci,cj);
+        dosubpair_density_nonrec(cj,ci);
       }else if (subtype == task_subtype_force){
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
         struct cell_cuda *cj = &cells_cuda[tasks[tid].cj];
-        dosubpair_force(ci,cj);
-        dosubpair_force(cj,ci);
+        dosubpair_force_nonrec(ci,cj);
+        dosubpair_force_nonrec(cj,ci);
       }
     }else if (type == task_type_self ) {
       if (subtype == task_subtype_density) {
@@ -2048,10 +2359,10 @@ __global__ void swift_device_kernel() {
     } else if (type == task_type_sub_self){
       if(subtype == task_subtype_density) {
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
-        dosubself_density(ci);
+        dosubself_density_nonrec(ci);
       }else if (subtype == task_subtype_force){
         struct cell_cuda *ci = &cells_cuda[tasks[tid].ci];
-        dosubself_force(ci);
+        dosubself_force_nonrec(ci);
       }
     }else if (type == task_type_ghost) {
       if(! tasks[tid].implicit){
@@ -2759,6 +3070,7 @@ __host__ void create_tasks(struct engine *e) {
     c = &s->cells_top[i];
     cell_IDs(c, &k);
   }
+  printf("%i\n", k);
 
   k = 0;
   /* Create the tasks. */

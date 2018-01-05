@@ -3394,8 +3394,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_launch(e);
   TIMER_TOC(timer_runners);
   engine_dump_snapshot(e);
-  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
-  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
+//  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+//  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
@@ -3457,8 +3457,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Run the 0th time-step */
   engine_launch(e);
 
-  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
-  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
+///  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+//  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -3670,8 +3670,8 @@ void engine_step(struct engine *e) {
     }
     printf("Max density particle = %lli\n", e->s->parts[maxind].id);
   }*/
-  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
-  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
+//  printParticle(e->s->parts, e->s->xparts, 79985, e->s->nr_parts);
+//  printParticle(e->s->parts, e->s->xparts, 103498, e->s->nr_parts);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
