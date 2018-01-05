@@ -40,7 +40,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       size_t* Nsparts, int* periodic, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
                       int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int dry_run);
+                      int nr_threads, int dry_run);
 
 void write_output_parallel(struct engine* e, const char* baseName,
                            const struct unit_system* internal_units,

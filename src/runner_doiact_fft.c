@@ -165,7 +165,6 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 
   const struct engine* e = r->e;
   const struct space* s = e->s;
-  const integertime_t ti_current = e->ti_current;
   const double a_smooth = e->gravity_properties->a_smooth;
   const double box_size = s->dim[0];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -183,13 +182,16 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   /* Recover the list of top-level multipoles */
   const int nr_cells = s->nr_cells;
   struct gravity_tensors* restrict multipoles = s->multipoles_top;
-  struct cell* cells = s->cells_top;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const struct cell* cells = s->cells_top;
+  const integertime_t ti_current = e->ti_current;
 
   /* Make sure everything has been drifted to the current point */
   for (int i = 0; i < nr_cells; ++i)
     if (cells[i].ti_old_multipole != ti_current)
-      cell_drift_multipole(&cells[i], e);
-  // error("Top-level multipole %d not drifted", i);
+      error("Top-level multipole %d not drifted", i);
+#endif
 
   /* Allocates some memory for the density mesh */
   double* restrict rho = fftw_malloc(sizeof(double) * N * N * N);

@@ -2206,7 +2206,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 0;
     maxdepth = c->depth;
 
-    timebin_t time_bin_min = num_time_bins, time_bin_max = 0;
+    timebin_t hydro_time_bin_min = num_time_bins, hydro_time_bin_max = 0;
+    timebin_t gravity_time_bin_min = num_time_bins, gravity_time_bin_max = 0;
 
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
@@ -2214,8 +2215,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
 #endif
-      time_bin_min = min(time_bin_min, parts[k].time_bin);
-      time_bin_max = max(time_bin_max, parts[k].time_bin);
+      hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
+      hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
     }
     /* parts: Reset x_diff */
@@ -2228,11 +2229,10 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
+        error("Inhibited g-particle present in space_split()");
 #endif
-      time_bin_min = min(time_bin_min, gparts[k].time_bin);
-      time_bin_max = max(time_bin_max, gparts[k].time_bin);
-
+      gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
       gparts[k].x_diff[0] = 0.f;
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
@@ -2241,20 +2241,23 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited g-particle present in space_split()");
+        error("Inhibited s-particle present in space_split()");
 #endif
-      time_bin_min = min(time_bin_min, sparts[k].time_bin);
-      time_bin_max = max(time_bin_max, sparts[k].time_bin);
+      gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
     }
 
     /* Convert into integer times */
-    ti_hydro_end_min = get_integer_time_end(e->ti_current, time_bin_min);
-    ti_hydro_end_max = get_integer_time_end(e->ti_current, time_bin_max);
-    ti_hydro_beg_max = get_integer_time_begin(e->ti_current + 1, time_bin_max);
-    ti_gravity_end_min = get_integer_time_end(e->ti_current, time_bin_min);
-    ti_gravity_end_max = get_integer_time_end(e->ti_current, time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(e->ti_current, hydro_time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(e->ti_current, hydro_time_bin_max);
+    ti_hydro_beg_max =
+        get_integer_time_begin(e->ti_current + 1, hydro_time_bin_max);
+    ti_gravity_end_min =
+        get_integer_time_end(e->ti_current, gravity_time_bin_min);
+    ti_gravity_end_max =
+        get_integer_time_end(e->ti_current, gravity_time_bin_max);
     ti_gravity_beg_max =
-        get_integer_time_begin(e->ti_current + 1, time_bin_max);
+        get_integer_time_begin(e->ti_current + 1, gravity_time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {

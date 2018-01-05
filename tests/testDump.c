@@ -65,6 +65,10 @@ int main(int argc, char *argv[]) {
   struct dump d;
   dump_init(&d, filename, 1024);
 
+  /* Print the page size for reference. */
+  printf("Will dump %i bytes, page size is %zi bytes.\n",
+         num_runs * chunk_size * 7, sysconf(_SC_PAGE_SIZE));
+
   /* Dump numbers in chunks. */
   for (int run = 0; run < num_runs; run++) {
 
@@ -95,6 +99,9 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char *argv[]) {
+  printf("No posix_fallocate, not testing anything.\n");
+  return 0;
+}
 
 #endif /* HAVE_POSIX_FALLOCATE */

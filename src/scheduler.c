@@ -935,12 +935,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags,
                                int implicit, struct cell *ci, struct cell *cj) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci == NULL && cj != NULL)
-    error("Added a task with ci==NULL and cj!=NULL type=%s/%s",
-          taskID_names[type], subtaskID_names[subtype]);
-#endif
-
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
 

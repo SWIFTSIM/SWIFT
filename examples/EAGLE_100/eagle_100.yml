@@ -13,6 +13,9 @@ TimeIntegration:
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
+Scheduler:
+  max_top_level_cells: 80
+
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files

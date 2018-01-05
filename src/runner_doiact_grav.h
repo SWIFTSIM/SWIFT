@@ -156,7 +156,12 @@ void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
 #endif
 
   /* Do we need to drift the multipole ? */
-  if (cj->ti_old_multipole != e->ti_current) error("Undrifted multipole");
+  if (cj->ti_old_multipole != e->ti_current)
+    error(
+        "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
+        "ci->nodeID=%d "
+        "e->ti_current=%lld",
+        cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
@@ -1180,7 +1185,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     if (ci == cj) continue;
 
     /* Skip empty cells */
-    if (cj->gcount == 0) continue;
+    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
