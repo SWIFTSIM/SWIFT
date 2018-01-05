@@ -369,6 +369,33 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
+# Add the undefined sanitizer option to flags. Only useful for GCC
+# version 4.9 and later and clang to detected undefined code behaviour
+# such as integer overflow and memory alignment issues.
+AC_ARG_ENABLE([undefined-sanitizer],
+   [AS_HELP_STRING([--enable-undefined-sanitizer],
+     [Enable detection of code that causes undefined behaviour @<:@no/yes@:>@]
+   )],
+   [enable_ubsan="$enableval"],
+   [enable_ubsan="no"]
+)
+
+if test "$enable_ubsan" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.9.0],
+                          [enable_ubsan="yes"], [enable_ubsan="no"] )
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [3.7.0],
+                          [enable_ubsan="yes"], [enable_ubsan="no"] )
+   fi
+   if test "$enable_ubsan" = "yes"; then
+      CFLAGS="$CFLAGS -fsanitize=undefined"
+      AC_MSG_RESULT([added undefined sanitizer support])
+   else
+      AC_MSG_WARN([Compiler does not support undefined sanitizer option])
+   fi
+fi
+
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET

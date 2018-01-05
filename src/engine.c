@@ -1482,9 +1482,9 @@ void engine_exchange_cells(struct engine *e) {
   }
 
   /* Allocate the pcells. */
-  struct pcell *pcells;
-  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count_out)) ==
-      NULL)
+  struct pcell *pcells = NULL;
+  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
+                     sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
 
   /* Pack the cells. */
@@ -2048,11 +2048,14 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   }
 
   /* Allocate the buffers for the packed data */
-  struct gravity_tensors *buffer_send =
-      malloc(sizeof(struct gravity_tensors) * count_send);
-  struct gravity_tensors *buffer_recv =
-      malloc(sizeof(struct gravity_tensors) * count_recv);
-  if (buffer_send == NULL || buffer_recv == NULL)
+  struct gravity_tensors *buffer_send = NULL;
+  if (posix_memalign((void **)&buffer_send, SWIFT_CACHE_ALIGNMENT,
+                     count_send * sizeof(struct gravity_tensors)) != 0)
+    error("Unable to allocate memory for multipole transactions");
+
+  struct gravity_tensors *buffer_recv = NULL;
+  if (posix_memalign((void **)&buffer_recv, SWIFT_CACHE_ALIGNMENT,
+                     count_recv * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   /* Also allocate the MPI requests */
@@ -4893,8 +4896,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
       posix_memalign((void **)&xparts_new, xpart_align,
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
-  memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
-  memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
+  if (s->nr_parts > 0) {
+    memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
+    memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
+  }
   free(s->parts);
   free(s->xparts);
   s->parts = parts_new;
@@ -4913,7 +4918,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (posix_memalign((void **)&sparts_new, spart_align,
                      sizeof(struct spart) * s->size_sparts) != 0)
     error("Failed to allocate new spart data.");
-  memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
+  if (s->nr_sparts > 0)
+    memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
   free(s->sparts);
   s->sparts = sparts_new;
 
@@ -4930,7 +4936,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (posix_memalign((void **)&gparts_new, gpart_align,
                      sizeof(struct gpart) * s->size_gparts) != 0)
     error("Failed to allocate new gpart data.");
-  memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
+  if (s->nr_gparts > 0)
+    memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
   free(s->gparts);
   s->gparts = gparts_new;
 
@@ -5450,8 +5457,8 @@ void engine_init(struct engine *e, struct space *s,
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
-  if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
-                                            e->nr_threads)) == NULL)
+  if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
+                     e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
