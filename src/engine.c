@@ -5450,8 +5450,8 @@ void engine_init(struct engine *e, struct space *s,
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
-  if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
-                                            e->nr_threads)) == NULL)
+  if (posix_memalign((void *)&e->runners, SWIFT_STRUCT_ALIGNMENT,
+                     e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
