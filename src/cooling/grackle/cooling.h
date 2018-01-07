@@ -69,6 +69,7 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct cooling_function_data* cooling) {
 
   xp->cooling_data.radiated_energy = 0.f;
+
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
   xp->cooling_data.HI_density = 0.f;
@@ -139,12 +140,13 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 }
 
 /**
- * @brief Compute the cooling rate
+ * @brief Compute the cooling rate and update the particle chemistry data
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
  *
  * @return du / dt
@@ -156,8 +158,6 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp,
     float dt) {
-
-  if (cooling->chemistry.primordial_chemistry > 1) error("Not implemented");
 
   /* set current time */
   code_units units = cooling->units;
@@ -184,6 +184,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   gr_float density = hydro_get_physical_density(p, cosmo);
   const double energy_before = hydro_get_physical_internal_energy(p, cosmo);
   gr_float energy = energy_before;
+  /* v is useless with grackle 3.0 */
   gr_float vx = 0;
   gr_float vy = 0;
   gr_float vz = 0;
