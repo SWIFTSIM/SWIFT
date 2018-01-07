@@ -69,6 +69,34 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct cooling_function_data* cooling) {
 
   xp->cooling_data.radiated_energy = 0.f;
+#if COOLING_GRACKLE_MODE >= 1
+  /* primordial chemistry >= 1 */
+  xp->cooling_data.HI_density = 0.f;
+  xp->cooling_data.HII_density = 0.f;
+  xp->cooling_data.HeI_density = 0.f;
+  xp->cooling_data.HeII_density = 0.f;
+  xp->cooling_data.HeIII_density = 0.f;
+  xp->cooling_data.e_density = 0.f;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* primordial chemistry >= 2 */
+  xp->cooling_data.HM_density = 0.f;
+  xp->cooling_data.H2I_density = 0.f;
+  xp->cooling_data.H2II_density = 0.f;
+
+#if COOLING_GRACKLE_MODE >= 3
+  /* primordial chemistry >= 3 */
+  xp->cooling_data.DI_density = 0.f;
+  xp->cooling_data.DII_density = 0.f;
+  xp->cooling_data.HDI_density = 0.f;
+#endif // MODE >= 3
+
+#endif // MODE >= 2
+
+#endif // MODE >= 1
+  
+  /* metal cooling = 1 */
+  xp->cooling_data.metal_density = 0.f;
 }
 
 /**
@@ -168,24 +196,24 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  data.HI_density = &xp->HI_density;
-  data.HII_density = &xp->HII_density;
-  data.HeI_density = &xp->HeI_density;
-  data.HeII_density = &xp->HeII_density;
-  data.HeIII_density = &xp->HeIII_density;
-  data.e_density = &xp->e_density;
+  data.HI_density = &xp->cooling_data.HI_density;
+  data.HII_density = &xp->cooling_data.HII_density;
+  data.HeI_density = &xp->cooling_data.HeI_density;
+  data.HeII_density = &xp->cooling_data.HeII_density;
+  data.HeIII_density = &xp->cooling_data.HeIII_density;
+  data.e_density = &xp->cooling_data.e_density;
 
  #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  data.HM_density = &xp->HM_density;
-  data.H2I_density = &xp->H2I_density;
-  data.H2II_density = &xp->H2II_density;
+  data.HM_density = &xp->cooling_data.HM_density;
+  data.H2I_density = &xp->cooling_data.H2I_density;
+  data.H2II_density = &xp->cooling_data.H2II_density;
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  data.DI_density = &xp->DI_density;
-  data.DII_density = &xp->DII_density;
-  data.HDI_density = &xp->HDI_density;
+  data.DI_density = &xp->cooling_data.DI_density;
+  data.DII_density = &xp->cooling_data.DII_density;
+  data.HDI_density = &xp->cooling_data.HDI_density;
 #endif // MODE >= 3
 
 #endif // MODE >= 2
@@ -193,7 +221,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 #endif // MODE >= 1
 
   /* metal cooling = 1 */
-  data.metal_density = &xp->metal_density;
+  data.metal_density = &xp->cooling_data.metal_density;
 
   /* /\* volumetric heating rate *\/ */
   /* gr_float volumetric_heating_rate = 0.; */

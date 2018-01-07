@@ -88,7 +88,7 @@ struct cooling_xpart_data {
 #endif // MODE >= 1
   
   /* metal cooling = 1 */
-  gr_float metal_density = density * grackle_data->SolarMetalFractionByMass;
+  gr_float metal_density;
 };
 
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */
