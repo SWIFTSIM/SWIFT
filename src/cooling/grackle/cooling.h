@@ -30,6 +30,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "../config.h"
 #include "error.h"
 #include "hydro.h"
 #include "io_properties.h"
@@ -125,7 +126,8 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, float dt) {
+    struct part* restrict p, struct xpart* restrict xp,
+    float dt) {
 
   if (cooling->chemistry.primordial_chemistry > 1) error("Not implemented");
 
@@ -164,43 +166,34 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   data.y_velocity = &vy;
   data.z_velocity = &vz;
 
-  /* /\* primordial chemistry >= 1 *\/ */
-  /* gr_float HI_density = density; */
-  /* gr_float HII_density = 0.; */
-  /* gr_float HeI_density = 0.; */
-  /* gr_float HeII_density = 0.; */
-  /* gr_float HeIII_density = 0.; */
-  /* gr_float e_density = 0.; */
+#if COOLING_GRACKLE_MODE >= 1
+  /* primordial chemistry >= 1 */
+  data.HI_density = &xp->HI_density;
+  data.HII_density = &xp->HII_density;
+  data.HeI_density = &xp->HeI_density;
+  data.HeII_density = &xp->HeII_density;
+  data.HeIII_density = &xp->HeIII_density;
+  data.e_density = &xp->e_density;
 
-  /* data.HI_density = &HI_density; */
-  /* data.HII_density = &HII_density; */
-  /* data.HeI_density = &HeI_density; */
-  /* data.HeII_density = &HeII_density; */
-  /* data.HeIII_density = &HeIII_density; */
-  /* data.e_density = &e_density; */
+ #if COOLING_GRACKLE_MODE >= 2
+  /* primordial chemistry >= 2 */
+  data.HM_density = &xp->HM_density;
+  data.H2I_density = &xp->H2I_density;
+  data.H2II_density = &xp->H2II_density;
 
-  /* /\* primordial chemistry >= 2 *\/ */
-  /* gr_float HM_density = 0.; */
-  /* gr_float H2I_density = 0.; */
-  /* gr_float H2II_density = 0.; */
+#if COOLING_GRACKLE_MODE >= 3
+  /* primordial chemistry >= 3 */
+  data.DI_density = &xp->DI_density;
+  data.DII_density = &xp->DII_density;
+  data.HDI_density = &xp->HDI_density;
+#endif // MODE >= 3
 
-  /* data.HM_density = &HM_density; */
-  /* data.H2I_density = &H2I_density; */
-  /* data.H2II_density = &H2II_density; */
+#endif // MODE >= 2
 
-  /* /\* primordial chemistry >= 3 *\/ */
-  /* gr_float DI_density = 0.; */
-  /* gr_float DII_density = 0.; */
-  /* gr_float HDI_density = 0.; */
-
-  /* data.DI_density = &DI_density; */
-  /* data.DII_density = &DII_density; */
-  /* data.HDI_density = &HDI_density; */
+#endif // MODE >= 1
 
   /* metal cooling = 1 */
-  gr_float metal_density = density * grackle_data->SolarMetalFractionByMass;
-
-  data.metal_density = &metal_density;
+  data.metal_density = &xp->metal_density;
 
   /* /\* volumetric heating rate *\/ */
   /* gr_float volumetric_heating_rate = 0.; */
@@ -334,7 +327,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   chemistry->with_radiative_cooling = 1;
   /* molecular network with H, He, D
    From Cloudy table */
-  chemistry->primordial_chemistry = 0;
+  chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
   chemistry->metal_cooling = 1;  // metal cooling on
   chemistry->UVbackground = cooling->uv_background;
   chemistry->grackle_data_file = cooling->cloudy_table;

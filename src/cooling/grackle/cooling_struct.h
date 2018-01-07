@@ -22,6 +22,8 @@
 /* include grackle */
 #include <grackle.h>
 
+#include "../config.h"
+
 /**
  * @file src/cooling/none/cooling_struct.h
  * @brief Empty infrastructure for the cases without cooling function
@@ -58,6 +60,35 @@ struct cooling_xpart_data {
 
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
+
+#if COOLING_GRACKLE_MODE >= 1
+  /* primordial chemistry >= 1 */
+  gr_float HI_density;
+  gr_float HII_density;
+  gr_float HeI_density;
+  gr_float HeII_density;
+  gr_float HeIII_density;
+  gr_float e_density;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* primordial chemistry >= 2 */
+  gr_float HM_density;
+  gr_float H2I_density;
+  gr_float H2II_density;
+
+#if COOLING_GRACKLE_MODE >= 3
+  /* primordial chemistry >= 3 */
+  gr_float DI_density;
+  gr_float DII_density;
+  gr_float HDI_density;
+#endif // MODE >= 3
+
+#endif // MODE >= 2
+
+#endif // MODE >= 1
+  
+  /* metal cooling = 1 */
+  gr_float metal_density = density * grackle_data->SolarMetalFractionByMass;
 };
 
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */
