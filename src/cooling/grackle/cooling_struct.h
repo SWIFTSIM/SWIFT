@@ -52,12 +52,23 @@ struct cooling_function_data {
 };
 
 /**
- * @brief Properties of the cooling stored in the particle data
+ * @brief Properties of the cooling stored in the extra particle data
+ *
+ * theses data are not processed during the SPH density/force.
  */
 struct cooling_xpart_data {
 
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
+};
+
+/**
+ * @brief Properties of the cooling stored in the particle data
+ */
+struct cooling_part_data {
+
+  /*! Quick example */
+  float He_density;
 };
 
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */

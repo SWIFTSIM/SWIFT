@@ -23,6 +23,7 @@
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "cooling_io.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -53,6 +54,8 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
+
+  cooling_read_particles(parts, list, num_fields);
 }
 
 void convert_u(const struct engine* e, const struct part* p, float* ret) {
@@ -117,7 +120,9 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
                                               parts, convert_u);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, convert_P);
+
 #ifdef DEBUG_INTERACTIONS_SPH
+  
   list[10] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
                                   parts, num_ngb_density);
   list[11] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
@@ -129,6 +134,8 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
       io_make_output_field("Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
                            UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
 #endif
+
+  cooling_write_particles(parts, list, num_fields);
 }
 
 /**
@@ -145,6 +152,8 @@ void writeSPHflavour(hid_t h_grpsph) {
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
+
+  writeCoolingFlavor(h_grpsph);
 }
 
 /**

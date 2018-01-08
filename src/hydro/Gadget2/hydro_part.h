@@ -133,6 +133,8 @@ struct part {
   /* Time-step length */
   timebin_t time_bin;
 
+  struct cooling_part_data cooling_data;
+  
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

@@ -32,6 +32,7 @@
  * Gadget-2 tree-code neighbours search.
  */
 
+#include "cooling.h"
 #include "cache.h"
 #include "minmax.h"
 
@@ -103,6 +104,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
+
+  cooling_density_iact(wi, wj, pi, pj);
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
