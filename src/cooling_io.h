@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,40 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_H
-#define SWIFT_COOLING_H
-
-/**
- * @file src/cooling.h
- * @brief Branches between the different cooling functions.
- */
+#ifndef SWIFT_COOLING_IO_H
+#define SWIFT_COOLING_IO_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
+/* Import the right functions */
 #if defined(COOLING_NONE)
-#include "./cooling/none/cooling_iact.h"
-#include "./cooling/none/cooling.h"
+#include "./cooling/none/cooling_io.h"
 #elif defined(COOLING_CONST_DU)
-#include "./cooling/const_du/cooling_iact.h"
-#include "./cooling/const_du/cooling.h"
+#include "./cooling/const_du/cooling_io.h"
 #elif defined(COOLING_CONST_LAMBDA)
-#include "./cooling/const_lambda/cooling_iact.h"
-#include "./cooling/const_lambda/cooling.h"
+#include "./cooling/const_lambda/cooling_io.h"
 #elif defined(COOLING_GRACKLE)
-#include "./cooling/grackle/cooling_iact.h"
-#include "./cooling/grackle/cooling.h"
+#include "./cooling/grackle/cooling_io.h"
 #else
 #error "Invalid choice of cooling function."
 #endif
 
-/* Common functions */
-void cooling_init(const struct swift_params* parameter_file,
-                  const struct unit_system* us,
-                  const struct phys_const* phys_const,
-                  struct cooling_function_data* cooling);
-
-void cooling_print(const struct cooling_function_data* cooling);
-
-#endif /* SWIFT_COOLING_H */
+#endif /* SWIFT_COOLING_IO_H */
