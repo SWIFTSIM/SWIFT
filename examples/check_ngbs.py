@@ -15,8 +15,13 @@ error = False
 inputFile1 = ""
 inputFile2 = ""
 
+# Compare the values of two floats
+def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
 # Check list of density neighbours and check that they are correct.
-def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_invalid, acc):
+def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos,
+        h_naive, h_sort, num_invalid, acc):
 
     for k in range(0,num_invalid):
 
@@ -48,7 +53,7 @@ def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, nu
             pi_pos = pos[np.where(pids == pid)]
             pj_pos = pos[np.where(pids == pjd)]
             
-            hi = h[np.where(pids == pid)]
+            hi = h_naive[np.where(pids == pid)]
             
             dx = pi_pos[0][0] - pj_pos[0][0]
             dy = pi_pos[0][1] - pj_pos[0][1]
@@ -70,12 +75,21 @@ def check_density_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, nu
             if diff < acc * hig2:
                 print "Missing interaction due to precision issue will be ignored."
             else:
-                return True
+                hi_2 = h_sort[np.where(pids == pid)]
+
+                # If a neigbour is missing and the particle has the same h throw
+                # an error.
+                if(isclose(hi,hi_2)):
+                    print "Missing interaction found but particle has the same smoothing length (hi_1: %e, hi_2: %e)."%(hi, hi_2)
+                    return True
+                else:
+                    print "Missing interaction due to different smoothing lengths will be ignored (hi_1: %e, hi_2: %e)."%(hi, hi_2)
 
     return False
 
 # Check list of force neighbours and check that they are correct.
-def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_invalid, acc):
+def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos,
+        h_naive, h_sort, num_invalid, acc):
 
     error_val = False
 
@@ -95,8 +109,8 @@ def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_
             pi_pos = pos[np.where(pids == pid)]
             pj_pos = pos[np.where(pids == pjd)]
             
-            hi = h[np.where(pids == pid)]
-            hj = h[np.where(pids == pjd)]
+            hi = h_naive[np.where(pids == pid)]
+            hj = h_naive[np.where(pids == pjd)]
             
             dx = pi_pos[0][0] - pj_pos[0][0]
             dy = pi_pos[0][1] - pj_pos[0][1]
@@ -119,7 +133,12 @@ def check_force_neighbours(pids, ngb_ids_naive, ngb_ids_sort, mask, pos, h, num_
             if diff < acc * max(hig2,hjg2):
                 print "Missing interaction due to precision issue will be ignored."
             else:
-                error_val = True
+                hi_2 = h_sort[np.where(pids == pid)]
+                if(isclose(hi,hi_2)):
+                    print "Missing interaction due to the same smoothing lengths will not be ignored (hi_1: %e, hi_2: %e)."%(hi, hi_2)
+                    error_val = True
+                else:
+                    print "Missing interaction due to different smoothing lengths will be ignored (hi_1: %e, hi_2: %e)."%(hi, hi_2)
 
     return error_val
 
@@ -159,7 +178,7 @@ h_naive = file_naive["/PartType0/SmoothingLength"][:]
 h_sort = file_sort["/PartType0/SmoothingLength"][:]
 
 pos_naive = file_naive["/PartType0/Coordinates"][:,:]
-pos_sort = file_sort["/PartType0/Coordinates"][:,:]
+#pos_sort = file_sort["/PartType0/Coordinates"][:,:]
 
 num_density_naive = file_naive["/PartType0/Num_ngb_density"][:]
 num_density_sort = file_sort["/PartType0/Num_ngb_density"][:]
@@ -214,7 +233,7 @@ neighbour_ids_force_sort = neighbour_ids_force_sort[index_sort]
 h_naive = h_naive[index_naive]
 h_sort = h_sort[index_sort]
 pos_naive = pos_naive[index_naive]
-pos_sort = pos_sort[index_sort]
+#pos_sort = pos_sort[index_sort]
 
 neighbour_length_naive = len(neighbour_ids_density_naive[0])
 neighbour_length_sort = len(neighbour_ids_density_sort[0])
@@ -254,8 +273,8 @@ print ids_naive[mask_density]
 
 # Check density neighbour lists
 error += check_density_neighbours(ids_naive, neighbour_ids_density_naive,
-        neighbour_ids_density_sort, mask_density, pos_naive, h_naive,
-        num_invalid_density, 2e-4)
+        neighbour_ids_density_sort, mask_density, pos_naive, h_naive, h_sort,
+        num_invalid_density, 2e-6)
 
 print "Num of density interactions", inputFile1
 print num_density_naive[mask_density]
@@ -269,8 +288,8 @@ print ids_naive[mask_force]
 
 # Check force neighbour lists
 error += check_force_neighbours(ids_naive, neighbour_ids_force_naive,
-        neighbour_ids_force_sort, mask_force, pos_naive, h_naive,
-        num_invalid_force, 2e-4)
+        neighbour_ids_force_sort, mask_force, pos_naive, h_naive, h_sort,
+        num_invalid_force, 2e-6)
 
 print "Num of force interactions", inputFile1
 print num_force_naive[mask_force]
