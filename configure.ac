@@ -478,8 +478,8 @@ if test "x$with_grackle" != "xno"; then
       
    AC_CHECK_LIB(
       [grackle],
-      [initialize_grackle],
-      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.]),
+      [initialize_chemistry_data],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
       [AC_MSG_ERROR(Cannot find grackle library!)],

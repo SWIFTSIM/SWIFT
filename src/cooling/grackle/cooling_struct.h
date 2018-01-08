@@ -19,6 +19,9 @@
 #ifndef SWIFT_COOLING_STRUCT_NONE_H
 #define SWIFT_COOLING_STRUCT_NONE_H
 
+/* include grackle */
+#include <grackle.h>
+
 /**
  * @file src/cooling/none/cooling_struct.h
  * @brief Empty infrastructure for the cases without cooling function
@@ -30,16 +33,22 @@
 struct cooling_function_data {
 
   /* Filename of the Cloudy Table */
-  char GrackleCloudyTable[200];
+  char cloudy_table[200];
 
   /* Enable/Disable UV backgroud */
-  int UVbackground;
+  int uv_background;
 
   /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
-  double GrackleRedshift;
+  double redshift;
 
   /* Density Threshold for the shielding */
-  double GrackleHSShieldingDensityThreshold;
+  double density_self_shielding;
+
+  /* unit system */
+  code_units units;
+
+  /* grackle chemistry data */
+  chemistry_data chemistry;
 };
 
 /**
