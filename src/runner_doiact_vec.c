@@ -648,7 +648,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
  * @param r The #runner.
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE void runner_doself1_density_vec(
+void runner_doself1_density_vec(
     struct runner *r, struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
@@ -883,7 +883,7 @@ __attribute__((always_inline)) INLINE void runner_doself1_density_vec(
  * @param ind The list of indices of particles in @c c to interact with.
  * @param pi_count The number of particles in @c ind.
  */
-__attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
+void runner_doself_subset_density_vec(
     struct runner *r, struct cell *restrict c, struct part *restrict parts,
     int *restrict ind, int pi_count) {
 
@@ -1107,7 +1107,7 @@ __attribute__((always_inline)) INLINE void runner_doself_subset_density_vec(
  * @param r The #runner.
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE void runner_doself2_force_vec(
+void runner_doself2_force_vec(
     struct runner *r, struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
@@ -1299,7 +1299,7 @@ __attribute__((always_inline)) INLINE void runner_doself2_force_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair1_density_vec(
+void runner_dopair1_density_vec(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const double *shift) {
 
@@ -1678,7 +1678,7 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(
+void runner_dopair_subset_density_vec(
     struct runner *r, struct cell *restrict ci, struct part *restrict parts_i,
     int *restrict ind, int count, struct cell *restrict cj, const int sid,
     const int flipped, const double *shift) {
@@ -1981,7 +1981,7 @@ __attribute__((always_inline)) INLINE void runner_dopair_subset_density_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-__attribute__((always_inline)) INLINE void runner_dopair2_force_vec(
+void runner_dopair2_force_vec(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const double *shift) {
 
