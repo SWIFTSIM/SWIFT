@@ -648,8 +648,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec(
-    struct runner *r, struct cell *restrict c) {
+void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -883,9 +882,9 @@ void runner_doself1_density_vec(
  * @param ind The list of indices of particles in @c c to interact with.
  * @param pi_count The number of particles in @c ind.
  */
-void runner_doself_subset_density_vec(
-    struct runner *r, struct cell *restrict c, struct part *restrict parts,
-    int *restrict ind, int pi_count) {
+void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
+                                      struct part *restrict parts,
+                                      int *restrict ind, int pi_count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1107,8 +1106,7 @@ void runner_doself_subset_density_vec(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself2_force_vec(
-    struct runner *r, struct cell *restrict c) {
+void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1299,9 +1297,9 @@ void runner_doself2_force_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair1_density_vec(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const double *shift) {
+void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+                                struct cell *cj, const int sid,
+                                const double *shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1390,9 +1388,10 @@ void runner_dopair1_density_vec(
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index_density(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max,
-                     di_max, dj_min, max_index_i, max_index_j, &first_pi,
-                     &last_pj, max_active_bin, active_ci, active_cj);
+  populate_max_index_density(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max,
+                             hj_max, di_max, dj_min, max_index_i, max_index_j,
+                             &first_pi, &last_pj, max_active_bin, active_ci,
+                             active_cj);
 
   /* Limits of the outer loops. */
   const int first_pi_loop = first_pi;
@@ -1678,10 +1677,12 @@ void runner_dopair1_density_vec(
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair_subset_density_vec(
-    struct runner *r, struct cell *restrict ci, struct part *restrict parts_i,
-    int *restrict ind, int count, struct cell *restrict cj, const int sid,
-    const int flipped, const double *shift) {
+void runner_dopair_subset_density_vec(struct runner *r,
+                                      struct cell *restrict ci,
+                                      struct part *restrict parts_i,
+                                      int *restrict ind, int count,
+                                      struct cell *restrict cj, const int sid,
+                                      const int flipped, const double *shift) {
 
 #ifdef WITH_VECTORIZATION
 
@@ -1845,8 +1846,7 @@ void runner_dopair_subset_density_vec(
         runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subset(cj, cj_cache, sort_j, &first_pj, 0, ci->loc,
-                                 1);
+    cache_read_particles_subset(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
 
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;
@@ -1981,9 +1981,9 @@ void runner_dopair_subset_density_vec(
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair2_force_vec(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const double *shift) {
+void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+                              struct cell *cj, const int sid,
+                              const double *shift) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
