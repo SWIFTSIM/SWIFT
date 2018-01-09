@@ -493,9 +493,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    const struct engine *e = r->e;
     if (!part_is_active(pi, e))
       error("Trying to correct smoothing length of inactive particle !");
-
 #endif
 
     /* Loop over the parts in cj. */
@@ -590,6 +590,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -637,6 +638,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
