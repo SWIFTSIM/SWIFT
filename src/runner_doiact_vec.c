@@ -262,7 +262,7 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  * @param active_ci Is any particle in cell ci active?
  * @param active_cj Is any particle in cell cj active?
  */
-__attribute__((always_inline)) INLINE static void populate_max_index(
+__attribute__((always_inline)) INLINE static void populate_max_index_density(
     const struct cell *ci, const struct cell *cj,
     const struct entry *restrict sort_i, const struct entry *restrict sort_j,
     const float dx_max, const float rshift, const double hi_max,
@@ -1390,7 +1390,7 @@ __attribute__((always_inline)) INLINE void runner_dopair1_density_vec(
   /* Find particles maximum index into cj, max_index_i[] and ci, max_index_j[].
    * Also find the first pi that interacts with any particle in cj and the last
    * pj that interacts with any particle in ci. */
-  populate_max_index(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max,
+  populate_max_index_density(ci, cj, sort_i, sort_j, dx_max, rshift, hi_max, hj_max,
                      di_max, dj_min, max_index_i, max_index_j, &first_pi,
                      &last_pj, max_active_bin, active_ci, active_cj);
 

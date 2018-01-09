@@ -253,9 +253,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
   /* The cell is on the right so read the particles
    * into the cache from the start of the cell. */
   if (!flipped) {
-    int rem = (*last_pi + 1) % VEC_SIZE;
+    const int rem = (*last_pi + 1) % VEC_SIZE;
     if (rem != 0) {
-      int pad = VEC_SIZE - rem;
+      const int pad = VEC_SIZE - rem;
 
       /* Increase last_pi if there are particles in the cell left to read. */
       if (*last_pi + pad < ci->count) *last_pi += pad;
@@ -299,15 +299,15 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
   /* The cell is on the left so read the particles
    * into the cache from the end of the cell. */
   else {
-    int rem = (ci->count - *first_pi) % VEC_SIZE;
+    const int rem = (ci->count - *first_pi) % VEC_SIZE;
     if (rem != 0) {
-      int pad = VEC_SIZE - rem;
+      const int pad = VEC_SIZE - rem;
 
       /* Decrease first_pi if there are particles in the cell left to read. */
       if (*first_pi - pad >= 0) *first_pi -= pad;
     }
 
-    int ci_cache_count = ci->count - *first_pi;
+    const int ci_cache_count = ci->count - *first_pi;
 
     /* Shift the particles positions to a local frame so single precision can be
      * used instead of double precision. */
