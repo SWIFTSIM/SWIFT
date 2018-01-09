@@ -77,6 +77,9 @@
 #define _DOSELF_SUBSET(f) PASTE(runner_doself_subset, f)
 #define DOSELF_SUBSET _DOSELF_SUBSET(FUNCTION)
 
+#define _DOSELF_SUBSET_BRANCH(f) PASTE(runner_doself_subset_branch, f)
+#define DOSELF_SUBSET_BRANCH _DOSELF_SUBSET_BRANCH(FUNCTION)
+
 #define _DOSUB_SELF1(f) PASTE(runner_dosub_self1, f)
 #define DOSUB_SELF1 _DOSUB_SELF1(FUNCTION)
 
@@ -781,6 +784,27 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   }   /* loop over the parts in ci. */
 
   TIMER_TOC(timer_doself_subset);
+}
+
+/**
+ * @brief Determine which version of DOSELF_SUBSET needs to be called depending
+ * on the optimisation level.
+ 
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts The #part to interact.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ */
+void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
+                          struct part *restrict parts, int *restrict ind,
+                          int count) {
+
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+    runner_doself_subset_density_vec(r, ci, parts, ind, count);
+#else
+    DOSELF_SUBSET(r, ci, parts, ind, count);
+#endif
 }
 
 /**
@@ -2487,11 +2511,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Otherwise, compute self-interaction. */
     else
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
-      runner_doself_subset_density_vec(r, ci, parts, ind, count);
-#else
-      DOSELF_SUBSET(r, ci, parts, ind, count);
-#endif
+      DOSELF_SUBSET_BRANCH(r, ci, parts, ind, count);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
