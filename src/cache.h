@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
  * @param loc The cell location to remove from the particle positions.
  * @param flipped Flag to check whether the cells have been flipped or not.
  */
-__attribute__((always_inline)) INLINE void cache_read_particles_subpair(
+__attribute__((always_inline)) INLINE void cache_read_particles_subset(
     const struct cell *restrict const ci, struct cache *restrict const ci_cache,
     const struct entry *restrict sort_i, int *first_pi, int *last_pi,
     const double *loc, const int flipped) {
