@@ -1179,7 +1179,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
   const int nodeID = s->nodeID;
-  const float wscale = 0.001;
+  const float wscale = 0.001f;
   const ticks tic = getticks();
 
   /* Run through the tasks backwards and set their weights. */
@@ -1198,47 +1198,47 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
       case task_type_self:
         if (t->subtype == task_subtype_grav)
-          cost = 1 * wscale * t->ci->gcount * t->ci->gcount;
+          cost = 1.f * (wscale * t->ci->gcount) * t->ci->gcount;
         else if (t->subtype == task_subtype_external_grav)
-          cost = 1 * wscale * t->ci->gcount;
+          cost = 1.f * wscale * t->ci->gcount;
         else
-          cost = 1 * wscale * t->ci->count * t->ci->count;
+          cost = 1.f * (wscale * t->ci->count) * t->ci->count;
         break;
 
       case task_type_pair:
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3 * wscale * t->ci->gcount * t->cj->gcount;
+            cost = 3.f * (wscale * t->ci->gcount) * t->cj->gcount;
           else
-            cost = 2 * wscale * t->ci->gcount * t->cj->gcount;
+            cost = 2.f * (wscale * t->ci->gcount) * t->cj->gcount;
         } else {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost =
-                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+	      3.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
           else
             cost =
-                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+	      2.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
         }
         break;
 
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
-            cost = 3 * wscale * t->ci->count * t->cj->count;
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count;
           else
             cost =
-                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+	      3.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
         } else {
           if (t->flags < 0)
-            cost = 2 * wscale * t->ci->count * t->cj->count;
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count;
           else
             cost =
-                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+	      2.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
         }
         break;
 
       case task_type_sub_self:
-        cost = 1 * wscale * t->ci->count * t->ci->count;
+        cost = 1.f * (wscale * t->ci->count) * t->ci->count;
         break;
       case task_type_ghost:
         if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
@@ -1274,10 +1274,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_send:
-        cost = 10 * wscale * t->ci->count * t->ci->count;
+	if(t->ci->count < 1e5)
+	  cost = 10.f * (wscale * t->ci->count) * t->ci->count;
+	else
+	  cost = 2e9;
         break;
       case task_type_recv:
-        cost = 5 * wscale * t->ci->count * t->ci->count;
+	if(t->ci->count < 1e5)
+	  cost = 5.f * (wscale * t->ci->count) * t->ci->count;
+	else
+	  cost = 1e9;
         break;
       default:
         cost = 0;
