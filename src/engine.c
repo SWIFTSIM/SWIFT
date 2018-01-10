@@ -4251,15 +4251,17 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     /* Sorting should put the same positions next to each other... */
     int failed = 0;
     double *prev_x = s->parts[0].x;
+    long long *prev_id = &s->parts[0].id;
     for (size_t k = 1; k < s->nr_parts; k++) {
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
-          message("Two particles occupy location: %f %f %f", prev_x[0],
-                  prev_x[1], prev_x[2]);
+          message("Two particles occupy location: %f %f %f id=%lld id=%lld", prev_x[0],
+                  prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
         failed++;
       }
       prev_x = s->parts[k].x;
+      prev_id = &s->parts[k].id;
     }
     if (failed > 0)
       error(
