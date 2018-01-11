@@ -42,6 +42,15 @@
 
 char LOGGER_VERSION[LOGGER_VERSION_SIZE] = "0.1";
 
+const unsigned int logger_data_size[logger_data_count] = {
+  sizeof(int),
+  sizeof(float),
+  sizeof(double),
+  sizeof(char),
+  sizeof(long long),
+  1,
+};
+
 void logger_write_data(struct dump *d, size_t *offset, const size_t size, void *const p)
 {
   char *buff = dump_get(d, size, offset);
@@ -64,13 +73,9 @@ void logger_write_general_data(struct dump *d, struct logger_const *log, size_t 
   memcpy(buff, &data_type, LOGGER_DATATYPE_SIZE);
 
   /* write value */
-  size_t size = 0;
-  if (data_type == logger_data_double)
-    size = sizeof(double);
-  else if (data_type == logger_data_longlong)
-    size = sizeof(long long);
-  else
+  if (data_type >= logger_data_count)
     error("Not implemented");
+  size_t size = logger_data_size[data_type];
   
   buff = dump_get(d, size, offset);
   memcpy(buff, p, size);
@@ -346,6 +351,10 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
  
   /* write number of bytes used for the offsets */
   logger_write_data(dump, &file_offset, LOGGER_OFFSET_SIZE, &log_const.offset);
+
+  /* write offset direction */
+  int reversed = 0;
+  logger_write_data(dump, &file_offset, logger_data_size[logger_data_bool], &reversed);
 
   /* will write the offset of the first particle here */
   skip_header = dump_get(dump, log_const.offset, &file_offset);

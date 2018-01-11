@@ -109,7 +109,11 @@ enum logger_datatype {
   logger_data_double,
   logger_data_char,
   logger_data_longlong,
+  logger_data_bool,
+  logger_data_count /* should be last */
 };
+
+extern const unsigned int logger_data_size[];
 
 /* Function prototypes. */
 int logger_size(unsigned int mask);
