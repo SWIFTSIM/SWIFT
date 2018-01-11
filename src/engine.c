@@ -489,6 +489,51 @@ static void *engine_do_redistribute(int *counts, char *parts,
 }
 #endif
 
+struct redist_mapper_data {
+  struct space *s;
+  int *dest;
+  int *counts;
+  void *base;
+};
+
+void engine_parts_dest_mapper(void *map_data, int num_elements,
+                              void *extra_data) {
+  struct part *parts = (struct part *)map_data;
+
+  struct redist_mapper_data *data = (struct redist_mapper_data *)extra_data;
+  const double *dim = data->s->dim;
+  const double *iwidth = data->s->iwidth;
+  const int *cdim = data->s->cdim;
+  struct cell *cells = data->s->cells_top;
+
+  int *dest = data->dest + (parts - (struct part *)data->base);
+  int *counts = data->counts;
+
+  for (int k = 0; k < num_elements; k++) {
+
+    /* Periodic boundary conditions */
+    for (int j = 0; j < 3; j++) {
+      if (parts[k].x[j] < 0.0)
+        parts[k].x[j] += dim[j];
+      else if (parts[k].x[j] >= dim[j])
+        parts[k].x[j] -= dim[j];
+    }
+    const int cid =
+        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
+                   parts[k].x[2] * iwidth[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
+            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
+#endif
+
+    dest[k] = cells[cid].nodeID;
+
+    /* The counts array is indexed as count[from * nr_nodes + to]. */
+    atomic_inc(&counts[dest[k]]);
+  }
+}
+
 /**
  * @brief Redistribute the particles amongst the nodes according
  *      to their cell's node IDs.
@@ -534,29 +579,10 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate dest temporary buffer.");
 
   /* Get destination of each particle */
-  for (size_t k = 0; k < s->nr_parts; k++) {
-
-    /* Periodic boundary conditions */
-    for (int j = 0; j < 3; j++) {
-      if (parts[k].x[j] < 0.0)
-        parts[k].x[j] += dim[j];
-      else if (parts[k].x[j] >= dim[j])
-        parts[k].x[j] -= dim[j];
-    }
-    const int cid =
-        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
-                   parts[k].x[2] * iwidth[2]);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
-            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
-#endif
-
-    dest[k] = cells[cid].nodeID;
-
-    /* The counts array is indexed as count[from * nr_nodes + to]. */
-    counts[nodeID * nr_nodes + dest[k]] += 1;
-  }
+  struct redist_mapper_data parts_data = {s, dest, &counts[nodeID * nr_nodes],
+                                          parts};
+  threadpool_map(&e->threadpool, engine_parts_dest_mapper, parts, s->nr_parts,
+                 sizeof(struct part), 0, &parts_data);
 
   /* Sort the particles according to their cell index. */
   if (s->nr_parts > 0)
@@ -958,9 +984,9 @@ void engine_redistribute(struct engine *e) {
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+  // if (e->verbose)
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -4256,8 +4282,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
-          message("Two particles occupy location: %f %f %f id=%lld id=%lld", prev_x[0],
-                  prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
+          message("Two particles occupy location: %f %f %f id=%lld id=%lld",
+                  prev_x[0], prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
         failed++;
       }
       prev_x = s->parts[k].x;
