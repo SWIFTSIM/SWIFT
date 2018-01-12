@@ -42,6 +42,7 @@ int main() {
   const double boxSize = 1.;
   const size_t L = 4;
   const double rho = 2.;
+  const float He_density = rho * 0.24;
 
   /* Read data */
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
@@ -92,6 +93,13 @@ int main() {
     assert(parts[n].a_hydro[0] == 0.);
     assert(parts[n].a_hydro[1] == 0.);
     assert(parts[n].a_hydro[2] == 0.);
+
+#ifdef COOLING_GRACKLE
+    printf("Test %g, %g, %g\n", parts[n].cooling_data.He_density,
+	   He_density,
+	   parts[n].cooling_data.He_density-He_density);
+    assert(parts[n].cooling_data.He_density == He_density);
+#endif
   }
 
   /* Clean-up */

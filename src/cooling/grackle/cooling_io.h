@@ -33,7 +33,7 @@ void cooling_read_particles(struct part* parts, struct io_props* list,
   *num_fields += 1;
 
   /* List what we want to read */
-  list[0] = io_make_input_field("HeDensity", FLOAT, 1, OPTIONAL,
+  list[0] = io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_DENSITY, parts, cooling_data.He_density);
 
 }
