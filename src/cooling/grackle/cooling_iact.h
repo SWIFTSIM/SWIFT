@@ -25,8 +25,8 @@
 __attribute__((always_inline)) INLINE static void cooling_density_iact(
     float wi, float wj, struct part *pi, struct part *pj) {
 
-  float diff = pi->cooling_data.He_density - pj->cooling_data.He_density;
+  /* float diff = pi->cooling_data.He_density - pj->cooling_data.He_density; */
 
-  pi->cooling_data.He_density += wj * diff;
-  pj->cooling_data.He_density += wi * diff;
+  /* pi->cooling_data.He_density += wj * diff; */
+  /* pj->cooling_data.He_density += wi * diff; */
 };
