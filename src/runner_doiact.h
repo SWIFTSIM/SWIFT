@@ -862,6 +862,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       struct part *restrict pi = &parts_i[sort_i[pid].i];
       const float hi = pi->h;
 
+      //MATTHIEU
+      if(hi > ci->h_max) error("Invalid ci->h_max");
+      
       /* Skip inactive particles */
       if (!part_is_active(pi, e)) continue;
 
@@ -942,6 +945,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       struct part *pj = &parts_j[sort_j[pjd].i];
       const float hj = pj->h;
 
+      //MATTHIEU
+      if(hj > cj->h_max) error("Invalid ci->h_max");
+
+      
       /* Skip inactive particles */
       if (!part_is_active(pj, e)) continue;
 

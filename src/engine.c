@@ -97,6 +97,7 @@ const char *engine_policy_names[] = {"none",
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
+extern int outputCount;
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -4385,6 +4386,65 @@ void engine_step(struct engine *e) {
       engine_drift_top_multipoles(e);
   }
 
+  // MATTHIEU ---------------
+
+  //  const int cell_count = e->s->nr_parts / (e->s->cdim[0] * e->s->cdim[1]);
+  
+  for(size_t i = 0; i < e->s->nr_parts; ++i) {
+
+    const struct part *p = &e->s->parts[i];
+
+    /* find cell */
+    int cid = 0;
+    for(; cid < e->s->nr_cells - 1; ++cid)
+      if(p >= e->s->cells_top[cid].parts && p < e->s->cells_top[cid+1].parts)
+	break;
+    const struct cell *c = &e->s->cells_top[cid];
+    
+    //if(c->count != cell_count) error("oO");
+    
+
+    const int c_active = cell_is_active_hydro(c, e);
+    const int p_active = part_is_active(p, e);
+
+    if(p_active && !c_active) error("Inactive cell with active particle");
+
+    if(p->h > c->h_max) error("Invalid h");
+    
+    if(c_active) {
+
+      int count_density = 0;
+      
+      /* Loop over the density task of the cell */
+      for(struct link *l = c->density; l != NULL; l = l->next) {
+
+	const struct task *t = l->t;
+	if(t->skip) error("Skipped density task");
+
+	++count_density;
+	
+      }
+      if(count_density != 9) error("Incorrect number of density tasks");
+      
+      int count_force = 0;
+      
+      /* Loop over the force task of the cell */
+      for(struct link *l = c->force; l != NULL; l = l->next) {
+
+	const struct task *t = l->t;
+	if(t->skip) error("Skipped force task");
+
+	++count_force;
+	
+      }
+
+      if(count_force != 9) error("Incorrect number of force tasks");
+    }
+  }
+
+
+  // MATTHIEU ---------------
+      
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -5000,6 +5060,26 @@ void engine_dump_snapshot(struct engine *e) {
   if (e->verbose) message("writing snapshot at t=%e.", e->time);
 #endif
 
+  /* char filename[100]; */
+  /* sprintf(filename, "cells_%04i.dat", outputCount); */
+  /* FILE *file_cell = fopen(filename, "w"); */
+  
+  /* for(int i=0; i<e->s->nr_cells; ++i) { */
+
+  /*   const struct cell *c = &e->s->cells_top[i]; */
+
+  /*   if(c->count > 0){ */
+  /*     fprintf(file_cell, "%e %e %e %e %d %d %lld %lld\n", */
+  /* 	      c->loc[0], c->loc[1], c->width[0], c->width[1], */
+  /* 	      c->count, c->split, */
+  /* 	      c->ti_hydro_end_min,  c->ti_hydro_end_max); */
+  /*   } */
+    
+  /* } */
+
+  /* fclose(file_cell); */
+
+  
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -5015,7 +5095,7 @@ void engine_dump_snapshot(struct engine *e) {
   write_output_single(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits);
 #endif
-
+		
   e->dump_snapshot = 0;
 
   clocks_gettime(&time2);
