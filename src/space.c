@@ -1081,10 +1081,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if(index < 0 || index > cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
-	    cdim[0], cdim[1], cdim[2], pos_x, pos_y, pos_z);
-    
+    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
@@ -1143,16 +1143,16 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if(index < 0 || index > cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
-	    cdim[0], cdim[1], cdim[2], pos_x, pos_y, pos_z);
-    
+    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
-    
+
     /* Update the position */
     gp->x[0] = pos_x;
     gp->x[1] = pos_y;
@@ -1205,16 +1205,16 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if(index < 0 || index > cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
-	    cdim[0], cdim[1], cdim[2], pos_x, pos_y, pos_z);
-    
+    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
-    
+
     /* Update the position */
     sp->x[0] = pos_x;
     sp->x[1] = pos_y;
@@ -2635,10 +2635,6 @@ void space_first_init_parts(struct space *s) {
     p[i].v[1] = p[i].v[2] = 0.f;
 #endif
 
-    double temp = p[i].v[0];
-    p[i].v[0] = p[i].v[1];
-    p[i].v[1] = temp;
-    
     hydro_first_init_part(&p[i], &xp[i]);
 
 #ifdef SWIFT_DEBUG_CHECKS
