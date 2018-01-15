@@ -1081,7 +1081,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -1143,7 +1143,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -1205,7 +1205,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index > cdim[0] * cdim[1] * cdim[2])
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
