@@ -1213,11 +1213,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * (wscale * t->ci->gcount) * t->cj->gcount;
         } else {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost =
-	      3.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
           else
-            cost =
-	      2.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
         }
         break;
 
@@ -1226,14 +1226,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           if (t->flags < 0)
             cost = 3.f * (wscale * t->ci->count) * t->cj->count;
           else
-            cost =
-	      3.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
         } else {
           if (t->flags < 0)
             cost = 2.f * (wscale * t->ci->count) * t->cj->count;
           else
-            cost =
-	      2.f * (wscale * t->ci->count) * t->cj->count * sid_scale[t->flags];
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
         }
         break;
 
@@ -1274,16 +1274,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_send:
-	if(t->ci->count < 1e5)
-	  cost = 10.f * (wscale * t->ci->count) * t->ci->count;
-	else
-	  cost = 2e9;
+        if (t->ci->count < 1e5)
+          cost = 10.f * (wscale * t->ci->count) * t->ci->count;
+        else
+          cost = 2e9;
         break;
       case task_type_recv:
-	if(t->ci->count < 1e5)
-	  cost = 5.f * (wscale * t->ci->count) * t->ci->count;
-	else
-	  cost = 1e9;
+        if (t->ci->count < 1e5)
+          cost = 5.f * (wscale * t->ci->count) * t->ci->count;
+        else
+          cost = 1e9;
         break;
       default:
         cost = 0;

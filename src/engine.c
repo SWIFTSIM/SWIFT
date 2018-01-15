@@ -4256,8 +4256,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
-          message("Two particles occupy location: %f %f %f id=%lld id=%lld", prev_x[0],
-                  prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
+          message("Two particles occupy location: %f %f %f id=%lld id=%lld",
+                  prev_x[0], prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
         failed++;
       }
       prev_x = s->parts[k].x;

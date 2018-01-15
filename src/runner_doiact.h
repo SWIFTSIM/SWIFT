@@ -789,7 +789,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 /**
  * @brief Determine which version of DOSELF_SUBSET needs to be called depending
  * on the optimisation level.
- 
+
  * @param r The #runner.
  * @param ci The first #cell.
  * @param parts The #part to interact.
@@ -801,9 +801,9 @@ void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
                           int count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
-    runner_doself_subset_density_vec(r, ci, parts, ind, count);
+  runner_doself_subset_density_vec(r, ci, parts, ind, count);
 #else
-    DOSELF_SUBSET(r, ci, parts, ind, count);
+  DOSELF_SUBSET(r, ci, parts, ind, count);
 #endif
 }
 
