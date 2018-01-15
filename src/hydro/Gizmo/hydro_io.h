@@ -131,7 +131,7 @@ void convert_part_pos(const struct engine* e, const struct part* p,
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -155,8 +155,6 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  parts, primitives.P);
   list[9] = io_make_output_field_convert_part(
       "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, convert_Etot);
-
-  list[10] = io_make_output_field("Time_bin", CHAR, 1, UNIT_CONV_NO_UNITS, parts, time_bin);
 }
 
 /**

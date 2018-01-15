@@ -50,8 +50,6 @@
 #include "units.h"
 #include "xmf.h"
 
-int outputCount = 0;
-
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/
@@ -576,7 +574,7 @@ void write_output_single(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  //static int outputCount = 0;
+  static int outputCount = 0;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
