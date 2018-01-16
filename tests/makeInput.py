@@ -19,6 +19,7 @@
 
 import h5py
 from numpy import *
+import re as regex
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
@@ -32,12 +33,24 @@ P = 1.           # Pressure
 gamma = 5./3.    # Gas adiabatic index
 fileName = "input.hdf5" 
 
+# read flags from config.h
+flags = {}
+config_file = "../config.h"
+with open(config_file, "r") as f:
+    reg = "#define (\w*) (.*)\n"
+    for line in f:
+        m = regex.match(reg, line)
+        if m:
+            flags[m.group(1)] = m.group(2)
+
+cooling_grackle = "COOLING_GRACKLE" in flags
 
 #---------------------------------------------------
 numPart = L**3
 mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.)*rho)
-he_density = rho * 0.24
+if cooling_grackle:
+    he_density = rho * 0.24
 
 #Generate particles
 coords = zeros((numPart, 3))
@@ -46,7 +59,8 @@ m      = zeros((numPart, 1))
 h      = zeros((numPart, 1))
 u      = zeros((numPart, 1))
 ids    = zeros((numPart, 1), dtype='L')
-he = zeros((numPart, 1))
+if cooling_grackle:
+    he = zeros((numPart, 1))
 
 for i in range(L):
     for j in range(L):
@@ -65,7 +79,8 @@ for i in range(L):
             h[index] = 2.251 * boxSize / L
             u[index] = internalEnergy
             ids[index] = index
-            he[index] = he_density
+            if cooling_grackle:
+                he[index] = he_density
             
 
 #--------------------------------------------------
@@ -112,7 +127,8 @@ ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
 ds[()] = u
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
 ds[()] = ids
-ds = grp.create_dataset('HeDensity', (numPart, 1), 'f')
-ds[()] = he
+if cooling_grackle:
+    ds = grp.create_dataset('HeDensity', (numPart, 1), 'f')
+    ds[()] = he
 
 file.close()
