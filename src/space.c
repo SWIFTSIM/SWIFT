@@ -60,8 +60,9 @@
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
-int space_subsize_pair = space_subsize_pair_default;
-int space_subsize_self = space_subsize_self_default;
+int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
+int space_subsize_self_hydro = space_subsize_self_hydro_default;
+int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2861,21 +2862,29 @@ void space_init(struct space *s, const struct swift_params *params,
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
                                            space_maxsize_default);
-  space_subsize_pair = parser_get_opt_param_int(
-      params, "Scheduler:cell_sub_size_pair", space_subsize_pair_default);
-  space_subsize_self = parser_get_opt_param_int(
-      params, "Scheduler:cell_sub_size_self", space_subsize_self_default);
+  space_subsize_pair_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
+                               space_subsize_pair_hydro_default);
+  space_subsize_self_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
+                               space_subsize_self_hydro_default);
+  space_subsize_pair_grav =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
+                               space_subsize_pair_grav_default);
   space_subsize_self_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
 
-  if (verbose)
-    message(
-        "max_size set to %d, sub_size_pair set to %d, sub_size_self set to %d, "
-        "split_size set to %d",
-        space_maxsize, space_subsize_pair, space_subsize_self, space_splitsize);
+  if (verbose) {
+    message("max_size set to %d split_size set to %d", space_maxsize,
+            space_splitsize);
+    message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
+            space_subsize_pair_hydro, space_subsize_self_hydro);
+    message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
+            space_subsize_pair_grav, space_subsize_self_grav);
+  }
 
   /* Apply h scaling */
   const double scaling =

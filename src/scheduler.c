@@ -359,7 +359,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       if (cell_can_split_self_task(ci)) {
 
         /* Make a sub? */
-        if (scheduler_dosub && ci->count < space_subsize_self) {
+        if (scheduler_dosub && ci->count < space_subsize_self_hydro) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -419,7 +419,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            ci->count * sid_scale[sid] < space_subsize_pair / cj->count &&
+            ci->count * sid_scale[sid] < space_subsize_pair_hydro / cj->count &&
             !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
