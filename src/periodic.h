@@ -31,12 +31,12 @@
  * Only wraps once. If x > 2b, the returned value will be larger than b.
  * Similarly for x < -b.
  */
-#define box_wrap(x, a, b)                               \
-  ({                                                    \
-    const __typeof__(x) _x = (x);                       \
-    const __typeof__(a) _a = (a);                       \
-    const __typeof__(b) _b = (b);                       \
-    _x < _a ? (_x + _b) : ((_x > _b) ? (_x - _b) : _x); \
+#define box_wrap(x, a, b)                                \
+  ({                                                     \
+    const __typeof__(x) _x = (x);                        \
+    const __typeof__(a) _a = (a);                        \
+    const __typeof__(b) _b = (b);                        \
+    _x < _a ? (_x + _b) : ((_x >= _b) ? (_x - _b) : _x); \
   })
 
 /**

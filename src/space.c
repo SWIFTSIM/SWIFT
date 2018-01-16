@@ -1082,7 +1082,11 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     ind[k] = index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (pos_x > dim_x || pos_y > dim_y || pos_z > pos_z || pos_x < 0. ||
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
+    if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
@@ -1139,6 +1143,17 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
+    if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
+        pos_y < 0. || pos_z < 0.)
+      error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
+            pos_z);
+#endif
+
     /* Update the position */
     gp->x[0] = pos_x;
     gp->x[1] = pos_y;
@@ -1189,6 +1204,17 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
+    if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
+        pos_y < 0. || pos_z < 0.)
+      error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
+            pos_z);
+#endif
 
     /* Update the position */
     sp->x[0] = pos_x;
@@ -2613,8 +2639,8 @@ void space_first_init_parts(struct space *s) {
     hydro_first_init_part(&p[i], &xp[i]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    p->ti_drift = 0;
-    p->ti_kick = 0;
+    p[i].ti_drift = 0;
+    p[i].ti_kick = 0;
 #endif
   }
 }
