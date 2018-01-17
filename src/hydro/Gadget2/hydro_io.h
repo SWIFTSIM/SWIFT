@@ -154,7 +154,7 @@ void writeSPHflavour(hid_t h_grpsph) {
   io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
 
   writeCoolingFlavor(h_grpsph);
-  writeChesmitryFlavor(h_grpsph);
+  writeChemistryFlavor(h_grpsph);
 }
 
 /**
