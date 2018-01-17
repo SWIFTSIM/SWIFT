@@ -935,7 +935,7 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, gear default: none@:>@]
+      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
@@ -946,6 +946,9 @@ case "$with_chemistry" in
    ;; 
    gear)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+   ;; 
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
    ;; 
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])

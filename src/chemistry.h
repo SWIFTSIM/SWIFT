@@ -33,6 +33,8 @@
 #include "./chemistry/none/chemistry.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/gear/chemistry.h"
+#elif defined(CHEMISTRY_EAGLE)
+#include "./chemistry/EAGLE/chemistry.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

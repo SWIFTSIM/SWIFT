@@ -32,6 +32,8 @@
 #include "./chemistry/none/chemistry_struct.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/gear/chemistry_struct.h"
+#elif defined(CHEMISTRY_EAGLE)
+#include "./chemistry/EAGLE/chemistry_struct.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif
