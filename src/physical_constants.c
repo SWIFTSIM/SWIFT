@@ -27,6 +27,7 @@
 /* Local headers. */
 #include "error.h"
 #include "physical_constants_cgs.h"
+#include "restart.h"
 
 /**
  * @brief Converts physical constants to the internal unit system
@@ -120,4 +121,32 @@ void phys_const_print(struct phys_const* internal_const) {
           internal_const->const_astronomical_unit);
   message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
+}
+
+/**
+ * @brief Write a phys_const struct to the given FILE as a stream of bytes.
+ *
+ * @param internal_const the struct
+ * @param stream the file stream
+ */
+void phys_const_struct_dump(const struct phys_const *internal_const,
+                            FILE *stream) {
+    restart_write_blocks((void *) internal_const, sizeof(struct phys_const),
+                         1, stream,
+                       "phys_const params");
+}
+
+
+/**
+ * @brief Restore a phys_const struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param internal_const the struct
+ * @param stream the file stream
+ */
+void phys_const_struct_restore(const struct phys_const *internal_const,
+                               FILE *stream) {
+    restart_read_blocks((void *)internal_const, sizeof(struct phys_const),
+                        1, stream,
+                      "phys_const params");
 }

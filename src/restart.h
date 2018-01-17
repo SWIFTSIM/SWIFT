@@ -19,6 +19,10 @@
 #ifndef SWIFT_RESTART_H
 #define SWIFT_RESTART_H
 
+#include <stdio.h>
+
+#include "engine.h"
+
 void restart_write(struct engine *e, const char *filename);
 void restart_read(struct engine *e, const char *filename);
 

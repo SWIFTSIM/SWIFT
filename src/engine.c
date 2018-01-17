@@ -5644,9 +5644,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
   partition_struct_dump(e->reparttype, stream);
+  phys_const_struct_dump(e->physical_constants, stream);
 
-  /* repartition */
-  /* physical constants */
   /* hydro props */
   /* gravity props */
   /* external potential props */
@@ -5689,8 +5688,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   units_struct_restore(e->internal_units, stream);
   units_struct_restore(e->snapshotUnits, stream);
   partition_struct_restore(e->reparttype, stream);
+  phys_const_struct_restore(e->physical_constants, stream);
 
-  /* physical constants */
   /* hydro props */
   /* gravity props */
   /* external potential props */
