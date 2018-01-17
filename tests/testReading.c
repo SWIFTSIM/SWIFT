@@ -42,8 +42,8 @@ int main() {
   const double boxSize = 1.;
   const size_t L = 4;
   const double rho = 2.;
-#ifdef COOLING_GRACKLE
-  const float He_density = rho * 0.24;
+#ifdef CHEMISTRY_GRACKLE
+  const float he_density = rho * 0.24;
 #endif
 
   /* Read data */
@@ -96,8 +96,8 @@ int main() {
     assert(parts[n].a_hydro[1] == 0.);
     assert(parts[n].a_hydro[2] == 0.);
 
-#ifdef COOLING_GRACKLE
-    assert(parts[n].cooling_data.He_density == He_density);
+#ifdef CHEMISTRY_GRACKLE
+    assert(parts[n].chemistry_data.he_density == he_density);
 #endif
   }
 
