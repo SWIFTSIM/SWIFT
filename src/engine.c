@@ -64,6 +64,7 @@
 #include "partition.h"
 #include "profiler.h"
 #include "proxy.h"
+#include "restart.h"
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
@@ -5623,4 +5624,79 @@ void engine_clean(struct engine *e) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
+}
+
+/**
+ * @brief Write the engine struct and its contents to the given FILE as a
+ * stream of bytes.
+ *
+ * @param e the engine
+ * @param stream the file stream
+ */
+void engine_struct_dump(struct engine *e, FILE *stream) {
+
+  /* The engine. */
+  restart_write_block(e, sizeof(struct engine), stream, "engine struct");
+
+  /* Now for the other pointers, these use their own save functions. */
+
+  /* space */
+  /* internal units */
+  /* snapshot units */
+  /* repartition */
+  /* physical constants */
+  /* hydro props */
+  /* gravity props */
+  /* external potential props */
+  /* cooling props */
+  /* sourceterm props */
+  /* parameters */
+
+
+}
+
+/**
+ * @brief Re-create an engine struct and its contents from the given FILE
+ *        stream.
+ *
+ * @param e the engine
+ * @param stream the file stream
+ */
+void engine_struct_restore(struct engine *e, FILE *stream) {
+
+  /* The engine. */
+  restart_read_block(e, sizeof(struct engine), stream, "engine struct");
+
+  /* Re-initializations as necessary. */
+
+  /* runners */
+  /* scheduler */
+  /* threadpool */
+
+  /* stats file */
+  /* timesteps file */
+
+  /* barriers */
+
+  /* proxies */
+
+  /* links */
+
+
+  /* Now for the other pointers, these use their own save functions. */
+  /* space */
+  /* internal units */
+  /* snapshot units */
+  /* repartition */
+  /* physical constants */
+  /* hydro props */
+  /* gravity props */
+  /* external potential props */
+  /* cooling props */
+  /* sourceterm props */
+  /* parameters */
+
+  /* Want to force a rebuild before using this engine. Wait to repartition.*/
+  e->forcerebuild = 1;
+  e->forcerepart = 0;
 }

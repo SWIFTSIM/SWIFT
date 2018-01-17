@@ -332,4 +332,9 @@ void engine_unpin();
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
 
+/* Struct dump/restore support. */
+void engine_struct_dump(struct engine *e, FILE *stream);
+void engine_struct_restore(struct engine *e, FILE *stream);
+
+
 #endif /* SWIFT_ENGINE_H */
