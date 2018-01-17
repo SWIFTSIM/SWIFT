@@ -5641,10 +5641,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   /* Now for the other pointers, these use their own save functions. */
   space_struct_dump(e->s, stream);
   e->s->e = e;
+  units_struct_dump(e->internal_units, stream);
+  units_struct_dump(e->snapshotUnits, stream);
 
-
-  /* internal units */
-  /* snapshot units */
   /* repartition */
   /* physical constants */
   /* hydro props */
