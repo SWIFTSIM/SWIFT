@@ -20,11 +20,11 @@
 #define SWIFT_GADGET2_HYDRO_IO_H
 
 #include "adiabatic_index.h"
+#include "chemistry_io.h"
+#include "cooling.h"
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
-#include "chemistry_io.h"
-#include "cooling.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -123,7 +123,7 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, convert_P);
 
 #ifdef DEBUG_INTERACTIONS_SPH
-  
+
   list[10] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
                                   parts, num_ngb_density);
   list[11] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,

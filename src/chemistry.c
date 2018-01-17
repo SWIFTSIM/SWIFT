@@ -34,9 +34,9 @@
  * @param chemistry The chemistry properties to initialize
  */
 void chemistry_init(const struct swift_params* parameter_file,
-                  const struct unit_system* us,
-                  const struct phys_const* phys_const,
-                  struct chemistry_part_data* chemistry) {
+                    const struct unit_system* us,
+                    const struct phys_const* phys_const,
+                    struct chemistry_part_data* chemistry) {
 
   chemistry_init_backend(parameter_file, us, phys_const, chemistry);
 }

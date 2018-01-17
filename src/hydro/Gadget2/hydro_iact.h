@@ -104,7 +104,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
-
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)

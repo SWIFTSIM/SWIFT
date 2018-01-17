@@ -135,7 +135,7 @@ struct part {
   timebin_t time_bin;
 
   struct chemistry_part_data chemistry_data;
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

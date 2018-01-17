@@ -23,8 +23,8 @@
 #include "../config.h"
 
 /* Local includes. */
-#include "inline.h"
 #include "common_io.h"
+#include "inline.h"
 
 /**
  * @brief The two sorts of data present in the GADGET IC files: compulsory to

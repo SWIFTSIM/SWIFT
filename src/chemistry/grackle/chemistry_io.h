@@ -27,16 +27,16 @@
  * @param num_fields The number of i/o fields to read.
  */
 void chemistry_read_particles(struct part* parts, struct io_props* list,
-                          int* num_fields) {
+                              int* num_fields) {
 
   list += *num_fields;
   *num_fields += 1;
 
   /* List what we want to read */
-  list[0] = io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_DENSITY, parts, chemistry_data.he_density);
+  list[0] =
+      io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY, UNIT_CONV_DENSITY,
+                          parts, chemistry_data.he_density);
 }
-
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -46,15 +46,14 @@ void chemistry_read_particles(struct part* parts, struct io_props* list,
  * @param num_fields The number of i/o fields to write.
  */
 void chemistry_write_particles(const struct part* parts, struct io_props* list,
-                           int* num_fields) {
+                               int* num_fields) {
 
   list += *num_fields;
   *num_fields += 1;
-  
+
   list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_DENSITY,
                                  parts, chemistry_data.he_density);
 }
-
 
 /**
  * @brief Writes the current model of SPH to the file
@@ -62,8 +61,5 @@ void chemistry_write_particles(const struct part* parts, struct io_props* list,
  */
 void writeChemistryFlavor(hid_t h_grpsph) {
 
-  /* Viscosity and thermal conduction */
-  io_write_attribute_s(
-      h_grpsph, "Chemistry Model",
-      "Grackle");
+  io_write_attribute_s(h_grpsph, "Chemistry Model", "Grackle");
 }
