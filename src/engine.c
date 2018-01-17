@@ -5636,11 +5636,13 @@ void engine_clean(struct engine *e) {
 void engine_struct_dump(struct engine *e, FILE *stream) {
 
   /* The engine. */
-  restart_write_block(e, sizeof(struct engine), stream, "engine struct");
+  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* Now for the other pointers, these use their own save functions. */
+  space_struct_dump(e->s, stream);
+  e->s->e = e;
 
-  /* space */
+
   /* internal units */
   /* snapshot units */
   /* repartition */
@@ -5665,10 +5667,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* The engine. */
-  restart_read_block(e, sizeof(struct engine), stream, "engine struct");
+  restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* Re-initializations as necessary. */
-
   /* runners */
   /* scheduler */
   /* threadpool */
@@ -5684,7 +5685,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
 
   /* Now for the other pointers, these use their own save functions. */
-  /* space */
+  space_struct_restore(e->s, stream);
+
   /* internal units */
   /* snapshot units */
   /* repartition */

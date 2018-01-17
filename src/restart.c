@@ -130,32 +130,35 @@ void restart_read(struct engine *e, const char *filename) {
   fclose(stream);
 }
 
-/* @brief Read a block of memory from a file stream into a memory location.
+/* @brief Read blocks of memory from a file stream into a memory location.
  *        Exits the application if the read fails.
  *
  * @param ptr pointer to the memory
- * @param size the number of bytes to read
+ * @param size size of a block
+ * @param nblocks number of blocks to read
  * @param stream the file stream
  * @param errstr a context string to qualify any errors.
  */
-void restart_read_block(void *ptr, size_t size, FILE *stream, const char *errstr) {
-  size_t nread = fread(ptr, size, 1, stream);
-  if (nread != 1)
+void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
+                         const char *errstr) {
+  size_t nread = fread(ptr, size, nblocks, stream);
+  if (nread != nblocks)
     error("Failed to restore %s from restart file (%s)", errstr,
           ferror(stream) ? strerror(errno) : "unexpected end of file");
 }
 
-/* @brief Write a block of memory to a file stream from a memory location.
+/* @brief Write blocks of memory to a file stream from a memory location.
  *        Exits the application if the write fails.
  *
  * @param ptr pointer to the memory
- * @param size the number of bytes to write
+ * @param size the blocks
+ * @param nblocks number of blocks to write
  * @param stream the file stream
  * @param errstr a context string to qualify any errors.
  */
-void restart_write_block(void *ptr, size_t size, FILE *stream, const char *errstr) {
-  size_t nwrite = fwrite(ptr, size, 1, stream);
-  if (nwrite != 1)
-    error("Failed to save %s to restart file (%zu != %zu:%s)", errstr,
-          nwrite, size, strerror(errno));
+void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
+                          const char *errstr) {
+  size_t nwrite = fwrite(ptr, size, nblocks, stream);
+  if (nwrite != nblocks)
+    error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
 }
