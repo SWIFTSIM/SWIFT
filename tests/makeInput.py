@@ -19,7 +19,6 @@
 
 import h5py
 from numpy import *
-import re as regex
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
