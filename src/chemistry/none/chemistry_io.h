@@ -20,13 +20,41 @@
 #include "io_properties.h"
 
 /**
+ * @brief Specifies which particle fields to read from a dataset
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to read.
+ * @param num_fields The number of i/o fields to read.
+ */
+void chemistry_read_particles(struct part* parts, struct io_props* list,
+                          int* num_fields) {
+
+  /* update num_fields and list according to hydro_io */
+}
+
+
+/**
+ * @brief Specifies which particle fields to write to a dataset
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
+ */
+void chemistry_write_particles(const struct part* parts, struct io_props* list,
+                           int* num_fields) {
+
+  /* update num_fields and list according to hydro_io */
+}
+
+
+/**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeCoolingFlavor(hid_t h_grpsph) {
+void writeChemistryFlavor(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   io_write_attribute_s(
       h_grpsph, "Chemistry Model",
-      "Grackle");
+      "None");
 }

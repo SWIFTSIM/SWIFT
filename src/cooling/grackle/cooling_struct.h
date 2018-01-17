@@ -62,13 +62,4 @@ struct cooling_xpart_data {
   float radiated_energy;
 };
 
-/**
- * @brief Properties of the cooling stored in the particle data
- */
-struct cooling_part_data {
-
-  /*! Quick example */
-  float He_density;
-};
-
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */

@@ -32,6 +32,7 @@
 /* Local includes. */
 #include "error.h"
 #include "hydro.h"
+#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -40,6 +41,18 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+
+/**
+ * @brief Writes the current model of SPH to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+void writeCoolingFlavor(hid_t h_grpsph) {
+
+  /* Viscosity and thermal conduction */
+  io_write_attribute_s(
+      h_grpsph, "Chemistry Model",
+      "Grackle");
+}
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start

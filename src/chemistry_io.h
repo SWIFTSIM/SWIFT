@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_CHEMISTRY_IO_H
+#define SWIFT_CHEMISTRY_IO_H
 
-#include "io_properties.h"
+/* Config parameters. */
+#include "../config.h"
 
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
- */
-void writeCoolingFlavor(hid_t h_grpsph) {
+/* Import the right functions */
+#if defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry_io.h"
+#else
+#error "Invalid choice of chemistry function."
+#endif
 
-  /* Viscosity and thermal conduction */
-  io_write_attribute_s(
-      h_grpsph, "Chemistry Model",
-      "Grackle");
-}
+#endif /* SWIFT_CHEMISTRY_IO_H */

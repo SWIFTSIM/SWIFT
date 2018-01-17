@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,17 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-#include "io_properties.h"
+#ifndef SWIFT_CHEMISTRY_STRUCT_NONE_H
+#define SWIFT_CHEMISTRY_STRUCT_NONE_H
 
 /**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @file src/chemistry/none/chemistry_struct.h
+ * @brief Empty infrastructure for the cases without chemistry function
  */
-void writeCoolingFlavor(hid_t h_grpsph) {
 
-  /* Viscosity and thermal conduction */
-  io_write_attribute_s(
-      h_grpsph, "Chemistry Model",
-      "Grackle");
-}
+/**
+ * @brief Properties of the chemistry function.
+ */
+struct chemistry_part_data {};
+
+#endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */

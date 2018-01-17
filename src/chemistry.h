@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,17 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-#include "io_properties.h"
+#ifndef SWIFT_CHEMISTRY_H
+#define SWIFT_CHEMISTRY_H
 
 /**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @file src/chemistry.h
+ * @brief Branches between the different chemistry functions.
  */
-void writeCoolingFlavor(hid_t h_grpsph) {
 
-  /* Viscosity and thermal conduction */
-  io_write_attribute_s(
-      h_grpsph, "Chemistry Model",
-      "Grackle");
-}
+/* Config parameters. */
+#include "../config.h"
+#include "chemistry_struct.h"
+
+/* Import the right chemistry definition */
+#if defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry.h"
+#else
+#error "Invalid choice of chemistry function."
+#endif
+
+/* Common functions */
+void chemistry_init(const struct swift_params* parameter_file,
+		    const struct unit_system* us,
+		    const struct phys_const* phys_const,
+		    struct chemistry_data* chem);
+
+void chemistry_print(const struct chemistry_data* chem);
+
+#endif /* SWIFT_CHEMISTRY_H */

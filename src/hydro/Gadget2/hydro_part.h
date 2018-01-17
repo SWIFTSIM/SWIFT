@@ -31,7 +31,7 @@
  * Gadget-2 tree-code neighbours search.
  */
 
-#include "cooling_struct.h"
+#include "chemistry_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -133,7 +133,7 @@ struct part {
   /* Time-step length */
   timebin_t time_bin;
 
-  struct cooling_part_data cooling_data;
+  struct chemistry_part_data chemistry_data;
   
 #ifdef SWIFT_DEBUG_CHECKS
 
