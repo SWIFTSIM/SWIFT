@@ -92,7 +92,6 @@ void print_help_message() {
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
-  printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
   printf("  %2s %14s %s\n", "-t", "{int}",
@@ -162,7 +161,6 @@ int main(int argc, char *argv[]) {
   int dump_tasks = 0;
   int dump_threadpool = 0;
   int nsteps = -2;
-  int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
   int with_sourceterms = 0;
@@ -179,12 +177,11 @@ int main(int argc, char *argv[]) {
   int nparams = 0;
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
-  char restartfile[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:sSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -244,9 +241,6 @@ int main(int argc, char *argv[]) {
       case 'P':
         cmdparams[nparams] = optarg;
         nparams++;
-        break;
-      case 'r':
-        restart = 1;
         break;
       case 's':
         with_hydro = 1;
@@ -463,72 +457,6 @@ int main(int argc, char *argv[]) {
     message("Using %s repartitioning", repartition_name[reparttype.type]);
   }
 #endif
-
-  /* Time to check if this is a restart and if so that we have all the
-   * necessary files and the restart conditions are acceptable. */
-  char restartname[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "Restarts:basename", restartname);
-  char restartdir[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "Restarts:subdir", restartdir);
-
-  if (restart) {
-
-    /* The directory must exist. */
-    if (access(restartdir, W_OK | X_OK) != 0) {
-      error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
-            strerror(errno));
-    }
-
-    /* Restart files. */
-    char **restartfiles = NULL;
-    int nrestartfiles = 0;
-
-    if (myrank == 0) {
-      /* Locate the restart files. These are defined in the parameter file
-       * (one reason for defering until now. */
-
-      /* And enumerate all the restart files. */
-      restartfiles = restart_locate(restartdir, restartname, &nrestartfiles);
-      if (nrestartfiles == 0)
-        error("Failed to locate any restart files in %s", restartdir);
-
-      /* We need one file per rank. */
-      if (nrestartfiles != nr_nodes)
-        error("Incorrect number of restart files, expected %d found %d",
-              nr_nodes, nrestartfiles);
-
-      if (verbose > 0)
-        for (int i = 0; i < nrestartfiles; i++)
-          message("found restart file: %s", restartfiles[i]);
-    }
-
-    /* Distribute the restart files, need one for each rank. */
-#ifdef WITH_MPI
-    if (myrank == 0) {
-
-      for (int i = 1; i < nr_nodes; i++) {
-        strcpy(restartfile, restartfiles[i]);
-        MPI_Send(restartfile, 200, MPI_BYTE, i, 0, MPI_COMM_WORLD);
-      }
-
-      /* Keep local file. */
-      strcpy(restartfile, restartfiles[0]);
-
-      /* Finished with the list. */
-      restart_locate_free(nrestartfiles, restartfiles);
-
-    } else {
-      MPI_Recv(restartfile, 200, MPI_BYTE, 0, 0, MPI_COMM_WORLD,
-               MPI_STATUS_IGNORE);
-    }
-    if (verbose > 1)
-      message("local restart file = %s", restartfile);
-#else
-    /* Just one restart file. */
-    strcpy(restartfile, restartfiles[0]);
-#endif
-
-  }
 
   /* Initialize unit system and constants */
   struct unit_system us;
@@ -794,15 +722,6 @@ int main(int argc, char *argv[]) {
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
-
-
-    /* Create restart files if required. */
-    if (restart_genname(restartdir, restartname,
-                        e.nodeID, restartfile, 200) == 0) {
-      restart_write(&e, restartfile);
-    } else {
-      error("Failed to generate restart filename");
-    }
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
