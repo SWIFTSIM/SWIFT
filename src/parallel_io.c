@@ -960,7 +960,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating SPH group");
     hydro_props_print_snapshot(h_grp, e->hydro_properties);
-    writeSPHflavour(h_grp);
+    hydro_write_flavour(h_grp);
     H5Gclose(h_grp);
   }
 
