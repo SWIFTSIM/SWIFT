@@ -23,7 +23,7 @@
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
-#include "cooling_io.h"
+#include "chemistry_io.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -55,7 +55,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
 
-  cooling_read_particles(parts, list, num_fields);
+  chemistry_read_particles(parts, list, num_fields);
 }
 
 void convert_u(const struct engine* e, const struct part* p, float* ret) {
@@ -135,7 +135,7 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
                            UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
 #endif
 
-  cooling_write_particles(parts, list, num_fields);
+  chemistry_write_particles(parts, list, num_fields);
 }
 
 /**
@@ -154,6 +154,7 @@ void writeSPHflavour(hid_t h_grpsph) {
   io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
 
   writeCoolingFlavor(h_grpsph);
+  writeChesmitryFlavor(h_grpsph);
 }
 
 /**
