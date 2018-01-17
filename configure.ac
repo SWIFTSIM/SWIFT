@@ -1051,6 +1051,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
    
    External potential  : $with_potential
    Multipole order     : $with_multipole_order
