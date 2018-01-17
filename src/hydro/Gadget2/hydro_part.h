@@ -32,6 +32,7 @@
  */
 
 #include "chemistry_struct.h"
+#include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
