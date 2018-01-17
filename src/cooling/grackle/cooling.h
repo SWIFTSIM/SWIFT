@@ -26,8 +26,8 @@
 
 /* Some standard headers. */
 #include <float.h>
-#include <math.h>
 #include <grackle.h>
+#include <math.h>
 
 /* Local includes. */
 #include "error.h"
@@ -78,36 +78,33 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
   return xp->cooling_data.radiated_energy;
 }
 
-
 /**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
  */
-__attribute__((always_inline))INLINE static void cooling_print_backend(
+__attribute__((always_inline)) INLINE static void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'Grackle'.");
   message("Using Grackle           = %i", cooling->chemistry.use_grackle);
-  message("Chemical network        = %i", cooling->chemistry.primordial_chemistry);
-  message("Radiative cooling       = %i", cooling->chemistry.with_radiative_cooling);
+  message("Chemical network        = %i",
+          cooling->chemistry.primordial_chemistry);
+  message("Radiative cooling       = %i",
+          cooling->chemistry.with_radiative_cooling);
   message("Metal cooling           = %i", cooling->chemistry.metal_cooling);
-  
-  message("CloudyTable             = %s",
-          cooling->cloudy_table);
+
+  message("CloudyTable             = %s", cooling->cloudy_table);
   message("UVbackground            = %d", cooling->uv_background);
   message("Redshift                = %g", cooling->redshift);
-  message("Density Self Shielding  = %g",
-          cooling->density_self_shielding);
+  message("Density Self Shielding  = %g", cooling->density_self_shielding);
   message("Units:");
   message("\tComoving     = %i", cooling->units.comoving_coordinates);
   message("\tLength       = %g", cooling->units.length_units);
   message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
   message("\tScale Factor = %g", cooling->units.a_units);
-
 }
-
 
 /**
  * @brief Compute the cooling rate
@@ -126,8 +123,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
-  if (cooling->chemistry.primordial_chemistry > 1)
-    error("Not implemented");
+  if (cooling->chemistry.primordial_chemistry > 1) error("Not implemented");
 
   /* set current time */
   code_units units = cooling->units;
@@ -144,7 +140,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
   int grid_start[GRACKLE_RANK] = {0, 0, 0};
   int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
-  
+
   data.grid_rank = GRACKLE_RANK;
   data.grid_dimension = grid_dimension;
   data.grid_start = grid_start;
@@ -171,7 +167,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   /* gr_float HeII_density = 0.; */
   /* gr_float HeIII_density = 0.; */
   /* gr_float e_density = 0.; */
-  
+
   /* data.HI_density = &HI_density; */
   /* data.HII_density = &HII_density; */
   /* data.HeI_density = &HeI_density; */
@@ -183,16 +179,16 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   /* gr_float HM_density = 0.; */
   /* gr_float H2I_density = 0.; */
   /* gr_float H2II_density = 0.; */
-  
+
   /* data.HM_density = &HM_density; */
   /* data.H2I_density = &H2I_density; */
   /* data.H2II_density = &H2II_density; */
-  
+
   /* /\* primordial chemistry >= 3 *\/ */
   /* gr_float DI_density = 0.; */
   /* gr_float DII_density = 0.; */
   /* gr_float HDI_density = 0.; */
-  
+
   /* data.DI_density = &DI_density; */
   /* data.DII_density = &DII_density; */
   /* data.HDI_density = &HDI_density; */
@@ -206,7 +202,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   /* gr_float volumetric_heating_rate = 0.; */
 
   /* data.volumetric_heating_rate = &volumetric_heating_rate; */
-  
+
   /* /\* specific heating rate *\/ */
   /* gr_float specific_heating_rate = 0.; */
 
@@ -216,7 +212,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   if (solve_chemistry(&units, &data, dt) == 0) {
     error("Error in solve_chemistry.");
   }
-  
+
   return (energy - energy_before) / dt;
 }
 
@@ -244,7 +240,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float du_dt = cooling_rate(phys_const, us, cooling, p, dt);
 
   /* record energy lost */
-  xp->cooling_data.radiated_energy += - du_dt * dt * hydro_get_mass(p);
+  xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
 
   /* Update the internal energy */
   hydro_set_internal_energy_dt(p, hydro_du_dt + du_dt);
@@ -276,23 +272,23 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-__attribute__((always_inline))INLINE static void cooling_init_backend(
+__attribute__((always_inline)) INLINE static void cooling_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
 
-    /* read parameters */
+  /* read parameters */
   parser_get_param_string(parameter_file, "GrackleCooling:GrackleCloudyTable",
                           cooling->cloudy_table);
   cooling->uv_background =
-    parser_get_param_int(parameter_file, "GrackleCooling:UVbackground");
+      parser_get_param_int(parameter_file, "GrackleCooling:UVbackground");
 
   cooling->redshift =
-    parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
+      parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
 
   cooling->density_self_shielding = parser_get_param_double(
       parameter_file, "GrackleCooling:GrackleHSShieldingDensityThreshold");
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* enable verbose for grackle */
   grackle_verbose = 1;
@@ -310,14 +306,16 @@ __attribute__((always_inline))INLINE static void cooling_init_backend(
   cooling->units.comoving_coordinates = 0;
 
   /* then units */
-  cooling->units.density_units = us->UnitMass_in_cgs / pow(us->UnitLength_in_cgs, 3);
+  cooling->units.density_units =
+      us->UnitMass_in_cgs / pow(us->UnitLength_in_cgs, 3);
   cooling->units.length_units = us->UnitLength_in_cgs;
   cooling->units.time_units = us->UnitTime_in_cgs;
-  cooling->units.velocity_units =
-    cooling->units.a_units * cooling->units.length_units / cooling->units.time_units;
+  cooling->units.velocity_units = cooling->units.a_units *
+                                  cooling->units.length_units /
+                                  cooling->units.time_units;
 
-  chemistry_data *chemistry = &cooling->chemistry;
-  
+  chemistry_data* chemistry = &cooling->chemistry;
+
   /* Create a chemistry object for parameters and rate data. */
   if (set_default_chemistry_parameters(chemistry) == 0) {
     error("Error in set_default_chemistry_parameters.");
@@ -341,7 +339,6 @@ __attribute__((always_inline))INLINE static void cooling_init_backend(
     error("Error in initialize_chemistry_data.");
   }
 
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (GRACKLE_NPART != 1)
     error("Grackle with multiple particles not implemented");
@@ -356,11 +353,9 @@ __attribute__((always_inline))INLINE static void cooling_init_backend(
   cooling_print_backend(cooling);
   message("Density Self Shielding = %g atom/cm3", threshold);
 
-
   message("");
   message("***************************************");
 #endif
-
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

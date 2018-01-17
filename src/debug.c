@@ -224,8 +224,9 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
     struct part *const p = &parts[k];
     struct xpart *const xp = &xparts[k];
 
-    if (p->x[0] < loc_min[0] || p->x[0] > loc_max[0] || p->x[1] < loc_min[1] ||
-        p->x[1] > loc_max[1] || p->x[2] < loc_min[2] || p->x[2] > loc_max[2]) {
+    if (p->x[0] < loc_min[0] || p->x[0] >= loc_max[0] || p->x[1] < loc_min[1] ||
+        p->x[1] >= loc_max[1] || p->x[2] < loc_min[2] ||
+        p->x[2] >= loc_max[2]) {
 
       message(
           "Inconsistent part position p->x=[%e %e %e], c->loc=[%e %e %e] "

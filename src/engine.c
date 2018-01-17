@@ -2744,7 +2744,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                            with_cooling);
-      scheduler_addunlock(sched, t3, t->ci->super->kick2);
+      scheduler_addunlock(sched, t3, t->ci->super->end_force);
 #else
 
       /* Start by constructing the task for the second hydro loop */
@@ -2791,14 +2791,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->kick2);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->super_hydro != t->cj->super_hydro)
           engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t3, t->cj->super->kick2);
+          scheduler_addunlock(sched, t3, t->cj->super->end_force);
       }
 
 #else
@@ -2856,7 +2856,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->kick2);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force);
       }
 
 #else
@@ -2913,14 +2913,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->kick2);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->super_hydro != t->cj->super_hydro)
           engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t3, t->cj->super->kick2);
+          scheduler_addunlock(sched, t3, t->cj->super->end_force);
       }
 
 #else
@@ -4251,15 +4251,17 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     /* Sorting should put the same positions next to each other... */
     int failed = 0;
     double *prev_x = s->parts[0].x;
+    long long *prev_id = &s->parts[0].id;
     for (size_t k = 1; k < s->nr_parts; k++) {
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
-          message("Two particles occupy location: %f %f %f", prev_x[0],
-                  prev_x[1], prev_x[2]);
+          message("Two particles occupy location: %f %f %f id=%lld id=%lld",
+                  prev_x[0], prev_x[1], prev_x[2], *prev_id, s->parts[k].id);
         failed++;
       }
       prev_x = s->parts[k].x;
+      prev_id = &s->parts[k].id;
     }
     if (failed > 0)
       error(

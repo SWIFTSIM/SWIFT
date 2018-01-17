@@ -803,8 +803,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < count; k++) {
-    const int bid = (buff[k].x[0] > pivot[0]) * 4 +
-                    (buff[k].x[1] > pivot[1]) * 2 + (buff[k].x[2] > pivot[2]);
+    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
+                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
     buff[k].ind = bid;
   }
@@ -876,44 +876,44 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Verify a few sub-cells. */
   for (int k = 0; k < c->progeny[0]->count; k++)
-    if (c->progeny[0]->parts[k].x[0] > pivot[0] ||
-        c->progeny[0]->parts[k].x[1] > pivot[1] ||
-        c->progeny[0]->parts[k].x[2] > pivot[2])
+    if (c->progeny[0]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[0]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[0]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=0).");
   for (int k = 0; k < c->progeny[1]->count; k++)
-    if (c->progeny[1]->parts[k].x[0] > pivot[0] ||
-        c->progeny[1]->parts[k].x[1] > pivot[1] ||
-        c->progeny[1]->parts[k].x[2] <= pivot[2])
+    if (c->progeny[1]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[1]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[1]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=1).");
   for (int k = 0; k < c->progeny[2]->count; k++)
-    if (c->progeny[2]->parts[k].x[0] > pivot[0] ||
-        c->progeny[2]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[2]->parts[k].x[2] > pivot[2])
+    if (c->progeny[2]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[2]->parts[k].x[1] < pivot[1] ||
+        c->progeny[2]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=2).");
   for (int k = 0; k < c->progeny[3]->count; k++)
-    if (c->progeny[3]->parts[k].x[0] > pivot[0] ||
-        c->progeny[3]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[3]->parts[k].x[2] <= pivot[2])
+    if (c->progeny[3]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[3]->parts[k].x[1] < pivot[1] ||
+        c->progeny[3]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=3).");
   for (int k = 0; k < c->progeny[4]->count; k++)
-    if (c->progeny[4]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[4]->parts[k].x[1] > pivot[1] ||
-        c->progeny[4]->parts[k].x[2] > pivot[2])
+    if (c->progeny[4]->parts[k].x[0] < pivot[0] ||
+        c->progeny[4]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[4]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=4).");
   for (int k = 0; k < c->progeny[5]->count; k++)
-    if (c->progeny[5]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[5]->parts[k].x[1] > pivot[1] ||
-        c->progeny[5]->parts[k].x[2] <= pivot[2])
+    if (c->progeny[5]->parts[k].x[0] < pivot[0] ||
+        c->progeny[5]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[5]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=5).");
   for (int k = 0; k < c->progeny[6]->count; k++)
-    if (c->progeny[6]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[6]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[6]->parts[k].x[2] > pivot[2])
+    if (c->progeny[6]->parts[k].x[0] < pivot[0] ||
+        c->progeny[6]->parts[k].x[1] < pivot[1] ||
+        c->progeny[6]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=6).");
   for (int k = 0; k < c->progeny[7]->count; k++)
-    if (c->progeny[7]->parts[k].x[0] <= pivot[0] ||
-        c->progeny[7]->parts[k].x[1] <= pivot[1] ||
-        c->progeny[7]->parts[k].x[2] <= pivot[2])
+    if (c->progeny[7]->parts[k].x[0] < pivot[0] ||
+        c->progeny[7]->parts[k].x[1] < pivot[1] ||
+        c->progeny[7]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=7).");
 #endif
 

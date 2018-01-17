@@ -41,6 +41,9 @@
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset, f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
 
+#define _DOPAIR_SUBSET_BRANCH(f) PASTE(runner_dopair_subset_branch, f)
+#define DOPAIR_SUBSET_BRANCH _DOPAIR_SUBSET_BRANCH(FUNCTION)
+
 #define _DOPAIR_SUBSET_NOSORT(f) PASTE(runner_dopair_subset_nosort, f)
 #define DOPAIR_SUBSET_NOSORT _DOPAIR_SUBSET_NOSORT(FUNCTION)
 
@@ -73,6 +76,9 @@
 
 #define _DOSELF_SUBSET(f) PASTE(runner_doself_subset, f)
 #define DOSELF_SUBSET _DOSELF_SUBSET(FUNCTION)
+
+#define _DOSELF_SUBSET_BRANCH(f) PASTE(runner_doself_subset_branch, f)
+#define DOSELF_SUBSET_BRANCH _DOSELF_SUBSET_BRANCH(FUNCTION)
 
 #define _DOSUB_SELF1(f) PASTE(runner_dosub_self1, f)
 #define DOSUB_SELF1 _DOSUB_SELF1(FUNCTION)
@@ -467,26 +473,17 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct part *restrict parts_i, int *restrict ind,
-                         int count, struct cell *restrict cj) {
-
-  const struct engine *e = r->e;
+                         int count, struct cell *restrict cj,
+                         const double *shift) {
 
   TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
-
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
 
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
@@ -499,9 +496,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    const struct engine *e = r->e;
     if (!part_is_active(pi, e))
       error("Trying to correct smoothing length of inactive particle !");
-
 #endif
 
     /* Loop over the parts in cj. */
@@ -547,47 +544,19 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param sid The direction of the pair.
+ * @param flipped Flag to check whether the cells have been flipped or not.
+ * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj) {
-
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj);
-  return;
-#endif
+                   struct cell *restrict cj, const int sid, const int flipped,
+                   const double *shift) {
 
   TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
-
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
-
-  /* Get the sorting index. */
-  int sid = 0;
-  for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                         ? 0
-                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-
-  /* Switch the cells around? */
-  const int flipped = runner_flip[sid];
-  sid = sortlistID[sid];
-
-  /* Has the cell cj been sorted? */
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = cj->sort[sid];
@@ -624,6 +593,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -671,6 +641,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -688,6 +659,64 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   }
 
   TIMER_TOC(timer_dopair_subset);
+}
+
+/**
+ * @brief Determine which version of DOPAIR_SUBSET needs to be called depending
+ * on the
+ * orientation of the cells or whether DOPAIR_SUBSET needs to be called at all.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts_i The #part to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
+                          struct part *restrict parts_i, int *restrict ind,
+                          int count, struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+#if !defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                         ? 0
+                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+
+  /* Switch the cells around? */
+  const int flipped = runner_flip[sid];
+  sid = sortlistID[sid];
+
+  /* Has the cell cj been sorted? */
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+#endif
+
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
+#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+  if (sort_is_face(sid))
+    runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
+                                     flipped, shift);
+  else
+    DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
+#else
+  DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
+#endif
 }
 
 /**
@@ -758,12 +787,33 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 }
 
 /**
+ * @brief Determine which version of DOSELF_SUBSET needs to be called depending
+ * on the optimisation level.
+
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts The #part to interact.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ */
+void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
+                          struct part *restrict parts, int *restrict ind,
+                          int count) {
+
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+  runner_doself_subset_density_vec(r, ci, parts, ind, count);
+#else
+  DOSELF_SUBSET(r, ci, parts, ind, count);
+#endif
+}
+
+/**
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param sid The direction of the pair
+ * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
@@ -2461,11 +2511,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     /* Otherwise, compute self-interaction. */
     else
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
-      runner_doself_subset_density_vec(r, ci, parts, ind, count);
-#else
-      DOSELF_SUBSET(r, ci, parts, ind, count);
-#endif
+      DOSELF_SUBSET_BRANCH(r, ci, parts, ind, count);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
@@ -2987,7 +3033,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
-      DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
+      DOPAIR_SUBSET_BRANCH(r, ci, parts, ind, count, cj);
     }
 
   } /* otherwise, pair interaction. */

@@ -40,4 +40,4 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./EAGLE_ICs_100.hdf5     # The file to read
-
+  cleanup_h:  1
