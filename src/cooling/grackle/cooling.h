@@ -50,7 +50,7 @@ void writeCoolingFlavor(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   io_write_attribute_s(
-      h_grpsph, "Chemistry Model",
+      h_grpsph, "Cooling Model",
       "Grackle");
 }
 

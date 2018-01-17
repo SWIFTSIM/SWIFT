@@ -31,10 +31,23 @@
 #include "const.h"
 #include "error.h"
 #include "hydro.h"
+#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+
+/**
+ * @brief Writes the current model of SPH to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+void writeCoolingFlavor(hid_t h_grpsph) {
+
+  /* Viscosity and thermal conduction */
+  io_write_attribute_s(
+      h_grpsph, "Cooling Model",
+      "const_lambda");
+}
 
 /**
  * @brief Calculates du/dt in code units for a particle.
