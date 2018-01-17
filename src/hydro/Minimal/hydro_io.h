@@ -48,6 +48,8 @@
 void hydro_read_particles(struct part* parts, struct io_props* list,
                           int* num_fields) {
 
+  *num_fields = 8;
+
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, x);
@@ -65,13 +67,6 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
-  *num_fields = 8;
-  list += *num_fields;
-
-  /* Read in chemistry information */
-  const int num_chem_fields = chemistry_read_particles(parts, list);
-  *num_fields += num_chem_fields;
-  list += num_chem_fields;
 }
 
 void convert_S(const struct engine* e, const struct part* p, float* ret) {
@@ -108,6 +103,8 @@ void convert_part_pos(const struct engine* e, const struct part* p,
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
+  *num_fields = 10;
+
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
@@ -129,14 +126,6 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, convert_S);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, convert_P);
-
-  *num_fields = 10;
-  list += *num_fields;
-
-  /* Write some chemistry information */
-  const int num_chem_fields = chemistry_write_particles(parts, list);
-  *num_fields += num_chem_fields;
-  list += num_chem_fields;
 }
 
 /**

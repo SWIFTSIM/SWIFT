@@ -727,6 +727,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         if (with_hydro) {
           Nparticles = *Ngas;
           hydro_read_particles(*parts, list, &num_fields);
+          num_fields += chemistry_read_particles(*parts, list + num_fields);
         }
         break;
 
@@ -1056,6 +1057,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
       case swift_type_gas:
         Nparticles = Ngas;
         hydro_write_particles(parts, list, &num_fields);
+        num_fields += chemistry_write_particles(parts, list + num_fields);
         break;
 
       case swift_type_dark_matter:
