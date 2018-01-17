@@ -25,8 +25,8 @@
 /* Import the right functions */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_io.h"
-#elif defined(CHEMISTRY_GRACKLE)
-#include "./chemistry/grackle/chemistry_io.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/gear/chemistry_io.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

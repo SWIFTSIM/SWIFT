@@ -53,8 +53,6 @@ struct cooling_function_data {
 
 /**
  * @brief Properties of the cooling stored in the extra particle data
- *
- * theses data are not processed during the SPH density/force.
  */
 struct cooling_xpart_data {
 

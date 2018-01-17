@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_CHEMISTRY_IO_GEAR_H
+#define SWIFT_CHEMISTRY_IO_GEAR_H
 
 #include "io_properties.h"
 
@@ -24,18 +26,17 @@
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
- * @param num_fields The number of i/o fields to read.
+ *
+ * @return Returns the number of fields to read.
  */
-void chemistry_read_particles(struct part* parts, struct io_props* list,
-                              int* num_fields) {
-
-  list += *num_fields;
-  *num_fields += 1;
+int chemistry_read_particles(struct part* parts, struct io_props* list) {
 
   /* List what we want to read */
   list[0] =
       io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY, UNIT_CONV_DENSITY,
                           parts, chemistry_data.he_density);
+
+  return 1;
 }
 
 /**
@@ -43,16 +44,16 @@ void chemistry_read_particles(struct part* parts, struct io_props* list,
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to write.
- * @param num_fields The number of i/o fields to write.
+ *
+ * @return Returns the number of fields to write.
  */
-void chemistry_write_particles(const struct part* parts, struct io_props* list,
-                               int* num_fields) {
+int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 
-  list += *num_fields;
-  *num_fields += 1;
-
+  /* List what we want to write */
   list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_DENSITY,
                                  parts, chemistry_data.he_density);
+
+  return 1;
 }
 
 /**
@@ -61,5 +62,7 @@ void chemistry_write_particles(const struct part* parts, struct io_props* list,
  */
 void writeChemistryFlavor(hid_t h_grpsph) {
 
-  io_write_attribute_s(h_grpsph, "Chemistry Model", "Grackle");
+  io_write_attribute_s(h_grpsph, "Chemistry Model", "GEAR");
 }
+
+#endif /* SWIFT_CHEMISTRY_IO_GEAR_H */

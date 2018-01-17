@@ -811,9 +811,17 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating SPH group");
       hydro_props_print_snapshot(h_grp, e->hydro_properties);
-      writeSPHflavour(h_grp);
+      writeChemistryFlavor(h_grp);
       H5Gclose(h_grp);
     }
+
+    /* Print the subgrid parameters */
+    h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating subgrid group");
+    writeCoolingFlavor(h_grp);
+    writeChemistryFlavor(h_grp);
+    H5Gclose(h_grp);
 
     /* Print the gravity parameters */
     if (e->policy & engine_policy_self_gravity) {

@@ -30,8 +30,8 @@
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_struct.h"
-#elif defined(CHEMISTRY_GRACKLE)
-#include "./chemistry/grackle/chemistry_struct.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/gear/chemistry_struct.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_NONE_H
-#define SWIFT_CHEMISTRY_STRUCT_NONE_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
 /**
- * @file src/chemistry/none/chemistry_struct.h
+ * @file src/chemistry/gear/chemistry_struct.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
@@ -31,4 +31,4 @@ struct chemistry_part_data {
   float he_density;
 };
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

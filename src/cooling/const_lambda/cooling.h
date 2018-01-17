@@ -44,7 +44,7 @@
 __attribute__((always_inline)) INLINE static void writeCoolingFlavor(
     hid_t h_grpsph) {
 
-  io_write_attribute_s(h_grpsph, "Cooling Model", "const_lambda");
+  io_write_attribute_s(h_grpsph, "Cooling Model", "Constant Lambda");
 }
 
 /**

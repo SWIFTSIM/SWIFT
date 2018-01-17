@@ -31,8 +31,8 @@
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry.h"
-#elif defined(CHEMISTRY_GRACKLE)
-#include "./chemistry/grackle/chemistry.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/gear/chemistry.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif
@@ -40,9 +40,8 @@
 /* Common functions */
 void chemistry_init(const struct swift_params* parameter_file,
                     const struct unit_system* us,
-                    const struct phys_const* phys_const,
-                    struct chemistry_part_data* chem);
+                    const struct phys_const* phys_const);
 
-void chemistry_print(const struct chemistry_part_data* chem);
+void chemistry_print();
 
 #endif /* SWIFT_CHEMISTRY_H */

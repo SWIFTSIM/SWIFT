@@ -36,8 +36,6 @@
 void hydro_read_particles(struct part* parts, struct io_props* list,
                           int* num_fields) {
 
-  *num_fields = 8;
-
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, x);
@@ -56,7 +54,13 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
 
-  chemistry_read_particles(parts, list, num_fields);
+  *num_fields = 8;
+  list += *num_fields;
+
+  /* Read in chemistry information */
+  const int num_chem_fields = chemistry_read_particles(parts, list);
+  *num_fields += num_chem_fields;
+  list += num_chem_fields;
 }
 
 void convert_u(const struct engine* e, const struct part* p, float* ret) {
@@ -93,12 +97,6 @@ void convert_part_pos(const struct engine* e, const struct part* p,
 void hydro_write_particles(const struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 10;
-
-#ifdef DEBUG_INTERACTIONS_SPH
-  *num_fields += 4;
-#endif
-
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
@@ -122,21 +120,30 @@ void hydro_write_particles(const struct part* parts, struct io_props* list,
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, convert_P);
 
+  *num_fields = 10;
+  list += *num_fields;
+
+  /* Write some chemistry information */
+  const int num_chem_fields = chemistry_write_particles(parts, list);
+  *num_fields += num_chem_fields;
+  list += num_chem_fields;
+
 #ifdef DEBUG_INTERACTIONS_SPH
 
-  list[10] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
-                                  parts, num_ngb_density);
-  list[11] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
-                                  parts, num_ngb_force);
-  list[12] =
+  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
+                                 parts, num_ngb_density);
+  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
+                                 parts, num_ngb_force);
+  list[2] =
       io_make_output_field("Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
                            UNIT_CONV_NO_UNITS, parts, ids_ngbs_density);
-  list[13] =
+  list[3] =
       io_make_output_field("Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
                            UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
-#endif
 
-  chemistry_write_particles(parts, list, num_fields);
+  *num_fields += 4;
+  list += 4;
+#endif
 }
 
 /**
@@ -153,9 +160,6 @@ void writeSPHflavour(hid_t h_grpsph) {
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
-
-  writeCoolingFlavor(h_grpsph);
-  writeChemistryFlavor(h_grpsph);
 }
 
 /**

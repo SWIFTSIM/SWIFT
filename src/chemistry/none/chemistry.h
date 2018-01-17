@@ -57,20 +57,15 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
- * @param chemistry The chemistry properties to initialize
  */
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const,
-    struct chemistry_part_data* chemistry) {}
+    const struct phys_const* phys_const) {}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
- *
- * @param chemistry The properties of the chemistry function.
  */
-static INLINE void chemistry_print_backend(
-    const struct chemistry_part_data* chemistry) {
+static INLINE void chemistry_print_backend() {
 
   message("Chemistry function is 'No chemistry'.");
 }

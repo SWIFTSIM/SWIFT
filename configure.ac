@@ -935,7 +935,7 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, grackle default: none@:>@]
+      [chemistry function @<:@none, gear default: none@:>@]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
@@ -944,8 +944,8 @@ case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;; 
-   grackle)
-      AC_DEFINE([CHEMISTRY_GRACKLE], [1], [Chemistry compatible with the grackle cooling])
+   gear)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
    ;; 
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])

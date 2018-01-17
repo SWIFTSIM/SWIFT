@@ -612,6 +612,9 @@ int main(int argc, char *argv[]) {
   if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
   if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
+  /* Initialise the chemistry */
+  chemistry_print();
+
   /* Initialise the feedback properties */
   struct sourceterms sourceterms;
   if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);

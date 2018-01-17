@@ -31,24 +31,17 @@
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
- * @param chemistry The chemistry properties to initialize
  */
 void chemistry_init(const struct swift_params* parameter_file,
                     const struct unit_system* us,
-                    const struct phys_const* phys_const,
-                    struct chemistry_part_data* chemistry) {
+                    const struct phys_const* phys_const) {
 
-  chemistry_init_backend(parameter_file, us, phys_const, chemistry);
+  chemistry_init_backend(parameter_file, us, phys_const);
 }
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * Calls chemistry_print_backend for the chosen chemistry function.
- *
- * @param chemistry The properties of the chemistry function.
+ * Calls chemistry_print_backend for the chosen chemistry model.
  */
-void chemistry_print(const struct chemistry_part_data* chemistry) {
-
-  chemistry_print_backend(chemistry);
-}
+void chemistry_print() { chemistry_print_backend(); }
