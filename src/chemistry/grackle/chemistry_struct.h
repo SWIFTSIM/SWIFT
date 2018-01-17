@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,19 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_IO_H
-#define SWIFT_CHEMISTRY_IO_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_NONE_H
+#define SWIFT_CHEMISTRY_STRUCT_NONE_H
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @file src/chemistry/none/chemistry_struct.h
+ * @brief Empty infrastructure for the cases without chemistry function
+ */
 
-/* Import the right functions */
-#if defined(CHEMISTRY_NONE)
-#include "./chemistry/none/chemistry_io.h"
-#elif defined(CHEMISTRY_GRACKLE)
-#include "./chemistry/grackle/chemistry_io.h"
-#else
-#error "Invalid choice of chemistry function."
-#endif
+/**
+ * @brief Properties of the chemistry function.
+ */
+struct chemistry_part_data {
+  float he_density;
+};
 
-#endif /* SWIFT_CHEMISTRY_IO_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */

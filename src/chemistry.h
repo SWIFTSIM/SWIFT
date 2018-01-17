@@ -31,6 +31,8 @@
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry.h"
+#elif defined(CHEMISTRY_GRACKLE)
+#include "./chemistry/grackle/chemistry.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif
