@@ -30,6 +30,7 @@
  * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */

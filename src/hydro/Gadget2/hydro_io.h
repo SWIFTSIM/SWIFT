@@ -20,8 +20,6 @@
 #define SWIFT_GADGET2_HYDRO_IO_H
 
 #include "adiabatic_index.h"
-#include "chemistry_io.h"
-#include "cooling.h"
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"

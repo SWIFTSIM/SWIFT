@@ -36,7 +36,9 @@
 #include "parallel_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "common_io.h"
+#include "cooling.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"

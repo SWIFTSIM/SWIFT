@@ -32,6 +32,7 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /**

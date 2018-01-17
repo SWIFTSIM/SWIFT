@@ -19,6 +19,7 @@
 #ifndef SWIFT_DEFAULT_HYDRO_PART_H
 #define SWIFT_DEFAULT_HYDRO_PART_H
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */

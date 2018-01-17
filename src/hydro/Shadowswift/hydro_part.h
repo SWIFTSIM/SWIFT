@@ -19,6 +19,7 @@
  *
  ******************************************************************************/
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "voronoi_cell.h"
 
