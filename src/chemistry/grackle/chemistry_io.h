@@ -51,7 +51,7 @@ void chemistry_write_particles(const struct part* parts, struct io_props* list,
   list += *num_fields;
   *num_fields += 1;
   
-  list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_LENGTH,
+  list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_DENSITY,
                                  parts, chemistry_data.he_density);
 }
 
