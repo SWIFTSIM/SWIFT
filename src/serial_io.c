@@ -822,8 +822,8 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating subgrid group");
-    writeCoolingFlavor(h_grp);
-    writeChemistryFlavor(h_grp);
+    cooling_write_flavour(h_grp);
+    chemistry_write_flavour(h_grp);
     H5Gclose(h_grp);
 
     /* Print the gravity parameters */

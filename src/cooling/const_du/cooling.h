@@ -48,7 +48,7 @@
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-__attribute__((always_inline)) INLINE static void writeCoolingFlavor(
+__attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grpsph) {
 
   io_write_attribute_s(h_grpsph, "Cooling Model", "Constant du/dt");
