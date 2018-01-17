@@ -50,6 +50,7 @@
 #include "debug.h"
 #include "error.h"
 #include "partition.h"
+#include "restart.h"
 #include "space.h"
 #include "tools.h"
 
@@ -1249,4 +1250,28 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
 
   /* Check we have all nodeIDs present in the resample. */
   return check_complete(s, 1, nr_nodes + 1);
+}
+
+/**
+ * @brief Write a repartition struct to the given FILE as a stream of bytes.
+ *
+ * @param reparttype the struct
+ * @param stream the file stream
+ */
+void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
+    restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
+                       "repartition params");
+}
+
+
+/**
+ * @brief Restore a repartition struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param reparttype the struct
+ * @param stream the file stream
+ */
+void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
+  restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream,
+                      "repartition params");
 }
