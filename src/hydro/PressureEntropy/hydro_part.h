@@ -138,6 +138,9 @@ struct part {
     } force;
   };
 
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
+
   /* Time-step length */
   timebin_t time_bin;
 

@@ -46,6 +46,12 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
+  /* Particle ID. */
+  long long id;
+
+  /* Pointer to corresponding gravity part. */
+  struct gpart* gpart;
+
   /* Particle position. */
   double x[3];
 
@@ -116,11 +122,8 @@ struct part {
   /* Particle mass. */
   float mass;
 
-  /* Particle ID. */
-  long long id;
-
-  /* Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Particle time-bin */
   timebin_t time_bin;
