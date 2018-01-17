@@ -122,7 +122,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  memswap.h dump.h logger.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
-		 chemistry/none/chemistry_struct.h
+		 chemistry/none/chemistry_struct.h \
+                 chemistry/grackle/chemistry.h \
+		 chemistry/grackle/chemistry_io.h \
+		 chemistry/grackle/chemistry_struct.h
 
 
 # Sources and flags for regular library
