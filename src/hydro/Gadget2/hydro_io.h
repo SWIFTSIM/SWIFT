@@ -24,6 +24,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "chemistry_io.h"
+#include "cooling.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset

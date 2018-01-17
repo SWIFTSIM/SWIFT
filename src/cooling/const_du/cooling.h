@@ -48,7 +48,7 @@
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeCoolingFlavor(hid_t h_grpsph) {
+__attribute__((always_inline)) INLINE static void writeCoolingFlavor(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   io_write_attribute_s(

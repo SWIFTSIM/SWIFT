@@ -29,6 +29,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "chemistry_struct.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -61,7 +62,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
-    struct chemistry_data* chemistry) {}
+    struct chemistry_part_data* chemistry) {}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -69,7 +70,7 @@ static INLINE void chemistry_init_backend(
  * @param chemistry The properties of the chemistry function.
  */
 static INLINE void chemistry_print_backend(
-    const struct chemistry_data* chemistry) {
+    const struct chemistry_part_data* chemistry) {
 
   message("Chemistry function is 'No chemistry'.");
 }

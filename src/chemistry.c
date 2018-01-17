@@ -36,7 +36,7 @@
 void chemistry_init(const struct swift_params* parameter_file,
                   const struct unit_system* us,
                   const struct phys_const* phys_const,
-                  struct chemistry_data* chemistry) {
+                  struct chemistry_part_data* chemistry) {
 
   chemistry_init_backend(parameter_file, us, phys_const, chemistry);
 }
@@ -48,7 +48,7 @@ void chemistry_init(const struct swift_params* parameter_file,
  *
  * @param chemistry The properties of the chemistry function.
  */
-void chemistry_print(const struct chemistry_data* chemistry) {
+void chemistry_print(const struct chemistry_part_data* chemistry) {
 
   chemistry_print_backend(chemistry);
 }
