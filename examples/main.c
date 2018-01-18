@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -119,6 +120,7 @@ void print_help_message() {
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
+  struct engine e;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -464,30 +466,42 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  /* Time to check if this is a restart and if so that we have all the
-   * necessary files and the restart conditions are acceptable. */
-  char restartname[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "Restarts:basename", restartname);
+  /* Common variables for restart and IC sections. */
+  int clean_h_values = 0;
+  int flag_entropy_ICs = 0;
+
+  /* Work out where we will read and write restart files. */
   char restartdir[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "Restarts:subdir", restartdir);
+  parser_get_opt_param_string(params, "Restarts:subdir", restartdir,
+                              "restart");
+
+  /* The directory must exist. */
+  if (access(restartdir, W_OK | X_OK) != 0) {
+      if (restart) {
+        error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
+              strerror(errno));
+      } else {
+        if (mkdir(restartdir, 0777) != 0)
+          error("Failed to create restart directory: %s (%s)", restartdir,
+                strerror(errno));
+      }
+  }
+
+  /* Basename for any restart files. */
+  char restartname[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "Restarts:basename", restartname,
+                              "swift");
 
   if (restart) {
 
-    /* The directory must exist. */
-    if (access(restartdir, W_OK | X_OK) != 0) {
-      error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
-            strerror(errno));
-    }
-
-    /* Restart files. */
+    /* Attempting a restart. */
+    message("Restarting SWIFT");
     char **restartfiles = NULL;
     int nrestartfiles = 0;
 
     if (myrank == 0) {
-      /* Locate the restart files. These are defined in the parameter file
-       * (one reason for defering until now. */
 
-      /* And enumerate all the restart files. */
+      /* Locate the restart files. */
       restartfiles = restart_locate(restartdir, restartname, &nrestartfiles);
       if (nrestartfiles == 0)
         error("Failed to locate any restart files in %s", restartdir);
@@ -502,8 +516,8 @@ int main(int argc, char *argv[]) {
           message("found restart file: %s", restartfiles[i]);
     }
 
-    /* Distribute the restart files, need one for each rank. */
 #ifdef WITH_MPI
+    /* Distribute the restart files, need one for each rank. */
     if (myrank == 0) {
 
       for (int i = 1; i < nr_nodes; i++) {
@@ -521,231 +535,230 @@ int main(int argc, char *argv[]) {
       MPI_Recv(restartfile, 200, MPI_BYTE, 0, 0, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
     }
-    if (verbose > 1)
-      message("local restart file = %s", restartfile);
+    if (verbose > 1) message("local restart file = %s", restartfile);
 #else
+
     /* Just one restart file. */
     strcpy(restartfile, restartfiles[0]);
 #endif
 
-  }
+    /* Now read it. */
+    restart_read(&e, restartfile);
+  } else {
 
-  /* Initialize unit system and constants */
-  struct unit_system us;
-  struct phys_const prog_const;
-  units_init(&us, params, "InternalUnitSystem");
-  phys_const_init(&us, &prog_const);
-  if (myrank == 0 && verbose > 0) {
-    message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    phys_const_print(&prog_const);
-  }
+    /* Reading ICs. */
+    /* Initialize unit system and constants */
+    struct unit_system us;
+    struct phys_const prog_const;
+    units_init(&us, params, "InternalUnitSystem");
+    phys_const_init(&us, &prog_const);
+    if (myrank == 0 && verbose > 0) {
+      message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
+      message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+      message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
+      message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+      message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+      phys_const_print(&prog_const);
+    }
 
-  /* Initialise the hydro properties */
-  struct hydro_props hydro_properties;
-  if (with_hydro) hydro_props_init(&hydro_properties, params);
-  if (with_hydro) eos_init(&eos, params);
+    /* Initialise the hydro properties */
+    struct hydro_props hydro_properties;
+    if (with_hydro) hydro_props_init(&hydro_properties, params);
+    if (with_hydro) eos_init(&eos, params);
 
-  /* Initialise the gravity properties */
-  struct gravity_props gravity_properties;
-  if (with_self_gravity) gravity_props_init(&gravity_properties, params);
+    /* Initialise the gravity properties */
+    struct gravity_props gravity_properties;
+    if (with_self_gravity) gravity_props_init(&gravity_properties, params);
 
-  /* Read particles and space information from (GADGET) ICs */
-  char ICfileName[200] = "";
-  parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
-  const int replicate =
-      parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
-  const int clean_h_values =
-      parser_get_opt_param_int(params, "InitialConditions:cleanup_h", 0);
-  if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
-  fflush(stdout);
+    /* Read particles and space information from (GADGET) ICs */
+    char ICfileName[200] = "";
+    parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+    const int replicate =
+        parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
+    clean_h_values =
+        parser_get_opt_param_int(params, "InitialConditions:cleanup_h", 0);
+    if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
+    fflush(stdout);
 
-  /* Get ready to read particles of all kinds */
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
-  struct spart *sparts = NULL;
-  size_t Ngas = 0, Ngpart = 0, Nspart = 0;
-  double dim[3] = {0., 0., 0.};
-  int periodic = 0;
-  int flag_entropy_ICs = 0;
-  if (myrank == 0) clocks_gettime(&tic);
+    /* Get ready to read particles of all kinds */
+    struct part *parts = NULL;
+    struct gpart *gparts = NULL;
+    struct spart *sparts = NULL;
+    size_t Ngas = 0, Ngpart = 0, Nspart = 0;
+    double dim[3] = {0., 0., 0.};
+    int periodic = 0;
+    if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
+                     &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                     (with_external_gravity || with_self_gravity), with_stars,
+                     myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
+                     nr_threads, dry_run);
+#else
+    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run);
-#else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
-                 &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
-                 (with_external_gravity || with_self_gravity), with_stars,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                 dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart,
-                 &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
-                 (with_external_gravity || with_self_gravity), with_stars,
-                 nr_threads, dry_run);
+    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
+                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   (with_external_gravity || with_self_gravity), with_stars,
+                   nr_threads, dry_run);
 #endif
-  if (myrank == 0) {
-    clocks_gettime(&toc);
-    message("Reading initial conditions took %.3f %s.", clocks_diff(&tic, &toc),
-            clocks_getunit());
-    fflush(stdout);
-  }
+    if (myrank == 0) {
+      clocks_gettime(&toc);
+      message("Reading initial conditions took %.3f %s.",
+              clocks_diff(&tic, &toc), clocks_getunit());
+      fflush(stdout);
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check once and for all that we don't have unwanted links */
-  if (!with_stars) {
-    for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].type == swift_type_star) error("Linking problem");
-  }
-  if (!with_hydro) {
-    for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].type == swift_type_gas) error("Linking problem");
-  }
+    /* Check once and for all that we don't have unwanted links */
+    if (!with_stars) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].type == swift_type_star) error("Linking problem");
+    }
+    if (!with_hydro) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].type == swift_type_gas) error("Linking problem");
+    }
 #endif
 
-  /* Get the total number of particles across all nodes. */
-  long long N_total[3] = {0, 0, 0};
+    /* Get the total number of particles across all nodes. */
+    long long N_total[3] = {0, 0, 0};
 #if defined(WITH_MPI)
-  long long N_long[3] = {Ngas, Ngpart, Nspart};
-  MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
-                MPI_COMM_WORLD);
+    long long N_long[3] = {Ngas, Ngpart, Nspart};
+    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
 #else
-  N_total[0] = Ngas;
-  N_total[1] = Ngpart;
-  N_total[2] = Nspart;
+    N_total[0] = Ngas;
+    N_total[1] = Ngpart;
+    N_total[2] = Nspart;
 #endif
-  if (myrank == 0)
-    message(
-        "Read %lld gas particles, %lld star particles and %lld gparts from the "
-        "ICs.",
-        N_total[0], N_total[2], N_total[1]);
+    if (myrank == 0)
+      message(
+          "Read %lld gas particles, %lld star particles and "
+          "%lld gparts from the ICs.",
+          N_total[0], N_total[2], N_total[1]);
 
-  /* Initialize the space with these data. */
-  if (myrank == 0) clocks_gettime(&tic);
-  struct space s;
-  space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
-             periodic, replicate, with_self_gravity, talking, dry_run);
-  if (myrank == 0) {
-    clocks_gettime(&toc);
-    message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
-            clocks_getunit());
-    fflush(stdout);
-  }
+    /* Initialize the space with these data. */
+    if (myrank == 0) clocks_gettime(&tic);
+    struct space s;
 
-  /* Say a few nice things about the space we just created. */
-  if (myrank == 0) {
-    message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
-            s.dim[2]);
-    message("space %s periodic.", s.periodic ? "is" : "isn't");
-    message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
-            s.cdim[1], s.cdim[2]);
-    message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
-    message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
-    message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
-    message("maximum depth is %d.", s.maxdepth);
-    fflush(stdout);
-  }
+    /* XXX restart equiv? */
+    space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
+               periodic, replicate, with_self_gravity, talking, dry_run);
 
-  /* Verify that each particle is in it's proper cell. */
-  if (talking && !dry_run) {
-    int icount = 0;
-    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-    message("map_cellcheck picked up %i parts.", icount);
-  }
+    if (myrank == 0) {
+      clocks_gettime(&toc);
+      message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
+              clocks_getunit());
+      fflush(stdout);
+    }
 
-  /* Verify the maximal depth of cells. */
-  if (talking && !dry_run) {
-    int data[2] = {s.maxdepth, 0};
-    space_map_cells_pre(&s, 0, &map_maxdepth, data);
-    message("nr of cells at depth %i is %i.", data[0], data[1]);
-  }
+    /* Say a few nice things about the space we just created. */
+    if (myrank == 0) {
+      message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
+              s.dim[2]);
+      message("space %s periodic.", s.periodic ? "is" : "isn't");
+      message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
+              s.cdim[1], s.cdim[2]);
+      message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
+      message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+      message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
+      message("maximum depth is %d.", s.maxdepth);
+      fflush(stdout);
+    }
 
-/* Initialise the table of Ewald corrections for the gravity checks */
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(dim[0]);
-#endif
+    /* Verify that each particle is in it's proper cell. */
+    if (talking && !dry_run) {
+      int icount = 0;
+      space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
+      message("map_cellcheck picked up %i parts.", icount);
+    }
 
-  /* Initialise the external potential properties */
-  struct external_potential potential;
-  if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &s, &potential);
-  if (with_external_gravity && myrank == 0) potential_print(&potential);
+    /* Verify the maximal depth of cells. */
+    if (talking && !dry_run) {
+      int data[2] = {s.maxdepth, 0};
+      space_map_cells_pre(&s, 0, &map_maxdepth, data);
+      message("nr of cells at depth %i is %i.", data[0], data[1]);
+    }
 
-  /* Initialise the cooling function properties */
-  struct cooling_function_data cooling_func;
-  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
-  if (with_cooling && myrank == 0) cooling_print(&cooling_func);
+    /* Initialise the external potential properties */
+    struct external_potential potential;
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (with_external_gravity && myrank == 0) potential_print(&potential);
 
-  /* Initialise the feedback properties */
-  struct sourceterms sourceterms;
-  if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-  if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
+    /* Initialise the cooling function properties */
+    struct cooling_function_data cooling_func;
+    if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+    if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
-  /* Construct the engine policy */
-  int engine_policies = ENGINE_POLICY | engine_policy_steal;
-  if (with_drift_all) engine_policies |= engine_policy_drift_all;
-  if (with_mpole_reconstruction)
-    engine_policies |= engine_policy_reconstruct_mpoles;
-  if (with_hydro) engine_policies |= engine_policy_hydro;
-  if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
-  if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
-  if (with_cosmology) engine_policies |= engine_policy_cosmology;
-  if (with_cooling) engine_policies |= engine_policy_cooling;
-  if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
-  if (with_stars) engine_policies |= engine_policy_stars;
+    /* Initialise the feedback properties */
+    struct sourceterms sourceterms;
+    if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
+    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
-  /* Initialize the engine with the space and policies. */
-  if (myrank == 0) clocks_gettime(&tic);
-  struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
-              N_total[1], with_aff, engine_policies, talking, &reparttype, &us,
-              &prog_const, &hydro_properties, &gravity_properties, &potential,
-              &cooling_func, &sourceterms);
-  if (myrank == 0) {
-    clocks_gettime(&toc);
-    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
-            clocks_getunit());
-    fflush(stdout);
-  }
+    /* Construct the engine policy */
+    int engine_policies = ENGINE_POLICY | engine_policy_steal;
+    if (with_drift_all) engine_policies |= engine_policy_drift_all;
+    if (with_mpole_reconstruction)
+      engine_policies |= engine_policy_reconstruct_mpoles;
+    if (with_hydro) engine_policies |= engine_policy_hydro;
+    if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
+    if (with_external_gravity)
+      engine_policies |= engine_policy_external_gravity;
+    if (with_cosmology) engine_policies |= engine_policy_cosmology;
+    if (with_cooling) engine_policies |= engine_policy_cooling;
+    if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
+    if (with_stars) engine_policies |= engine_policy_stars;
 
-/* Init the runner history. */
-#ifdef HIST
-  for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
-#endif
+    /* Initialize the engine with the space and policies. */
+    if (myrank == 0) clocks_gettime(&tic);
+
+    /* XXX need restart equivalent. */
+    engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
+                N_total[1], with_aff, engine_policies, talking, &reparttype,
+                &us, &prog_const, &hydro_properties, &gravity_properties,
+                &potential, &cooling_func, &sourceterms);
+    if (myrank == 0) {
+      clocks_gettime(&toc);
+      message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+              clocks_getunit());
+      fflush(stdout);
+    }
 
 #if defined(WITH_MPI)
-  N_long[0] = s.nr_parts;
-  N_long[1] = s.nr_gparts;
-  N_long[2] = s.nr_sparts;
-  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
-             MPI_COMM_WORLD);
+    N_long[0] = s.nr_parts;
+    N_long[1] = s.nr_gparts;
+    N_long[2] = s.nr_sparts;
+    MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
+               MPI_COMM_WORLD);
 #else
-  N_total[0] = s.nr_parts;
-  N_total[1] = s.nr_gparts;
-  N_total[2] = s.nr_sparts;
+    N_total[0] = s.nr_parts;
+    N_total[1] = s.nr_gparts;
+    N_total[2] = s.nr_sparts;
 #endif
 
-  /* Get some info to the user. */
-  if (myrank == 0) {
-    long long N_DM = N_total[1] - N_total[2] - N_total[0];
-    message(
-        "Running on %lld gas particles, %lld star particles and %lld DM "
-        "particles (%lld gravity particles)",
-        N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
-    message(
-        "from t=%.3e until t=%.3e with %d threads and %d queues (dt_min=%.3e, "
-        "dt_max=%.3e)...",
-        e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
-        e.dt_max);
-    fflush(stdout);
+    /* Get some info to the user. */
+    if (myrank == 0) {
+      long long N_DM = N_total[1] - N_total[2] - N_total[0];
+      message(
+          "Running on %lld gas particles, %lld star particles and %lld DM "
+          "particles (%lld gravity particles)",
+          N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+      message(
+          "from t=%.3e until t=%.3e with %d threads and %d queues "
+          "(dt_min=%.3e, "
+          "dt_max=%.3e)...",
+          e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
+          e.dt_max);
+      fflush(stdout);
+    }
   }
 
   /* Time to say good-bye if this was not a serious run. */
@@ -761,18 +774,37 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-#ifdef WITH_MPI
-  /* Split the space. */
-  engine_split(&e, &initial_partition);
-  engine_redistribute(&e);
+/* Initialise the table of Ewald corrections for the gravity checks */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
 #endif
 
-  /* Initialise the particles */
-  engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
+/* Init the runner history. */
+#ifdef HIST
+  for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
+#endif
 
-  /* Write the state of the system before starting time integration. */
-  engine_dump_snapshot(&e);
-  engine_print_stats(&e);
+#ifdef WITH_MPI
+  if (restart) {
+    /* Set up the space and MPI */
+    engine_makeproxies(&e);
+
+  } else {
+    /* Split the space. */
+    engine_split(&e, &initial_partition);
+    engine_redistribute(&e);
+  }
+#endif
+  if (restart) {
+      /* XXX Do somethings with particles? */
+  } else {
+    /* Initialise the particles */
+    engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
+
+    /* Write the state of the system before starting time integration. */
+    engine_dump_snapshot(&e);
+    engine_print_stats(&e);
+  }
 
   /* Legend */
   if (myrank == 0)
@@ -782,6 +814,10 @@ int main(int argc, char *argv[]) {
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
+
+  /* Create a name for restart file of this rank. */
+  if (restart_genname(restartdir, restartname, e.nodeID, restartfile, 200) != 0)
+    error("Failed to generate restart filename");
 
   /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
@@ -795,14 +831,8 @@ int main(int argc, char *argv[]) {
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 
-
-    /* Create restart files if required. */
-    if (restart_genname(restartdir, restartname,
-                        e.nodeID, restartfile, 200) == 0) {
-      restart_write(&e, restartfile);
-    } else {
-      error("Failed to generate restart filename");
-    }
+    /* Create restart files if required. Time/no. steps?*/
+    restart_write(&e, restartfile);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
