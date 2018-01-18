@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_IO_EAGLE_H
 #define SWIFT_CHEMISTRY_IO_EAGLE_H
 
+#include "chemistry.h"
 #include "io_properties.h"
 
 /**
@@ -98,9 +99,14 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void chemistry_write_flavour(hid_t h_grpsph) {
+void chemistry_write_flavour(hid_t h_grp) {
 
-  io_write_attribute_s(h_grpsph, "Chemistry Model", "EAGLE");
+  io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
+  for (int elem = 0; elem < chemistry_element_count; ++elem) {
+    char buffer[20];
+    sprintf(buffer, "Element %d", elem);
+    io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(elem));
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_IO_EAGLE_H */

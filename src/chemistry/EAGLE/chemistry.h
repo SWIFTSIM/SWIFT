@@ -38,6 +38,19 @@
 #include "units.h"
 
 /**
+ * @brief Return a string containing the name of a given #chemistry_element.
+ */
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
+
+  static const char* chemistry_element_names[chemistry_element_count] = {
+      "Hydrogen", "Helium",    "Carbon",   "Nitrogen", "Oxygen",
+      "Neon",     "Magnesium", "Silicium", "Iron"};
+
+  return chemistry_element_names[elem];
+}
+
+/**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *
