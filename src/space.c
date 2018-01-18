@@ -3317,4 +3317,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
     restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream, "sparts");
   }
+
+  /* XXX need to reconnect the gravity parts to their hydro and star particles. XXX */
+
+
 }

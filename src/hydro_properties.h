@@ -33,6 +33,7 @@
 
 /* Local includes. */
 #include "parser.h"
+#include "restart.h"
 
 /**
  * @brief Contains all the constants and parameters of the hydro scheme
@@ -70,5 +71,9 @@ void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
 #if defined(HAVE_HDF5)
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
 #endif
+
+/* Dump/restore. */
+void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream);
+void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream);
 
 #endif /* SWIFT_HYDRO_PROPERTIES */

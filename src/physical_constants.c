@@ -132,8 +132,7 @@ void phys_const_print(struct phys_const* internal_const) {
 void phys_const_struct_dump(const struct phys_const *internal_const,
                             FILE *stream) {
     restart_write_blocks((void *) internal_const, sizeof(struct phys_const),
-                         1, stream,
-                       "phys_const params");
+                         1, stream, "phys_const params");
 }
 
 
@@ -147,6 +146,5 @@ void phys_const_struct_dump(const struct phys_const *internal_const,
 void phys_const_struct_restore(const struct phys_const *internal_const,
                                FILE *stream) {
     restart_read_blocks((void *)internal_const, sizeof(struct phys_const),
-                        1, stream,
-                      "phys_const params");
+                        1, stream, "phys_const params");
 }

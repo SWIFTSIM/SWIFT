@@ -34,6 +34,7 @@
 
 #include "engine.h"
 #include "error.h"
+#include "restart.h"
 
 /**
  * @brief generate a name for a restart file.
@@ -131,7 +132,8 @@ void restart_read(struct engine *e, const char *filename) {
 }
 
 /* @brief Read blocks of memory from a file stream into a memory location.
- *        Exits the application if the read fails.
+ *        Exits the application if the read fails and does nothing
+ *        if the size is zero.
  *
  * @param ptr pointer to the memory
  * @param size size of a block
@@ -141,14 +143,17 @@ void restart_read(struct engine *e, const char *filename) {
  */
 void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                          const char *errstr) {
-  size_t nread = fread(ptr, size, nblocks, stream);
-  if (nread != nblocks)
-    error("Failed to restore %s from restart file (%s)", errstr,
-          ferror(stream) ? strerror(errno) : "unexpected end of file");
+  if (size > 0) {
+    size_t nread = fread(ptr, size, nblocks, stream);
+    if (nread != nblocks)
+      error("Failed to restore %s from restart file (%s)", errstr,
+            ferror(stream) ? strerror(errno) : "unexpected end of file");
+  }
 }
 
 /* @brief Write blocks of memory to a file stream from a memory location.
- *        Exits the application if the write fails.
+ *        Exits the application if the write fails and does nothing
+ *        if the size is zero.
  *
  * @param ptr pointer to the memory
  * @param size the blocks
@@ -158,7 +163,9 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  */
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                           const char *errstr) {
-  size_t nwrite = fwrite(ptr, size, nblocks, stream);
-  if (nwrite != nblocks)
-    error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
+  if (size > 0) {
+    size_t nwrite = fwrite(ptr, size, nblocks, stream);
+    if (nwrite != nblocks)
+      error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
+  }
 }

@@ -52,6 +52,7 @@
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
+#include "cooling.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -69,6 +70,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
+#include "sourceterms.h"
 #include "statistics.h"
 #include "timers.h"
 #include "tools.h"
@@ -5635,25 +5637,28 @@ void engine_clean(struct engine *e) {
  */
 void engine_struct_dump(struct engine *e, FILE *stream) {
 
-  /* The engine. */
+  /* Dump our signature and version. */
+  restart_write_blocks(SWIFT_RESTART_SIGNATURE,strlen(SWIFT_RESTART_SIGNATURE), 
+                       1, stream, "SWIFT signature");
+  restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
+                       stream, "SWIFT version");
+
+  /* Now the engine. */
   restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
-  /* Now for the other pointers, these use their own save functions. */
+  /* And all the engine pointed data, these use their own dump functions. */
   space_struct_dump(e->s, stream);
   e->s->e = e;
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
   partition_struct_dump(e->reparttype, stream);
   phys_const_struct_dump(e->physical_constants, stream);
-
-  /* hydro props */
-  /* gravity props */
-  /* external potential props */
-  /* cooling props */
-  /* sourceterm props */
-  /* parameters */
-
-
+  hydro_props_struct_dump(e->hydro_properties, stream);
+  gravity_props_struct_dump(e->gravity_properties, stream);
+  potential_struct_dump(e->external_potential, stream);
+  cooling_struct_dump(e->cooling_func, stream);
+  sourceterms_struct_dump(e->sourceterms, stream);
+  parser_struct_dump(e->parameter_file, stream);
 }
 
 /**
@@ -5665,10 +5670,26 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
  */
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
-  /* The engine. */
+  /* Get our version and signature back. These should match. */
+  char signature[10];
+  restart_write_blocks(signature, strlen(SWIFT_RESTART_SIGNATURE), 1, stream,
+                       "SWIFT signature");
+  if (strcmp(signature, SWIFT_RESTART_SIGNATURE) != 0)
+    error("Do not recognise this as a SWIFT restart file");
+
+  char version[200];
+  restart_read_blocks(version, strlen(package_version()), 1, stream,
+                      "SWIFT version");
+  /* XXX error or warning, it might work! */
+  if (strcmp(version, package_version()) != 0)
+    message("WARNING: restoring from a different version of SWIFT. You have:"
+            " %s, and the restarts file where created using: %s. This may fail"
+            " badly", version, package_version());
+
+  /* Now the engine. */
   restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
-  /* Re-initializations as necessary. */
+  /* XXX Re-initializations as necessary. XXX */
   /* runners */
   /* scheduler */
   /* threadpool */
@@ -5683,19 +5704,20 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   /* links */
 
 
-  /* Now for the other pointers, these use their own save functions. */
+  /* Now for the other pointers, these use their own restore functions. */
+  /* XXX struct leaky memory allocations, or need static decls from main.c,
+   * like engine_init() */
   space_struct_restore(e->s, stream);
   units_struct_restore(e->internal_units, stream);
   units_struct_restore(e->snapshotUnits, stream);
   partition_struct_restore(e->reparttype, stream);
   phys_const_struct_restore(e->physical_constants, stream);
-
-  /* hydro props */
-  /* gravity props */
-  /* external potential props */
-  /* cooling props */
-  /* sourceterm props */
-  /* parameters */
+  hydro_props_struct_restore(e->hydro_properties, stream);
+  gravity_props_struct_restore(e->gravity_properties, stream);
+  potential_struct_restore(e->external_potential, stream);
+  cooling_struct_restore(e->cooling_func, stream);
+  sourceterms_struct_restore(e->sourceterms, stream);
+  parser_struct_restore(e->parameter_file, stream);
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;

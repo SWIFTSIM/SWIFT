@@ -58,3 +58,29 @@ void sourceterms_print(struct sourceterms* source) {
   supernova_print(source);
 #endif /* SOURCETERMS_SN_FEEDBACK */
 };
+
+/**
+ * @brief Write a sourceterms struct to the given FILE as a stream of bytes.
+ *
+ * @param sourceterms the struct
+ * @param stream the file stream
+ */
+void sourceterms_struct_dump(const struct sourceterms *sourceterms,
+                             FILE *stream) {
+    restart_write_blocks((void *) sourceterms, sizeof(struct sourceterms),
+                         1, stream, "sourceterms");
+}
+
+
+/**
+ * @brief Restore a sourceterms struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param sourceterms the struct
+ * @param stream the file stream
+ */
+void sourceterms_struct_restore(const struct sourceterms *sourceterms,
+                                FILE *stream) {
+    restart_read_blocks((void *)sourceterms, sizeof(struct sourceterms),
+                        1, stream, "sourceterms");
+}

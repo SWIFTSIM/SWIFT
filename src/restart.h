@@ -21,7 +21,12 @@
 
 #include <stdio.h>
 
-#include "engine.h"
+struct engine;
+
+/* The signature for restart files. */
+#ifndef SWIFT_RESTART_SIGNATURE
+#define SWIFT_RESTART_SIGNATURE "SWIFT-restart-file"
+#endif
 
 void restart_write(struct engine *e, const char *filename);
 void restart_read(struct engine *e, const char *filename);
