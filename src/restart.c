@@ -35,6 +35,7 @@
 #include "engine.h"
 #include "error.h"
 #include "restart.h"
+#include "version.h"
 
 /**
  * @brief generate a name for a restart file.
@@ -69,7 +70,7 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
 
   /* Construct the glob pattern for locating files. */
   char pattern[200];
-  if (snprintf(pattern, 200, "%s/%s_[0-9]*.rst", dir, basename) > 200) {
+  if (snprintf(pattern, 200, "%s/%s_[0-9]*.rst", dir, basename) < 200) {
 
     glob_t globbuf;
     char **files = NULL;
@@ -111,6 +112,12 @@ void restart_write(struct engine *e, const char *filename) {
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
+  /* Dump our signature and version. */
+  restart_write_blocks(SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
+                       1, stream, "SWIFT signature");
+  restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
+                       stream, "SWIFT version");
+
   engine_struct_dump(e, stream);
   fclose(stream);
 }
@@ -123,6 +130,27 @@ void restart_read(struct engine *e, const char *filename) {
   FILE *stream = fopen(filename, "r");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
+
+  /* Get our version and signature back. These should match. */
+  char signature[strlen(SWIFT_RESTART_SIGNATURE) + 1];
+  int len = strlen(SWIFT_RESTART_SIGNATURE);
+  restart_read_blocks(signature, len, 1, stream, "SWIFT signature");
+  signature[len] = '\0';
+  if (strncmp(signature, SWIFT_RESTART_SIGNATURE, len) != 0)
+    error("Do not recognise this as a SWIFT restart file, found %s "
+          "expected %s", signature, SWIFT_RESTART_SIGNATURE);
+
+  char version[200];
+  len = strlen(package_version());
+  restart_read_blocks(version, len, 1, stream, "SWIFT version");
+  version[len] = '\0';
+
+  /* XXX error or warning, it might work! */
+  if (strncmp(version, package_version(), len) != 0)
+    message(
+        "WARNING: restoring from a different version of SWIFT.\n You have:"
+        " %s and the restarts files are from: %s. This may fail"
+        " badly.", package_version(), version);
 
   engine_struct_restore(e, stream);
   fclose(stream);

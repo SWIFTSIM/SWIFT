@@ -5637,13 +5637,7 @@ void engine_clean(struct engine *e) {
  */
 void engine_struct_dump(struct engine *e, FILE *stream) {
 
-  /* Dump our signature and version. */
-  restart_write_blocks(SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
-                       1, stream, "SWIFT signature");
-  restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
-                       stream, "SWIFT version");
-
-  /* Now the engine. */
+  /* Dump the engine. */
   restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* And all the engine pointed data, these use their own dump functions. */
@@ -5669,25 +5663,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
  */
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
-  /* Get our version and signature back. These should match. */
-  char signature[strlen(SWIFT_RESTART_SIGNATURE) + 1];
-  restart_read_blocks(signature, strlen(SWIFT_RESTART_SIGNATURE), 1, stream,
-                      "SWIFT signature");
-  if (strcmp(signature, SWIFT_RESTART_SIGNATURE) != 0)
-    error("Do not recognise this as a SWIFT restart file");
-
-  char version[200];
-  restart_read_blocks(version, strlen(package_version()), 1, stream,
-                      "SWIFT version");
-  /* XXX error or warning, it might work! */
-  if (strcmp(version, package_version()) != 0)
-    message(
-        "WARNING: restoring from a different version of SWIFT. You have:"
-        " %s, and the restarts file where created using: %s. This may fail"
-        " badly",
-        version, package_version());
-
-  /* Now the engine. */
+  /* Read the engine. */
   restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* XXX Re-initializations as necessary. XXX */
@@ -5752,7 +5728,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->sourceterms = sourceterms;
 
   struct swift_params *parameter_file = malloc(sizeof(struct swift_params));
-  parser_struct_restore(e->parameter_file, stream);
+  parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
