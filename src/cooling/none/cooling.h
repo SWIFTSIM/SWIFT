@@ -56,6 +56,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @param us The internal system of units.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(

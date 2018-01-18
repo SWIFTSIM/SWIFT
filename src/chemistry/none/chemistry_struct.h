@@ -25,7 +25,14 @@
  */
 
 /**
- * @brief Properties of the chemistry function.
+ * @brief The individual elements traced in the model.
+ */
+enum chemistry_element { chemistry_element_count = 0 };
+
+/**
+ * @brief Chemistry properties carried by the #part.
+ *
+ * Nothing here.
  */
 struct chemistry_part_data {};
 

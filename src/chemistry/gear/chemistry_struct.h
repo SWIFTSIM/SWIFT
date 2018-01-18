@@ -20,9 +20,9 @@
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
 /**
- * @file src/chemistry/gear/chemistry_struct.h
- * @brief Empty infrastructure for the cases without chemistry function
+ * @brief The individual elements traced in the model.
  */
+enum chemistry_element { chemistry_element_count = 0 };
 
 /**
  * @brief Properties of the chemistry function.

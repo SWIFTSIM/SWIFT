@@ -22,17 +22,17 @@
 /**
  * @brief The individual elements traced in the EAGLE model.
  */
-enum eagle_chemisty_element {
-  eagle_element_H = 0,
-  eagle_element_He,
-  eagle_element_C,
-  eagle_element_N,
-  eagle_element_O,
-  eagle_element_Ne,
-  eagle_element_Mg,
-  eagle_element_Si,
-  eagle_element_Fe,
-  eagle_element_count
+enum chemistry_element {
+  chemistry_element_H = 0,
+  chemistry_element_He,
+  chemistry_element_C,
+  chemistry_element_N,
+  chemistry_element_O,
+  chemistry_element_Ne,
+  chemistry_element_Mg,
+  chemistry_element_Si,
+  chemistry_element_Fe,
+  chemistry_element_count
 };
 
 /**
@@ -41,13 +41,13 @@ enum eagle_chemisty_element {
 struct chemistry_part_data {
 
   /*! Fraction of the particle mass in a given element */
-  float metal_mass_fraction[eagle_element_count];
+  float metal_mass_fraction[chemistry_element_count];
 
   /*! Fraction of the particle mass in *all* metals */
   float metal_mass_fraction_total;
 
   /*! Smoothed fraction of the particle mass in a given element */
-  float smoothed_metal_mass_fraction[eagle_element_count];
+  float smoothed_metal_mass_fraction[chemistry_element_count];
 
   /*! Smoothed fraction of the particle mass in *all* metals */
   float smoothed_metal_mass_fraction_total;
