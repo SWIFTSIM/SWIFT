@@ -3251,14 +3251,18 @@ void space_struct_dump(struct space *s, FILE *stream) {
 
   /* More things to write. */
   if (s->nr_parts > 0) {
-    restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream, "parts");
-    restart_write_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream, "xparts");
+    restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                         "parts");
+    restart_write_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                         "xparts");
   }
   if (s->nr_gparts > 0)
-    restart_write_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream, "gparts");
+    restart_write_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                         "gparts");
 
   if (s->nr_sparts > 0)
-    restart_write_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream, "sparts");
+    restart_write_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                         "sparts");
 }
 
 /**
@@ -3299,15 +3303,18 @@ void space_struct_restore(struct space *s, FILE *stream) {
                        s->size_parts * sizeof(struct xpart)) != 0)
       error("Failed to allocate restore xpart array.");
 
-    restart_read_blocks(s->parts, s->nr_parts, sizeof(struct part), stream, "parts");
-    restart_read_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream, "xparts");
+    restart_read_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                        "parts");
+    restart_read_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                        "xparts");
   }
   if (s->nr_gparts > 0) {
     if (posix_memalign((void *)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate restore gpart array.");
 
-    restart_read_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream, "gparts");
+    restart_read_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                        "gparts");
   }
 
   if (s->nr_sparts > 0) {
@@ -3315,10 +3322,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                        s->size_sparts * sizeof(struct spart)) != 0)
       error("Failed to allocate restore spart array.");
 
-    restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream, "sparts");
+    restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                        "sparts");
   }
 
-  /* XXX need to reconnect the gravity parts to their hydro and star particles. XXX */
-
-
+  /* XXX need to reconnect the gravity parts to their hydro and star particles.
+   * XXX */
 }

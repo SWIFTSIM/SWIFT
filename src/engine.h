@@ -336,5 +336,4 @@ int engine_estimate_nr_tasks(struct engine *e);
 void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
 
-
 #endif /* SWIFT_ENGINE_H */

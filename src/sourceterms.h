@@ -46,9 +46,8 @@ void sourceterms_init(const struct swift_params* parameter_file,
 void sourceterms_print(struct sourceterms* source);
 
 /* Dump/restore. */
-void sourceterms_struct_dump(const struct sourceterms *source, FILE *stream);
-void sourceterms_struct_restore(const struct sourceterms *source, FILE *stream);
-
+void sourceterms_struct_dump(const struct sourceterms* source, FILE* stream);
+void sourceterms_struct_restore(const struct sourceterms* source, FILE* stream);
 
 /**
  * @brief Routines related to source terms

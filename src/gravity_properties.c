@@ -104,10 +104,9 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
  * @param stream the file stream
  */
 void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
-    restart_write_blocks((void *) p, sizeof(struct gravity_props),
-                         1, stream, "gravity props");
+  restart_write_blocks((void *)p, sizeof(struct gravity_props), 1, stream,
+                       "gravity props");
 }
-
 
 /**
  * @brief Restore a gravity_props struct from the given FILE as a stream of
@@ -117,6 +116,6 @@ void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
  * @param stream the file stream
  */
 void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream) {
-    restart_read_blocks((void *)p, sizeof(struct gravity_props),
-                        1, stream, "gravity props");
+  restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream,
+                      "gravity props");
 }

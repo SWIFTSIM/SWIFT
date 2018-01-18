@@ -53,19 +53,18 @@ void potential_print(const struct external_potential* potential) {
   potential_print_backend(potential);
 }
 
-
 /**
- * @brief Write an external_potential struct to the given FILE as a stream of bytes.
+ * @brief Write an external_potential struct to the given FILE as a stream of
+ * bytes.
  *
  * @param potential the struct
  * @param stream the file stream
  */
-void potential_struct_dump(const struct external_potential *potential,
-                           FILE *stream) {
-  restart_write_blocks((void *) potential, sizeof(struct external_potential),
-                       1, stream, "external potential");
+void potential_struct_dump(const struct external_potential* potential,
+                           FILE* stream) {
+  restart_write_blocks((void*)potential, sizeof(struct external_potential), 1,
+                       stream, "external potential");
 }
-
 
 /**
  * @brief Restore a external_potential struct from the given FILE as a stream of
@@ -74,8 +73,8 @@ void potential_struct_dump(const struct external_potential *potential,
  * @param p the struct
  * @param stream the file stream
  */
-void potential_struct_restore(const struct external_potential *potential,
-                              FILE *stream) {
-  restart_read_blocks((void *) potential, sizeof(struct external_potential),
-                      1, stream, "external potential");
+void potential_struct_restore(const struct external_potential* potential,
+                              FILE* stream) {
+  restart_read_blocks((void*)potential, sizeof(struct external_potential), 1,
+                      stream, "external potential");
 }

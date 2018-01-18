@@ -5638,7 +5638,7 @@ void engine_clean(struct engine *e) {
 void engine_struct_dump(struct engine *e, FILE *stream) {
 
   /* Dump our signature and version. */
-  restart_write_blocks(SWIFT_RESTART_SIGNATURE,strlen(SWIFT_RESTART_SIGNATURE), 
+  restart_write_blocks(SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
                        1, stream, "SWIFT signature");
   restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
                        stream, "SWIFT version");
@@ -5648,7 +5648,6 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 
   /* And all the engine pointed data, these use their own dump functions. */
   space_struct_dump(e->s, stream);
-  e->s->e = e;
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
   partition_struct_dump(e->reparttype, stream);
@@ -5671,9 +5670,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* Get our version and signature back. These should match. */
-  char signature[10];
-  restart_write_blocks(signature, strlen(SWIFT_RESTART_SIGNATURE), 1, stream,
-                       "SWIFT signature");
+  char signature[strlen(SWIFT_RESTART_SIGNATURE) + 1];
+  restart_read_blocks(signature, strlen(SWIFT_RESTART_SIGNATURE), 1, stream,
+                      "SWIFT signature");
   if (strcmp(signature, SWIFT_RESTART_SIGNATURE) != 0)
     error("Do not recognise this as a SWIFT restart file");
 
@@ -5682,14 +5681,17 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
                       "SWIFT version");
   /* XXX error or warning, it might work! */
   if (strcmp(version, package_version()) != 0)
-    message("WARNING: restoring from a different version of SWIFT. You have:"
-            " %s, and the restarts file where created using: %s. This may fail"
-            " badly", version, package_version());
+    message(
+        "WARNING: restoring from a different version of SWIFT. You have:"
+        " %s, and the restarts file where created using: %s. This may fail"
+        " badly",
+        version, package_version());
 
   /* Now the engine. */
   restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* XXX Re-initializations as necessary. XXX */
+  /* XXX Reopen output files and append... XXX */
   /* runners */
   /* scheduler */
   /* threadpool */
@@ -5703,21 +5705,55 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* links */
 
-
   /* Now for the other pointers, these use their own restore functions. */
-  /* XXX struct leaky memory allocations, or need static decls from main.c,
-   * like engine_init() */
-  space_struct_restore(e->s, stream);
-  units_struct_restore(e->internal_units, stream);
-  units_struct_restore(e->snapshotUnits, stream);
-  partition_struct_restore(e->reparttype, stream);
-  phys_const_struct_restore(e->physical_constants, stream);
-  hydro_props_struct_restore(e->hydro_properties, stream);
-  gravity_props_struct_restore(e->gravity_properties, stream);
-  potential_struct_restore(e->external_potential, stream);
-  cooling_struct_restore(e->cooling_func, stream);
-  sourceterms_struct_restore(e->sourceterms, stream);
+  /* Note all this memory leaks, but is used once. */
+  struct space *s = malloc(sizeof(struct space));
+  space_struct_restore(s, stream);
+  e->s = s;
+  s->e = e;
+
+  struct unit_system *us = malloc(sizeof(struct unit_system));
+  units_struct_restore(us, stream);
+  e->internal_units = us;
+
+  us = malloc(sizeof(struct unit_system));
+  units_struct_restore(us, stream);
+  e->snapshotUnits = us;
+
+  struct repartition *reparttype = malloc(sizeof(struct repartition));
+  partition_struct_restore(reparttype, stream);
+  e->reparttype = reparttype;
+
+  struct phys_const *physical_constants = malloc(sizeof(struct phys_const));
+  phys_const_struct_restore(physical_constants, stream);
+  e->physical_constants = physical_constants;
+
+  struct hydro_props *hydro_properties = malloc(sizeof(struct hydro_props));
+  hydro_props_struct_restore(hydro_properties, stream);
+  e->hydro_properties = hydro_properties;
+
+  struct gravity_props *gravity_properties =
+      malloc(sizeof(struct gravity_props));
+  gravity_props_struct_restore(gravity_properties, stream);
+  e->gravity_properties = gravity_properties;
+
+  struct external_potential *external_potential =
+      malloc(sizeof(struct external_potential));
+  potential_struct_restore(external_potential, stream);
+  e->external_potential = external_potential;
+
+  struct cooling_function_data *cooling_func =
+      malloc(sizeof(struct cooling_function_data));
+  cooling_struct_restore(cooling_func, stream);
+  e->cooling_func = cooling_func;
+
+  struct sourceterms *sourceterms = malloc(sizeof(struct sourceterms));
+  sourceterms_struct_restore(sourceterms, stream);
+  e->sourceterms = sourceterms;
+
+  struct swift_params *parameter_file = malloc(sizeof(struct swift_params));
   parser_struct_restore(e->parameter_file, stream);
+  e->parameter_file = parameter_file;
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;

@@ -35,8 +35,8 @@
  * @param us The current internal system of units.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(struct unit_system* us,
-                     struct phys_const* internal_const) {
+void phys_const_init(struct unit_system *us,
+                     struct phys_const *internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 
@@ -106,7 +106,7 @@ void phys_const_init(struct unit_system* us,
       units_general_cgs_conversion_factor(us, dimension_length);
 }
 
-void phys_const_print(struct phys_const* internal_const) {
+void phys_const_print(struct phys_const *internal_const) {
 
   message("%25s = %e", "Gravitational constant",
           internal_const->const_newton_G);
@@ -131,10 +131,9 @@ void phys_const_print(struct phys_const* internal_const) {
  */
 void phys_const_struct_dump(const struct phys_const *internal_const,
                             FILE *stream) {
-    restart_write_blocks((void *) internal_const, sizeof(struct phys_const),
-                         1, stream, "phys_const params");
+  restart_write_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+                       stream, "phys_const params");
 }
-
 
 /**
  * @brief Restore a phys_const struct from the given FILE as a stream of
@@ -145,6 +144,6 @@ void phys_const_struct_dump(const struct phys_const *internal_const,
  */
 void phys_const_struct_restore(const struct phys_const *internal_const,
                                FILE *stream) {
-    restart_read_blocks((void *)internal_const, sizeof(struct phys_const),
-                        1, stream, "phys_const params");
+  restart_read_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+                      stream, "phys_const params");
 }

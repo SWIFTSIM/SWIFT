@@ -140,7 +140,7 @@ double units_conversion_factor(const struct unit_system* from,
 void units_print(const struct unit_system* us);
 
 /* Dump/restore. */
-void units_struct_dump(const struct unit_system *us, FILE *stream);
-void units_struct_restore(const struct unit_system *us, FILE *stream);
+void units_struct_dump(const struct unit_system* us, FILE* stream);
+void units_struct_restore(const struct unit_system* us, FILE* stream);
 
 #endif /* SWIFT_UNITS_H */

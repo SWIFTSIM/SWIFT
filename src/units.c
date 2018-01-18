@@ -604,18 +604,16 @@ void units_print(const struct unit_system* us) {
   message("\tUnit Temperature: %g", us->UnitTemperature_in_cgs);
 }
 
-
 /**
  * @brief Write a units struct to the given FILE as a stream of bytes.
  *
  * @param us the units
  * @param stream the file stream
  */
-void units_struct_dump(const struct unit_system *us, FILE *stream) {
-  restart_write_blocks((void *)us, sizeof(struct unit_system), 1, stream,
+void units_struct_dump(const struct unit_system* us, FILE* stream) {
+  restart_write_blocks((void*)us, sizeof(struct unit_system), 1, stream,
                        "units");
 }
-
 
 /**
  * @brief Restore a units struct from the given FILE as a stream of bytes.
@@ -623,7 +621,7 @@ void units_struct_dump(const struct unit_system *us, FILE *stream) {
  * @param us the units
  * @param stream the file stream
  */
-void units_struct_restore(const struct unit_system *us, FILE *stream) {
-  restart_read_blocks((void *)us, sizeof(struct unit_system), 1, stream,
+void units_struct_restore(const struct unit_system* us, FILE* stream) {
+  restart_read_blocks((void*)us, sizeof(struct unit_system), 1, stream,
                       "units");
 }

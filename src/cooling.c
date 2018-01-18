@@ -60,13 +60,11 @@ void cooling_print(const struct cooling_function_data* cooling) {
  * @param p the struct
  * @param stream the file stream
  */
-void cooling_struct_dump(const struct cooling_function_data* cooling, 
-                         FILE *stream) {
-    restart_write_blocks((void *) cooling, 
-                         sizeof(struct cooling_function_data),
-                         1, stream, "cooling function");
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling function");
 }
-
 
 /**
  * @brief Restore a hydro_props struct from the given FILE as a stream of
@@ -76,7 +74,7 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
  * @param stream the file stream
  */
 void cooling_struct_restore(const struct cooling_function_data* cooling,
-                            FILE *stream) {
-    restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data),
-                        1, stream, "cooling function");
+                            FILE* stream) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, "cooling function");
 }

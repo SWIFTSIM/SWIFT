@@ -33,11 +33,12 @@ void restart_read(struct engine *e, const char *filename);
 
 char **restart_locate(const char *dir, const char *basename, int *nfiles);
 void restart_locate_free(int nfiles, char **files);
-int restart_genname(const char *dir, const char *basename,
-                    int nodeID, char *name, int size);
+int restart_genname(const char *dir, const char *basename, int nodeID,
+                    char *name, int size);
 
 void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                          const char *errstr);
+
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                           const char *errstr);
 

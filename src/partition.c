@@ -1259,10 +1259,9 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
  * @param stream the file stream
  */
 void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
-    restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
+  restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
                        "repartition params");
 }
-
 
 /**
  * @brief Restore a repartition struct from the given FILE as a stream of

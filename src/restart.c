@@ -27,10 +27,10 @@
 
 /* Standard headers. */
 #include <errno.h>
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glob.h>
 
 #include "engine.h"
 #include "error.h"
@@ -47,8 +47,8 @@
  *
  * @result 0 if the string was large enough.
  */
-int restart_genname(const char *dir, const char *basename,
-                     int nodeID, char *name, int size) {
+int restart_genname(const char *dir, const char *basename, int nodeID,
+                    char *name, int size) {
   int n = snprintf(name, size, "%s/%s_%04d.rst", dir, basename, nodeID);
   message("name = %s", name);
   return (n >= size);
@@ -64,8 +64,7 @@ int restart_genname(const char *dir, const char *basename,
  * @result pointer to an array of strings with all the filenames found,
  *         release by calling restart_locate_free().
  */
-char **restart_locate(const char *dir, const char *basename,
-                      int *nfiles) {
+char **restart_locate(const char *dir, const char *basename, int *nfiles) {
   *nfiles = 0;
 
   /* Construct the glob pattern for locating files. */
@@ -90,7 +89,6 @@ char **restart_locate(const char *dir, const char *basename,
   return NULL;
 }
 
-
 /**
  * @brief Release the memory allocated to hold the restart file names.
  *
@@ -99,11 +97,10 @@ char **restart_locate(const char *dir, const char *basename,
  */
 void restart_locate_free(int nfiles, char **files) {
   for (int i = 0; i < nfiles; i++) {
-     free(files[i]);
+    free(files[i]);
   }
   free(files);
 }
-
 
 /**
  * @brief Write a restart file for the given engine struct.
