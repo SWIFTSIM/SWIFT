@@ -30,6 +30,13 @@
 enum chemistry_element { chemistry_element_count = 0 };
 
 /**
+ * @brief Global chemical abundance information.
+ *
+ * Nothing here.
+ */
+struct chemistry_data {};
+
+/**
  * @brief Chemistry properties carried by the #part.
  *
  * Nothing here.

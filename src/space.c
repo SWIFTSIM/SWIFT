@@ -41,6 +41,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
 #include "engine.h"
@@ -2618,7 +2619,8 @@ void space_synchronize_particle_positions(struct space *s) {
  *
  * Calls hydro_first_init_part() on all the particles
  */
-void space_first_init_parts(struct space *s) {
+void space_first_init_parts(struct space *s,
+                            const struct chemistry_data *chemistry) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2638,6 +2640,9 @@ void space_first_init_parts(struct space *s) {
 
     hydro_first_init_part(&p[i], &xp[i]);
 
+    /* Also initialise the chemistry */
+    chemistry_first_init_part(&p[i], &xp[i], chemistry);
+
 #ifdef SWIFT_DEBUG_CHECKS
     p[i].ti_drift = 0;
     p[i].ti_kick = 0;
@@ -2650,7 +2655,8 @@ void space_first_init_parts(struct space *s) {
  *
  * Calls cooling_init_xpart() on all the particles
  */
-void space_first_init_xparts(struct space *s) {
+void space_first_init_xparts(struct space *s,
+                             const struct cooling_function_data *cool_func) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
@@ -2658,7 +2664,7 @@ void space_first_init_xparts(struct space *s) {
 
   for (size_t i = 0; i < nr_parts; ++i) {
 
-    cooling_init_part(&p[i], &xp[i]);
+    cooling_first_init_part(&p[i], &xp[i], cool_func);
   }
 }
 
@@ -3001,17 +3007,6 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   hydro_space_init(&s->hs, s);
-
-  ticks tic = getticks();
-  if (verbose) message("first init...");
-  /* Set the particles in a state where they are ready for a run */
-  space_first_init_parts(s);
-  space_first_init_xparts(s);
-  space_first_init_gparts(s);
-  space_first_init_sparts(s);
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

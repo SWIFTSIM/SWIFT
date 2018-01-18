@@ -131,9 +131,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param cooling The properties of the cooling function.
  */
-__attribute__((always_inline)) INLINE static void cooling_init_part(
-    const struct part* restrict p, struct xpart* restrict xp) {
+__attribute__((always_inline)) INLINE static void cooling_first_init_part(
+    const struct part* restrict p, struct xpart* restrict xp,
+    const struct cooling_function_data* cooling) {
 
   xp->cooling_data.radiated_energy = 0.f;
 }

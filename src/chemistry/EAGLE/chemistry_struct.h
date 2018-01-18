@@ -36,7 +36,25 @@ enum chemistry_element {
 };
 
 /**
- * @brief Chemical abundances traced in the EAGLE model.
+ * @brief Global chemical abundance information in the EAGLE model.
+ */
+struct chemistry_data {
+
+  /*! Fraction of the particle mass in given elements at the start of the run */
+  float initial_metal_mass_fraction[chemistry_element_count];
+
+  /*! Fraction of the particle mass in *all* metals at the start of the run */
+  float initial_metal_mass_fraction_total;
+
+  /*! Constant ratio of Calcium over Silicium */
+  float calcium_over_silicon_ratio;
+
+  /*! Constant ratio of Calcium over Silicium */
+  float sulphur_over_silicon_ratio;
+};
+
+/**
+ * @brief Chemical abundances traced by the #part in the EAGLE model.
  */
 struct chemistry_part_data {
 

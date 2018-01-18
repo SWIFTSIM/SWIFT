@@ -25,6 +25,11 @@
 enum chemistry_element { chemistry_element_count = 0 };
 
 /**
+ * @brief Global chemical abundance information.
+ */
+struct chemistry_data {};
+
+/**
  * @brief Properties of the chemistry function.
  */
 struct chemistry_part_data {

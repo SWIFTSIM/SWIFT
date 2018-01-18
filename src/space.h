@@ -223,6 +223,12 @@ void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
+void space_first_init_parts(struct space *s,
+                            const struct chemistry_data *chemistry);
+void space_first_init_xparts(struct space *s,
+                             const struct cooling_function_data *cool_func);
+void space_first_init_gparts(struct space *s);
+void space_first_init_sparts(struct space *s);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);

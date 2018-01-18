@@ -45,9 +45,11 @@
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param data The global chemistry information used for this run.
  */
-__attribute__((always_inline)) INLINE static void chemistry_init_part(
-    const struct part* restrict p, struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void chemistry_first_init_part(
+    const struct part* restrict p, struct xpart* restrict xp,
+    const struct chemistry_data* data) {}
 
 /**
  * @brief Initialises the chemistry properties.
@@ -57,15 +59,18 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
+ * @param data The global chemistry information (to be filled).
  */
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const) {}
+    const struct phys_const* phys_const, struct chemistry_data* data) {}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
+ *
+ * @brief The #chemistry_data containing information about the current model.
  */
-static INLINE void chemistry_print_backend() {
+static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
 
   message("Chemistry function is 'No chemistry'.");
 }
