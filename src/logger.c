@@ -158,10 +158,12 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
-                  ((uint64_t)mask << 56);
-  memcpy(buff, &temp, 8);
-  buff += 8;
+  memcpy(buff, &mask, 1);
+  buff += 1;
+  
+  size_t diff_offset = offset_new - *offset;
+  memcpy(buff, &diff_offset, 7);
+  buff += 7;
 
   /* Particle position as three doubles. */
   if (mask & logger_mask_x) {
@@ -242,10 +244,12 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
-                  ((uint64_t)mask << 56);
-  memcpy(buff, &temp, 8);
-  buff += 8;
+  memcpy(buff, &mask, 1);
+  buff += 1;
+  
+  size_t diff_offset = offset_new - *offset;
+  memcpy(buff, &diff_offset, 7);
+  buff += 7;
 
   /* Particle position as three doubles. */
   if (mask & logger_mask_x) {
@@ -290,10 +294,13 @@ void logger_log_timestamp(integertime_t timestamp, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
-                  ((uint64_t)logger_mask_timestamp << 56);
-  memcpy(buff, &temp, 8);
-  buff += 8;
+  size_t mask = logger_mask_timestamp;
+  memcpy(buff, &mask, 1);
+  buff += 1;
+  
+  size_t diff_offset = offset_new - *offset;
+  memcpy(buff, &diff_offset, 7);
+  buff += 7;
 
   /* Store the timestamp. */
   memcpy(buff, &timestamp, sizeof(integertime_t));
