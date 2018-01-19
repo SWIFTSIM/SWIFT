@@ -32,8 +32,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -472,19 +472,18 @@ int main(int argc, char *argv[]) {
 
   /* Work out where we will read and write restart files. */
   char restartdir[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "Restarts:subdir", restartdir,
-                              "restart");
+  parser_get_opt_param_string(params, "Restarts:subdir", restartdir, "restart");
 
   /* The directory must exist. */
   if (access(restartdir, W_OK | X_OK) != 0) {
-      if (restart) {
-        error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
+    if (restart) {
+      error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
+            strerror(errno));
+    } else {
+      if (mkdir(restartdir, 0777) != 0)
+        error("Failed to create restart directory: %s (%s)", restartdir,
               strerror(errno));
-      } else {
-        if (mkdir(restartdir, 0777) != 0)
-          error("Failed to create restart directory: %s (%s)", restartdir,
-                strerror(errno));
-      }
+    }
   }
 
   /* Basename for any restart files. */
@@ -544,6 +543,21 @@ int main(int argc, char *argv[]) {
 
     /* Now read it. */
     restart_read(&e, restartfile);
+
+    /* And initialize the engine with the space and policies. */
+    if (myrank == 0) clocks_gettime(&tic);
+
+    long long N_total[3] = {0, 0, 0};
+    engine_init(1, &e, NULL, NULL, nr_nodes, myrank, nr_threads, N_total[0],
+                N_total[1], with_aff, 0, talking, NULL, NULL, NULL, NULL, NULL,
+                NULL, NULL, NULL);
+    if (myrank == 0) {
+      clocks_gettime(&toc);
+      message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+              clocks_getunit());
+      fflush(stdout);
+    }
+
   } else {
 
     /* Reading ICs. */
@@ -647,8 +661,6 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     struct space s;
-
-    /* XXX restart equiv? */
     space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
                periodic, replicate, with_self_gravity, talking, dry_run);
 
@@ -720,8 +732,7 @@ int main(int argc, char *argv[]) {
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
 
-    /* XXX need restart equivalent. */
-    engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
+    engine_init(0, &e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
                 N_total[1], with_aff, engine_policies, talking, &reparttype,
                 &us, &prog_const, &hydro_properties, &gravity_properties,
                 &potential, &cooling_func, &sourceterms);
@@ -795,9 +806,7 @@ int main(int argc, char *argv[]) {
     engine_redistribute(&e);
   }
 #endif
-  if (restart) {
-      /* XXX Do somethings with particles? */
-  } else {
+  if (! restart) {
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
 

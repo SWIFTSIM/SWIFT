@@ -297,7 +297,7 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init(struct engine *e, struct space *s,
+void engine_init(int restart, struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, long long Ngas, long long Ndm, int with_aff,
                  int policy, int verbose, struct repartition *reparttype,

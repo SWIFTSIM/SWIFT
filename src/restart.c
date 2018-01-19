@@ -137,8 +137,10 @@ void restart_read(struct engine *e, const char *filename) {
   restart_read_blocks(signature, len, 1, stream, "SWIFT signature");
   signature[len] = '\0';
   if (strncmp(signature, SWIFT_RESTART_SIGNATURE, len) != 0)
-    error("Do not recognise this as a SWIFT restart file, found %s "
-          "expected %s", signature, SWIFT_RESTART_SIGNATURE);
+    error(
+        "Do not recognise this as a SWIFT restart file, found %s "
+        "expected %s",
+        signature, SWIFT_RESTART_SIGNATURE);
 
   char version[200];
   len = strlen(package_version());
@@ -150,7 +152,8 @@ void restart_read(struct engine *e, const char *filename) {
     message(
         "WARNING: restoring from a different version of SWIFT.\n You have:"
         " %s and the restarts files are from: %s. This may fail"
-        " badly.", package_version(), version);
+        " badly.",
+        package_version(), version);
 
   engine_struct_restore(e, stream);
   fclose(stream);

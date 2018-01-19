@@ -5084,8 +5084,10 @@ void engine_unpin() {
 
 /**
  * @brief init an engine with the given number of threads, queues, and
- *      the given policy.
+ *      the given policy. When restarting only a number of these operations
+ *      are used.
  *
+ * @param restart whether the application is restarting.
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
@@ -5106,7 +5108,7 @@ void engine_unpin() {
  * @param cooling_func The properties of the cooling function.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s,
+void engine_init(int restart, struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, long long Ngas, long long Ndm, int with_aff,
                  int policy, int verbose, struct repartition *reparttype,
@@ -5119,81 +5121,96 @@ void engine_init(struct engine *e, struct space *s,
                  struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
-  bzero(e, sizeof(struct engine));
+  if (!restart) bzero(e, sizeof(struct engine));
 
   /* Store the values. */
-  e->s = s;
+  if (!restart) e->s = s;
   e->nr_threads = nr_threads;
-  e->policy = policy;
-  e->step = 0;
+  if (restart)
+    policy = e->policy;
+  else
+    e->policy = policy;
+
+  if (!restart) e->step = 0;
   e->nr_nodes = nr_nodes;
-  e->nodeID = nodeID;
-  e->total_nr_parts = Ngas;
-  e->total_nr_gparts = Ndm;
+  if (!restart) e->nodeID = nodeID;
+  if (!restart) e->total_nr_parts = Ngas;
+  if (!restart) e->total_nr_gparts = Ndm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
   e->forcerepart = 0;
-  e->reparttype = reparttype;
+  if (!restart) e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->save_stats = 0;
   e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;
-  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
-  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
-  e->timeOld = e->timeBegin;
-  e->time = e->timeBegin;
-  e->ti_old = 0;
-  e->ti_current = 0;
-  e->max_active_bin = num_time_bins;
-  e->timeStep = 0.;
-  e->timeBase = 0.;
-  e->timeBase_inv = 0.;
-  e->internal_units = internal_units;
-  e->timeFirstSnapshot =
-      parser_get_param_double(params, "Snapshots:time_first");
-  e->deltaTimeSnapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
-  e->ti_nextSnapshot = 0;
-  parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
-  e->snapshotCompression =
-      parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshotUnits = malloc(sizeof(struct unit_system));
-  units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
-  e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
-  e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
+  if (!restart)
+    e->timeBegin =
+        parser_get_param_double(params, "TimeIntegration:time_begin");
+  if (!restart)
+    e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
+  if (!restart) e->timeOld = e->timeBegin;
+  if (!restart) e->time = e->timeBegin;
+  if (!restart) e->ti_old = 0;
+  if (!restart) e->ti_current = 0;
+  if (!restart) e->max_active_bin = num_time_bins;
+  if (!restart) e->timeStep = 0.;
+  if (!restart) e->timeBase = 0.;
+  if (!restart) e->timeBase_inv = 0.;
+  if (!restart) e->internal_units = internal_units;
+  if (!restart)
+    e->timeFirstSnapshot =
+        parser_get_param_double(params, "Snapshots:time_first");
+  if (!restart)
+    e->deltaTimeSnapshot =
+        parser_get_param_double(params, "Snapshots:delta_time");
+  if (!restart) e->ti_nextSnapshot = 0;
+  if (!restart)
+    parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
+  if (!restart)
+    e->snapshotCompression =
+        parser_get_opt_param_int(params, "Snapshots:compression", 0);
+  if (!restart) e->snapshotUnits = malloc(sizeof(struct unit_system));
+  if (!restart)
+    units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
+  if (!restart)
+    e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
+  if (!restart)
+    e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
   e->file_timesteps = NULL;
-  e->deltaTimeStatistics =
-      parser_get_param_double(params, "Statistics:delta_time");
-  e->timeLastStatistics = 0;
+  if (!restart)
+    e->deltaTimeStatistics =
+        parser_get_param_double(params, "Statistics:delta_time");
+  if (!restart) e->timeLastStatistics = 0;
   e->verbose = verbose;
-  e->count_step = 0;
+  if (!restart) e->count_step = 0;
   e->wallclock_time = 0.f;
-  e->physical_constants = physical_constants;
-  e->hydro_properties = hydro;
-  e->gravity_properties = gravity;
-  e->external_potential = potential;
-  e->cooling_func = cooling_func;
-  e->sourceterms = sourceterms;
-  e->parameter_file = params;
+  if (!restart) e->physical_constants = physical_constants;
+  if (!restart) e->hydro_properties = hydro;
+  if (!restart) e->gravity_properties = gravity;
+  if (!restart) e->external_potential = potential;
+  if (!restart) e->cooling_func = cooling_func;
+  if (!restart) e->sourceterms = sourceterms;
+  if (!restart) e->parameter_file = params;
 #ifdef WITH_MPI
-  e->cputime_last_step = 0;
-  e->last_repartition = 0;
+  if (!restart) e->cputime_last_step = 0;
+  if (!restart) e->last_repartition = 0;
 #endif
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
-  s->e = e;
+  if (!restart) s->e = e;
 
   /* Get the number of queues */
-  int nr_queues =
-      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
+  int nr_queues = parser_get_opt_param_int(e->parameter_file,
+                                           "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
-  s->nr_queues = nr_queues;
+  e->s->nr_queues = nr_queues;
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
@@ -5327,51 +5344,67 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Open some files */
   if (e->nodeID == 0) {
+    /* When restarting append to these files. */
+    char *mode;
+    if (restart)
+      mode = "a";
+    else
+      mode = "w";
+
     char energyfileName[200] = "";
-    parser_get_opt_param_string(params, "Statistics:energy_file_name",
-                                energyfileName,
+    parser_get_opt_param_string(e->parameter_file,
+                                "Statistics:energy_file_name", energyfileName,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
-    e->file_stats = fopen(energyfileName, "w");
-    fprintf(e->file_stats,
-            "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-            "%14s %14s %14s %14s %14s %14s\n",
-            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
-            "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
-            "ang_y", "ang_z", "com_x", "com_y", "com_z");
-    fflush(e->file_stats);
+    e->file_stats = fopen(energyfileName, mode);
+
+    if (!restart) {
+      fprintf(
+          e->file_stats,
+          "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+          "%14s %14s %14s %14s %14s %14s\n",
+          "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
+          "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
+          "ang_y", "ang_z", "com_x", "com_y", "com_z");
+      fflush(e->file_stats);
+    }
 
     char timestepsfileName[200] = "";
-    parser_get_opt_param_string(params, "Statistics:timestep_file_name",
-                                timestepsfileName,
-                                engine_default_timesteps_file_name);
+    parser_get_opt_param_string(
+        e->parameter_file, "Statistics:timestep_file_name", timestepsfileName,
+        engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
             nr_nodes * nr_threads);
-    e->file_timesteps = fopen(timestepsfileName, "w");
-    fprintf(e->file_timesteps,
-            "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
-            "Version: %s \n# "
-            "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
-            "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-            "+/- %.4f\n# Eta: %f\n",
-            hostname(), git_branch(), git_revision(), compiler_name(),
-            compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-            kernel_name, e->hydro_properties->target_neighbours,
-            e->hydro_properties->delta_neighbours,
-            e->hydro_properties->eta_neighbours);
+    e->file_timesteps = fopen(timestepsfileName, mode);
 
-    fprintf(e->file_timesteps,
-            "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-            "Statistics=%d, Snapshot=%d\n",
-            engine_step_prop_rebuild, engine_step_prop_redistribute,
-            engine_step_prop_repartition, engine_step_prop_statistics,
-            engine_step_prop_snapshot);
+    if (!restart) {
+      fprintf(
+          e->file_timesteps,
+          "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
+          "Version: %s \n# "
+          "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
+          "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
+          "+/- %.4f\n# Eta: %f\n",
+          hostname(), git_branch(), git_revision(), compiler_name(),
+          compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
+          kernel_name, e->hydro_properties->target_neighbours,
+          e->hydro_properties->delta_neighbours,
+          e->hydro_properties->eta_neighbours);
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n",
-            "Step", "Time", "Time-step", "Updates", "g-Updates", "s-Updates",
-            "Wall-clock time", clocks_getunit(), "Props");
-    fflush(e->file_timesteps);
+      fprintf(e->file_timesteps,
+              "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+              "Statistics=%d, Snapshot=%d\n",
+              engine_step_prop_rebuild, engine_step_prop_redistribute,
+              engine_step_prop_repartition, engine_step_prop_statistics,
+              engine_step_prop_snapshot);
+
+      fprintf(e->file_timesteps,
+              "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
+              "Time-step", "Updates", "g-Updates", "s-Updates",
+              "Wall-clock time", clocks_getunit(), "Props");
+      fflush(e->file_timesteps);
+    }
   }
 
   /* Print policy */
@@ -5400,9 +5433,11 @@ void engine_init(struct engine *e, struct space *s,
         e->dt_min, e->dt_max);
 
   /* Deal with timestep */
-  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-  e->timeBase_inv = 1.0 / e->timeBase;
-  e->ti_current = 0;
+  if (!restart) {
+    e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
+    e->timeBase_inv = 1.0 / e->timeBase;
+    e->ti_current = 0;
+  }
 
   /* Info about time-steps */
   if (e->nodeID == 0) {
@@ -5462,8 +5497,8 @@ void engine_init(struct engine *e, struct space *s,
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
    */
-  e->tasks_per_cell =
-      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
+  e->tasks_per_cell = parser_get_opt_param_int(e->parameter_file,
+                                               "Scheduler:tasks_per_cell", 0);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
@@ -5473,7 +5508,9 @@ void engine_init(struct engine *e, struct space *s,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
    */
   e->sched.mpi_message_limit =
-      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
+      parser_get_opt_param_int(e->parameter_file, "Scheduler:mpi_message_limit",
+                               4) *
+      1024;
 
   /* Allocate and init the threads. */
   if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
@@ -5666,20 +5703,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   /* Read the engine. */
   restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
-  /* XXX Re-initializations as necessary. XXX */
-  /* XXX Reopen output files and append... XXX */
-  /* runners */
-  /* scheduler */
-  /* threadpool */
-
-  /* stats file */
-  /* timesteps file */
-
-  /* barriers */
-
-  /* proxies */
-
-  /* links */
+  /* Re-initializations as necessary for our struct and its members. */
+  e->sched.tasks = NULL;
+  e->sched.tasks_ind = NULL;
+  e->sched.tid_active = NULL;
+  e->sched.size = 0;
 
   /* Now for the other pointers, these use their own restore functions. */
   /* Note all this memory leaks, but is used once. */
