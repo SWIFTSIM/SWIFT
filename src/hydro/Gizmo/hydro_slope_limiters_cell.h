@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
+#define SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
 
 #include <float.h>
 
@@ -171,3 +173,5 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     p->primitives.gradients.P[2] *= alpha;
   }
 }
+
+#endif /* SWIFT_GIZMO_SLOPE_LIMITER_CELL_H */
