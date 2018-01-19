@@ -36,7 +36,9 @@
 #include "serial_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "common_io.h"
+#include "cooling.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -607,6 +609,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             if (with_hydro) {
               Nparticles = *Ngas;
               hydro_read_particles(*parts, list, &num_fields);
+              num_fields += chemistry_read_particles(*parts, list + num_fields);
             }
             break;
 
@@ -811,9 +814,17 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating SPH group");
       hydro_props_print_snapshot(h_grp, e->hydro_properties);
-      writeSPHflavour(h_grp);
+      hydro_write_flavour(h_grp);
       H5Gclose(h_grp);
     }
+
+    /* Print the subgrid parameters */
+    h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating subgrid group");
+    cooling_write_flavour(h_grp);
+    chemistry_write_flavour(h_grp);
+    H5Gclose(h_grp);
 
     /* Print the gravity parameters */
     if (e->policy & engine_policy_self_gravity) {
@@ -935,6 +946,7 @@ void write_output_serial(struct engine* e, const char* baseName,
           case swift_type_gas:
             Nparticles = Ngas;
             hydro_write_particles(parts, list, &num_fields);
+            num_fields += chemistry_write_particles(parts, list + num_fields);
             break;
 
           case swift_type_dark_matter:

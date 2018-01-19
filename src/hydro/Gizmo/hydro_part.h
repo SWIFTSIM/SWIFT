@@ -19,6 +19,7 @@
 #ifndef SWIFT_GIZMO_HYDRO_PART_H
 #define SWIFT_GIZMO_HYDRO_PART_H
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the computation. */
@@ -187,6 +188,9 @@ struct part {
     float mflux[3];
 
   } gravity;
+
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Time-step length */
   timebin_t time_bin;

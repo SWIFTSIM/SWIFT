@@ -932,6 +932,29 @@ case "$with_cooling" in
    ;;
 esac
 
+#  chemistry function
+AC_ARG_WITH([chemistry],
+   [AS_HELP_STRING([--with-chemistry=<function>],
+      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+   )],
+   [with_chemistry="$withval"],
+   [with_chemistry="none"]
+)
+case "$with_chemistry" in
+   none)
+      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
+   ;; 
+   gear)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+   ;; 
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -1031,6 +1054,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
    
    External potential  : $with_potential
    Multipole order     : $with_multipole_order

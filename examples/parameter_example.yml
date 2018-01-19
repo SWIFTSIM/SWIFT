@@ -151,3 +151,21 @@ GrackleCooling:
   UVbackground: 1 # Enable or not the UV background
   GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
   GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units
+
+# Parameters related to chemistry models  -----------------------------------------------
+
+# EAGLE model
+EAGLEChemistry:
+  InitMetallicity:         0.           # Inital fraction of particle mass in *all* metals
+  InitAbundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
+  InitAbundance_Helium:    0.248        # Inital fraction of particle mass in Helium
+  InitAbundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
+  InitAbundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
+  InitAbundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
+  InitAbundance_Neon:      0.000        # Inital fraction of particle mass in Neon
+  InitAbundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
+  InitAbundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
+  InitAbundance_Iron:      0.000        # Inital fraction of particle mass in Iron
+  CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
+  SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
+

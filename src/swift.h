@@ -27,6 +27,7 @@
 #include "atomic.h"
 #include "cache.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "clocks.h"
 #include "const.h"
 #include "cooling.h"

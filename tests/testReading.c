@@ -42,6 +42,9 @@ int main() {
   const double boxSize = 1.;
   const size_t L = 4;
   const double rho = 2.;
+#ifdef CHEMISTRY_GRACKLE
+  const float he_density = rho * 0.24;
+#endif
 
   /* Read data */
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
@@ -92,6 +95,10 @@ int main() {
     assert(parts[n].a_hydro[0] == 0.);
     assert(parts[n].a_hydro[1] == 0.);
     assert(parts[n].a_hydro[2] == 0.);
+
+#ifdef CHEMISTRY_GRACKLE
+    assert(parts[n].chemistry_data.he_density == he_density);
+#endif
   }
 
   /* Clean-up */
