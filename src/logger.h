@@ -64,8 +64,8 @@ struct dump;
  * The offset refers to the relative location of the previous message for the
  * same particle or for the previous timestamp (if mask bit 7 is set). I.e.
  * the previous log entry will be at the address of the current mask byte minus
- * the unsigned value stored in the offset. An offset of zero indicates that
- * this is the first message for the given particle/timestamp.
+ * the unsigned value stored in the offset. An offset equal to the chunk offset
+ * indicated that this is the first message for the given particle/timestamp.
  */
 
 /* Some constants. */
