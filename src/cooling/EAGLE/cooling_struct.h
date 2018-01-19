@@ -16,30 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_H
-#define SWIFT_COOLING_STRUCT_H
+#ifndef SWIFT_COOLING_STRUCT_EAGLE_H
+#define SWIFT_COOLING_STRUCT_EAGLE_H
 
 /**
- * @file src/cooling_struct.h
- * @brief Branches between the different cooling functions.
+ * @brief Properties of the cooling function.
  */
+struct cooling_function_data {};
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @brief Properties of the cooling stored in the extended particle data.
+ */
+struct cooling_xpart_data {};
 
-/* Import the right cooling definition */
-#if defined(COOLING_NONE)
-#include "./cooling/none/cooling_struct.h"
-#elif defined(COOLING_CONST_DU)
-#include "./cooling/const_du/cooling_struct.h"
-#elif defined(COOLING_CONST_LAMBDA)
-#include "./cooling/const_lambda/cooling_struct.h"
-#elif defined(COOLING_GRACKLE)
-#include "./cooling/grackle/cooling_struct.h"
-#elif defined(COOLING_EAGLE)
-#include "./cooling/EAGLE/cooling_struct.h"
-#else
-#error "Invalid choice of cooling function."
-#endif
-
-#endif /* SWIFT_COOLING_STRUCT_H */
+#endif /* SWIFT_COOLING_STRUCT_EAGLE_H */

@@ -927,6 +927,9 @@ case "$with_cooling" in
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
    ;; 
+   EAGLE)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+   ;; 
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;

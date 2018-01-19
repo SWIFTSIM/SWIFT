@@ -66,7 +66,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h part_type.h periodic.h \
+		 dimension.h equation_of_state.h part_type.h periodic.h memswap.h dump.h logger.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -119,7 +119,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
-                 memswap.h dump.h logger.h \
+		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
