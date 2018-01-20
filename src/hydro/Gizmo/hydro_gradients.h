@@ -159,4 +159,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   gizmo_check_physical_quantity("pressure", Wj[4]);
 }
 
-#endif  /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */
+#endif /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */

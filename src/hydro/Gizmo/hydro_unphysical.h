@@ -52,4 +52,4 @@
 
 #endif  // defined(GIZMO_UNPHYSICAL_ERROR) || defined(GIZMO_UNPHYSICAL_RESCUE)
 
-#endif  /* SWIFT_HYDRO_UNPHYSICAL_H */
+#endif /* SWIFT_HYDRO_UNPHYSICAL_H */

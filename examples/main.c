@@ -605,12 +605,12 @@ int main(int argc, char *argv[]) {
   struct external_potential potential;
   if (with_external_gravity)
     potential_init(params, &prog_const, &us, &s, &potential);
-  if (with_external_gravity && myrank == 0) potential_print(&potential);
+  if (myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */
   struct cooling_function_data cooling_func;
   if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
-  if (with_cooling && myrank == 0) cooling_print(&cooling_func);
+  if (myrank == 0) cooling_print(&cooling_func);
 
   /* Initialise the chemistry */
   struct chemistry_data chemistry;
