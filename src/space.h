@@ -224,9 +224,8 @@ void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
 void space_first_init_parts(struct space *s,
-                            const struct chemistry_data *chemistry);
-void space_first_init_xparts(struct space *s,
-                             const struct cooling_function_data *cool_func);
+                            const struct chemistry_data *chemistry,
+                            const struct cooling_function_data *cool_func);
 void space_first_init_gparts(struct space *s,
                              const struct gravity_props *grav_props);
 void space_first_init_sparts(struct space *s);
