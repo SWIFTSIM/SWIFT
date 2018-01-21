@@ -4152,7 +4152,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   clocks_gettime(&time1);
 
   /* Start by setting the particles in a good state */
-  ticks tic = getticks();
+  ticks my_tic = getticks();
   if (e->nodeID == 0) message("first init...");
   /* Set the particles in a state where they are ready for a run */
   space_first_init_parts(s, e->chemistry);
@@ -4160,7 +4160,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_first_init_gparts(s);
   space_first_init_sparts(s);
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+    message("took %.3f %s.", clocks_from_ticks(getticks() - my_tic),
             clocks_getunit());
 
   if (e->nodeID == 0) message("Computing initial gas densities.");
