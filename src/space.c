@@ -2682,7 +2682,7 @@ void space_first_init_gparts(struct space *s,
 
 #ifdef SWIFT_DEBUG_CHECKS
     gp[i].ti_drift = 0;
-    gp[i] ti_kick = 0;
+    gp[i].ti_kick = 0;
 #endif
   }
 }
