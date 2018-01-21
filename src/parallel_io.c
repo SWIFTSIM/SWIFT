@@ -266,7 +266,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * typeSize);
+  void* temp = NULL;
   if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
