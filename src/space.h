@@ -30,11 +30,11 @@
 #include <stddef.h>
 
 /* Includes. */
+#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
-#include "space.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -227,7 +227,8 @@ void space_first_init_parts(struct space *s,
                             const struct chemistry_data *chemistry);
 void space_first_init_xparts(struct space *s,
                              const struct cooling_function_data *cool_func);
-void space_first_init_gparts(struct space *s);
+void space_first_init_gparts(struct space *s,
+                             const struct gravity_props *grav_props);
 void space_first_init_sparts(struct space *s);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);

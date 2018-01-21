@@ -2618,6 +2618,7 @@ void space_synchronize_particle_positions(struct space *s) {
  * @brief Initialises all the particles by setting them into a valid state
  *
  * Calls hydro_first_init_part() on all the particles
+ * Calls chemistry_first_init_part() on all the particles
  */
 void space_first_init_parts(struct space *s,
                             const struct chemistry_data *chemistry) {
@@ -2673,7 +2674,8 @@ void space_first_init_xparts(struct space *s,
  *
  * Calls gravity_first_init_gpart() on all the particles
  */
-void space_first_init_gparts(struct space *s) {
+void space_first_init_gparts(struct space *s,
+                             const struct gravity_props *grav_props) {
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
@@ -2690,7 +2692,7 @@ void space_first_init_gparts(struct space *s) {
     gp[i].v_full[1] = gp[i].v_full[2] = 0.f;
 #endif
 
-    gravity_first_init_gpart(&gp[i]);
+    gravity_first_init_gpart(&gp[i], grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 0;
