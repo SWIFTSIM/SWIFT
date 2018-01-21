@@ -133,6 +133,27 @@ void logger_const_free(struct logger_const* log_const);
 void logger_ensure_size(size_t total_nr_parts, size_t logger_size);
 
 /**
+ * @brief write chunk header
+ *
+ * @param buff The writing buffer
+ * @param maks The mask to write
+ * @param offset The old offset
+ * @param offset_new The new offset
+ *
+ * @return updated buff
+ */
+__attribute__((always_inline)) INLINE static char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
+  memcpy(buff, mask, 1);
+  buff += 1;
+  
+  size_t diff_offset = offset_new - *offset;
+  memcpy(buff, &diff_offset, 7);
+  buff += 7;
+
+  return buff;
+}
+
+/**
  * @brief Should this particle write its data now ?
  *
  * @param xp The #xpart.

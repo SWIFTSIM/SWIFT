@@ -158,12 +158,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  memcpy(buff, &mask, 1);
-  buff += 1;
-  
-  size_t diff_offset = offset_new - *offset;
-  memcpy(buff, &diff_offset, 7);
-  buff += 7;
+  buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Particle position as three doubles. */
   if (mask & logger_mask_x) {
@@ -244,12 +239,7 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  memcpy(buff, &mask, 1);
-  buff += 1;
-  
-  size_t diff_offset = offset_new - *offset;
-  memcpy(buff, &diff_offset, 7);
-  buff += 7;
+  buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Particle position as three doubles. */
   if (mask & logger_mask_x) {
@@ -294,13 +284,8 @@ void logger_log_timestamp(integertime_t timestamp, size_t *offset,
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  size_t mask = logger_mask_timestamp;
-  memcpy(buff, &mask, 1);
-  buff += 1;
-  
-  size_t diff_offset = offset_new - *offset;
-  memcpy(buff, &diff_offset, 7);
-  buff += 7;
+  unsigned int mask = logger_mask_timestamp;
+  buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Store the timestamp. */
   memcpy(buff, &timestamp, sizeof(integertime_t));
@@ -404,10 +389,11 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   logger_write_general_data(dump, &log_const, &file_offset, &e->timeBase,
 			    name, logger_data_double);
 
-  /* last step */
+  /* last step: write first offset */
   memcpy(skip_header, &file_offset, log_const.offset);
-  logger_const_free(&log_const);
 
+  /* free memory */
+  logger_const_free(&log_const);
   free(name);
 }
 
