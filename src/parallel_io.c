@@ -212,7 +212,8 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize;
+      props.field += max_chunk_size * props.partSize; /* char* on the field */
+      props.parts += max_chunk_size;                  /* part* on the part */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -463,7 +464,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize;
+      props.field += max_chunk_size * props.partSize; /* char* on the field */
+      props.parts += max_chunk_size;                  /* part* on the part */
       offset += max_chunk_size;
       redo = 1;
     } else {
