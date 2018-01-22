@@ -546,17 +546,18 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-
-    long long N_total[3] = {0, 0, 0};
-    engine_init(1, &e, NULL, NULL, nr_nodes, myrank, nr_threads, N_total[0],
-                N_total[1], with_aff, 0, talking, NULL, NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL);
+    engine_config(1, &e, nr_nodes, myrank, nr_threads, with_aff, talking);
     if (myrank == 0) {
       clocks_gettime(&toc);
-      message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+      message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
               clocks_getunit());
       fflush(stdout);
     }
+
+    /* Check if we are already done when given steps on the command-line. */
+    if (e.step >= nsteps && nsteps > 0)
+      error("Not restarting, already completed %d steps (of out %d)", e.step,
+            nsteps);
 
   } else {
 
@@ -731,11 +732,10 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-
-    engine_init(0, &e, &s, params, nr_nodes, myrank, nr_threads, N_total[0],
-                N_total[1], with_aff, engine_policies, talking, &reparttype,
-                &us, &prog_const, &hydro_properties, &gravity_properties,
-                &potential, &cooling_func, &sourceterms);
+    engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
+                talking, &reparttype, &us, &prog_const, &hydro_properties,
+                &gravity_properties, &potential, &cooling_func, &sourceterms);
+    engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -806,7 +806,7 @@ int main(int argc, char *argv[]) {
     engine_redistribute(&e);
   }
 #endif
-  if (! restart) {
+  if (!restart) {
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
 

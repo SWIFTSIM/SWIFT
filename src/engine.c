@@ -5083,20 +5083,17 @@ void engine_unpin() {
 }
 
 /**
- * @brief init an engine with the given number of threads, queues, and
- *      the given policy. When restarting only a number of these operations
- *      are used.
+ * @brief init an engine struct with the necessary properties for the
+ *        simulation.
  *
- * @param restart whether the application is restarting.
+ * Note do not use when restarting. Engine initialisation
+ * is completed by a call to engine_config().
+ *
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
- * @param nr_nodes The number of MPI ranks.
- * @param nodeID The MPI rank of this node.
- * @param nr_threads The number of threads per MPI rank.
  * @param Ngas total number of gas particles in the simulation.
  * @param Ndm total number of gravity particles in the simulation.
- * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -5108,10 +5105,10 @@ void engine_unpin() {
  * @param cooling_func The properties of the cooling function.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(int restart, struct engine *e, struct space *s,
-                 const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, long long Ngas, long long Ndm, int with_aff,
-                 int policy, int verbose, struct repartition *reparttype,
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, long long Ngas,
+                 long long Ndm, int policy, int verbose,
+                 struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
@@ -5121,88 +5118,105 @@ void engine_init(int restart, struct engine *e, struct space *s,
                  struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
-  if (!restart) bzero(e, sizeof(struct engine));
+  bzero(e, sizeof(struct engine));
 
-  /* Store the values. */
-  if (!restart) e->s = s;
+  /* Store the all values in the fields of the engine. */
+  e->s = s;
+  e->policy = policy;
+  e->step = 0;
+  e->total_nr_parts = Ngas;
+  e->total_nr_gparts = Ndm;
+  e->proxy_ind = NULL;
+  e->nr_proxies = 0;
+  e->reparttype = reparttype;
+  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
+  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
+  e->timeOld = e->timeBegin;
+  e->time = e->timeBegin;
+  e->ti_old = 0;
+  e->ti_current = 0;
+  e->max_active_bin = num_time_bins;
+  e->timeStep = 0.;
+  e->timeBase = 0.;
+  e->timeBase_inv = 0.;
+  e->internal_units = internal_units;
+  e->timeFirstSnapshot =
+      parser_get_param_double(params, "Snapshots:time_first");
+  e->deltaTimeSnapshot =
+      parser_get_param_double(params, "Snapshots:delta_time");
+  e->ti_nextSnapshot = 0;
+  parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
+  e->snapshotCompression =
+      parser_get_opt_param_int(params, "Snapshots:compression", 0);
+  e->snapshotUnits = malloc(sizeof(struct unit_system));
+  units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
+  e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
+  e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
+  e->deltaTimeStatistics =
+      parser_get_param_double(params, "Statistics:delta_time");
+  e->timeLastStatistics = 0;
+  e->verbose = verbose;
+  e->count_step = 0;
+  e->wallclock_time = 0.f;
+  e->physical_constants = physical_constants;
+  e->hydro_properties = hydro;
+  e->gravity_properties = gravity;
+  e->external_potential = potential;
+  e->cooling_func = cooling_func;
+  e->sourceterms = sourceterms;
+  e->parameter_file = params;
+#ifdef WITH_MPI
+  e->cputime_last_step = 0;
+  e->last_repartition = 0;
+#endif
+
+  /* Make the space link back to the engine. */
+  s->e = e;
+
+  /* Setup the timestep */
+  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
+  e->timeBase_inv = 1.0 / e->timeBase;
+  e->ti_current = 0;
+}
+
+/**
+ * @brief configure an engine with the given number of threads, queues
+ *        and core affinity. Also initialises the scheduler and opens various
+ *        output files, computes the next timestep and initialises the
+ *        threadpool.
+ *
+ * Assumes the engine is correctly initialised i.e. is restored from a restart
+ * file or has been setup by engine_init(). When restarting any output log
+ * files are positioned so that further output is appended.
+ *
+ * @param restart true when restarting the application.
+ * @param e The #engine.
+ * @param nr_nodes The number of MPI ranks.
+ * @param nodeID The MPI rank of this node.
+ * @param nr_threads The number of threads per MPI rank.
+ * @param with_aff use processor affinity, if supported.
+ * @param verbose Is this #engine talkative ?
+ */
+void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose) {
+
+  /* Store the values and initialise global fields. */
   e->nr_threads = nr_threads;
-  if (restart)
-    policy = e->policy;
-  else
-    e->policy = policy;
-
-  if (!restart) e->step = 0;
   e->nr_nodes = nr_nodes;
-  if (!restart) e->nodeID = nodeID;
-  if (!restart) e->total_nr_parts = Ngas;
-  if (!restart) e->total_nr_gparts = Ndm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
   e->forcerepart = 0;
-  if (!restart) e->reparttype = reparttype;
   e->dump_snapshot = 0;
   e->save_stats = 0;
   e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;
-  if (!restart)
-    e->timeBegin =
-        parser_get_param_double(params, "TimeIntegration:time_begin");
-  if (!restart)
-    e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
-  if (!restart) e->timeOld = e->timeBegin;
-  if (!restart) e->time = e->timeBegin;
-  if (!restart) e->ti_old = 0;
-  if (!restart) e->ti_current = 0;
-  if (!restart) e->max_active_bin = num_time_bins;
-  if (!restart) e->timeStep = 0.;
-  if (!restart) e->timeBase = 0.;
-  if (!restart) e->timeBase_inv = 0.;
-  if (!restart) e->internal_units = internal_units;
-  if (!restart)
-    e->timeFirstSnapshot =
-        parser_get_param_double(params, "Snapshots:time_first");
-  if (!restart)
-    e->deltaTimeSnapshot =
-        parser_get_param_double(params, "Snapshots:delta_time");
-  if (!restart) e->ti_nextSnapshot = 0;
-  if (!restart)
-    parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
-  if (!restart)
-    e->snapshotCompression =
-        parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  if (!restart) e->snapshotUnits = malloc(sizeof(struct unit_system));
-  if (!restart)
-    units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
-  if (!restart)
-    e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
-  if (!restart)
-    e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
   e->file_timesteps = NULL;
-  if (!restart)
-    e->deltaTimeStatistics =
-        parser_get_param_double(params, "Statistics:delta_time");
-  if (!restart) e->timeLastStatistics = 0;
   e->verbose = verbose;
-  if (!restart) e->count_step = 0;
   e->wallclock_time = 0.f;
-  if (!restart) e->physical_constants = physical_constants;
-  if (!restart) e->hydro_properties = hydro;
-  if (!restart) e->gravity_properties = gravity;
-  if (!restart) e->external_potential = potential;
-  if (!restart) e->cooling_func = cooling_func;
-  if (!restart) e->sourceterms = sourceterms;
-  if (!restart) e->parameter_file = params;
-#ifdef WITH_MPI
-  if (!restart) e->cputime_last_step = 0;
-  if (!restart) e->last_repartition = 0;
-#endif
   engine_rank = nodeID;
-
-  /* Make the space link back to the engine. */
-  if (!restart) s->e = e;
 
   /* Get the number of queues */
   int nr_queues = parser_get_opt_param_int(e->parameter_file,
@@ -5248,7 +5262,7 @@ void engine_init(int restart, struct engine *e, struct space *s,
     }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    if ((policy & engine_policy_cputight) != engine_policy_cputight) {
+    if ((e->policy & engine_policy_cputight) != engine_policy_cputight) {
 
       if (numa_available() >= 0) {
         if (nodeID == 0) message("prefer NUMA-distant CPUs");
@@ -5344,6 +5358,7 @@ void engine_init(int restart, struct engine *e, struct space *s,
 
   /* Open some files */
   if (e->nodeID == 0) {
+
     /* When restarting append to these files. */
     char *mode;
     if (restart)
@@ -5502,7 +5517,7 @@ void engine_init(int restart, struct engine *e, struct space *s,
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
-                 (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
