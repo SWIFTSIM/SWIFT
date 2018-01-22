@@ -927,8 +927,34 @@ case "$with_cooling" in
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
    ;; 
+   EAGLE)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+   ;; 
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+#  chemistry function
+AC_ARG_WITH([chemistry],
+   [AS_HELP_STRING([--with-chemistry=<function>],
+      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+   )],
+   [with_chemistry="$withval"],
+   [with_chemistry="none"]
+)
+case "$with_chemistry" in
+   none)
+      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
+   ;; 
+   gear)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+   ;; 
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
    ;;
 esac
 
@@ -1031,6 +1057,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
    
    External potential  : $with_potential
    Multipole order     : $with_multipole_order

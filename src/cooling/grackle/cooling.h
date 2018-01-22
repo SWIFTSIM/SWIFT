@@ -32,6 +32,7 @@
 /* Local includes. */
 #include "error.h"
 #include "hydro.h"
+#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -42,14 +43,26 @@
 #define GRACKLE_RANK 3
 
 /**
+ * @brief Writes the current model of SPH to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+__attribute__((always_inline)) INLINE static void cooling_write_flavour(
+    hid_t h_grpsph) {
+
+  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle");
+}
+
+/**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param cooling The properties of the cooling function.
  */
-__attribute__((always_inline)) INLINE static void cooling_init_part(
-    const struct part* restrict p, struct xpart* restrict xp) {
+__attribute__((always_inline)) INLINE static void cooling_first_init_part(
+    const struct part* restrict p, struct xpart* restrict xp,
+    const struct cooling_function_data* cooling) {
 
   xp->cooling_data.radiated_energy = 0.f;
 }

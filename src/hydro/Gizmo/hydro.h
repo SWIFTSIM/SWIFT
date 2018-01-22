@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_HYDRO_H
+#define SWIFT_GIZMO_HYDRO_H
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
@@ -840,3 +842,5 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 #endif
   p->primitives.P = S * pow_gamma(p->primitives.rho);
 }
+
+#endif /* SWIFT_GIZMO_HYDRO_H */

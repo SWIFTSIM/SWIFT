@@ -22,6 +22,9 @@
  *
  * @param p Particle.
  */
+#ifndef SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H
+#define SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H
+
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
     struct part *p) {
 
@@ -246,3 +249,5 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
 
   hydro_slope_limit_cell(p);
 }
+
+#endif /* SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H */

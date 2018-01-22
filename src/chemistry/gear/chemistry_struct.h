@@ -16,48 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_NONE_H
-#define SWIFT_COOLING_STRUCT_NONE_H
-
-/* include grackle */
-#include <grackle.h>
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
 /**
- * @file src/cooling/none/cooling_struct.h
- * @brief Empty infrastructure for the cases without cooling function
+ * @brief The individual elements traced in the model.
  */
+enum chemistry_element { chemistry_element_count = 0 };
 
 /**
- * @brief Properties of the cooling function.
+ * @brief Global chemical abundance information.
  */
-struct cooling_function_data {
+struct chemistry_data {};
 
-  /* Filename of the Cloudy Table */
-  char cloudy_table[200];
-
-  /* Enable/Disable UV backgroud */
-  int uv_background;
-
-  /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
-  double redshift;
-
-  /* Density Threshold for the shielding */
-  double density_self_shielding;
-
-  /* unit system */
-  code_units units;
-
-  /* grackle chemistry data */
-  chemistry_data chemistry;
+/**
+ * @brief Properties of the chemistry function.
+ */
+struct chemistry_part_data {
+  float he_density;
 };
 
-/**
- * @brief Properties of the cooling stored in the extra particle data
- */
-struct cooling_xpart_data {
-
-  /*! Energy radiated away by this particle since the start of the run */
-  float radiated_energy;
-};
-
-#endif /* SWIFT_COOLING_STRUCT_NONE_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

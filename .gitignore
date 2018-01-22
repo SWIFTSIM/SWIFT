@@ -24,6 +24,7 @@ examples/swift
 examples/swift_mpi
 examples/*/*.xmf
 examples/*/*.hdf5
+examples/*/*.h5
 examples/*/*.png
 examples/*/*.txt
 examples/*/*.dot

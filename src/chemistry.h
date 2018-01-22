@@ -16,30 +16,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_H
-#define SWIFT_COOLING_STRUCT_H
+#ifndef SWIFT_CHEMISTRY_H
+#define SWIFT_CHEMISTRY_H
 
 /**
- * @file src/cooling_struct.h
- * @brief Branches between the different cooling functions.
+ * @file src/chemistry.h
+ * @brief Branches between the different chemistry functions.
  */
 
 /* Config parameters. */
 #include "../config.h"
+#include "chemistry_struct.h"
 
-/* Import the right cooling definition */
-#if defined(COOLING_NONE)
-#include "./cooling/none/cooling_struct.h"
-#elif defined(COOLING_CONST_DU)
-#include "./cooling/const_du/cooling_struct.h"
-#elif defined(COOLING_CONST_LAMBDA)
-#include "./cooling/const_lambda/cooling_struct.h"
-#elif defined(COOLING_GRACKLE)
-#include "./cooling/grackle/cooling_struct.h"
-#elif defined(COOLING_EAGLE)
-#include "./cooling/EAGLE/cooling_struct.h"
+/* Import the right chemistry definition */
+#if defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/gear/chemistry.h"
+#elif defined(CHEMISTRY_EAGLE)
+#include "./chemistry/EAGLE/chemistry.h"
 #else
-#error "Invalid choice of cooling function."
+#error "Invalid choice of chemistry function."
 #endif
 
-#endif /* SWIFT_COOLING_STRUCT_H */
+/* Common functions */
+void chemistry_init(const struct swift_params* parameter_file,
+                    const struct unit_system* us,
+                    const struct phys_const* phys_const,
+                    struct chemistry_data* data);
+
+void chemistry_print(const struct chemistry_data* data);
+
+#endif /* SWIFT_CHEMISTRY_H */

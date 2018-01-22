@@ -147,27 +147,15 @@ gravity_reset_predicted_values(struct gpart* gp) {}
  * read in to do some conversions.
  *
  * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {
-
-  gp->time_bin = 0;
-  gp->epsilon = 0.f;
-
-  gravity_init_gpart(gp);
-}
-
-/**
- * @brief Initialises the softening of the g-particles
- *
- * @param gp The particle to act upon.
- * @param grav_props The properties of the gravity scheme.
- */
-__attribute__((always_inline)) INLINE static void gravity_init_softening(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
-  /* Note 3 is the Plummer-equivalent correction */
+  gp->time_bin = 0;
   gp->epsilon = grav_props->epsilon;
+
+  gravity_init_gpart(gp);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local includes. */
+#include "common_io.h"
 #include "inline.h"
 
 /**

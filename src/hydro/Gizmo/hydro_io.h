@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_HYDRO_IO_H
+#define SWIFT_GIZMO_HYDRO_IO_H
 
 #include "adiabatic_index.h"
 #include "hydro.h"
@@ -161,7 +163,7 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeSPHflavour(hid_t h_grpsph) {
+void hydro_write_flavour(hid_t h_grpsph) {
   /* Gradient information */
   io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
                        HYDRO_GRADIENT_IMPLEMENTATION);
@@ -186,3 +188,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_GIZMO_HYDRO_IO_H */

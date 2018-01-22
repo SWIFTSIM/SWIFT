@@ -4138,6 +4138,25 @@ void engine_launch(struct engine *e) {
 }
 
 /**
+ * @brief Calls the 'first init' function on the particles of all types.
+ *
+ * @param e The #engine.
+ */
+void engine_first_init_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for a run */
+  space_first_init_parts(e->s, e->chemistry, e->cooling_func);
+  space_first_init_gparts(e->s, e->gravity_properties);
+  space_first_init_sparts(e->s);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
  * @brief Initialises the particles and set them in a state ready to move
  *forward in time.
  *
@@ -4155,14 +4174,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  /* Start by setting the particles in a good state */
+  if (e->nodeID == 0) message("Setting particles to a valid state...");
+  engine_first_init_particles(e);
+
   if (e->nodeID == 0) message("Computing initial gas densities.");
-
-  /* Initialise the softening lengths */
-  if (e->policy & engine_policy_self_gravity) {
-
-    for (size_t i = 0; i < s->nr_gparts; ++i)
-      gravity_init_softening(&s->gparts[i], e->gravity_properties);
-  }
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, clean_h_values);
@@ -4237,7 +4253,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
 
   /* Run the 0th time-step */
+  TIMER_TIC2;
   engine_launch(e);
+  TIMER_TOC2(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -5113,6 +5131,7 @@ void engine_unpin() {
  * @param gravity The #gravity_props used for this run.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s,
@@ -5125,6 +5144,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct gravity_props *gravity,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
+                 const struct chemistry_data *chemistry,
                  struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
@@ -5173,6 +5193,7 @@ void engine_init(struct engine *e, struct space *s,
   e->gravity_properties = gravity;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->chemistry = chemistry;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
 #ifdef WITH_MPI

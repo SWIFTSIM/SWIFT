@@ -712,6 +712,11 @@ int main(int argc, char *argv[]) {
     if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
     if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
+    /* Initialise the chemistry */
+    struct chemistry_data chemistry;
+    chemistry_init(params, &us, &prog_const, &chemistry);
+    if (myrank == 0) chemistry_print(&chemistry);
+
     /* Initialise the feedback properties */
     struct sourceterms sourceterms;
     if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
@@ -735,7 +740,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
                 talking, &reparttype, &us, &prog_const, &hydro_properties,
-                &gravity_properties, &potential, &cooling_func, &sourceterms);
+                &gravity_properties, &potential, &cooling_func, 
+                & chemistry, &sourceterms);
     engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
                   restartfile);
     if (myrank == 0) {

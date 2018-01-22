@@ -34,6 +34,7 @@
 
 /* Includes. */
 #include "barrier.h"
+#include "chemistry_struct.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
@@ -277,6 +278,9 @@ struct engine {
   /* Properties of the cooling scheme */
   const struct cooling_function_data *cooling_func;
 
+  /* Properties of the chemistry model */
+  const struct chemistry_data *chemistry;
+
   /* Properties of source terms */
   struct sourceterms *sourceterms;
 
@@ -310,6 +314,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct gravity_props *gravity,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
+                 const struct chemistry_data *chemistry,
                  struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
