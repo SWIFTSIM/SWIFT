@@ -546,7 +546,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, nr_nodes, myrank, nr_threads, with_aff, talking);
+    engine_config(1, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
+                  restartfile);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -735,7 +736,8 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
                 talking, &reparttype, &us, &prog_const, &hydro_properties,
                 &gravity_properties, &potential, &cooling_func, &sourceterms);
-    engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking);
+    engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
+                  restartfile);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -839,9 +841,6 @@ int main(int argc, char *argv[]) {
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
-
-    /* Create restart files if required. Time/no. steps?*/
-    restart_write(&e, restartfile);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */

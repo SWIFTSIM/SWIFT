@@ -286,6 +286,9 @@ struct engine {
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;
+
+  /* Name of the restart file. */
+  const char *restartfile;
 };
 
 /* Function prototypes. */
@@ -309,7 +312,8 @@ void engine_init(struct engine *e, struct space *s,
                  const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose);
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restartfile);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,

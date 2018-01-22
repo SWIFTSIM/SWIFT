@@ -3729,10 +3729,11 @@ void engine_prepare(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
-     * That can include cells that have not
-     * previously been active on this rank. */
-    space_check_drift_point(e->s, e->ti_old,
-                            e->policy & engine_policy_self_gravity);
+     * That can include cells that have not previously been active on this
+     * rank. Skip if haven't got any cells (yet). */
+    if (e->s->cells_top != NULL)
+      space_check_drift_point(e->s, e->ti_old,
+                              e->policy & engine_policy_self_gravity);
   }
 #endif
 
@@ -4425,10 +4426,13 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Let's trigger a rebuild every-so-often for good measure */
+  /* Let's trigger a non-SPH rebuild every-so-often for good measure */
   if (!(e->policy & engine_policy_hydro) &&  // MATTHIEU improve this
       (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
+
+  /* XXX for SPH as well */
+  e->forcerebuild = (e->step % 20 == 0);
 
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
@@ -4438,9 +4442,8 @@ void engine_step(struct engine *e) {
   e->forcerebuild = e->collect_group1.forcerebuild;
 
   /* Save some statistics ? */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics)
     e->save_stats = 1;
-  }
 
   /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
@@ -4448,8 +4451,9 @@ void engine_step(struct engine *e) {
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats)
-    engine_drift_all(e);
+  int drifted_all = (e->dump_snapshot || e->forcerebuild || e->forcerepart ||
+                     e->save_stats);
+  if (drifted_all) engine_drift_all(e);
 
   /* Write a snapshot ? */
   if (e->dump_snapshot) {
@@ -4462,6 +4466,7 @@ void engine_step(struct engine *e) {
 
     /* Flag that we dumped a snapshot */
     e->step_props |= engine_step_prop_snapshot;
+
   }
 
   /* Save some  statistics */
@@ -4489,6 +4494,11 @@ void engine_step(struct engine *e) {
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
 #endif
+
+  /* XXX Final job is to create a restart file if needed. For now do this on
+   * steps we have drifted all on (will need to do that). */
+  if (drifted_all) restart_write(e, e->restartfile);
+
 }
 
 /**
@@ -5196,9 +5206,11 @@ void engine_init(struct engine *e, struct space *s,
  * @param nr_threads The number of threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
+ * @param restartfile The name of our restart file.
  */
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose) {
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restartfile) {
 
   /* Store the values and initialise global fields. */
   e->nr_threads = nr_threads;
@@ -5216,6 +5228,7 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   e->file_timesteps = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
+  e->restartfile = restartfile;
   engine_rank = nodeID;
 
   /* Get the number of queues */

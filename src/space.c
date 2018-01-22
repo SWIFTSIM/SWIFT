@@ -3326,6 +3326,18 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         "sparts");
   }
 
-  /* XXX need to reconnect the gravity parts to their hydro and star particles.
-   * XXX */
+  /* Need to reconnect the gravity parts to their hydro and star particles. */
+  /* Re-link the parts. */
+  if (s->nr_parts > 0 && s->nr_gparts > 0)
+    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
+
+  /* Re-link the sparts. */
+  if (s->nr_sparts > 0 && s->nr_gparts > 0)
+    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that everything is correct */
+  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
+                    s->nr_sparts, 1);
+#endif
 }
