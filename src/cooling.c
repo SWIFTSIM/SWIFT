@@ -57,7 +57,7 @@ void cooling_print(const struct cooling_function_data* cooling) {
 /**
  * @brief Write a hydro_props struct to the given FILE as a stream of bytes.
  *
- * @param p the struct
+ * @param cooling the struct
  * @param stream the file stream
  */
 void cooling_struct_dump(const struct cooling_function_data* cooling,
@@ -70,7 +70,7 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
  * @brief Restore a hydro_props struct from the given FILE as a stream of
  * bytes.
  *
- * @param p the struct
+ * @param cooling the struct
  * @param stream the file stream
  */
 void cooling_struct_restore(const struct cooling_function_data* cooling,

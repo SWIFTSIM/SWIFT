@@ -70,7 +70,7 @@ void potential_struct_dump(const struct external_potential* potential,
  * @brief Restore a external_potential struct from the given FILE as a stream of
  * bytes.
  *
- * @param p the struct
+ * @param potential the struct
  * @param stream the file stream
  */
 void potential_struct_restore(const struct external_potential* potential,

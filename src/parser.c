@@ -789,7 +789,7 @@ void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
 /**
  * @brief Write a swift_params struct to the given FILE as a stream of bytes.
  *
- * @param p the struct
+ * @param params the struct
  * @param stream the file stream
  */
 void parser_struct_dump(const struct swift_params *params, FILE *stream) {
@@ -801,7 +801,7 @@ void parser_struct_dump(const struct swift_params *params, FILE *stream) {
  * @brief Restore a swift_params struct from the given FILE as a stream of
  * bytes.
  *
- * @param p the struct
+ * @param params the struct
  * @param stream the file stream
  */
 void parser_struct_restore(const struct swift_params *params, FILE *stream) {
