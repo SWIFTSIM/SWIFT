@@ -4469,8 +4469,8 @@ void engine_step(struct engine *e) {
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  int drifted_all = (e->dump_snapshot || e->forcerebuild || e->forcerepart ||
-                     e->save_stats);
+  int drifted_all =
+      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats);
   if (drifted_all) engine_drift_all(e);
 
   /* Write a snapshot ? */
@@ -4484,7 +4484,6 @@ void engine_step(struct engine *e) {
 
     /* Flag that we dumped a snapshot */
     e->step_props |= engine_step_prop_snapshot;
-
   }
 
   /* Save some  statistics */
@@ -4516,7 +4515,6 @@ void engine_step(struct engine *e) {
   /* XXX Final job is to create a restart file if needed. For now do this on
    * steps we have drifted all on (will need to do that). */
   if (drifted_all) restart_write(e, e->restartfile);
-
 }
 
 /**
@@ -5134,18 +5132,15 @@ void engine_unpin() {
  * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
-                 long long Ndm, int policy, int verbose,
-                 struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 const struct hydro_props *hydro,
-                 const struct gravity_props *gravity,
-                 const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
-                 const struct chemistry_data *chemistry,
-                 struct sourceterms *sourceterms) {
+void engine_init(
+    struct engine *e, struct space *s, const struct swift_params *params,
+    long long Ngas, long long Ndm, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants,
+    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct external_potential *potential,
+    const struct cooling_function_data *cooling_func,
+    const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));

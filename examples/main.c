@@ -720,7 +720,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the feedback properties */
     struct sourceterms sourceterms;
     if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-    if (sourceterms && myrank == 0) sourceterms_print(&sourceterms);
+    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -740,8 +740,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
                 talking, &reparttype, &us, &prog_const, &hydro_properties,
-                &gravity_properties, &potential, &cooling_func, 
-                & chemistry, &sourceterms);
+                &gravity_properties, &potential, &cooling_func, &chemistry,
+                &sourceterms);
     engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
                   restartfile);
     if (myrank == 0) {
