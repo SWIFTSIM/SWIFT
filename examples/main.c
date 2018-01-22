@@ -568,6 +568,19 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
+  /* Also update the total counts (in case of changes due to replication) */
+#if defined(WITH_MPI)
+  N_long[0] = s.nr_parts;
+  N_long[1] = s.nr_gparts;
+  N_long[2] = s.nr_sparts;
+  MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+#else
+  N_total[0] = s.nr_parts;
+  N_total[1] = s.nr_gparts;
+  N_total[2] = s.nr_sparts;
+#endif
+
   /* Say a few nice things about the space we just created. */
   if (myrank == 0) {
     message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
@@ -596,7 +609,7 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
-/* Initialise the table of Ewald corrections for the gravity checks */
+  /* Initialise the table of Ewald corrections for the gravity checks */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   if (periodic) gravity_exact_force_ewald_init(dim[0]);
 #endif
@@ -652,18 +665,6 @@ int main(int argc, char *argv[]) {
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
-#endif
-
-#if defined(WITH_MPI)
-  N_long[0] = s.nr_parts;
-  N_long[1] = s.nr_gparts;
-  N_long[2] = s.nr_sparts;
-  MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
-             MPI_COMM_WORLD);
-#else
-  N_total[0] = s.nr_parts;
-  N_total[1] = s.nr_gparts;
-  N_total[2] = s.nr_sparts;
 #endif
 
   /* Get some info to the user. */
