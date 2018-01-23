@@ -475,14 +475,16 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(params, "Restarts:subdir", restartdir, "restart");
 
   /* The directory must exist. */
-  if (access(restartdir, W_OK | X_OK) != 0) {
-    if (restart) {
-      error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
-            strerror(errno));
-    } else {
-      if (mkdir(restartdir, 0777) != 0)
-        error("Failed to create restart directory: %s (%s)", restartdir,
+  if (myrank == 0) {
+    if (access(restartdir, W_OK | X_OK) != 0) {
+      if (restart) {
+        error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
               strerror(errno));
+      } else {
+          if (mkdir(restartdir, 0777) != 0)
+            error("Failed to create restart directory: %s (%s)", restartdir,
+                  strerror(errno));
+      }
     }
   }
 
@@ -809,7 +811,6 @@ int main(int argc, char *argv[]) {
   if (restart) {
     /* Set up the space and MPI */
     engine_makeproxies(&e);
-
   } else {
     /* Split the space. */
     engine_split(&e, &initial_partition);
