@@ -57,7 +57,7 @@
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
 /* Are we timing the i/o? */
-#define IO_SPEED_MEASUREMENT
+//#define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Reads a chunk of data from an open HDF5 dataset
@@ -867,24 +867,23 @@ void write_output_parallel(struct engine* e, const char* baseName,
   if (h_err < 0) error("Error setting Hdf5 alignment");
 
   /* Disable meta-data cache eviction */
-  /* H5AC_cache_config_t mdc_config; */
-  /* mdc_config.version = H5AC__CURR_CACHE_CONFIG_VERSION; */
-  /* h_err = H5Pget_mdc_config(plist_id, &mdc_config); */
-  /* if( h_err < 0) */
-  /*   error("Error getting the MDC config"); */
+  H5AC_cache_config_t mdc_config;
+  mdc_config.version = H5AC__CURR_CACHE_CONFIG_VERSION;
+  h_err = H5Pget_mdc_config(plist_id, &mdc_config);
+  if (h_err < 0) error("Error getting the MDC config");
 
-  /* mdc_config.evictions_enabled = 0; /\* false *\/ */
-  /* mdc_config.incr_mode = H5C_incr__off; */
-  /* mdc_config.decr_mode = H5C_decr__off; */
-  /* mdc_config.flash_incr_mode   = H5C_flash_incr__off; */
-  /* h_err = H5Pset_mdc_config(plist_id, &mdc_config); */
-  /* if( h_err < 0) */
-  /*   error("Error setting the MDC config"); */
+  mdc_config.evictions_enabled = 0; /* false */
+  mdc_config.incr_mode = H5C_incr__off;
+  mdc_config.decr_mode = H5C_decr__off;
+  mdc_config.flash_incr_mode = H5C_flash_incr__off;
+  h_err = H5Pset_mdc_config(plist_id, &mdc_config);
+  if (h_err < 0) error("Error setting the MDC config");
 
-  /* Use parallel meta-data writes */
-  h_err = H5Pset_coll_metadata_write( plist_id, 1 );
-  if(h_err < 0)
-    error("Error setting collective meta-data writes");
+/* Use parallel meta-data writes */
+#if H5_VERSION_GE(1, 10, 1)
+  h_err = H5Pset_coll_metadata_write(plist_id, 1);
+  if (h_err < 0) error("Error setting collective meta-data writes");
+#endif
 
   /* Open HDF5 file with the chosen parameters */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
@@ -1112,16 +1111,16 @@ void write_output_parallel(struct engine* e, const char* baseName,
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);
     ticks tic = getticks();
-#endif    
+#endif
 
     /* Close particle group */
     H5Gclose(h_grp);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);
-    if(engine_rank == 0)
-      message( "Closing particle group took %.3f %s.",
-	     clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if (engine_rank == 0)
+      message("Closing particle group took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
 
     tic = getticks();
 #endif
@@ -1131,9 +1130,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);
-    if(engine_rank == 0)
-      message( "Writing XMF group footer took %.3f %s.",
-	     clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if (engine_rank == 0)
+      message("Writing XMF group footer took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   }
 
@@ -1146,12 +1145,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  if(engine_rank == 0)
-    message( "Writing XMF output footer took %.3f %s.",
-	     clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (engine_rank == 0)
+    message("Writing XMF output footer took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-#endif  
+#endif
 
   /* message("Done writing particles..."); */
 
@@ -1160,10 +1159,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  if(engine_rank == 0)
-    message( "Closing property descriptor took %.3f %s.",
-	     clocks_from_ticks(getticks() - tic), clocks_getunit());
-  
+  if (engine_rank == 0)
+    message("Closing property descriptor took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   tic = getticks();
 #endif
 
@@ -1172,9 +1171,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  if(engine_rank == 0)
-    message( "Closing file took %.3f %s.",
-	     clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (engine_rank == 0)
+    message("Closing file took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #endif
 
   ++outputCount;
