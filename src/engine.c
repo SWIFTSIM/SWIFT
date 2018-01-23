@@ -5229,6 +5229,7 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                    const char *restartfile) {
 
   /* Store the values and initialise global fields. */
+  e->nodeID = nodeID;
   e->nr_threads = nr_threads;
   e->nr_nodes = nr_nodes;
   e->proxy_ind = NULL;
