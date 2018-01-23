@@ -304,18 +304,15 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
-                 long long Ndm, int policy, int verbose,
-                 struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 const struct hydro_props *hydro,
-                 const struct gravity_props *gravity,
-                 const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
-                 const struct chemistry_data *chemistry,
-                 struct sourceterms *sourceterms);
+void engine_init(
+    struct engine *e, struct space *s, const struct swift_params *params,
+    long long Ngas, long long Ndm, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants,
+    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct external_potential *potential,
+    const struct cooling_function_data *cooling_func,
+    const struct chemistry_data *chemistry, struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
                    const char *restartfile);
