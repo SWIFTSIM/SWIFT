@@ -807,17 +807,14 @@ int main(int argc, char *argv[]) {
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
 #endif
 
+  if (!restart) {
+
 #ifdef WITH_MPI
-  if (restart) {
-    /* Set up the space and MPI */
-    engine_makeproxies(&e);
-  } else {
     /* Split the space. */
     engine_split(&e, &initial_partition);
     engine_redistribute(&e);
-  }
 #endif
-  if (!restart) {
+
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_h_values);
 

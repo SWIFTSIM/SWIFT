@@ -1162,6 +1162,10 @@ void partition_init(struct partition *partition,
         "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
         "than equal to 1");
 
+  /* Clear the celllist for use. */
+  repartition->ncelllist = 0;
+  repartition->celllist = NULL;
+
 #else
   error("SWIFT was not compiled with MPI support");
 #endif
@@ -1190,7 +1194,8 @@ static int check_complete(struct space *s, int verbose, int nregions) {
     if (s->cells_top[i].nodeID <= nregions)
       present[s->cells_top[i].nodeID]++;
     else
-      message("Bad nodeID: %d", s->cells_top[i].nodeID);
+      message("Bad nodeID: s->cells_top[%d].nodeID = %d", i,
+              s->cells_top[i].nodeID);
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -1253,6 +1258,50 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
 }
 
 /**
+ * @brief save the nodeIDs of the current top-level cells by adding them to a
+ *             repartition struct. Used when restarting application. 
+ *
+ * @param s the space with the top-level cells.
+ * @param reparttype struct to update with the a list of nodeIDs.
+ *
+ */
+void partition_store_celllist(struct space *s, struct repartition *reparttype) {
+  if (reparttype->celllist != NULL) free(reparttype->celllist);
+  reparttype->celllist = malloc(sizeof(int) * s->nr_cells);
+  reparttype->ncelllist = s->nr_cells;
+  if (reparttype->celllist == NULL) error("Failed to allocate celllist");
+
+  for (int i = 0; i < s->nr_cells; i++) {
+    reparttype->celllist[i] = s->cells_top[i].nodeID;
+  }
+}
+
+/**
+ * @brief restore the saved list of nodeIDs by applying them to the
+ *        top-level cells of a space. Used when restarting application.
+ *
+ * @param s the space with the top-level cells.
+ * @param reparttype struct with the list of nodeIDs saved,
+ *
+ */
+void partition_restore_celllist(struct space *s, struct repartition *reparttype) {
+  if (reparttype->ncelllist > 0) {
+    if (reparttype->ncelllist == s->nr_cells) {
+      for (int i = 0; i < s->nr_cells; i++) {
+        s->cells_top[i].nodeID = reparttype->celllist[i];
+      }
+      if (!check_complete(s, 1, s->e->nr_nodes)) {
+        error("Not all ranks are present in the restored partition");
+      }
+    } else {
+      error("Cannot apply the saved partition celllist as the number of"
+            "top-level cells (%d) is different to the saved number (%d)",
+            s->nr_cells, reparttype->ncelllist);
+    }
+  }
+}
+
+/**
  * @brief Write a repartition struct to the given FILE as a stream of bytes.
  *
  * @param reparttype the struct
@@ -1261,6 +1310,12 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
 void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
   restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
                        "repartition params");
+
+  /* Also save the celllist, if we have one. */
+  if (reparttype->ncelllist > 0)
+    restart_write_blocks(reparttype->celllist,
+                         sizeof(int) * reparttype->ncelllist, 1, stream,
+                         "repartition celllist");
 }
 
 /**
@@ -1273,4 +1328,13 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
 void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
   restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream,
                       "repartition params");
+
+  /* Also restore the celllist, if we have one. */
+  if (reparttype->ncelllist > 0) {
+    reparttype->celllist = malloc(sizeof(int) * reparttype->ncelllist);
+    if (reparttype->celllist == NULL) error("Failed to allocate celllist");
+    restart_read_blocks(reparttype->celllist,
+                        sizeof(int) * reparttype->ncelllist, 1, stream,
+                        "repartition celllist");
+  }
 }

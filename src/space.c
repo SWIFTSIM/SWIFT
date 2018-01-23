@@ -385,7 +385,11 @@ void space_regrid(struct space *s, int verbose) {
     }
   }
 
+  /* Are we about to allocate new top level cells without a regrid? 
+   * Can happen when restarting the application. */
+  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
+
 
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
@@ -514,6 +518,21 @@ void space_regrid(struct space *s, int verbose) {
 
       /* Finished with these. */
       free(oldnodeIDs);
+
+    } else if (no_regrid && s->e != NULL) {
+        /* If we have created the top-levels cells and not done an initial
+         * partition (can happen when restarting), then the top-level cells
+         * are not assigned to a node, we must do that and then associate the
+         * particles with the cells. Note requires that
+         * partition_store_celllist() was called once before, or just before
+         * dumping the restart files.*/
+        partition_restore_celllist(s, s->e->reparttype);
+
+        /* Now re-distribute the particles, should just add to cells? */
+        engine_redistribute(s->e);
+
+        /* Make the proxies. */
+        engine_makeproxies(s->e);
     }
 #endif /* WITH_MPI */
 
@@ -3276,6 +3295,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 #endif
 
   /* More things to read. */
+  s->parts = NULL;
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
@@ -3291,6 +3311,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
     restart_read_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
                         "xparts");
   }
+  s->gparts = NULL;
   if (s->nr_gparts > 0) {
     if (posix_memalign((void *)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
@@ -3300,6 +3321,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         "gparts");
   }
 
+  s->sparts = NULL;
   if (s->nr_sparts > 0) {
     if (posix_memalign((void *)&s->sparts, spart_align,
                        s->size_sparts * sizeof(struct spart)) != 0)

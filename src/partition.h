@@ -57,6 +57,10 @@ struct repartition {
   enum repartition_type type;
   float trigger;
   float minfrac;
+
+  /* The partition as a cell list, if used. */
+  int ncelllist;
+  int *celllist;
 };
 
 /* Simple descriptions of types for reports. */
@@ -75,6 +79,8 @@ void partition_init(struct partition *partition,
                     const struct swift_params *params, int nr_nodes);
 
 /* Dump/restore. */
+void partition_store_celllist(struct space *s, struct repartition *reparttype);
+void partition_restore_celllist(struct space *s, struct repartition *reparttype);
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 

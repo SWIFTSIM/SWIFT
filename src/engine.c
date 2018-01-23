@@ -5727,7 +5727,11 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   space_struct_dump(e->s, stream);
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
+
+  /* Save the partition for restoration. */
+  partition_store_celllist(e->s, e->reparttype);
   partition_struct_dump(e->reparttype, stream);
+
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
