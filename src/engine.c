@@ -5546,16 +5546,17 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                                                "Scheduler:tasks_per_cell", 0);
 
   /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
+  if (!restart)
+    e->tasks_per_cell = engine_estimate_nr_tasks(e);
+  scheduler_init(&e->sched, e->s, e->tasks_per_cell, nr_queues,
                  (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
    */
   e->sched.mpi_message_limit =
-      parser_get_opt_param_int(e->parameter_file, "Scheduler:mpi_message_limit",
-                               4) *
-      1024;
+      parser_get_opt_param_int(e->parameter_file, 
+                               "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
   if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
