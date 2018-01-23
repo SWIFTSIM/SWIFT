@@ -3296,6 +3296,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   /* More things to read. */
   s->parts = NULL;
+  s->xparts = NULL;
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
