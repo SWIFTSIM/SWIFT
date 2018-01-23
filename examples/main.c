@@ -654,10 +654,11 @@ int main(int argc, char *argv[]) {
     N_total[1] = Ngpart;
     N_total[2] = Nspart;
 #endif
+
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld star particles and "
-          "%lld gparts from the ICs.",
+          "Read %lld gas particles, %lld star particles and %lld gparts from the "
+          "ICs.",
           N_total[0], N_total[2], N_total[1]);
 
     /* Initialize the space with these data. */
@@ -672,6 +673,19 @@ int main(int argc, char *argv[]) {
               clocks_getunit());
       fflush(stdout);
     }
+
+    /* Also update the total counts (in case of changes due to replication) */
+#if defined(WITH_MPI)
+    N_long[0] = s.nr_parts;
+    N_long[1] = s.nr_gparts;
+    N_long[2] = s.nr_sparts;
+    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
+#else
+    N_total[0] = s.nr_parts;
+    N_total[1] = s.nr_gparts;
+    N_total[2] = s.nr_sparts;
+#endif
 
     /* Say a few nice things about the space we just created. */
     if (myrank == 0) {
@@ -750,18 +764,6 @@ int main(int argc, char *argv[]) {
               clocks_getunit());
       fflush(stdout);
     }
-
-#if defined(WITH_MPI)
-    N_long[0] = s.nr_parts;
-    N_long[1] = s.nr_gparts;
-    N_long[2] = s.nr_sparts;
-    MPI_Reduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM, 0,
-               MPI_COMM_WORLD);
-#else
-    N_total[0] = s.nr_parts;
-    N_total[1] = s.nr_gparts;
-    N_total[2] = s.nr_sparts;
-#endif
 
     /* Get some info to the user. */
     if (myrank == 0) {
