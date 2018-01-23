@@ -910,6 +910,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
    * specific output */
   if (mpi_rank == 0) xmf_write_outputheader(xmfFile, fileName, e->time);
 
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  tick tic = getticks();
+#endif
+
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
   h_grp =
@@ -1001,6 +1006,15 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("Writing HDF5 header took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+#endif
 
   /* Tell the user if a conversion will be needed */
   if (e->verbose && mpi_rank == 0) {
@@ -1110,7 +1124,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);
-    ticks tic = getticks();
+    tic = getticks();
 #endif
 
     /* Close particle group */
