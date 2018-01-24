@@ -3746,7 +3746,7 @@ void engine_prepare(struct engine *e) {
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
 
-  /* Re-rank the tasks every now and then. */
+  /* Re-rank the tasks every now and then. XXX this never executes. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     scheduler_reweight(&e->sched, e->verbose);
   }
@@ -4449,9 +4449,6 @@ void engine_step(struct engine *e) {
       (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
 
-  /* XXX for SPH as well */
-  e->forcerebuild = (e->step % 20 == 0);
-
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
    * calls per step, but some of the gathered information is not applied just
@@ -4507,14 +4504,31 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
+  ticks tic = getticks();
 #ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
-  e->toc_step = getticks();
+  e->toc_step = tic;
 #endif
 
-  /* XXX Final job is to create a restart file if needed. For now do this on
-   * steps we have drifted all on (will need to do that). */
-  if (drifted_all) restart_write(e, e->restartfile);
+  /* Final job is to create a restart file if needed. Synchronize all to rank
+   * 0 step as clocks may differ between machines. */
+  int dump = (tic > e->restart_next);
+#ifdef WITH_MPI
+  MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+  if (dump) {
+
+    /* Drift all particles first (may have just been done). */
+    if (!drifted_all) engine_drift_all(e);
+    restart_write(e, e->restartfile);
+
+    if (e->verbose)
+      message("Dumping restart files took %.3f %s",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    /* Time after which next dump will occur. */
+    e->restart_next += e->restart_dt;
+  }
 }
 
 /**
@@ -5246,6 +5260,8 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restartfile = restartfile;
+  e->restart_next = 0;
+  e->restart_dt = 0;
   engine_rank = nodeID;
 
   /* Get the number of queues */
@@ -5521,6 +5537,21 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
+
+  /* Hours between restart dumps. */
+  float dhours = parser_get_opt_param_float(e->parameter_file,
+                                            "Restarts:delta_hours",
+                                            6.0);
+  if (e->verbose)
+     message("restarts every %f hours", dhours);
+
+  /* Internally we use ticks, so convert into a delta ticks. Assumes we can
+   * convert from ticks into milliseconds. */
+  e->restart_dt = clocks_to_ticks(dhours*60.0*60.0*1000.0);
+
+  /* The first dump will happen no sooner than restart_dt ticks in the
+   * future. */
+  e->restart_next = getticks() + e->restart_dt;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

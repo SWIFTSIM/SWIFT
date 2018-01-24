@@ -293,6 +293,12 @@ struct engine {
 
   /* Name of the restart file. */
   const char *restartfile;
+
+  /* Ticks between restart dumps. */
+  ticks restart_dt;
+
+  /* Time after which next dump will occur. */
+  ticks restart_next;
 };
 
 /* Function prototypes. */

@@ -147,7 +147,7 @@ void restart_read(struct engine *e, const char *filename) {
   restart_read_blocks(version, len, 1, stream, "SWIFT version");
   version[len] = '\0';
 
-  /* XXX error or warning, it might work! */
+  /* It might work! */
   if (strncmp(version, package_version(), len) != 0)
     message(
         "WARNING: restoring from a different version of SWIFT.\n You have:"

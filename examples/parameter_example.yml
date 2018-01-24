@@ -79,6 +79,7 @@ InitialConditions:
 Restarts:
   subdir: restart       # (Optional) name of subdirectory for restart files.
   basename: swift       # (Optional) prefix used in naming restart files.
+  delta_hours: 6.0      # (Optional) decimal hours between dumps of restart files.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
