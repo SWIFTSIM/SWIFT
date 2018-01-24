@@ -45,7 +45,7 @@ static unsigned long long clocks_cpufreq = 0;
 static ticks clocks_start = 0;
 
 /* The units of any returned times. */
-static char *clocks_units[] = {"ms", "ticks"};
+static char *clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 
@@ -176,11 +176,12 @@ static void clocks_estimate_cpufreq() {
   }
 #endif
 
-  /* If all fails just report ticks in any times. */
+  /* If all fails just report ticks for a notional 2.6GHz machine. */
   if (clocks_cpufreq == 0) {
-    clocks_cpufreq = 1;
+    unsigned long long maxfreq = 2600000;
+    clocks_cpufreq = maxfreq * 1000;
     clocks_units_index = 1;
-    clocks_units_scale = 1.0;
+    clocks_units_scale = 1000.0;
   }
 }
 
