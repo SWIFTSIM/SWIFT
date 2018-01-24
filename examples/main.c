@@ -472,6 +472,11 @@ int main(int argc, char *argv[]) {
     phys_const_print(&prog_const);
   }
 
+  /* Initialise the cosmology */
+  struct cosmology cosmo;
+  if(with_cosmology) cosmology_init(params, &us, &prog_const, &cosmo);
+  if(with_cosmology) cosmology_print(&cosmo);
+  
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
   if (with_hydro) hydro_props_init(&hydro_properties, params);
