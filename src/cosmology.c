@@ -43,7 +43,7 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   c->a_inv = a_inv;
 
   /* Redshift */
-  c->z  = a_inv - 1.;
+  c->z = a_inv - 1.;
 
   /* E(z) */
   const double Omega_r = c->Omega_r;
@@ -51,10 +51,9 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   const double Omega_l = c->Omega_lambda;
   const double Omega_k = c->Omega_k;
 
-  const double E_z2 = Omega_r * a_inv * a_inv * a_inv * a_inv
-                    + Omega_m * a_inv * a_inv * a_inv
-                    + Omega_k * a_inv * a_inv
-                    + Omega_l;
+  const double E_z2 = Omega_r * a_inv * a_inv * a_inv * a_inv +
+                      Omega_m * a_inv * a_inv * a_inv +
+                      Omega_k * a_inv * a_inv + Omega_l;
 
   const double E_z = sqrt(E_z2);
 
@@ -62,11 +61,9 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   c->H = c->H0 * E_z;
 }
 
-
-void cosmology_init(const struct swift_params* params,
-		    const struct unit_system* us,
-		    const struct phys_const* phys_const,
-		    struct cosmology *c) {
+void cosmology_init(const struct swift_params *params,
+                    const struct unit_system *us,
+                    const struct phys_const *phys_const, struct cosmology *c) {
 
   /* Read in the cosmological parameters */
   c->Omega_m = parser_get_param_double(params, "Cosmology:Omega_m");
@@ -74,17 +71,20 @@ void cosmology_init(const struct swift_params* params,
   c->Omega_lambda = parser_get_param_double(params, "Cosmology:Omega_lambda");
   c->Omega_b = parser_get_param_double(params, "Cosmology:Omega_b");
   c->h = parser_get_param_double(params, "Cosmology:h");
+
+  /* Read the start and end of the simulation */
   c->a_begin = parser_get_param_double(params, "Cosmology:a_begin");
   c->a_end = parser_get_param_double(params, "Cosmology:a_end");
 
   /* Construct derived quantities */
+
+  /* Curvature density (for closure) */
   c->Omega_k = 1. - (c->Omega_m + c->Omega_r + c->Omega_lambda);
-  const double km = 1.e5 / units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-  const double s = 1. / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-  message("km=%e", km);
-  const double H0_cgs = 100. * c->h * km / s / (1.e6 * phys_const->const_parsec); /* s^-1 */
-  message("s=%e", s);
-  c->H0 = H0_cgs;
+
+  /* Hubble constant in internal units */
+  const double km = 1.e5 / units_cgs_conversion_factor(us, UNIT_CONV_LENGTH); 
+  const double H0_cgs = 100. * c->h * (km / (1.e6 * phys_const->const_parsec)); /* s^-1 */
+  c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* Set remaining variables to invalid values */
   c->H = -1.;
@@ -93,14 +93,11 @@ void cosmology_init(const struct swift_params* params,
   c->z = -1.;
 }
 
-
 void cosmology_print(const struct cosmology *c) {
 
-  message("Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
-	  c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
-  message("Hubble constant: h = %f, H_0 = %e U_t^(-1) (internal units)",
-	  c->h, c->H0);
-
+  message(
+      "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
+      c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
+  message("Hubble constant: h = %f, H_0 = %e U_t^(-1) (internal units)", c->h,
+          c->H0);
 }
-
-

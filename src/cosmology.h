@@ -28,14 +28,14 @@
 /**
  * @brief Cosmological parameters
  */
-struct cosmology{
+struct cosmology {
 
   /*! Current expansion factor of the Universe */
   double a;
 
   /*! Inverse of the current expansion factor of the Universe */
   double a_inv;
-  
+
   /*! Current redshift */
   double z;
 
@@ -47,7 +47,7 @@ struct cosmology{
 
   /*! Ending expansion factor */
   double a_end;
-  
+
   /*! Reduced Hubble constant (H0 / (100km/s/Mpc)) */
   double h;
 
@@ -72,13 +72,10 @@ struct cosmology{
 
 void cosmology_update(struct cosmology *c, const struct engine *e);
 
-void cosmology_init(const struct swift_params* params,
-		    const struct unit_system* us,
-		    const struct phys_const* phys_const,
-		    struct cosmology *c);
+void cosmology_init(const struct swift_params *params,
+                    const struct unit_system *us,
+                    const struct phys_const *phys_const, struct cosmology *c);
 
 void cosmology_print(const struct cosmology *c);
 
-
 #endif /* SWIFT_COSMOLOGY_H */
-
