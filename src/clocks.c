@@ -217,6 +217,25 @@ double clocks_from_ticks(ticks tics) {
 }
 
 /**
+ * @brief Convert a number of milli seconds into ticks, if possible.
+ *
+ * Only an approximation as based on how well we have estimated the
+ * rtc frequency. Should be good for machines that support constant_rtc
+ * and clock_gettime(), and reasonable for most Linux machines, otherwise
+ * a guess will just be returned. See clocks_getunit() for the actual units.
+ *
+ * @param ms a number of "milliseconds" to convert to ticks
+ *
+ * @result the number of ticks, if possible.
+ */
+ticks clocks_to_ticks(double ms) {
+    return (ticks) (ms * (double)clocks_get_cpufreq() / clocks_units_scale);
+}
+
+ticks clocks_to_ticks(double interval);
+
+
+/**
  * @brief return the time units.
  *
  * Normally "ms" for milliseconds, but can be "ticks" when no conversion
