@@ -37,6 +37,8 @@
 
 /*! Number of values stored in the cosmological interpolation tables */
 const int cosmology_table_length = 10000;
+
+/*! Size of the GSL workspace */
 const size_t GSL_workspace_size = 10000;
 
 /**
@@ -64,13 +66,28 @@ static INLINE double interp_table(double *table, double x, double x_min,
 }
 
 /**
+ * @brief Computes the dark-energy equation of state at a given scale-factor a.
+ *
+ * We follow the convention of Linder & Jenkins, MNRAS, 346, 573, 2003
+ *
+ * @param a The current scale-factor
+ * @param w_0 The equation of state parameter at z=0
+ * @param w_a The equation of state evolution parameter
+ */
+static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
+                                               double w_a) {
+
+  return w_0 + w_a * (1. - a);
+}
+
+/**
  * @brief Compute \f$ E(z) \f$.
  */
-static INLINE double E(double Or, double Om, double Ok, double Ol,
+static INLINE double E(double Or, double Om, double Ok, double Ol, double w,
                        double a_inv) {
 
   return sqrt(Or * a_inv * a_inv * a_inv * a_inv + Om * a_inv * a_inv * a_inv +
-              Ok * a_inv * a_inv + Ol);
+              Ok * a_inv * a_inv + Ol * pow(a_inv, 3. * (1. + w)));
 }
 
 /**
@@ -106,12 +123,16 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   /* Redshift */
   c->z = a_inv - 1.;
 
+  /* Dark-energy equation of state */
+  c->w = cosmology_dark_energy_EoS(a, c->w_0, c->w_a);
+
   /* E(z) */
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, a_inv);
+  const double w = c->w;
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
 
   /* H(z) */
   c->H = c->H0 * E_z;
@@ -132,6 +153,8 @@ void cosmology_init_tables(struct cosmology *c) {
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
   const double H0 = c->H0;
 
   /* Allocate memory for the interpolation tables */
@@ -146,7 +169,8 @@ void cosmology_init_tables(struct cosmology *c) {
   double drift_integrand(double a, void *param) {
 
     const double a_inv = 1. / a;
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, a_inv);
+    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
     const double H = H0 * E_z;
 
     return (1. / H) * a_inv * a_inv * a_inv;
@@ -156,7 +180,8 @@ void cosmology_init_tables(struct cosmology *c) {
   double gravity_kick_integrand(double a, void *param) {
 
     const double a_inv = 1. / a;
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, a_inv);
+    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
     const double H = H0 * E_z;
 
     return (1. / H) * a_inv * a_inv;
@@ -166,7 +191,8 @@ void cosmology_init_tables(struct cosmology *c) {
   double time_integrand(double a, void *param) {
 
     const double a_inv = 1. / a;
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, a_inv);
+    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
     const double H = H0 * E_z;
 
     return (1. / H) * a_inv;
@@ -240,9 +266,11 @@ void cosmology_init(const struct swift_params *params,
 
   /* Read in the cosmological parameters */
   c->Omega_m = parser_get_param_double(params, "Cosmology:Omega_m");
-  c->Omega_r = parser_get_param_double(params, "Cosmology:Omega_r");
+  c->Omega_r = parser_get_param_double(params, "Cosmology:Omega_r", 0.);
   c->Omega_lambda = parser_get_param_double(params, "Cosmology:Omega_lambda");
   c->Omega_b = parser_get_param_double(params, "Cosmology:Omega_b");
+  c->w_0 = parser_get_opt_param_double(params, "Cosmology:w_0", -1.);
+  c->w_a = parser_get_opt_param_double(params, "Cosmology:w_a", 0.);
   c->h = parser_get_param_double(params, "Cosmology:h");
 
   /* Read the start and end of the simulation */
@@ -255,6 +283,9 @@ void cosmology_init(const struct swift_params *params,
 
   /* Curvature density (for closure) */
   c->Omega_k = 1. - (c->Omega_m + c->Omega_r + c->Omega_lambda);
+
+  /* Dark-energy equation of state */
+  c->w = c->w_0 + c->w_a * (1. - c->a_begin);
 
   /* Hubble constant in internal units */
   const double km = 1.e5 / units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
@@ -282,6 +313,7 @@ void cosmology_print(const struct cosmology *c) {
   message(
       "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
       c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
+  message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
   message("Hubble constant: h = %f, H_0 = %e U_t^(-1) (internal units)", c->h,
           c->H0);
 }

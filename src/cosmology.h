@@ -45,6 +45,9 @@ struct cosmology {
   /*! Time (in internal units) since the Big Bang */
   double time;
 
+  /*! Dark-energy equation of state at the current time */
+  double w;
+
   /*! Starting expansion factor */
   double a_begin;
 
@@ -71,6 +74,12 @@ struct cosmology {
 
   /*! Curvature density parameter */
   double Omega_k;
+
+  /*! Dark-energy equation of state at z=0 */
+  double w_0;
+
+  /*! Dark-energy evolution parameter */
+  double w_a;
 
   /*! Log of starting expansion factor */
   double log_a_begin;
