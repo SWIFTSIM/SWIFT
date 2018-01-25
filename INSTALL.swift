@@ -112,6 +112,8 @@ before you can build it.
 	much like the CC one. Use this when your MPI compiler has a
 	none-standard name.
 
+ - GSL: To use cosmological time integration, a version of the GSL
+        must be available. 
 
  - libtool: The build system relies on libtool.
 

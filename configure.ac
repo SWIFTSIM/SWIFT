@@ -405,8 +405,9 @@ AC_HEADER_STDC
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
 # Check for GSL
+have_gsl="no"
 AC_CHECK_LIB([gslcblas],[cblas_dgemm])
-AC_CHECK_LIB([gsl],[gsl_blas_dgemm])
+AC_CHECK_LIB([gsl],[gsl_blas_dgemm], have_gsl="yes")
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
@@ -1047,6 +1048,7 @@ AC_MSG_RESULT([
     - parallel      : $have_parallel_hdf5
    Metis enabled    : $have_metis
    FFTW3 enabled    : $have_fftw3
+   GSL enabled      : $have_gsl
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle
    Using tcmalloc   : $have_tcmalloc
