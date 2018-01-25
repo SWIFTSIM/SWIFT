@@ -42,10 +42,13 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
+  /*! Time (in internal units) since the Big Bang */
+  double time;
+
   /*! Starting expansion factor */
   double a_begin;
 
-  /*! Ending expansion factor */
+  /*! Final expansion factor */
   double a_end;
 
   /*! Reduced Hubble constant (H0 / (100km/s/Mpc)) */
@@ -68,6 +71,24 @@ struct cosmology {
 
   /*! Curvature density parameter */
   double Omega_k;
+
+  /*! Log of starting expansion factor */
+  double log_a_begin;
+
+  /*! Log of final expansion factor */
+  double log_a_end;
+
+  /*! Drift factor interpolation table */
+  double *drift_fac_interp_table;
+
+  /*! Kick factor interpolation table */
+  double *grav_kick_fac_interp_table;
+
+  /*! Time interpolation table */
+  double *time_interp_table;
+
+  /*! Time between Big Bang and first entry in the table */
+  double time_interp_table_offset;
 };
 
 void cosmology_update(struct cosmology *c, const struct engine *e);
