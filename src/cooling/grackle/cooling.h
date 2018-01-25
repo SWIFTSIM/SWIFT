@@ -72,24 +72,25 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_density = 0.f;
-  xp->cooling_data.HII_density = 0.f;
-  xp->cooling_data.HeI_density = 0.f;
-  xp->cooling_data.HeII_density = 0.f;
-  xp->cooling_data.HeIII_density = 0.f;
-  xp->cooling_data.e_density = 0.f;
+  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HII_frac = 0.f;
+  xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HeII_frac = 0.f;
+  xp->cooling_data.HeIII_frac = 0.f;
+  xp->cooling_data.e_frac = 0.f;
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_density = 0.f;
-  xp->cooling_data.H2I_density = 0.f;
-  xp->cooling_data.H2II_density = 0.f;
+  xp->cooling_data.HM_frac = 0.f;
+  xp->cooling_data.H2I_frac = 0.f;
+  xp->cooling_data.H2II_frac = 0.f;
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_density = 0.f;
-  xp->cooling_data.DII_density = 0.f;
-  xp->cooling_data.HDI_density = 0.f;
+  static const float DeuteriumFractionByMass = 3.4e-5;
+  xp->cooling_data.DI_frac = 2.0 * DeuteriumFractionByMass;
+  xp->cooling_data.DII_frac = 0.f;
+  xp->cooling_data.HDI_frac = 0.f;
 #endif // MODE >= 3
 
 #endif // MODE >= 2
@@ -97,7 +98,81 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 #endif // MODE >= 1
   
   /* metal cooling = 1 */
-  xp->cooling_data.metal_density = 0.f;
+  xp->cooling_data.metal_frac = 0.f;
+}
+
+/**
+ * @brief update particle with densities.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static void cooling_compute_density(
+    struct xpart* restrict xp, const float rho) {
+
+#if COOLING_GRACKLE_MODE >= 1
+  /* primordial chemistry >= 1 */
+  xp->cooling_data.HI_frac *= rho;
+  xp->cooling_data.HII_frac *= rho;
+  xp->cooling_data.HeI_frac *= rho;
+  xp->cooling_data.HeII_frac *= rho;
+  xp->cooling_data.HeIII_frac *= rho;
+  xp->cooling_data.e_frac *= rho;
+
+ #if COOLING_GRACKLE_MODE >= 2
+  /* primordial chemistry >= 2 */
+  xp->cooling_data.HM_frac *= rho;
+  xp->cooling_data.H2I_frac *= rho;
+  xp->cooling_data.H2II_frac *= rho;
+
+#if COOLING_GRACKLE_MODE >= 3
+  /* primordial chemistry >= 3 */
+  xp->cooling_data.DI_frac *= rho;
+  xp->cooling_data.DII_frac *= rho;
+  xp->cooling_data.HDI_frac *= rho;
+#endif // MODE >= 3
+
+#endif // MODE >= 2
+
+#endif // MODE >= 1
+
+  xp->cooling_data.metal_frac *= rho;
+}
+
+/**
+ * @brief update particle with fraction.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static void cooling_compute_fraction(
+    struct xpart* restrict xp, const float rho) {
+
+#if COOLING_GRACKLE_MODE >= 1
+  /* primordial chemistry >= 1 */
+  xp->cooling_data.HI_frac /= rho;
+  xp->cooling_data.HII_frac /= rho;
+  xp->cooling_data.HeI_frac /= rho;
+  xp->cooling_data.HeII_frac /= rho;
+  xp->cooling_data.HeIII_frac /= rho;
+  xp->cooling_data.e_frac /= rho;
+
+ #if COOLING_GRACKLE_MODE >= 2
+  /* primordial chemistry >= 2 */
+  xp->cooling_data.HM_frac /= rho;
+  xp->cooling_data.H2I_frac /= rho;
+  xp->cooling_data.H2II_frac /= rho;
+
+#if COOLING_GRACKLE_MODE >= 3
+  /* primordial chemistry >= 3 */
+  xp->cooling_data.DI_frac /= rho;
+  xp->cooling_data.DII_frac /= rho;
+  xp->cooling_data.HDI_frac /= rho;
+#endif // MODE >= 3
+
+#endif // MODE >= 2
+
+#endif // MODE >= 1
+
+  xp->cooling_data.metal_frac /= rho;
 }
 
 /**
@@ -184,6 +259,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   gr_float density = hydro_get_physical_density(p, cosmo);
   const double energy_before = hydro_get_physical_internal_energy(p, cosmo);
   gr_float energy = energy_before;
+
   /* v is useless with grackle 3.0 */
   gr_float vx = 0;
   gr_float vy = 0;
@@ -195,26 +271,29 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   data.y_velocity = &vy;
   data.z_velocity = &vz;
 
+  /* transform gas fraction to densities */
+  cooling_compute_density(xp, p->rho);
+
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  data.HI_density = &xp->cooling_data.HI_density;
-  data.HII_density = &xp->cooling_data.HII_density;
-  data.HeI_density = &xp->cooling_data.HeI_density;
-  data.HeII_density = &xp->cooling_data.HeII_density;
-  data.HeIII_density = &xp->cooling_data.HeIII_density;
-  data.e_density = &xp->cooling_data.e_density;
+  data.HI_density = &xp->cooling_data.HI_frac;
+  data.HII_density = &xp->cooling_data.HII_frac;
+  data.HeI_density = &xp->cooling_data.HeI_frac;
+  data.HeII_density = &xp->cooling_data.HeII_frac;
+  data.HeIII_density = &xp->cooling_data.HeIII_frac;
+  data.e_density = &xp->cooling_data.e_frac;
 
  #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  data.HM_density = &xp->cooling_data.HM_density;
-  data.H2I_density = &xp->cooling_data.H2I_density;
-  data.H2II_density = &xp->cooling_data.H2II_density;
+  data.HM_density = &xp->cooling_data.HM_frac;
+  data.H2I_density = &xp->cooling_data.H2I_frac;
+  data.H2II_density = &xp->cooling_data.H2II_frac;
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  data.DI_density = &xp->cooling_data.DI_density;
-  data.DII_density = &xp->cooling_data.DII_density;
-  data.HDI_density = &xp->cooling_data.HDI_density;
+  data.DI_density = &xp->cooling_data.DI_frac;
+  data.DII_density = &xp->cooling_data.DII_frac;
+  data.HDI_density = &xp->cooling_data.HDI_frac;
 #endif // MODE >= 3
 
 #endif // MODE >= 2
@@ -222,23 +301,27 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 #endif // MODE >= 1
 
   /* metal cooling = 1 */
-  data.metal_density = &xp->cooling_data.metal_density;
+  data.metal_density = &xp->cooling_data.metal_frac;
 
   /* /\* volumetric heating rate *\/ */
-  /* gr_float volumetric_heating_rate = 0.; */
-
-  /* data.volumetric_heating_rate = &volumetric_heating_rate; */
+  gr_float volumetric_heating_rate = 0.;
+  data.volumetric_heating_rate = &volumetric_heating_rate;
 
   /* /\* specific heating rate *\/ */
-  /* gr_float specific_heating_rate = 0.; */
-
-  /* data.specific_heating_rate = &specific_heating_rate; */
+  gr_float specific_heating_rate = 0.;
+  data.specific_heating_rate = &specific_heating_rate;
 
   /* solve chemistry with table */
   if (solve_chemistry(&units, &data, dt) == 0) {
     error("Error in solve_chemistry.");
   }
 
+  /* transform densities to gas fraction */
+  cooling_compute_fraction(xp, p->rho);
+
+  cooling_print_backend(cooling);
+  printf("Energy: %g, before: %g, density: %g\n", energy, energy_before, density);
+  exit(1);
   return (energy - energy_before) / dt;
 }
 
@@ -357,7 +440,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   /* molecular network with H, He, D
    From Cloudy table */
   chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
-  chemistry->metal_cooling = 1;  // metal cooling on
+  chemistry->metal_cooling = 1;
   chemistry->UVbackground = cooling->uv_background;
   chemistry->grackle_data_file = cooling->cloudy_table;
   chemistry->use_radiative_transfer = 0;

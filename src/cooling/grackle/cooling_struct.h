@@ -63,24 +63,24 @@ struct cooling_xpart_data {
 
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  gr_float HI_density;
-  gr_float HII_density;
-  gr_float HeI_density;
-  gr_float HeII_density;
-  gr_float HeIII_density;
-  gr_float e_density;
+  gr_float HI_frac;
+  gr_float HII_frac;
+  gr_float HeI_frac;
+  gr_float HeII_frac;
+  gr_float HeIII_frac;
+  gr_float e_frac;
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  gr_float HM_density;
-  gr_float H2I_density;
-  gr_float H2II_density;
+  gr_float HM_frac;
+  gr_float H2I_frac;
+  gr_float H2II_frac;
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  gr_float DI_density;
-  gr_float DII_density;
-  gr_float HDI_density;
+  gr_float DI_frac;
+  gr_float DII_frac;
+  gr_float HDI_frac;
 #endif // MODE >= 3
 
 #endif // MODE >= 2
@@ -88,7 +88,7 @@ struct cooling_xpart_data {
 #endif // MODE >= 1
   
   /* metal cooling = 1 */
-  gr_float metal_density;
+  gr_float metal_frac;
 };
 
 #endif /* SWIFT_COOLING_STRUCT_NONE_H */
