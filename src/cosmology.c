@@ -142,7 +142,6 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   c->time = cosmology_get_time_since_big_bang(c, a);
 }
 
-
 /**
  * @brief Computes \f$ dt / a^2 \f$ for the current cosmology.
  *
@@ -151,7 +150,7 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
  */
 double drift_integrand(double a, void *param) {
 
-  const struct cosmology *c =  (const struct cosmology*) param;
+  const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
@@ -159,15 +158,14 @@ double drift_integrand(double a, void *param) {
   const double w_0 = c->w_0;
   const double w_a = c->w_a;
   const double H0 = c->H0;
-  
+
   const double a_inv = 1. / a;
   const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
   const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
   const double H = H0 * E_z;
-  
+
   return (1. / H) * a_inv * a_inv * a_inv;
 }
-
 
 /**
  * @brief Computes \f$ dt / a \f$ for the current cosmology.
@@ -176,8 +174,8 @@ double drift_integrand(double a, void *param) {
  * @param param The current #csomology.
  */
 double gravity_kick_integrand(double a, void *param) {
-  
-  const struct cosmology *c =  (const struct cosmology*) param;
+
+  const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
@@ -185,12 +183,12 @@ double gravity_kick_integrand(double a, void *param) {
   const double w_0 = c->w_0;
   const double w_a = c->w_a;
   const double H0 = c->H0;
-  
+
   const double a_inv = 1. / a;
   const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
   const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
   const double H = H0 * E_z;
-  
+
   return (1. / H) * a_inv * a_inv;
 }
 
@@ -201,8 +199,8 @@ double gravity_kick_integrand(double a, void *param) {
  * @param param The current #csomology.
  */
 double hydro_kick_integrand(double a, void *param) {
-  
-  const struct cosmology *c =  (const struct cosmology*) param;
+
+  const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
@@ -210,17 +208,16 @@ double hydro_kick_integrand(double a, void *param) {
   const double w_0 = c->w_0;
   const double w_a = c->w_a;
   const double H0 = c->H0;
-  
+
   const double a_inv = 1. / a;
   const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
   const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
   const double H = H0 * E_z;
-  
+
   /* Note: we can't use the pre-defined pow_gamma_xxx() function as
      as we need double precision accuracy for the GSL routine. */
   return (1. / H) * pow(a_inv, 3. * hydro_gamma_minus_one) * a_inv;
 }
-
 
 /**
  * @brief Computes \f$ dt \f$ for the current cosmology.
@@ -229,7 +226,7 @@ double hydro_kick_integrand(double a, void *param) {
  * @param param The current #csomology.
  */
 double time_integrand(double a, void *param) {
-  const struct cosmology *c =  (const struct cosmology*) param;
+  const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
@@ -237,12 +234,12 @@ double time_integrand(double a, void *param) {
   const double w_0 = c->w_0;
   const double w_a = c->w_a;
   const double H0 = c->H0;
-  
+
   const double a_inv = 1. / a;
   const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
   const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
   const double H = H0 * E_z;
-  
+
   return (1. / H) * a_inv;
 }
 
@@ -263,7 +260,7 @@ void cosmology_init_tables(struct cosmology *c) {
   c->grav_kick_fac_interp_table =
       malloc(cosmology_table_length * sizeof(double));
   c->hydro_kick_fac_interp_table =
-    malloc(cosmology_table_length * sizeof(double));
+      malloc(cosmology_table_length * sizeof(double));
   c->time_interp_table = malloc(cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
@@ -408,7 +405,6 @@ void cosmology_print(const struct cosmology *c) {
           c->H0);
 }
 
-
 /**
  * @brief Computes the cosmology factor that enters the drift operator.
  *
@@ -417,15 +413,19 @@ void cosmology_print(const struct cosmology *c) {
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_drift_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end) {
+double cosmology_get_drift_factor(const struct engine *e,
+                                  integertime_t ti_start,
+                                  integertime_t ti_end) {
 
   const struct cosmology *c = e->cosmology;
 
   const double a_start = c->log_a_begin + ti_start * e->timeBase;
   const double a_end = c->log_a_begin + ti_end * e->timeBase;
 
-  const double int_start = interp_table(c->drift_fac_interp_table, a_start, c->log_a_begin, c->log_a_end);
-  const double int_end = interp_table(c->drift_fac_interp_table, a_end, c->log_a_begin, c->log_a_end);
+  const double int_start = interp_table(c->drift_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->drift_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -438,15 +438,19 @@ double cosmology_get_drift_factor(const struct engine *e, integertime_t ti_start
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_grav_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end) {
+double cosmology_get_grav_kick_factor(const struct engine *e,
+                                      integertime_t ti_start,
+                                      integertime_t ti_end) {
 
   const struct cosmology *c = e->cosmology;
 
   const double a_start = c->log_a_begin + ti_start * e->timeBase;
   const double a_end = c->log_a_begin + ti_end * e->timeBase;
 
-  const double int_start = interp_table(c->grav_kick_fac_interp_table, a_start, c->log_a_begin, c->log_a_end);
-  const double int_end = interp_table(c->grav_kick_fac_interp_table, a_end, c->log_a_begin, c->log_a_end);
+  const double int_start = interp_table(c->grav_kick_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->grav_kick_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -459,15 +463,19 @@ double cosmology_get_grav_kick_factor(const struct engine *e, integertime_t ti_s
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_hydro_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end) {
+double cosmology_get_hydro_kick_factor(const struct engine *e,
+                                       integertime_t ti_start,
+                                       integertime_t ti_end) {
 
   const struct cosmology *c = e->cosmology;
 
   const double a_start = c->log_a_begin + ti_start * e->timeBase;
   const double a_end = c->log_a_begin + ti_end * e->timeBase;
 
-  const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start, c->log_a_begin, c->log_a_end);
-  const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end, c->log_a_begin, c->log_a_end);
+  const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }

@@ -397,7 +397,7 @@ void greetings(void) {
   printf(" FFTW library version: %s\n", fftw3_version());
 #endif
 #ifdef HAVE_LIBGSL
-  printf(" GSL library version: %s\n", libgsl_version());
+  printf(" GSL  library version: %s\n", libgsl_version());
 #endif
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());

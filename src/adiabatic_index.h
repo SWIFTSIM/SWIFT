@@ -439,11 +439,12 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
  * @param x Argument
  * @return Argument to the power one over the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(float x) {
+__attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(
+    float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  return x * x * x ; /* x^(3) */
+  return x * x * x; /* x^(3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -464,7 +465,5 @@ __attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(flo
 
 #endif
 }
-
-
 
 #endif /* SWIFT_ADIABATIC_INDEX_H */

@@ -106,9 +106,14 @@ struct cosmology {
 
 void cosmology_update(struct cosmology *c, const struct engine *e);
 
-double cosmology_get_drift_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
-double cosmology_get_grav_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
-double cosmology_get_hydro_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
+double cosmology_get_drift_factor(const struct engine *e,
+                                  integertime_t ti_start, integertime_t ti_end);
+double cosmology_get_grav_kick_factor(const struct engine *e,
+                                      integertime_t ti_start,
+                                      integertime_t ti_end);
+double cosmology_get_hydro_kick_factor(const struct engine *e,
+                                       integertime_t ti_start,
+                                       integertime_t ti_end);
 
 void cosmology_init(const struct swift_params *params,
                     const struct unit_system *us,
