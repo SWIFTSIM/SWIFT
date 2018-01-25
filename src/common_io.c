@@ -395,6 +395,9 @@ void io_write_code_description(hid_t h_file) {
 #ifdef HAVE_FFTW
   io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
+#ifdef HAVE_LIBGSL
+  io_write_attribute_s(h_grpcode, "GSL library version", libgsl_version());
+#endif
 #ifdef WITH_MPI
   io_write_attribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
