@@ -2349,8 +2349,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
 
-  /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old_part) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
@@ -2370,7 +2368,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if (c->split && (force || c->do_sub_drift)) {
 
     /* Loop over the progeny and collect their data. */
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
 
@@ -2382,16 +2380,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         dx_max_sort = max(dx_max_sort, cp->dx_max_sort);
         cell_h_max = max(cell_h_max, cp->h_max);
       }
-
-    /* Store the values */
-    c->h_max = cell_h_max;
-    c->dx_max_part = dx_max;
-    c->dx_max_sort = dx_max_sort;
-
-    /* Update the time of the last drift */
-    c->ti_old_part = ti_current;
-
+    }
   } else if (!c->split && force && ti_current > ti_old_part) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    const double dt = (ti_current - ti_old_part) * timeBase;
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->count;
@@ -2429,15 +2422,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
-
-    /* Store the values */
-    c->h_max = cell_h_max;
-    c->dx_max_part = dx_max;
-    c->dx_max_sort = dx_max_sort;
-
-    /* Update the time of the last drift */
-    c->ti_old_part = ti_current;
   }
+
+  /* Store the values */
+  c->h_max = cell_h_max;
+  c->dx_max_part = dx_max;
+  c->dx_max_sort = dx_max_sort;
+
+  /* Update the time of the last drift */
+  c->ti_old_part = ti_current;
 
   /* Clear the drift flags. */
   c->do_drift = 0;
@@ -2459,8 +2452,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct gpart *const gparts = c->gparts;
   struct spart *const sparts = c->sparts;
 
-  /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old_gpart) * timeBase;
   float dx_max = 0.f, dx2_max = 0.f;
 
   /* Drift irrespective of cell flags? */
@@ -2478,7 +2469,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   if (c->split && (force || c->do_grav_sub_drift)) {
 
     /* Loop over the progeny and collect their data. */
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
 
@@ -2488,14 +2479,11 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
         /* Update */
         dx_max = max(dx_max, cp->dx_max_gpart);
       }
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
-
-    /* Update the time of the last drift */
-    c->ti_old_gpart = ti_current;
-
+    }
   } else if (!c->split && force && ti_current > ti_old_gpart) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    const double dt = (ti_current - ti_old_gpart) * timeBase;
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->gcount;
@@ -2534,13 +2522,13 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
-
-    /* Update the time of the last drift */
-    c->ti_old_gpart = ti_current;
   }
+
+  /* Store the values */
+  c->dx_max_gpart = dx_max;
+
+  /* Update the time of the last drift */
+  c->ti_old_gpart = ti_current;
 
   /* Clear the drift flags. */
   c->do_grav_drift = 0;
