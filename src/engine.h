@@ -83,7 +83,8 @@ enum engine_step_properties {
   engine_step_prop_redistribute = (1 << 1),
   engine_step_prop_repartition = (1 << 2),
   engine_step_prop_statistics = (1 << 3),
-  engine_step_prop_snapshot = (1 << 4)
+  engine_step_prop_snapshot = (1 << 4),
+  engine_step_prop_restarts = (1 << 5)
 };
 
 /* Some constants */
@@ -291,8 +292,14 @@ struct engine {
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;
 
+  /* Whether to dump restart files. */
+  int restart_dump;
+
+  /* Whether to dump restart files after the last step. */
+  int restart_onexit;
+
   /* Name of the restart file. */
-  const char *restartfile;
+  const char *restart_file;
 
   /* Ticks between restart dumps. */
   ticks restart_dt;
@@ -324,7 +331,7 @@ void engine_init(
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
-                   const char *restartfile);
+                   const char *restart_file);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
@@ -352,5 +359,6 @@ int engine_estimate_nr_tasks(struct engine *e);
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
+void engine_dump_restarts(struct engine *e, int drifted_all, int final_step);
 
 #endif /* SWIFT_ENGINE_H */

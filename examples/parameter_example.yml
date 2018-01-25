@@ -77,8 +77,10 @@ InitialConditions:
 
 # Parameters controlling restarts
 Restarts:
-  subdir: restart       # (Optional) name of subdirectory for restart files.
-  basename: swift       # (Optional) prefix used in naming restart files.
+  enable:      1        # (Optional) whether to enable dumping restarts at fixed intervals.
+  onexit:      0        # (Optional) whether to dump restarts on exit (*needs enable*)
+  subdir:      restart  # (Optional) name of subdirectory for restart files.
+  basename:    swift    # (Optional) prefix used in naming restart files.
   delta_hours: 6.0      # (Optional) decimal hours between dumps of restart files.
 
 # Parameters governing domain decomposition

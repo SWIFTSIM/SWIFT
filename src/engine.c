@@ -4504,32 +4504,55 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
-  ticks tic = getticks();
 #ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
-  e->toc_step = tic;
+  e->toc_step = getticks();
 #endif
 
-  /* Final job is to create a restart file if needed. Synchronize all to rank
-   * 0 step as clocks may differ between machines. */
-  int dump = (tic > e->restart_next);
+  /* Final job is to create a restart file if needed. */
+  engine_dump_restarts(e, drifted_all, engine_is_done(e));
+}
+
+/**
+ * @brief dump restart files if it is time to do so and dumps are enabled.
+ *
+ * @param e the engine.
+ * @param drifted_all true if a drift_all has just been performed.
+ * @param final_step set to true if this is the final step.
+ */
+void engine_dump_restarts(struct engine *e, int drifted_all, int final_step) {
+
+  if (e->restart_dump) {
+    ticks tic = getticks();
+    int dump = (tic > e->restart_next);
+
+    /* If this is the last step, do we want a final update? */
+    if (e->restart_onexit && final_step) dump = 1;
+
 #ifdef WITH_MPI
-  MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    /* Synchronize this action from rank 0 (ticks may differ between
+     * machines). */
+    MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
-  if (dump) {
+    if (dump) {
 
-    /* Drift all particles first (may have just been done). */
-    if (!drifted_all) engine_drift_all(e);
-    restart_write(e, e->restartfile);
+      /* Drift all particles first (may have just been done). */
+      if (!drifted_all) engine_drift_all(e);
+      restart_write(e, e->restart_file);
 
-    if (e->verbose)
-      message("Dumping restart files took %.3f %s",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
+      if (e->verbose)
+        message("Dumping restart files took %.3f %s",
+                clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-    /* Time after which next dump will occur. */
-    e->restart_next += e->restart_dt;
+      /* Time after which next dump will occur. */
+      e->restart_next += e->restart_dt;
+
+      /* Flag that we dumped the restarts */
+      e->step_props |= engine_step_prop_restarts;
+    }
   }
 }
+
 
 /**
  * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
@@ -5236,11 +5259,11 @@ void engine_init(
  * @param nr_threads The number of threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
- * @param restartfile The name of our restart file.
+ * @param restart_file The name of our restart file.
  */
 void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
-                   const char *restartfile) {
+                   const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
@@ -5259,7 +5282,8 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   e->file_timesteps = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
-  e->restartfile = restartfile;
+  e->restart_dump = 0;
+  e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
   engine_rank = nodeID;
@@ -5455,10 +5479,10 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
 
       fprintf(e->file_timesteps,
               "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-              "Statistics=%d, Snapshot=%d\n",
+              "Statistics=%d, Snapshot=%d, Restarts=%d\n",
               engine_step_prop_rebuild, engine_step_prop_redistribute,
               engine_step_prop_repartition, engine_step_prop_statistics,
-              engine_step_prop_snapshot);
+              engine_step_prop_snapshot, engine_step_prop_restarts);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
@@ -5538,12 +5562,27 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
 
+  /* Whether restarts are enabled. Yes by default. */
+  e->restart_dump = parser_get_opt_param_int(e->parameter_file,
+                                             "Restarts:enable", 1);
+
+  /* Whether restarts should be dumped on exit. Not by default. */
+  e->restart_onexit = parser_get_opt_param_int(e->parameter_file,
+                                               "Restarts:onexit", 0);
+
   /* Hours between restart dumps. */
   float dhours = parser_get_opt_param_float(e->parameter_file,
                                             "Restarts:delta_hours",
                                             6.0);
-  if (e->verbose)
-     message("restarts every %f hours", dhours);
+  if (e->nodeID == 0) {
+    if(e->restart_dump)
+      message("Restarts will be dumped every %f hours", dhours);
+    else
+      message("WARNING: restarts will not be dumped");
+
+    if (e->verbose  && e->restart_onexit)
+      message("Restarts will be dumped after the final step");
+  }
 
   /* Internally we use ticks, so convert into a delta ticks. Assumes we can
    * convert from ticks into milliseconds. */
@@ -5584,7 +5623,7 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
       maxtasks = engine_estimate_nr_tasks(e);
 
   /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, maxtasks, nr_queues, 
+  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
                  (e->policy & scheduler_flag_steal), e->nodeID,
                  &e->threadpool);
 

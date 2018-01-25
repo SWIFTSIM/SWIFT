@@ -105,7 +105,10 @@ void restart_locate_free(int nfiles, char **files) {
 }
 
 /**
- * @brief Write a restart file for the given engine struct.
+ * @brief Write a restart file for the state of the given engine struct.
+ *
+ * @param e the engine with our state information.
+ * @param filename name of the file to write the restart data to.
  */
 void restart_write(struct engine *e, const char *filename) {
 
@@ -124,7 +127,10 @@ void restart_write(struct engine *e, const char *filename) {
 }
 
 /**
- * @brief Read a restart file to construct a saved engine.
+ * @brief Read a restart file to construct a saved engine struct state.
+ *
+ * @param e the engine to recover from the saved state.
+ * @param filename name of the file containing the staved state.
  */
 void restart_read(struct engine *e, const char *filename) {
 

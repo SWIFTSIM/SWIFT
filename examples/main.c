@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
   int nparams = 0;
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
-  char restartfile[200] = "";
+  char restart_file[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
@@ -471,50 +471,50 @@ int main(int argc, char *argv[]) {
   int flag_entropy_ICs = 0;
 
   /* Work out where we will read and write restart files. */
-  char restartdir[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "Restarts:subdir", restartdir, "restart");
+  char restart_dir[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "Restarts:subdir", restart_dir, "restart");
 
   /* The directory must exist. */
   if (myrank == 0) {
-    if (access(restartdir, W_OK | X_OK) != 0) {
+    if (access(restart_dir, W_OK | X_OK) != 0) {
       if (restart) {
-        error("Cannot restart as no restart subdirectory: %s (%s)", restartdir,
+        error("Cannot restart as no restart subdirectory: %s (%s)", restart_dir,
               strerror(errno));
       } else {
-          if (mkdir(restartdir, 0777) != 0)
-            error("Failed to create restart directory: %s (%s)", restartdir,
+          if (mkdir(restart_dir, 0777) != 0)
+            error("Failed to create restart directory: %s (%s)", restart_dir,
                   strerror(errno));
       }
     }
   }
 
   /* Basename for any restart files. */
-  char restartname[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "Restarts:basename", restartname,
+  char restart_name[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "Restarts:basename", restart_name,
                               "swift");
 
   if (restart) {
 
     /* Attempting a restart. */
-    char **restartfiles = NULL;
-    int nrestartfiles = 0;
+    char **restart_files = NULL;
+    int restart_nfiles = 0;
 
     if (myrank == 0) {
       message("Restarting SWIFT");
 
       /* Locate the restart files. */
-      restartfiles = restart_locate(restartdir, restartname, &nrestartfiles);
-      if (nrestartfiles == 0)
-        error("Failed to locate any restart files in %s", restartdir);
+      restart_files = restart_locate(restart_dir, restart_name, &restart_nfiles);
+      if (restart_nfiles == 0)
+        error("Failed to locate any restart files in %s", restart_dir);
 
       /* We need one file per rank. */
-      if (nrestartfiles != nr_nodes)
+      if (restart_nfiles != nr_nodes)
         error("Incorrect number of restart files, expected %d found %d",
-              nr_nodes, nrestartfiles);
+              nr_nodes, restart_nfiles);
 
       if (verbose > 0)
-        for (int i = 0; i < nrestartfiles; i++)
-          message("found restart file: %s", restartfiles[i]);
+        for (int i = 0; i < restart_nfiles; i++)
+          message("found restart file: %s", restart_files[i]);
     }
 
 #ifdef WITH_MPI
@@ -522,34 +522,34 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
 
       for (int i = 1; i < nr_nodes; i++) {
-        strcpy(restartfile, restartfiles[i]);
-        MPI_Send(restartfile, 200, MPI_BYTE, i, 0, MPI_COMM_WORLD);
+        strcpy(restart_file, restart_files[i]);
+        MPI_Send(restart_file, 200, MPI_BYTE, i, 0, MPI_COMM_WORLD);
       }
 
       /* Keep local file. */
-      strcpy(restartfile, restartfiles[0]);
+      strcpy(restart_file, restart_files[0]);
 
       /* Finished with the list. */
-      restart_locate_free(nrestartfiles, restartfiles);
+      restart_locate_free(restart_nfiles, restart_files);
 
     } else {
-      MPI_Recv(restartfile, 200, MPI_BYTE, 0, 0, MPI_COMM_WORLD,
+      MPI_Recv(restart_file, 200, MPI_BYTE, 0, 0, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
     }
-    if (verbose > 1) message("local restart file = %s", restartfile);
+    if (verbose > 1) message("local restart file = %s", restart_file);
 #else
 
     /* Just one restart file. */
-    strcpy(restartfile, restartfiles[0]);
+    strcpy(restart_file, restart_files[0]);
 #endif
 
     /* Now read it. */
-    restart_read(&e, restartfile);
+    restart_read(&e, restart_file);
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_config(1, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
-                  restartfile);
+                  restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -559,8 +559,7 @@ int main(int argc, char *argv[]) {
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
-      error("Not restarting, already completed %d steps (of out %d)", e.step,
-            nsteps);
+      error("Not restarting, already completed %d steps", e.step);
 
   } else {
 
@@ -759,7 +758,7 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &potential, &cooling_func, &chemistry,
                 &sourceterms);
     engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
-                  restartfile);
+                  restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -833,7 +832,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_open_file(myrank);
 
   /* Create a name for restart file of this rank. */
-  if (restart_genname(restartdir, restartname, e.nodeID, restartfile, 200) != 0)
+  if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) != 0)
     error("Failed to generate restart filename");
 
   /* Main simulation loop */
@@ -847,6 +846,11 @@ int main(int argc, char *argv[]) {
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
+
+    /* If using nsteps to exit, will not have saved any restarts on exit, make
+     * sure we do that (useful in testing only). */
+    if (!engine_is_done(&e) && e.step - 1 == nsteps)
+        engine_dump_restarts(&e, 0, 1);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
