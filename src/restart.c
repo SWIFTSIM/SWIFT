@@ -50,8 +50,7 @@
  */
 int restart_genname(const char *dir, const char *basename, int nodeID,
                     char *name, int size) {
-  int n = snprintf(name, size, "%s/%s_%04d.rst", dir, basename, nodeID);
-  message("name = %s", name);
+  int n = snprintf(name, size, "%s/%s_%06d.rst", dir, basename, nodeID);
   return (n >= size);
 }
 
@@ -63,7 +62,9 @@ int restart_genname(const char *dir, const char *basename, int nodeID,
  * @param nfiles the number of restart files located.
  *
  * @result pointer to an array of strings with all the filenames found,
- *         release by calling restart_locate_free().
+ *         these should be collated using the current locale, i.e. sorted
+ *         alphabetically (so make sure the filenames are zero padded to get
+ *         numeric ordering). Release by calling restart_locate_free().
  */
 char **restart_locate(const char *dir, const char *basename, int *nfiles) {
   *nfiles = 0;
@@ -123,7 +124,7 @@ void restart_write(struct engine *e, const char *filename) {
 }
 
 /**
- * @brief Read a restart file to construct an saved engine.
+ * @brief Read a restart file to construct a saved engine.
  */
 void restart_read(struct engine *e, const char *filename) {
 

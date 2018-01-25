@@ -496,11 +496,11 @@ int main(int argc, char *argv[]) {
   if (restart) {
 
     /* Attempting a restart. */
-    message("Restarting SWIFT");
     char **restartfiles = NULL;
     int nrestartfiles = 0;
 
     if (myrank == 0) {
+      message("Restarting SWIFT");
 
       /* Locate the restart files. */
       restartfiles = restart_locate(restartdir, restartname, &nrestartfiles);
