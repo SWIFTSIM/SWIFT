@@ -120,6 +120,7 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   const double a_inv = 1. / a;
   c->a = a;
   c->a_inv = a_inv;
+  c->a3_inv = a_inv * a_inv * a_inv;
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -146,7 +147,7 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
  * @brief Computes \f$ dt / a^2 \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
- * @param param The current #csomology.
+ * @param param The current #cosmology.
  */
 double drift_integrand(double a, void *param) {
 
@@ -171,7 +172,7 @@ double drift_integrand(double a, void *param) {
  * @brief Computes \f$ dt / a \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
- * @param param The current #csomology.
+ * @param param The current #cosmology.
  */
 double gravity_kick_integrand(double a, void *param) {
 
@@ -196,7 +197,7 @@ double gravity_kick_integrand(double a, void *param) {
  * @brief Computes \f$ dt / a^{3(\gamma - 1) + 1} \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
- * @param param The current #csomology.
+ * @param param The current #cosmology.
  */
 double hydro_kick_integrand(double a, void *param) {
 
@@ -223,9 +224,10 @@ double hydro_kick_integrand(double a, void *param) {
  * @brief Computes \f$ dt \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
- * @param param The current #csomology.
+ * @param param The current #cosmology.
  */
 double time_integrand(double a, void *param) {
+
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_r = c->Omega_r;
   const double Omega_m = c->Omega_m;
@@ -339,7 +341,7 @@ void cosmology_init_tables(struct cosmology *c) {
  * @brief Initialises the #cosmology from the values read in the parameter file.
  *
  * @param params The parsed values.
- * @us The current internal system of units.
+ * @param us The current internal system of units.
  * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
@@ -410,6 +412,7 @@ void cosmology_print(const struct cosmology *c) {
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a^2 \f$ using the interpolation table.
  *
+ * @param e The #engine.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
@@ -435,6 +438,7 @@ double cosmology_get_drift_factor(const struct engine *e,
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
  *
+ * @param e The #engine.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
@@ -460,6 +464,7 @@ double cosmology_get_grav_kick_factor(const struct engine *e,
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
  *
+ * @param e The #engine.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */

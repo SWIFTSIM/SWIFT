@@ -37,6 +37,9 @@ struct cosmology {
   /*! Inverse of the current expansion factor of the Universe */
   double a_inv;
 
+  /*! Inverse cube of the current expansion factor of the Universe */
+  double a3_inv;
+
   /*! Current redshift */
   double z;
 
@@ -48,6 +51,8 @@ struct cosmology {
 
   /*! Dark-energy equation of state at the current time */
   double w;
+
+  /*------------------------------------------------------------------ */
 
   /*! Starting expansion factor */
   double a_begin;
