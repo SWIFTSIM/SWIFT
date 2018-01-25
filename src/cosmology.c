@@ -35,8 +35,33 @@
 #include <gsl/gsl_integration.h>
 #endif
 
+/*! Number of values stored in the cosmological interpolation tables */
 const int cosmology_table_length = 10000;
 const size_t GSL_workspace_size = 10000;
+
+/**
+ * @brief Returns the interpolated value from a table.
+ *
+ * Uses linear interpolation.
+ *
+ * @brief table The table of value to interpolate from (should be of length
+ * cosmology_table_length).
+ * @brief x The value to interpolate at.
+ * @brief x_min The mininum of the range of x.
+ * @brief x_max The maximum of the range of x.
+ */
+static INLINE double interp_table(double *table, double x, double x_min,
+                                  double x_max) {
+
+  const double xx = ((x - x_min) / (x_max - x_min)) * cosmology_table_length;
+  const int i = (int)xx;
+  const int ii = (i >= cosmology_table_length) ? cosmology_table_length - 1 : i;
+
+  if (ii <= 1)
+    return table[0] * xx;
+  else
+    return table[ii - 1] + (table[ii] - table[ii - 1]) * (xx - ii);
+}
 
 /**
  * @brief Compute \f$ E(z) \f$.
@@ -48,22 +73,20 @@ static INLINE double E(double Or, double Om, double Ok, double Ol,
               Ok * a_inv * a_inv + Ol);
 }
 
-double cosmology_get_time(const struct cosmology *c, double a) {
+/**
+ * @brief Returns the time (in internal units) since Big Bang at a given
+ * scale-factor.
+ *
+ * @param c The current #cosmology.
+ * @param a Scale-factor of interest.
+ */
+double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
 
-  const double log_a = log(a);
+  /* Time between a_begin and a */
+  const double delta_t =
+      interp_table(c->time_interp_table, log(a), c->log_a_begin, c->log_a_end);
 
-  /* Position in the table */
-  const double x =
-      ((log_a - c->log_a_begin) / (c->log_a_end - c->log_a_begin)) *
-      cosmology_table_length;
-  const int i =
-      ((int)x >= cosmology_table_length) ? cosmology_table_length - 1 : (int)x;
-
-  if (i <= 1)
-    return c->time_interp_table_offset + x * c->time_interp_table[0];
-  else
-    return c->time_interp_table_offset + c->time_interp_table[i - 1] +
-           (c->time_interp_table[i] - c->time_interp_table[i - 1]) * (x - i);
+  return c->time_interp_table_offset + delta_t;
 }
 
 /**
@@ -94,7 +117,7 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   c->H = c->H0 * E_z;
 
   /* Time since Big Bang */
-  c->time = cosmology_get_time(c, a);
+  c->time = cosmology_get_time_since_big_bang(c, a);
 }
 
 void cosmology_init_tables(struct cosmology *c) {
