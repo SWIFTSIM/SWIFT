@@ -5572,21 +5572,27 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
+   * On restart this number cannot be estimated (no cells yet), so we recover
+   * from the end of the dumped run.
    */
   e->tasks_per_cell = parser_get_opt_param_int(e->parameter_file,
                                                "Scheduler:tasks_per_cell", 0);
+  int maxtasks = 0;
+  if (restart)
+      maxtasks = e->restart_max_tasks;
+  else
+      maxtasks = engine_estimate_nr_tasks(e);
 
   /* Init the scheduler. */
-  if (!restart)
-    e->tasks_per_cell = engine_estimate_nr_tasks(e);
-  scheduler_init(&e->sched, e->s, e->tasks_per_cell, nr_queues,
-                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, maxtasks, nr_queues, 
+                 (e->policy & scheduler_flag_steal), e->nodeID,
+                 &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
    */
   e->sched.mpi_message_limit =
-      parser_get_opt_param_int(e->parameter_file, 
+      parser_get_opt_param_int(e->parameter_file,
                                "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
@@ -5751,7 +5757,8 @@ void engine_clean(struct engine *e) {
  */
 void engine_struct_dump(struct engine *e, FILE *stream) {
 
-  /* Dump the engine. */
+  /* Dump the engine. Save the current tasks_per_cell estimate. */
+  e->restart_max_tasks = engine_estimate_nr_tasks(e);
   restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
 
   /* And all the engine pointed data, these use their own dump functions. */

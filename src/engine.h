@@ -299,6 +299,9 @@ struct engine {
 
   /* Time after which next dump will occur. */
   ticks restart_next;
+
+  /* Maximum number of tasks needed for restarting. */
+  int restart_max_tasks;
 };
 
 /* Function prototypes. */
