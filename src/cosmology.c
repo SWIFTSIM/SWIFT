@@ -39,7 +39,7 @@
 const int cosmology_table_length = 10000;
 
 /*! Size of the GSL workspace */
-const size_t GSL_workspace_size = 10000;
+const size_t GSL_workspace_size = 100000;
 
 /**
  * @brief Returns the interpolated value from a table.
@@ -141,6 +141,82 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   c->time = cosmology_get_time_since_big_bang(c, a);
 }
 
+
+/**
+ * @brief Computes \f$ dt / a^2 \f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #csomology.
+ */
+double drift_integrand(double a, void *param) {
+
+  const struct cosmology *c =  (const struct cosmology*) param;
+  const double Omega_r = c->Omega_r;
+  const double Omega_m = c->Omega_m;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+  
+  const double a_inv = 1. / a;
+  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double H = H0 * E_z;
+  
+  return (1. / H) * a_inv * a_inv * a_inv;
+}
+
+
+/**
+ * @brief Computes \f$ dt / a \f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #csomology.
+ */
+double gravity_kick_integrand(double a, void *param) {
+  
+  const struct cosmology *c =  (const struct cosmology*) param;
+  const double Omega_r = c->Omega_r;
+  const double Omega_m = c->Omega_m;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+  
+  const double a_inv = 1. / a;
+  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double H = H0 * E_z;
+  
+  return (1. / H) * a_inv * a_inv;
+}
+
+/**
+ * @brief Computes \f$ dt \f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #csomology.
+ */
+double time_integrand(double a, void *param) {
+  const struct cosmology *c =  (const struct cosmology*) param;
+  const double Omega_r = c->Omega_r;
+  const double Omega_m = c->Omega_m;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+  
+  const double a_inv = 1. / a;
+  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double H = H0 * E_z;
+  
+  return (1. / H) * a_inv;
+}
+
 void cosmology_init_tables(struct cosmology *c) {
 
   const ticks tic = getticks();
@@ -149,54 +225,12 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Retrieve some constants */
   const double a_begin = c->a_begin;
-  const double Omega_r = c->Omega_r;
-  const double Omega_m = c->Omega_m;
-  const double Omega_k = c->Omega_k;
-  const double Omega_l = c->Omega_lambda;
-  const double w_0 = c->w_0;
-  const double w_a = c->w_a;
-  const double H0 = c->H0;
 
   /* Allocate memory for the interpolation tables */
   c->drift_fac_interp_table = malloc(cosmology_table_length * sizeof(double));
   c->grav_kick_fac_interp_table =
       malloc(cosmology_table_length * sizeof(double));
   c->time_interp_table = malloc(cosmology_table_length * sizeof(double));
-
-  /* Define the integrands we need */
-
-  /* dt / a^2 */
-  double drift_integrand(double a, void *param) {
-
-    const double a_inv = 1. / a;
-    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
-    const double H = H0 * E_z;
-
-    return (1. / H) * a_inv * a_inv * a_inv;
-  }
-
-  /* dt / a */
-  double gravity_kick_integrand(double a, void *param) {
-
-    const double a_inv = 1. / a;
-    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
-    const double H = H0 * E_z;
-
-    return (1. / H) * a_inv * a_inv;
-  }
-
-  /* dt */
-  double time_integrand(double a, void *param) {
-
-    const double a_inv = 1. / a;
-    const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
-    const double H = H0 * E_z;
-
-    return (1. / H) * a_inv;
-  }
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
@@ -212,7 +246,7 @@ void cosmology_init_tables(struct cosmology *c) {
   double result, abserr;
 
   /* Integrate the drift factor \int_{a_begin}^{a_table[i]} dt/a^2 */
-  gsl_function F = {&drift_integrand, NULL};
+  gsl_function F = {&drift_integrand, c};
   for (int i = 0; i < cosmology_table_length; i++) {
     gsl_integration_qag(&F, a_begin, a_table[i], 0, 1.0e-10, GSL_workspace_size,
                         GSL_INTEG_GAUSS61, space, &result, &abserr);
@@ -266,7 +300,7 @@ void cosmology_init(const struct swift_params *params,
 
   /* Read in the cosmological parameters */
   c->Omega_m = parser_get_param_double(params, "Cosmology:Omega_m");
-  c->Omega_r = parser_get_param_double(params, "Cosmology:Omega_r", 0.);
+  c->Omega_r = parser_get_param_double(params, "Cosmology:Omega_r");
   c->Omega_lambda = parser_get_param_double(params, "Cosmology:Omega_lambda");
   c->Omega_b = parser_get_param_double(params, "Cosmology:Omega_b");
   c->w_0 = parser_get_opt_param_double(params, "Cosmology:w_0", -1.);
