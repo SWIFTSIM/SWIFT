@@ -431,4 +431,40 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
 #endif
 }
 
+/**
+ * @brief Return the argument to the power three adiabatic index minus two.
+ *
+ * Computes \f$x^{3\gamma - 2}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power one over the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return x * x * x ; /* x^(3) */
+
+#elif defined(HYDRO_GAMMA_7_5)
+
+  return powf(x, 2.2f); /* x^(11/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return x * x; /* x^(2) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x * x * x * x; /* x^(4) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+
+
 #endif /* SWIFT_ADIABATIC_INDEX_H */

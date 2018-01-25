@@ -24,6 +24,7 @@
 
 #include "engine.h"
 #include "parser.h"
+#include "timeline.h"
 
 /**
  * @brief Cosmological parameters
@@ -90,8 +91,11 @@ struct cosmology {
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
 
-  /*! Kick factor interpolation table */
+  /*! Kick factor (gravity) interpolation table */
   double *grav_kick_fac_interp_table;
+
+  /*! Kick factor (hydro) interpolation table */
+  double *hydro_kick_fac_interp_table;
 
   /*! Time interpolation table */
   double *time_interp_table;
@@ -101,6 +105,10 @@ struct cosmology {
 };
 
 void cosmology_update(struct cosmology *c, const struct engine *e);
+
+double cosmology_get_drift_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
+double cosmology_get_grav_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
+double cosmology_get_hydro_kick_factor(const struct engine *e, integertime_t ti_start, integertime_t ti_end);
 
 void cosmology_init(const struct swift_params *params,
                     const struct unit_system *us,

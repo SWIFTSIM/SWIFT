@@ -266,6 +266,9 @@ struct engine {
   /* Physical constants definition */
   const struct phys_const *physical_constants;
 
+  /* The cosmological model */
+  struct cosmology *cosmology;
+
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
