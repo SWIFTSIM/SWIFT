@@ -184,7 +184,7 @@ GrackleCooling:
   GrackleCloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
   UVbackground: 1 # Enable or not the UV background
   GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
-  GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units
+  GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in atom/cm3
 
 # Parameters related to chemistry models  -----------------------------------------------
 

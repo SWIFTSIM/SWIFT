@@ -61,6 +61,7 @@ struct cooling_xpart_data {
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
 
+  /* here all fractions are mass fraction */
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
   gr_float HI_frac;

@@ -70,6 +70,9 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 
   xp->cooling_data.radiated_energy = 0.f;
 
+  /* metal cooling = 1 */
+  xp->cooling_data.metal_frac = cooling->chemistry.SolarMetalFractionByMass;
+
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
   xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
@@ -88,6 +91,7 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
   static const float DeuteriumFractionByMass = 3.4e-5;
+  /* should use grackle D ratio */
   xp->cooling_data.DI_frac = 2.0 * DeuteriumFractionByMass;
   xp->cooling_data.DII_frac = 0.f;
   xp->cooling_data.HDI_frac = 0.f;
@@ -97,8 +101,6 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 
 #endif // MODE >= 1
   
-  /* metal cooling = 1 */
-  xp->cooling_data.metal_frac = 0.f;
 }
 
 /**
@@ -212,6 +214,57 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
   message("\tScale Factor = %g", cooling->units.a_units);
+#ifdef SWIFT_DEBUG_CHECKS
+  /*
+  const chemistry_data *tmp = &cooling->chemistry;
+  message("Debug:");
+  message("UVBackground                       = %i", tmp->UVbackground);
+  message("Grackle data file                  = %s", tmp->grackle_data_file);
+  message("CMB temperature floor              = %i", tmp->cmb_temperature_floor);
+  message("Gamma                              = %g", tmp->Gamma);
+  message("H2 on dust                         = %i", tmp->h2_on_dust);
+  message("Photoelectric heating              = %i", tmp->photoelectric_heating);
+  message("Photoelectric heating rate         = %g", tmp->photoelectric_heating_rate);
+  message("Use volumetric heating rate        = %i", tmp->use_volumetric_heating_rate);
+  message("Use specific heating rate          = %i", tmp->use_specific_heating_rate);
+  message("Three body                         = %i", tmp->three_body_rate);
+  message("Cie cooling                        = %i", tmp->cie_cooling);
+  message("h2 optical depth approx            = %i", tmp->h2_optical_depth_approximation);
+  message("ih2co                              = %i", tmp->ih2co);
+  message("ipiht                              = %i", tmp->ipiht);
+
+  message("Hydrogen Fraction                  = %g", tmp->HydrogenFractionByMass);
+  message("Deuterium/Hydrogen ratio           = %g", tmp->DeuteriumToHydrogenRatio);
+  message("Solar metal fraction               = %g", tmp->SolarMetalFractionByMass);
+
+  message("Number T bins                      = %i", tmp->NumberOfTemperatureBins);
+  message("Case B recombination               = %i", tmp->CaseBRecombination);
+
+  message("T start                            = %g", tmp->TemperatureStart);
+  message("T end                              = %g", tmp->TemperatureEnd);
+
+  message("Number dust T bins                 = %i", tmp->NumberOfDustTemperatureBins);
+  message("Dust T start                       = %g", tmp->DustTemperatureStart);
+  message("Dust T end                         = %g", tmp->DustTemperatureEnd);
+
+  message("Compton xray heating               = %i", tmp->Compton_xray_heating);
+  message("LW background sawtooth suppression = %i", tmp->LWbackground_sawtooth_suppression);
+  message("LW background intensity            = %g", tmp->LWbackground_intensity);
+  message("UV redshift on                     = %g", tmp->UVbackground_redshift_on);
+  message("UV redshift off                    = %g", tmp->UVbackground_redshift_off);
+  message("UV redshift fullon                 = %g", tmp->UVbackground_redshift_fullon);
+  message("UV redshift drop                   = %g", tmp->UVbackground_redshift_drop);
+
+  message("Cloudy electron fraction           = %g", tmp->cloudy_electron_fraction_factor);
+
+  message("Use radiative transfer             = %i", tmp->use_radiative_transfer);
+  message("RT coupled rate solver             = %i", tmp->radiative_transfer_coupled_rate_solver);
+  message("RT intermediate step               = %i", tmp->radiative_transfer_intermediate_step);
+  message("RT H only                          = %i", tmp->radiative_transfer_hydrogen_only);
+
+  message("Self shielding method              = %i", tmp->self_shielding_method);
+  */
+#endif
 }
 
 /**
@@ -310,18 +363,17 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   /* /\* specific heating rate *\/ */
   gr_float specific_heating_rate = 0.;
   data.specific_heating_rate = &specific_heating_rate;
-
-  /* solve chemistry with table */
+ 
+ /* solve chemistry with table */
   if (solve_chemistry(&units, &data, dt) == 0) {
     error("Error in solve_chemistry.");
   }
-
+  message("Density: %g, Energy: %g (%g)", density, energy, energy_before);
+  exit(1);
+  
   /* transform densities to gas fraction */
   cooling_compute_fraction(xp, p->rho);
 
-  cooling_print_backend(cooling);
-  printf("Energy: %g, before: %g, density: %g\n", energy, energy_before, density);
-  exit(1);
   return (energy - energy_before) / dt;
 }
 
@@ -399,8 +451,12 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   cooling->redshift =
       parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
 
-  cooling->density_self_shielding = parser_get_param_double(
+  float density_self_shielding = parser_get_param_float(
       parameter_file, "GrackleCooling:GrackleHSShieldingDensityThreshold");
+
+  cooling->density_self_shielding = density_self_shielding * pow(us->UnitLength_in_cgs,3);
+  cooling->density_self_shielding *= phys_const->const_proton_mass;
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* enable verbose for grackle */
@@ -455,16 +511,11 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
 #ifdef SWIFT_DEBUG_CHECKS
   if (GRACKLE_NPART != 1)
     error("Grackle with multiple particles not implemented");
-  float threshold = cooling->density_self_shielding;
-
-  threshold /= phys_const->const_proton_mass;
-  threshold /= pow(us->UnitLength_in_cgs, 3);
-
   message("***************************************");
   message("initializing grackle cooling function");
   message("");
   cooling_print_backend(cooling);
-  message("Density Self Shielding = %g atom/cm3", threshold);
+  message("Density Self Shielding = %g atom/cm3", density_self_shielding);
 
   message("");
   message("***************************************");
