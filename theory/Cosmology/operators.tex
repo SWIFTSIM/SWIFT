@@ -1,0 +1,44 @@
+\subsection{Time-integration operators}
+For the choice of cosmological coordinates made in \swift, the normal
+``kick'' and ``drift'' operators get modified to account for the
+expansion of the Universe. The derivation of these operators from the
+system's Lagrangian is given in appendix A of \cite{Quinn1997} for the
+collision-less case. We do not repeat that derivation here but, for
+completeness, give the expressions we use as well as the ones used for
+the hydro-dynamics. 
+
+The ``drift'' operator gets modified such that $\Delta t$ for a
+time-step running from a scale-factor $a_{n}$ to $a_{n+1}$ becomes
+
+\begin{equation}
+  \Delta t_{\rm drift} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a^2} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^3E(a)},
+\end{equation}
+with $E(a)$ given by eq.~\ref{eq:friedmann}. Similarly, the time-step
+entering ``kick'' operator for collision-less acceleration reads
+\begin{equation}
+  \Delta t_{\rm kick,g} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^2E(a)}.
+\end{equation}
+However, for the case of gas dynamics, given the invariance of entropy
+under cosmic expansion, the ``kick'' operator has a second variant
+that reads
+\begin{equation}
+  \Delta t_{\rm kick,h} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a^{3(\gamma-1)}} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^{3\gamma - 2}E(a)},
+\end{equation}
+where $\gamma$ is the adiabatic index of the gas.  Accelerations
+arising from hydrodynamic forces are integrated forward in time using
+$\Delta t_{\rm kick,h}$, whilst the accelerations given by the gravity
+forces use $\Delta t_{\rm kick,g}$.
+
+Following the same method as for the age of the Universe, these three
+integrals are evaluated numerically at the start of the simulation for
+a series $10^4$ values of $a$. The values for a specific pair of
+scale-factors $a_n$ and $a_{n+1}$ are then obtained by interpolating
+that table linearly.
+
+
+
+\subsection{NOTES FOR PEDRO}
+
+Typical values for the constants are:
+$\Omega_m = 0.3, \Omega_\Lambda=0.7, 0 < \Omega_r<10^{-3}, |\Omega_k | < 10^{-2}, h=0.7, a_{\rm start} = 10^{-2}, a_{\rm end} = 1, w_0 = -1\pm 0.1, w_a=0\pm0.2$ and $\gamma = 5/3$.
+
