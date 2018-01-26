@@ -31,11 +31,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "engine.h"
 #include "error.h"
 #include "restart.h"
 #include "version.h"
+
+#define FNAMELEN 200
 
 /**
  * @brief generate a name for a restart file.
@@ -70,8 +74,8 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
   *nfiles = 0;
 
   /* Construct the glob pattern for locating files. */
-  char pattern[200];
-  if (snprintf(pattern, 200, "%s/%s_[0-9]*.rst", dir, basename) < 200) {
+  char pattern[FNAMELEN];
+  if (snprintf(pattern, FNAMELEN, "%s/%s_[0-9]*.rst", dir, basename) < FNAMELEN) {
 
     glob_t globbuf;
     char **files = NULL;
@@ -149,7 +153,7 @@ void restart_read(struct engine *e, const char *filename) {
         "expected %s",
         signature, SWIFT_RESTART_SIGNATURE);
 
-  char version[200];
+  char version[FNAMELEN];
   len = strlen(package_version());
   restart_read_blocks(version, len, 1, stream, "SWIFT version");
   version[len] = '\0';
@@ -166,7 +170,8 @@ void restart_read(struct engine *e, const char *filename) {
   fclose(stream);
 }
 
-/* @brief Read blocks of memory from a file stream into a memory location.
+/**
+ * @brief Read blocks of memory from a file stream into a memory location.
  *        Exits the application if the read fails and does nothing
  *        if the size is zero.
  *
@@ -186,7 +191,8 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
   }
 }
 
-/* @brief Write blocks of memory to a file stream from a memory location.
+/**
+ * @brief Write blocks of memory to a file stream from a memory location.
  *        Exits the application if the write fails and does nothing
  *        if the size is zero.
  *
@@ -203,4 +209,29 @@ void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
     if (nwrite != nblocks)
       error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
   }
+}
+
+/**
+ * @brief check if the stop file exists in the given directory and optionally
+ *        remove it if found.
+ *
+ * @param dir the directory of restart files.
+ * @param cleanup remove the file if found. Should only do this from one rank
+ *                once all ranks have tested this file.
+ *
+ * @result 1 if the file was found.
+ */
+int restart_stop_now(const char *dir, int cleanup) {
+  static struct stat buf;
+  char filename[FNAMELEN];
+  strcpy(filename, dir);
+  strcat(filename, "/stop");
+  if (stat(filename, &buf) == 0) {
+      if (cleanup && unlink(filename) != 0) {
+          /* May not be fatal, so press on. */
+          message("Failed to delete restart stop file (%s)", strerror(errno));
+      }
+      return 1;
+  }
+  return 0;
 }

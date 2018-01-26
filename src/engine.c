@@ -4510,7 +4510,7 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Final job is to create a restart file if needed. */
-  engine_dump_restarts(e, drifted_all, engine_is_done(e));
+  engine_dump_restarts(e, drifted_all, e->restart_onexit && engine_is_done(e));
 }
 
 /**
@@ -4518,16 +4518,15 @@ void engine_step(struct engine *e) {
  *
  * @param e the engine.
  * @param drifted_all true if a drift_all has just been performed.
- * @param final_step set to true if this is the final step.
+ * @param force force a dump, if dumping is enabled.
  */
-void engine_dump_restarts(struct engine *e, int drifted_all, int final_step) {
+void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 
   if (e->restart_dump) {
     ticks tic = getticks();
-    int dump = (tic > e->restart_next);
 
-    /* If this is the last step, do we want a final update? */
-    if (e->restart_onexit && final_step) dump = 1;
+    /* Dump when the time has arrived, or we are told to. */
+    int dump = ((tic > e->restart_next) || force);
 
 #ifdef WITH_MPI
     /* Synchronize this action from rank 0 (ticks may differ between

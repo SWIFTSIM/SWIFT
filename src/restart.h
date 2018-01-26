@@ -42,4 +42,6 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                           const char *errstr);
 
+int restart_stop_now(const char *dir, int cleanup);
+
 #endif /* SWIFT_RESTART_H */

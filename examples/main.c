@@ -493,6 +493,11 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(params, "Restarts:basename", restart_name,
                               "swift");
 
+  /* How often to check for the stop file and dump restarts and exit the
+   * application. */
+  int restart_stop_steps = parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+
+  /* If restarting, look for the restart files. */
   if (restart) {
 
     /* Attempting a restart. */
@@ -563,7 +568,7 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    /* Reading ICs. */
+    /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
     struct unit_system us;
     struct phys_const prog_const;
@@ -836,7 +841,9 @@ int main(int argc, char *argv[]) {
     error("Failed to generate restart filename");
 
   /* Main simulation loop */
-  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps; j++) {
+  /* ==================== */
+  int force_stop = 0;
+  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop; j++) {
 
     /* Reset timers */
     timers_reset_all();
@@ -847,10 +854,17 @@ int main(int argc, char *argv[]) {
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 
-    /* If using nsteps to exit, will not have saved any restarts on exit, make
+    /* Every so often allow the user to stop the application and dump the restart
+     * files. */
+    if (j % restart_stop_steps == 0) {
+        force_stop = restart_stop_now(restart_dir, 0);
+        if (myrank == 0)
+            message("Forcing application exit, dumping restart files...");
+    }
+
+    /* Also if using nsteps to exit, will not have saved any restarts on exit, make
      * sure we do that (useful in testing only). */
-    if (!engine_is_done(&e) && e.step - 1 == nsteps)
-        engine_dump_restarts(&e, 0, 1);
+    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps)) engine_dump_restarts(&e, 0, 1);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
@@ -975,6 +989,10 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
+
+  /* Remove the stop file if used. Do this anyway, we could have missed the
+   * stop file if normal exit happened first. */
+  if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
