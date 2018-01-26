@@ -612,7 +612,7 @@ void units_print(const struct unit_system* us) {
  */
 void units_struct_dump(const struct unit_system* us, FILE* stream) {
   restart_write_blocks((void*)us, sizeof(struct unit_system), 1, stream,
-                       "units");
+                       "units", "units");
 }
 
 /**
@@ -622,6 +622,6 @@ void units_struct_dump(const struct unit_system* us, FILE* stream) {
  * @param stream the file stream
  */
 void units_struct_restore(const struct unit_system* us, FILE* stream) {
-  restart_read_blocks((void*)us, sizeof(struct unit_system), 1, stream,
-                      "units");
+    restart_read_blocks((void*)us, sizeof(struct unit_system), 1, stream,
+                        NULL, "units");
 }

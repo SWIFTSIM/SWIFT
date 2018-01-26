@@ -23,11 +23,6 @@
 
 struct engine;
 
-/* The signature for restart files. */
-#ifndef SWIFT_RESTART_SIGNATURE
-#define SWIFT_RESTART_SIGNATURE "SWIFT-restart-file"
-#endif
-
 void restart_write(struct engine *e, const char *filename);
 void restart_read(struct engine *e, const char *filename);
 
@@ -37,10 +32,10 @@ int restart_genname(const char *dir, const char *basename, int nodeID,
                     char *name, int size);
 
 void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                         const char *errstr);
+                         char *label, const char *errstr);
 
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                          const char *errstr);
+                          const char *label, const char *errstr);
 
 int restart_stop_now(const char *dir, int cleanup);
 

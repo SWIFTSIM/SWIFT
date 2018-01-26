@@ -794,7 +794,7 @@ void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
  */
 void parser_struct_dump(const struct swift_params *params, FILE *stream) {
   restart_write_blocks((void *)params, sizeof(struct swift_params), 1, stream,
-                       "parameters");
+                       "parameters", "parameters");
 }
 
 /**
@@ -806,5 +806,5 @@ void parser_struct_dump(const struct swift_params *params, FILE *stream) {
  */
 void parser_struct_restore(const struct swift_params *params, FILE *stream) {
   restart_read_blocks((void *)params, sizeof(struct swift_params), 1, stream,
-                      "parameters");
+                      NULL, "parameters");
 }

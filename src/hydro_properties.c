@@ -136,7 +136,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
  */
 void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
   restart_write_blocks((void *)p, sizeof(struct hydro_props), 1, stream,
-                       "hydro props");
+                       "hydroprops", "hydro props");
 }
 
 /**
@@ -148,5 +148,5 @@ void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
  */
 void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream) {
   restart_read_blocks((void *)p, sizeof(struct hydro_props), 1, stream,
-                      "hydro props");
+                      NULL, "hydro props");
 }

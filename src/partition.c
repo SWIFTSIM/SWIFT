@@ -1309,13 +1309,13 @@ void partition_restore_celllist(struct space *s, struct repartition *reparttype)
  */
 void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
   restart_write_blocks(reparttype, sizeof(struct repartition), 1, stream,
-                       "repartition params");
+                       "repartition", "repartition params");
 
   /* Also save the celllist, if we have one. */
   if (reparttype->ncelllist > 0)
     restart_write_blocks(reparttype->celllist,
                          sizeof(int) * reparttype->ncelllist, 1, stream,
-                         "repartition celllist");
+                         "celllist", "repartition celllist");
 }
 
 /**
@@ -1327,7 +1327,7 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
  */
 void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
   restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream,
-                      "repartition params");
+                      NULL, "repartition params");
 
   /* Also restore the celllist, if we have one. */
   if (reparttype->ncelllist > 0) {
@@ -1335,6 +1335,6 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
     if (reparttype->celllist == NULL) error("Failed to allocate celllist");
     restart_read_blocks(reparttype->celllist,
                         sizeof(int) * reparttype->ncelllist, 1, stream,
-                        "repartition celllist");
+                        NULL, "repartition celllist");
   }
 }

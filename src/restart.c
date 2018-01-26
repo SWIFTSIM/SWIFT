@@ -39,7 +39,17 @@
 #include "restart.h"
 #include "version.h"
 
+/* The signature for restart files. */
+#define SWIFT_RESTART_SIGNATURE "SWIFT-restart-file"
+
 #define FNAMELEN 200
+#define LABLEN 20
+
+/* Structure for a dumped header. */
+struct header {
+    size_t len;            /* Total length of data in bytes. */
+    char label[LABLEN+1];  /* A label for data */
+};
 
 /**
  * @brief generate a name for a restart file.
@@ -122,9 +132,9 @@ void restart_write(struct engine *e, const char *filename) {
 
   /* Dump our signature and version. */
   restart_write_blocks(SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
-                       1, stream, "SWIFT signature");
+                       1, stream, "signature", "SWIFT signature");
   restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
-                       stream, "SWIFT version");
+                       stream, "version", "SWIFT version");
 
   engine_struct_dump(e, stream);
   fclose(stream);
@@ -145,24 +155,24 @@ void restart_read(struct engine *e, const char *filename) {
   /* Get our version and signature back. These should match. */
   char signature[strlen(SWIFT_RESTART_SIGNATURE) + 1];
   int len = strlen(SWIFT_RESTART_SIGNATURE);
-  restart_read_blocks(signature, len, 1, stream, "SWIFT signature");
+  restart_read_blocks(signature, len, 1, stream, NULL, "SWIFT signature");
   signature[len] = '\0';
   if (strncmp(signature, SWIFT_RESTART_SIGNATURE, len) != 0)
     error(
-        "Do not recognise this as a SWIFT restart file, found %s "
-        "expected %s",
+        "Do not recognise this as a SWIFT restart file, found '%s' "
+        "expected '%s'",
         signature, SWIFT_RESTART_SIGNATURE);
 
   char version[FNAMELEN];
   len = strlen(package_version());
-  restart_read_blocks(version, len, 1, stream, "SWIFT version");
+  restart_read_blocks(version, len, 1, stream, NULL, "SWIFT version");
   version[len] = '\0';
 
   /* It might work! */
   if (strncmp(version, package_version(), len) != 0)
     message(
         "WARNING: restoring from a different version of SWIFT.\n You have:"
-        " %s and the restarts files are from: %s. This may fail"
+        " '%s' and the restarts files are from: '%s'. This may fail"
         " badly.",
         package_version(), version);
 
@@ -172,22 +182,38 @@ void restart_read(struct engine *e, const char *filename) {
 
 /**
  * @brief Read blocks of memory from a file stream into a memory location.
- *        Exits the application if the read fails and does nothing
- *        if the size is zero.
+ *        Exits the application if the read fails and does nothing if the
+ *        size is zero.
  *
  * @param ptr pointer to the memory
  * @param size size of a block
  * @param nblocks number of blocks to read
  * @param stream the file stream
+ * @param label the label recovered for the block, needs to be at least 20
+ *              characters, set to NULL if not required
  * @param errstr a context string to qualify any errors.
  */
 void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                         const char *errstr) {
+                         char *label, const char *errstr) {
   if (size > 0) {
-    size_t nread = fread(ptr, size, nblocks, stream);
-    if (nread != nblocks)
-      error("Failed to restore %s from restart file (%s)", errstr,
-            ferror(stream) ? strerror(errno) : "unexpected end of file");
+      struct header head;
+      size_t nread = fread(&head, sizeof(struct header), 1, stream);
+      if (nread != 1)
+          error("Failed to read the %s header from restart file (%s)", errstr, strerror(errno));
+
+      /* Check that the stored length is the same as the expected one. */
+      if (head.len != nblocks * size)
+          error("Mismatched data length in restart file for %s (%zu != %zu)",
+                errstr, head.len, nblocks * size);
+
+      /* Return label, if required. */
+      if (label != NULL)
+          strncpy(label, head.label, LABLEN);
+
+      nread = fread(ptr, size, nblocks, stream);
+      if (nread != nblocks)
+          error("Failed to restore %s from restart file (%s)", errstr,
+                ferror(stream) ? strerror(errno) : "unexpected end of file");
   }
 }
 
@@ -200,15 +226,28 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  * @param size the blocks
  * @param nblocks number of blocks to write
  * @param stream the file stream
+ * @param label a label for the content, can only be 20 characters.
  * @param errstr a context string to qualify any errors.
  */
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
-                          const char *errstr) {
-  if (size > 0) {
-    size_t nwrite = fwrite(ptr, size, nblocks, stream);
-    if (nwrite != nblocks)
-      error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
-  }
+                          const char *label, const char *errstr) {
+    if (size > 0) {
+
+        /* Add a preamble header. */
+        struct header head;
+        head.len = nblocks * size;
+        strncpy(head.label, label, LABLEN);
+        head.label[LABLEN] = '\0';
+
+        /* Now dump it and the data. */
+        size_t nwrite = fwrite(&head, sizeof(struct header), 1, stream);
+        if (nwrite != 1)
+            error("Failed to save %s header to restart file (%s)", errstr, strerror(errno));
+
+        nwrite = fwrite(ptr, size, nblocks, stream);
+        if (nwrite != nblocks)
+            error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
+    }
 }
 
 /**

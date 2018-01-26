@@ -5797,7 +5797,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 
   /* Dump the engine. Save the current tasks_per_cell estimate. */
   e->restart_max_tasks = engine_estimate_nr_tasks(e);
-  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
+  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine", "engine struct");
 
   /* And all the engine pointed data, these use their own dump functions. */
   space_struct_dump(e->s, stream);
@@ -5827,7 +5827,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* Read the engine. */
-  restart_read_blocks(e, sizeof(struct engine), 1, stream, "engine struct");
+  restart_read_blocks(e, sizeof(struct engine), 1, stream, NULL, "engine struct");
 
   /* Re-initializations as necessary for our struct and its members. */
   e->sched.tasks = NULL;

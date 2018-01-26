@@ -63,7 +63,7 @@ void potential_print(const struct external_potential* potential) {
 void potential_struct_dump(const struct external_potential* potential,
                            FILE* stream) {
   restart_write_blocks((void*)potential, sizeof(struct external_potential), 1,
-                       stream, "external potential");
+                       stream, "externalpotential", "external potential");
 }
 
 /**
@@ -76,5 +76,5 @@ void potential_struct_dump(const struct external_potential* potential,
 void potential_struct_restore(const struct external_potential* potential,
                               FILE* stream) {
   restart_read_blocks((void*)potential, sizeof(struct external_potential), 1,
-                      stream, "external potential");
+                      stream, NULL, "external potential");
 }

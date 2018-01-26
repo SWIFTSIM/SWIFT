@@ -68,7 +68,7 @@ void sourceterms_print(struct sourceterms *source) {
 void sourceterms_struct_dump(const struct sourceterms *sourceterms,
                              FILE *stream) {
   restart_write_blocks((void *)sourceterms, sizeof(struct sourceterms), 1,
-                       stream, "sourceterms");
+                       stream, "sourceterms", "sourceterms");
 }
 
 /**
@@ -81,5 +81,5 @@ void sourceterms_struct_dump(const struct sourceterms *sourceterms,
 void sourceterms_struct_restore(const struct sourceterms *sourceterms,
                                 FILE *stream) {
   restart_read_blocks((void *)sourceterms, sizeof(struct sourceterms), 1,
-                      stream, "sourceterms");
+                      stream, NULL, "sourceterms");
 }
