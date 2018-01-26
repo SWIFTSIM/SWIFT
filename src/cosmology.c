@@ -139,8 +139,12 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   /* H(z) */
   c->H = c->H0 * E_z;
 
-  /* Time since Big Bang */
+  /* Expansion rate */
+  c->a_dot = c->H * c->a;
+
+  /* Time */
   c->time = cosmology_get_time_since_big_bang(c, a);
+  c->lookback_time = c->universe_age_at_present_day - c->time;
 }
 
 /**
@@ -323,6 +327,11 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->time_interp_table_offset = result;
 
+  /* Integrate the time \int_{0}^{1} dt */
+  gsl_integration_qag(&F, 0., 1, 0, 1.0e-13, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->universe_age_at_present_day = result;
+
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
   free(a_table);
@@ -377,13 +386,16 @@ void cosmology_init(const struct swift_params *params,
   const double H0_cgs =
       100. * c->h * (km / (1.e6 * phys_const->const_parsec)); /* s^-1 */
   c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  c->Hubble_time = 1. / c->H0;
 
   /* Set remaining variables to invalid values */
   c->H = -1.;
   c->a = -1.;
   c->a_inv = -1;
   c->z = -1.;
+  c->a_dot = -1.;
   c->time = -1.;
+  c->universe_age_at_present_day = -1.;
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
@@ -403,8 +415,9 @@ void cosmology_print(const struct cosmology *c) {
       "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
       c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
   message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
-  message("Hubble constant: h = %f, H_0 = %e U_t^(-1) (internal units)", c->h,
-          c->H0);
+  message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
+  message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
+  message("Universe age at present day: %e U_t", c->universe_age_at_present_day);
 }
 
 /**

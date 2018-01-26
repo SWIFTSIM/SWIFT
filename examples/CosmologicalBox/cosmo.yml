@@ -2,7 +2,7 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
   UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
-  UnitVelocity_in_cgs: 1e0           # km/s in centimeters per second
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 

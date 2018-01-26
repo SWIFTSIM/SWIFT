@@ -46,8 +46,14 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
+  /*! Expansion rate at the current redshift (in internal units) */
+  double a_dot;
+
   /*! Time (in internal units) since the Big Bang */
   double time;
+
+  /*! Lookback time (in internal units) */
+  double lookback_time;
 
   /*! Dark-energy equation of state at the current time */
   double w;
@@ -65,6 +71,9 @@ struct cosmology {
 
   /*! Hubble constant at z = 0 (in internal units) */
   double H0;
+
+  /*! Hubble time 1/H0 */
+  double Hubble_time;
 
   /*! Matter density parameter */
   double Omega_m;
@@ -107,6 +116,9 @@ struct cosmology {
 
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
+
+  /*! Time at the present-day (a=1) */
+  double universe_age_at_present_day;
 };
 
 void cosmology_update(struct cosmology *c, const struct engine *e);
