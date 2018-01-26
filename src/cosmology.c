@@ -360,7 +360,7 @@ void cosmology_init(const struct swift_params *params,
 
   /* Read in the cosmological parameters */
   c->Omega_m = parser_get_param_double(params, "Cosmology:Omega_m");
-  c->Omega_r = parser_get_param_double(params, "Cosmology:Omega_r");
+  c->Omega_r = parser_get_opt_param_double(params, "Cosmology:Omega_r", 0.);
   c->Omega_lambda = parser_get_param_double(params, "Cosmology:Omega_lambda");
   c->Omega_b = parser_get_param_double(params, "Cosmology:Omega_b");
   c->w_0 = parser_get_opt_param_double(params, "Cosmology:w_0", -1.);

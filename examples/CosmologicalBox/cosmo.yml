@@ -40,7 +40,6 @@ InitialConditions:
 
 Cosmology:
   Omega_m:        0.307
-  Omega_r:        0.000
   Omega_lambda:   0.693
   Omega_b:        0.0455
   h:              0.6777
