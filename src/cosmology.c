@@ -417,7 +417,8 @@ void cosmology_print(const struct cosmology *c) {
   message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
   message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
   message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
-  message("Universe age at present day: %e U_t", c->universe_age_at_present_day);
+  message("Universe age at present day: %e U_t",
+          c->universe_age_at_present_day);
 }
 
 /**
@@ -496,4 +497,25 @@ double cosmology_get_hydro_kick_factor(const struct engine *e,
                                       c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
+}
+
+/**
+ * @brief Compute the cosmic time (in internal units) between two scale-factors.
+ *
+ * @brief c The current #cosmology.
+ * @brief a1 The first scale-factor.
+ * @brief a2 The second scale-factor.
+ */
+double cosmology_get_delta_time(const struct cosmology *c, double a1,
+                                double a2) {
+
+  /* Time between a_begin and a1 */
+  const double t1 =
+      interp_table(c->time_interp_table, log(a1), c->log_a_begin, c->log_a_end);
+
+  /* Time between a_begin and a1 */
+  const double t2 =
+      interp_table(c->time_interp_table, log(a2), c->log_a_begin, c->log_a_end);
+
+  return t2 - t1;
 }

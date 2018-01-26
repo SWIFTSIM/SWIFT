@@ -132,6 +132,9 @@ double cosmology_get_hydro_kick_factor(const struct engine *e,
                                        integertime_t ti_start,
                                        integertime_t ti_end);
 
+double cosmology_get_delta_time(const struct cosmology *c, double a1,
+                                double a2);
+
 void cosmology_init(const struct swift_params *params,
                     const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);

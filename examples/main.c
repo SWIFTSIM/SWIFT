@@ -488,8 +488,9 @@ int main(int argc, char *argv[]) {
 
     cosmology_update(&cosmo, &ee);
 
-    message("z=%e H(z)=%e w=%f t=%e [yrs] t_l=%e [yrs]", cosmo.z, cosmo.H, cosmo.w,
-            cosmo.time / prog_const.const_year, cosmo.lookback_time / prog_const.const_year);
+    message("z=%e H(z)=%e w=%f t=%e [yrs] t_l=%e [yrs]", cosmo.z, cosmo.H,
+            cosmo.w, cosmo.time / prog_const.const_year,
+            cosmo.lookback_time / prog_const.const_year);
   }
 
   return 0;
