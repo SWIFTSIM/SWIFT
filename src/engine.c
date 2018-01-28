@@ -4283,7 +4283,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       prev_id = &s->parts[k].id;
     }
     if (failed > 0)
-      error(
+      message(
           "Have %d particle pairs with the same locations.\n"
           "Cannot continue",
           failed);
@@ -5038,7 +5038,7 @@ void engine_dump_snapshot(struct engine *e) {
   e->dump_snapshot = 0;
 
   clocks_gettime(&time2);
-  if (e->verbose)
+  //if (e->verbose)
     message("writing particle properties took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
