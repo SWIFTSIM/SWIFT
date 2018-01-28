@@ -880,7 +880,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
   if (h_err < 0) error("Error setting the MDC config");
 
 /* Use parallel meta-data writes */
-#if H5_VERSION_GE(1, 10, 1)
+#if H5_VERSION_GE(1, 10, 0)
+  h_err = H5Pset_all_coll_metadata_ops(plist_id, 1);
+  if (h_err < 0) error("Error setting collective meta-data on all ops");
   h_err = H5Pset_coll_metadata_write(plist_id, 1);
   if (h_err < 0) error("Error setting collective meta-data writes");
 #endif
@@ -912,7 +914,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
-  tick tic = getticks();
+  ticks tic = getticks();
 #endif
 
   /* Open header to write simulation properties */
@@ -1151,7 +1153,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
   }
 
 #ifdef IO_SPEED_MEASUREMENT
-  ticks tic = getticks();
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
 #endif
 
   /* Write LXMF file descriptor */
