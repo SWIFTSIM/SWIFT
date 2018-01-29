@@ -472,7 +472,8 @@ int main(int argc, char *argv[]) {
 
   /* Work out where we will read and write restart files. */
   char restart_dir[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "Restarts:subdir", restart_dir, "restart");
+  parser_get_opt_param_string(params, "Restarts:subdir", restart_dir,
+                              "restart");
 
   /* The directory must exist. */
   if (myrank == 0) {
@@ -481,9 +482,9 @@ int main(int argc, char *argv[]) {
         error("Cannot restart as no restart subdirectory: %s (%s)", restart_dir,
               strerror(errno));
       } else {
-          if (mkdir(restart_dir, 0777) != 0)
-            error("Failed to create restart directory: %s (%s)", restart_dir,
-                  strerror(errno));
+        if (mkdir(restart_dir, 0777) != 0)
+          error("Failed to create restart directory: %s (%s)", restart_dir,
+                strerror(errno));
       }
     }
   }
@@ -495,7 +496,8 @@ int main(int argc, char *argv[]) {
 
   /* How often to check for the stop file and dump restarts and exit the
    * application. */
-  int restart_stop_steps = parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+  int restart_stop_steps =
+      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
 
   /* If restarting, look for the restart files. */
   if (restart) {
@@ -508,7 +510,8 @@ int main(int argc, char *argv[]) {
       message("Restarting SWIFT");
 
       /* Locate the restart files. */
-      restart_files = restart_locate(restart_dir, restart_name, &restart_nfiles);
+      restart_files =
+          restart_locate(restart_dir, restart_name, &restart_nfiles);
       if (restart_nfiles == 0)
         error("Failed to locate any restart files in %s", restart_dir);
 
@@ -553,8 +556,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff, talking,
-                  restart_file);
+    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff,
+                  talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -663,7 +666,8 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld star particles and %lld gparts from the "
+          "Read %lld gas particles, %lld star particles and %lld gparts from "
+          "the "
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
 
@@ -680,7 +684,7 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-    /* Also update the total counts (in case of changes due to replication) */
+/* Also update the total counts (in case of changes due to replication) */
 #if defined(WITH_MPI)
     N_long[0] = s.nr_parts;
     N_long[1] = s.nr_gparts;
@@ -762,8 +766,8 @@ int main(int argc, char *argv[]) {
                 talking, &reparttype, &us, &prog_const, &hydro_properties,
                 &gravity_properties, &potential, &cooling_func, &chemistry,
                 &sourceterms);
-    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff, talking,
-                  restart_file);
+    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
+                  talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -837,13 +841,15 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_open_file(myrank);
 
   /* Create a name for restart file of this rank. */
-  if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) != 0)
+  if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) !=
+      0)
     error("Failed to generate restart filename");
 
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;
-  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop; j++) {
+  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop;
+       j++) {
 
     /* Reset timers */
     timers_reset_all();
@@ -854,17 +860,20 @@ int main(int argc, char *argv[]) {
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 
-    /* Every so often allow the user to stop the application and dump the restart
+    /* Every so often allow the user to stop the application and dump the
+     * restart
      * files. */
     if (j % restart_stop_steps == 0) {
-        force_stop = restart_stop_now(restart_dir, 0);
-        if (myrank == 0 && force_stop)
-            message("Forcing application exit, dumping restart files...");
+      force_stop = restart_stop_now(restart_dir, 0);
+      if (myrank == 0 && force_stop)
+        message("Forcing application exit, dumping restart files...");
     }
 
-    /* Also if using nsteps to exit, will not have saved any restarts on exit, make
+    /* Also if using nsteps to exit, will not have saved any restarts on exit,
+     * make
      * sure we do that (useful in testing only). */
-    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps)) engine_dump_restarts(&e, 0, 1);
+    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
+      engine_dump_restarts(&e, 0, 1);
 
 #ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */

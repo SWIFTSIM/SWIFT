@@ -1001,7 +1001,8 @@ void write_output_serial(struct engine* e, const char* baseName,
   }
 
   /* Write footer of LXMF file descriptor */
-  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+  if (mpi_rank == 0)
+    xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* message("Done writing particles..."); */
   e->snapshotOutputCount++;

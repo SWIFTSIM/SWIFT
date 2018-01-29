@@ -116,6 +116,6 @@ void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
  * @param stream the file stream
  */
 void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream) {
-  restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream,
-                      NULL, "gravity props");
+  restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream, NULL,
+                      "gravity props");
 }

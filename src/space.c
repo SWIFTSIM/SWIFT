@@ -385,11 +385,10 @@ void space_regrid(struct space *s, int verbose) {
     }
   }
 
-  /* Are we about to allocate new top level cells without a regrid? 
+  /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
   int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
-
 
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
@@ -520,19 +519,19 @@ void space_regrid(struct space *s, int verbose) {
       free(oldnodeIDs);
 
     } else if (no_regrid && s->e != NULL) {
-        /* If we have created the top-levels cells and not done an initial
-         * partition (can happen when restarting), then the top-level cells
-         * are not assigned to a node, we must do that and then associate the
-         * particles with the cells. Note requires that
-         * partition_store_celllist() was called once before, or just before
-         * dumping the restart files.*/
-        partition_restore_celllist(s, s->e->reparttype);
+      /* If we have created the top-levels cells and not done an initial
+       * partition (can happen when restarting), then the top-level cells
+       * are not assigned to a node, we must do that and then associate the
+       * particles with the cells. Note requires that
+       * partition_store_celllist() was called once before, or just before
+       * dumping the restart files.*/
+      partition_restore_celllist(s, s->e->reparttype);
 
-        /* Now re-distribute the particles, should just add to cells? */
-        engine_redistribute(s->e);
+      /* Now re-distribute the particles, should just add to cells? */
+      engine_redistribute(s->e);
 
-        /* Make the proxies. */
-        engine_makeproxies(s->e);
+      /* Make the proxies. */
+      engine_makeproxies(s->e);
     }
 #endif /* WITH_MPI */
 
@@ -3249,7 +3248,8 @@ void space_clean(struct space *s) {
  */
 void space_struct_dump(struct space *s, FILE *stream) {
 
-  restart_write_blocks(s, sizeof(struct space), 1, stream, "space", "space struct");
+  restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
+                       "space struct");
 
   /* More things to write. */
   if (s->nr_parts > 0) {

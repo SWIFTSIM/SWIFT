@@ -4552,7 +4552,6 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
   }
 }
 
-
 /**
  * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
  */
@@ -5257,7 +5256,7 @@ void engine_init(
  *
  * @param restart true when restarting the application.
  * @param e The #engine.
- * @param params The parsed parameter file. 
+ * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
@@ -5265,8 +5264,9 @@ void engine_init(
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e, const struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff, int verbose,
+void engine_config(int restart, struct engine *e,
+                   const struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
                    const char *restart_file) {
 
   /* Store the values and initialise global fields. */
@@ -5293,7 +5293,8 @@ void engine_config(int restart, struct engine *e, const struct swift_params *par
   engine_rank = nodeID;
 
   /* Get the number of queues */
-  int nr_queues = parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
+  int nr_queues =
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
@@ -5441,7 +5442,8 @@ void engine_config(int restart, struct engine *e, const struct swift_params *par
 
     char energyfileName[200] = "";
     parser_get_opt_param_string(params, "Statistics:energy_file_name",
-                                energyfileName, engine_default_energy_file_name);
+                                energyfileName,
+                                engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
 
@@ -5457,9 +5459,9 @@ void engine_config(int restart, struct engine *e, const struct swift_params *par
     }
 
     char timestepsfileName[200] = "";
-    parser_get_opt_param_string(
-        params, "Statistics:timestep_file_name", timestepsfileName,
-        engine_default_timesteps_file_name);
+    parser_get_opt_param_string(params, "Statistics:timestep_file_name",
+                                timestepsfileName,
+                                engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
             nr_nodes * nr_threads);
@@ -5572,20 +5574,21 @@ void engine_config(int restart, struct engine *e, const struct swift_params *par
   e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
 
   /* Hours between restart dumps. Can be changed on restart. */
-  float dhours = parser_get_opt_param_float(params,"Restarts:delta_hours",6.0);
+  float dhours =
+      parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
   if (e->nodeID == 0) {
-    if(e->restart_dump)
+    if (e->restart_dump)
       message("Restarts will be dumped every %f hours", dhours);
     else
       message("WARNING: restarts will not be dumped");
 
-    if (e->verbose  && e->restart_onexit)
+    if (e->verbose && e->restart_onexit)
       message("Restarts will be dumped after the final step");
   }
 
   /* Internally we use ticks, so convert into a delta ticks. Assumes we can
    * convert from ticks into milliseconds. */
-  e->restart_dt = clocks_to_ticks(dhours*60.0*60.0*1000.0);
+  e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
 
   /* The first dump will happen no sooner than restart_dt ticks in the
    * future. */
@@ -5613,17 +5616,17 @@ void engine_config(int restart, struct engine *e, const struct swift_params *par
    * On restart this number cannot be estimated (no cells yet), so we recover
    * from the end of the dumped run. Can be changed on restart.
    */
-  e->tasks_per_cell = parser_get_opt_param_int(params,"Scheduler:tasks_per_cell", 0);
+  e->tasks_per_cell =
+      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
   int maxtasks = 0;
   if (restart)
-      maxtasks = e->restart_max_tasks;
+    maxtasks = e->restart_max_tasks;
   else
-      maxtasks = engine_estimate_nr_tasks(e);
+    maxtasks = engine_estimate_nr_tasks(e);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-                 (e->policy & scheduler_flag_steal), e->nodeID,
-                 &e->threadpool);
+                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
@@ -5796,7 +5799,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 
   /* Dump the engine. Save the current tasks_per_cell estimate. */
   e->restart_max_tasks = engine_estimate_nr_tasks(e);
-  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine", "engine struct");
+  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine",
+                       "engine struct");
 
   /* And all the engine pointed data, these use their own dump functions. */
   space_struct_dump(e->s, stream);
@@ -5828,7 +5832,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* Read the engine. */
-  restart_read_blocks(e, sizeof(struct engine), 1, stream, NULL, "engine struct");
+  restart_read_blocks(e, sizeof(struct engine), 1, stream, NULL,
+                      "engine struct");
 
   /* Re-initializations as necessary for our struct and its members. */
   e->sched.tasks = NULL;

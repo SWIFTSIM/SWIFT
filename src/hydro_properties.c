@@ -147,6 +147,6 @@ void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
  * @param stream the file stream
  */
 void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream) {
-  restart_read_blocks((void *)p, sizeof(struct hydro_props), 1, stream,
-                      NULL, "hydro props");
+  restart_read_blocks((void *)p, sizeof(struct hydro_props), 1, stream, NULL,
+                      "hydro props");
 }

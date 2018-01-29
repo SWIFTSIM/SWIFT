@@ -230,11 +230,8 @@ double clocks_from_ticks(ticks tics) {
  * @result the number of ticks, if possible.
  */
 ticks clocks_to_ticks(double ms) {
-    return (ticks) (ms * (double)clocks_get_cpufreq() / clocks_units_scale);
+  return (ticks)(ms * (double)clocks_get_cpufreq() / clocks_units_scale);
 }
-
-ticks clocks_to_ticks(double interval);
-
 
 /**
  * @brief return the time units.

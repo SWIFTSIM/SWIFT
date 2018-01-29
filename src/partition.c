@@ -1259,7 +1259,7 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
 
 /**
  * @brief save the nodeIDs of the current top-level cells by adding them to a
- *             repartition struct. Used when restarting application. 
+ *             repartition struct. Used when restarting application.
  *
  * @param s the space with the top-level cells.
  * @param reparttype struct to update with the a list of nodeIDs.
@@ -1284,7 +1284,8 @@ void partition_store_celllist(struct space *s, struct repartition *reparttype) {
  * @param reparttype struct with the list of nodeIDs saved,
  *
  */
-void partition_restore_celllist(struct space *s, struct repartition *reparttype) {
+void partition_restore_celllist(struct space *s,
+                                struct repartition *reparttype) {
   if (reparttype->ncelllist > 0) {
     if (reparttype->ncelllist == s->nr_cells) {
       for (int i = 0; i < s->nr_cells; i++) {
@@ -1294,9 +1295,10 @@ void partition_restore_celllist(struct space *s, struct repartition *reparttype)
         error("Not all ranks are present in the restored partition");
       }
     } else {
-      error("Cannot apply the saved partition celllist as the number of"
-            "top-level cells (%d) is different to the saved number (%d)",
-            s->nr_cells, reparttype->ncelllist);
+      error(
+          "Cannot apply the saved partition celllist as the number of"
+          "top-level cells (%d) is different to the saved number (%d)",
+          s->nr_cells, reparttype->ncelllist);
     }
   }
 }
@@ -1326,15 +1328,15 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
  * @param stream the file stream
  */
 void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
-  restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream,
-                      NULL, "repartition params");
+  restart_read_blocks(reparttype, sizeof(struct repartition), 1, stream, NULL,
+                      "repartition params");
 
   /* Also restore the celllist, if we have one. */
   if (reparttype->ncelllist > 0) {
     reparttype->celllist = malloc(sizeof(int) * reparttype->ncelllist);
     if (reparttype->celllist == NULL) error("Failed to allocate celllist");
     restart_read_blocks(reparttype->celllist,
-                        sizeof(int) * reparttype->ncelllist, 1, stream,
-                        NULL, "repartition celllist");
+                        sizeof(int) * reparttype->ncelllist, 1, stream, NULL,
+                        "repartition celllist");
   }
 }

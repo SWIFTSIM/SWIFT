@@ -47,8 +47,8 @@
 
 /* Structure for a dumped header. */
 struct header {
-    size_t len;            /* Total length of data in bytes. */
-    char label[LABLEN+1];  /* A label for data */
+  size_t len;             /* Total length of data in bytes. */
+  char label[LABLEN + 1]; /* A label for data */
 };
 
 /**
@@ -85,7 +85,8 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
 
   /* Construct the glob pattern for locating files. */
   char pattern[FNAMELEN];
-  if (snprintf(pattern, FNAMELEN, "%s/%s_[0-9]*.rst", dir, basename) < FNAMELEN) {
+  if (snprintf(pattern, FNAMELEN, "%s/%s_[0-9]*.rst", dir, basename) <
+      FNAMELEN) {
 
     glob_t globbuf;
     char **files = NULL;
@@ -196,24 +197,24 @@ void restart_read(struct engine *e, const char *filename) {
 void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                          char *label, const char *errstr) {
   if (size > 0) {
-      struct header head;
-      size_t nread = fread(&head, sizeof(struct header), 1, stream);
-      if (nread != 1)
-          error("Failed to read the %s header from restart file (%s)", errstr, strerror(errno));
+    struct header head;
+    size_t nread = fread(&head, sizeof(struct header), 1, stream);
+    if (nread != 1)
+      error("Failed to read the %s header from restart file (%s)", errstr,
+            strerror(errno));
 
-      /* Check that the stored length is the same as the expected one. */
-      if (head.len != nblocks * size)
-          error("Mismatched data length in restart file for %s (%zu != %zu)",
-                errstr, head.len, nblocks * size);
+    /* Check that the stored length is the same as the expected one. */
+    if (head.len != nblocks * size)
+      error("Mismatched data length in restart file for %s (%zu != %zu)",
+            errstr, head.len, nblocks * size);
 
-      /* Return label, if required. */
-      if (label != NULL)
-          strncpy(label, head.label, LABLEN);
+    /* Return label, if required. */
+    if (label != NULL) strncpy(label, head.label, LABLEN);
 
-      nread = fread(ptr, size, nblocks, stream);
-      if (nread != nblocks)
-          error("Failed to restore %s from restart file (%s)", errstr,
-                ferror(stream) ? strerror(errno) : "unexpected end of file");
+    nread = fread(ptr, size, nblocks, stream);
+    if (nread != nblocks)
+      error("Failed to restore %s from restart file (%s)", errstr,
+            ferror(stream) ? strerror(errno) : "unexpected end of file");
   }
 }
 
@@ -231,23 +232,24 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  */
 void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
                           const char *label, const char *errstr) {
-    if (size > 0) {
+  if (size > 0) {
 
-        /* Add a preamble header. */
-        struct header head;
-        head.len = nblocks * size;
-        strncpy(head.label, label, LABLEN);
-        head.label[LABLEN] = '\0';
+    /* Add a preamble header. */
+    struct header head;
+    head.len = nblocks * size;
+    strncpy(head.label, label, LABLEN);
+    head.label[LABLEN] = '\0';
 
-        /* Now dump it and the data. */
-        size_t nwrite = fwrite(&head, sizeof(struct header), 1, stream);
-        if (nwrite != 1)
-            error("Failed to save %s header to restart file (%s)", errstr, strerror(errno));
+    /* Now dump it and the data. */
+    size_t nwrite = fwrite(&head, sizeof(struct header), 1, stream);
+    if (nwrite != 1)
+      error("Failed to save %s header to restart file (%s)", errstr,
+            strerror(errno));
 
-        nwrite = fwrite(ptr, size, nblocks, stream);
-        if (nwrite != nblocks)
-            error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
-    }
+    nwrite = fwrite(ptr, size, nblocks, stream);
+    if (nwrite != nblocks)
+      error("Failed to save %s to restart file (%s)", errstr, strerror(errno));
+  }
 }
 
 /**
@@ -266,11 +268,11 @@ int restart_stop_now(const char *dir, int cleanup) {
   strcpy(filename, dir);
   strcat(filename, "/stop");
   if (stat(filename, &buf) == 0) {
-      if (cleanup && unlink(filename) != 0) {
-          /* May not be fatal, so press on. */
-          message("Failed to delete restart stop file (%s)", strerror(errno));
-      }
-      return 1;
+    if (cleanup && unlink(filename) != 0) {
+      /* May not be fatal, so press on. */
+      message("Failed to delete restart stop file (%s)", strerror(errno));
+    }
+    return 1;
   }
   return 0;
 }
