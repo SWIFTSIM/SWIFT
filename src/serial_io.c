@@ -712,7 +712,6 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -721,7 +720,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -741,7 +740,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   if (mpi_rank == 0) {
 
     /* First time, we need to create the XMF file */
-    if (outputCount == 0) xmf_create_file(baseName);
+    if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
     /* Prepare the XMF file for the new entry */
     xmfFile = xmf_prepare_file(baseName);
@@ -1002,10 +1001,10 @@ void write_output_serial(struct engine* e, const char* baseName,
   }
 
   /* Write footer of LXMF file descriptor */
-  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* message("Done writing particles..."); */
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 && HAVE_MPI */

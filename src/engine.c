@@ -5211,6 +5211,7 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshotUnits = malloc(sizeof(struct unit_system));
   units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
+  e->snapshotOutputCount = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->deltaTimeStatistics =
@@ -5802,9 +5803,11 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
 
+#ifdef WITH_MPI
   /* Save the partition for restoration. */
   partition_store_celllist(e->s, e->reparttype);
   partition_struct_dump(e->reparttype, stream);
+#endif
 
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
@@ -5848,9 +5851,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   units_struct_restore(us, stream);
   e->snapshotUnits = us;
 
+#ifdef WITH_MPI
   struct repartition *reparttype = malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
   e->reparttype = reparttype;
+#endif
 
   struct phys_const *physical_constants = malloc(sizeof(struct phys_const));
   phys_const_struct_restore(physical_constants, stream);

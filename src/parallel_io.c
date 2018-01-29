@@ -833,7 +833,6 @@ void write_output_parallel(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -842,10 +841,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0 && mpi_rank == 0) xmf_create_file(baseName);
+  if (e->snapshotOutputCount == 0 && mpi_rank == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   if (mpi_rank == 0) xmfFile = xmf_prepare_file(baseName);
@@ -1158,7 +1157,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 #endif
 
   /* Write LXMF file descriptor */
-  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1193,7 +1192,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             clocks_getunit());
 #endif
 
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 */

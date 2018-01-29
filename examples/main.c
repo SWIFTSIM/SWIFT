@@ -858,7 +858,7 @@ int main(int argc, char *argv[]) {
      * files. */
     if (j % restart_stop_steps == 0) {
         force_stop = restart_stop_now(restart_dir, 0);
-        if (myrank == 0)
+        if (myrank == 0 && force_stop)
             message("Forcing application exit, dumping restart files...");
     }
 

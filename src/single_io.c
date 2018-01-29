@@ -577,7 +577,6 @@ void write_output_single(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -587,10 +586,10 @@ void write_output_single(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0) xmf_create_file(baseName);
+  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   FILE* xmfFile = 0;
@@ -807,14 +806,14 @@ void write_output_single(struct engine* e, const char* baseName,
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);
 
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 */

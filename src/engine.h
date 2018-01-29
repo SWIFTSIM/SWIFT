@@ -195,6 +195,7 @@ struct engine {
   char snapshotBaseName[PARSER_MAX_LINE_SIZE];
   int snapshotCompression;
   struct unit_system *snapshotUnits;
+  int snapshotOutputCount;
 
   /* Statistics information */
   FILE *file_stats;
