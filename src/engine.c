@@ -5249,10 +5249,14 @@ void engine_init(
  *
  * Assumes the engine is correctly initialised i.e. is restored from a restart
  * file or has been setup by engine_init(). When restarting any output log
- * files are positioned so that further output is appended.
+ * files are positioned so that further output is appended. Note that
+ * parameters are not read from the engine, just the parameter file, this
+ * allows values derived in this function to be changed between runs.
+ * When not restarting params should be the same as given to engine_init().
  *
  * @param restart true when restarting the application.
  * @param e The #engine.
+ * @param params The parsed parameter file. 
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
@@ -5260,8 +5264,8 @@ void engine_init(
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
+void engine_config(int restart, struct engine *e, const struct swift_params *params,
+                   int nr_nodes, int nodeID, int nr_threads, int with_aff, int verbose,
                    const char *restart_file) {
 
   /* Store the values and initialise global fields. */
@@ -5288,8 +5292,7 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   engine_rank = nodeID;
 
   /* Get the number of queues */
-  int nr_queues = parser_get_opt_param_int(e->parameter_file,
-                                           "Scheduler:nr_queues", nr_threads);
+  int nr_queues = parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
@@ -5436,9 +5439,8 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
       mode = "w";
 
     char energyfileName[200] = "";
-    parser_get_opt_param_string(e->parameter_file,
-                                "Statistics:energy_file_name", energyfileName,
-                                engine_default_energy_file_name);
+    parser_get_opt_param_string(params, "Statistics:energy_file_name",
+                                energyfileName, engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
 
@@ -5455,7 +5457,7 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
 
     char timestepsfileName[200] = "";
     parser_get_opt_param_string(
-        e->parameter_file, "Statistics:timestep_file_name", timestepsfileName,
+        params, "Statistics:timestep_file_name", timestepsfileName,
         engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
@@ -5561,18 +5563,15 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
 
-  /* Whether restarts are enabled. Yes by default. */
-  e->restart_dump = parser_get_opt_param_int(e->parameter_file,
-                                             "Restarts:enable", 1);
+  /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
+  e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
 
-  /* Whether restarts should be dumped on exit. Not by default. */
-  e->restart_onexit = parser_get_opt_param_int(e->parameter_file,
-                                               "Restarts:onexit", 0);
+  /* Whether restarts should be dumped on exit. Not by default. Can be changed
+   * on restart. */
+  e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
 
-  /* Hours between restart dumps. */
-  float dhours = parser_get_opt_param_float(e->parameter_file,
-                                            "Restarts:delta_hours",
-                                            6.0);
+  /* Hours between restart dumps. Can be changed on restart. */
+  float dhours = parser_get_opt_param_float(params,"Restarts:delta_hours",6.0);
   if (e->nodeID == 0) {
     if(e->restart_dump)
       message("Restarts will be dumped every %f hours", dhours);
@@ -5611,10 +5610,9 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
    * On restart this number cannot be estimated (no cells yet), so we recover
-   * from the end of the dumped run.
+   * from the end of the dumped run. Can be changed on restart.
    */
-  e->tasks_per_cell = parser_get_opt_param_int(e->parameter_file,
-                                               "Scheduler:tasks_per_cell", 0);
+  e->tasks_per_cell = parser_get_opt_param_int(params,"Scheduler:tasks_per_cell", 0);
   int maxtasks = 0;
   if (restart)
       maxtasks = e->restart_max_tasks;
@@ -5627,11 +5625,11 @@ void engine_config(int restart, struct engine *e, int nr_nodes, int nodeID,
                  &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
-   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
+   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
+   * changed on restart.
    */
   e->sched.mpi_message_limit =
-      parser_get_opt_param_int(e->parameter_file,
-                               "Scheduler:mpi_message_limit", 4) * 1024;
+      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
   if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,

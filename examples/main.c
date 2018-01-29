@@ -553,7 +553,7 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
+    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff, talking,
                   restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -762,7 +762,7 @@ int main(int argc, char *argv[]) {
                 talking, &reparttype, &us, &prog_const, &hydro_properties,
                 &gravity_properties, &potential, &cooling_func, &chemistry,
                 &sourceterms);
-    engine_config(0, &e, nr_nodes, myrank, nr_threads, with_aff, talking,
+    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff, talking,
                   restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
