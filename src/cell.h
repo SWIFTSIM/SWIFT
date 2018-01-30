@@ -56,9 +56,9 @@ extern int cell_next_tag;
 
 /* Struct to temporarily buffer the particle locations and bin id. */
 struct cell_buff {
-  double x[3];
+  float x[3];
   int ind;
-} SWIFT_STRUCT_ALIGN;
+} __attribute__((aligned(16)));
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
