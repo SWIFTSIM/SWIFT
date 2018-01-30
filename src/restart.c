@@ -141,7 +141,7 @@ void restart_write(struct engine *e, const char *filename) {
   engine_struct_dump(e, stream);
 
   /* Just an END statement to spot truncated files. */
-  restart_write_blocks(SWIFT_RESTART_SIGNATURE,
+  restart_write_blocks(SWIFT_RESTART_END_SIGNATURE,
                        strlen(SWIFT_RESTART_END_SIGNATURE),
                        1, stream, "endsignature", "SWIFT end signature");
 
