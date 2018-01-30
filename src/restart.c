@@ -41,6 +41,7 @@
 
 /* The signature for restart files. */
 #define SWIFT_RESTART_SIGNATURE "SWIFT-restart-file"
+#define SWIFT_RESTART_END_SIGNATURE "SWIFT-restart-file:end"
 
 #define FNAMELEN 200
 #define LABLEN 20
@@ -138,6 +139,12 @@ void restart_write(struct engine *e, const char *filename) {
                        stream, "version", "SWIFT version");
 
   engine_struct_dump(e, stream);
+
+  /* Just an END statement to spot truncated files. */
+  restart_write_blocks(SWIFT_RESTART_SIGNATURE,
+                       strlen(SWIFT_RESTART_END_SIGNATURE),
+                       1, stream, "endsignature", "SWIFT end signature");
+
   fclose(stream);
 }
 
