@@ -2007,6 +2007,70 @@ void space_map_cells_pre(struct space *s, int full,
     rec_map_cells_pre(&s->cells_top[cid], full, fun, data);
 }
 
+void space_split_cell(struct space *s, struct cell *c) {
+
+  struct part *parts = c->parts;
+  struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts const int count = c->count;
+  const int gcount = c->gcount;
+  const int scount = c->scount;
+
+  struct cell_buff *buff = NULL;
+  struct cell_buff *gbuff = NULL;
+  struct cell_buff *sbuff = NULL;
+
+  /* Allocate and fill the particle position buffers. */
+  if (count > 0) {
+    if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * count) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < count; k++) {
+      buff[k].x[0] = parts[k].x[0];
+      buff[k].x[1] = parts[k].x[1];
+      buff[k].x[2] = parts[k].x[2];
+      buff[k].offset = k;
+    }
+  }
+  if (gcount > 0) {
+    if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * gcount) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < gcount; k++) {
+      gbuff[k].x[0] = gparts[k].x[0];
+      gbuff[k].x[1] = gparts[k].x[1];
+      gbuff[k].x[2] = gparts[k].x[2];
+      gbuff[k].offset = k;
+    }
+  }
+  if (scount > 0) {
+    if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * scount) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < scount; k++) {
+      sbuff[k].x[0] = sparts[k].x[0];
+      sbuff[k].x[1] = sparts[k].x[1];
+      sbuff[k].x[2] = sparts[k].x[2];
+      sbuff[k].offset = k;
+    }
+  }
+
+  /* Call the recursive cell splitting function. */
+  space_split_recursive(s, c, buff, sbuff, gbuff);
+
+  /* Put the parts and xparts in the correct order. */
+
+  /* Update the links gpart->part. */
+
+  /* Put the gparts in the correct order. */
+
+  /* Update links part->gpart. */
+
+  /* Clean up. */
+  if (buff != NULL) free(buff);
+  if (gbuff != NULL) free(gbuff);
+  if (sbuff != NULL) free(sbuff);
+}
+
 /**
  * @brief Recursively split a cell.
  *
@@ -2038,41 +2102,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct spart *sparts = c->sparts;
   struct xpart *xparts = c->xparts;
   struct engine *e = s->e;
-
-  /* If the buff is NULL, allocate it, and remember to free it. */
-  const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
-  if (allocate_buffer) {
-    if (count > 0) {
-      if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * count) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < count; k++) {
-        buff[k].x[0] = parts[k].x[0];
-        buff[k].x[1] = parts[k].x[1];
-        buff[k].x[2] = parts[k].x[2];
-      }
-    }
-    if (gcount > 0) {
-      if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * gcount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < gcount; k++) {
-        gbuff[k].x[0] = gparts[k].x[0];
-        gbuff[k].x[1] = gparts[k].x[1];
-        gbuff[k].x[2] = gparts[k].x[2];
-      }
-    }
-    if (scount > 0) {
-      if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * scount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < scount; k++) {
-        sbuff[k].x[0] = sparts[k].x[0];
-        sbuff[k].x[1] = sparts[k].x[1];
-        sbuff[k].x[2] = sparts[k].x[2];
-      }
-    }
-  }
 
   /* Check the depth. */
   while (depth > (maxdepth = s->maxdepth)) {
@@ -2133,8 +2162,9 @@ void space_split_recursive(struct space *s, struct cell *c,
                gbuff);
 
     /* Remove any progeny with zero parts. */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff;
+    struct cell_buff *progeny_buff = buff;
+    struct cell_buff *progeny_gbuff = gbuff;
+    struct cell_buff *progeny_sbuff = sbuff;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
           c->progeny[k]->scount == 0) {
@@ -2143,9 +2173,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else {
         space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
                               progeny_gbuff);
-        progeny_buff += c->progeny[k]->count;
-        progeny_gbuff += c->progeny[k]->gcount;
-        progeny_sbuff += c->progeny[k]->scount;
+        if (progeny_buff) progeny_buff += c->progeny[k]->count;
+        if (progeny_gbuff) progeny_gbuff += c->progeny[k]->gcount;
+        if (progeny_sbuff) progeny_sbuff += c->progeny[k]->scount;
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_hydro_end_min =
             min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
@@ -2340,13 +2370,6 @@ void space_split_recursive(struct space *s, struct cell *c,
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
-
-  /* Clean up. */
-  if (allocate_buffer) {
-    if (buff != NULL) free(buff);
-    if (gbuff != NULL) free(gbuff);
-    if (sbuff != NULL) free(sbuff);
-  }
 }
 
 /**
@@ -2365,7 +2388,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    space_split_recursive(s, c, NULL, NULL, NULL);
+    space_split_cell(s, c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
