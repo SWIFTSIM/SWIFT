@@ -54,9 +54,10 @@ struct scheduler;
 /* Global variables. */
 extern int cell_next_tag;
 
-/* Struct to temporarily buffer the particle locations and bin id. */
+/* Struct to temporarily buffer the particle locationsm, offset, and bin id. */
 struct cell_buff {
   double x[3];
+  int offset;
   int ind;
 } SWIFT_STRUCT_ALIGN;
 
@@ -470,8 +471,7 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
+void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
