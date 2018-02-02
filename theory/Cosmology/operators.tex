@@ -1,4 +1,5 @@
 \subsection{Time-integration operators}
+\label{ssec:operators}
 For the choice of cosmological coordinates made in \swift, the normal
 ``kick'' and ``drift'' operators get modified to account for the
 expansion of the Universe. The derivation of these operators from the
@@ -18,16 +19,17 @@ entering ``kick'' operator for collision-less acceleration reads
 \begin{equation}
   \Delta t_{\rm kick,g} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^2E(a)}.
 \end{equation}
-However, for the case of gas dynamics, given the invariance of entropy
-under cosmic expansion, the ``kick'' operator has a second variant
-that reads
+However, for the case of gas dynamics, given our choice of
+coordinates, the ``kick'' operator has a second variant that reads
 \begin{equation}
   \Delta t_{\rm kick,h} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a^{3(\gamma-1)}} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^{3\gamma - 2}E(a)},
 \end{equation}
 where $\gamma$ is the adiabatic index of the gas.  Accelerations
-arising from hydrodynamic forces are integrated forward in time using
+arising from hydrodynamic forces (\nth{1} and \nth{2} term in
+eq.~\ref{eq:cosmo_eom_v}) are integrated forward in time using
 $\Delta t_{\rm kick,h}$, whilst the accelerations given by the gravity
-forces use $\Delta t_{\rm kick,g}$.
+forces (\nth{3} term in
+eq.~\ref{eq:cosmo_eom_v}) use $\Delta t_{\rm kick,g}$.
 
 Following the same method as for the age of the Universe, these three
 integrals are evaluated numerically at the start of the simulation for
