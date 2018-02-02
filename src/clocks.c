@@ -45,7 +45,7 @@ static unsigned long long clocks_cpufreq = 0;
 static ticks clocks_start = 0;
 
 /* The units of any returned times. */
-static char *clocks_units[] = {"ms", "ticks"};
+static char *clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 
@@ -176,11 +176,12 @@ static void clocks_estimate_cpufreq() {
   }
 #endif
 
-  /* If all fails just report ticks in any times. */
+  /* If all fails just report ticks for a notional 2.6GHz machine. */
   if (clocks_cpufreq == 0) {
-    clocks_cpufreq = 1;
+    unsigned long long maxfreq = 2600000;
+    clocks_cpufreq = maxfreq * 1000;
     clocks_units_index = 1;
-    clocks_units_scale = 1.0;
+    clocks_units_scale = 1000.0;
   }
 }
 
@@ -214,6 +215,22 @@ double clocks_diff_ticks(ticks tic, ticks toc) {
  */
 double clocks_from_ticks(ticks tics) {
   return ((double)tics / (double)clocks_get_cpufreq() * clocks_units_scale);
+}
+
+/**
+ * @brief Convert a number of milli seconds into ticks, if possible.
+ *
+ * Only an approximation as based on how well we have estimated the
+ * rtc frequency. Should be good for machines that support constant_rtc
+ * and clock_gettime(), and reasonable for most Linux machines, otherwise
+ * a guess will just be returned. See clocks_getunit() for the actual units.
+ *
+ * @param ms a number of "milliseconds" to convert to ticks
+ *
+ * @result the number of ticks, if possible.
+ */
+ticks clocks_to_ticks(double ms) {
+  return (ticks)(ms * (double)clocks_get_cpufreq() / clocks_units_scale);
 }
 
 /**

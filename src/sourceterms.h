@@ -45,6 +45,10 @@ void sourceterms_init(const struct swift_params* parameter_file,
                       struct unit_system* us, struct sourceterms* source);
 void sourceterms_print(struct sourceterms* source);
 
+/* Dump/restore. */
+void sourceterms_struct_dump(const struct sourceterms* source, FILE* stream);
+void sourceterms_struct_restore(const struct sourceterms* source, FILE* stream);
+
 /**
  * @brief Routines related to source terms
  * @param cell_min: corner of cell to test

@@ -82,4 +82,10 @@ void phys_const_init(struct unit_system* us, struct phys_const* internal_const);
 
 void phys_const_print(struct phys_const* internal_const);
 
+/* Dump/restore. */
+void phys_const_struct_dump(const struct phys_const* internal_const,
+                            FILE* stream);
+void phys_const_struct_restore(const struct phys_const* internal_const,
+                               FILE* stream);
+
 #endif /* SWIFT_PHYSICAL_CONSTANTS_H */

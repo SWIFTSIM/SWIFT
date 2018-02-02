@@ -50,4 +50,10 @@ void cooling_init(const struct swift_params* parameter_file,
 
 void cooling_print(const struct cooling_function_data* cooling);
 
+/* Dump/restore. */
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream);
+void cooling_struct_restore(const struct cooling_function_data* cooling,
+                            FILE* stream);
+
 #endif /* SWIFT_COOLING_H */
