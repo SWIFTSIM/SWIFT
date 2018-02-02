@@ -7,7 +7,7 @@ The following derivation is underpinned by the idea of there being two
 independent ways of defining the volume associated with a particle in SPH. The
 first is the volume associated with the thermodynamical system ($\Delta V$),
 from the first law of thermodynamics, and the second being the volume around the
-particle in which we conserve an effective neighbor number ($\Delta \tilde{V}$).
+particle in which we conserve an effective neighbour number ($\Delta \tilde{V}$).
 These two need not necessarily be linked in any way.
 
 We begin with the SPH lagragian,
@@ -23,21 +23,22 @@ and the first law of thermodynamics,
   \label{eqn:sph:derivation:firstlaw}
 \end{align}
 where $\mathbf{q} = (\mathbf{r}_1, ..., \mathbf{r}_N, h_i, ..., h_N)$ are the
-generalised coordinates of the particles. This gives the first concept of
-`volume' that the particles occupy.
+generalised coordinates of the particles, and the derivative of the internal
+energy $u_i$ is taken at fixed entropy $A$. This gives the first concept of
+`volume' $\Delta V_i$ that the particles occupy.
 
 As mentioned earlier, the particles also have a volume associated with the
-spread of their neighbors and hence their smoothing length. We can write this as
+spread of their neighbours and hence their smoothing length. We can write this as
 a constraint equation,
 \begin{align}
     \phi_i(\mathbf{q}) = \kappa h_i^{n_d}
       \frac{1}{\Delta \tilde{V}} - N_{ngb} = 0,
   \label{eqn:sph:derivation:constraint}
 \end{align}
-where $N_{ngb}$ is the effecitve neighbor number, $\kappa$ is a constant that
-depends on the volume element ($\kappa_{3D} = 4\pi/3$), and $n_d$ is the number
-of spatial dimensions considered in the problem. It is important to note that
-$N_{ngb}$ need not be an integer quantity.
+where $N_{ngb}$ is the effecitve neighbour number, $\kappa$ is the volume of
+the unit sphere ($\kappa_{3D} = 4\pi/3$), and $n_d$ is the number of spatial
+dimensions considered in the problem. It is important to note that $N_{ngb}$
+need not be an integer quantity.
 
 \subsection{Lagrange Multipliers}
 
@@ -53,9 +54,8 @@ where the $\lambda_j$ are the lagrange multipliers.  We use the second half of
 these equations (i.e. $q_i = h_i$) to constrain $\lambda_j$. The differentials
 with respect to the smoothing lengths:
 \begin{align}
-  \frac{\partial L}{\partial \dot{h}_i} = 0
-\end{align}
-\begin{align}
+  \frac{\partial L}{\partial \dot{h}_i} = 0, 
+  \quad
   \frac{\partial L}{\partial h_i} =
   -\sum^N_{j=1}m_j\frac{\partial u_j}{\partial h_i} =
   -m_i \frac{\partial u_i}{\partial h_i}.
@@ -127,8 +127,7 @@ equations in \ref{eqn:sph:derivation:lmsum} ($q_i = \mathbf{r}_i$) can be used
 to find the equation of motion. The differentials are given as
 \begin{align}
     \frac{\partial L}{\partial \dot{\mathbf{r}}_i} = m_i \dot{\mathbf{r}}_i,
-\end{align}
-\begin{align}
+    \quad
     \frac{\partial L}{\partial \mathbf{r}_i} =
       \sum_{j=1}^N P_j \frac{\partial \Delta V_j}{\partial \mathbf{r}_i}.
 \end{align}
@@ -174,11 +173,9 @@ down the volume differentials,
 \begin{align}
   \frac{\partial \Delta V_i}{\partial h_i} =
     -\frac{x_i}{y_i^2}\frac{\partial y_i}{\partial h_i},
-  \label{eqn:sph:derivation:dvdh}
-\end{align}
-\begin{align}
+    \quad
   \nabla_i \Delta V_j = -\frac{x_i}{y_i^2} \nabla_i y_j.
-  \label{eqn:sph:derivation:nablav}
+  \label{eqn:sph:derivation:volumediffs}
 \end{align}
 The spatial differential is fairly straightforward and is given by
 \begin{align}
