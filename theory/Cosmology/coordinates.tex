@@ -7,11 +7,11 @@ ${\rm{Mpc}}/h$ for instance. Similarly, the time integration operators
 (see below) also include an $h$-factor via the explicit appearance of
 the Hubble constant.\\
 In physical coordinates, the Lagrangian for a particle $i$ in the
-\cite{Springel2002} flavour of SPH reads
+\cite{Springel2002} flavour of SPH with gravity reads
 \begin{equation}
   \Lag =
   \frac{1}{2} m_i \dot{\mathbf{r}}_i^2 -
-  \frac{1}{\gamma-1}m_iA_i\rho_i^{\gamma-1}(\mathbf{r}_i) -
+  \frac{1}{\gamma-1}m_iA_i\rho_i^{\gamma-1} -
   m_i \phi
 \end{equation}
 Introducing the comoving positions $\mathbf{r}'$ such that $\mathbf{r}
@@ -38,7 +38,7 @@ $\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
   \Lag &= \frac{1}{2}m_ia^2 \dot{\mathbf{r}}_i^2 -
   \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
   -\frac{\phi'}{a},\\
-  \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}'^2.\nonumber
+  \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2.\nonumber
 \end{align}
 Finally, we introduce the velocities $\mathbf{v}' \equiv
 a^2\dot{\mathbf{r}'}$ used internally by the code. Note that these
@@ -47,7 +47,7 @@ are not the peculiar velocities, nor the Hubble flow, nor the total
 velocities\footnote{One additional inconvenience of our choice of
   generalized coordinates is that our velocities $\mathbf{v}'$ and
   sound-speed $c'$ do not have the same dependencies on the
-  scale-factor. The signal velocity entering some specific SPH term
+  scale-factor. The signal velocity entering the time-step calculation
   will hence read $v_{\rm sig} = a\dot{\mathbf{r}'} + c =
   \frac{|\mathbf{v}'|}{a} + a^{1-3(\gamma-1)/2}c'$.}. Using the SPH
 definition of density, $\rho_i =
@@ -68,18 +68,24 @@ with
 \end{equation}
 These corresponds to the equations of motion for density-entropy SPH
 \citep[e.g. eq. 14 of][]{Hopkins2013} with cosmological and
-gravitational terms. The scale-factors appearing in the equations are
-later absorbed in the time-integration operators
+gravitational terms. SPH flavours that evolve the internal energy $u$ instead of the
+entropy the additional equation of motion describing the evolution of
+$u'$ becomes:
+\begin{equation}
+  \dot{u}_i' = \frac{P_i'}{\rho_i'^2}\left[3H\rho_i' + \frac{1}{a^2}f_i'\sum_jm_j\left(\mathbf{v}_i' -
+  \mathbf{v}_j'\right)\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
+\end{equation}
+where the first term in the brackets accounts for the change in energy
+due to the expansion of the Universe. The scale-factors appearing in
+the equations are later absorbed in the time-integration operators
 (Sec.~\ref{ssec:operators}) such that the RHS of the equations of
 motions is identical for the primed quantities to the ones obtained in
 the non-cosmological case for the physical quantities.
 
-\todo{WHAT HAPPENS IF WE EVOLVE $u$ AND NOT $A$???}
-
-Additional terms in the SPH equations of motion rely on the velocity
-divergence and curl. Their SPH estimators $\langle\cdot\rangle$ in
-physical coordinates can be related to their estimators based on our
-primed-coordinates using:
+Additional terms in the SPH equations of motion (e.g. viscosity
+switches) often rely on the velocity divergence and curl. Their SPH
+estimators $\langle\cdot\rangle$ in physical coordinates can be
+related to their estimators based on our primed-coordinates using:
 \begin{align}
   \left\langle \mathbf{\nabla}\cdot\dot{\mathbf{r}}_i \right\rangle &=
   \frac{1}{a^2} \left\langle
