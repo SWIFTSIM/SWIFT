@@ -36,8 +36,9 @@ and the derivative of its density with respect to $h$:
   \rho_{\partial h_i} \equiv \dd{\rho}{h}(\vec{x}_i) = \sum_j m_j \dd{W}{h}(\vec{x}_{ij}
   , h_i).
 \end{equation}
-The gradient terms (``h-terms'') can then be computed from the density
-and its derivative:
+This corresponds to $x_i = \tilde{x}_i = m_i$, and $y_i =\tilde{y}_i = \rho_i$
+in the \citet{hopkins2013} formalism.  The gradient terms (``h-terms'') can
+then be computed from the density and its derivative:
 
 \begin{equation}
   f_i \equiv \left(1 + \frac{h_i}{3\rho_i}\rho_{\partial h_i}
@@ -300,15 +301,17 @@ smoothing length using:
 \bar P_{\partial h_i} \equiv \dd{\bar{P}}{h}(\vec{x}_i) = \sum_j m_j
 \tilde{A_j} \dd{W}{h}(\vec{x}_{ij}), \label{eq:sph:pe:P_dh}
 \end{equation}
+This corresponds to $x_i = m_i \tilde{A}_i$, $\tilde{x}_i = m_i$, $y_i =
+\bar{P}_i$, and $\tilde{y}_i = \rho_i$ in the \citet{hopkins2013} formalism.
 The gradient terms (``h-terms'') are then obtained by combining $\bar
-P_{\partial h_i}$ and $\rho_{\partial h_i}$
-(eq. \ref{eq:sph:minimal:rho_dh}):
+P_{\partial h_i}$ and $\rho_{\partial h_i}$ (eq. \ref{eq:sph:minimal:rho_dh}):
 
-\begin{equation}
-  f_i \equiv \left(\frac{h_i}{3\rho_i}\bar P_{\partial
+\begin{align}
+    f_{ij} = & ~ 1 - \tilde{A}_j^{-1} f_i \nonumber \\
+    f_i \equiv &  \left(\frac{h_i}{3\rho_i}\bar P_{\partial
     h_i}\right)\left(1 + \frac{h_i}{3\rho_i}\rho_{\partial
     h_i}\right)^{-1}. 
-\end{equation}
+\end{align}
 
 \subsubsection{Hydrodynamical accelerations (\nth{2} neighbour loop)}
 
