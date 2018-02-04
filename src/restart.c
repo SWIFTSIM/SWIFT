@@ -128,6 +128,9 @@ void restart_locate_free(int nfiles, char **files) {
  */
 void restart_write(struct engine *e, const char *filename) {
 
+  /* Backup the existing restart file. XXX configure this. */
+  restart_save_previous(filename);
+
   FILE *stream = fopen(filename, "w");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
@@ -282,4 +285,26 @@ int restart_stop_now(const char *dir, int cleanup) {
     return 1;
   }
   return 0;
+}
+
+/**
+ * @brief check if a file with the given name exists and rename to
+ *        <filename>.prev. Used to move old restart files before overwriting.
+ *
+ *        Does nothing if the file does not exist.
+ *
+ * @param filename the name of the file to check.
+ */
+void restart_save_previous(const char *filename) {
+  static struct stat buf;
+  if (stat(filename, &buf) == 0) {
+    char newname[FNAMELEN];
+    strcpy(newname, filename);
+    strcat(newname, ".prev");
+    if (rename(filename, newname) != 0) {
+      /* Worth a complaint, this should not happen. */
+      message("Failed to rename file '%s' to '%s' (%s)", filename, newname,
+              strerror(errno));
+    }
+  }
 }
