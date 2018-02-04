@@ -122,6 +122,21 @@ int main(int argc, char *argv[]) {
   struct clocks_time tic, toc;
   struct engine e;
 
+  /* Structs used by the engine. Declare now to make sure these are always in
+   * scope.  */
+  struct chemistry_data chemistry;
+  struct cooling_function_data cooling_func;
+  struct external_potential potential;
+  struct gpart *gparts = NULL;
+  struct gravity_props gravity_properties;
+  struct hydro_props hydro_properties;
+  struct part *parts = NULL;
+  struct phys_const prog_const;
+  struct sourceterms sourceterms;
+  struct space s;
+  struct spart *sparts = NULL;
+  struct unit_system us;
+
   int nr_nodes = 1, myrank = 0;
 
 #ifdef WITH_MPI
@@ -573,8 +588,6 @@ int main(int argc, char *argv[]) {
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
-    struct unit_system us;
-    struct phys_const prog_const;
     units_init(&us, params, "InternalUnitSystem");
     phys_const_init(&us, &prog_const);
     if (myrank == 0 && verbose > 0) {
@@ -587,12 +600,10 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the hydro properties */
-    struct hydro_props hydro_properties;
     if (with_hydro) hydro_props_init(&hydro_properties, params);
     if (with_hydro) eos_init(&eos, params);
 
     /* Initialise the gravity properties */
-    struct gravity_props gravity_properties;
     if (with_self_gravity) gravity_props_init(&gravity_properties, params);
 
     /* Read particles and space information from (GADGET) ICs */
@@ -606,9 +617,6 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    struct part *parts = NULL;
-    struct gpart *gparts = NULL;
-    struct spart *sparts = NULL;
     size_t Ngas = 0, Ngpart = 0, Nspart = 0;
     double dim[3] = {0., 0., 0.};
     int periodic = 0;
@@ -673,7 +681,6 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    struct space s;
     space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
                periodic, replicate, with_self_gravity, talking, dry_run);
 
@@ -726,23 +733,19 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the external potential properties */
-    struct external_potential potential;
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
-    struct cooling_function_data cooling_func;
     if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the chemistry */
-    struct chemistry_data chemistry;
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
     /* Initialise the feedback properties */
-    struct sourceterms sourceterms;
     if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
     if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
