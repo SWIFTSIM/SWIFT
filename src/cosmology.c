@@ -88,7 +88,7 @@ static INLINE double E(double Or, double Om, double Ok, double Ol, double w,
                        double a_inv) {
 
   return sqrt(Or * a_inv * a_inv * a_inv * a_inv + Om * a_inv * a_inv * a_inv +
-              Ok * a_inv * a_inv + Ol * pow(a_inv, 3. * (1. + w)));
+              Ok * a_inv * a_inv + Ol * pow(a_inv, -3. * (1. + w)));
 }
 
 /**
