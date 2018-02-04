@@ -18,13 +18,13 @@ Introducing the comoving positions $\mathbf{r}'$ such that $\mathbf{r}
 = a(t) \mathbf{r}'$ and comoving densities $\rho' \equiv a^3(t)\rho$ ,we get
 \begin{equation}
   \Lag =
-  \frac{1}{2} m_i \left(a\dot{\mathbf{r}}_i' + \dot{a}\mathbf{r}'
+  \frac{1}{2} m_i \left(a\dot{\mathbf{r}}_i' + \dot{a}\mathbf{r}_i'
   \right)^2 - 
   \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
   - m_i \phi,
 \end{equation}
 where we chose to define $A'=A$ such that the equation of state for
-the gas and thermodynamics relations between quantites have the same
+the gas and thermodynamics relations between quantities have the same
 form (i.e. are scale-factor free) in the primed coordinates as
 well. This implies
 \begin{equation}
@@ -42,17 +42,17 @@ $\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
 \end{align}
 Finally, we introduce the velocities $\mathbf{v}' \equiv
 a^2\dot{\mathbf{r}'}$ used internally by the code. Note that these
-velocites do not have a physical interpretation. We caution that they
+velocities do not have a physical interpretation. We caution that they
 are not the peculiar velocities, nor the Hubble flow, nor the total
 velocities\footnote{One additional inconvenience of our choice of
-  generalized coordinates is that our velocities $\mathbf{v}'$ and
+  generalised coordinates is that our velocities $\mathbf{v}'$ and
   sound-speed $c'$ do not have the same dependencies on the
   scale-factor. The signal velocity entering the time-step calculation
   will hence read $v_{\rm sig} = a\dot{\mathbf{r}'} + c =
   \frac{|\mathbf{v}'|}{a} + a^{1-3(\gamma-1)/2}c'$.}. Using the SPH
 definition of density, $\rho_i =
 \sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
-\sum_jm_jW_{ij}'(h_i')$, we can follow \cite{Price2012} andapply the
+\sum_jm_jW_{ij}'(h_i')$, we can follow \cite{Price2012} and apply the
 Euler-Lagrange equations to write
 \begin{alignat}{3}
   \dot{\mathbf{r}}_i'&= \frac{1}{a^2} \mathbf{v}_i'&  \label{eq:cosmo_eom_r} \\
@@ -73,7 +73,8 @@ entropy the additional equation of motion describing the evolution of
 $u'$ becomes:
 \begin{equation}
   \dot{u}_i' = \frac{P_i'}{\rho_i'^2}\left[3H\rho_i' + \frac{1}{a^2}f_i'\sum_jm_j\left(\mathbf{v}_i' -
-  \mathbf{v}_j'\right)\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
+    \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
+  \label{eq:cosmo_eom_u}
 \end{equation}
 where the first term in the brackets accounts for the change in energy
 due to the expansion of the Universe. The scale-factors appearing in
@@ -96,6 +97,29 @@ related to their estimators based on our primed-coordinates using:
   \frac{1}{a^2} \left\langle
   \mathbf{\nabla}'\times\mathbf{v}_i'\right\rangle =
   \frac{1}{a^2\rho_i'}\sum_j m_j\left(\mathbf{v}_j' -
-  \mathbf{v}_i'\right) \times \mathbf{\nabla}_i'W_{ij}'(h_i) \nonumber
+  \mathbf{v}_i'\right) \times \mathbf{\nabla}_i'W_{ij}'(h_i). \nonumber
 \end{align}
-
+We finally give the expressions for the \cite{Monaghan1997} viscosity
+term, that enters most SPH flavours, in our system of coordinates. The
+viscosity ``tensor'' $\Pi_{ij} \equiv \frac{1}{2}\alpha_{\rm visc} v_{\rm
+    sig}'\mu_{ij}/\left(\rho_i + \rho_j\right)$ can be computed
+  in the primmed coordinates from the following quantities
+\begin{align}
+  \omega_{ij}' &= \left(\mathbf{v}_i' - \mathbf{v}_j'\right) \cdot
+  \left(\mathbf{r}_i' - \mathbf{r}_j'\right), \\
+  \mu_{ij}' &=
+  a^{(3\gamma-5)/2} \left(\omega_{ij}' - a^2H\left(\mathbf{r}_i' -
+  \mathbf{r}_j'\right)^2 \right) / |\mathbf{r}_i' - \mathbf{r}_j' |,
+  \\
+  v_{\rm sig}' &= c_i' + c_j' - 3 \mu_{ij}'.
+\end{align}
+which leads to $\Pi_{ij}'=a^{3\gamma}\Pi_{ij}$. Note that he last quantity is
+also used to compute the time-step size. The evolution of entropy is
+then
+\begin{equation}
+  \dot{A}_i = \dot{A}_i' = \frac{1}{a^2}\frac{1}{2}\frac{\gamma-1}{\rho_i'^{\gamma-1}} \sum_j
+  m_j \Pi_{ij}' \left(\mathbf{v}_i' -
+  \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i),
+\end{equation}
+indicating that the entropy evolves with the same scale-factor
+dependence as the comoving positions (eq.~\ref{eq:cosmo_eom_r}).
