@@ -1,10 +1,10 @@
 \subsection{Choice of co-moving coordinates}
 \label{ssec:ccordinates}
 
-Note that unlike the \gadget convention we do not express quantities
-with ``little h'' included. We hence use $\rm{Mpc}$ and not
-${\rm{Mpc}}/h$ for instance. Similarly, the time integration operators
-(see below) also include an $h$-factor via the explicit appearance of
+Note that, unlike the \gadget convention, we do not express quantities with
+``little h'' ($h$) included; for instance units of length are expressed in
+units of $\rm{Mpc}$ and not ${\rm{Mpc}}/h$. Similarly, the time integration
+operators (see below) also include an $h$-factor via the explicit appearance of
 the Hubble constant.\\
 In physical coordinates, the Lagrangian for a particle $i$ in the
 \cite{Springel2002} flavour of SPH with gravity reads
@@ -15,7 +15,7 @@ In physical coordinates, the Lagrangian for a particle $i$ in the
   m_i \phi
 \end{equation}
 Introducing the comoving positions $\mathbf{r}'$ such that $\mathbf{r}
-= a(t) \mathbf{r}'$ and comoving densities $\rho' \equiv a^3(t)\rho$ ,we get
+= a(t) \mathbf{r}'$ and comoving densities $\rho' \equiv a^3(t)\rho$,
 \begin{equation}
   \Lag =
   \frac{1}{2} m_i \left(a\dot{\mathbf{r}}_i' + \dot{a}\mathbf{r}_i'
@@ -23,8 +23,8 @@ Introducing the comoving positions $\mathbf{r}'$ such that $\mathbf{r}
   \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
   - m_i \phi,
 \end{equation}
-where we chose to define $A'=A$ such that the equation of state for
-the gas and thermodynamics relations between quantities have the same
+where $A'=A$ is chosen such that the equation of state for
+the gas and thermodynamic relations between quantities have the same
 form (i.e. are scale-factor free) in the primed coordinates as
 well. This implies
 \begin{equation}
@@ -41,22 +41,23 @@ $\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
   \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2.\nonumber
 \end{align}
 Finally, we introduce the velocities $\mathbf{v}' \equiv
-a^2\dot{\mathbf{r}'}$ used internally by the code. Note that these
-velocities do not have a physical interpretation. We caution that they
+a^2\dot{\mathbf{r}'}$ that are used internally by the code. Note that these
+velocities \emph{do not} have a physical interpretation. We caution that they
 are not the peculiar velocities, nor the Hubble flow, nor the total
 velocities\footnote{One additional inconvenience of our choice of
   generalised coordinates is that our velocities $\mathbf{v}'$ and
   sound-speed $c'$ do not have the same dependencies on the
   scale-factor. The signal velocity entering the time-step calculation
   will hence read $v_{\rm sig} = a\dot{\mathbf{r}'} + c =
-  \frac{|\mathbf{v}'|}{a} + a^{1-3(\gamma-1)/2}c'$.}. Using the SPH
+  \frac{|\mathbf{v}'|}{a} + a^{1-3(\gamma-1)/2}c'$.}.
+This choice implies that $\dot{v}' = a \ddot{r}$. Using the SPH
 definition of density, $\rho_i =
 \sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
 \sum_jm_jW_{ij}'(h_i')$, we can follow \cite{Price2012} and apply the
 Euler-Lagrange equations to write
 \begin{alignat}{3}
   \dot{\mathbf{r}}_i'&= \frac{1}{a^2} \mathbf{v}_i'&  \label{eq:cosmo_eom_r} \\
-  \dot{\mathbf{v}}_i' &= \sum_j m_j &&\left[\frac{1}{a^{3(\gamma-1)}}f_i'A_i'\rho_i'^{\gamma-2}\mathbf{\nabla}_i'W_{ij}'(h_i)\right. \nonumber\\
+  \dot{\mathbf{v}}_i' &= -\sum_j m_j &&\left[\frac{1}{a^{3(\gamma-1)}}f_i'A_i'\rho_i'^{\gamma-2}\mathbf{\nabla}_i'W_{ij}'(h_i)\right. \nonumber\\
   &   && + \left. \frac{1}{a^{3(\gamma-1)}}f_j'A_j'\rho_j'^{\gamma-2}\mathbf{\nabla}_i'W_{ij}'(h_j)\right. \nonumber\\
   &   && + \left. \frac{1}{a}\mathbf{\nabla}_i'\phi'\right] \label{eq:cosmo_eom_v}
 \end{alignat}
@@ -66,11 +67,11 @@ with
       \rho_i'}{\partial h_i'}\right]^{-1}, \qquad \mathbf{\nabla}_i'
   \equiv \frac{\partial}{\partial \mathbf{r}_{i}'}. \nonumber
 \end{equation}
-These corresponds to the equations of motion for density-entropy SPH
+These correspond to the equations of motion for density-entropy SPH
 \citep[e.g. eq. 14 of][]{Hopkins2013} with cosmological and
 gravitational terms. SPH flavours that evolve the internal energy $u$ instead of the
-entropy the additional equation of motion describing the evolution of
-$u'$ becomes:
+entropy require the additional equation of motion describing the evolution of
+$u'$:
 \begin{equation}
   \dot{u}_i' = \frac{P_i'}{\rho_i'^2}\left[3H\rho_i' + \frac{1}{a^2}f_i'\sum_jm_j\left(\mathbf{v}_i' -
     \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
