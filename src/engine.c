@@ -5569,6 +5569,9 @@ void engine_config(int restart, struct engine *e,
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
 
+  /* Whether to save backup copies of the previous restart files. */
+  e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
+
   /* Whether restarts should be dumped on exit. Not by default. Can be changed
    * on restart. */
   e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);

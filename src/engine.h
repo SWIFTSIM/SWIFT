@@ -296,6 +296,9 @@ struct engine {
   /* Whether to dump restart files. */
   int restart_dump;
 
+  /* Whether to save previous generation of restart files. */
+  int restart_save;
+
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
 

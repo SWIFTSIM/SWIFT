@@ -78,6 +78,7 @@ InitialConditions:
 # Parameters controlling restarts
 Restarts:
   enable:      1        # (Optional) whether to enable dumping restarts at fixed intervals.
+  save:        1        # (Optional) whether to save copies of the previous set of restart files (named .prev)
   onexit:      0        # (Optional) whether to dump restarts on exit (*needs enable*)
   subdir:      restart  # (Optional) name of subdirectory for restart files.
   basename:    swift    # (Optional) prefix used in naming restart files.

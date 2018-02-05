@@ -128,8 +128,8 @@ void restart_locate_free(int nfiles, char **files) {
  */
 void restart_write(struct engine *e, const char *filename) {
 
-  /* Backup the existing restart file. XXX configure this. */
-  restart_save_previous(filename);
+  /* Save a backup the existing restart file, if requested. */
+  if (e->restart_save) restart_save_previous(filename);
 
   FILE *stream = fopen(filename, "w");
   if (stream == NULL)
@@ -289,7 +289,7 @@ int restart_stop_now(const char *dir, int cleanup) {
 
 /**
  * @brief check if a file with the given name exists and rename to
- *        <filename>.prev. Used to move old restart files before overwriting.
+ *        {filename}.prev. Used to move old restart files before overwriting.
  *
  *        Does nothing if the file does not exist.
  *
