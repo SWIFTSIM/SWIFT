@@ -43,9 +43,6 @@ struct cooling_function_data {
   /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
 
-  /* Density Threshold for the shielding */
-  double density_self_shielding;
-
   /* unit system */
   code_units units;
 
