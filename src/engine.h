@@ -323,7 +323,7 @@ struct engine {
   size_t logger_time_offset;
 
   /* Size of the dump file */
-  int logger_size;
+  size_t logger_size;
 #endif
 
   /* Need to dump a snapshot ? */
