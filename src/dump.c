@@ -131,7 +131,9 @@ void dump_close(struct dump *d) {
  */
 void dump_init(struct dump *d, const char *filename, size_t size) {
 
-  /* Create the output file. */
+  /* Create the output file.
+     The option O_RDWR seems to be required by mmap.
+  */
   if ((d->fd = open(filename, O_CREAT | O_RDWR, 0660)) == -1) {
     error("Failed to create dump file '%s' (%s).", filename, strerror(errno));
   }
