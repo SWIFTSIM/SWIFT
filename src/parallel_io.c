@@ -504,7 +504,6 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 
   /* Close everything */
   H5Dclose(h_data);
-// H5Pclose(h_plist_id);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -806,7 +805,6 @@ void prepare_file(struct engine* e, const char* baseName, int outputCount,
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
   struct spart* sparts = e->s->sparts;
-
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -820,7 +818,7 @@ void prepare_file(struct engine* e, const char* baseName, int outputCount,
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -976,7 +974,6 @@ void prepare_file(struct engine* e, const char* baseName, int outputCount,
     /* Close this particle group in the XMF file as well */
     xmf_write_groupfooter(xmfFile, (enum part_type)ptype);
   }
-  /////
 
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, outputCount, e->time);
@@ -1269,7 +1266,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             clocks_getunit());
 #endif
 
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 */

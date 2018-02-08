@@ -28,6 +28,7 @@
 
 /* Local includes. */
 #include "parser.h"
+#include "restart.h"
 
 /**
  * @brief Contains all the constants and parameters of the self-gravity scheme
@@ -78,5 +79,9 @@ void gravity_props_init(struct gravity_props *p,
 void gravity_props_print_snapshot(hid_t h_grpsph,
                                   const struct gravity_props *p);
 #endif
+
+/* Dump/restore. */
+void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream);
+void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream);
 
 #endif /* SWIFT_GRAVITY_PROPERTIES */
