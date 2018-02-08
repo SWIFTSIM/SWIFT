@@ -57,7 +57,7 @@
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
 
 /* Are we timing the i/o? */
-#define IO_SPEED_MEASUREMENT
+//#define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Reads a chunk of data from an open HDF5 dataset
@@ -411,7 +411,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
-                   h_plist_id, temp);
+                   H5P_DEFAULT, temp);
   if (h_err < 0) {
     error("Error while writing data array '%s'.", props.name);
   }
