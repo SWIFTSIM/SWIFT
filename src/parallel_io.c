@@ -325,7 +325,7 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   H5Sclose(h_space);
 }
 
-void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
+void writeArray_chunk(struct engine* e, hid_t h_data,
                       const struct io_props props, size_t N, long long offset,
                       const struct unit_system* internal_units,
                       const struct unit_system* snapshot_units) {
@@ -478,8 +478,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
-    writeArray_chunk(e, h_data, H5P_DEFAULT, props, this_chunk, offset,
-                     internal_units, snapshot_units);
+    writeArray_chunk(e, h_data, props, this_chunk, offset, internal_units,
+                     snapshot_units);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
