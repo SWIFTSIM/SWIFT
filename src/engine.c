@@ -791,8 +791,8 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce sparticle transfer counts.");
 
   /* Report how many particles will be moved. */
-  if (e->verbose) {
-    if (e->nodeID == 0) {
+  //if (e->verbose) {
+  if (e->nodeID == 0) {
       size_t total = 0, g_total = 0, s_total = 0;
       size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
@@ -819,8 +819,8 @@ void engine_redistribute(struct engine *e) {
         message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
                 s_total,
                 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
-    }
   }
+  //}
 
   /* Now each node knows how many parts, sparts and gparts will be transferred
    * to every other node.
