@@ -426,35 +426,57 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
-# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
-# to be default off (i.e. given no option it tries to locate METIS), so we
-# don't use that.
+# Check for METIS or PARMETIS.
 have_metis="no"
+have_parmetis="no"
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis is installed @<:@yes/no@:>@]
+       [root directory where metis or parmetis is installed @<:@yes/no@:>@]
     )],
     [],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
+
+# Check if we have ParMETIS.
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lparmetis -lmetis"
       METIS_INCS="-I$with_metis/include"
    else
-      METIS_LIBS="-lmetis"
+      METIS_LIBS="-lparmetis -lmetis"
       METIS_INCS=""
    fi
-   have_metis="yes"
-   AC_CHECK_LIB([metis],[METIS_PartGraphKway],
-      AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
-      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
+   AC_CHECK_LIB([metis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                [have_parmetis="no"], $METIS_LIBS)
+   if test "$have_parmetis" == "no"; then
+
+# Check for serial METIS.
+      if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+         METIS_LIBS="-L$with_metis/lib -lmetis"
+         METIS_INCS="-I$with_metis/include"
+      else
+         METIS_LIBS="-lmetis"
+         METIS_INCS=""
+      fi
+      AC_CHECK_LIB([metis],[METIS_PartGraphKway],[have_metis="yes"],
+                   [have_metis="no"], $METIS_LIBS)
+
+      if test "$have_metis" == "yes"; then
+         AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.])
+      else
+         AC_MSG_ERROR(something is wrong with the metis library!)
+      fi
+   else
+      AC_DEFINE([HAVE_METIS],1,[The METIS library appears to be present.])
+      AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is also present.])
+   fi
 fi
+
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
-# Check for grackle. 
+# Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
     [AS_HELP_STRING([--with-grackle=PATH],
@@ -473,9 +495,9 @@ if test "x$with_grackle" != "xno"; then
       GRACKLE_LIBS="-lgrackle"
       GRACKLE_INCS=""
    fi
-   
+
    have_grackle="yes"
-      
+
    AC_CHECK_LIB(
       [grackle],
       [initialize_chemistry_data],
@@ -734,22 +756,22 @@ AC_ARG_WITH([hydro],
 case "$with_hydro" in
    gadget2)
       AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
-   ;; 
+   ;;
    minimal)
       AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
-   ;; 
+   ;;
    hopkins)
       AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
-   ;; 
+   ;;
    default)
       AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
-   ;; 
+   ;;
    gizmo)
       AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
-   ;; 
+   ;;
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
-   ;; 
+   ;;
 
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
@@ -774,7 +796,7 @@ if test "$enable_debug_interactions" != "no"; then
       AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS], [$enableval] ,[The maximum number of particle neighbours to be logged])
       [enable_debug_interactions="yes (Logging up to $enableval neighbours)"]
     fi
-  else 
+  else
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi
 fi
@@ -790,22 +812,22 @@ AC_ARG_WITH([kernel],
 case "$with_kernel" in
    cubic-spline)
       AC_DEFINE([CUBIC_SPLINE_KERNEL], [1], [Cubic spline kernel])
-   ;;    
+   ;;
    quartic-spline)
       AC_DEFINE([QUARTIC_SPLINE_KERNEL], [1], [Quartic spline kernel])
-   ;;    
+   ;;
    quintic-spline)
       AC_DEFINE([QUINTIC_SPLINE_KERNEL], [1], [Quintic spline kernel])
-   ;;    
+   ;;
    wendland-C2)
       AC_DEFINE([WENDLAND_C2_KERNEL], [1], [Wendland-C2 kernel])
-   ;;    
+   ;;
    wendland-C4)
       AC_DEFINE([WENDLAND_C4_KERNEL], [1], [Wendland-C4 kernel])
-   ;;    
+   ;;
    wendland-C6)
       AC_DEFINE([WENDLAND_C6_KERNEL], [1], [Wendland-C6 kernel])
-   ;;    
+   ;;
    *)
       AC_MSG_ERROR([Unknown kernel function: $with_kernel])
    ;;
@@ -822,13 +844,13 @@ AC_ARG_WITH([hydro-dimension],
 case "$with_dimension" in
    1)
       AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D solver])
-   ;; 
+   ;;
    2)
       AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D solver])
-   ;; 
+   ;;
    3)
       AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D solver])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
    ;;
@@ -845,10 +867,10 @@ AC_ARG_WITH([equation-of-state],
 case "$with_eos" in
    ideal-gas)
       AC_DEFINE([EOS_IDEAL_GAS], [1], [Ideal gas equation of state])
-   ;; 
+   ;;
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])
    ;;
@@ -865,16 +887,16 @@ AC_ARG_WITH([adiabatic-index],
 case "$with_gamma" in
    5/3)
       AC_DEFINE([HYDRO_GAMMA_5_3], [5./3.], [Adiabatic index is 5/3])
-   ;; 
+   ;;
    7/5)
       AC_DEFINE([HYDRO_GAMMA_7_5], [7./5.], [Adiabatic index is 7/5])
-   ;; 
+   ;;
    4/3)
       AC_DEFINE([HYDRO_GAMMA_4_3], [4./3.], [Adiabatic index is 4/3])
-   ;; 
+   ;;
    2)
       AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
    ;;
@@ -891,16 +913,16 @@ AC_ARG_WITH([riemann-solver],
 case "$with_riemann" in
    none)
       AC_DEFINE([RIEMANN_SOLVER_NONE], [1], [No Riemann solver])
-   ;; 
+   ;;
    exact)
       AC_DEFINE([RIEMANN_SOLVER_EXACT], [1], [Exact Riemann solver])
-   ;; 
+   ;;
    trrs)
       AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
-   ;; 
+   ;;
    hllc)
       AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
@@ -917,19 +939,19 @@ AC_ARG_WITH([cooling],
 case "$with_cooling" in
    none)
       AC_DEFINE([COOLING_NONE], [1], [No cooling function])
-   ;; 
+   ;;
    const-du)
       AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
-   ;; 
+   ;;
    const-lambda)
       AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
-   ;; 
+   ;;
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-   ;; 
+   ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;
@@ -946,13 +968,13 @@ AC_ARG_WITH([chemistry],
 case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
-   ;; 
+   ;;
    gear)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
-   ;; 
+   ;;
    EAGLE)
       AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
    ;;
@@ -969,19 +991,19 @@ AC_ARG_WITH([ext-potential],
 case "$with_potential" in
    none)
       AC_DEFINE([EXTERNAL_POTENTIAL_NONE], [1], [No external potential])
-   ;; 
+   ;;
    point-mass)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS], [1], [Point-mass external potential])
-   ;; 
+   ;;
    isothermal)
       AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
-   ;; 
+   ;;
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
-   ;; 
+   ;;
    sine-wave)
       AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
-   ;; 
+   ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
@@ -1029,7 +1051,7 @@ touch src/version.c
 AC_OUTPUT
 
 # Report general configuration.
-AC_MSG_RESULT([ 
+AC_MSG_RESULT([
  ------- Summary --------
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
@@ -1042,6 +1064,7 @@ AC_MSG_RESULT([
    HDF5 enabled     : $with_hdf5
     - parallel      : $have_parallel_hdf5
    Metis enabled    : $have_metis
+   ParMETIS enabled : $have_parmetis
    FFTW3 enabled    : $have_fftw3
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle
@@ -1058,7 +1081,7 @@ AC_MSG_RESULT([
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
-   
+
    External potential  : $with_potential
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
