@@ -253,9 +253,8 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
  * @param snapshot_units The #unit_system used in the snapshots.
  */
 void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
-		  char* partTypeGroupName, struct io_props props,
-		  long long N_total,
-		  const struct unit_system* snapshot_units) {
+                  char* partTypeGroupName, struct io_props props,
+                  long long N_total, const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -282,7 +281,6 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* Make sure the chunks are not larger than the dataset */
   if (chunk_shape[0] > N_total) chunk_shape[0] = N_total;
 
-
   /* Change shape of data space */
   hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0)
@@ -300,10 +298,10 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* } */
 
   /* Create dataset */
-  const hid_t h_data = H5Dcreate(grp, props.name, io_hdf5_type(props.type),
-                                 h_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_data < 0)
-    error("Error while creating dataspace '%s'.", props.name);
+  const hid_t h_data =
+      H5Dcreate(grp, props.name, io_hdf5_type(props.type), h_space, H5P_DEFAULT,
+                H5P_DEFAULT, H5P_DEFAULT);
+  if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];
@@ -319,14 +317,13 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
 
   /* Add a line to the XMF */
   xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-		 props.dimension, props.type);
+                 props.dimension, props.type);
 
   /* Close everything */
   H5Pclose(h_plist_id);
   H5Dclose(h_data);
   H5Sclose(h_space);
 }
-
 
 void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
                       const struct io_props props, size_t N, long long offset,
@@ -437,7 +434,6 @@ void writeArray_chunk(struct engine* e, hid_t h_data, hid_t h_plist_id,
   H5Sclose(h_filespace);
 }
 
-
 /**
  * @brief Writes a data array in given HDF5 group.
  *
@@ -469,8 +465,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 
   /* Open dataset */
   const hid_t h_data = H5Dopen(grp, props.name, H5P_DEFAULT);
-  if (h_data < 0)
-    error("Error while opening dataset '%s'.", props.name);
+  if (h_data < 0) error("Error while opening dataset '%s'.", props.name);
 
   /* Given the limitations of ROM-IO we will need to write the data in chunk of
      HDF5_PARALLEL_IO_MAX_BYTES bytes per node until all the nodes are done. */
@@ -509,7 +504,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 
   /* Close everything */
   H5Dclose(h_data);
-  //H5Pclose(h_plist_id);
+// H5Pclose(h_plist_id);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -803,15 +798,15 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   H5Fclose(h_file);
 }
 
-void prepare_file(struct engine* e, const char* baseName,
-		  int outputCount, long long N_total[6],
-		  const struct unit_system* internal_units,
-		  const struct unit_system* snapshot_units) {
+void prepare_file(struct engine* e, const char* baseName, int outputCount,
+                  long long N_total[6],
+                  const struct unit_system* internal_units,
+                  const struct unit_system* snapshot_units) {
 
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
   struct spart* sparts = e->s->sparts;
-  
+
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -829,13 +824,11 @@ void prepare_file(struct engine* e, const char* baseName,
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_file < 0)
-    error("Error while opening file '%s'.", fileName);
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Write the part of the XMF file corresponding to this
    * specific output */
   xmf_write_outputheader(xmfFile, fileName, e->time);
-
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
@@ -922,10 +915,10 @@ void prepare_file(struct engine* e, const char* baseName,
   if (h_grp < 0) error("Error while creating parameters group");
   parser_write_params_to_hdf5(e->parameter_file, h_grp);
   H5Gclose(h_grp);
-  
+
   /* Print the system of Units used in the spashot */
   io_write_unit_system(h_file, snapshot_units, "Units");
-  
+
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
 
@@ -934,12 +927,12 @@ void prepare_file(struct engine* e, const char* baseName,
 
     /* Don't do anything if no particle of this kind */
     if (N_total[ptype] == 0) continue;
-    
+
     /* Add the global information for that particle type to
      * the XMF meta-file */
     xmf_write_groupheader(xmfFile, fileName, N_total[ptype],
-			  (enum part_type)ptype);
-    
+                          (enum part_type)ptype);
+
     /* Create the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
     snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
@@ -975,7 +968,7 @@ void prepare_file(struct engine* e, const char* baseName,
     /* Prepare everything */
     for (int i = 0; i < num_fields; ++i)
       prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-		   N_total[ptype], snapshot_units);
+                   N_total[ptype], snapshot_units);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1043,16 +1036,17 @@ void write_output_parallel(struct engine* e, const char* baseName,
    * broadcast from there */
   MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-  /* Now everybody konws its offset and the total number of
-   * particles of each type */
+/* Now everybody konws its offset and the total number of
+ * particles of each type */
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();
 #endif
 
   /* Rank 0 prepares the file */
-  if(mpi_rank == 0) 
-    prepare_file(e, baseName, outputCount, N_total, internal_units, snapshot_units);
+  if (mpi_rank == 0)
+    prepare_file(e, baseName, outputCount, N_total, internal_units,
+                 snapshot_units);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1218,9 +1212,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, partTypeGroupName, list[i],
-                 Nparticles, N_total[ptype], mpi_rank, offset[ptype],
-                 internal_units, snapshot_units);
+      writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
+                 N_total[ptype], mpi_rank, offset[ptype], internal_units,
+                 snapshot_units);
 
     /* Free temporary array */
     if (dmparts) {
