@@ -4259,7 +4259,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* logger tasks ? */
     else if (t->type == task_type_logger) {
-      if (cell_is_active(t->ci, e)) scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+	scheduler_activate(s, t);
     }
 
     /* Gravity stuff ? */
@@ -7332,8 +7333,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #ifdef WITH_LOGGER
   if (e->nodeID == 0)
     message("Expected output of over 9000\n Should write a real message...");
-  logger_write_file_header(dump_file, e);
-  dump_ensure(dump_file, e->logger_size);
+  logger_write_file_header(e->logger_dump, e);
+  dump_ensure(e->logger_dump, e->logger_size);
   e->logger_time_offset = 0;
 #endif
 

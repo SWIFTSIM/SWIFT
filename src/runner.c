@@ -2717,7 +2717,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_starting(c, e)) return;
+  if (!cell_is_starting_hydro(c, e) || !cell_is_starting_gravity(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
