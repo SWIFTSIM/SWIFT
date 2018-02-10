@@ -808,8 +808,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   H5Fclose(h_file);
 }
 
-void prepare_file(struct engine* e, const char* baseName, int outputCount,
-                  long long N_total[6],
+void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
@@ -821,7 +820,7 @@ void prepare_file(struct engine* e, const char* baseName, int outputCount,
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0) xmf_create_file(baseName);
+  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   xmfFile = xmf_prepare_file(baseName);
@@ -987,7 +986,7 @@ void prepare_file(struct engine* e, const char* baseName, int outputCount,
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* Close the file for now */
   H5Fclose(h_file);
@@ -1027,7 +1026,6 @@ void write_output_parallel(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -1053,8 +1051,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
-    prepare_file(e, baseName, outputCount, N_total, internal_units,
-                 snapshot_units);
+    prepare_file(e, baseName, N_total, internal_units, snapshot_units);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1069,7 +1066,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
