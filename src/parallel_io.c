@@ -241,16 +241,16 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
  *-----------------------------------------------------------------------------*/
 
 /**
- * @brief Writes a chunk of data in an open HDF5 dataset
+ * @brief Prepares an array in the snapshot.
  *
  * @param e The #engine we are writing from.
- * @param h_data The HDF5 dataset to write to.
- * @param h_plist_id the parallel HDF5 properties.
- * @param props The #io_props of the field to read.
- * @param N The number of particles to write.
- * @param offset Offset in the array where this mpi task starts writing.
- * @param internal_units The #unit_system used internally.
- * @param snapshot_units The #unit_system used in the snapshots.
+ * @param grp The HDF5 grp to write to.
+ * @param fileName The name of the file we are writing to.
+ * @param xmfFile The (opened) XMF file we are appending to.
+ * @param partTypeGroupName The name of the group we are writing to.
+ * @param props The #io_props of the field to write.
+ * @param N_total The total number of particles to write in this array.
+ * @param snapshot_units The units used for the data in this snapshot.
  */
 void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                   char* partTypeGroupName, struct io_props props,
@@ -325,6 +325,17 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   H5Sclose(h_space);
 }
 
+/**
+ * @brief Writes a chunk of data in an open HDF5 dataset
+ *
+ * @param e The #engine we are writing from.
+ * @param h_data The HDF5 dataset to write to.
+ * @param props The #io_props of the field to write.
+ * @param N The number of particles to write.
+ * @param offset Offset in the array where this mpi task starts writing.
+ * @param internal_units The #unit_system used internally.
+ * @param snapshot_units The #unit_system used in the snapshots.
+ */
 void writeArray_chunk(struct engine* e, hid_t h_data,
                       const struct io_props props, size_t N, long long offset,
                       const struct unit_system* internal_units,
