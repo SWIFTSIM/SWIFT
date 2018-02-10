@@ -82,13 +82,28 @@ static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
 }
 
 /**
+ * @brief Computes the integral of the dark-energy equation of state 
+ * up to a scale-factor a.
+ *
+ * We follow the convention of Linder & Jenkins, MNRAS, 346, 573, 2003
+ * and compute \f$ \tilde{w}(a) = \int_0^a\frac{1 + w(z)}{1+z}dz \f$.
+ *
+ * @param a The current scale-factor.
+ * @param w_0 The equation of state parameter at z=0
+ * @param w_a The equation of state evolution parameter
+ */
+static INLINE double w_tilde(double a, double w0, double wa) {
+  return (a - 1.) * wa - (1. + w0 + wa) * log(a);
+}
+
+/**
  * @brief Compute \f$ E(z) \f$.
  */
-static INLINE double E(double Or, double Om, double Ok, double Ol, double w,
-                       double a_inv) {
-
+static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
+		       double wa, double a) {
+  const double a_inv = 1. / a;
   return sqrt(Or * a_inv * a_inv * a_inv * a_inv + Om * a_inv * a_inv * a_inv +
-              Ok * a_inv * a_inv + Ol * pow(a_inv, -3. * (1. + w)));
+              Ok * a_inv * a_inv + Ol * exp(3. * w_tilde(a, w0, wa)));
 }
 
 /**
@@ -133,8 +148,9 @@ void cosmology_update(struct cosmology *c, const struct engine *e) {
   const double Omega_m = c->Omega_m;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
-  const double w = c->w;
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double w0 = c->w_0;
+  const double wa = c->w_a;
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w0, wa, a);
 
   /* H(z) */
   c->H = c->H0 * E_z;
@@ -165,8 +181,7 @@ double drift_integrand(double a, void *param) {
   const double H0 = c->H0;
 
   const double a_inv = 1. / a;
-  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
   const double H = H0 * E_z;
 
   return (1. / H) * a_inv * a_inv * a_inv;
@@ -190,8 +205,7 @@ double gravity_kick_integrand(double a, void *param) {
   const double H0 = c->H0;
 
   const double a_inv = 1. / a;
-  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
   const double H = H0 * E_z;
 
   return (1. / H) * a_inv * a_inv;
@@ -215,8 +229,7 @@ double hydro_kick_integrand(double a, void *param) {
   const double H0 = c->H0;
 
   const double a_inv = 1. / a;
-  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
   const double H = H0 * E_z;
 
   /* Note: we can't use the pre-defined pow_gamma_xxx() function as
@@ -242,8 +255,7 @@ double time_integrand(double a, void *param) {
   const double H0 = c->H0;
 
   const double a_inv = 1. / a;
-  const double w = cosmology_dark_energy_EoS(a, w_0, w_a);
-  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w, a_inv);
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
   const double H = H0 * E_z;
 
   return (1. / H) * a_inv;

@@ -18,11 +18,15 @@ To allow for general expansion histories we use the full Friedmann equations
 and write
 \begin{align}
 H(a) &\equiv H_0 E(a) \\ E(a) &\equiv\sqrt{\Omega_m a^{-3} + \Omega_r
-  a^{-4} + \Omega_k a^{-2} + \Omega_\Lambda a^{-3(1+w(a))}},
+  a^{-4} + \Omega_k a^{-2} + \Omega_\Lambda \exp\left(3\tilde{w}(a)\right)},
+\\
+\tilde{w}(a) &= (a-1)w_a - (1+w_0 + w_a)\log\left(a\right),
 \label{eq:friedmann}
 \end{align}
-where the dark energy equation-of-state evolves according to the formulation of
-\cite{Linder2003}:
+where we followed \cite{Linder2003} to parametrize the evolution of
+the dark-energy equation-of-state\footnote{Note that $\tilde{w}(z)\equiv
+  \int_0^z \frac{1+w(z')}{1+z'}dz'$, which leads to the analytic
+  expression we use.} as:
 \begin{equation}
 w(a) \equiv w_0 + w_a~(1-a).
 \end{equation}
