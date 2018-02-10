@@ -451,7 +451,6 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
  * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written.
- * @param xmfFile The FILE used to write the XMF description.
  * @param partTypeGroupName The name of the group containing the particles in
  * the HDF5 file.
  * @param props The #io_props of the field to read
@@ -808,6 +807,15 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   H5Fclose(h_file);
 }
 
+/**
+ * @brief Prepares a file for a parallel write.
+ *
+ * @param e The #engine.
+ * @param baseName The base name of the snapshots.
+ * @param N_total The total number of particles of each type to write.
+ * @param internal_units The #unit_system used internally.
+ * @param snapshot_units The #unit_system used in the snapshots.
+ */
 void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
