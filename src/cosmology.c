@@ -127,12 +127,12 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
  * @brief Update the cosmological parameters to the current simulation time.
  *
  * @param c The #cosmology struct.
- * @param e The #engine containing information about the simulation time.
+ * @param ti_current The current (integer) time.
  */
-void cosmology_update(struct cosmology *c, const struct engine *e) {
+void cosmology_update(struct cosmology *c, integertime_t ti_current) {
 
   /* Get scale factor */
-  const double a = c->a_begin * exp(e->ti_current * e->timeBase);
+  const double a = c->a_begin * exp(ti_current * c->time_base);
   const double a_inv = 1. / a;
   c->a = a;
   c->a_inv = a_inv;
@@ -385,6 +385,8 @@ void cosmology_init(const struct swift_params *params,
   c->a_end = parser_get_param_double(params, "Cosmology:a_end");
   c->log_a_begin = log(c->a_begin);
   c->log_a_end = log(c->a_end);
+  c->time_base = (c->log_a_end - c->log_a_begin) / max_nr_timesteps;
+  c->time_base_inv = 1. / c->time_base;
 
   /* Construct derived quantities */
 
@@ -418,23 +420,22 @@ void cosmology_init(const struct swift_params *params,
   c->time_interp_table_offset = 0.;
   cosmology_init_tables(c);
 }
+
 /**
  * @brief Computes the cosmology factor that enters the drift operator.
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a^2 \f$ using the interpolation table.
  *
- * @param e The #engine.
+ * @param c The current #cosmology.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_drift_factor(const struct engine *e,
+double cosmology_get_drift_factor(const struct cosmology *c,
                                   integertime_t ti_start,
                                   integertime_t ti_end) {
 
-  const struct cosmology *c = e->cosmology;
-
-  const double a_start = c->log_a_begin + ti_start * e->timeBase;
-  const double a_end = c->log_a_begin + ti_end * e->timeBase;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
   const double int_start = interp_table(c->drift_fac_interp_table, a_start,
                                         c->log_a_begin, c->log_a_end);
@@ -449,18 +450,16 @@ double cosmology_get_drift_factor(const struct engine *e,
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
  *
- * @param e The #engine.
+ * @param c The current #cosmology.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_grav_kick_factor(const struct engine *e,
+double cosmology_get_grav_kick_factor(const struct cosmology *c,
                                       integertime_t ti_start,
                                       integertime_t ti_end) {
 
-  const struct cosmology *c = e->cosmology;
-
-  const double a_start = c->log_a_begin + ti_start * e->timeBase;
-  const double a_end = c->log_a_begin + ti_end * e->timeBase;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
   const double int_start = interp_table(c->grav_kick_fac_interp_table, a_start,
                                         c->log_a_begin, c->log_a_end);
@@ -475,18 +474,16 @@ double cosmology_get_grav_kick_factor(const struct engine *e,
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
  *
- * @param e The #engine.
+ * @param c The current #cosmology.
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_hydro_kick_factor(const struct engine *e,
+double cosmology_get_hydro_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
 
-  const struct cosmology *c = e->cosmology;
-
-  const double a_start = c->log_a_begin + ti_start * e->timeBase;
-  const double a_end = c->log_a_begin + ti_end * e->timeBase;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
   const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start,
                                         c->log_a_begin, c->log_a_end);
@@ -550,7 +547,10 @@ void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
  * @param cosmology the struct
  * @param stream the file stream
  */
-void cosmology_struct_restore(const struct cosmology *cosmology, FILE *stream) {
+void cosmology_struct_restore(struct cosmology *cosmology, FILE *stream) {
   restart_read_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
                       NULL, "cosmology function");
+
+  /* Re-initialise the tables */
+  cosmology_init_tables(cosmology);
 }

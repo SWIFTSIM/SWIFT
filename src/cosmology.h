@@ -22,9 +22,10 @@
 /* Config parameters. */
 #include "../config.h"
 
-#include "engine.h"
 #include "parser.h"
+#include "physical_constants.h"
 #include "timeline.h"
+#include "units.h"
 
 /**
  * @brief Cosmological parameters
@@ -65,6 +66,12 @@ struct cosmology {
 
   /*! Final expansion factor */
   double a_end;
+
+  /*! Conversion factor from integer time-line to \f$ d\log{a} \f$ */
+  double time_base;
+
+  /*! Inverse of conversion factor from integer time-line to \f$ d\log{a} \f$ */
+  double time_base_inv;
 
   /*! Reduced Hubble constant (H0 / (100km/s/Mpc)) */
   double h;
@@ -121,14 +128,14 @@ struct cosmology {
   double universe_age_at_present_day;
 };
 
-void cosmology_update(struct cosmology *c, const struct engine *e);
+void cosmology_update(struct cosmology *c, integertime_t ti_current);
 
-double cosmology_get_drift_factor(const struct engine *e,
+double cosmology_get_drift_factor(const struct cosmology *cosmo,
                                   integertime_t ti_start, integertime_t ti_end);
-double cosmology_get_grav_kick_factor(const struct engine *e,
+double cosmology_get_grav_kick_factor(const struct cosmology *cosmo,
                                       integertime_t ti_start,
                                       integertime_t ti_end);
-double cosmology_get_hydro_kick_factor(const struct engine *e,
+double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
                                        integertime_t ti_start,
                                        integertime_t ti_end);
 
@@ -143,6 +150,6 @@ void cosmology_print(const struct cosmology *c);
 
 /* Dump/restore. */
 void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream);
-void cosmology_struct_restore(const struct cosmology *cosmology, FILE *stream);
+void cosmology_struct_restore(struct cosmology *cosmology, FILE *stream);
 
 #endif /* SWIFT_COSMOLOGY_H */
