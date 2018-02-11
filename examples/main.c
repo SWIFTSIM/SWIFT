@@ -599,28 +599,30 @@ int main(int argc, char *argv[]) {
       phys_const_print(&prog_const);
     }
 
-  /* Initialise the cosmology */
-  struct cosmology cosmo;
-  if (with_cosmology) cosmology_init(params, &us, &prog_const, &cosmo);
-  if (with_cosmology) cosmology_print(&cosmo);
+    /* Initialise the cosmology */
+    struct cosmology cosmo;
+    if (with_cosmology) cosmology_init(params, &us, &prog_const, &cosmo);
+    if (with_cosmology) cosmology_print(&cosmo);
 
-  struct engine ee;
-  ee.ti_current = 0;
-  ee.timeBase = (log(cosmo.a_end) - log(cosmo.a_begin)) / max_nr_timesteps;
-  cosmology_update(&cosmo, &ee);
-
-  for (int i = 0; i <= 16; ++i) {
-
-    ee.ti_current = (max_nr_timesteps / 16) * i;
-
+    // MATTHIEU START
+    struct engine ee;
+    ee.ti_current = 0;
+    ee.timeBase = (log(cosmo.a_end) - log(cosmo.a_begin)) / max_nr_timesteps;
     cosmology_update(&cosmo, &ee);
 
-    message("z=%e H(z)=%e w=%f t=%e [yrs] t_l=%e [yrs]", cosmo.z, cosmo.H,
-            cosmo.w, cosmo.time / prog_const.const_year,
-            cosmo.lookback_time / prog_const.const_year);
-  }
+    for (int i = 0; i <= 16; ++i) {
 
-  return 0;
+      ee.ti_current = (max_nr_timesteps / 16) * i;
+
+      cosmology_update(&cosmo, &ee);
+
+      message("z=%e H(z)=%e w=%f t=%e [yrs] t_l=%e [yrs]", cosmo.z, cosmo.H,
+              cosmo.w, cosmo.time / prog_const.const_year,
+              cosmo.lookback_time / prog_const.const_year);
+    }
+
+    return 0;
+    // MATTHIEU END
 
     /* Initialise the hydro properties */
     if (with_hydro) hydro_props_init(&hydro_properties, params);
@@ -702,13 +704,25 @@ int main(int argc, char *argv[]) {
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
 
-  /* Also update the total counts (in case of changes due to replication) */
+    /* Initialize the space with these data. */
+    if (myrank == 0) clocks_gettime(&tic);
+    space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
+               periodic, replicate, with_self_gravity, talking, dry_run);
+
+    if (myrank == 0) {
+      clocks_gettime(&toc);
+      message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
+              clocks_getunit());
+      fflush(stdout);
+    }
+
+/* Also update the total counts (in case of changes due to replication) */
 #if defined(WITH_MPI)
-  N_long[0] = s.nr_parts;
-  N_long[1] = s.nr_gparts;
-  N_long[2] = s.nr_sparts;
-  MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
-             MPI_COMM_WORLD);
+    N_long[0] = s.nr_parts;
+    N_long[1] = s.nr_gparts;
+    N_long[2] = s.nr_sparts;
+    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
 #else
     N_total[0] = s.nr_parts;
     N_total[1] = s.nr_gparts;
@@ -743,10 +757,10 @@ int main(int argc, char *argv[]) {
       message("nr of cells at depth %i is %i.", data[0], data[1]);
     }
 
-  /* Initialise the table of Ewald corrections for the gravity checks */
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(dim[0]);
-#endif
+    /* Initialise the external potential properties */
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
     if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);

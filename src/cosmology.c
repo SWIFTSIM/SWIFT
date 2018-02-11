@@ -82,7 +82,7 @@ static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
 }
 
 /**
- * @brief Computes the integral of the dark-energy equation of state 
+ * @brief Computes the integral of the dark-energy equation of state
  * up to a scale-factor a.
  *
  * We follow the convention of Linder & Jenkins, MNRAS, 346, 573, 2003
@@ -100,7 +100,7 @@ static INLINE double w_tilde(double a, double w0, double wa) {
  * @brief Compute \f$ E(z) \f$.
  */
 static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
-		       double wa, double a) {
+                       double wa, double a) {
   const double a_inv = 1. / a;
   return sqrt(Or * a_inv * a_inv * a_inv * a_inv + Om * a_inv * a_inv * a_inv +
               Ok * a_inv * a_inv + Ol * exp(3. * w_tilde(a, w0, wa)));
