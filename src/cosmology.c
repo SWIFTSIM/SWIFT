@@ -31,6 +31,7 @@
 /* Local headers */
 #include "adiabatic_index.h"
 #include "inline.h"
+#include "restart.h"
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_integration.h>
@@ -417,22 +418,6 @@ void cosmology_init(const struct swift_params *params,
   c->time_interp_table_offset = 0.;
   cosmology_init_tables(c);
 }
-
-/**
- * @brief Prints the #cosmology model to stdout.
- */
-void cosmology_print(const struct cosmology *c) {
-
-  message(
-      "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
-      c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
-  message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
-  message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
-  message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
-  message("Universe age at present day: %e U_t",
-          c->universe_age_at_present_day);
-}
-
 /**
  * @brief Computes the cosmology factor that enters the drift operator.
  *
@@ -530,4 +515,42 @@ double cosmology_get_delta_time(const struct cosmology *c, double a1,
       interp_table(c->time_interp_table, log(a2), c->log_a_begin, c->log_a_end);
 
   return t2 - t1;
+}
+
+/**
+ * @brief Prints the #cosmology model to stdout.
+ */
+void cosmology_print(const struct cosmology *c) {
+
+  message(
+      "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
+      c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
+  message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
+  message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
+  message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
+  message("Universe age at present day: %e U_t",
+          c->universe_age_at_present_day);
+}
+
+/**
+ * @brief Write a cosmology struct to the given FILE as a stream of bytes.
+ *
+ * @param cosmology the struct
+ * @param stream the file stream
+ */
+void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
+  restart_write_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
+                       "cosmology", "cosmology function");
+}
+
+/**
+ * @brief Restore a cosmology struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param cosmology the struct
+ * @param stream the file stream
+ */
+void cosmology_struct_restore(const struct cosmology *cosmology, FILE *stream) {
+  restart_read_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
+                      NULL, "cosmology function");
 }

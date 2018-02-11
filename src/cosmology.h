@@ -141,4 +141,8 @@ void cosmology_init(const struct swift_params *params,
 
 void cosmology_print(const struct cosmology *c);
 
+/* Dump/restore. */
+void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream);
+void cosmology_struct_restore(const struct cosmology *cosmology, FILE *stream);
+
 #endif /* SWIFT_COSMOLOGY_H */

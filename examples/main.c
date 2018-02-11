@@ -604,26 +604,6 @@ int main(int argc, char *argv[]) {
     if (with_cosmology) cosmology_init(params, &us, &prog_const, &cosmo);
     if (with_cosmology) cosmology_print(&cosmo);
 
-    // MATTHIEU START
-    struct engine ee;
-    ee.ti_current = 0;
-    ee.timeBase = (log(cosmo.a_end) - log(cosmo.a_begin)) / max_nr_timesteps;
-    cosmology_update(&cosmo, &ee);
-
-    for (int i = 0; i <= 16; ++i) {
-
-      ee.ti_current = (max_nr_timesteps / 16) * i;
-
-      cosmology_update(&cosmo, &ee);
-
-      message("z=%e H(z)=%e w=%f t=%e [yrs] t_l=%e [yrs]", cosmo.z, cosmo.H,
-              cosmo.w, cosmo.time / prog_const.const_year,
-              cosmo.lookback_time / prog_const.const_year);
-    }
-
-    return 0;
-    // MATTHIEU END
-
     /* Initialise the hydro properties */
     if (with_hydro) hydro_props_init(&hydro_properties, params);
     if (with_hydro) eos_init(&eos, params);

@@ -51,8 +51,10 @@
 #include "active.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "clocks.h"
 #include "cooling.h"
+#include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -5806,6 +5808,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   space_struct_dump(e->s, stream);
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
+  cosmology_struct_dump(e->cosmology, stream);
 
 #ifdef WITH_MPI
   /* Save the partition for restoration. */
@@ -5818,6 +5821,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   gravity_props_struct_dump(e->gravity_properties, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
+  chemistry_struct_dump(e->chemistry, stream);
   sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
 }
@@ -5856,6 +5860,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   units_struct_restore(us, stream);
   e->snapshotUnits = us;
 
+  struct cosmology *cosmo = malloc(sizeof(struct cosmology));
+  cosmology_struct_restore(cosmo, stream);
+  e->cosmology = cosmo;
+
 #ifdef WITH_MPI
   struct repartition *reparttype = malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
@@ -5884,6 +5892,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       malloc(sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
+
+  struct chemistry_data *chemistry = malloc(sizeof(struct chemistry_data));
+  chemistry_struct_restore(chemistry, stream);
+  e->chemistry = chemistry;
 
   struct sourceterms *sourceterms = malloc(sizeof(struct sourceterms));
   sourceterms_struct_restore(sourceterms, stream);
