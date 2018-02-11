@@ -22,6 +22,7 @@
 
 /* This object's header. */
 #include "cooling.h"
+#include "restart.h"
 
 /**
  * @brief Initialises the cooling properties.
@@ -51,4 +52,29 @@ void cooling_init(const struct swift_params* parameter_file,
 void cooling_print(const struct cooling_function_data* cooling) {
 
   cooling_print_backend(cooling);
+}
+
+/**
+ * @brief Write a hydro_props struct to the given FILE as a stream of bytes.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+void cooling_struct_restore(const struct cooling_function_data* cooling,
+                            FILE* stream) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
 }

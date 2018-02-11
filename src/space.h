@@ -243,4 +243,7 @@ void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
 
+void space_struct_dump(struct space *s, FILE *stream);
+void space_struct_restore(struct space *s, FILE *stream);
+
 #endif /* SWIFT_SPACE_H */

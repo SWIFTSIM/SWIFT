@@ -53,6 +53,7 @@
 #include "memswap.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "restart.h"
 #include "runner.h"
 #include "sort_part.h"
 #include "stars.h"
@@ -384,6 +385,9 @@ void space_regrid(struct space *s, int verbose) {
     }
   }
 
+  /* Are we about to allocate new top level cells without a regrid?
+   * Can happen when restarting the application. */
+  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -513,6 +517,21 @@ void space_regrid(struct space *s, int verbose) {
 
       /* Finished with these. */
       free(oldnodeIDs);
+
+    } else if (no_regrid && s->e != NULL) {
+      /* If we have created the top-levels cells and not done an initial
+       * partition (can happen when restarting), then the top-level cells
+       * are not assigned to a node, we must do that and then associate the
+       * particles with the cells. Note requires that
+       * partition_store_celllist() was called once before, or just before
+       * dumping the restart files.*/
+      partition_restore_celllist(s, s->e->reparttype);
+
+      /* Now re-distribute the particles, should just add to cells? */
+      engine_redistribute(s->e);
+
+      /* Make the proxies. */
+      engine_makeproxies(s->e);
     }
 #endif /* WITH_MPI */
 
@@ -3218,4 +3237,113 @@ void space_clean(struct space *s) {
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
+}
+
+/**
+ * @brief Write the space struct and its contents to the given FILE as a
+ * stream of bytes.
+ *
+ * @param s the space
+ * @param stream the file stream
+ */
+void space_struct_dump(struct space *s, FILE *stream) {
+
+  restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
+                       "space struct");
+
+  /* More things to write. */
+  if (s->nr_parts > 0) {
+    restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                         "parts", "parts");
+    restart_write_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                         "xparts", "xparts");
+  }
+  if (s->nr_gparts > 0)
+    restart_write_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                         "gparts", "gparts");
+
+  if (s->nr_sparts > 0)
+    restart_write_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                         "sparts", "sparts");
+}
+
+/**
+ * @brief Re-create a space struct and its contents from the given FILE
+ *        stream.
+ *
+ * @param s the space
+ * @param stream the file stream
+ */
+void space_struct_restore(struct space *s, FILE *stream) {
+
+  restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
+
+  /* Things that should be reconstructed in a rebuild. */
+  s->cells_top = NULL;
+  s->cells_sub = NULL;
+  s->multipoles_top = NULL;
+  s->multipoles_sub = NULL;
+  s->local_cells_top = NULL;
+  s->grav_top_level = NULL;
+#ifdef WITH_MPI
+  s->parts_foreign = NULL;
+  s->size_parts_foreign = 0;
+  s->gparts_foreign = NULL;
+  s->size_gparts_foreign = 0;
+  s->sparts_foreign = NULL;
+  s->size_sparts_foreign = 0;
+#endif
+
+  /* More things to read. */
+  s->parts = NULL;
+  s->xparts = NULL;
+  if (s->nr_parts > 0) {
+
+    /* Need the memory for these. */
+    if (posix_memalign((void *)&s->parts, part_align,
+                       s->size_parts * sizeof(struct part)) != 0)
+      error("Failed to allocate restore part array.");
+    if (posix_memalign((void *)&s->xparts, xpart_align,
+                       s->size_parts * sizeof(struct xpart)) != 0)
+      error("Failed to allocate restore xpart array.");
+
+    restart_read_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                        NULL, "parts");
+    restart_read_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                        NULL, "xparts");
+  }
+  s->gparts = NULL;
+  if (s->nr_gparts > 0) {
+    if (posix_memalign((void *)&s->gparts, gpart_align,
+                       s->size_gparts * sizeof(struct gpart)) != 0)
+      error("Failed to allocate restore gpart array.");
+
+    restart_read_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                        NULL, "gparts");
+  }
+
+  s->sparts = NULL;
+  if (s->nr_sparts > 0) {
+    if (posix_memalign((void *)&s->sparts, spart_align,
+                       s->size_sparts * sizeof(struct spart)) != 0)
+      error("Failed to allocate restore spart array.");
+
+    restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                        NULL, "sparts");
+  }
+
+  /* Need to reconnect the gravity parts to their hydro and star particles. */
+  /* Re-link the parts. */
+  if (s->nr_parts > 0 && s->nr_gparts > 0)
+    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
+
+  /* Re-link the sparts. */
+  if (s->nr_sparts > 0 && s->nr_gparts > 0)
+    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that everything is correct */
+  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
+                    s->nr_sparts, 1);
+#endif
 }

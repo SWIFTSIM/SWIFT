@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "common_io.h"
 #include "error.h"
+#include "restart.h"
 
 #define PARSER_COMMENT_STRING "#"
 #define PARSER_COMMENT_CHAR '#'
@@ -784,3 +785,26 @@ void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
     io_write_attribute_s(grp, params->data[i].name, params->data[i].value);
 }
 #endif
+
+/**
+ * @brief Write a swift_params struct to the given FILE as a stream of bytes.
+ *
+ * @param params the struct
+ * @param stream the file stream
+ */
+void parser_struct_dump(const struct swift_params *params, FILE *stream) {
+  restart_write_blocks((void *)params, sizeof(struct swift_params), 1, stream,
+                       "parameters", "parameters");
+}
+
+/**
+ * @brief Restore a swift_params struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param params the struct
+ * @param stream the file stream
+ */
+void parser_struct_restore(const struct swift_params *params, FILE *stream) {
+  restart_read_blocks((void *)params, sizeof(struct swift_params), 1, stream,
+                      NULL, "parameters");
+}

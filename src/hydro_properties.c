@@ -127,3 +127,26 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->max_smoothing_iterations);
 }
 #endif
+
+/**
+ * @brief Write a hydro_props struct to the given FILE as a stream of bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream) {
+  restart_write_blocks((void *)p, sizeof(struct hydro_props), 1, stream,
+                       "hydroprops", "hydro props");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream) {
+  restart_read_blocks((void *)p, sizeof(struct hydro_props), 1, stream, NULL,
+                      "hydro props");
+}

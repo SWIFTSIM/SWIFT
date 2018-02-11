@@ -55,6 +55,7 @@
 #include "potential.h"
 #include "profiler.h"
 #include "queue.h"
+#include "restart.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "serial_io.h"

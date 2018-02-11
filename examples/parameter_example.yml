@@ -75,6 +75,15 @@ InitialConditions:
   shift_z:    0.
   replicate:  2                     # (Optional) Replicate all particles along each axis a given number of times. Default 1.
 
+# Parameters controlling restarts
+Restarts:
+  enable:      1        # (Optional) whether to enable dumping restarts at fixed intervals.
+  onexit:      0        # (Optional) whether to dump restarts on exit (*needs enable*)
+  subdir:      restart  # (Optional) name of subdirectory for restart files.
+  basename:    swift    # (Optional) prefix used in naming restart files.
+  delta_hours: 6.0      # (Optional) decimal hours between dumps of restart files.
+  stop_steps:  100      # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
+
 # Parameters governing domain decomposition
 DomainDecomposition:
   initial_type:     simple_metis # (Optional) The initial decomposition strategy: "grid",

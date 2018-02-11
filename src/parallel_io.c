@@ -53,11 +53,11 @@
 #include "units.h"
 #include "xmf.h"
 
-/* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
-
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
+
+/* Are we timing the i/o? */
+//#define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Reads a chunk of data from an open HDF5 dataset
@@ -833,7 +833,6 @@ void write_output_parallel(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -842,10 +841,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0 && mpi_rank == 0) xmf_create_file(baseName);
+  if (e->snapshotOutputCount == 0 && mpi_rank == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   if (mpi_rank == 0) xmfFile = xmf_prepare_file(baseName);
@@ -879,6 +878,14 @@ void write_output_parallel(struct engine* e, const char* baseName,
   h_err = H5Pset_mdc_config(plist_id, &mdc_config);
   if (h_err < 0) error("Error setting the MDC config");
 
+/* Use parallel meta-data writes */
+#if H5_VERSION_GE(1, 10, 0)
+  h_err = H5Pset_all_coll_metadata_ops(plist_id, 1);
+  if (h_err < 0) error("Error setting collective meta-data on all ops");
+  h_err = H5Pset_coll_metadata_write(plist_id, 1);
+  if (h_err < 0) error("Error setting collective meta-data writes");
+#endif
+
   /* Open HDF5 file with the chosen parameters */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
   if (h_file < 0) {
@@ -903,6 +910,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* Write the part of the XMF file corresponding to this
    * specific output */
   if (mpi_rank == 0) xmf_write_outputheader(xmfFile, fileName, e->time);
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  ticks tic = getticks();
+#endif
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
@@ -995,6 +1007,15 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("Writing HDF5 header took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+#endif
 
   /* Tell the user if a conversion will be needed */
   if (e->verbose && mpi_rank == 0) {
@@ -1102,25 +1123,77 @@ void write_output_parallel(struct engine* e, const char* baseName,
       dmparts = 0;
     }
 
+#ifdef IO_SPEED_MEASUREMENT
+    MPI_Barrier(MPI_COMM_WORLD);
+    tic = getticks();
+#endif
+
     /* Close particle group */
     H5Gclose(h_grp);
 
+#ifdef IO_SPEED_MEASUREMENT
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (engine_rank == 0)
+      message("Closing particle group took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+#endif
+
     /* Close this particle group in the XMF file as well */
     if (mpi_rank == 0) xmf_write_groupfooter(xmfFile, (enum part_type)ptype);
+
+#ifdef IO_SPEED_MEASUREMENT
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (engine_rank == 0)
+      message("Writing XMF group footer took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
   }
 
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+#endif
+
   /* Write LXMF file descriptor */
-  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  if (mpi_rank == 0)
+    xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("Writing XMF output footer took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+#endif
 
   /* message("Done writing particles..."); */
 
   /* Close property descriptor */
   H5Pclose(plist_id);
 
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("Closing property descriptor took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+#endif
+
   /* Close file */
   H5Fclose(h_file);
 
-  ++outputCount;
+#ifdef IO_SPEED_MEASUREMENT
+  MPI_Barrier(MPI_COMM_WORLD);
+  if (engine_rank == 0)
+    message("Closing file took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+#endif
+
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 */

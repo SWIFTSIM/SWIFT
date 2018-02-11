@@ -27,6 +27,7 @@
 /* Local headers. */
 #include "error.h"
 #include "physical_constants_cgs.h"
+#include "restart.h"
 
 /**
  * @brief Converts physical constants to the internal unit system
@@ -34,8 +35,8 @@
  * @param us The current internal system of units.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(struct unit_system* us,
-                     struct phys_const* internal_const) {
+void phys_const_init(struct unit_system *us,
+                     struct phys_const *internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 
@@ -105,7 +106,7 @@ void phys_const_init(struct unit_system* us,
       units_general_cgs_conversion_factor(us, dimension_length);
 }
 
-void phys_const_print(struct phys_const* internal_const) {
+void phys_const_print(struct phys_const *internal_const) {
 
   message("%25s = %e", "Gravitational constant",
           internal_const->const_newton_G);
@@ -120,4 +121,29 @@ void phys_const_print(struct phys_const* internal_const) {
           internal_const->const_astronomical_unit);
   message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
+}
+
+/**
+ * @brief Write a phys_const struct to the given FILE as a stream of bytes.
+ *
+ * @param internal_const the struct
+ * @param stream the file stream
+ */
+void phys_const_struct_dump(const struct phys_const *internal_const,
+                            FILE *stream) {
+  restart_write_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+                       stream, "physconst", "phys_const params");
+}
+
+/**
+ * @brief Restore a phys_const struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param internal_const the struct
+ * @param stream the file stream
+ */
+void phys_const_struct_restore(const struct phys_const *internal_const,
+                               FILE *stream) {
+  restart_read_blocks((void *)internal_const, sizeof(struct phys_const), 1,
+                      stream, NULL, "phys_const params");
 }

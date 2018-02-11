@@ -39,6 +39,7 @@
 /* Includes. */
 #include "adiabatic_index.h"
 #include "error.h"
+#include "restart.h"
 
 /**
  * @brief Initialises the unit_system structure with CGS system
@@ -601,4 +602,26 @@ void units_print(const struct unit_system* us) {
   message("\tUnit Time:        %g", us->UnitTime_in_cgs);
   message("\tUnit Current:     %g", us->UnitCurrent_in_cgs);
   message("\tUnit Temperature: %g", us->UnitTemperature_in_cgs);
+}
+
+/**
+ * @brief Write a units struct to the given FILE as a stream of bytes.
+ *
+ * @param us the units
+ * @param stream the file stream
+ */
+void units_struct_dump(const struct unit_system* us, FILE* stream) {
+  restart_write_blocks((void*)us, sizeof(struct unit_system), 1, stream,
+                       "units", "units");
+}
+
+/**
+ * @brief Restore a units struct from the given FILE as a stream of bytes.
+ *
+ * @param us the units
+ * @param stream the file stream
+ */
+void units_struct_restore(const struct unit_system* us, FILE* stream) {
+  restart_read_blocks((void*)us, sizeof(struct unit_system), 1, stream, NULL,
+                      "units");
 }
