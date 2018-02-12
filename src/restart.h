@@ -39,5 +39,6 @@ void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
 int restart_stop_now(const char *dir, int cleanup);
 
 void restart_save_previous(const char *filename);
+void restart_remove_previous(const char *filename);
 
 #endif /* SWIFT_RESTART_H */

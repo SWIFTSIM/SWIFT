@@ -273,7 +273,7 @@ void restart_write_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
  * @result 1 if the file was found.
  */
 int restart_stop_now(const char *dir, int cleanup) {
-  static struct stat buf;
+  struct stat buf;
   char filename[FNAMELEN];
   strcpy(filename, dir);
   strcat(filename, "/stop");
@@ -296,7 +296,7 @@ int restart_stop_now(const char *dir, int cleanup) {
  * @param filename the name of the file to check.
  */
 void restart_save_previous(const char *filename) {
-  static struct stat buf;
+  struct stat buf;
   if (stat(filename, &buf) == 0) {
     char newname[FNAMELEN];
     strcpy(newname, filename);
@@ -305,6 +305,28 @@ void restart_save_previous(const char *filename) {
       /* Worth a complaint, this should not happen. */
       message("Failed to rename file '%s' to '%s' (%s)", filename, newname,
               strerror(errno));
+    }
+  }
+}
+
+/**
+ * @brief check if a saved file with the given prefix name exists and remove
+ *        it. Used to remove old restart files before a save sequence
+ *        so that old saved files are not mixed up with new ones.
+ *
+ *        Does nothing if a saved file does not exist.
+ *
+ * @param filename the prefix used when the saved file was created.
+ */
+void restart_remove_previous(const char *filename) {
+  struct stat buf;
+  char newname[FNAMELEN];
+  strcpy(newname, filename);
+  strcat(newname, ".prev");
+  if (stat(newname, &buf) == 0) {
+    if (unlink(newname) != 0) {
+      /* Worth a complaint, this should not happen. */
+      message("Failed to unlink file '%s' (%s)", newname, strerror(errno));
     }
   }
 }
