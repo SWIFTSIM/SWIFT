@@ -69,7 +69,7 @@ const double const_electron_mass_cgs = 9.10938356e-28;
 const double const_proton_mass_cgs = 1.672621898e-24;
 
 /*! Tropical year [s] */
-const double const_year_cgs = 3.15569252e7; /* s */
+const double const_year_cgs = 3.15569252e7;
 
 /*! Astronomical unit [cm] */
 const double const_astronomical_unit_cgs = 1.49597870700e13;
