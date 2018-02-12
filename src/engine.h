@@ -328,7 +328,7 @@ void engine_init(
     struct engine *e, struct space *s, const struct swift_params *params,
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
     const struct hydro_props *hydro, const struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
