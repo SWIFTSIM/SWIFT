@@ -31,29 +31,29 @@
 #include "swift.h"
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF1 runner_doself1_density_vec
-#define DOSELF1_SUBSET runner_doself_subset_density_vec
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
 #define DOPAIR1_SUBSET runner_dopair_subset_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
 #ifdef TEST_DOSELF_SUBSET
-#define DOSELF1_NAME "runner_doself_subset_density_vec"
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
 #else
-#define DOSELF1_NAME "runner_doself_density_vec"
+#define DOSELF1_NAME "runner_doself1_branch_density"
 #endif
 #ifdef TEST_DOPAIR_SUBSET
 #define DOPAIR1_NAME "runner_dopair_subset_branch_density"
 #else
-#define DOPAIR1_NAME "runner_dopair_density_vec"
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
 #endif
 #endif
 
 #ifndef DOSELF1
-#define DOSELF1 runner_doself1_density
-#define DOSELF1_SUBSET runner_doself_subset_density
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
 #ifdef TEST_DOSELF_SUBSET
-#define DOSELF1_NAME "runner_doself1_subset_density"
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
 #else
-#define DOSELF1_NAME "runner_doself1_density"
+#define DOSELF1_NAME "runner_doself1_branch_density"
 #endif
 #endif
 
@@ -63,7 +63,7 @@
 #ifdef TEST_DOPAIR_SUBSET
 #define DOPAIR1_NAME "runner_dopair1_subset_branch_density"
 #else
-#define DOPAIR1_NAME "runner_dopair1_density"
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
 #endif
 #endif
 
@@ -319,26 +319,17 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_doself1_density(struct runner *r, struct cell *ci);
-void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
-void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
-                                  struct part *restrict parts,
-                                  int *restrict ind, int count);
-void runner_dopair_subset_density(struct runner *r, struct cell *restrict ci,
-                                  struct part *restrict parts_i,
-                                  int *restrict ind, int count,
-                                  struct cell *restrict cj);
-void runner_doself_subset_density_vec(struct runner *r,
-                                      struct cell *restrict ci,
-                                      struct part *restrict parts,
-                                      int *restrict ind, int count);
+void runner_doself1_branch_density(struct runner *r, struct cell *c);
 void runner_dopair_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts_i,
                                          int *restrict ind, int count,
                                          struct cell *restrict cj);
+void runner_doself_subset_branch_density(struct runner *r, struct cell *restrict ci,
+                          struct part *restrict parts, int *restrict ind,
+                          int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
