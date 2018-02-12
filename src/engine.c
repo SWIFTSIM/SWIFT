@@ -5162,6 +5162,7 @@ void engine_unpin() {
  * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
+ * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param gravity The #gravity_props used for this run.
  * @param potential The properties of the external potential.

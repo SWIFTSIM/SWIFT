@@ -90,8 +90,8 @@ static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
  * and compute \f$ \tilde{w}(a) = \int_0^a\frac{1 + w(z)}{1+z}dz \f$.
  *
  * @param a The current scale-factor.
- * @param w_0 The equation of state parameter at z=0
- * @param w_a The equation of state evolution parameter
+ * @param w0 The equation of state parameter at z=0
+ * @param wa The equation of state evolution parameter
  */
 static INLINE double w_tilde(double a, double w0, double wa) {
   return (a - 1.) * wa - (1. + w0 + wa) * log(a);
