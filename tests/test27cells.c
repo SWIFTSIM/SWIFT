@@ -327,9 +327,10 @@ void runner_dopair_subset_branch_density(struct runner *r,
                                          struct part *restrict parts_i,
                                          int *restrict ind, int count,
                                          struct cell *restrict cj);
-void runner_doself_subset_branch_density(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts, int *restrict ind,
-                          int count);
+void runner_doself_subset_branch_density(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct part *restrict parts,
+                                         int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
