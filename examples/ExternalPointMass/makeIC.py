@@ -28,7 +28,7 @@ import random
 
 # physical constants in cgs
 NEWTON_GRAVITY_CGS  = 6.67408e-8
-SOLAR_MASS_IN_CGS   = 1.9885e33
+SOLAR_MASS_IN_CGS   = 1.98848e33
 PARSEC_IN_CGS       = 3.0856776e18
 
 # choice of units
@@ -86,7 +86,7 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 #Units
 grp = file.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = 3.0856776e21
-grp.attrs["Unit mass in cgs (U_M)"] = 1.9885e33
+grp.attrs["Unit mass in cgs (U_M)"] = 1.98848e33
 grp.attrs["Unit time in cgs (U_t)"] = 3.0856776e16
 grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.

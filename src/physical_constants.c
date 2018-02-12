@@ -35,7 +35,7 @@
  * @param us The current internal system of units.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(struct unit_system *us,
+void phys_const_init(const struct unit_system *us,
                      struct phys_const *internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
@@ -60,6 +60,11 @@ void phys_const_init(struct unit_system *us,
   internal_const->const_boltzmann_k =
       const_boltzmann_k_cgs /
       units_general_cgs_conversion_factor(us, dimension_k);
+
+  const float dimension_Na[5] = {0, 0, 0, 0, 0};
+  internal_const->const_avogadro_number =
+      const_avogadro_number_cgs /
+      units_general_cgs_conversion_factor(us, dimension_Na);
 
   const float dimension_thomson[5] = {0, 2, 0, 0, 0};
   internal_const->const_thomson_cross_section =
@@ -106,7 +111,7 @@ void phys_const_init(struct unit_system *us,
       units_general_cgs_conversion_factor(us, dimension_length);
 }
 
-void phys_const_print(struct phys_const *internal_const) {
+void phys_const_print(const struct phys_const *internal_const) {
 
   message("%25s = %e", "Gravitational constant",
           internal_const->const_newton_G);
