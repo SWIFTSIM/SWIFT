@@ -49,7 +49,7 @@
 
 #ifndef DOSELF1
 #define DOSELF1 runner_doself1_branch_density
-#define DOSELF1_SUBSET runner_doself_subset_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
 #ifdef TEST_DOSELF_SUBSET
 #define DOSELF1_NAME "runner_doself_subset_branch_density"
 #else
