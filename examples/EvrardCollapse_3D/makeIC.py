@@ -24,7 +24,7 @@ from numpy import *
 
 # Parameters
 gamma = 5. / 3.      # Gas adiabatic index
-M = 1. / 6.67408e-8  # total mass of the sphere
+M = 1.  # total mass of the sphere
 R = 1.               # radius of the sphere
 u0 = 0.05 / M        # initial thermal energy
 fileName = "evrard.hdf5" 
