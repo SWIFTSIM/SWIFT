@@ -440,17 +440,32 @@ if test "x$with_metis" != "xno"; then
 
 # Check if we have ParMETIS.
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis/lib -lparmetis -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lparmetis" 
       METIS_INCS="-I$with_metis/include"
    else
-      METIS_LIBS="-lparmetis -lmetis"
+      METIS_LIBS="-lparmetis"
       METIS_INCS=""
    fi
    AC_CHECK_LIB([metis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
                 [have_parmetis="no"], $METIS_LIBS)
    if test "$have_parmetis" == "no"; then
 
-# Check for serial METIS.
+# A build may use an external METIS library, check for that.
+
+      if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+         METIS_LIBS="-L$with_metis/lib -lparmetis -lmetis" 
+         METIS_INCS="-I$with_metis/include"
+      else
+         METIS_LIBS="-lparmetis -lmetis"
+         METIS_INCS=""
+      fi
+      AC_CHECK_LIB([metis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                   [have_parmetis="no"], $METIS_LIBS)
+
+   fi
+   if test "$have_parmetis" == "no"; then
+
+# Finally check for serial METIS.
       if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
          METIS_LIBS="-L$with_metis/lib -lmetis"
          METIS_INCS="-I$with_metis/include"
