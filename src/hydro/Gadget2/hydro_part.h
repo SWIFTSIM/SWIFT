@@ -55,8 +55,10 @@ struct xpart {
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
+#ifdef WITH_LOGGER
   /* Number of time step since last output */
   short int last_output;
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -93,8 +95,10 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
+#ifdef WITH_LOGGER
   /* offset at last writing */
   size_t last_offset;
+#endif
 
   union {
 

@@ -743,7 +743,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->last_offset = 0;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
@@ -751,7 +750,11 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->a_grav[1] = 0.f;
   xp->a_grav[2] = 0.f;
   xp->entropy_full = p->entropy;
+
+#ifdef WITH_LOGGER
+  p->last_offset = 0;
   xp->last_output = SHRT_MAX;
+#endif
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

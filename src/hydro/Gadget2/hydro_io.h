@@ -201,6 +201,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 void hydro_write_index(struct part* parts, struct io_props* list,
 		       int* num_fields) {
 
+#ifdef WITH_LOGGER
   *num_fields = 2;
 
   /* List what we want to write */
@@ -209,6 +210,10 @@ void hydro_write_index(struct part* parts, struct io_props* list,
 
   list[1] = io_make_output_field("Offset", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, last_offset);
+#else
+  error("Cannot write index without logger");
+#endif
+  
 }
 
 
