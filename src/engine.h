@@ -314,7 +314,7 @@ struct engine {
   struct repartition *reparttype;
 
   /* Number of particle steps between dumping a chunk of data */
-  int logger_max_steps;
+  short int logger_max_steps;
 
   /* File name of the dump file */
   struct dump *logger_dump;

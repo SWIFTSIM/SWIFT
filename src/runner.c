@@ -2705,19 +2705,17 @@ void *runner_main(void *data) {
 void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_LOGGER
+  TIMER_TIC;
+
   const struct engine *e = r->e;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
   const int count = c->count;
   const int gcount = c->gcount;
-  //const integertime_t ti_current = e->ti_current;
-  //const double timeBase = e->timeBase;
-
-  TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_starting_hydro(c, e) || !cell_is_starting_gravity(c, e))
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e))
     return;
 
   /* Recurse? */
