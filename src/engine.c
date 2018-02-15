@@ -4961,6 +4961,9 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Do the initial partition of the cells. */
   partition_initial_partition(initial_partition, e->nodeID, e->nr_nodes, s);
 
+  /* Keep the partition as the basis for repartitioning. */
+  partition_store_celllist(s, e->reparttype);
+
   /* Make the proxies. */
   engine_makeproxies(e);
 
