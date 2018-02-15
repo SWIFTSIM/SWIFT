@@ -45,7 +45,7 @@
 void hydro_read_particles(struct part* parts, struct io_props* list,
                           int* num_fields) {
 
-  *num_fields = 4;
+  *num_fields = 8;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -54,8 +54,17 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+  list[3] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                 parts, mass);
+  list[4] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
+  list[5] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+                                u);
+  list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
+                                UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, parts, rho);
 }
 
 void convert_part_pos(const struct engine* e, const struct part* p,
@@ -82,24 +91,47 @@ void convert_part_pos(const struct engine* e, const struct part* p,
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 4;
+  *num_fields = 9;
 
   /* List what we want to write */
-  list[0] = io_make_output_field_convert_part(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
-  list[1] =
-      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
+  list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
+                                              UNIT_CONV_LENGTH, parts,
+                                              convert_part_pos);
+  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
+                                 parts, v);
   list[2] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
   list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
+  list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
+                                 UNIT_CONV_ENERGY_PER_UNIT_MASS,
+                                 parts, u);
+  list[5] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
+                                 mass);
+  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
+                                 rho);
+  list[7] = io_make_output_field("Accelerations", FLOAT, 3,
+                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[8] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                 parts, pressure_bar);
 }
 
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeSPHflavour(hid_t h_grpsph) {}
+void hydro_write_flavour(hid_t h_grpsph) {
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  io_write_attribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+  io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
+  io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
+
+  /* Time integration properties */
+  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);
+}
 
 /**
  * @brief Are we writing entropy in the internal energy field ?

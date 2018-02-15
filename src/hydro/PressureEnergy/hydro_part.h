@@ -30,6 +30,7 @@
  * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -43,6 +44,9 @@ struct xpart {
 
   /*! Velocity at the last full step. */
   float v_full[3];
+
+  /*! Full internal energy */
+  float u_full;
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
@@ -67,10 +71,30 @@ struct part {
   /*! Particle acceleration. */
   float a_hydro[3];
 
+  /*! Particle mass. */
+  float mass;
+
+  /*! SPH Density */
+  float rho;
+
+  /*! Smoothed particle pressure. */
+  float pressure_bar;
+
+  /*! Smoothed particle pressure's spatial derivative */
+  float pressure_bar_dh;
+
+  /*! Particle internal energy */
+  float u;
+
+  /*! Differential of the internal energy with respect to time */
+  float u_dt;
+
+  /*! Entropy (for if people want it) */ 
+  float entropy;
+
   /*! Particle cutoff radius. */
   float h;
 
-  union {
 
     struct {
 
@@ -79,6 +103,18 @@ struct part {
 
       /*! Number of neighbours spatial derivative. */
       float wcount_dh;
+
+      /*! Velocity curl */
+      float rot_v[3];
+
+      /*! Velocity divergence */
+      float div_v;
+
+      /*! d\rho/dh */
+      float rho_dh;
+
+      /*! dP/dh */
+      float pressure_dh;
 
     } density;
 
@@ -90,8 +126,23 @@ struct part {
       /*! Time derivative of the smoothing length */
       float h_dt;
 
+      /*! Sound speed */
+      float soundspeed;
+      
+      /*! Balsara switch */
+      float balsara;
+
+      /*! F_{ij} -- not actually possible to set this. */
+      float f;
+
+      /*! P/\rho^2 -- not actually required for Pressure Energy but this is
+      needed for cross-compatibility with the unit tests */
+      float P_over_rho2;
+
     } force;
-  };
+
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Time-step length */
   timebin_t time_bin;

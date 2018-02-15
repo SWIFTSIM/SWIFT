@@ -49,7 +49,7 @@
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p) {
 
-  return gas_internal_energy_from_entropy(p->rho, p->entropy);
+  return p->u;
 }
 
 /**
@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_entropy(p->rho, p->entropy);
+  return gas_pressure_from_internal_energy(p->rho, p->u);
 }
 
 /**
@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part *restrict p) {
 
-  return p->entropy;
+  return gas_entropy_from_internal_energy(p->rho, p->u);
 }
 
 /**
@@ -107,6 +107,24 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
   return p->mass;
 }
 
+
+/**
+ * @brief Returns the velocities drifted to the current time of a particle.
+ *
+ * @param p The particle of interest
+ * @param xp The extended data of the particle.
+ * @param dt The time since the last kick.
+ * @param v (return) The velocities at the current time.
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
+    const struct part *restrict p, const struct xpart *xp, float dt,
+    float v[3]) {
+
+  v[0] = xp->v_full[0] + p->a_hydro[0] * dt;
+  v[1] = xp->v_full[1] + p->a_hydro[1] * dt;
+  v[2] = xp->v_full[2] + p->a_hydro[2] * dt;
+}
+
 /**
  * @brief Returns the time derivative of internal energy of a particle
  *
@@ -114,10 +132,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
+__attribute__((always_inline)) INLINE static float hydro_get_energy_dt(
     const struct part *restrict p) {
-  // TODO: Check if this is true.
-  return 0.f;
+  /* Since we track energy, we can forget about entropy conversions etc. */
+  return p->u_dt;
 }
 
 /**
@@ -128,10 +146,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
  * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
+__attribute__((always_inline)) INLINE static void hydro_set_energy_dt(
     struct part *restrict p, float du_dt) {
-  // TODO: Check if this is true.
-  p->energy_dt = 0.f;
+  /* Since we track energy, we can forget about entropy conversions etc. */
+  p->u_dt = du_dt;
 }
 
 /**
@@ -151,7 +169,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl =
       2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
-  return dt_cfl;;
+  /* U change limited */
+  const float dt_u_changes = 
+    (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt)
+                      : FLT_MAX;
+
+  return min(dt_u_changes, dt_cfl);
 }
 
 /**
@@ -176,11 +199,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
   p->rho = 0.f;
-  p->rho_bar = 0.f;
+  p->pressure_bar = 0.f;
+  p->pressure_bar_dh = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
-  p->density.rho_dh = 0.f;
-  p->density.pressure_dh = 0.f;
 
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
@@ -204,14 +226,33 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-
+  
   /* Final operation on the density (add self-contribution). */
   p->density.wcount += kernel_root;
-  p->density.wcount_dh -= hydro_dimension * kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root * h_inv;
+  p->rho += p->mass * kernel_root;
+  p->pressure_bar += p->mass * p->u * kernel_root;
+  p->pressure_bar_dh -=
+    p->mass * p->u * h_inv * (hydro_dimension * kernel_root);
 
   /* Finish the calculation by inserting the missing h-factors */
   p->density.wcount *= h_inv_dim;
-  p->density.wcount_dh *= h_inv_dim_plus_one;
+  p->density.wcount_dh *= h_inv_dim;
+  p->pressure_bar *= h_inv_dim;
+  p->pressure_bar_dh *= h_inv_dim;
+
+  /* Insert gamma factors */
+  p->pressure_bar *= hydro_gamma_minus_one;
+  p->pressure_bar_dh *= hydro_gamma_minus_one;
+
+  /* Finish calculation of the velocity curl components */
+  const float factor = h_inv_dim_plus_one / p->rho;
+  p->density.rot_v[0] *= factor;
+  p->density.rot_v[1] *= factor;
+  p->density.rot_v[2] *= factor;
+
+  /* Finish calculation of the velocity divergence */
+  p->density.div_v *= factor;
 }
 
 /**
@@ -231,6 +272,14 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Re-set problematic values */
   p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
   p->density.wcount_dh = 0.f;
+  p->pressure_bar =
+    kernel_root * p->mass * p->u * hydro_gamma_minus_one * h_inv_dim;
+  p->rho = kernel_root * p->mass * h_inv_dim;
+  p->pressure_bar_dh = 0;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -242,7 +291,40 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp) {}
+    struct part *restrict p, struct xpart *restrict xp) {
+  
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+
+  /* Compute the norm of the curl */
+  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                             p->density.rot_v[1] * p->density.rot_v[1] +
+                             p->density.rot_v[2] * p->density.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->density.div_v);
+
+  /* Compute the pressure */
+  const float pressure =
+    gas_pressure_from_internal_energy(p->rho, p->u);
+
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  /* Compute this `useful' property */
+  const float rho_inv = 1.f / p->rho;
+  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+
+  /* Compute the Balsara switch */
+  const float balsara =
+    abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
+
+
+  /* Update variables */
+  p->force.soundspeed = soundspeed;
+  p->force.balsara = balsara;
+  p->force.P_over_rho2 = P_over_rho2;
+  p->force.f = 1.f; /* This cannot be computed individually in Pressure-Energy */
+}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -262,6 +344,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
   /* Reset the time derivatives. */
   p->force.h_dt = 0.0f;
+  p->u_dt = 0.0f;
 
   /* Reset maximal signal velocity */
   p->force.v_sig = 0.0f;
@@ -281,6 +364,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[0] = xp->v_full[0];
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
+
+  p->u = xp->u_full;
 }
 
 /**
@@ -301,6 +386,28 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
     p->h *= expf(w1);
+
+  /* Predict density */
+
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f) {
+    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+    p->pressure_bar *= approx_expf(w2);
+  } else {
+    p->rho *= expf(w2);
+    p->pressure_bar *= expf(w2);
+  }
+
+  /* Predict the energy */
+  p->u += p->u_dt * dt;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -311,7 +418,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+  
+  p->force.h_dt *= p->h * hydro_dimension_inv;
+}
 
 /**
  * @brief Kick the additional variables
@@ -322,7 +432,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt) {}
+    struct part *restrict p, struct xpart *restrict xp, float dt) {
+
+  /* Do not decrease the energy (temperature) by more than a factor of 2*/
+  if (dt > 0. && p->u_dt * dt < -0.5f * p->u) {
+    p->u_dt = -0.5f * p->u / dt;
+  }
+  xp->u_full += p->u_dt * dt;
+
+  /* Compute the pressure */
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, xp->u_full);
+
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  /* Update the sound speed */
+  p->force.soundspeed = soundspeed;
+}
 
 /**
  *  @brief Converts hydro quantity of a particle at the start of a run
@@ -332,7 +459,22 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp) {}
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  p->entropy = hydro_get_entropy(p);
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  const float rho_inv = 1.f / p->rho;
+  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+
+  /* Update sound speed */
+  p->force.soundspeed = soundspeed;
+  p->force.P_over_rho2 = P_over_rho2;
+}
 
 /**
  * @brief Initialises the particles for the first time
@@ -347,12 +489,59 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->rho = 0.f;
+  p->pressure_bar = 0.f;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
 
+  xp->u_full = p->u;
+
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+}
+
+/* Begin actual helper functions for the specific hydro implementation.
+ *
+ * Here we define:
+ *
+ * hydro_h_term(*pi, *pj)
+ */
+
+/**
+ *  @brief Calculates the f_ij factors for a given particle i and j (i.e. the
+ *         'h-terms'.
+ *
+ *  Requires the relevant quantities to be known; here (in Pressure Energy) we
+ *  require: 
+ *    - pressure_bar_dh
+ *    - number density (wcount)
+ *    - internal_energy
+ *    - number density dh (wcount_dh)
+ *
+ *  @param pi The particle i
+ *  @param pj The particle j
+ *  @param hi The smoothing length of particle i
+ */
+__attribute__((always_inline)) INLINE static float hydro_h_term(
+    struct part *restrict pi, struct part *restrict pj, float hi) {
+  
+  /* First constrct h_i / (n_D n_i) */
+  
+  const float hi_over_density = hi / (hydro_dimension * pi->density.wcount);
+
+  /* Construct the 'bottom term' */
+  const float bottom_term = 1 + hi_over_density * pi->density.wcount_dh;
+
+  /* Construct the 'top term' */
+  const float top_term_top = pi->pressure_bar_dh * hi_over_density;
+  const float top_term_bottom =
+    hydro_gamma_minus_one * pj->mass * pj->u;
+
+  /* Putting it all together... */
+  const float f_ij = 1 - (top_term_top / (bottom_term * top_term_bottom));
+
+  return f_ij;
 }
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */

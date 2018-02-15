@@ -35,10 +35,12 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "h=%.3e, wcount=%.3f, wcount_dh=%.3e, time_bin=%d\n",
+      "h=%.3e, wcount=%.3f, wcount_dh=%.3e, time_bin=%d\n"
+      "p_bar=%.3e, p_bar_dh=%3.e, u=%3.e\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
-      p->h, p->density.wcount, p->density.wcount_dh, p->time_bin);
+      p->h, p->density.wcount, p->density.wcount_dh, p->time_bin,
+      p->pressure_bar, p->pressure_bar_dh, p->u);
 }
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H */
