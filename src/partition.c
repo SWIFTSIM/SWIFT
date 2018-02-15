@@ -808,7 +808,6 @@ static void repart_edge_parmetis(int bothweights, int timebins,
       repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
       if (repartition->celllist == NULL) error("Failed to allocate celllist");
       repartition->ncelllist = s->nr_cells;
-      message("Allocated a new celllist");
   }
 
   /* We need to rescale the weights into the range of an integer for
@@ -942,8 +941,6 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_tasks) {
 
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-
-  message("We arrive together...");
 
   if (reparttype->type == REPART_PARMETIS_VERTEX_EDGE_COSTS) {
     repart_edge_parmetis(0, 1, reparttype, nodeID, nr_nodes, s, tasks,
@@ -1319,11 +1316,12 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
  *
  */
 void partition_store_celllist(struct space *s, struct repartition *reparttype) {
-  if (reparttype->celllist != NULL) free(reparttype->celllist);
-  reparttype->celllist = malloc(sizeof(int) * s->nr_cells);
-  reparttype->ncelllist = s->nr_cells;
-  if (reparttype->celllist == NULL) error("Failed to allocate celllist");
-
+  if (reparttype->ncelllist != s->nr_cells) {
+    free(reparttype->celllist);
+    reparttype->celllist = malloc(sizeof(int) * s->nr_cells);
+    if (reparttype->celllist == NULL) error("Failed to allocate celllist");
+    reparttype->ncelllist = s->nr_cells;
+  }
   for (int i = 0; i < s->nr_cells; i++) {
     reparttype->celllist[i] = s->cells_top[i].nodeID;
   }
@@ -1348,10 +1346,9 @@ void partition_restore_celllist(struct space *s,
         error("Not all ranks are present in the restored partition");
       }
     } else {
-      error(
-          "Cannot apply the saved partition celllist as the number of"
-          "top-level cells (%d) is different to the saved number (%d)",
-          s->nr_cells, reparttype->ncelllist);
+      error("Cannot apply the saved partition celllist as the "
+            "number of top-level cells (%d) is different to the "
+            "saved number (%d)", s->nr_cells, reparttype->ncelllist);
     }
   }
 }
