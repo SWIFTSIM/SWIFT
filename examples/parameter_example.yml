@@ -86,15 +86,14 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     simple_metis # (Optional) The initial decomposition strategy: "grid",
-                                 #            "simple_metis", "weighted_metis", or "vectorized".
+  initial_type:     regions # (Optional) The initial decomposition strategy: "grid",
+                                 #            "regions", "balanced", or "vectorized".
   initial_grid_x:   10      # (Optional) Grid size if the "grid" strategy is chosen.
   initial_grid_y:   10      # ""
   initial_grid_z:   10      # ""
 
   repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "counts/none", "none/costs", "counts/costs",
-                            # "costs/time" or "none/time".
+                            # "none/none", "costs/costs", "none/costs" or "costs/time".
                             # These are vertex/edge weights with "costs" as task timing, "counts" as
                             # sum of particles and "time" as the expected time of the next updates
 

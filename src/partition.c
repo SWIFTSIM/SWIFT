@@ -59,18 +59,16 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "gridded cells", "vectorized point associated cells",
-    "ParMETIS particle weighted cells", "ParMETIS unweighted cells"};
+    "axis aligned grids of cells", "vectorized point associated cells",
+    "memory balanced, using ParMETIS particle weighted cells",
+    "similar sized regions, using ParMETIS unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "no",
     "ParMETIS edge and vertex task cost weights",
-    "ParMETIS particle count vertex weights",
     "ParMETIS task cost edge weights",
-    "ParMETIS particle count vertex and task cost edge weights",
     "ParMETIS vertex task costs and edge delta timebin weights",
-    "ParMETIS particle count vertex and edge delta timebin weights",
     "ParMETIS edge delta timebin weights",
 };
 
@@ -163,28 +161,29 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * weighted by the number of particles scheme. Note ParMETIS is optional.
  *
  * Repartitioning is based on ParMETIS and uses weights determined from the
- * estimated costs that a cells tasks will take, the counts of particles in a
- * cell or the relative time bins of the cells next update. These weight the
- * graph edges and vertices, or just the edges. XXX cut down on options.
+ * estimated costs that a cells tasks will take or the relative time bins of
+ * the cells next updates.
  */
 
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 /**
- * @brief Fill the xadj and adjncy arrays defining the graph of cells
- *        in a space. Note these are for a full METIS style graph, so the 
- *        xadj array will need to be changed as the graph is shared.
+ * @brief Fill the adjncy array defining the graph of cells in a space.
  *
  * See the ParMETIS and METIS manuals if you want to understand this
  * format. The cell graph consists of all nodes as vertices with edges as the
- * connections to all neighbours, so we have 26 per vertex.
+ * connections to all neighbours, so we have 26 per vertex. Note you will
+ * also need an xadj array, for a single rank that would be:
+ *
+ *   xadj[0] = 0;
+ *   for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+ *
+ * but each rank needs a different xadj.
  *
  * @param s the space of cells.
  * @param adjncy the adjncy array to fill, must be of size 26 * the number of
  *               cells in the space.
- * @param xadj the xadj array to fill, must be of size number of cells in
- *             space + 1. NULL for not used.
  */
-static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
+static void graph_init_adjncy(struct space *s, idx_t *adjncy) {
 
   /* Loop over all cells in the space. */
   int cid = 0;
@@ -226,12 +225,6 @@ static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
         cid++;
       }
     }
-  }
-
-  /* If given set a serial xadj array. */
-  if (xadj != NULL) {
-    xadj[0] = 0;
-    for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
   }
 }
 #endif
@@ -410,7 +403,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. */
-    graph_init_metis(s, full_adjncy, NULL);
+    graph_init_adjncy(s, full_adjncy);
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0 */
@@ -641,7 +634,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  * @brief Repartition the cells amongst the nodes using weights of
  *        various kinds.
  *
- * @param partweights whether particle counts will be used as vertex weights.
  * @param bothweights whether vertex and edge weights will be used, otherwise
  *                    only edge weights will be used.
  * @param timebins use timebins as edge weights.
@@ -652,9 +644,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-static void repart_edge_parmetis(int partweights, int bothweights,
-                                 int timebins, struct repartition *repartition,
-                                 int nodeID, int nr_nodes, struct space *s,
+static void repart_edge_parmetis(int bothweights, int timebins,
+                                 struct repartition *repartition, int nodeID,
+                                 int nr_nodes, struct space *s,
                                  struct task *tasks, int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
@@ -667,7 +659,7 @@ static void repart_edge_parmetis(int partweights, int bothweights,
   idx_t *inds;
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
-  graph_init_metis(s, inds, NULL);
+  graph_init_adjncy(s, inds);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -680,9 +672,6 @@ static void repart_edge_parmetis(int partweights, int bothweights,
   if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
     error("Failed to allocate edge weights arrays.");
   bzero(weights_e, sizeof(double) * 26 * nr_cells);
-
-  /* Generate task weights for vertices. */
-  int taskvweights = (bothweights && !partweights);
 
   /* Loop over the tasks... */
   for (int j = 0; j < nr_tasks; j++) {
@@ -718,7 +707,7 @@ static void repart_edge_parmetis(int partweights, int bothweights,
         t->type == task_type_grav_long_range) {
 
       /* Particle updates add only to vertex weight. */
-      if (taskvweights) weights_v[cid] += w;
+      if (bothweights) weights_v[cid] += w;
     }
 
     /* Self interaction? */
@@ -726,7 +715,7 @@ static void repart_edge_parmetis(int partweights, int bothweights,
              (t->type == task_type_sub_self && cj == NULL &&
               ci->nodeID == nodeID)) {
       /* Self interactions add only to vertex weight. */
-      if (taskvweights) weights_v[cid] += w;
+      if (bothweights) weights_v[cid] += w;
 
     }
 
@@ -735,7 +724,7 @@ static void repart_edge_parmetis(int partweights, int bothweights,
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
-        if (taskvweights) weights_v[cid] += w;
+        if (bothweights) weights_v[cid] += w;
 
       }
 
@@ -745,7 +734,7 @@ static void repart_edge_parmetis(int partweights, int bothweights,
         int cjd = cj - cells;
 
         /* Local cells add weight to vertices. */
-        if (taskvweights && ci->nodeID == nodeID) {
+        if (bothweights && ci->nodeID == nodeID) {
           weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
@@ -794,9 +783,6 @@ static void repart_edge_parmetis(int partweights, int bothweights,
       }
     }
   }
-
-  /* Re-calculate the vertices if using particle counts. */
-  if (partweights && bothweights) accumulate_counts(s, weights_v);
 
   /* Merge the weights arrays across all nodes. */
   int res;
@@ -938,54 +924,6 @@ static void repart_edge_parmetis(int partweights, int bothweights,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-/**
- * @brief Repartition the cells amongst the nodes using vertex weights
- *
- * @param repartition our repartition struct.
- * @param s The space containing the local cells.
- * @param nodeID our MPI node id.
- * @param nr_nodes number of MPI nodes.
- */
-static void repart_vertex_parmetis(struct repartition *repartition,
-                                   struct space *s, int nodeID, int nr_nodes) {
-
-  /* Use particle counts as vertex weights. */
-  /* Space for particles per cell counts, which will be used as weights. */
-  double *weights = NULL;
-  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-    error("Failed to allocate weights buffer.");
-
-  /* Check each particle and accumulate the counts per cell. */
-  accumulate_counts(s, weights);
-
-  /* Get all the counts from all the nodes. */
-  int res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE,
-                          MPI_SUM, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to allreduce particle cell weights.");
-
-  /* Space for the partition celllist, if needed. */
-  int refine = 1;
-  if (repartition->ncelllist != s->nr_cells) {
-      refine = 0;
-      free(repartition->celllist);
-      repartition->ncelllist = 0;
-      repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-      if (repartition->celllist == NULL) error("Failed to allocate celllist");
-      repartition->ncelllist = s->nr_cells;
-      message("Allocated new celllist");
-  }
-  pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                repartition->celllist);
-
-  /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
-
-  free(weights);
-}
-#endif
-
 /**
  * @brief Repartition the space using the given repartition type.
  *
@@ -1007,26 +945,17 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
   message("We arrive together...");
 
-  if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_COSTS) {
-    repart_edge_parmetis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
+  if (reparttype->type == REPART_PARMETIS_VERTEX_EDGE_COSTS) {
+    repart_edge_parmetis(0, 1, reparttype, nodeID, nr_nodes, s, tasks,
+                         nr_tasks);
 
-  } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
-    repart_edge_parmetis(0, 0, 0, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
+  } else if (reparttype->type == REPART_PARMETIS_EDGE_COSTS) {
+    repart_edge_parmetis(0, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                         nr_tasks);
 
-  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS_EDGE_COSTS) {
-    repart_edge_parmetis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
-
-  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS) {
-    repart_edge_parmetis(0, 1, 1, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
-
-  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS) {
-    repart_edge_parmetis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
-
-  } else if (reparttype->type == REPART_METIS_EDGE_TIMEBINS) {
-    repart_edge_parmetis(0, 0, 1, reparttype, nodeID, nr_nodes, s, tasks, nr_tasks);
-
-  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
-    repart_vertex_parmetis(reparttype, s, nodeID, nr_nodes);
+  } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS_TIMEBINS) {
+    repart_edge_parmetis(0, 1, reparttype, nodeID, nr_nodes, s, tasks,
+                         nr_tasks);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1092,8 +1021,8 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
-  } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
-             initial_partition->type == INITPART_METIS_NOWEIGHT) {
+  } else if (initial_partition->type == INITPART_PARMETIS_WEIGHT ||
+             initial_partition->type == INITPART_PARMETIS_NOWEIGHT) {
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
     /* Simple k-way partition selected by ParMETIS using cell particle counts
      * as weights or not. Should be best when starting with a inhomogeneous
@@ -1103,7 +1032,7 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Space for particles per cell counts, which will be used as weights or
      * not. */
     double *weights = NULL;
-    if (initial_partition->type == INITPART_METIS_WEIGHT) {
+    if (initial_partition->type == INITPART_PARMETIS_WEIGHT) {
       if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(double) * s->nr_cells);
@@ -1184,7 +1113,7 @@ void partition_init(struct partition *partition,
 /* Defaults make use of METIS if available */
 #ifdef HAVE_PARMETIS
   const char *default_repart = "costs/costs";
-  const char *default_part = "simple_metis";
+  const char *default_part = "regions";
 #else
   const char *default_repart = "none/none";
   const char *default_part = "grid";
@@ -1209,23 +1138,21 @@ void partition_init(struct partition *partition,
       partition->type = INITPART_VECTORIZE;
       break;
 #ifdef HAVE_PARMETIS
-    case 's':
-      partition->type = INITPART_METIS_NOWEIGHT;
+    case 'r':
+      partition->type = INITPART_PARMETIS_NOWEIGHT;
       break;
-    case 'w':
-      partition->type = INITPART_METIS_WEIGHT;
+    case 'b':
+      partition->type = INITPART_PARMETIS_WEIGHT;
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error(
-          "Permitted values are: 'grid', 'simple_metis', 'weighted_metis'"
-          " or 'vectorized'");
+      error( "Permitted values are: 'grid', 'regions', 'balanced' or "
+             "'vectorized'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error(
-          "Permitted values are: 'grid' or 'vectorized' when compiled "
-          "without METIS.");
+      error( "Permitted values are: 'grid' or 'vectorized' when compiled "
+             "without ParMETIS.");
 #endif
   }
 
@@ -1248,35 +1175,23 @@ void partition_init(struct partition *partition,
 
 #ifdef HAVE_PARMETIS
   } else if (strcmp("costs/costs", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_COSTS;
-
-  } else if (strcmp("counts/none", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COUNTS;
+    repartition->type = REPART_PARMETIS_VERTEX_EDGE_COSTS;
 
   } else if (strcmp("none/costs", part_type) == 0) {
-    repartition->type = REPART_METIS_EDGE_COSTS;
-
-  } else if (strcmp("counts/costs", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_COSTS;
+    repartition->type = REPART_PARMETIS_EDGE_COSTS;
 
   } else if (strcmp("costs/time", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS;
+    repartition->type = REPART_PARMETIS_VERTEX_COSTS_TIMEBINS;
 
-  } else if (strcmp("counts/time", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS;
-
-  } else if (strcmp("none/time", part_type) == 0) {
-    repartition->type = REPART_METIS_EDGE_TIMEBINS;
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none/none', 'costs/costs',"
-        "'counts/none', 'none/costs', 'counts/costs', "
-        "'costs/time', 'counts/time' or 'none/time'");
+        "Permitted values are: 'none/none', 'costs/costs', 'none/costs' "
+        "or 'costs/time'");
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
-    error("Permitted values are: 'none/none' when compiled without METIS.");
+    error("Permitted values are: 'none/none' when compiled without ParMETIS.");
 #endif
   }
 
