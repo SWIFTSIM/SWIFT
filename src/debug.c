@@ -394,16 +394,16 @@ void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
   fclose(file);
 }
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 
 /**
- * @brief Dump the METIS graph in standard format, simple format and weights
- * only, to a file.
+ * @brief Dump the ParMETIS graph in standard METIS format, simple format and
+ * weights only, to a file.
  *
- * The standard format output can be read into the METIS
- * command-line tools. The simple format is just the cell connectivity (this
- * should not change between calls).  The weights format is the standard one,
- * minus the cell connectivity.
+ * The standard format output can be read into the METIS and some ParMETIS
+ * command-line tools and tests. The simple format is just the cell
+ * connectivity (this should not change between calls).  The weights format is
+ * the standard one, minus the cell connectivity.
  *
  * The output filenames are generated from the prefix and the sequence number
  * of calls. So the first is called {prefix}_std_001.dat,
@@ -419,9 +419,10 @@ void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
  * @param vertexsizes size of vertices
  * @param edgeweights weights of edges
  */
-void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
-                    idx_t *cellconruns, idx_t *cellcon, idx_t *vertexweights,
-                    idx_t *vertexsizes, idx_t *edgeweights) {
+void dumpParMETISGraph(const char *prefix, idx_t nvertices,
+                       idx_t nvertexweights, idx_t *cellconruns,
+                       idx_t *cellcon, idx_t *vertexweights,
+                       idx_t *vertexsizes, idx_t *edgeweights) {
   FILE *stdfile = NULL;
   FILE *simplefile = NULL;
   FILE *weightfile = NULL;
@@ -532,7 +533,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 }
 
-#endif /* HAVE_METIS */
+#endif /* HAVE_PARMETIS */
 
 #ifdef HAVE_MPI
 /**

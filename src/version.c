@@ -24,8 +24,8 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-#ifdef HAVE_METIS
-#include <metis.h>
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
 #endif
 #endif
 
@@ -300,16 +300,16 @@ const char *hdf5_version(void) {
 }
 
 /**
- * @brief return the METIS version used when SWIFT was built.
+ * @brief return the ParMETIS version used when SWIFT was built.
  *
- * @result description of the METIS version.
+ * @result description of the ParMETIS version.
  */
-const char *metis_version(void) {
+const char *parmetis_version(void) {
 
   static char version[256] = {0};
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-  sprintf(version, "%i.%i.%i", METIS_VER_MAJOR, METIS_VER_MINOR,
-          METIS_VER_SUBMINOR);
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+  sprintf(version, "%i.%i.%i", PARMETIS_MAJOR_VERSION, PARMETIS_MINOR_VERSION,
+          PARMETIS_SUBMINOR_VERSION);
 #else
   sprintf(version, "Unknown version");
 #endif
@@ -378,8 +378,8 @@ void greetings(void) {
 #endif
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());
-#ifdef HAVE_METIS
-  printf(" METIS library version: %s\n", metis_version());
+#ifdef HAVE_PARMETIS
+  printf(" ParMETIS library version: %s\n", parmetis_version());
 #endif
 #endif
   printf("\n");

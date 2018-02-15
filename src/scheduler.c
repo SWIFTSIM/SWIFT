@@ -1289,7 +1289,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = 0;
         break;
     }
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
     t->cost = cost;
 #endif
     t->weight += cost;

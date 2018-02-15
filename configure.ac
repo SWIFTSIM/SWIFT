@@ -426,70 +426,64 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
-# Check for METIS or PARMETIS.
-have_metis="no"
+# Check for PARMETIS.
 have_parmetis="no"
-AC_ARG_WITH([metis],
-    [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis or parmetis is installed @<:@yes/no@:>@]
+AC_ARG_WITH([parmetis],
+    [AS_HELP_STRING([--with-parmetis=PATH],
+       [root directory where ParMETIS is installed @<:@yes/no@:>@]
     )],
     [],
-    [with_metis="no"]
+    [with_parmetis="no"]
 )
-if test "x$with_metis" != "xno"; then
+
+# Don't proceed with old --with-metis option.
+used_metis="no"
+AC_ARG_WITH([metis],
+    [AS_HELP_STRING([--with-metis],
+       [no longer supported, use --with-parmetis]
+    )],
+    [used_metis="yes"],
+    []
+)
+if test "x$used_metis" != "xno"; then
+   AC_MSG_ERROR([Using unsupported --with-metis option, use --with-parmetis])
+fi
+
+if test "x$with_parmetis" != "xno"; then
 
 # Check if we have ParMETIS.
-   if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis/lib -lparmetis" 
-      METIS_INCS="-I$with_metis/include"
+   if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+      PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis"
+      PARMETIS_INCS="-I$with_parmetis/include"
    else
-      METIS_LIBS="-lparmetis"
-      METIS_INCS=""
+      PARMETIS_LIBS="-lparmetis"
+      PARMETIS_INCS=""
    fi
-   AC_CHECK_LIB([metis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
-                [have_parmetis="no"], $METIS_LIBS)
+   AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                [have_parmetis="no"], $PARMETIS_LIBS)
    if test "$have_parmetis" == "no"; then
 
 # A build may use an external METIS library, check for that.
 
-      if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-         METIS_LIBS="-L$with_metis/lib -lparmetis -lmetis" 
-         METIS_INCS="-I$with_metis/include"
+      if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+         PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis -lmetis"
+         PARMETIS_INCS="-I$with_parmetis/include"
       else
-         METIS_LIBS="-lparmetis -lmetis"
-         METIS_INCS=""
+         PARMETIS_LIBS="-lparmetis -lmetis"
+         PARMETIS_INCS=""
       fi
-      AC_CHECK_LIB([metis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
-                   [have_parmetis="no"], $METIS_LIBS)
+      AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                   [have_parmetis="no"], $PARMETIS_LIBS)
 
    fi
-   if test "$have_parmetis" == "no"; then
-
-# Finally check for serial METIS.
-      if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-         METIS_LIBS="-L$with_metis/lib -lmetis"
-         METIS_INCS="-I$with_metis/include"
-      else
-         METIS_LIBS="-lmetis"
-         METIS_INCS=""
-      fi
-      AC_CHECK_LIB([metis],[METIS_PartGraphKway],[have_metis="yes"],
-                   [have_metis="no"], $METIS_LIBS)
-
-      if test "$have_metis" == "yes"; then
-         AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.])
-      else
-         AC_MSG_ERROR(something is wrong with the metis library!)
-      fi
-   else
-      AC_DEFINE([HAVE_METIS],1,[The METIS library appears to be present.])
-      AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is also present.])
+   if test "$have_parmetis" == "yes"; then
+      AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is present.])
    fi
 fi
 
-AC_SUBST([METIS_LIBS])
-AC_SUBST([METIS_INCS])
-AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+AC_SUBST([PARMETIS_LIBS])
+AC_SUBST([PARMETIS_INCS])
+AM_CONDITIONAL([HAVEPARMETIS],[test -n "$PARMETIS_LIBS"])
 
 # Check for grackle.
 have_grackle="no"
@@ -1078,7 +1072,6 @@ AC_MSG_RESULT([
    MPI enabled      : $enable_mpi
    HDF5 enabled     : $with_hdf5
     - parallel      : $have_parallel_hdf5
-   Metis enabled    : $have_metis
    ParMETIS enabled : $have_parmetis
    FFTW3 enabled    : $have_fftw3
    libNUMA enabled  : $have_numa
