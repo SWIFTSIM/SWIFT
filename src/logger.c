@@ -51,6 +51,36 @@ const unsigned int logger_data_size[logger_data_count] = {
   1,
 };
 
+/**
+ * @brief write chunk header
+ *
+ * @param buff The writing buffer
+ * @param mask The mask to write
+ * @param offset The old offset
+ * @param offset_new The new offset
+ *
+ * @return updated buff
+ */
+__attribute__((always_inline)) INLINE static char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
+  memcpy(buff, mask, logger_size_mask);
+  buff += logger_size_mask;
+  
+  size_t diff_offset = offset_new - *offset;
+  memcpy(buff, &diff_offset, logger_size_offset);
+  buff += logger_size_offset;
+
+  return buff;
+}
+
+
+/**
+ * @brief write a data to the file
+ *
+ * @param d #dump file
+ * @param offset offset at which to write
+ * @param size number of bytes to write
+ * @param p pointer to the data
+ */
 void logger_write_data(struct dump *d, size_t *offset, const size_t size, void *const p)
 {
   char *buff = dump_get(d, size, offset);
@@ -58,7 +88,16 @@ void logger_write_data(struct dump *d, size_t *offset, const size_t size, void *
 }
 
 /**
- * WARNING: name should be at max of size log->name
+ * @brief write a general data to the file
+ *
+ * write data in the following order: name, data type, data
+ *
+ * @param d #dump file
+ * @param log #logger_const file format informations
+ * @param offset offset at which to write (moved by the data size)
+ * @param p pointer to the data
+ * @param name data name (should be smaller than log->name)
+ * @param data_type #logger_datatype to write
  */
 void logger_write_general_data(struct dump *d, struct logger_const *log, size_t *offset,
 			       void *p, char* name, size_t data_type)
@@ -271,11 +310,15 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
   *offset = offset_new;
 }
 
+/**
+ * @brief write a timestamp
+ *
+ * @param timestamp time to write
+ * @param offset In: previous offset, out: offset of this chunk
+ * @param dump #dump file
+ */
 void logger_log_timestamp(integertime_t timestamp, size_t *offset,
                           struct dump *dump) {
-#ifdef SWIFT_DEBUG_CHECKS
-  message("writing timestamp: %llu", timestamp);
-#endif
   /* Start by computing the size of the message. */
   const int size = logger_size(logger_mask_timestamp);
 
@@ -295,6 +338,12 @@ void logger_log_timestamp(integertime_t timestamp, size_t *offset,
 }
 
 
+/**
+ * @brief ensure that the input parameter logger size is large enough
+ *
+ * @param total_nr_nparts total number of particle
+ * @param logger_size requested file size upate
+ */
 void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
   size_t limit, i;
   struct logger_const log_const;
@@ -304,7 +353,8 @@ void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
   limit = log_const.offset + log_const.mask;
 
   for(i=0; i < log_const.nber_mask; i++) {
-    limit += log_const.masks_size[i];
+    if (log_const.masks[i] != logger_mask_timestamp)
+      limit += log_const.masks_size[i];
   }
 
   limit *= total_nr_parts;
@@ -397,6 +447,11 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   free(name);
 }
 
+/**
+ * @brief initialize the #logger_const with the format informations
+ *
+ * @param log_const #logger_const to initialize
+ */
 void logger_const_init(struct logger_const* log_const) {
   log_const->name = 20;
   log_const->offset = 7;
@@ -471,6 +526,11 @@ void logger_const_init(struct logger_const* log_const) {
 
 }
 
+/**
+ * @brief free the memory allocated when initializing the #logger_const
+ *
+ * @param log_const #logger_const to clean
+ */
 void logger_const_free(struct logger_const* log_const) {
   free(log_const->masks);
   free(log_const->masks_name);

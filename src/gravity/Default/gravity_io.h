@@ -117,32 +117,4 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                  UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
 }
 
-
-/**
- * @brief Specifies which g-particle fields to write to a dataset
- *
- * @param gparts The g-particle array.
- * @param list The list of i/o properties to write.
- * @param num_fields The number of i/o fields to write.
- * 
- * In this version, we only want the ids and the offset.
- */
-void darkmatter_write_index(struct gpart* gparts, struct io_props* list,
-			    int* num_fields) {
-
-#ifdef WITH_LOGGER
-  /* Say how much we want to read */
-  *num_fields = 2;
-
-  /* List what we want to read */
-  list[0] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-
-  list[1] = io_make_output_field("Offset", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, gparts, last_offset);
-#else
-  error("Cannot write index without logger");
-#endif
-}
-
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

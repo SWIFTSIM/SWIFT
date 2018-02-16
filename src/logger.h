@@ -78,16 +78,19 @@ struct dump;
 #define logger_mask_consts 64
 #define logger_mask_timestamp 128
 
+#define logger_size_mask 1 // size of the mask
+#define logger_size_offset 7 // size of the offset
+
 /* header constants
  * Thoses are definitions from the format and therefore should not be changed!
  * Size in bytes
  */
 #define LOGGER_VERSION_SIZE 20 // size of the version message
-#define LOGGER_NAME_SIZE 2 // size of the labels size
-#define LOGGER_MASK_SIZE 1 // size of the masks size
-#define LOGGER_NBER_SIZE 1 // size of the number of elements size
+#define LOGGER_NAME_SIZE 2 // size of the labels size information
+#define LOGGER_MASK_SIZE 1 // size of the masks size information
+#define LOGGER_NBER_SIZE 1 // size of the number of elements information
 #define LOGGER_OFFSET_SIZE 1// size of the offset size information
-#define LOGGER_DATATYPE_SIZE 1
+#define LOGGER_DATATYPE_SIZE 1 // size of the data type information
 
 extern char LOGGER_VERSION[LOGGER_VERSION_SIZE];
 
@@ -131,66 +134,6 @@ void logger_write_file_header(struct dump *dump, struct engine* e);
 void logger_const_init(struct logger_const* log_const);
 void logger_const_free(struct logger_const* log_const);
 void logger_ensure_size(size_t total_nr_parts, size_t logger_size);
-
-/**
- * @brief write chunk header
- *
- * @param buff The writing buffer
- * @param maks The mask to write
- * @param offset The old offset
- * @param offset_new The new offset
- *
- * @return updated buff
- */
-__attribute__((always_inline)) INLINE static char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
-  memcpy(buff, mask, 1);
-  buff += 1;
-  
-  size_t diff_offset = offset_new - *offset;
-  memcpy(buff, &diff_offset, 7);
-  buff += 7;
-
-  return buff;
-}
-
-/**
- * @brief Should this particle write its data now ?
- *
- * @param xp The #xpart.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #part should write, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int xpart_should_write(
-    const struct xpart *xp, const struct engine *e) {
-
-  return (xp->last_output > e->logger_max_steps);  
-}
-
-/**
- * @brief Should this particle write its data now ?
- *
- * @param p The #gpart.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #gpart should write, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int gpart_should_write(
-    const struct gpart *gp, const struct engine *e) {
-
-  return (gp->last_output > e->logger_max_steps);  
-}
-
-/**
- * @brief Should this particle write its data now ?
- *
- * @param p The #spart.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #spart should write, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int spart_should_write(
-    const struct spart *sp, const struct engine *e) {
-
-  return (sp->last_output > e->logger_max_steps);  
-}
 
 #endif /* WITH_LOGGER */
 

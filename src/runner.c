@@ -2710,9 +2710,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
-  struct gpart *restrict gparts = c->gparts;
   const int count = c->count;
-  const int gcount = c->gcount;
 
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e))
@@ -2748,32 +2746,6 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 	else
 	  /* Update counter */
 	  xp->last_output += 1;
-      }
-    }
-
-    /* Loop over the gparts in this cell. */
-    for (int k = 0; k < gcount; k++) {
-
-      /* Get a handle on the part. */
-      struct gpart *restrict gp = &gparts[k];
-
-      /* If particle needs to be kicked */
-      if (gpart_is_starting(gp, e)) {
-
-	if (gpart_should_write(gp, e))
-	  {
-	    /* Write particle */
-	    logger_log_gpart(gp, logger_mask_x | logger_mask_v | logger_mask_a |
-			     logger_mask_h | logger_mask_consts,
-			     &gp->last_offset, e->logger_dump);
-	    /* Set counter back to zero */
-	    gp->last_output = 0;
-	  }
-	else
-	  {
-	    /* Update counter */
-	    gp->last_output += 1;
-	  }
       }
     }
 

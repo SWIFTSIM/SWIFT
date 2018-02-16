@@ -35,6 +35,7 @@
 #include "approx_math.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "engine.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -776,5 +777,20 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->entropy = u_init;
 }
+
+#ifdef WITH_LOGGER
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param xp The #xpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int xpart_should_write(
+    const struct xpart *xp, const struct engine *e) {
+
+  return (xp->last_output > e->logger_max_steps);  
+}
+#endif
 
 #endif /* SWIFT_GADGET2_HYDRO_H */

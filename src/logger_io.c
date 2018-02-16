@@ -838,7 +838,7 @@ void write_index_single(struct engine* e, const char* baseName,
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
+  //struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   //struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
@@ -1009,20 +1009,9 @@ void write_index_single(struct engine* e, const char* baseName,
         break;
 
       case swift_type_dark_matter:
-        /* Allocate temporary array */
-        if (posix_memalign((void*)&dmparts, gpart_align,
-                           Ndm * sizeof(struct gpart)) != 0)
-          error("Error while allocating temporart memory for DM particles");
-        bzero(dmparts, Ndm * sizeof(struct gpart));
-
-        /* Collect the DM particles from gpart */
-        io_collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
-
-        /* Write DM particles */
-        N = Ndm;
-        darkmatter_write_index(dmparts, list, &num_fields);
-        break;
-
+	error("TODO");
+	break;
+	  
       case swift_type_star:
         N = Nstars;
 	error("TODO");
