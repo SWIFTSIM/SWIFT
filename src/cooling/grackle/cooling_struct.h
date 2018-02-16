@@ -58,7 +58,7 @@ struct cooling_xpart_data {
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
 
-  /* here all fractions are mass fraction */
+/* here all fractions are mass fraction */
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
   float HI_frac;
@@ -79,12 +79,12 @@ struct cooling_xpart_data {
   float DI_frac;
   float DII_frac;
   float HDI_frac;
-#endif // MODE >= 3
+#endif  // MODE >= 3
 
-#endif // MODE >= 2
+#endif  // MODE >= 2
 
-#endif // MODE >= 1
-  
+#endif  // MODE >= 1
+
   /* metal cooling = 1 */
   float metal_frac;
 };
