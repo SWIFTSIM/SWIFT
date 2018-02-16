@@ -368,12 +368,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     error("Failed to allocate adjncy array.");
 
   idx_t *weights_v = NULL;
-  if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
-    error("Failed to allocate vertex weights array");
+  if (vertexw != NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+      error("Failed to allocate vertex weights array");
 
   idx_t *weights_e = NULL;
-  if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * nverts)) == NULL)
-    error("Failed to allocate edge weights array");
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * nverts)) == NULL)
+      error("Failed to allocate edge weights array");
 
   idx_t *regionid = NULL;
   if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
@@ -390,11 +392,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate adjncy array.");
     idx_t *full_weights_v = NULL;
-    if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate vertex weights array");
+    if (weights_v != NULL)
+      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate vertex weights array");
     idx_t *full_weights_e = NULL;
-    if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate edge weights array");
+    if (weights_e != NULL)
+      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate edge weights array");
 
     idx_t *full_regionid = NULL;
     if (refine) {
@@ -445,9 +449,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       }
       if (failed > 0) error("%d vertex weights are out of range", failed);
 #endif
-    } else {
-      /* Use unit weights. */
-      for (int k = 0; k < ncells; k++) full_weights_v[k] = 1;
     }
 
     /* Init the edges weights array. */
@@ -476,9 +477,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       }
       if (failed > 0) error("%d edge weights are out of range", failed);
 #endif
-    } else {
-      /* Use unit weights. */
-      for (int k = 0; k < 26 * ncells; k++) full_weights_e[k] = 1;
     }
 
     /* Send ranges to the other ranks and keep our own. XXX async version XXX */
@@ -491,8 +489,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (rank == 0) {
         memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
         memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nvt * 26);
-        memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nvt * 26);
-        memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
+        if (weights_e != NULL)
+          memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nvt * 26);
+        if (weights_v != NULL)
+          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
         if (refine)
           memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
@@ -500,9 +500,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         res = MPI_Send(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm);
         if (res == MPI_SUCCESS)
           res = MPI_Send(&full_adjncy[j2], nvt * 26, IDX_T, rank, 1, comm);
-        if (res == MPI_SUCCESS)
+        if (res == MPI_SUCCESS && weights_e != NULL)
           res = MPI_Send(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm);
-        if (res == MPI_SUCCESS)
+        if (res == MPI_SUCCESS && weights_v != NULL)
           res = MPI_Send(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Send(full_regionid, nvt, IDX_T, rank, 4, comm);
@@ -515,8 +515,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Clean up. */
-    free(full_weights_v);
-    free(full_weights_e);
+    if (weights_v != NULL) free(full_weights_v);
+    if (weights_e != NULL) free(full_weights_e);
     free(full_xadj);
     free(full_adjncy);
     if (refine) free(full_regionid);
@@ -527,9 +527,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     res = MPI_Recv(xadj, nverts + 1, IDX_T, 0, 0, comm, &status);
     if (res == MPI_SUCCESS)
       res = MPI_Recv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &status);
-    if (res == MPI_SUCCESS)
+    if (res == MPI_SUCCESS && weights_e != NULL)
       res = MPI_Recv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &status);
-    if (res == MPI_SUCCESS)
+    if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Recv(weights_v, nverts, IDX_T, 0, 3, comm, &status);
     if (refine && res == MPI_SUCCESS)
       res +=MPI_Recv((void *)regionid, nverts, IDX_T, 0, 4, comm, &status);
@@ -549,7 +549,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   options[1] = 0;
   options[2] = -1;
   idx_t nparts = nregions;
-  idx_t wgtflag = 3;
+  idx_t wgtflag = 0;
+  if (edgew != NULL) wgtflag += 1;
+  if (vertexw != NULL) wgtflag += 2;
   idx_t numflag = 0;
   idx_t ncon = 1;
   idx_t edgecut;
@@ -621,8 +623,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
-  free(weights_v);
-  free(weights_e);
+  if (weights_v != NULL) free(weights_v);
+  if (weights_e != NULL) free(weights_e);
   free(xadj);
   free(adjncy);
   free(regionid);
