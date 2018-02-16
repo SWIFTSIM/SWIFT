@@ -420,9 +420,9 @@ void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
  * @param edgeweights weights of edges
  */
 void dumpParMETISGraph(const char *prefix, idx_t nvertices,
-                       idx_t nvertexweights, idx_t *cellconruns,
-                       idx_t *cellcon, idx_t *vertexweights,
-                       idx_t *vertexsizes, idx_t *edgeweights) {
+                       idx_t nvertexweights, idx_t *cellconruns, idx_t *cellcon,
+                       idx_t *vertexweights, idx_t *vertexsizes,
+                       idx_t *edgeweights) {
   FILE *stdfile = NULL;
   FILE *simplefile = NULL;
   FILE *weightfile = NULL;

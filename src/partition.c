@@ -347,13 +347,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       k -= l;
     }
     res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to broadcast vtxdist.");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
 
   } else {
     res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to broadcast vtxdist.");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
   }
 
   /* Number of cells on this node and space for the expected arrays. */
@@ -386,7 +384,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Space for largest lists. */
     idx_t *full_xadj = NULL;
-    if ((full_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
+    if ((full_xadj =
+             (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
     idx_t *full_adjncy = NULL;
     if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
@@ -397,7 +396,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
+          NULL)
         error("Failed to allocate edge weights array");
 
     idx_t *full_regionid = NULL;
@@ -443,7 +443,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (full_weights_v[k] < 1) {
-          message("Used vertex weight  out of range: %" PRIDX, full_weights_v[k]);
+          message("Used vertex weight  out of range: %" PRIDX,
+                  full_weights_v[k]);
           failed++;
         }
       }
@@ -493,8 +494,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nvt * 26);
         if (weights_v != NULL)
           memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
-        if (refine)
-          memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
+        if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
         res = MPI_Send(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm);
@@ -506,8 +506,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Send(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Send(full_regionid, nvt, IDX_T, rank, 4, comm);
-        if (res != MPI_SUCCESS)
-          mpi_error(res, "Failed to send graph data");
+        if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
       }
       j1 += nvt + 1;
       j2 += nvt * 26;
@@ -532,9 +531,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Recv(weights_v, nverts, IDX_T, 0, 3, comm, &status);
     if (refine && res == MPI_SUCCESS)
-      res +=MPI_Recv((void *)regionid, nverts, IDX_T, 0, 4, comm, &status);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to receive graph data");
+      res += MPI_Recv((void *)regionid, nverts, IDX_T, 0, 4, comm, &status);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
   }
 
   /* Set up the tpwgts array. This is just 1/nregions. */
@@ -579,7 +577,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                              &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
                              options, &edgecut, regionid, &comm) != METIS_OK)
       error("Call to ParMETIS_V3_PartKway failed.");
-
   }
 
   /* Gather the regionids from the other ranks. XXX async version XXX */
@@ -589,18 +586,17 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
 
       if (rank == 0) {
-          /* Locals. */
-          remoteids = regionid;
+        /* Locals. */
+        remoteids = regionid;
       } else {
-          remoteids = (idx_t *)malloc(sizeof(idx_t) * nvt);
-          res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm,
-                         &status);
-          if (res != MPI_SUCCESS)
-            mpi_error(res, "Failed to receive new regionids");
+        remoteids = (idx_t *)malloc(sizeof(idx_t) * nvt);
+        res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm, &status);
+        if (res != MPI_SUCCESS)
+          mpi_error(res, "Failed to receive new regionids");
       }
 
       for (int k = 0; k < nvt; k++) {
-          celllist[j + k] = remoteids[k];
+        celllist[j + k] = remoteids[k];
       }
       j += nvt;
       if (rank != 0) free(remoteids);
@@ -612,15 +608,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
 
   } else {
-    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
-                   1, comm);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to send new regionids");
+    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0, 1,
+                   comm);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
   }
   /* And everyone gets a copy? */
   res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to broadcast new celllist");
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
   if (weights_v != NULL) free(weights_v);
@@ -796,20 +790,18 @@ static void repart_edge_parmetis(int bothweights, int timebins,
   }
 
   res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                   26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
-                   MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to allreduce edge weights.");
+                   26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
 
   /* Allocate cell list for the partition. If not already done. */
   int refine = 1;
   if (repartition->ncelllist != s->nr_cells) {
-      refine = 0;
-      free(repartition->celllist);
-      repartition->ncelllist = 0;
-      repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-      if (repartition->celllist == NULL) error("Failed to allocate celllist");
-      repartition->ncelllist = s->nr_cells;
+    refine = 0;
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+    if (repartition->celllist == NULL) error("Failed to allocate celllist");
+    repartition->ncelllist = s->nr_cells;
   }
 
   /* We need to rescale the weights into the range of an integer for
@@ -908,9 +900,11 @@ static void repart_edge_parmetis(int bothweights, int timebins,
 
   /* If partition failed continue with the current one, but make this clear. */
   if (failed) {
-    if (nodeID == 0) message("WARNING: ParMETIS repartition has failed, "
-                             "continuing with the current partition, "
-                             "load balance will not be optimal");
+    if (nodeID == 0)
+      message(
+          "WARNING: ParMETIS repartition has failed, "
+          "continuing with the current partition, "
+          "load balance will not be optimal");
     for (int k = 0; k < nr_cells; k++)
       repartition->celllist[k] = cells[k].nodeID;
   }
@@ -1145,13 +1139,15 @@ void partition_init(struct partition *partition,
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error( "Permitted values are: 'grid', 'regions', 'balanced' or "
-             "'vectorized'");
+      error(
+          "Permitted values are: 'grid', 'regions', 'balanced' or "
+          "'vectorized'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
-      error( "Permitted values are: 'grid' or 'vectorized' when compiled "
-             "without ParMETIS.");
+      error(
+          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "without ParMETIS.");
 #endif
   }
 
@@ -1348,9 +1344,11 @@ void partition_restore_celllist(struct space *s,
         error("Not all ranks are present in the restored partition");
       }
     } else {
-      error("Cannot apply the saved partition celllist as the "
-            "number of top-level cells (%d) is different to the "
-            "saved number (%d)", s->nr_cells, reparttype->ncelllist);
+      error(
+          "Cannot apply the saved partition celllist as the "
+          "number of top-level cells (%d) is different to the "
+          "saved number (%d)",
+          s->nr_cells, reparttype->ncelllist);
     }
   }
 }
