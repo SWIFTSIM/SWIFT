@@ -33,6 +33,7 @@
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "cosmology.h"
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
@@ -155,17 +156,19 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
  *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
+ * @param hydro_properties The constants used in the scheme
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
-    const struct hydro_props *restrict hydro_properties) {
+    const struct hydro_props *restrict hydro_properties,
+    const struct cosmology *restrict cosmo) {
 
-  const float CFL_condition = hydro_properties->CFL_condition;
+  const float CFL = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl =
-      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
+  const float dt_cfl = 2.f * kernel_gamma * CFL * cosmo->a * p->h /
+                       (cosmo->a_factor_sig_vel * p->force.v_sig);
 
   return dt_cfl;
 }

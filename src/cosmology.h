@@ -41,6 +41,9 @@ struct cosmology {
   /*! Inverse cube of the current expansion factor of the Universe */
   double a3_inv;
 
+  /*! Power of the scale-factor used for signal-velocity conversion */
+  double a_factor_sig_vel;
+
   /*! Current redshift */
   double z;
 

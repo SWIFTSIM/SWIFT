@@ -137,6 +137,8 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
   c->a = a;
   c->a_inv = a_inv;
   c->a3_inv = a_inv * a_inv * a_inv;
+  c->a_factor_sig_vel =
+      pow(a, -1.5 * hydro_gamma_minus_one); /* a^{3*(1-gamma)/2} */
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -454,6 +456,9 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->H = 1.;
   c->a = 1.;
   c->a_inv = 1.;
+  c->a3_inv = 1.;
+  c->a_factor_sig_vel = 1.;
+
   c->a_dot = 0.;
   c->time = 0.;
   c->universe_age_at_present_day = 0.;

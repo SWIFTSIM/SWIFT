@@ -21,6 +21,7 @@
 #define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
+#include "cosmology.h"
 #include "gravity_properties.h"
 #include "minmax.h"
 
@@ -67,7 +68,8 @@ __attribute__((always_inline)) INLINE static float gravity_get_potential(
  */
 __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct gpart* const gp,
-                              const struct gravity_props* restrict grav_props) {
+                              const struct gravity_props* restrict grav_props,
+                              const struct cosmology* cosmo) {
 
   const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
                     gp->a_grav[1] * gp->a_grav[1] +
@@ -78,7 +80,8 @@ gravity_compute_timestep_self(const struct gpart* const gp,
   const float epsilon = gravity_get_softening(gp);
 
   /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
-  const float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
+  const float dt =
+      sqrtf(0.66666667f * cosmo->a * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }
