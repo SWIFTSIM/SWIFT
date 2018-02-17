@@ -2482,7 +2482,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   } else if (!c->split && force && ti_current > ti_old_gpart) {
 
     /* Drift from the last time the cell was drifted to the current time */
-    float dt_drift;
+    double dt_drift;
     if (e->policy & engine_policy_cosmology)
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_gpart, ti_current);
@@ -2547,19 +2547,25 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
  */
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
-  const double timeBase = e->timeBase;
   const integertime_t ti_old_multipole = c->ti_old_multipole;
   const integertime_t ti_current = e->ti_current;
 
-  /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old_multipole) * timeBase;
-
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+#endif
+
+  /* Drift from the last time the cell was drifted to the current time */
+  double dt_drift;
+  if (e->policy & engine_policy_cosmology)
+    dt_drift =
+        cosmology_get_drift_factor(e->cosmology, ti_old_multipole, ti_current);
+  else
+    dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   /* Drift the multipole */
   if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt, c->dx_max_gpart);
+    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2584,18 +2590,24 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
  */
 void cell_drift_multipole(struct cell *c, const struct engine *e) {
 
-  const double timeBase = e->timeBase;
   const integertime_t ti_old_multipole = c->ti_old_multipole;
   const integertime_t ti_current = e->ti_current;
 
-  /* Drift from the last time the cell was drifted to the current time */
-  const double dt = (ti_current - ti_old_multipole) * timeBase;
-
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
+#endif
+
+  /* Drift from the last time the cell was drifted to the current time */
+  double dt_drift;
+  if (e->policy & engine_policy_cosmology)
+    dt_drift =
+        cosmology_get_drift_factor(e->cosmology, ti_old_multipole, ti_current);
+  else
+    dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt, c->dx_max_gpart);
+    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;
