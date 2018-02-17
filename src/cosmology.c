@@ -422,6 +422,51 @@ void cosmology_init(const struct swift_params *params,
 }
 
 /**
+ * @brief Initialise the #cosmology for non-cosmological time-integration
+ *
+ * Essentially sets all constants to 1.
+ *
+ * @param params The parsed values.
+ * @param us The current internal system of units.
+ * @param phys_const The physical constants in the current system of units.
+ * @param c The #cosmology to initialise.
+ */
+void cosmology_init_no_cosmo(const struct swift_params *params,
+                             const struct unit_system *us,
+                             const struct phys_const *phys_const,
+                             struct cosmology *c) {
+
+  c->Omega_m = 0.;
+  c->Omega_r = 0.;
+  c->Omega_k = 0.;
+  c->Omega_lambda = 0.;
+  c->Omega_b = 0.;
+  c->w_0 = 0.;
+  c->w_a = 0.;
+  c->h = 0.;
+  c->w = 0.;
+
+  c->a_begin = 1.;
+  c->a_end = 1.;
+  c->log_a_begin = 0.;
+  c->log_a_end = 0.;
+
+  c->H = 1.;
+  c->a = 1.;
+  c->a_inv = 1.;
+  c->a_dot = 0.;
+  c->time = 0.;
+  c->universe_age_at_present_day = 0.;
+
+  /* Initialise the interpolation tables */
+  c->drift_fac_interp_table = NULL;
+  c->grav_kick_fac_interp_table = NULL;
+  c->hydro_kick_fac_interp_table = NULL;
+  c->time_interp_table = NULL;
+  c->time_interp_table_offset = 0.;
+}
+
+/**
  * @brief Computes the cosmology factor that enters the drift operator.
  *
  * Computes \f$ \int_{a_start}^{a_end} dt/a^2 \f$ using the interpolation table.

@@ -601,7 +601,10 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the cosmology */
     struct cosmology cosmo;
-    if (with_cosmology) cosmology_init(params, &us, &prog_const, &cosmo);
+    if (with_cosmology)
+      cosmology_init(params, &us, &prog_const, &cosmo);
+    else
+      cosmology_init_no_cosmo(params, &us, &prog_const, &cosmo);
     if (with_cosmology) cosmology_print(&cosmo);
 
     /* Initialise the hydro properties */
