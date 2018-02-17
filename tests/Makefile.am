@@ -62,7 +62,7 @@ test27cells_SOURCES = test27cells.c
 
 test27cells_subset_SOURCES = test27cells.c
 
-test27cells_subset_CFLAGS = $(AM_CFLAGS) -DDOSELF_SUBSET
+test27cells_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 

@@ -31,7 +31,7 @@ import random
 
 # physical constants in cgs
 NEWTON_GRAVITY_CGS  = 6.67408e-8
-SOLAR_MASS_IN_CGS   = 1.9885e33
+SOLAR_MASS_IN_CGS   = 1.98848e33
 PARSEC_IN_CGS       = 3.0856776e18
 PROTON_MASS_IN_CGS  = 1.672621898e24
 YEAR_IN_CGS         = 3.154e+7

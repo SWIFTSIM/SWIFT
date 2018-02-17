@@ -6,6 +6,10 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
+# Values of some physical constants
+PhysicalConstants:
+  G:            6.67408e-8 # (Optional) Overwrite the value of Newton's constant used internally by the code.
+
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
