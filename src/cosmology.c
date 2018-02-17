@@ -529,6 +529,14 @@ void cosmology_print(const struct cosmology *c) {
           c->universe_age_at_present_day);
 }
 
+void cosmology_clean(struct cosmology *c) {
+
+  free(c->drift_fac_interp_table);
+  free(c->grav_kick_fac_interp_table);
+  free(c->hydro_kick_fac_interp_table);
+  free(c->time_interp_table);
+}
+
 /**
  * @brief Write a cosmology struct to the given FILE as a stream of bytes.
  *
