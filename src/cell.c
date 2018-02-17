@@ -2446,7 +2446,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
  */
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
-  const double timeBase = e->timeBase;
   const integertime_t ti_old_gpart = c->ti_old_gpart;
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->gparts;
@@ -2483,7 +2482,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   } else if (!c->split && force && ti_current > ti_old_gpart) {
 
     /* Drift from the last time the cell was drifted to the current time */
-    const double dt = (ti_current - ti_old_gpart) * timeBase;
+    float dt_drift;
+    if (e->policy & engine_policy_cosmology)
+      dt_drift =
+          cosmology_get_drift_factor(e->cosmology, ti_old_gpart, ti_current);
+    else
+      dt_drift = (ti_current - ti_old_gpart) * e->time_base;
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->gcount;
@@ -2493,7 +2497,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       struct gpart *const gp = &gparts[k];
 
       /* Drift... */
-      drift_gpart(gp, dt, timeBase, ti_old_gpart, ti_current);
+      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
@@ -2515,7 +2519,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       struct spart *const sp = &sparts[k];
 
       /* Drift... */
-      drift_spart(sp, dt, timeBase, ti_old_gpart, ti_current);
+      drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }

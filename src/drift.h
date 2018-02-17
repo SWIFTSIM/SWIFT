@@ -30,16 +30,15 @@
 #include "part.h"
 
 /**
- * @brief Perform the 'drift' operation on a #gpart
+ * @brief Perform the 'drift' operation on a #gpart.
  *
  * @param gp The #gpart to drift.
- * @param dt The drift time-step
- * @param timeBase The minimal allowed time-step size.
- * @param ti_old Integer start of time-step
- * @param ti_current Integer end of time-step
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, double dt, double timeBase, integertime_t ti_old,
+    struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -54,14 +53,14 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
   /* Drift... */
-  gp->x[0] += gp->v_full[0] * dt;
-  gp->x[1] += gp->v_full[1] * dt;
-  gp->x[2] += gp->v_full[2] * dt;
+  gp->x[0] += gp->v_full[0] * dt_drift;
+  gp->x[1] += gp->v_full[1] * dt_drift;
+  gp->x[2] += gp->v_full[2] * dt_drift;
 
   /* Compute offset since last cell construction */
-  gp->x_diff[0] -= gp->v_full[0] * dt;
-  gp->x_diff[1] -= gp->v_full[1] * dt;
-  gp->x_diff[2] -= gp->v_full[2] * dt;
+  gp->x_diff[0] -= gp->v_full[0] * dt_drift;
+  gp->x_diff[1] -= gp->v_full[1] * dt_drift;
+  gp->x_diff[2] -= gp->v_full[2] * dt_drift;
 }
 
 /**
@@ -113,13 +112,12 @@ __attribute__((always_inline)) INLINE static void drift_part(
  * @brief Perform the 'drift' operation on a #spart
  *
  * @param sp The #spart to drift.
- * @param dt The drift time-step
- * @param timeBase The minimal allowed time-step size.
- * @param ti_old Integer start of time-step
- * @param ti_current Integer end of time-step
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
-    struct spart *restrict sp, double dt, double timeBase, integertime_t ti_old,
+    struct spart *restrict sp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -134,9 +132,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 #endif
 
   /* Drift... */
-  sp->x[0] += sp->v[0] * dt;
-  sp->x[1] += sp->v[1] * dt;
-  sp->x[2] += sp->v[2] * dt;
+  sp->x[0] += sp->v[0] * dt_drift;
+  sp->x[1] += sp->v[1] * dt_drift;
+  sp->x[2] += sp->v[2] * dt_drift;
 }
 
 #endif /* SWIFT_DRIFT_H */
