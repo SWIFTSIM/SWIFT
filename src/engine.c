@@ -6532,7 +6532,7 @@ void engine_dump_index(struct engine *e) {
 
   clocks_gettime(&time2);
   if (e->verbose)
-    message("writing particle properties took %.3f %s.",
+    message("writing particle indices took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 #else
   error("Logger disabled");
