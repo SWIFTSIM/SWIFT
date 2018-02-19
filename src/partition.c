@@ -302,11 +302,13 @@ static int indexvalcmp(const void *p1, const void *p2) {
  * @param nregions the number of regions.
  * @param ncells the number of cells.
  * @param permlist the permutation of the newlist.
+ * @param permsim fraction of cells that will remain on their node, if the
+ *                regions are permuted.
  *
- * @result fraction of regions that have been permuted.
+ * @result fraction of cells that will remain on their node.
  */
 static float permute_regions(int *newlist, int *oldlist, int nregions,
-                             int ncells, int *permlist) {
+                             int ncells, int *permlist, float *permsim) {
 
   /* We want a solution in which the current region assignments of the cells
    * are preserved when possible, to avoid unneccesary particle movement.  So
@@ -343,6 +345,7 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
     newmap[k] = -1;
   }
 
+  int nsame = 0;
   int ncommon = 0;
   for (int k = 0; k < indmax; k++) {
 
@@ -354,9 +357,11 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
       newmap[ivs[k].new] = ivs[k].old;
       oldmap[ivs[k].old] = ivs[k].new;
 
-      /* If these are the same regions, we count that. */
-      if (ivs[k].new == ivs[k].old) ncommon++;
-      //message("%d -> %d", ivs[k].old, ivs[k].new);
+      /* Increment number of common cells. */
+      ncommon += ivs[k].count;
+
+      /* If these are the same regions, we count that as well. */
+      if (ivs[k].new == ivs[k].old) nsame++;
     }
   }
 
@@ -388,7 +393,10 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
     free(oldmap);
   }
 
-  return (float)ncommon /(float)nregions;
+  /* Return our two similarity measurements. */
+  *permsim = (float)ncommon /(float)ncells;
+
+  return (float)nsame /(float)nregions;
 }
 #endif
 
@@ -673,8 +681,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* Create a new partition. */
   if (!refine) {
-    if (nodeID == 0) message("Creating new partition");
-
     if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
                              &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
                              options, &edgecut, regionid, &comm) != METIS_OK)
@@ -721,17 +727,18 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
     options[3] = PARMETIS_PSR_UNCOUPLED;
-    if (nodeID == 0) message("Refining partition");
 
     /* Now we potentially iterate for a better solution, stochastically these
      * are identical as all we vary is the random seed, but we do get
      * different solutions. */
     int maxiter = 5;
-    float maxsim = 0.0f;
+    //float maxsim = 0.0f;
+    float maxpermsim = 0.0f;
 
     /* Keep local copies so we can compare the results. */
     int *newcelllist = (int *)malloc(sizeof(int) * ncells);
     int *keepcelllist = (int *)malloc(sizeof(int) * ncells);
+    int *permcelllist = (int *)malloc(sizeof(int) * ncells);
     int *myregionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1));
 
     for (int iter = 0; iter < maxiter; iter++) {
@@ -778,49 +785,50 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
       /* Now check the similarity to the old partition. */
+      float permsim = 0.0f;
       float similarity = permute_regions(newcelllist, celllist, nregions,
-                                         ncells, NULL);
-      if (nodeID == 0) message("similarity = %f", similarity);
+                                         ncells, permcelllist, &permsim);
+      if (nodeID == 0) message("similarity = %f / %f", similarity, permsim);
 
-      if (similarity > 0.75f || iter == (maxiter - 1)) {
+      if (permsim > 0.9f || iter == (maxiter - 1)) {
+
         /* Time to stop. */
         if (nodeID == 0 && (iter == (maxiter - 1))) message("forced stop");
-        if (similarity < maxsim ) {
+        if (permsim < maxpermsim ) {
 
           /* Swap back to the best list. */
           if (nodeID == 0)
-            message("swap to better solution %f < %f", similarity, maxsim);
-          int *tmp = newcelllist;
-          newcelllist = keepcelllist;
+            message("swap to better solution %f < %f", permsim, maxpermsim);
+          int *tmp = permcelllist;
+          permcelllist = keepcelllist;
           keepcelllist = tmp;
         }
 
         /* Check that the regionids are ok. */
         for (int k = 0; k < ncells; k++)
-          if (newcelllist[k] < 0 || newcelllist[k] >= nregions)
-            error("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
+          if (permcelllist[k] < 0 || permcelllist[k] >= nregions)
+            error("Got bad nodeID %" PRIDX " for cell %i.", permcelllist[k], k);
 
         /* And keep. */
-        memcpy(celllist, newcelllist, sizeof(int) * ncells);
+        memcpy(celllist, permcelllist, sizeof(int) * ncells);
         break;
 
       } else {
 
-        if (similarity > maxsim) {
-          if (nodeID == 0) message("saving solution");
-          maxsim = similarity;
+        if (permsim > maxpermsim) {
+          maxpermsim = permsim;
 
           /* Keep this list. */
-          int *tmp = newcelllist;
-          newcelllist = keepcelllist;
+          int *tmp = permcelllist;
+          permcelllist = keepcelllist;
           keepcelllist = tmp;
         }
 
         /* Have another go, with different random seed. */
         options[2] = getticks() % INT_MAX;
-        if (nodeID == 0) message("setting new seed (%d)", options[2]);
       }
     }
+    free(permcelllist);
     free(newcelllist);
     free(keepcelllist);
     free(myregionid);
