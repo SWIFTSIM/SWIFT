@@ -537,6 +537,28 @@ void logger_const_free(struct logger_const* log_const) {
   free(log_const->masks_size);
 }
 
+
+/**
+ * @brief read chunk header
+ *
+ * @param buff The reading buffer
+ * @param mask The mask to read
+ * @param offset Out: the offset pointed by this chunk (absolute)
+ * @param offset_cur The current chunk offset
+ *
+ * @return Number of bytes read
+ */
+__attribute__((always_inline)) INLINE static int logger_read_chunk_header(const char *buff, unsigned int *mask, size_t *offset, size_t cur_offset) {
+  memcpy(mask, buff, logger_size_mask);
+  buff += logger_size_mask;
+
+  *offset = 0;
+  memcpy(offset, buff, logger_size_offset);
+  *offset = cur_offset - *offset;
+  
+  return logger_size_mask + logger_size_offset;
+}
+
 /**
  * @brief Read a logger message and store the data in a #part.
  *
@@ -553,11 +575,9 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
   buff = &buff[*offset];
 
   /* Start by reading the logger mask for this entry. */
-  uint64_t temp;
-  memcpy(&temp, buff, 8);
-  const int mask = temp >> 56;
-  *offset -= temp & 0xffffffffffffffULL;
-  buff += 8;
+  const size_t cur_offset = *offset;
+  unsigned int mask = 0;
+  buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in particle data. */
   if (mask & logger_mask_timestamp)
@@ -631,11 +651,9 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
   buff = &buff[*offset];
 
   /* Start by reading the logger mask for this entry. */
-  uint64_t temp;
-  memcpy(&temp, buff, 8);
-  const int mask = temp >> 56;
-  *offset -= temp & 0xffffffffffffffULL;
-  buff += 8;
+  const size_t cur_offset = *offset;
+  unsigned int mask = 0;
+  buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in particle data. */
   if (mask & logger_mask_timestamp)
@@ -692,11 +710,9 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
   buff = &buff[*offset];
 
   /* Start by reading the logger mask for this entry. */
-  uint64_t temp;
-  memcpy(&temp, buff, 8);
-  const int mask = temp >> 56;
-  *offset -= temp & 0xffffffffffffffULL;
-  buff += 8;
+  const size_t cur_offset = *offset;
+  unsigned int mask = 0;
+  buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in timestamps. */
   if (!(mask & logger_mask_timestamp))
