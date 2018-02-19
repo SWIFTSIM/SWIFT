@@ -443,7 +443,7 @@ AC_ARG_WITH([metis],
        [no longer supported, use --with-parmetis]
     )],
     [used_metis="yes"],
-    []
+    [:]
 )
 if test "x$used_metis" != "xno"; then
    AC_MSG_ERROR([Using unsupported --with-metis option, use --with-parmetis])
