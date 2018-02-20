@@ -177,17 +177,18 @@ int logger_size(unsigned int mask) {
 /**
  * @brief log all particles
  *
+ * This function update the last_offset in #part
+ *
  * @param p List of all the #part to log
  * @param Np Number of particle to log
  * @param dump The #dump in which to log the particle data
  */
-void logger_log_all(const struct part *p, const long long Np, struct dump *dump) {
+void logger_log_all(struct part *p, const long long Np, struct dump *dump) {
   const unsigned int mask = logger_mask_x | logger_mask_v | logger_mask_a |
     logger_mask_u | logger_mask_h | logger_mask_rho |
     logger_mask_consts;
   for(long long i=0; i < Np; i++) {
-    size_t offset = p[i].last_offset;
-    logger_log_part(&p[i], mask, &offset, dump);
+    logger_log_part(&p[i], mask, &p[i].last_offset, dump);
   }
 }
 

@@ -120,7 +120,7 @@ extern const unsigned int logger_data_size[];
 
 /* Function prototypes. */
 int logger_size(unsigned int mask);
-void logger_log_all(const struct part *p,
+void logger_log_all(struct part *p,
 		    const long long Np, struct dump *dump);
 void logger_log_part(const struct part *p, const unsigned int mask, size_t *offset,
                      struct dump *dump);
