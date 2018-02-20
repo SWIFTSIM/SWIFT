@@ -175,6 +175,23 @@ int logger_size(unsigned int mask) {
 }
 
 /**
+ * @brief log all particles
+ *
+ * @param p List of all the #part to log
+ * @param Np Number of particle to log
+ * @param dump The #dump in which to log the particle data
+ */
+void logger_log_all(const struct part *p, const long long Np, struct dump *dump) {
+  const unsigned int mask = logger_mask_x | logger_mask_v | logger_mask_a |
+    logger_mask_u | logger_mask_h | logger_mask_rho |
+    logger_mask_consts;
+  for(long long i=0; i < Np; i++) {
+    size_t offset = p[i].last_offset;
+    logger_log_part(&p[i], mask, &offset, dump);
+  }
+}
+
+/**
  * @brief Dump a #part to the log.
  *
  * @param p The #part to dump.
@@ -182,7 +199,7 @@ int logger_size(unsigned int mask) {
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
  */
-void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
+void logger_log_part(const struct part *p, const unsigned int mask, size_t *offset,
                      struct dump *dump) {
 
   /* Make sure we're not writing a timestamp. */
@@ -259,7 +276,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
  * @param offset Pointer to the offset of the previous log of this particle.
  * @param dump The #dump in which to log the particle data.
  */
-void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
+void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *offset,
                       struct dump *dump) {
 
   /* Make sure we're not writing a timestamp. */
