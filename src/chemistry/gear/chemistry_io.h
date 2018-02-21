@@ -20,6 +20,7 @@
 #define SWIFT_CHEMISTRY_IO_GEAR_H
 
 #include "io_properties.h"
+#include "chemistry_struct.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -31,10 +32,12 @@
  */
 int chemistry_read_particles(struct part* parts, struct io_props* list) {
 
-  /* List what we want to read */
-  list[0] =
-      io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY, UNIT_CONV_DENSITY,
-                          parts, chemistry_data.he_density);
+  for(size_t i=0; i < chemistry_element_count; i++) {
+    /* List what we want to read */
+    list[i] =
+      io_make_input_field(chemistry_get_element_name(i), FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
+			  parts, chemistry_data.metal_mass_fraction[i]);
+  }
 
   return 1;
 }
@@ -49,9 +52,11 @@ int chemistry_read_particles(struct part* parts, struct io_props* list) {
  */
 int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 
-  /* List what we want to write */
-  list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_DENSITY,
-                                 parts, chemistry_data.he_density);
+  for(size_t i=0; i < chemistry_element_count; i++) {
+    /* List what we want to write */
+    list[i] = io_make_output_field(chemistry_get_element_name(i), FLOAT, 1, UNIT_CONV_NO_UNITS,
+				   parts, chemistry_data.smoothed_metal_mass_fraction[i]);
+  }
 
   return 1;
 }
@@ -63,6 +68,11 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 void chemistry_write_flavour(hid_t h_grpsph) {
 
   io_write_attribute_s(h_grpsph, "Chemistry Model", "GEAR");
+  for(size_t i=0; i < chemistry_element_count; i++) {
+    char buffer[20];
+    sprintf(buffer, "Element %d", i);
+    io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(i));
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_IO_GEAR_H */
