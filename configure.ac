@@ -478,6 +478,8 @@ if test "x$with_parmetis" != "xno"; then
    fi
    if test "$have_parmetis" == "yes"; then
       AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a ParMETIS library")
    fi
 fi
 
