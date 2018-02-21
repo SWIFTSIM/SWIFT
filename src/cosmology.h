@@ -44,6 +44,12 @@ struct cosmology {
   /*! Power of the scale-factor used for signal-velocity conversion */
   double a_factor_sig_vel;
 
+  /*! Power of the scale-factor used for gravity accelerations */
+  double a_factor_grav_accel;
+
+  /*! Power of the scale-factor used for hydro accelerations */
+  double a_factor_hydro_accel;
+
   /*! Current redshift */
   double z;
 

@@ -76,10 +76,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, gp);
 
-  // MATTHIEU check accelerations a-factor!
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
-    new_dt_ext =
-        gravity_compute_timestep_self(gp, e->gravity_properties, e->cosmology);
+    new_dt_ext = gravity_compute_timestep_self(
+        gp, a_hydro, e->gravity_properties, e->cosmology);
 
   /* Take the minimum of all */
   float new_dt = min(new_dt_self, new_dt_ext);
@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
     if (e->policy & engine_policy_self_gravity)
       new_dt_self_grav = gravity_compute_timestep_self(
-          p->gpart, e->gravity_properties, e->cosmology);
+          p->gpart, p->a_hydro, e->gravity_properties, e->cosmology);
 
     new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
   }
@@ -183,9 +183,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
                                            e->physical_constants, sp->gpart);
 
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
     new_dt_self = gravity_compute_timestep_self(
-        sp->gpart, e->gravity_properties, e->cosmology);
+        sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
   /* Take the minimum of all */
   float new_dt = min3(new_dt_star, new_dt_self, new_dt_ext);

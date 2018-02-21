@@ -131,7 +131,7 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
  */
 void cosmology_update(struct cosmology *c, integertime_t ti_current) {
 
-  /* Get scale factor */
+  /* Get scale factor and powers of it */
   const double a = c->a_begin * exp(ti_current * c->time_base);
   const double a_inv = 1. / a;
   c->a = a;
@@ -139,6 +139,9 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
   c->a3_inv = a_inv * a_inv * a_inv;
   c->a_factor_sig_vel =
       pow(a, -1.5 * hydro_gamma_minus_one); /* a^{3*(1-gamma)/2} */
+  c->a_factor_grav_accel = a_inv * a_inv;   /* 1 / a^2 */
+  c->a_factor_hydro_accel =
+      powf(a, -3.f * hydro_gamma + 2.f); /* 1 / a^(3*gamma - 2) */
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -405,15 +408,9 @@ void cosmology_init(const struct swift_params *params,
   c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   c->Hubble_time = 1. / c->H0;
 
-  /* Set remaining variables to invalid values */
-  c->H = -1.;
-  c->a = -1.;
-  c->a_inv = -1;
-  c->z = -1.;
-  c->a_dot = -1.;
-  c->time = -1.;
-  c->universe_age_at_present_day = -1.;
-
+  /* Set remaining variables to alid values */
+  cosmology_update(c, 0);
+  
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
@@ -458,7 +455,9 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->a_inv = 1.;
   c->a3_inv = 1.;
   c->a_factor_sig_vel = 1.;
-
+  c->a_factor_hydro_accel = 1.;
+  c->a_factor_grav_accel = 1.;
+  
   c->a_dot = 0.;
   c->time = 0.;
   c->universe_age_at_present_day = 0.;
