@@ -34,11 +34,12 @@ time using $\Delta t_{\rm kick,A} = \Delta t_{\rm
   drift}$\footnote{Note that {\sc gadget-2} uses a slightly different
   operator here. They first multiply $\dot{A}_i'$ by $1/H$ and do not
   not consider the $1/a^2$ term as part of the time-integration
-  operator. The $1/H$ term then integrates out trivially. This slight
-  inconsistency with the rest of the time-integration operators is
-  unlikely to lead to any practical difference.}, whilst the change in
-energy due to the expansion of the Universe (first term in
-eq.~\ref{eq:cosmo_eom_u}) can be computed using
+  operator. They then use $\int H dt$ as the operator, which
+  integrates out trivially. This slight inconsistency with the rest of
+  the time-integration operators is unlikely to lead to any practical
+  difference.}, whilst the change in energy due to the expansion of
+the Universe (first term in eq.~\ref{eq:cosmo_eom_u}) can be computed
+using
 \begin{equation}
   \int_{a_n}^{a_{n+1}} H dt = \int_{a_n}^{a_{n+1}} \frac{da}{a} =
   \log{a_{n+1}} - \log{a_n}.
