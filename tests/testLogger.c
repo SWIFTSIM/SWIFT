@@ -20,7 +20,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+#if defined(HAVE_POSIX_FALLOCATE) && defined(WITH_LOGGER) /* Are we on a sensible platform? */
 
 /* Some standard headers. */
 #include <stdio.h>
