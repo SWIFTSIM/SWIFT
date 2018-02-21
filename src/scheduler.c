@@ -997,9 +997,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
       error("Task (type=%s/%s) unlocking more than %d other tasks!",
-	    taskID_names[s->tasks[s->unlock_ind[k]].type],
-	    subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-	    (1 << (8 * sizeof(short int) - 1)) - 1);
+            taskID_names[s->tasks[s->unlock_ind[k]].type],
+            subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
+            (1 << (8 * sizeof(short int) - 1)) - 1);
 #endif
   }
 
