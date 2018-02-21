@@ -294,21 +294,17 @@ static int indexvalcmp(const void *p1, const void *p2) {
 }
 
 /**
- * @brief Check if a permutation of the region indices of our cells will
- *        reduce the amount of particle movement.
+ * @brief Check if there is a permutation of the region indices of our cells
+ *        that will reduce the amount of particle movement and return it.
  *
  * @param newlist the new list of regions for our cells.
  * @param oldlist the old list of regions for our cells.
  * @param nregions the number of regions.
  * @param ncells the number of cells.
  * @param permlist the permutation of the newlist.
- * @param permsim fraction of cells that will remain on their node, if the
- *                regions are permuted.
- *
- * @result fraction of cells that will remain on their node.
  */
-static float permute_regions(int *newlist, int *oldlist, int nregions,
-                             int ncells, int *permlist, float *permsim) {
+void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
+                     int *permlist) {
 
   /* We want a solution in which the current region assignments of the cells
    * are preserved when possible, to avoid unneccesary particle movement.  So
@@ -334,10 +330,7 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
    * returning the permutation, avoid the associated work. */
   int *oldmap = NULL;
   int *newmap = NULL;
-  if (permlist != NULL)
-    oldmap = permlist; /* Reuse this */
-  else
-    oldmap = malloc(sizeof(int) * nregions);
+  oldmap = permlist; /* Reuse this */
   newmap = malloc(sizeof(int) * nregions);
 
   for (int k = 0; k < nregions; k++) {
@@ -345,8 +338,6 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
     newmap[k] = -1;
   }
 
-  int nsame = 0;
-  int ncommon = 0;
   for (int k = 0; k < indmax; k++) {
 
     /* Stop when all regions with common cells have been considered. */
@@ -356,47 +347,31 @@ static float permute_regions(int *newlist, int *oldlist, int nregions,
     if (newmap[ivs[k].new] == -1 && oldmap[ivs[k].old] == -1) {
       newmap[ivs[k].new] = ivs[k].old;
       oldmap[ivs[k].old] = ivs[k].new;
-
-      /* Increment number of common cells. */
-      ncommon += ivs[k].count;
-
-      /* If these are the same regions, we count that as well. */
-      if (ivs[k].new == ivs[k].old) nsame++;
     }
   }
 
-  if (permlist != NULL) {
-
-    /* Handle any regions that did not get selected by picking an unused rank
-     * from oldmap and assigning to newmap. */
-    int spare = 0;
-    for (int k = 0; k < nregions; k++) {
-      if (newmap[k] == -1) {
-        for (int j = spare; j < nregions; j++) {
-          if (oldmap[j] == -1) {
-            newmap[k] = j;
-            oldmap[j] = j;
-            spare = j;
-            break;
-          }
+  /* Handle any regions that did not get selected by picking an unused rank
+   * from oldmap and assigning to newmap. */
+  int spare = 0;
+  for (int k = 0; k < nregions; k++) {
+    if (newmap[k] == -1) {
+      for (int j = spare; j < nregions; j++) {
+        if (oldmap[j] == -1) {
+          newmap[k] = j;
+          oldmap[j] = j;
+          spare = j;
+          break;
         }
       }
     }
-
-    /* Permute the newlist into this order as result. */
-    for (int k = 0; k < ncells; k++) {
-      permlist[k] = newmap[newlist[k]];
-    }
-    free(newmap);
-  } else {
-    free(newmap);
-    free(oldmap);
   }
 
-  /* Return our two similarity measurements. */
-  *permsim = (float)ncommon /(float)ncells;
-
-  return (float)nsame /(float)nregions;
+  /* Permute the newlist into this order. */
+  for (int k = 0; k < ncells; k++) {
+    permlist[k] = newmap[newlist[k]];
+  }
+  free(newmap);
+  free(ivs);
 }
 #endif
 
@@ -669,174 +644,121 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   options[0] = 1;
   options[1] = 0;
   options[2] = seed;
+
+  idx_t edgecut;
+  idx_t ncon = 1;
   idx_t nparts = nregions;
+  idx_t numflag = 0;
   idx_t wgtflag = 0;
   if (edgew != NULL) wgtflag += 1;
   if (vertexw != NULL) wgtflag += 2;
-  idx_t numflag = 0;
-  idx_t ncon = 1;
-  idx_t edgecut;
+  int permute = 1;
+
   real_t ubvec[1];
   ubvec[0] = 1.05;
 
-  /* Create a new partition. */
-  if (!refine) {
+  if (refine) {
+    /* Refine an existing partition, uncouple as we do not have the cells
+     * present on their expected ranks. */
+    options[3] = PARMETIS_PSR_UNCOUPLED;
+
+    if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                               ubvec, options, &edgecut, regionid,
+                               &comm) != METIS_OK)
+      error("Call to ParMETIS_V3_RefineKway failed.");
+
+  } else {
+
+    /* Create a new partition. */
     if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
                              &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
                              options, &edgecut, regionid, &comm) != METIS_OK)
       error("Call to ParMETIS_V3_PartKway failed.");
 
-    /* Gather the regionids from the other ranks. XXX async version XXX */
-    if (nodeID == 0) {
-
-      idx_t *remoteids = NULL;
-      for (int rank = 0, j = 0; rank < nregions; rank++) {
-        int nvt = vtxdist[rank + 1] - vtxdist[rank];
-
-        if (rank == 0) {
-          /* Locals. */
-          remoteids = regionid;
-        } else {
-          remoteids = (idx_t *)malloc(sizeof(idx_t) * nvt);
-          res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm, &status);
-          if (res != MPI_SUCCESS)
-            mpi_error(res, "Failed to receive new regionids");
-        }
-
-        for (int k = 0; k < nvt; k++) celllist[j + k] = remoteids[k];
-        j += nvt;
-        if (rank != 0) free(remoteids);
-      }
-
-      /* Check that the regionids are ok. */
-      for (int k = 0; k < ncells; k++)
-        if (celllist[k] < 0 || celllist[k] >= nregions)
-          error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
-
-    } else {
-      res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
-                     1, comm);
-      if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+    /* We need the existing partition so we can check for permutations. */
+    int nsum = 0;
+    for (int i = 0; i < s->nr_cells; i++) {
+      celllist[i] = s->cells_top[i].nodeID;
+      nsum += celllist[i];
     }
-    /* And everyone gets a copy. */
-    res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
-  } else {
-
-    /* Refine an existing partition, uncouple as we do not have the cells
-     * present on their expected ranks. */
-    options[3] = PARMETIS_PSR_UNCOUPLED;
-
-    /* Now we potentially iterate for a better solution, stochastically these
-     * are identical as all we vary is the random seed, but we do get
-     * different solutions. */
-    int maxiter = 5;
-    //float maxsim = 0.0f;
-    float maxpermsim = 0.0f;
-
-    /* Keep local copies so we can compare the results. */
-    int *newcelllist = (int *)malloc(sizeof(int) * ncells);
-    int *keepcelllist = (int *)malloc(sizeof(int) * ncells);
-    int *permcelllist = (int *)malloc(sizeof(int) * ncells);
-    int *myregionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1));
-
-    for (int iter = 0; iter < maxiter; iter++) {
-      /* Restore regionids. */
-      memcpy(myregionid, regionid, sizeof(idx_t) * (nverts + 1));
-
-      if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                 ubvec, options, &edgecut, myregionid,
-                                 &comm) != METIS_OK)
-        error("Call to ParMETIS_V3_RefineKway failed.");
-
-
-      /* Gather the regionids from the other ranks. XXX async version XXX */
-      if (nodeID == 0) {
-
-        idx_t *remoteids = NULL;
-        for (int rank = 0, j = 0; rank < nregions; rank++) {
-          int nvt = vtxdist[rank + 1] - vtxdist[rank];
-
-          if (rank == 0) {
-            /* Locals. */
-            remoteids = myregionid;
-          } else {
-            remoteids = (idx_t *)malloc(sizeof(idx_t) * nvt);
-            res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm,
-                           &status);
-            if (res != MPI_SUCCESS)
-              mpi_error(res, "Failed to receive new regionids");
-          }
-
-          for (int k = 0; k < nvt; k++) newcelllist[j + k] = remoteids[k];
-          j += nvt;
-          if (rank != 0) free(remoteids);
-        }
-      } else {
-        res = MPI_Send(myregionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T,
-                       0, 1, comm);
-        if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
-      }
-
-      /* And everyone gets a copy. */
-      res = MPI_Bcast(newcelllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
-      if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
-
-      /* Now check the similarity to the old partition. */
-      float permsim = 0.0f;
-      float similarity = permute_regions(newcelllist, celllist, nregions,
-                                         ncells, permcelllist, &permsim);
-      if (nodeID == 0) message("similarity = %f / %f", similarity, permsim);
-
-      if (permsim > 0.9f || iter == (maxiter - 1)) {
-
-        /* Time to stop. */
-        if (nodeID == 0 && (iter == (maxiter - 1))) message("forced stop");
-        if (permsim < maxpermsim ) {
-
-          /* Swap back to the best list. */
-          if (nodeID == 0)
-            message("swap to better solution %f < %f", permsim, maxpermsim);
-          int *tmp = permcelllist;
-          permcelllist = keepcelllist;
-          keepcelllist = tmp;
-        }
-
-        /* Check that the regionids are ok. */
-        for (int k = 0; k < ncells; k++)
-          if (permcelllist[k] < 0 || permcelllist[k] >= nregions)
-            error("Got bad nodeID %" PRIDX " for cell %i.", permcelllist[k], k);
-
-        /* And keep. */
-        memcpy(celllist, permcelllist, sizeof(int) * ncells);
-        break;
-
-      } else {
-
-        if (permsim > maxpermsim) {
-          maxpermsim = permsim;
-
-          /* Keep this list. */
-          int *tmp = permcelllist;
-          permcelllist = keepcelllist;
-          keepcelllist = tmp;
-        }
-
-        /* Have another go, with different random seed. */
-        options[2] = getticks() % INT_MAX;
-      }
-    }
-    free(permcelllist);
-    free(newcelllist);
-    free(keepcelllist);
-    free(myregionid);
+    /* If no previous partition all nodeIDs will be set to 0. */
+    if (nsum == 0) permute = 0;
   }
 
+  /* Gather the regionids from the other ranks. XXX async version XXX */
+  int *newcelllist = malloc(sizeof(int) * ncells);
+  if (nodeID == 0) {
+
+    idx_t *remoteids = NULL;
+    size_t sizeids = 0;
+    for (int rank = 0, j = 0; rank < nregions; rank++) {
+      int nvt = vtxdist[rank + 1] - vtxdist[rank];
+
+      if (rank == 0) {
+
+        /* Locals. */
+        for (int k = 0; k < nvt; k++) newcelllist[k] = regionid[k];
+
+      } else {
+
+        /* Type mismatch, so we need to buffer. */
+        if (sizeof(idx_t) * nvt > sizeids) {
+          sizeids = sizeof(idx_t) * nvt;
+          if (sizeids > 0) free(remoteids);
+          remoteids = (idx_t *)malloc(sizeids);
+        }
+        res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm, &status);
+        if (res != MPI_SUCCESS)
+          mpi_error(res, "Failed to receive new regionids");
+        for (int k = 0; k < nvt; k++) newcelllist[j + k] = remoteids[k];
+      }
+
+      j += nvt;
+    }
+    if (remoteids != NULL) free(remoteids);
+
+    /* Check that the regionids are ok. */
+    for (int k = 0; k < ncells; k++)
+      if (newcelllist[k] < 0 || newcelllist[k] >= nregions)
+        error("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
+
+  } else {
+    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
+                   1, comm);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+  }
+
+  /* And everyone gets a copy. */
+  res = MPI_Bcast(newcelllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+
+  /* Now check the similarity to the old partition and permute if necessary. 
+   * Checks show that refinement can return a permutation of the partition, we
+   * need to check that and correct as necessary. */
+  if (permute) {
+    int *permcelllist = malloc(sizeof(int) * ncells);
+    permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
+
+    /* And keep. */
+    memcpy(celllist, permcelllist, sizeof(int) * ncells);
+    free(permcelllist);
+  } else {
+    memcpy(celllist, newcelllist, sizeof(int) * ncells);
+  }
+
+  /* Check that the regionids are ok. */
+  for (int k = 0; k < ncells; k++)
+    if (celllist[k] < 0 || celllist[k] >= nregions)
+      error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
+
   /* Clean up. */
+  free(newcelllist);
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
+  free(vtxdist);
+  free(tpwgts);
   free(xadj);
   free(adjncy);
   free(regionid);
