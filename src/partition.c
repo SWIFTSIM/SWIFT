@@ -313,7 +313,10 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
    * unique index so we can sort into decreasing counts.
    */
   int indmax = nregions * nregions;
-  struct indexval *ivs = malloc(sizeof(struct indexval) * indmax);
+  struct indexval *ivs = NULL;
+  if ((ivs = (struct indexval *)malloc(sizeof(struct indexval) * indmax)) ==
+      NULL)
+    error("Failed to allocate ivs structs");
   bzero(ivs, sizeof(struct indexval) * indmax);
 
   for (int k = 0; k < ncells; k++) {
@@ -331,7 +334,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
   int *oldmap = NULL;
   int *newmap = NULL;
   oldmap = permlist; /* Reuse this */
-  newmap = malloc(sizeof(int) * nregions);
+  if ((newmap = malloc(sizeof(int) * nregions)) == NULL)
+    error("Failed to allocate newmap array");
 
   for (int k = 0; k < nregions; k++) {
     oldmap[k] = -1;
@@ -407,8 +411,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          int seed, int *celllist) {
+                          double *vertexw, double *edgew, int refine, int seed,
+                          int *celllist) {
   int res;
   MPI_Comm comm;
   MPI_Status status;
@@ -688,7 +692,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* Gather the regionids from the other ranks. XXX async version XXX */
-  int *newcelllist = malloc(sizeof(int) * ncells);
+  int *newcelllist = NULL;
+  if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    error("Failed to allocate new celllist");
   if (nodeID == 0) {
 
     idx_t *remoteids = NULL;
@@ -707,7 +713,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (sizeof(idx_t) * nvt > sizeids) {
           sizeids = sizeof(idx_t) * nvt;
           if (sizeids > 0) free(remoteids);
-          remoteids = (idx_t *)malloc(sizeids);
+          if ((remoteids = (idx_t *)malloc(sizeids)) == NULL)
+            error("Failed to (re)allocate remoteids array");
         }
         res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm, &status);
         if (res != MPI_SUCCESS)
@@ -725,8 +732,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
 
   } else {
-    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
-                   1, comm);
+    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0, 1,
+                   comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
   }
 
@@ -734,11 +741,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   res = MPI_Bcast(newcelllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
-  /* Now check the similarity to the old partition and permute if necessary. 
+  /* Now check the similarity to the old partition and permute if necessary.
    * Checks show that refinement can return a permutation of the partition, we
    * need to check that and correct as necessary. */
   if (permute) {
-    int *permcelllist = malloc(sizeof(int) * ncells);
+    int *permcelllist = NULL;
+    if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+      error("Failed to allocate perm celllist array");
     permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
 
     /* And keep. */
@@ -939,8 +948,9 @@ static void repart_edge_parmetis(int bothweights, int timebins,
     refine = 0;
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-    if (repartition->celllist == NULL) error("Failed to allocate celllist");
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+        NULL)
+      error("Failed to allocate celllist");
     repartition->ncelllist = s->nr_cells;
   }
 
@@ -1012,11 +1022,11 @@ static void repart_edge_parmetis(int bothweights, int timebins,
 
   /* And partition, use both weights or not as requested. */
   if (bothweights)
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  -1, repartition->celllist);
+    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine, -1,
+                  repartition->celllist);
   else
-    pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine,
-                  -1, repartition->celllist);
+    pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine, -1,
+                  repartition->celllist);
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
@@ -1180,8 +1190,9 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
     /* Do the calculation. */
-    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-    if (celllist == NULL) error("Failed to allocate celllist");
+    int *celllist = NULL;
+    if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+      error("Failed to allocate celllist");
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, -1, celllist);
 
     /* And apply to our cells */
@@ -1207,8 +1218,9 @@ void partition_initial_partition(struct partition *initial_partition,
 #if defined(WITH_MPI)
     /* Vectorised selection, guaranteed to work for samples less than the
      * number of cells, but not very clumpy in the selection of regions. */
-    int *samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3);
-    if (samplecells == NULL) error("Failed to allocate samplecells");
+    int *samplecells = NULL;
+    if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+      error("Failed to allocate samplecells");
 
     if (nodeID == 0) {
       pick_vector(s, nr_nodes, samplecells);
@@ -1373,8 +1385,9 @@ void partition_init(struct partition *partition,
  */
 static int check_complete(struct space *s, int verbose, int nregions) {
 
-  int *present = (int *)malloc(sizeof(int) * nregions);
-  if (present == NULL) error("Failed to allocate present array");
+  int *present = NULL;
+  if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
+    error("Failed to allocate present array");
 
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
@@ -1456,8 +1469,9 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
 void partition_store_celllist(struct space *s, struct repartition *reparttype) {
   if (reparttype->ncelllist != s->nr_cells) {
     free(reparttype->celllist);
-    reparttype->celllist = malloc(sizeof(int) * s->nr_cells);
-    if (reparttype->celllist == NULL) error("Failed to allocate celllist");
+    if ((reparttype->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+        NULL)
+      error("Failed to allocate celllist");
     reparttype->ncelllist = s->nr_cells;
   }
   for (int i = 0; i < s->nr_cells; i++) {
@@ -1523,8 +1537,9 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
 
   /* Also restore the celllist, if we have one. */
   if (reparttype->ncelllist > 0) {
-    reparttype->celllist = malloc(sizeof(int) * reparttype->ncelllist);
-    if (reparttype->celllist == NULL) error("Failed to allocate celllist");
+    if ((reparttype->celllist = malloc(sizeof(int) * reparttype->ncelllist)) ==
+        NULL)
+      error("Failed to allocate celllist");
     restart_read_blocks(reparttype->celllist,
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,
                         "repartition celllist");
