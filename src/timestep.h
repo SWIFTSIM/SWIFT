@@ -33,7 +33,7 @@
  * @param new_dt The time-step to convert.
  * @param old_bin The old time bin.
  * @param ti_current The current time on the integer time-line.
- * @param timeBase_inv The inverse of the system's minimal time-step.
+ * @param time_base_inv The inverse of the system's minimal time-step.
  */
 __attribute__((always_inline)) INLINE static integertime_t
 make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,

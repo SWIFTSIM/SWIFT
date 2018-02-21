@@ -418,6 +418,10 @@ void cosmology_init(const struct swift_params *params,
   c->time_interp_table = NULL;
   c->time_interp_table_offset = 0.;
   cosmology_init_tables(c);
+
+  /* Update the times */
+  c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
+  c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
 }
 
 /**
@@ -468,6 +472,9 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->hydro_kick_fac_interp_table = NULL;
   c->time_interp_table = NULL;
   c->time_interp_table_offset = 0.;
+
+  c->time_begin = 0.;
+  c->time_end = 0.;
 }
 
 /**
@@ -552,7 +559,7 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
  * @param ti_start the (integer) time of the start of the drift.
  * @param ti_end the (integer) time of the end of the drift.
  */
-double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
+double cosmology_get_therm_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
 

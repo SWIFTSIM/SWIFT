@@ -109,7 +109,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct xpart *restrict xparts =
       s->xparts + (ptrdiff_t)(parts - s->parts);
   const integertime_t ti_current = s->e->ti_current;
-  const double timeBase = s->e->timeBase;
+  const double time_base = s->e->time_base;
   const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
@@ -129,11 +129,13 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const struct xpart *xp = &xparts[k];
     const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
+    // MATTHIEU Add cosmology here!
+    
     /* Get useful time variables */
     const integertime_t ti_begin =
         get_integer_time_begin(ti_current, p->time_bin);
     const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
+    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * time_base;
 
     float v[3];
     hydro_get_drifted_velocities(p, xp, dt, v);
@@ -194,7 +196,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   const struct space *s = data->s;
   const struct gpart *restrict gparts = (struct gpart *)map_data;
   const integertime_t ti_current = s->e->ti_current;
-  const double timeBase = s->e->timeBase;
+  const double time_base = s->e->time_base;
   const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
@@ -215,11 +217,13 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* If the g-particle has a counterpart, ignore it */
     if (gp->id_or_neg_offset < 0) continue;
 
+    // MATTHIEU Add cosmology here!
+        
     /* Get useful variables */
     const integertime_t ti_begin =
         get_integer_time_begin(ti_current, gp->time_bin);
     const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
-    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
+    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * time_base;
 
     /* Extrapolate velocities */
     const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,

@@ -4369,12 +4369,12 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->s_updates,
+           e->time_step, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
-            e->step, e->time, e->timeStep, e->updates, e->g_updates,
+            e->step, e->time, e->time_step, e->updates, e->g_updates,
             e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
@@ -4384,10 +4384,18 @@ void engine_step(struct engine *e) {
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->step += 1;
-  e->time = e->ti_current * e->timeBase + e->timeBegin;
-  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
+
+  if(e->policy & engine_policy_cosmology) {
+    e->time_old = e->time;
+    cosmology_update(e->cosmology, e->ti_current);
+    e->time = e->cosmology->time;
+    e->time_step = e->time - e->time_old;    
+  } else {
+    e->time = e->ti_current * e->time_base + e->time_begin;
+    e->time_old = e->ti_old * e->time_base + e->time_begin;
+    e->time_step = (e->ti_current - e->ti_old) * e->time_base;
+  }
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -5192,16 +5200,14 @@ void engine_init(
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
-  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
-  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
-  e->timeOld = e->timeBegin;
-  e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->time_step = 0.;
+  e->time_base = 0.;
+  e->time_base_inv = 0.;
+  e->time_begin = 0.;
+  e->time_end = 0.;
   e->max_active_bin = num_time_bins;
-  e->timeStep = 0.;
-  e->timeBase = 0.;
-  e->timeBase_inv = 0.;
   e->internal_units = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
@@ -5239,10 +5245,29 @@ void engine_init(
   /* Make the space link back to the engine. */
   s->e = e;
 
-  /* Setup the timestep */
-  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-  e->timeBase_inv = 1.0 / e->timeBase;
-  e->ti_current = 0;
+  /* Setup the timestep if non-cosmological */
+  if (!(e->policy & engine_policy_cosmology)) {
+    e->time_begin =
+        parser_get_param_double(params, "TimeIntegration:time_begin");
+    e->time_end = parser_get_param_double(params, "TimeIntegration:time_end");
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+
+    e->time_base = (e->time_end - e->time_begin) / max_nr_timesteps;
+    e->time_base_inv = 1.0 / e->time_base;
+    e->ti_current = 0;
+  } else {
+
+    e->time_begin = e->cosmology->time_begin;
+    e->time_end = e->cosmology->time_end;
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+    			   
+    /* Copy the relevent information from the cosmology model */
+    e->time_base = e->cosmology->time_base;
+    e->time_base_inv = e->cosmology->time_base_inv;
+    e->ti_current = 0;
+  }
 }
 
 /**
@@ -5512,11 +5537,11 @@ void engine_config(int restart, struct engine *e,
     if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
   /* Check we have sensible time bounds */
-  if (e->timeBegin >= e->timeEnd)
+  if (e->time_begin >= e->time_end)
     error(
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
-        e->timeEnd, e->timeBegin);
+        e->time_end, e->time_begin);
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
@@ -5525,47 +5550,40 @@ void engine_config(int restart, struct engine *e,
         "size (%e)",
         e->dt_min, e->dt_max);
 
-  /* Deal with timestep */
-  if (!restart) {
-    e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-    e->timeBase_inv = 1.0 / e->timeBase;
-    e->ti_current = 0;
-  }
-
   /* Info about time-steps */
   if (e->nodeID == 0) {
-    message("Absolute minimal timestep size: %e", e->timeBase);
+    message("Absolute minimal timestep size: %e", e->time_base);
 
-    float dt_min = e->timeEnd - e->timeBegin;
+    float dt_min = e->time_end - e->time_begin;
     while (dt_min > e->dt_min) dt_min /= 2.f;
 
     message("Minimal timestep size (on time-line): %e", dt_min);
 
-    float dt_max = e->timeEnd - e->timeBegin;
+    float dt_max = e->time_end - e->time_begin;
     while (dt_max > e->dt_max) dt_max /= 2.f;
 
     message("Maximal timestep size (on time-line): %e", dt_max);
   }
 
-  if (e->dt_min < e->timeBase && e->nodeID == 0)
+  if (e->dt_min < e->time_base && e->nodeID == 0)
     error(
         "Minimal time-step size smaller than the absolute possible minimum "
         "dt=%e",
-        e->timeBase);
+        e->time_base);
 
-  if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
+  if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
     error("Maximal time-step size larger than the simulation run time t=%e",
-          e->timeEnd - e->timeBegin);
+          e->time_end - e->time_begin);
 
   /* Deal with outputs */
   if (e->deltaTimeSnapshot < 0.)
     error("Time between snapshots (%e) must be positive.",
           e->deltaTimeSnapshot);
 
-  if (e->timeFirstSnapshot < e->timeBegin)
+  if (e->timeFirstSnapshot < e->time_begin)
     error(
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
-        e->timeFirstSnapshot, e->timeBegin);
+        e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
@@ -5748,13 +5766,30 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  for (double time = e->timeFirstSnapshot;
-       time < e->timeEnd + e->deltaTimeSnapshot; time += e->deltaTimeSnapshot) {
+  /* Find upper-bound on last output */
+  double time_end;
+  if(e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->deltaTimeSnapshot;
+  else
+    time_end = e->time_end + e->deltaTimeSnapshot;
+
+  /* Find next snasphot above current time */
+  double time = e->timeFirstSnapshot;  
+  while(time < time_end) {
 
     /* Output time on the integer timeline */
-    e->ti_nextSnapshot = (time - e->timeBegin) / e->timeBase;
+    if(e->policy & engine_policy_cosmology)
+      e->ti_nextSnapshot = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_nextSnapshot = (time - e->time_begin) / e->time_base;
 
+    /* Found it? */
     if (e->ti_nextSnapshot > e->ti_current) break;
+    
+    if(e->policy & engine_policy_cosmology)
+      time *= e->deltaTimeSnapshot;
+    else
+      time += e->deltaTimeSnapshot;
   }
 
   /* Deal with last snapshot */
@@ -5764,10 +5799,15 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   } else {
 
     /* Be nice, talk... */
-    const float next_snapshot_time =
-        e->ti_nextSnapshot * e->timeBase + e->timeBegin;
-    if (e->verbose)
+    if(e->policy & engine_policy_cosmology) {
+      const float next_snapshot_time =
+        exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
+      message("Next output time set to a=%e.", next_snapshot_time);
+    } else {
+      const float next_snapshot_time =
+        e->ti_nextSnapshot * e->time_base + e->time_begin;
       message("Next output time set to t=%e.", next_snapshot_time);
+    }
   }
 }
 

@@ -797,7 +797,7 @@ int main(int argc, char *argv[]) {
           "from t=%.3e until t=%.3e with %d threads and %d queues "
           "(dt_min=%.3e, "
           "dt_max=%.3e)...",
-          e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
+          e.time_begin, e.time_end, e.nr_threads, e.sched.nr_queues, e.dt_min,
           e.dt_max);
       fflush(stdout);
     }

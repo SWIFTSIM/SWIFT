@@ -76,6 +76,12 @@ struct cosmology {
   /*! Final expansion factor */
   double a_end;
 
+  /*! Time (in internal units) since the Big Bang at the start */
+  double time_begin;
+
+  /*! Time (in internal units) since the Big Bang at the end */
+  double time_end;
+
   /*! Conversion factor from integer time-line to \f$ d\log{a} \f$ */
   double time_base;
 

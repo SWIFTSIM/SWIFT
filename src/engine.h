@@ -126,13 +126,13 @@ struct engine {
   double dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  double timeBegin;
+  double time_begin;
 
   /* Time of the simulation end */
-  double timeEnd;
+  double time_end;
 
   /* The previous system time. */
-  double timeOld;
+  double time_old;
   integertime_t ti_old;
 
   /* The current system time. */
@@ -143,11 +143,11 @@ struct engine {
   timebin_t max_active_bin;
 
   /* Time step */
-  double timeStep;
+  double time_step;
 
   /* Time base */
-  double timeBase;
-  double timeBase_inv;
+  double time_base;
+  double time_base_inv;
 
   /* Minimal hydro ti_end for the next time-step */
   integertime_t ti_hydro_end_min;
