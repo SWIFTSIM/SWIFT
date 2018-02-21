@@ -173,14 +173,17 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  const int count = c->count;
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cooling_function_data *cooling_func = e->cooling_func;
   const struct phys_const *constants = e->physical_constants;
   const struct unit_system *us = e->internal_units;
   const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  const int count = c->count;
 
   TIMER_TIC;
 
@@ -202,11 +205,19 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
-        // MATTHIEU -- cosmological dt for cooling??? */
+        double dt_cool;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current + 1, p->time_bin);
+          dt_cool =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+        } else {
+          dt_cool = get_timestep(p->time_bin, time_base);
+        }
 
         /* Let's cool ! */
-        const double dt = get_timestep(p->time_bin, time_base);
-        cooling_cool_part(constants, us, cooling_func, p, xp, dt);
+        cooling_cool_part(constants, us, cooling_func, p, xp, dt_cool);
       }
     }
   }
