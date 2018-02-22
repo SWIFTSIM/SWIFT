@@ -41,8 +41,8 @@ struct cosmology {
   /*! Inverse cube of the current expansion factor of the Universe */
   double a3_inv;
 
-  /*! Power of the scale-factor used for signal-velocity conversion */
-  double a_factor_sig_vel;
+  /*! Power of the scale-factor used for sound-speed conversion */
+  double a_factor_sound_speed;
 
   /*! Power of the scale-factor used for gravity accelerations */
   double a_factor_grav_accel;

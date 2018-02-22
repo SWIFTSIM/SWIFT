@@ -42,7 +42,7 @@
 #include "minmax.h"
 
 /**
- * @brief Returns the internal energy of a particle
+ * @brief Returns the comoving internal energy of a particle
  *
  * @param p The particle of interest
  */
@@ -53,7 +53,7 @@ hydro_get_comoving_internal_energy(const struct part *restrict p) {
 }
 
 /**
- * @brief Returns the internal energy of a particle
+ * @brief Returns the physical internal energy of a particle
  *
  * @param p The particle of interest.
  * @param cosmo The cosmological model.
@@ -66,14 +66,25 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
 }
 
 /**
- * @brief Returns the pressure of a particle
+ * @brief Returns the comoving pressure of a particle
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+__attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
   return gas_pressure_from_entropy(p->rho, p->entropy);
+}
+
+/**
+ * @brief Returns the physical pressure of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
+    const struct part *restrict p, const struct cosmology *cosmo) {
+
+  return gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
 /**
@@ -100,14 +111,27 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 }
 
 /**
- * @brief Returns the sound speed of a particle
+ * @brief Returns the comoving sound speed of a particle
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   return p->force.soundspeed;
+}
+
+/**
+ * @brief Returns the physical sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_soundspeed(const struct part *restrict p,
+                              const struct cosmology *cosmo) {
+
+  return cosmo->a_factor_sound_speed * p->force.soundspeed;
 }
 
 /**
@@ -209,7 +233,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL * cosmo->a * p->h /
-                       (cosmo->a_factor_sig_vel * p->force.v_sig);
+                       (cosmo->a_factor_sound_speed * p->force.v_sig);
 
   return dt_cfl;
 }

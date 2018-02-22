@@ -48,6 +48,7 @@ tests/swift_dopair_standard.dat
 tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/test27cells
+tests/test27cells_subset
 tests/testPeriodicBC
 tests/test125cells
 tests/brute_force_27_standard.dat

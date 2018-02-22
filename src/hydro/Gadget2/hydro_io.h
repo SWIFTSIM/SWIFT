@@ -62,7 +62,7 @@ void convert_u(const struct engine* e, const struct part* p, float* ret) {
 
 void convert_P(const struct engine* e, const struct part* p, float* ret) {
 
-  ret[0] = hydro_get_pressure(p);
+  ret[0] = hydro_get_comoving_pressure(p);
 }
 
 void convert_part_pos(const struct engine* e, const struct part* p,

@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -411,8 +410,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #endif
             hydro_get_comoving_entropy(&main_cell->parts[pid]),
             hydro_get_comoving_internal_energy(&main_cell->parts[pid]),
-            hydro_get_pressure(&main_cell->parts[pid]),
-            hydro_get_soundspeed(&main_cell->parts[pid]),
+            hydro_get_comoving_pressure(&main_cell->parts[pid]),
+            hydro_get_comoving_soundspeed(&main_cell->parts[pid]),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
 #if defined(GADGET2_SPH)
