@@ -4386,11 +4386,11 @@ void engine_step(struct engine *e) {
   e->step += 1;
   e->step_props = engine_step_prop_none;
 
-  if(e->policy & engine_policy_cosmology) {
+  if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
     cosmology_update(e->cosmology, e->ti_current);
     e->time = e->cosmology->time;
-    e->time_step = e->time - e->time_old;    
+    e->time_step = e->time - e->time_old;
   } else {
     e->time = e->ti_current * e->time_base + e->time_begin;
     e->time_old = e->ti_old * e->time_base + e->time_begin;
@@ -5262,7 +5262,7 @@ void engine_init(
     e->time_end = e->cosmology->time_end;
     e->time_old = e->time_begin;
     e->time = e->time_begin;
-    			   
+
     /* Copy the relevent information from the cosmology model */
     e->time_base = e->cosmology->time_base;
     e->time_base_inv = e->cosmology->time_base_inv;
@@ -5768,25 +5768,25 @@ void engine_compute_next_snapshot_time(struct engine *e) {
 
   /* Find upper-bound on last output */
   double time_end;
-  if(e->policy & engine_policy_cosmology)
+  if (e->policy & engine_policy_cosmology)
     time_end = e->cosmology->a_end * e->deltaTimeSnapshot;
   else
     time_end = e->time_end + e->deltaTimeSnapshot;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSnapshot;  
-  while(time < time_end) {
+  double time = e->timeFirstSnapshot;
+  while (time < time_end) {
 
     /* Output time on the integer timeline */
-    if(e->policy & engine_policy_cosmology)
+    if (e->policy & engine_policy_cosmology)
       e->ti_nextSnapshot = log(time / e->cosmology->a_begin) / e->time_base;
     else
       e->ti_nextSnapshot = (time - e->time_begin) / e->time_base;
 
     /* Found it? */
     if (e->ti_nextSnapshot > e->ti_current) break;
-    
-    if(e->policy & engine_policy_cosmology)
+
+    if (e->policy & engine_policy_cosmology)
       time *= e->deltaTimeSnapshot;
     else
       time += e->deltaTimeSnapshot;
@@ -5799,13 +5799,13 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   } else {
 
     /* Be nice, talk... */
-    if(e->policy & engine_policy_cosmology) {
+    if (e->policy & engine_policy_cosmology) {
       const float next_snapshot_time =
-        exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
+          exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
       message("Next output time set to a=%e.", next_snapshot_time);
     } else {
       const float next_snapshot_time =
-        e->ti_nextSnapshot * e->time_base + e->time_begin;
+          e->ti_nextSnapshot * e->time_base + e->time_begin;
       message("Next output time set to t=%e.", next_snapshot_time);
     }
   }

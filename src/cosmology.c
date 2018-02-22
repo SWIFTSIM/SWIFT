@@ -410,7 +410,7 @@ void cosmology_init(const struct swift_params *params,
 
   /* Set remaining variables to alid values */
   cosmology_update(c, 0);
-  
+
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
@@ -461,7 +461,7 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->a_factor_sig_vel = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
-  
+
   c->a_dot = 0.;
   c->time = 0.;
   c->universe_age_at_present_day = 0.;

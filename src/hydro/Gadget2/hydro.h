@@ -46,10 +46,23 @@
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy(const struct part *restrict p) {
 
   return gas_internal_energy_from_entropy(p->rho, p->entropy);
+}
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy(const struct part *restrict p,
+                                   const struct cosmology *cosmo) {
+
+  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
 /**
@@ -66,10 +79,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 /**
  * @brief Returns the entropy of a particle
  *
- * @param p The particle of interest
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part *restrict p) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
   return p->entropy;
 }
@@ -86,14 +100,26 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
 }
 
 /**
- * @brief Returns the density of a particle
+ * @brief Returns the comoving density of a particle
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_density(
+__attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
     const struct part *restrict p) {
 
   return p->rho;
+}
+
+/**
+ * @brief Returns the physical density of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_physical_density(
+    const struct part *restrict p, const struct cosmology *cosmo) {
+
+  return p->rho * cosmo->a3_inv;
 }
 
 /**
@@ -112,16 +138,20 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  *
  * @param p The particle of interest
  * @param xp The extended data of the particle.
- * @param dt The time since the last kick.
+ * @param dt_kick_hydro The time (for hydro accelerations) since the last kick.
+ * @param dt_kick_grav The time (for gravity accelerations) since the last kick.
  * @param v (return) The velocities at the current time.
  */
 __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
-    const struct part *restrict p, const struct xpart *xp, float dt,
-    float v[3]) {
+    const struct part *restrict p, const struct xpart *xp, float dt_kick_hydro,
+    float dt_kick_grav, float v[3]) {
 
-  v[0] = xp->v_full[0] + p->a_hydro[0] * dt;
-  v[1] = xp->v_full[1] + p->a_hydro[1] * dt;
-  v[2] = xp->v_full[2] + p->a_hydro[2] * dt;
+  v[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro +
+         xp->a_grav[0] * dt_kick_grav;
+  v[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro +
+         xp->a_grav[1] * dt_kick_grav;
+  v[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro +
+         xp->a_grav[2] * dt_kick_grav;
 }
 
 /**
