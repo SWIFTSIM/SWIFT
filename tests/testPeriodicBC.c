@@ -236,7 +236,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
-            hydro_get_density(&main_cell->parts[pid]),
+            hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else

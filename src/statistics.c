@@ -164,7 +164,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, v);
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     const float m = hydro_get_mass(p);
-    const float entropy = hydro_get_entropy(p, cosmo);
+    const float entropy = hydro_get_physical_entropy(p, cosmo);
     const float u_int = hydro_get_physical_internal_energy(p, cosmo);
 
     /* Collect mass */

@@ -403,14 +403,14 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
-            hydro_get_density(&main_cell->parts[pid]),
+            hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,
 #endif
-            hydro_get_entropy(&main_cell->parts[pid]),
-            hydro_get_internal_energy(&main_cell->parts[pid]),
+            hydro_get_comoving_entropy(&main_cell->parts[pid]),
+            hydro_get_comoving_internal_energy(&main_cell->parts[pid]),
             hydro_get_pressure(&main_cell->parts[pid]),
             hydro_get_soundspeed(&main_cell->parts[pid]),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],

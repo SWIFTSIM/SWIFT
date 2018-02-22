@@ -77,12 +77,23 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 }
 
 /**
+ * @brief Returns the comoving entropy of a particle
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
+    const struct part *restrict p) {
+
+  return p->entropy;
+}
+
+/**
  * @brief Returns the entropy of a particle
  *
  * @param p The particle of interest.
  * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+__attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
   return p->entropy;
