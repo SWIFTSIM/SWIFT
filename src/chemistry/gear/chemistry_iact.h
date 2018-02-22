@@ -60,9 +60,9 @@ const struct chemistry_data *chem_data) {
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for(size_t i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->smoothed_metal_mass_fraction[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] += mi * chi->smoothed_metal_mass_fraction[i] * wj;
+  for(int i=0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
+    chj->smoothed_metal_mass_fraction[i] += mi * chi->metal_mass_fraction[i] * wj;
   }
 }
 
@@ -89,9 +89,10 @@ const struct chemistry_data *chem_data) {
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for(size_t i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->smoothed_metal_mass_fraction[i] * wi;
+  for(int i=0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
   }
+
 }
 
 

@@ -701,7 +701,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p);
-	  chemistry_end(p, e->chemistry);
+	  chemistry_end_density(p, e->chemistry);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;

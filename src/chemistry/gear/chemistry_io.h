@@ -33,15 +33,11 @@
  */
 int chemistry_read_particles(struct part* parts, struct io_props* list) {
 
-  for(size_t i=0; i < chemistry_element_count; i++) {
-    /* List what we want to read */
-    char buffer[20];
-    strcpy(buffer, chemistry_get_element_name(i));
-    list[i] =
-      io_make_input_field(buffer, FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
-			  parts, chemistry_data.metal_mass_fraction[i]);
-  }
-
+  /* List what we want to read */
+  list[0] =
+    io_make_input_field("ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
+			UNIT_CONV_NO_UNITS,
+			parts, chemistry_data.metal_mass_fraction);
   return 1;
 }
 
@@ -59,7 +55,12 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
   list[0] = io_make_output_field("SmoothedElementAbundance", FLOAT, chemistry_element_count,
 				 UNIT_CONV_NO_UNITS,
 				 parts, chemistry_data.smoothed_metal_mass_fraction);
-  return 1;
+
+  list[1] = io_make_output_field("ElementAbundance", FLOAT, chemistry_element_count,
+				 UNIT_CONV_NO_UNITS,
+				 parts, chemistry_data.metal_mass_fraction);
+
+  return 2;
 }
 
 /**
