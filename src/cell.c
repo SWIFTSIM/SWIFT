@@ -2380,6 +2380,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         cell_h_max = max(cell_h_max, cp->h_max);
       }
     }
+
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
+
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
+
   } else if (!c->split && force && ti_current > ti_old_part) {
 
     /* Drift from the last time the cell was drifted to the current time */
@@ -2434,15 +2443,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
+
+    /* Store the values */
+    c->h_max = cell_h_max;
+    c->dx_max_part = dx_max;
+    c->dx_max_sort = dx_max_sort;
+
+    /* Update the time of the last drift */
+    c->ti_old_part = ti_current;
   }
-
-  /* Store the values */
-  c->h_max = cell_h_max;
-  c->dx_max_part = dx_max;
-  c->dx_max_sort = dx_max_sort;
-
-  /* Update the time of the last drift */
-  c->ti_old_part = ti_current;
 
   /* Clear the drift flags. */
   c->do_drift = 0;
@@ -2491,6 +2500,13 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
         dx_max = max(dx_max, cp->dx_max_gpart);
       }
     }
+
+    /* Store the values */
+    c->dx_max_gpart = dx_max;
+
+    /* Update the time of the last drift */
+    c->ti_old_gpart = ti_current;
+
   } else if (!c->split && force && ti_current > ti_old_gpart) {
 
     /* Drift from the last time the cell was drifted to the current time */
@@ -2538,13 +2554,13 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
+
+    /* Store the values */
+    c->dx_max_gpart = dx_max;
+
+    /* Update the time of the last drift */
+    c->ti_old_gpart = ti_current;
   }
-
-  /* Store the values */
-  c->dx_max_gpart = dx_max;
-
-  /* Update the time of the last drift */
-  c->ti_old_gpart = ti_current;
 
   /* Clear the drift flags. */
   c->do_grav_drift = 0;
