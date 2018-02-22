@@ -59,8 +59,6 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
   list[0] = io_make_output_field("SmoothedElementAbundance", FLOAT, chemistry_element_count,
 				 UNIT_CONV_NO_UNITS,
 				 parts, chemistry_data.smoothed_metal_mass_fraction);
-  }
-
   return 1;
 }
 

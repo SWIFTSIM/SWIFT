@@ -36,10 +36,10 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-const chemistry_data chem_data) {
+const struct chemistry_data *chem_data) {
 
-  struct chemistry_part_data *chi = &pi->Chemistry_data;
-  struct chemistry_part_data *chj = &pj->Chemistry_data;
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+  struct chemistry_part_data *chj = &pj->chemistry_data;
 
   float wi, wi_dx;
   float wj, wj_dx;
@@ -61,8 +61,8 @@ const chemistry_data chem_data) {
 
   /* Compute contribution to the smooth metallicity */
   for(size_t i=0; i < chemistry_element_count; i++) {
-    chi.smoothed_metal_mass_fraction[i] += mj * chj.smoothed_metal_mass_fraction[i] * wi;
-    chj.smoothed_metal_mass_fraction[i] += mi * chi.smoothed_metal_mass_fraction[i] * wj;
+    chi->smoothed_metal_mass_fraction[i] += mj * chj->smoothed_metal_mass_fraction[i] * wi;
+    chj->smoothed_metal_mass_fraction[i] += mi * chi->smoothed_metal_mass_fraction[i] * wj;
   }
 }
 
@@ -71,15 +71,14 @@ const chemistry_data chem_data) {
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, const struct part *pj,
-const chemistry_data chem_data) {
+const struct chemistry_data *chem_data) {
 
-  struct chemistry_part_data *chi = &pi->Chemistry_data;
-  struct chemistry_part_data *chj = &pj->Chemistry_data;
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   float wi, wi_dx;
 
   /* Get the masses. */
-  const float mi = pi->mass;
   const float mj = pj->mass;
 
   /* Get r */
@@ -91,7 +90,7 @@ const chemistry_data chem_data) {
 
   /* Compute contribution to the smooth metallicity */
   for(size_t i=0; i < chemistry_element_count; i++) {
-    chi.smoothed_metal_mass_fraction[i] += mj * chj.smoothed_metal_mass_fraction[i] * wi;
+    chi->smoothed_metal_mass_fraction[i] += mj * chj->smoothed_metal_mass_fraction[i] * wi;
   }
 }
 
