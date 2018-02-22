@@ -43,6 +43,7 @@
 __attribute__((always_inline)) INLINE static const char*
 chemistry_get_element_name(enum chemistry_element elem) {
 
+  /* Warning: in the I/O, expect string < 20 */
   static const char* chemistry_element_names[chemistry_element_count] = {
     "Oxygen",  "Magnesium", "Sulfur",  "Iron",
     "Zinc",    "Strontium", "Yttrium", "Barium",
@@ -87,6 +88,57 @@ static INLINE void chemistry_init_backend(
 static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
 
   message("Chemistry function is 'gear'.");
+}
+
+
+/**
+ * @brief Prepares a particle for the smooth metal calculation.
+ *
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the various smooth metallicity tasks
+ *
+ * @param p The particle to act upon
+ * @param cd #chemistry_data containing chemistry informations.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_init_part(
+    struct part *restrict p, const struct chemistry_data *cd) {
+
+  struct chemistry_part_data *cpd = &p->chemistry_data;
+
+  for(size_t i=0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = 0;
+  }
+}
+
+
+/**
+ * @brief Finishes the smooth metal calculation.
+ *
+ * Multiplies the smoothed metallicity and number of neighbours by the appropiate constants
+ * and add the self-contribution term.
+ *
+ * This method requires the #hydro_end_density to have been computed.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end(
+    struct part *restrict p, const struct chemistry_data *cd) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float m = p->mass;
+
+  struct chemistry_part_data *cpd = &p->chemistry_data;
+
+  for(size_t i=0; i < chemistry_element_count; i++) {
+    /* Final operation on the density (add self-contribution). */
+    cpd->smoothed_metal_mass_fraction[i] += m * cpd->metal_mass_fraction[i]* kernel_root;
+
+    /* Finish the calculation by inserting the missing h-factors */
+    cpd->smoothed_metal_mass_fraction[i] *= h_inv_dim;
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

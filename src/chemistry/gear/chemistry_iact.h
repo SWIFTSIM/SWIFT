@@ -38,8 +38,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
 const chemistry_data chem_data) {
 
-  struct chemistry_data *chi = &pi->Chemistry_data;
-  struct chemistry_data *chj = &pj->Chemistry_data;
+  struct chemistry_part_data *chi = &pi->Chemistry_data;
+  struct chemistry_part_data *chj = &pj->Chemistry_data;
 
   float wi, wi_dx;
   float wj, wj_dx;
@@ -73,8 +73,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, const struct part *pj,
 const chemistry_data chem_data) {
 
-  struct chemistry_data *chi = &pi->Chemistry_data;
-  struct chemistry_data *chj = &pj->Chemistry_data;
+  struct chemistry_part_data *chi = &pi->Chemistry_data;
+  struct chemistry_part_data *chj = &pj->Chemistry_data;
 
   float wi, wi_dx;
 

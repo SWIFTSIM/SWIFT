@@ -21,6 +21,7 @@
 
 #include "io_properties.h"
 #include "chemistry_struct.h"
+#include "chemistry.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -34,8 +35,10 @@ int chemistry_read_particles(struct part* parts, struct io_props* list) {
 
   for(size_t i=0; i < chemistry_element_count; i++) {
     /* List what we want to read */
+    char buffer[20];
+    strcpy(buffer, chemistry_get_element_name(i));
     list[i] =
-      io_make_input_field(chemistry_get_element_name(i), FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
+      io_make_input_field(buffer, FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
 			  parts, chemistry_data.metal_mass_fraction[i]);
   }
 
@@ -54,7 +57,9 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 
   for(size_t i=0; i < chemistry_element_count; i++) {
     /* List what we want to write */
-    list[i] = io_make_output_field(chemistry_get_element_name(i), FLOAT, 1, UNIT_CONV_NO_UNITS,
+    char buffer[20];
+    strcpy(buffer, chemistry_get_element_name(i));
+    list[i] = io_make_output_field(buffer, FLOAT, 1, UNIT_CONV_NO_UNITS,
 				   parts, chemistry_data.smoothed_metal_mass_fraction[i]);
   }
 
@@ -63,14 +68,14 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 
 /**
  * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @param h_grp The HDF5 group in which to write
  */
-void chemistry_write_flavour(hid_t h_grpsph) {
+void chemistry_write_flavour(hid_t h_grp) {
 
-  io_write_attribute_s(h_grpsph, "Chemistry Model", "GEAR");
+  io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
   for(size_t i=0; i < chemistry_element_count; i++) {
     char buffer[20];
-    sprintf(buffer, "Element %d", i);
+    sprintf(buffer, "Element %lu", i);
     io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(i));
   }
 }
