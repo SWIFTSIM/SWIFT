@@ -142,7 +142,7 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  *
  * Calls #error() if an error occurs.
  */
-void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data) {
   hid_t h_attr = 0, h_err = 0;
 
@@ -173,7 +173,7 @@ void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         void* data, int num) {
   hid_t h_space = 0, h_attr = 0, h_err = 0;
-  hsize_t dim[1] = {num};
+  hsize_t dim[1] = {(hsize_t)num};
 
   h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0) {

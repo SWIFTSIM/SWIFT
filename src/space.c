@@ -319,12 +319,12 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[1] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[2] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+      (int)floor(s->dim[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))

@@ -3489,7 +3489,7 @@ int engine_marktasks(struct engine *e) {
   int rebuild_space = 0;
 
   /* Run through the tasks and mark as skip or not. */
-  size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
+  size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 0, extra_data);
   rebuild_space = extra_data[1];
@@ -5434,7 +5434,7 @@ void engine_config(int restart, struct engine *e,
   if (e->nodeID == 0) {
 
     /* When restarting append to these files. */
-    char *mode;
+    const char *mode;
     if (restart)
       mode = "a";
     else

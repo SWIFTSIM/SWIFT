@@ -45,7 +45,7 @@ static unsigned long long clocks_cpufreq = 0;
 static ticks clocks_start = 0;
 
 /* The units of any returned times. */
-static char *clocks_units[] = {"ms", "~ms"};
+static const char *clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 

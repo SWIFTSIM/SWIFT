@@ -581,7 +581,9 @@ void write_output_single(struct engine* e, const char* baseName,
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
 
-  long long N_total[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
+  long long N_total[swift_type_count] = {(long long)Ngas, 
+                                         (long long)Ndm, 0, 0, 
+                                         (long long)Nstars, 0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
