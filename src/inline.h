@@ -27,10 +27,15 @@
  * @brief Defines inline
  */
 #ifndef INLINE
+#ifdef __cplusplus
+#define INLINE inline
+#define restrict
+#else
 #if __GNUC__ && !__GNUC_STDC_INLINE__
 #define INLINE extern inline
 #else
 #define INLINE inline
+#endif
 #endif
 #endif
 

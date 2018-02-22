@@ -2070,7 +2070,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
-  MPI_Request *requests = malloc(sizeof(MPI_Request) * count_requests);
+  MPI_Request *requests = (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
   if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
@@ -2121,7 +2121,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   }
 
   /* Wait for all the requests to arrive home */
-  MPI_Status *stats = malloc(count_requests * sizeof(MPI_Status));
+  MPI_Status *stats = (MPI_Status *)malloc(count_requests * sizeof(MPI_Status));
   int res;
   if ((res = MPI_Waitall(count_requests, requests, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < count_requests; ++k) {
@@ -2311,7 +2311,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
                                           task_subtype_none, 0, 0, NULL, NULL);
 
     /* Create a grid of ghosts to deal with the dependencies */
-    if ((ghosts = malloc(n_ghosts * sizeof(struct task *))) == 0)
+    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) == 0)
       error("Error allocating memory for gravity fft ghosts");
 
     /* Make the ghosts implicit and add the dependencies */
@@ -3022,7 +3022,7 @@ void engine_maketasks(struct engine *e) {
     e->size_links += s->tot_cells * self_grav_tasks_per_cell;
 
   /* Allocate the new list */
-  if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
+  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
@@ -5208,7 +5208,7 @@ void engine_init(
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
   e->snapshotCompression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshotUnits = malloc(sizeof(struct unit_system));
+  e->snapshotUnits = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
   e->snapshotOutputCount = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
@@ -5309,7 +5309,7 @@ void engine_config(int restart, struct engine *e,
   if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
     error("must allocate dynamic cpu_set_t (too many cores per node)");
 
-  char *buf = malloc((nr_cores + 1) * sizeof(char));
+  char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
   buf[nr_cores] = '\0';
   for (int j = 0; j < nr_cores; ++j) {
     /* Reversed bit order from convention, but same as e.g. Intel MPI's
@@ -5324,7 +5324,7 @@ void engine_config(int restart, struct engine *e,
 
   if (with_aff) {
 
-    cpuid = malloc(nr_affinity_cores * sizeof(int));
+    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
 
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
@@ -5342,7 +5342,7 @@ void engine_config(int restart, struct engine *e,
         if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
         /* Get list of numa nodes of all available cores. */
-        int *nodes = malloc(nr_affinity_cores * sizeof(int));
+        int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
         int nnodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
           nodes[i] = numa_node_of_cpu(cpuid[i]);
@@ -5351,7 +5351,7 @@ void engine_config(int restart, struct engine *e,
         nnodes += 1;
 
         /* Count cores per node. */
-        int *core_counts = malloc(nnodes * sizeof(int));
+        int *core_counts = (int *)malloc(nnodes * sizeof(int));
         for (int i = 0; i < nr_affinity_cores; i++) {
           core_counts[nodes[i]] = 0;
         }
@@ -5360,7 +5360,7 @@ void engine_config(int restart, struct engine *e,
         }
 
         /* Index cores within each node. */
-        int *core_indices = malloc(nr_affinity_cores * sizeof(int));
+        int *core_indices = (int *)malloc(nr_affinity_cores * sizeof(int));
         for (int i = nr_affinity_cores - 1; i >= 0; i--) {
           core_indices[i] = core_counts[nodes[i]];
           core_counts[nodes[i]] -= 1;
@@ -5843,53 +5843,53 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   /* Now for the other pointers, these use their own restore functions. */
   /* Note all this memory leaks, but is used once. */
-  struct space *s = malloc(sizeof(struct space));
+  struct space *s = (struct space *)malloc(sizeof(struct space));
   space_struct_restore(s, stream);
   e->s = s;
   s->e = e;
 
-  struct unit_system *us = malloc(sizeof(struct unit_system));
+  struct unit_system *us = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_struct_restore(us, stream);
   e->internal_units = us;
 
-  us = malloc(sizeof(struct unit_system));
+  us = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_struct_restore(us, stream);
   e->snapshotUnits = us;
 
 #ifdef WITH_MPI
-  struct repartition *reparttype = malloc(sizeof(struct repartition));
+  struct repartition *reparttype = (strunct repartition *)malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
   e->reparttype = reparttype;
 #endif
 
-  struct phys_const *physical_constants = malloc(sizeof(struct phys_const));
+  struct phys_const *physical_constants = (struct phys_const *)malloc(sizeof(struct phys_const));
   phys_const_struct_restore(physical_constants, stream);
   e->physical_constants = physical_constants;
 
-  struct hydro_props *hydro_properties = malloc(sizeof(struct hydro_props));
+  struct hydro_props *hydro_properties = (struct hydro_props *)malloc(sizeof(struct hydro_props));
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
   struct gravity_props *gravity_properties =
-      malloc(sizeof(struct gravity_props));
+      (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
 
   struct external_potential *external_potential =
-      malloc(sizeof(struct external_potential));
+      (struct external_potential *)malloc(sizeof(struct external_potential));
   potential_struct_restore(external_potential, stream);
   e->external_potential = external_potential;
 
   struct cooling_function_data *cooling_func =
-      malloc(sizeof(struct cooling_function_data));
+      (struct cooling_function_data *)malloc(sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
 
-  struct sourceterms *sourceterms = malloc(sizeof(struct sourceterms));
+  struct sourceterms *sourceterms = (struct sourceterms *)malloc(sizeof(struct sourceterms));
   sourceterms_struct_restore(sourceterms, stream);
   e->sourceterms = sourceterms;
 
-  struct swift_params *parameter_file = malloc(sizeof(struct swift_params));
+  struct swift_params *parameter_file = (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 

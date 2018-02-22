@@ -110,9 +110,9 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
   value[0] = '\0';
 
   /* Name is part until second colon. */
-  char *p1 = strchr(namevalue, ':');
+  const char *p1 = strchr(namevalue, ':');
   if (p1 != NULL) {
-    char *p2 = strchr(p1 + 1, ':');
+    const char *p2 = strchr(p1 + 1, ':');
     if (p2 != NULL) {
       memcpy(name, namevalue, p2 - namevalue);
       name[p2 - namevalue] = '\0';

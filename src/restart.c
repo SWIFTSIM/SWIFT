@@ -93,7 +93,7 @@ char **restart_locate(const char *dir, const char *basename, int *nfiles) {
     char **files = NULL;
     if (glob(pattern, 0, NULL, &globbuf) == 0) {
       *nfiles = globbuf.gl_pathc;
-      files = malloc(sizeof(char *) * *nfiles);
+      files = (char **)malloc(sizeof(char *) * *nfiles);
       for (int i = 0; i < *nfiles; i++) {
         files[i] = strdup(globbuf.gl_pathv[i]);
       }
@@ -133,7 +133,7 @@ void restart_write(struct engine *e, const char *filename) {
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
   /* Dump our signature and version. */
-  restart_write_blocks(SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
+  restart_write_blocks((void *)SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
                        1, stream, "signature", "SWIFT signature");
   restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
                        stream, "version", "SWIFT version");
@@ -141,7 +141,7 @@ void restart_write(struct engine *e, const char *filename) {
   engine_struct_dump(e, stream);
 
   /* Just an END statement to spot truncated files. */
-  restart_write_blocks(SWIFT_RESTART_END_SIGNATURE,
+  restart_write_blocks((void *)SWIFT_RESTART_END_SIGNATURE,
                        strlen(SWIFT_RESTART_END_SIGNATURE), 1, stream,
                        "endsignature", "SWIFT end signature");
 

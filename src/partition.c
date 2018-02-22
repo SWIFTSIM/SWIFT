@@ -1267,7 +1267,7 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
  */
 void partition_store_celllist(struct space *s, struct repartition *reparttype) {
   if (reparttype->celllist != NULL) free(reparttype->celllist);
-  reparttype->celllist = malloc(sizeof(int) * s->nr_cells);
+  reparttype->celllist = (int *)malloc(sizeof(int) * s->nr_cells);
   reparttype->ncelllist = s->nr_cells;
   if (reparttype->celllist == NULL) error("Failed to allocate celllist");
 
@@ -1333,7 +1333,7 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
 
   /* Also restore the celllist, if we have one. */
   if (reparttype->ncelllist > 0) {
-    reparttype->celllist = malloc(sizeof(int) * reparttype->ncelllist);
+    reparttype->celllist = (int *)malloc(sizeof(int) * reparttype->ncelllist);
     if (reparttype->celllist == NULL) error("Failed to allocate celllist");
     restart_read_blocks(reparttype->celllist,
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,

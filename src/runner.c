@@ -660,7 +660,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated. */
     int *pid = NULL;
-    if ((pid = malloc(sizeof(int) * c->count)) == NULL)
+    if ((pid = (int *)malloc(sizeof(int) * c->count)) == NULL)
       error("Can't allocate memory for pid.");
     for (int k = 0; k < c->count; k++)
       if (part_is_active(&parts[k], e)) {
