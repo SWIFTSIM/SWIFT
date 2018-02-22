@@ -71,13 +71,14 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param dt_drift The drift time-step
  * @param dt_kick_grav The kick time-step for gravity accelerations.
  * @param dt_kick_hydro The kick time-step for hydro accelerations.
+ * @param dt_therm The drift time-step for thermodynamic quantities.
  * @param ti_old Integer start of time-step (for debugging checks).
  * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_drift,
-    double dt_kick_hydro, double dt_kick_grav, integertime_t ti_old,
-    integertime_t ti_current) {
+    double dt_kick_hydro, double dt_kick_grav, double dt_therm,
+    integertime_t ti_old, integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -104,7 +105,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[2] += xp->a_grav[2] * dt_kick_grav;
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt_drift);
+  hydro_predict_extra(p, xp, dt_drift, dt_therm);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {

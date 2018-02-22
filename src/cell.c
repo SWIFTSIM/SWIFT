@@ -2392,7 +2392,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   } else if (!c->split && force && ti_current > ti_old_part) {
 
     /* Drift from the last time the cell was drifted to the current time */
-    double dt_drift, dt_kick_grav, dt_kick_hydro;
+    double dt_drift, dt_kick_grav, dt_kick_hydro, dt_therm;
     if (e->policy & engine_policy_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_part, ti_current);
@@ -2400,10 +2400,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           cosmology_get_grav_kick_factor(e->cosmology, ti_old_part, ti_current);
       dt_kick_hydro = cosmology_get_hydro_kick_factor(e->cosmology, ti_old_part,
                                                       ti_current);
+      dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_old_part,
+                                                 ti_current);
     } else {
       dt_drift = (ti_current - ti_old_part) * e->time_base;
       dt_kick_grav = (ti_current - ti_old_part) * e->time_base;
       dt_kick_hydro = (ti_current - ti_old_part) * e->time_base;
+      dt_therm = (ti_current - ti_old_part) * e->time_base;
     }
 
     /* Loop over all the gas particles in the cell */
@@ -2415,8 +2418,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       struct xpart *const xp = &xparts[k];
 
       /* Drift... */
-      drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, ti_old_part,
-                 ti_current);
+      drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
+                 ti_old_part, ti_current);
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);

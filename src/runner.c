@@ -653,6 +653,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
   const struct space *s = e->s;
+  const struct hydro_space *hs = &s->hs;
+  const struct cosmology *cosmo = e->cosmology;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
@@ -713,7 +715,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          hydro_end_density(p);
+          hydro_end_density(p, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -750,10 +752,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            hydro_init_part(p, &s->hs);
+            hydro_init_part(p, hs);
 
             /* Off we go ! */
             continue;
+
           } else {
 
             /* Ok, this particle is a lost cause... */
@@ -761,7 +764,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (p->density.wcount == kernel_root * kernel_norm)
-              hydro_part_has_no_neighbours(p, xp);
+              hydro_part_has_no_neighbours(p, xp, cosmo);
           }
         }
 
@@ -770,7 +773,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp);
+        hydro_prepare_force(p, xp, cosmo);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1574,6 +1577,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
@@ -1602,7 +1606,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the force loop */
-        hydro_end_force(p);
+        hydro_end_force(p, cosmo);
       }
     }
 

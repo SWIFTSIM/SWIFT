@@ -282,9 +282,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * and add the self-contribution term.
  *
  * @param p The particle to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part *restrict p) {
+    struct part *restrict p, const struct cosmology *cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -305,14 +306,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
+  const float a_inv2 = cosmo->a_inv * cosmo->a_inv;
 
-  /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * rho_inv;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * rho_inv;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * rho_inv;
+  /* Finish calculation of the (physical) velocity curl components */
+  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
-  /* Finish calculation of the velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * rho_inv;
+  /* Finish calculation of the (physical) velocity divergence */
+  p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 }
 
 /**
@@ -320,9 +322,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -347,13 +351,13 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param ti_current The current time (on the timeline)
- * @param timeBase The minimal time-step size
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  const float fac_mu = cosmo->a_factor_mu;
 
   /* Inverse of the physical density */
   const float rho_inv = 1.f / p->rho;
@@ -377,7 +381,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the Balsara switch */
   const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
+      abs_div_v / (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);
 
   /* Compute the "grad h" term */
   const float omega_inv =
@@ -443,18 +447,17 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  *
  * @param p The particle
  * @param xp The extended data of the particle
- * @param dt The drift time-step.
- * @param t0 The time at the start of the drift
- * @param t1 The time at the end of the drift
- * @param timeBase The minimal time-step size
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, float dt) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
+    float dt_therm) {
 
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
-  const float w1 = p->force.h_dt * h_inv * dt;
+  const float w1 = p->force.h_dt * h_inv * dt_drift;
   if (fabsf(w1) < 0.2f)
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
@@ -468,7 +471,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
-  p->entropy += p->entropy_dt * dt;
+  p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
@@ -491,14 +494,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * Multiplies the forces and accelerationsby the appropiate constants
  *
  * @param p The particle to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p) {
+    struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  p->entropy_dt =
-      0.5f * gas_entropy_from_internal_energy(p->rho, p->entropy_dt);
+  p->entropy_dt = 0.5f * cosmo->a2_inv *
+                  gas_entropy_from_internal_energy(p->rho, p->entropy_dt);
 }
 
 /**

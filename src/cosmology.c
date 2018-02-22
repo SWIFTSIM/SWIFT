@@ -136,12 +136,15 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
   const double a_inv = 1. / a;
   c->a = a;
   c->a_inv = a_inv;
+  c->a2_inv = a_inv * a_inv;
   c->a3_inv = a_inv * a_inv * a_inv;
   c->a_factor_sound_speed =
       pow(a, -1.5 * hydro_gamma_minus_one); /* a^{3*(1-gamma)/2} */
   c->a_factor_grav_accel = a_inv * a_inv;   /* 1 / a^2 */
   c->a_factor_hydro_accel =
-      powf(a, -3.f * hydro_gamma + 2.f); /* 1 / a^(3*gamma - 2) */
+      pow(a, -3. * hydro_gamma + 2.); /* 1 / a^(3*gamma - 2) */
+  c->a_factor_mu =
+      pow(a, 0.5 * (3. * hydro_gamma - 5.)); /* a^{(3*gamma - 5) / 2} */
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -457,8 +460,10 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->H = 1.;
   c->a = 1.;
   c->a_inv = 1.;
+  c->a2_inv = 1.;
   c->a3_inv = 1.;
   c->a_factor_sound_speed = 1.;
+  c->a_factor_mu = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
 

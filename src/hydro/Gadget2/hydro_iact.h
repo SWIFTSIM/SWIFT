@@ -406,7 +406,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float wi, wj, wi_dx, wj_dx;
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  /* Will change with cosmological integration */
+  const float fac_mu = 1.f;
+  const float a2_Hubble = 0.f;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -446,7 +448,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -513,7 +515,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   float wi, wj, wi_dx, wj_dx;
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  /* Will change with cosmological integration */
+  const float fac_mu = 1.f;
+  const float a2_Hubble = 0.f;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -553,7 +557,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
