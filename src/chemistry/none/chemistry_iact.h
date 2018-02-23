@@ -26,11 +26,12 @@
  */
 
 #include "cache.h"
-#include "minmax.h"
 #include "chemistry_struct.h"
+#include "minmax.h"
 
 /**
- * @brief do chemistry computation after the runner_iact_density (symmetric version)
+ * @brief do chemistry computation after the runner_iact_density (symmetric
+ * version)
  *
  * @param r2 Distance squared between particles
  * @param dx Distance between particles
@@ -41,11 +42,12 @@
  * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
-float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-const struct chemistry_data *chem_data) {}
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    const struct chemistry_data *chem_data) {}
 
 /**
- * @brief do chemistry computation after the runner_iact_density (non symmetric version)
+ * @brief do chemistry computation after the runner_iact_density (non symmetric
+ * version)
  *
  * @param r2 Distance squared between particles
  * @param dx Distance between particles
@@ -56,9 +58,7 @@ const struct chemistry_data *chem_data) {}
  * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
-float r2, float *dx, float hi, float hj, struct part *pi, const struct part *pj,
-const struct chemistry_data *chem_data) {}
-
-
+    float r2, float *dx, float hi, float hj, struct part *pi,
+    const struct part *pj, const struct chemistry_data *chem_data) {}
 
 #endif /* SWIFT_NONE_CHEMISTRY_IACT_H */

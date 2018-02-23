@@ -2424,7 +2424,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
-	chemistry_init_part(p, e->chemistry);
+        chemistry_init_part(p, e->chemistry);
       }
     }
 

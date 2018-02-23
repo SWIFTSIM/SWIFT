@@ -51,11 +51,11 @@ int main(int argc, char *argv[]) {
   struct chemistry_data chemistry;
   /* At one point, we will need to initialize the chemistry
   chemistry_init(const struct swift_params* parameter_file,
-		 const struct unit_system* us,
-		 const struct phys_const* phys_const,
-		 &chemistry);
+                 const struct unit_system* us,
+                 const struct phys_const* phys_const,
+                 &chemistry);
   */
-  
+
   /* Make the particle smoothing length and position reasonable */
   for (size_t i = 0; i < 3; ++i) pi.x[0] = random_uniform(-1., 1.);
   for (size_t i = 0; i < 3; ++i) pj.x[0] = random_uniform(-1., 1.);

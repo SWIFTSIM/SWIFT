@@ -32,7 +32,8 @@ enum chemistry_element {
   chemistry_element_Y,
   chemistry_element_Ba,
   chemistry_element_Eu,
-  chemistry_element_count};
+  chemistry_element_count
+};
 
 /**
  * @brief Global chemical abundance information.
@@ -49,7 +50,6 @@ struct chemistry_part_data {
 
   /*! Smoothed fraction of the particle mass in a given element */
   float smoothed_metal_mass_fraction[chemistry_element_count];
-
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

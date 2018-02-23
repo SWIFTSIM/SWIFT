@@ -22,17 +22,20 @@
 
 /**
  * @file GEAR/chemistry_iact.h
- * @brief Smooth metal interaction functions following the GEAR version of smooth metalicity.
+ * @brief Smooth metal interaction functions following the GEAR version of
+ * smooth metalicity.
  *
- * The interactions computed here are the ones presented in Wiersma, Schaye et al. 2009
+ * The interactions computed here are the ones presented in Wiersma, Schaye et
+ * al. 2009
  */
 
 #include "cache.h"
-#include "minmax.h"
 #include "chemistry_struct.h"
+#include "minmax.h"
 
 /**
- * @brief do chemistry computation after the runner_iact_density (symmetric version)
+ * @brief do chemistry computation after the runner_iact_density (symmetric
+ * version)
  *
  * @param r2 Distance squared between particles
  * @param dx Distance between particles
@@ -43,8 +46,8 @@
  * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
-float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-const struct chemistry_data *chem_data) {
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    const struct chemistry_data *chem_data) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -68,14 +71,17 @@ const struct chemistry_data *chem_data) {
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for(int i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] += mi * chi->metal_mass_fraction[i] * wj;
+  for (int i = 0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] +=
+        mj * chj->metal_mass_fraction[i] * wi;
+    chj->smoothed_metal_mass_fraction[i] +=
+        mi * chi->metal_mass_fraction[i] * wj;
   }
 }
 
 /**
- * @brief do chemistry computation after the runner_iact_density (non symmetric version)
+ * @brief do chemistry computation after the runner_iact_density (non symmetric
+ * version)
  *
  * @param r2 Distance squared between particles
  * @param dx Distance between particles
@@ -86,8 +92,8 @@ const struct chemistry_data *chem_data) {
  * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
-float r2, float *dx, float hi, float hj, struct part *pi, const struct part *pj,
-const struct chemistry_data *chem_data) {
+    float r2, float *dx, float hi, float hj, struct part *pi,
+    const struct part *pj, const struct chemistry_data *chem_data) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -105,12 +111,10 @@ const struct chemistry_data *chem_data) {
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for(int i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
+  for (int i = 0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] +=
+        mj * chj->metal_mass_fraction[i] * wi;
   }
-
 }
-
-
 
 #endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */

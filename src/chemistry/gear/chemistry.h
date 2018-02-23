@@ -44,9 +44,8 @@ __attribute__((always_inline)) INLINE static const char*
 chemistry_get_element_name(enum chemistry_element elem) {
 
   static const char* chemistry_element_names[chemistry_element_count] = {
-    "Oxygen",  "Magnesium", "Sulfur",  "Iron",
-    "Zinc",    "Strontium", "Yttrium", "Barium",
-    "Europium"};
+      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
+      "Strontium", "Yttrium",   "Barium", "Europium"};
 
   return chemistry_element_names[elem];
 }
@@ -75,7 +74,6 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
   message("Chemistry function is 'Gear'.");
 }
 
-
 /**
  * @brief Prepares a particle for the smooth metal calculation.
  *
@@ -86,20 +84,20 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
  * @param cd #chemistry_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part *restrict p, const struct chemistry_data *cd) {
+    struct part* restrict p, const struct chemistry_data* cd) {
 
-  struct chemistry_part_data *cpd = &p->chemistry_data;
+  struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  for(int i=0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < chemistry_element_count; i++) {
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
   }
 }
 
-
 /**
  * @brief Finishes the smooth metal calculation.
  *
- * Multiplies the smoothed metallicity and number of neighbours by the appropiate constants
+ * Multiplies the smoothed metallicity and number of neighbours by the
+ * appropiate constants
  * and add the self-contribution term.
  *
  * This method requires the #hydro_end_density to have been computed.
@@ -107,7 +105,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part *restrict p, const struct chemistry_data *cd) {
+    struct part* restrict p, const struct chemistry_data* cd) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -115,17 +113,17 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
   const float m = p->mass;
 
-  struct chemistry_part_data *cpd = &p->chemistry_data;
+  struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  for(int i=0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < chemistry_element_count; i++) {
     /* Final operation on the density (add self-contribution). */
-    cpd->smoothed_metal_mass_fraction[i] += m * cpd->metal_mass_fraction[i]* kernel_root;
+    cpd->smoothed_metal_mass_fraction[i] +=
+        m * cpd->metal_mass_fraction[i] * kernel_root;
 
     /* Finish the calculation by inserting the missing h-factors */
     cpd->smoothed_metal_mass_fraction[i] *= factor;
   }
 }
-
 
 /**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
