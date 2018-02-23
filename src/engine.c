@@ -5857,7 +5857,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->snapshotUnits = us;
 
 #ifdef WITH_MPI
-  struct repartition *reparttype = (strunct repartition *)malloc(sizeof(struct repartition));
+  struct repartition *reparttype = (struct repartition *)malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
   e->reparttype = reparttype;
 #endif
