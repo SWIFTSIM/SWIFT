@@ -2002,7 +2002,7 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend) {
-            cell_unpack_end_step(ci, t->buff);
+            cell_unpack_end_step(ci, (pcell_step *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -2015,7 +2015,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1);
           } else if (t->subtype == task_subtype_multipole) {
-            cell_unpack_multipoles(ci, t->buff);
+            cell_unpack_multipoles(ci, (gravity_tensors *)t->buff);
             free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);

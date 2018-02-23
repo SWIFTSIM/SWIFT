@@ -442,7 +442,7 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
    * of old and new ranks. Each element of the array has a cell count and
    * an unique index so we can sort into decreasing counts. */
   int indmax = nregions * nregions;
-  struct indexval *ivs = malloc(sizeof(struct indexval) * indmax);
+  struct indexval *ivs = (indexval *)malloc(sizeof(struct indexval) * indmax);
   bzero(ivs, sizeof(struct indexval) * indmax);
   for (int k = 0; k < ncells; k++) {
     int index = regionid[k] + nregions * s->cells_top[k].nodeID;
@@ -453,8 +453,8 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
 
   /* Go through the ivs using the largest counts first, these are the
    * regions with the most cells in common, old partition to new. */
-  int *oldmap = malloc(sizeof(int) * nregions);
-  int *newmap = malloc(sizeof(int) * nregions);
+  int *oldmap = (int *)malloc(sizeof(int) * nregions);
+  int *newmap = (int *)malloc(sizeof(int) * nregions);
   for (int k = 0; k < nregions; k++) {
     oldmap[k] = -1;
     newmap[k] = -1;
