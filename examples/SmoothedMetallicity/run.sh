@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -t 4 smoothed_metallicity.yml 2>&1 | tee output.log
+../swift -n 1 -s -t 4 smoothed_metallicity.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 4
+python plotSolution.py 1
