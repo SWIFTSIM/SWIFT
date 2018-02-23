@@ -20,7 +20,7 @@
 import h5py
 import numpy as np
 
-# Generates a swift IC file for the Sedov blast test in a periodic cubic box
+# Generates a swift IC file for the Smoothed Metallicity test in a periodic cubic box
 
 # Parameters
 gamma = 5./3.      # Gas adiabatic index
