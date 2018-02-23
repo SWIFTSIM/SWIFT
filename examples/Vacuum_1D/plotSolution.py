@@ -25,7 +25,13 @@ import h5py
 import sys
 
 # Parameters
-gamma = 1.4 # Polytropic index
+gamma = 5. / 3. # Polytropic index
+rhoL = 1.       # Initial density in the non vacuum state
+vL = 0.         # Initial velocity in the non vacuum state
+PL = 1.         # Initial pressure in the non vacuum state
+rhoR = 0.       # Initial vacuum density
+vR = 0.         # Initial vacuum velocity
+PR = 0.         # Initial vacuum pressure
 
 # Plot parameters
 params = {'axes.labelsize': 10,
@@ -53,7 +59,7 @@ pl.rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 snap = int(sys.argv[1])
 
 # Open the file and read the relevant data
-file = h5py.File("interactingBlastWaves_{0:04d}.hdf5".format(snap), "r")
+file = h5py.File("vacuum_{0:04d}.hdf5".format(snap), "r")
 x = file["/PartType0/Coordinates"][:,0]
 rho = file["/PartType0/Density"]
 v = file["/PartType0/Velocities"][:,0]
@@ -68,54 +74,96 @@ neighbours = file["/HydroScheme"].attrs["Kernel target N_ngb"][0]
 eta = file["/HydroScheme"].attrs["Kernel eta"][0]
 git = file["Code"].attrs["Git Revision"]
 
-ref = np.loadtxt("interactingBlastWaves1D_exact.txt")
+# Get the analytic solution, which is just the solution of the corresponding
+# vacuum Riemann problem evaluated at the correct time
+
+# left state sound speed (and rarefaction wave speed)
+aL = np.sqrt(gamma * PL / rhoL)
+
+# vacuum front speed
+SL = vL + 2. / (gamma - 1.) * aL
+
+# we evaluate the solution centred on 0., and shift to the correct position
+# afterwards
+xa = np.arange(-0.25, 0.25, 0.001)
+rhoa = np.zeros(len(xa))
+va = np.zeros(len(xa))
+Pa = np.zeros(len(xa))
+
+for i in range(len(xa)):
+  dxdt = xa[i] / time
+  if dxdt > vL - aL:
+    if dxdt < SL:
+      # rarefaction regime
+      # factor that appears in both the density and pressure expression
+      fac = 2. / (gamma + 1.) + \
+            (gamma - 1.) / (gamma + 1.) * (vL - dxdt) / aL
+      rhoa[i] = rhoL * fac**(2. / (gamma - 1.))
+      va[i] = 2. / (gamma + 1.) * (aL + 0.5 * (gamma - 1.) * vL + dxdt)
+      Pa[i] = PL * fac**(2. * gamma / (gamma - 1.))
+    else:
+      # vacuum regime
+      rhoa[i] = 0.
+      va[i] = 0.
+      Pa[i] = 0.
+  else:
+    # left state regime
+    rhoa[i] = rhoL
+    va[i] = vL
+    Pa[i] = PL
+
+ua = Pa / (gamma - 1.) / rhoa
+Sa = Pa / rhoa**gamma
 
 # Plot the interesting quantities
 fig, ax = pl.subplots(2, 3)
 
 # Velocity profile
 ax[0][0].plot(x, v, "r.", markersize = 4.)
-ax[0][0].plot(ref[:,0], ref[:,2], "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][0].plot(xa + 0.75, va, "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][0].plot(xa + 0.25, -va[::-1], "k--", alpha = 0.8, linewidth = 1.2)
 ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
 ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad = 0)
-ax[0][0].set_xlim(0., 1.)
-ax[0][0].set_ylim(-1., 15.)
 
 # Density profile
 ax[0][1].plot(x, rho, "r.", markersize = 4.)
-ax[0][1].plot(ref[:,0], ref[:,1], "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][1].plot(xa + 0.75, rhoa, "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][1].plot(xa + 0.25, rhoa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
 ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
 ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad = 0)
-ax[0][1].set_xlim(0., 1.)
 
 # Pressure profile
 ax[0][2].plot(x, P, "r.", markersize = 4.)
-ax[0][2].plot(ref[:,0], ref[:,3], "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][2].plot(xa + 0.75, Pa, "k--", alpha = 0.8, linewidth = 1.2)
+ax[0][2].plot(xa + 0.25, Pa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
 ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
 ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad = 0)
-ax[0][2].set_xlim(0., 1.)
 
 # Internal energy profile
 ax[1][0].plot(x, u, "r.", markersize = 4.)
-ax[1][0].plot(ref[:,0], ref[:,3] / ref[:,1] / (gamma - 1.), "k--", alpha = 0.8,
-              linewidth = 1.2)
+ax[1][0].plot(xa + 0.75, ua, "k--", alpha = 0.8, linewidth = 1.2)
+ax[1][0].plot(xa + 0.25, ua[::-1], "k--", alpha = 0.8, linewidth = 1.2)
 ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
 ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad = 0)
-ax[1][0].set_xlim(0., 1.)
 
 # Entropy profile
 ax[1][1].plot(x, S, "r.", markersize = 4.)
-ax[1][1].plot(ref[:,0], ref[:,3] / ref[:,1]**gamma, "k--", alpha = 0.8,
-              linewidth = 1.2)
+ax[1][1].plot(xa + 0.75, Sa, "k--", alpha = 0.8, linewidth = 1.2)
+ax[1][1].plot(xa + 0.25, Sa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
 ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
 ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad = 0)
-ax[1][1].set_xlim(0., 1.)
 
 # Run information
 ax[1][2].set_frame_on(False)
 ax[1][2].text(-0.49, 0.9,
-  "Interacting blast waves test\nwith $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
+  "Vacuum test with $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
     gamma, time), fontsize = 10)
+ax[1][2].text(-0.49, 0.8,
+  "Left:~~ $(P_L, \\rho_L, v_L) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(
+    PL, rhoL, vL), fontsize = 10)
+ax[1][2].text(-0.49, 0.7,
+  "Right: $(P_R, \\rho_R, v_R) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(
+    PR, rhoR, vR), fontsize = 10)
 ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw = 1)
 ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize = 10)
 ax[1][2].text(-0.49, 0.4, scheme, fontsize = 10)
@@ -129,4 +177,4 @@ ax[1][2].set_xticks([])
 ax[1][2].set_yticks([])
 
 pl.tight_layout()
-pl.savefig("InteractingBlastWaves.png", dpi = 200)
+pl.savefig("Vacuum.png", dpi = 200)
