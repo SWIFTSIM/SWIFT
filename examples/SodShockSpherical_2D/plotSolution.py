@@ -109,7 +109,7 @@ plot(x, v, '.', color='r', ms=0.2)
 plot(ref[:,0], ref[:,2], "k--", alpha=0.8, lw=1.2)
 errorbar(x_bin, v_bin, yerr=v_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
 
 # Density profile --------------------------------
 subplot(232)

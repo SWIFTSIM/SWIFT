@@ -110,7 +110,7 @@ semilogx(x, -v, '.', color='r', ms=0.2)
 semilogx(ref[:,0], ref[:,2], "k--", alpha=0.8, lw=1.2)
 errorbar(x_bin, -v_bin, yerr=v_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
 xlim(1.e-3, 2.)
 ylim(-1.7, 0.1)
 
@@ -157,7 +157,7 @@ ylim(0., 0.25)
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Evrard collapse with  $\\gamma=%.3f$ in 3D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.9, "Evrard collapse with $\\gamma=%.3f$ in 3D\nat $t=%.2f$"%(gas_gamma,time), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
 text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)
@@ -168,5 +168,5 @@ ylim(0, 1)
 xticks([])
 yticks([])
 
-
+tight_layout()
 savefig("EvrardCollapse.png", dpi=200)
