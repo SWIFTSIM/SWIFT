@@ -43,7 +43,6 @@
 __attribute__((always_inline)) INLINE static const char*
 chemistry_get_element_name(enum chemistry_element elem) {
 
-  /* Warning: in the I/O, expect string < 20 */
   static const char* chemistry_element_names[chemistry_element_count] = {
     "Oxygen",  "Magnesium", "Sulfur",  "Iron",
     "Zinc",    "Strontium", "Yttrium", "Barium",

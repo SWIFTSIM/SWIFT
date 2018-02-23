@@ -17,14 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_IACT_H
-#define SWIFT_GEAR_CHEMISTRY_IACT_H
+#ifndef SWIFT_NONE_CHEMISTRY_IACT_H
+#define SWIFT_NONE_CHEMISTRY_IACT_H
 
 /**
- * @file GEAR/chemistry_iact.h
- * @brief Smooth metal interaction functions following the GEAR version of smooth metalicity.
- *
- * The interactions computed here are the ones presented in Wiersma, Schaye et al. 2009
+ * @file none/chemistry_iact.h
+ * @brief Density computation
  */
 
 #include "cache.h"
@@ -44,35 +42,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-const struct chemistry_data *chem_data) {
-
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  float wi, wi_dx;
-  float wj, wj_dx;
-
-  /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
-
-  /* Get r */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function for pi */
-  const float ui = r / hi;
-  kernel_deval(ui, &wi, &wi_dx);
-
-  /* Compute the kernel function for pj */
-  const float uj = r / hj;
-  kernel_deval(uj, &wj, &wj_dx);
-
-  /* Compute contribution to the smooth metallicity */
-  for(int i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] += mi * chi->metal_mass_fraction[i] * wj;
-  }
-}
+const struct chemistry_data *chem_data) {}
 
 /**
  * @brief do chemistry computation after the runner_iact_density (non symmetric version)
@@ -87,30 +57,8 @@ const struct chemistry_data *chem_data) {
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 float r2, float *dx, float hi, float hj, struct part *pi, const struct part *pj,
-const struct chemistry_data *chem_data) {
-
-  struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  float wi, wi_dx;
-
-  /* Get the masses. */
-  const float mj = pj->mass;
-
-  /* Get r */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function for pi */
-  const float ui = r / hi;
-  kernel_deval(ui, &wi, &wi_dx);
-
-  /* Compute contribution to the smooth metallicity */
-  for(int i=0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] += mj * chj->metal_mass_fraction[i] * wi;
-  }
-
-}
+const struct chemistry_data *chem_data) {}
 
 
 
-#endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */
+#endif /* SWIFT_NONE_CHEMISTRY_IACT_H */
