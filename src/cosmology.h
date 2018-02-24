@@ -170,10 +170,7 @@ void cosmology_init(const struct swift_params *params,
                     const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
 
-void cosmology_init_no_cosmo(const struct swift_params *params,
-                             const struct unit_system *us,
-                             const struct phys_const *phys_const,
-                             struct cosmology *c);
+void cosmology_init_no_cosmo(struct cosmology *c);
 
 void cosmology_print(const struct cosmology *c);
 void cosmology_clean(struct cosmology *c);

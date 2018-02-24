@@ -437,10 +437,7 @@ void cosmology_init(const struct swift_params *params,
  * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
-void cosmology_init_no_cosmo(const struct swift_params *params,
-                             const struct unit_system *us,
-                             const struct phys_const *phys_const,
-                             struct cosmology *c) {
+void cosmology_init_no_cosmo(struct cosmology *c) {
 
   c->Omega_m = 0.;
   c->Omega_r = 0.;
