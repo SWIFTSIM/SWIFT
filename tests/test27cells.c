@@ -225,9 +225,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
@@ -447,6 +447,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -536,7 +540,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell);
+    end_calculation(main_cell, &cosmo);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -584,7 +588,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, &cosmo);
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);

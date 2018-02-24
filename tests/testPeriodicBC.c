@@ -204,9 +204,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
   }
 }
 
@@ -332,7 +332,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 #endif
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, runner.e->cosmology);
 
   /* Dump particles from the main cell. */
   dump_particle_fields(swiftOutputFileName, main_cell, loc_i, loc_j, loc_k);
@@ -370,7 +370,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 #endif
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, runner.e->cosmology);
 
   /* Dump */
   dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
@@ -492,6 +492,10 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
 
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];
