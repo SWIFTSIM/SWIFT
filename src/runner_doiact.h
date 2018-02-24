@@ -24,10 +24,6 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-#include "chemistry.h"
-#endif
-
 #define PASTE(x, y) x##_##y
 
 #define _DOPAIR1_BRANCH(f) PASTE(runner_dopair1_branch, f)

@@ -42,6 +42,7 @@
 #include "approx_math.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
 #include "debug.h"
