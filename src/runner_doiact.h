@@ -138,6 +138,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -148,6 +149,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -196,7 +201,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2 && pi_active) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
       }
       if (r2 < hjg2 && pj_active) {
 
@@ -204,7 +209,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
       }
 
     } /* loop over the parts in cj. */
@@ -226,6 +231,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -236,6 +242,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -286,17 +296,17 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (pi_active && pj_active) {
 
-          IACT(r2, dx, hi, hj, pi, pj);
+          IACT(r2, dx, hi, hj, pi, pj, a, H);
         } else if (pi_active) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         } else if (pj_active) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       }
     } /* loop over the parts in cj. */
@@ -316,11 +326,16 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   const int count = c->count;
   struct part *restrict parts = c->parts;
@@ -365,17 +380,17 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj);
+        IACT(r2, dx, hi, hj, pi, pj, a, H);
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
       } else if (doj) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -394,11 +409,16 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   const int count = c->count;
   struct part *restrict parts = c->parts;
@@ -443,17 +463,17 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj);
+        IACT(r2, dx, hi, hj, pi, pj, a, H);
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
       } else if (doj) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -480,10 +500,17 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
                          int count, struct cell *restrict cj,
                          const double *shift) {
 
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+
   TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
@@ -496,7 +523,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const struct engine *e = r->e;
     if (!part_is_active(pi, e))
       error("Trying to correct smoothing length of inactive particle !");
 #endif
@@ -526,7 +552,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -553,10 +579,17 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj, const int sid, const int flipped,
                    const double *shift) {
 
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+
   TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Pick-out the sorted lists. */
   const struct entry *restrict sort_j = cj->sort[sid];
@@ -593,7 +626,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -604,7 +636,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -641,7 +673,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-        const struct engine *e = r->e;
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -652,7 +683,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -732,11 +763,14 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
 
-#ifdef SWIFT_DEBUG_CHECKS
   const struct engine *e = r->e;
-#endif
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   const int count_i = ci->count;
   struct part *restrict parts_j = ci->parts;
@@ -778,7 +812,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -820,6 +854,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
              const double *shift) {
 
   const struct engine *restrict e = r->e;
+  const struct cosmology *restrict cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -851,6 +886,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   if (cell_is_active_hydro(ci, e)) {
 
@@ -926,7 +965,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1006,7 +1045,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -1109,7 +1148,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
              const double *shift) {
 
-  struct engine *restrict e = r->e;
+  const struct engine *restrict e = r->e;
+  const struct cosmology *restrict cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -1138,6 +1178,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const int count_j = cj->count;
   struct part *restrict parts_i = ci->parts;
   struct part *restrict parts_j = cj->parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Maximal displacement since last rebuild */
   const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
@@ -1269,7 +1313,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over the active parts in cj. */
     }
@@ -1331,9 +1375,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e))
-            IACT(r2, dx, hi, hj, pi, pj);
+            IACT(r2, dx, hi, hj, pi, pj, a, H);
           else
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* Is pi active? */
@@ -1419,7 +1463,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the active parts in ci. */
     }
@@ -1484,9 +1528,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pi need to be updated too? */
           if (part_is_active(pi, e))
-            IACT(r2, dx, hj, hi, pj, pi);
+            IACT(r2, dx, hj, hi, pj, pi, a, H);
           else
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over the parts in ci. */
     }   /* Is pj active? */
@@ -1592,6 +1636,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -1609,6 +1654,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
       indt[countdt] = k;
       countdt += 1;
     }
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -1651,7 +1700,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over all other particles. */
     }
@@ -1692,14 +1741,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
           /* Which parts need to be updated? */
           if (r2 < hig2 && doj)
-            IACT(r2, dx, hi, hj, pi, pj);
+            IACT(r2, dx, hi, hj, pi, pj, a, H);
           else if (!doj)
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
           else {
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
           }
         }
       } /* loop over all other particles. */
@@ -1752,6 +1801,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
 void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -1769,6 +1819,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
       indt[countdt] = k;
       countdt += 1;
     }
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -1811,7 +1865,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over all other particles. */
     }
@@ -1850,9 +1904,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e))
-            IACT(r2, dx, hi, hj, pi, pj);
+            IACT(r2, dx, hi, hj, pi, pj, a, H);
           else
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over all other particles. */
     }

@@ -457,7 +457,7 @@ void cosmology_init_no_cosmo(const struct swift_params *params,
   c->log_a_begin = 0.;
   c->log_a_end = 0.;
 
-  c->H = 1.;
+  c->H = 0.;
   c->a = 1.;
   c->a_inv = 1.;
   c->a2_inv = 1.;
