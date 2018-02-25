@@ -51,6 +51,32 @@ chemistry_get_element_name(enum chemistry_element elem) {
 }
 
 /**
+ * @brief Prepares a particle for the smooth metal calculation.
+ *
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the various smooth metallicity tasks
+ *
+ * @param p The particle to act upon
+ * @param cd #chemistry_data containing chemistry informations.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_init_part(
+    struct part* restrict p, const struct chemistry_data* cd) {}
+
+/**
+ * @brief Finishes the smooth metal calculation.
+ *
+ * Multiplies the smoothed metallicity and number of neighbours by the
+ * appropiate constants and add the self-contribution term.
+ *
+ * This function requires the #hydro_end_density to have been called.
+ *
+ * @param p The particle to act upon.
+ * @param cd #chemistry_data containing chemistry informations.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_density(
+    struct part* restrict p, const struct chemistry_data* cd) {}
+
+/**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *

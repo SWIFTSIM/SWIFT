@@ -97,8 +97,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @brief Finishes the smooth metal calculation.
  *
  * Multiplies the smoothed metallicity and number of neighbours by the
- * appropiate constants
- * and add the self-contribution term.
+ * appropiate constants and add the self-contribution term.
  *
  * This method requires the #hydro_end_density to have been computed.
  *
