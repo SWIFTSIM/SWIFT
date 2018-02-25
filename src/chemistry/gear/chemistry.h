@@ -99,9 +99,10 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * Multiplies the smoothed metallicity and number of neighbours by the
  * appropiate constants and add the self-contribution term.
  *
- * This method requires the #hydro_end_density to have been computed.
+ * This function requires the #hydro_end_density to have been called.
  *
- * @param p The particle to act upon
+ * @param p The particle to act upon.
+ * @param cd #chemistry_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_data* cd) {

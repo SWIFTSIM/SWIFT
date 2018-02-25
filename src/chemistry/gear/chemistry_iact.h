@@ -29,9 +29,7 @@
  * al. 2009
  */
 
-#include "cache.h"
 #include "chemistry_struct.h"
-#include "minmax.h"
 
 /**
  * @brief do chemistry computation after the runner_iact_density (symmetric
