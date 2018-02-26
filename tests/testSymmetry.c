@@ -43,7 +43,7 @@ void test() {
 
   /* Start with some values for the cosmological paramters */
   const float a = (float)random_uniform(0.8, 1.);
-  const float H = 0.f;
+  const float H = 1.f;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
