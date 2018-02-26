@@ -54,6 +54,9 @@ AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
 
+#  Restrict support.
+AC_C_RESTRICT
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
