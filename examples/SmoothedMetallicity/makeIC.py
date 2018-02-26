@@ -26,11 +26,15 @@ import numpy as np
 gamma = 5./3.      # Gas adiabatic index
 rho0 = 1.          # Background density
 P0 = 1.e-6         # Background pressure
+Nelem = 9          # Gear: 9, EAGLE: 9
 low_metal = -6     # Low iron fraction
 high_metal = -5    # high iron fraction
 sigma_metal = 0.1  # relative standard deviation for the metallicities
-Nelem = 9          # Gear: 9, EAGLE: 9
 fileName = "smoothed_metallicity.hdf5"
+
+# shift all metals in order to obtain nicer plots
+low_metal = [low_metal] * Nelem + np.linspace(0, 3, Nelem)
+high_metal = [high_metal] * Nelem + np.linspace(0, 3, Nelem)
 
 # ---------------------------------------------------
 glass = h5py.File("glassCube_32.hdf5", "r")
@@ -57,13 +61,11 @@ u[:] = P0 / (rho0 * (gamma - 1))
 # set metallicities
 select = pos[:, 0] < 0.5
 nber = sum(select)
-sigma = abs(sigma_metal*low_metal)
-Z[select, :] = low_metal + np.random.normal(loc=0., scale=sigma,
-                                            size=(nber, Nelem))
+Z[select, :] = low_metal * (1 + np.random.normal(loc=0., scale=sigma_metal,
+                                                 size=(nber, Nelem)))
 nber = numPart - nber
-sigma = abs(sigma_metal*high_metal)
-Z[np.logical_not(select), :] = high_metal + np.random.normal(
-    loc=0., scale=sigma, size=(nber, Nelem))
+Z[np.logical_not(select), :] = high_metal * (1 + np.random.normal(
+    loc=0., scale=sigma_metal, size=(nber, Nelem)))
 
 # --------------------------------------------------
 
