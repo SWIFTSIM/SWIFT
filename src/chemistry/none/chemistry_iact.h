@@ -39,11 +39,10 @@
  * @param hj Smoothing length of j
  * @param pi #part i
  * @param pj #part j
- * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-    const struct chemistry_data *chem_data) {}
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+}
 
 /**
  * @brief do chemistry computation after the runner_iact_density (non symmetric
@@ -55,10 +54,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
  * @param hj Smoothing length of j
  * @param pi #part i
  * @param pj #part j
- * @param chem_data Chemistry informations
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     float r2, float *dx, float hi, float hj, struct part *pi,
-    const struct part *pj, const struct chemistry_data *chem_data) {}
+    const struct part *pj) {}
 
 #endif /* SWIFT_NONE_CHEMISTRY_IACT_H */
