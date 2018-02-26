@@ -31,10 +31,13 @@
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry.h"
+#include "./chemistry/none/chemistry_iact.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/gear/chemistry.h"
+#include "./chemistry/gear/chemistry_iact.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry.h"
+#include "./chemistry/EAGLE/chemistry_iact.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

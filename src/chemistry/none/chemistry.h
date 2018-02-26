@@ -38,18 +38,15 @@
 #include "units.h"
 
 /**
- * @brief Sets the chemistry properties of the (x-)particles to a valid start
- * state.
- *
- * Nothing to do here.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information used for this run.
+ * @brief Return a string containing the name of a given #chemistry_element.
  */
-__attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {}
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
+
+  static const char* chemistry_element_names[chemistry_element_count] = {};
+
+  return chemistry_element_names[elem];
+}
 
 /**
  * @brief Initialises the chemistry properties.
@@ -74,5 +71,40 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
 
   message("Chemistry function is 'No chemistry'.");
 }
+
+/**
+ * @brief Finishes the density calculation.
+ *
+ * @param p The particle to act upon
+ * @param cd The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_density(
+    struct part* restrict p, const struct chemistry_data* cd) {}
+
+/**
+ * @brief Sets the chemistry properties of the (x-)particles to a valid start
+ * state.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param data The global chemistry information used for this run.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_first_init_part(
+    const struct part* restrict p, struct xpart* restrict xp,
+    const struct chemistry_data* data) {}
+
+/**
+ * @brief Sets the chemistry properties of the (x-)particles to a valid start
+ * state.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param data The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_init_part(
+    struct part* restrict p, const struct chemistry_data* data) {}
 
 #endif /* SWIFT_CHEMISTRY_NONE_H */

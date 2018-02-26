@@ -463,7 +463,10 @@ void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 /* And go... */
 int main(int argc, char *argv[]) {
 
+#ifdef HAVE_SETAFFINITY
   engine_pin();
+#endif
+
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
   double perturbation = 0.;

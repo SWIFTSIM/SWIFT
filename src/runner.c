@@ -42,6 +42,7 @@
 #include "approx_math.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
 #include "debug.h"
@@ -716,6 +717,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
+          chemistry_end_density(p, e->chemistry);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -753,6 +755,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             hydro_init_part(p, hs);
+            chemistry_init_part(p, e->chemistry);
 
             /* Off we go ! */
             continue;
