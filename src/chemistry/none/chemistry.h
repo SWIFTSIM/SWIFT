@@ -76,6 +76,7 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
  * @brief Finishes the density calculation.
  *
  * @param p The particle to act upon
+ * @param cd The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_data* cd) {}
@@ -101,7 +102,6 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  * Nothing to do here.
  *
  * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
  * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
