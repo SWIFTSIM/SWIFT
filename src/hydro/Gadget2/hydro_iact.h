@@ -436,9 +436,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Will change with cosmological integration */
-  const float fac_mu = 1.f;
-  const float a2_Hubble = 0.f;
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -555,9 +555,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Will change with cosmological integration */
-  const float fac_mu = 1.f;
-  const float a2_Hubble = 0.f;
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
