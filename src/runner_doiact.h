@@ -197,6 +197,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2 && pi_active) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
       }
       if (r2 < hjg2 && pj_active) {
 
@@ -205,6 +208,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[2] = -dx[2];
 
         IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
       }
 
     } /* loop over the parts in cj. */
@@ -287,9 +293,15 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         if (pi_active && pj_active) {
 
           IACT(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         } else if (pi_active) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         } else if (pj_active) {
 
           dx[0] = -dx[0];
@@ -297,6 +309,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           dx[2] = -dx[2];
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
         }
       }
     } /* loop over the parts in cj. */
@@ -366,9 +381,15 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       if (doi && doj) {
 
         IACT(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
       } else if (doi) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
       } else if (doj) {
 
         dx[0] = -dx[0];
@@ -376,6 +397,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[2] = -dx[2];
 
         IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -444,9 +468,15 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       if (doi && doj) {
 
         IACT(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
       } else if (doi) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
       } else if (doj) {
 
         dx[0] = -dx[0];
@@ -454,6 +484,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[2] = -dx[2];
 
         IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -527,6 +560,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj);
+#endif
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -605,6 +641,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         if (r2 < hig2) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -653,6 +692,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         if (r2 < hig2) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -779,6 +821,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       if (r2 > 0.f && r2 < hig2) {
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj);
+#endif
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -927,6 +972,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hig2) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1007,6 +1055,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hjg2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -1270,6 +1321,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
         }
       } /* loop over the active parts in cj. */
     }
@@ -1330,10 +1384,17 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hig2) {
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e))
+          if (part_is_active(pj, e)) {
             IACT(r2, dx, hi, hj, pi, pj);
-          else
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          } else {
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          }
         }
       } /* loop over the parts in cj. */
     }   /* Is pi active? */
@@ -1420,6 +1481,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
         }
       } /* loop over the active parts in ci. */
     }
@@ -1483,10 +1547,17 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hjg2 && r2 >= hig2) {
 
           /* Does pi need to be updated too? */
-          if (part_is_active(pi, e))
+          if (part_is_active(pi, e)) {
             IACT(r2, dx, hj, hi, pj, pi);
-          else
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
+          } else {
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
+          }
         }
       } /* loop over the parts in ci. */
     }   /* Is pj active? */
@@ -1652,6 +1723,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         if (r2 < hj * hj * kernel_gamma2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
         }
       } /* loop over all other particles. */
     }
@@ -1691,15 +1765,24 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         if (r2 < hig2 || doj) {
 
           /* Which parts need to be updated? */
-          if (r2 < hig2 && doj)
+          if (r2 < hig2 && doj) {
             IACT(r2, dx, hi, hj, pi, pj);
-          else if (!doj)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          } else if (!doj) {
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
-          else {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          } else {
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
           }
         }
       } /* loop over all other particles. */
@@ -1812,6 +1895,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi);
+#endif
         }
       } /* loop over all other particles. */
     }
@@ -1849,10 +1935,17 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e))
+          if (part_is_active(pj, e)) {
             IACT(r2, dx, hi, hj, pi, pj);
-          else
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          } else {
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+            runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj);
+#endif
+          }
         }
       } /* loop over all other particles. */
     }

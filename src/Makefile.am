@@ -122,12 +122,15 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
+		 chemistry/none/chemistry_iact.h \
                  chemistry/gear/chemistry.h \
 		 chemistry/gear/chemistry_io.h \
 		 chemistry/gear/chemistry_struct.h \
+		 chemistry/gear/chemistry_iact.h \
                  chemistry/EAGLE/chemistry.h \
 		 chemistry/EAGLE/chemistry_io.h \
-		 chemistry/EAGLE/chemistry_struct.h
+		 chemistry/EAGLE/chemistry_struct.h\
+		 chemistry/EAGLE/chemistry_iact.h
 
 
 # Sources and flags for regular library

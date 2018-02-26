@@ -137,13 +137,19 @@ int main(int argc, char *argv[]) {
 
   /* Call the symmetric version */
   runner_iact_density(r2, dx, pi.h, pj.h, &pi, &pj);
+  /* Now the chemistry. WARNING chemistry is not initialized */
+  runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2);
+  /* Now the chemistry. WARNING chemistry is not initialized */
+  runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
+  /* Now the chemistry. WARNING chemistry is not initialized */
+  runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
 
   /* Check that the particles are the same */
   i_ok = memcmp(&pi, &pi2, sizeof(struct part));
