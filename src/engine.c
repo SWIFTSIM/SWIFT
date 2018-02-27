@@ -5946,7 +5946,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
-  struct sourceterms *sourceterms = (struct sourceterms *) malloc(sizeof(struct sourceterms));
+  struct sourceterms *sourceterms =
+      (struct sourceterms *)malloc(sizeof(struct sourceterms));
   sourceterms_struct_restore(sourceterms, stream);
   e->sourceterms = sourceterms;
 

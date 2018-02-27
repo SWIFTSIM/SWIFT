@@ -414,9 +414,6 @@ void cosmology_init(const struct swift_params *params,
   c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   c->Hubble_time = 1. / c->H0;
 
-  /* Set remaining variables to alid values */
-  cosmology_update(c, 0);
-
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
@@ -424,6 +421,9 @@ void cosmology_init(const struct swift_params *params,
   c->time_interp_table = NULL;
   c->time_interp_table_offset = 0.;
   cosmology_init_tables(c);
+
+  /* Set remaining variables to alid values */
+  cosmology_update(c, 0);
 
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
@@ -433,11 +433,8 @@ void cosmology_init(const struct swift_params *params,
 /**
  * @brief Initialise the #cosmology for non-cosmological time-integration
  *
- * Essentially sets all constants to 1.
+ * Essentially sets all constants to 1 or 0.
  *
- * @param params The parsed values.
- * @param us The current internal system of units.
- * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
 void cosmology_init_no_cosmo(struct cosmology *c) {
