@@ -187,8 +187,9 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
 
   /* Particles used for padding should get impossible positions
    * that have a reasonable magnitude. We use the cell width for this */
-  const float pos_padded[3] = {-2. * cell->width[0], -2. * cell->width[1],
-                               -2. * cell->width[2]};
+  const float pos_padded[3] = {-2.f * (float)cell->width[0],
+                               -2.f * (float)cell->width[1],
+                               -2.f * (float)cell->width[2]};
   const float eps_padded = epsilon[0];
 
   /* Pad the caches */
@@ -247,8 +248,9 @@ gravity_cache_populate_no_mpole(timebin_t max_active_bin,
 
   /* Particles used for padding should get impossible positions
    * that have a reasonable magnitude. We use the cell width for this */
-  const float pos_padded[3] = {-2. * cell->width[0], -2. * cell->width[1],
-                               -2. * cell->width[2]};
+  const float pos_padded[3] = {-2.f * (float)cell->width[0],
+                               -2.f * (float)cell->width[1],
+                               -2.f * (float)cell->width[2]};
   const float eps_padded = epsilon[0];
 
   /* Pad the caches */

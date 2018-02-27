@@ -108,7 +108,7 @@ void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = dump_get(dump, size, &offset_new);
+  char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
   uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
@@ -192,7 +192,7 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = dump_get(dump, size, &offset_new);
+  char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
   uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |
@@ -244,7 +244,7 @@ void logger_log_timestamp(unsigned long long int timestamp, size_t *offset,
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = dump_get(dump, size, &offset_new);
+  char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
   uint64_t temp = (((uint64_t)(offset_new - *offset)) & 0xffffffffffffffULL) |

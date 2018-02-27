@@ -432,7 +432,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Read the parameter file */
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params *params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", paramFileName);

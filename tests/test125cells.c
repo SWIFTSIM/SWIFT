@@ -47,7 +47,7 @@
 #define DOPAIR2_NAME "runner_dopair2_force"
 #endif
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 enum velocity_field {
   velocity_zero,

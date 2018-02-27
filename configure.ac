@@ -54,6 +54,9 @@ AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
 
+#  Restrict support.
+AC_C_RESTRICT
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
@@ -463,6 +466,14 @@ fi
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# METIS fixed width integer printing can require this, so define. Only needed
+# for some non C99 compilers, i.e. C++ pre C++11.
+AH_VERBATIM([__STDC_FORMAT_MACROS],
+            [/* Needed to get PRIxxx macros from stdint.h when not using C99 */
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif])
 
 # Check for grackle. 
 have_grackle="no"
