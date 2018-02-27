@@ -734,12 +734,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
-  int *remoteids = NULL;
-  if ((remoteids = (int *)malloc(sizeof(idx_t) * ncells)) == NULL)
-    error("Failed to allocate new celllist");
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
   if (nodeID == 0) {
+
+    /* Need to accept idx_t, so buffer. */
+    int *remoteids = NULL;
+    if ((remoteids = (int *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate new celllist");
 
     for (int rank = 0, j = 0; rank < nregions; rank++) {
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
@@ -773,8 +775,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Copy. */
     for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
-
-    if (remoteids != NULL) free(remoteids);
+    free(remoteids);
 
   } else {
     res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
@@ -816,7 +817,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* Clean up. */
   free(reqs);
   free(stats);
-  free(remoteids);
   free(newcelllist);
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
