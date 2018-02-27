@@ -791,34 +791,36 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce sparticle transfer counts.");
 
   /* Report how many particles will be moved. */
-  // if (e->verbose) {
-  if (e->nodeID == 0) {
-    size_t total = 0, g_total = 0, s_total = 0;
-    size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
-    for (int p = 0, r = 0; p < nr_nodes; p++) {
-      for (int n = 0; n < nr_nodes; n++) {
-        total += counts[r];
-        g_total += g_counts[r];
-        s_total += s_counts[r];
-        if (p == n) {
-          unmoved += counts[r];
-          g_unmoved += g_counts[r];
-          s_unmoved += s_counts[r];
+  if (e->verbose) {
+    if (e->nodeID == 0) {
+      size_t total = 0, g_total = 0, s_total = 0;
+      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
+      for (int p = 0, r = 0; p < nr_nodes; p++) {
+        for (int n = 0; n < nr_nodes; n++) {
+          total += counts[r];
+          g_total += g_counts[r];
+          s_total += s_counts[r];
+          if (p == n) {
+            unmoved += counts[r];
+            g_unmoved += g_counts[r];
+            s_unmoved += s_counts[r];
+          }
+          r++;
         }
-        r++;
       }
+      if (total > 0)
+        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved,
+                total, 100.0 * (double)(total - unmoved) / (double)total);
+      if (g_total > 0)
+        message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
+                g_total,
+                100.0 * (double)(g_total - g_unmoved) / (double)g_total);
+      if (s_total > 0)
+        message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
+                s_total,
+                100.0 * (double)(s_total - s_unmoved) / (double)s_total);
     }
-    if (total > 0)
-      message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
-              100.0 * (double)(total - unmoved) / (double)total);
-    if (g_total > 0)
-      message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
-              g_total, 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
-    if (s_total > 0)
-      message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
-              s_total, 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
   }
-  //}
 
   /* Now each node knows how many parts, sparts and gparts will be transferred
    * to every other node.
