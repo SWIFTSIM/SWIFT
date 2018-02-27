@@ -49,7 +49,7 @@
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 enum velocity_types {
   velocity_zero,
