@@ -38,18 +38,17 @@
 #include "units.h"
 
 /**
- * @brief Sets the chemistry properties of the (x-)particles to a valid start
- * state.
- *
- * Nothing to do here.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information.
+ * @brief Return a string containing the name of a given #chemistry_element.
  */
-__attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {}
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
+
+  static const char* chemistry_element_names[chemistry_element_count] = {
+      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
+      "Strontium", "Yttrium",   "Barium", "Europium"};
+
+  return chemistry_element_names[elem];
+}
 
 /**
  * @brief Initialises the chemistry properties.
@@ -72,7 +71,74 @@ static INLINE void chemistry_init_backend(
  */
 static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
 
-  message("Chemistry function is 'gear'.");
+  message("Chemistry function is 'Gear'.");
+}
+
+/**
+ * @brief Prepares a particle for the smooth metal calculation.
+ *
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the various smooth metallicity tasks
+ *
+ * @param p The particle to act upon
+ * @param cd #chemistry_data containing chemistry informations.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_init_part(
+    struct part* restrict p, const struct chemistry_data* cd) {
+
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  for (int i = 0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = 0.f;
+  }
+}
+
+/**
+ * @brief Finishes the smooth metal calculation.
+ *
+ * Multiplies the smoothed metallicity and number of neighbours by the
+ * appropiate constants and add the self-contribution term.
+ *
+ * This function requires the #hydro_end_density to have been called.
+ *
+ * @param p The particle to act upon.
+ * @param cd #chemistry_data containing chemistry informations.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_density(
+    struct part* restrict p, const struct chemistry_data* cd) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
+  const float m = p->mass;
+
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  for (int i = 0; i < chemistry_element_count; i++) {
+    /* Final operation on the density (add self-contribution). */
+    cpd->smoothed_metal_mass_fraction[i] +=
+        m * cpd->metal_mass_fraction[i] * kernel_root;
+
+    /* Finish the calculation by inserting the missing h-factors */
+    cpd->smoothed_metal_mass_fraction[i] *= factor;
+  }
+}
+
+/**
+ * @brief Sets the chemistry properties of the (x-)particles to a valid start
+ * state.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param data The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_first_init_part(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct chemistry_data* data) {
+  chemistry_init_part(p, data);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

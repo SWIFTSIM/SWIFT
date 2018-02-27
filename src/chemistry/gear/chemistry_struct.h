@@ -22,7 +22,18 @@
 /**
  * @brief The individual elements traced in the model.
  */
-enum chemistry_element { chemistry_element_count = 0 };
+enum chemistry_element {
+  chemistry_element_O = 0,
+  chemistry_element_Mg,
+  chemistry_element_S,
+  chemistry_element_Fe,
+  chemistry_element_Zn,
+  chemistry_element_Sr,
+  chemistry_element_Y,
+  chemistry_element_Ba,
+  chemistry_element_Eu,
+  chemistry_element_count
+};
 
 /**
  * @brief Global chemical abundance information.
@@ -33,7 +44,12 @@ struct chemistry_data {};
  * @brief Properties of the chemistry function.
  */
 struct chemistry_part_data {
-  float he_density;
+
+  /*! Fraction of the particle mass in a given element */
+  float metal_mass_fraction[chemistry_element_count];
+
+  /*! Smoothed fraction of the particle mass in a given element */
+  float smoothed_metal_mass_fraction[chemistry_element_count];
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-2  # The end time of the simulation (in internal units).
-  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
 Scheduler:
@@ -40,4 +40,3 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./EAGLE_ICs_100.hdf5     # The file to read
-  cleanup_h:  1

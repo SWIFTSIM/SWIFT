@@ -20,67 +20,80 @@
 #ifndef SWIFT_PHYSICAL_CONSTANTS_H
 #define SWIFT_PHYSICAL_CONSTANTS_H
 
+/**
+ * @file physical_constants.h
+ * @brief Physical constants in the internal unit system.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
 /* Local includes. */
+#include "parser.h"
 #include "units.h"
 
-/* physical constants in in defined programme units */
+/**
+ * @brief  physical constants in in defined programme units
+ */
 struct phys_const {
 
-  /* Newton's gravitationl constant */
+  /*! Newton's gravitationl constant */
   double const_newton_G;
 
-  /* Speed of light in vacuum */
+  /*! Speed of light in vacuum */
   double const_speed_light_c;
 
-  /* Planck's constant */
+  /*! Planck's constant */
   double const_planck_h;
 
-  /* Planck's reduced constant */
+  /*! Planck's reduced constant */
   double const_planck_hbar;
 
-  /* Boltzmann's constant */
+  /*! Boltzmann's constant */
   double const_boltzmann_k;
 
-  /* Thomson cross-section */
+  /*! Avogadro's number */
+  double const_avogadro_number;
+
+  /*! Thomson cross-section */
   double const_thomson_cross_section;
 
-  /* Charge of the electron  */
+  /*! Charge of the electron  */
   double const_electron_charge;
 
-  /* Electron-Volt */
+  /*! Electron-Volt */
   double const_electron_volt;
 
-  /* Mass of the electron */
+  /*! Mass of the electron */
   double const_electron_mass;
 
-  /* Mass of the proton */
+  /*! Mass of the proton */
   double const_proton_mass;
 
-  /* (Tropical) Year */
+  /*! (Tropical) Year */
   double const_year;
 
-  /* Astronomical unit */
+  /*! Astronomical unit */
   double const_astronomical_unit;
 
-  /* Parsec */
+  /*! Parsec */
   double const_parsec;
 
-  /* Light-year */
+  /*! Light-year */
   double const_light_year;
 
-  /* Mass of the Sun */
+  /*! Mass of the Sun */
   double const_solar_mass;
 
-  /* Mass of the Earth */
+  /*! Mass of the Earth */
   double const_earth_mass;
 };
 
-void phys_const_init(struct unit_system* us, struct phys_const* internal_const);
+void phys_const_init(const struct unit_system* us,
+                     const struct swift_params* params,
+                     struct phys_const* internal_const);
 
-void phys_const_print(struct phys_const* internal_const);
+void phys_const_print(const struct phys_const* internal_const);
 
 /* Dump/restore. */
 void phys_const_struct_dump(const struct phys_const* internal_const,

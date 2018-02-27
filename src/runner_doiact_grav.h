@@ -208,10 +208,10 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -299,10 +299,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -496,12 +496,12 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   const float rmax2_j = rmax_j * rmax_j;
   const struct multipole *multi_i = &ci->multipole->m_pole;
   const struct multipole *multi_j = &cj->multipole->m_pole;
-  const float CoM_i[3] = {ci->multipole->CoM[0] - shift_i[0],
-                          ci->multipole->CoM[1] - shift_i[1],
-                          ci->multipole->CoM[2] - shift_i[2]};
-  const float CoM_j[3] = {cj->multipole->CoM[0] - shift_j[0],
-                          cj->multipole->CoM[1] - shift_j[1],
-                          cj->multipole->CoM[2] - shift_j[2]};
+  const float CoM_i[3] = {(float)(ci->multipole->CoM[0] - shift_i[0]),
+                          (float)(ci->multipole->CoM[1] - shift_i[1]),
+                          (float)(ci->multipole->CoM[2] - shift_i[2])};
+  const float CoM_j[3] = {(float)(cj->multipole->CoM[0] - shift_j[0]),
+                          (float)(cj->multipole->CoM[1] - shift_j[1]),
+                          (float)(cj->multipole->CoM[2] - shift_j[2])};
 
   /* Start by constructing particle caches */
 
@@ -686,10 +686,10 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -812,10 +812,10 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */

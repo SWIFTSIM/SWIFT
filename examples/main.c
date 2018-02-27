@@ -432,7 +432,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Read the parameter file */
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params *params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", paramFileName);
@@ -589,7 +590,7 @@ int main(int argc, char *argv[]) {
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
     units_init(&us, params, "InternalUnitSystem");
-    phys_const_init(&us, &prog_const);
+    phys_const_init(&us, params, &prog_const);
     if (myrank == 0 && verbose > 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
       message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);

@@ -113,7 +113,7 @@ struct io_props {
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_input_field_(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
     char* field, size_t partSize) {
   struct io_props r;
@@ -155,7 +155,7 @@ INLINE static struct io_props io_make_input_field_(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
@@ -198,7 +198,7 @@ INLINE static struct io_props io_make_output_field_(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, conversion_func_part_float functionPtr) {
 
@@ -235,7 +235,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, conversion_func_part_double functionPtr) {
 
@@ -280,7 +280,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_float functionPtr) {
 
@@ -317,7 +317,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
-    char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_double functionPtr) {
 

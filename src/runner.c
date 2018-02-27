@@ -42,6 +42,7 @@
 #include "approx_math.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
 #include "debug.h"
@@ -64,21 +65,33 @@
 #include "timers.h"
 #include "timestep.h"
 
+#define TASK_LOOP_DENSITY 0
+#define TASK_LOOP_GRADIENT 1
+#define TASK_LOOP_FORCE 2
+#define TASK_LOOP_LIMITER 3
+
 /* Import the density loop functions. */
 #define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
-#undef FUNCTION
 #define FUNCTION gradient
+#define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 #endif
 
 /* Import the force loop functions. */
-#undef FUNCTION
 #define FUNCTION force
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_fft.h"
@@ -648,7 +661,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated. */
     int *pid = NULL;
-    if ((pid = malloc(sizeof(int) * c->count)) == NULL)
+    if ((pid = (int *)malloc(sizeof(int) * c->count)) == NULL)
       error("Can't allocate memory for pid.");
     for (int k = 0; k < c->count; k++)
       if (part_is_active(&parts[k], e)) {
@@ -689,6 +702,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p);
+          chemistry_end_density(p, e->chemistry);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -726,6 +740,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             hydro_init_part(p, &s->hs);
+            chemistry_init_part(p, e->chemistry);
 
             /* Off we go ! */
             continue;
@@ -1990,7 +2005,7 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend) {
-            cell_unpack_end_step(ci, t->buff);
+            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -2003,7 +2018,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1);
           } else if (t->subtype == task_subtype_multipole) {
-            cell_unpack_multipoles(ci, t->buff);
+            cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);

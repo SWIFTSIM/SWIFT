@@ -32,10 +32,14 @@
 /**
  * @brief Converts physical constants to the internal unit system
  *
+ * Some constants can be overwritten by the YAML file values.
+ *
  * @param us The current internal system of units.
+ * @param params The parsed parameter file.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(struct unit_system *us,
+void phys_const_init(const struct unit_system *us,
+                     const struct swift_params *params,
                      struct phys_const *internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
@@ -43,6 +47,10 @@ void phys_const_init(struct unit_system *us,
   const float dimension_G[5] = {-1, 3, -2, 0, 0};
   internal_const->const_newton_G =
       const_newton_G_cgs / units_general_cgs_conversion_factor(us, dimension_G);
+
+  /* Overwrite G if present in the file */
+  internal_const->const_newton_G = parser_get_opt_param_double(
+      params, "PhysicalConstants:G", internal_const->const_newton_G);
 
   const float dimension_c[5] = {0, 1, -1, 0, 0};
   internal_const->const_speed_light_c =
@@ -60,6 +68,11 @@ void phys_const_init(struct unit_system *us,
   internal_const->const_boltzmann_k =
       const_boltzmann_k_cgs /
       units_general_cgs_conversion_factor(us, dimension_k);
+
+  const float dimension_Na[5] = {0, 0, 0, 0, 0};
+  internal_const->const_avogadro_number =
+      const_avogadro_number_cgs /
+      units_general_cgs_conversion_factor(us, dimension_Na);
 
   const float dimension_thomson[5] = {0, 2, 0, 0, 0};
   internal_const->const_thomson_cross_section =
@@ -106,7 +119,12 @@ void phys_const_init(struct unit_system *us,
       units_general_cgs_conversion_factor(us, dimension_length);
 }
 
-void phys_const_print(struct phys_const *internal_const) {
+/**
+ * @brief Print the value of the physical constants to stdout.
+ *
+ * @param internal_const The constants in the internal unit system.
+ */
+void phys_const_print(const struct phys_const *internal_const) {
 
   message("%25s = %e", "Gravitational constant",
           internal_const->const_newton_G);
