@@ -136,7 +136,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
    * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
    * where ta is the value of task_type and sa is the value of
    * task_subtype  */
-  int *table = malloc(nber_relation * sizeof(int));
+  int *table = (int *)malloc(nber_relation * sizeof(int));
   if (table == NULL)
     error("Error allocating memory for task-dependency graph.");
 
@@ -1144,7 +1144,7 @@ void scheduler_reset(struct scheduler *s, int size) {
     scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
-    if (posix_memalign((void *)&s->tasks, task_align,
+    if (posix_memalign((void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
 
@@ -1463,7 +1463,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
           err = MPI_Irecv(
               t->buff, t->ci->pcell_size * sizeof(struct pcell_step), MPI_BYTE,
               t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1482,7 +1483,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          t->buff = malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
           err = MPI_Irecv(
               t->buff, sizeof(struct gravity_tensors) * t->ci->pcell_size,
               MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1500,8 +1502,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
-          cell_pack_end_step(t->ci, t->buff);
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
+          cell_pack_end_step(t->ci, (struct pcell_step *)t->buff);
           if ((t->ci->pcell_size * sizeof(struct pcell_step)) >
               s->mpi_message_limit)
             err = MPI_Isend(
@@ -1538,8 +1541,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Issend(t->ci->sparts, t->ci->scount, spart_mpi_type,
                              t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          t->buff = malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
-          cell_pack_multipoles(t->ci, t->buff);
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
           err = MPI_Isend(
               t->buff, t->ci->pcell_size * sizeof(struct gravity_tensors),
               MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);

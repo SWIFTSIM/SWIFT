@@ -319,12 +319,12 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[1] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[2] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+      (int)floor(s->dim[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -423,21 +423,21 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells_top, cell_align,
+    if (posix_memalign((void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->gravity) {
-      if (posix_memalign((void *)&s->multipoles_top, multipole_align,
+      if (posix_memalign((void **)&s->multipoles_top, multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
-    if (posix_memalign((void *)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
+    if (posix_memalign((void **)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
                        s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
@@ -1346,8 +1346,8 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.xparts = s->xparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1530,8 +1530,8 @@ void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.sparts = s->sparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1713,8 +1713,8 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.gparts = s->gparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -2062,7 +2062,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
-      if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
+      if (posix_memalign((void **)&buff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * count) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < count; k++) {
@@ -2072,7 +2072,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
     if (gcount > 0) {
-      if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+      if (posix_memalign((void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * gcount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < gcount; k++) {
@@ -2082,7 +2082,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
     if (scount > 0) {
-      if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+      if (posix_memalign((void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * scount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < scount; k++) {
@@ -2510,7 +2510,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
-      if (posix_memalign((void *)&s->cells_sub, cell_align,
+      if (posix_memalign((void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -2523,7 +2523,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     /* Is the multipole buffer empty? */
     if (s->gravity && s->multipoles_sub == NULL) {
       if (posix_memalign(
-              (void *)&s->multipoles_sub, multipole_align,
+              (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
@@ -2740,8 +2740,8 @@ void space_first_init_sparts(struct space *s) {
 void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
 
-  struct part *restrict parts = map_data;
-  const struct hydro_space *restrict hs = extra_data;
+  struct part *restrict parts = (struct part *)map_data;
+  const struct hydro_space *restrict hs = (struct hydro_space *)extra_data;
   for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
 }
 
@@ -2766,7 +2766,7 @@ void space_init_parts(struct space *s, int verbose) {
 void space_init_gparts_mapper(void *restrict map_data, int count,
                               void *restrict extra_data) {
 
-  struct gpart *gparts = map_data;
+  struct gpart *gparts = (struct gpart *)map_data;
   for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
 }
 
@@ -2791,8 +2791,8 @@ void space_init_gparts(struct space *s, int verbose) {
 
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
-  struct space *s = extra_data;
-  struct part *restrict parts = map_data;
+  struct space *s = (struct space *)extra_data;
+  struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
   for (int k = 0; k < count; k++)
@@ -3007,7 +3007,7 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
-    if (posix_memalign((void *)&s->xparts, xpart_align,
+    if (posix_memalign((void **)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
@@ -3055,15 +3055,15 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
 
-  if (posix_memalign((void *)&parts, part_align,
+  if (posix_memalign((void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (posix_memalign((void *)&gparts, gpart_align,
+  if (posix_memalign((void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  if (posix_memalign((void *)&sparts, spart_align,
+  if (posix_memalign((void **)&sparts, spart_align,
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
@@ -3300,10 +3300,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
-    if (posix_memalign((void *)&s->parts, part_align,
+    if (posix_memalign((void **)&s->parts, part_align,
                        s->size_parts * sizeof(struct part)) != 0)
       error("Failed to allocate restore part array.");
-    if (posix_memalign((void *)&s->xparts, xpart_align,
+    if (posix_memalign((void **)&s->xparts, xpart_align,
                        s->size_parts * sizeof(struct xpart)) != 0)
       error("Failed to allocate restore xpart array.");
 
@@ -3314,7 +3314,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   }
   s->gparts = NULL;
   if (s->nr_gparts > 0) {
-    if (posix_memalign((void *)&s->gparts, gpart_align,
+    if (posix_memalign((void **)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate restore gpart array.");
 
@@ -3324,7 +3324,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   s->sparts = NULL;
   if (s->nr_sparts > 0) {
-    if (posix_memalign((void *)&s->sparts, spart_align,
+    if (posix_memalign((void **)&s->sparts, spart_align,
                        s->size_sparts * sizeof(struct spart)) != 0)
       error("Failed to allocate restore spart array.");
 

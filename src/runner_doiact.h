@@ -166,9 +166,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float pix[3] = {pi->x[0] - (cj->loc[0] + shift[0]),
-                          pi->x[1] - (cj->loc[1] + shift[1]),
-                          pi->x[2] - (cj->loc[2] + shift[2])};
+    const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(pi->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -180,8 +180,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - cj->loc[0], pj->x[1] - cj->loc[1],
-                            pj->x[2] - cj->loc[2]};
+      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                            (float)(pj->x[1] - cj->loc[1]),
+                            (float)(pj->x[2] - cj->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -260,9 +261,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float pix[3] = {pi->x[0] - (cj->loc[0] + shift[0]),
-                          pi->x[1] - (cj->loc[1] + shift[1]),
-                          pi->x[2] - (cj->loc[2] + shift[2])};
+    const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(pi->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -274,8 +275,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - cj->loc[0], pj->x[1] - cj->loc[1],
-                            pj->x[2] - cj->loc[2]};
+      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                            (float)(pj->x[1] - cj->loc[1]),
+                            (float)(pj->x[2] - cj->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -348,8 +350,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float pix[3] = {pi->x[0] - c->loc[0], pi->x[1] - c->loc[1],
-                          pi->x[2] - c->loc[2]};
+    const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+                          (float)(pi->x[1] - c->loc[1]),
+                          (float)(pi->x[2] - c->loc[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = pid + 1; pjd < count; pjd++) {
@@ -361,8 +364,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - c->loc[0], pj->x[1] - c->loc[1],
-                            pj->x[2] - c->loc[2]};
+      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                            (float)(pj->x[1] - c->loc[1]),
+                            (float)(pj->x[2] - c->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -435,8 +439,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float pix[3] = {pi->x[0] - c->loc[0], pi->x[1] - c->loc[1],
-                          pi->x[2] - c->loc[2]};
+    const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+                          (float)(pi->x[1] - c->loc[1]),
+                          (float)(pi->x[2] - c->loc[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = pid + 1; pjd < count; pjd++) {
@@ -448,8 +453,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - c->loc[0], pj->x[1] - c->loc[1],
-                            pj->x[2] - c->loc[2]};
+      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                            (float)(pj->x[1] - c->loc[1]),
+                            (float)(pj->x[2] - c->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -625,7 +631,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const double pjz = pj->x[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                       (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -676,7 +683,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         const double pjz = pj->x[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                       (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -788,8 +796,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts[ind[pid]];
-    const float pix[3] = {pi->x[0] - ci->loc[0], pi->x[1] - ci->loc[1],
-                          pi->x[2] - ci->loc[2]};
+    const float pix[3] = {(float)(pi->x[0] - ci->loc[0]),
+                          (float)(pi->x[1] - ci->loc[1]),
+                          (float)(pi->x[2] - ci->loc[2])};
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
@@ -804,8 +813,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       struct part *restrict pj = &parts_j[pjd];
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {pj->x[0] - ci->loc[0], pj->x[1] - ci->loc[1],
-                            pj->x[2] - ci->loc[2]};
+      const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
+                            (float)(pj->x[1] - ci->loc[1]),
+                            (float)(pj->x[2] - ci->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -1210,7 +1220,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     sort_active_i = sort_i;
     count_active_i = count_i;
   } else if (cell_is_active_hydro(ci, e)) {
-    if (posix_memalign((void *)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
+    if (posix_memalign((void **)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct entry) * count_i) != 0)
       error("Failed to allocate active sortlists.");
 
@@ -1228,7 +1238,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     sort_active_j = sort_j;
     count_active_j = count_j;
   } else if (cell_is_active_hydro(cj, e)) {
-    if (posix_memalign((void *)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
+    if (posix_memalign((void **)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct entry) * count_j) != 0)
       error("Failed to allocate active sortlists.");
 
@@ -1672,7 +1682,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+  if (posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
@@ -1844,7 +1854,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+  if (posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
