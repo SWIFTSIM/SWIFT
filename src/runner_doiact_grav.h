@@ -208,10 +208,10 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float,cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -299,10 +299,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float,cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -686,10 +686,10 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float,ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -812,10 +812,10 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     float a_x = 0.f, a_y = 0.f, a_z = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float,ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float,ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */

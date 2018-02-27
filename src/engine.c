@@ -2070,7 +2070,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
-  MPI_Request *requests = (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
+  MPI_Request *requests =
+      (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
   if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
@@ -2311,7 +2312,8 @@ void engine_make_self_gravity_tasks(struct engine *e) {
                                           task_subtype_none, 0, 0, NULL, NULL);
 
     /* Create a grid of ghosts to deal with the dependencies */
-    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) == 0)
+    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) ==
+        0)
       error("Error allocating memory for gravity fft ghosts");
 
     /* Make the ghosts implicit and add the dependencies */
@@ -3022,7 +3024,8 @@ void engine_maketasks(struct engine *e) {
     e->size_links += s->tot_cells * self_grav_tasks_per_cell;
 
   /* Allocate the new list */
-  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) == NULL)
+  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
+      NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
@@ -5848,7 +5851,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->s = s;
   s->e = e;
 
-  struct unit_system *us = (struct unit_system *)malloc(sizeof(struct unit_system));
+  struct unit_system *us =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
   units_struct_restore(us, stream);
   e->internal_units = us;
 
@@ -5857,16 +5861,19 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->snapshotUnits = us;
 
 #ifdef WITH_MPI
-  struct repartition *reparttype = (struct repartition *)malloc(sizeof(struct repartition));
+  struct repartition *reparttype =
+      (struct repartition *)malloc(sizeof(struct repartition));
   partition_struct_restore(reparttype, stream);
   e->reparttype = reparttype;
 #endif
 
-  struct phys_const *physical_constants = (struct phys_const *)malloc(sizeof(struct phys_const));
+  struct phys_const *physical_constants =
+      (struct phys_const *)malloc(sizeof(struct phys_const));
   phys_const_struct_restore(physical_constants, stream);
   e->physical_constants = physical_constants;
 
-  struct hydro_props *hydro_properties = (struct hydro_props *)malloc(sizeof(struct hydro_props));
+  struct hydro_props *hydro_properties =
+      (struct hydro_props *)malloc(sizeof(struct hydro_props));
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
@@ -5881,15 +5888,18 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->external_potential = external_potential;
 
   struct cooling_function_data *cooling_func =
-      (struct cooling_function_data *)malloc(sizeof(struct cooling_function_data));
+      (struct cooling_function_data *)malloc(
+          sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
 
-  struct sourceterms *sourceterms = (struct sourceterms *)malloc(sizeof(struct sourceterms));
+  struct sourceterms *sourceterms =
+      (struct sourceterms *)malloc(sizeof(struct sourceterms));
   sourceterms_struct_restore(sourceterms, stream);
   e->sourceterms = sourceterms;
 
-  struct swift_params *parameter_file = (struct swift_params *)malloc(sizeof(struct swift_params));
+  struct swift_params *parameter_file =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 

@@ -133,8 +133,9 @@ void restart_write(struct engine *e, const char *filename) {
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
   /* Dump our signature and version. */
-  restart_write_blocks((void *)SWIFT_RESTART_SIGNATURE, strlen(SWIFT_RESTART_SIGNATURE),
-                       1, stream, "signature", "SWIFT signature");
+  restart_write_blocks((void *)SWIFT_RESTART_SIGNATURE,
+                       strlen(SWIFT_RESTART_SIGNATURE), 1, stream, "signature",
+                       "SWIFT signature");
   restart_write_blocks((void *)package_version(), strlen(package_version()), 1,
                        stream, "version", "SWIFT version");
 

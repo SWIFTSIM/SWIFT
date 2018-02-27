@@ -1463,7 +1463,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
           err = MPI_Irecv(
               t->buff, t->ci->pcell_size * sizeof(struct pcell_step), MPI_BYTE,
               t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1482,7 +1483,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-          t->buff = (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
           err = MPI_Irecv(
               t->buff, sizeof(struct gravity_tensors) * t->ci->pcell_size,
               MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
@@ -1500,7 +1502,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-            t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) * t->ci->pcell_size);
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
           cell_pack_end_step(t->ci, (struct pcell_step *)t->buff);
           if ((t->ci->pcell_size * sizeof(struct pcell_step)) >
               s->mpi_message_limit)
@@ -1538,7 +1541,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Issend(t->ci->sparts, t->ci->scount, spart_mpi_type,
                              t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else if (t->subtype == task_subtype_multipole) {
-            t->buff = (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
           err = MPI_Isend(
               t->buff, t->ci->pcell_size * sizeof(struct gravity_tensors),

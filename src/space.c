@@ -1346,8 +1346,8 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.xparts = s->xparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack = (struct qstack *)
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1530,8 +1530,8 @@ void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.sparts = s->sparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack = (struct qstack *)
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1713,8 +1713,8 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.gparts = s->gparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack = (struct qstack *)
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;

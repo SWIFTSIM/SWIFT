@@ -128,16 +128,16 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double *)temp;
+      double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = (float *)temp;
+      float* temp_f = (float*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = (char *)temp;
+  char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -640,7 +640,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
-  struct unit_system* ic_units = (struct unit_system *)malloc(sizeof(struct unit_system));
+  struct unit_system* ic_units =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
   io_read_unit_system(h_file, ic_units, mpi_rank);
 

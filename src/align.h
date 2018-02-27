@@ -49,11 +49,11 @@
  * @param alignment The alignment in bytes of the array.
  */
 #if defined(__ICC)
-#define swift_align_information(type, array, alignment)  \
+#define swift_align_information(type, array, alignment) \
   __assume_aligned(array, alignment);
 #elif defined(__GNUC__)
-#define swift_align_information(type, array, alignment)                  \
-    array = (type *)__builtin_assume_aligned(array, alignment);
+#define swift_align_information(type, array, alignment) \
+  array = (type *)__builtin_assume_aligned(array, alignment);
 #else
 #define swift_align_information(array, alignment) ;
 #endif
