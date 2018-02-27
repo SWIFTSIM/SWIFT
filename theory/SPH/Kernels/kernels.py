@@ -20,11 +20,11 @@ import matplotlib
 matplotlib.use("Agg")
 from pylab import *
 from scipy import integrate
-import distinct_colours as colours
 from scipy.optimize import curve_fit
 from scipy.optimize import fsolve
 from matplotlib.font_manager import FontProperties
 import numpy
+
 
 params = {'axes.labelsize': 9,
 'axes.titlesize': 10,
@@ -100,12 +100,12 @@ N_H_WendlandC4 = 4./3. * PI * H_WendlandC4**3 / (dx)**3
 N_H_WendlandC6 = 4./3. * PI * H_WendlandC6**3 / (dx)**3
 
 
-print "Smoothing length: h =", h, "Cubic spline kernel support size:   H =", H_cubic, "Number of neighbours N_H =", N_H_cubic
-print "Smoothing length: h =", h, "Quartic spline kernel support size: H =", H_quartic, "Number of neighbours N_H =", N_H_quartic
-print "Smoothing length: h =", h, "Quintic spline kernel support size: H =", H_quintic, "Number of neighbours N_H =", N_H_quintic
-print "Smoothing length: h =", h, "Wendland C2 kernel support size:    H =", H_WendlandC2, "Number of neighbours N_H =", N_H_WendlandC2
-print "Smoothing length: h =", h, "Wendland C4 kernel support size:    H =", H_WendlandC4, "Number of neighbours N_H =", N_H_WendlandC4
-print "Smoothing length: h =", h, "Wendland C6 kernel support size:    H =", H_WendlandC6, "Number of neighbours N_H =", N_H_WendlandC6
+print("Smoothing length: h =", h, "Cubic spline kernel support size:   H =", H_cubic, "Number of neighbours N_H =", N_H_cubic)
+print("Smoothing length: h =", h, "Quartic spline kernel support size: H =", H_quartic, "Number of neighbours N_H =", N_H_quartic)
+print("Smoothing length: h =", h, "Quintic spline kernel support size: H =", H_quintic, "Number of neighbours N_H =", N_H_quintic)
+print("Smoothing length: h =", h, "Wendland C2 kernel support size:    H =", H_WendlandC2, "Number of neighbours N_H =", N_H_WendlandC2)
+print("Smoothing length: h =", h, "Wendland C4 kernel support size:    H =", H_WendlandC4, "Number of neighbours N_H =", N_H_WendlandC4)
+print("Smoothing length: h =", h, "Wendland C6 kernel support size:    H =", H_WendlandC6, "Number of neighbours N_H =", N_H_WendlandC6)
 
 # Get kernel constants (Dehen & Aly 2012, table 1) for 3D kernel
 C_cubic   = 16. / PI

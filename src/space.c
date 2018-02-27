@@ -53,6 +53,7 @@
 #include "memswap.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "restart.h"
 #include "runner.h"
 #include "sort_part.h"
 #include "stars.h"
@@ -318,12 +319,12 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
-      floor(s->dim[0] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[1] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      floor(s->dim[2] /
-            fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+      (int)floor(s->dim[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -384,6 +385,9 @@ void space_regrid(struct space *s, int verbose) {
     }
   }
 
+  /* Are we about to allocate new top level cells without a regrid?
+   * Can happen when restarting the application. */
+  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -419,21 +423,21 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells_top, cell_align,
+    if (posix_memalign((void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->gravity) {
-      if (posix_memalign((void *)&s->multipoles_top, multipole_align,
+      if (posix_memalign((void **)&s->multipoles_top, multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
-    if (posix_memalign((void *)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
+    if (posix_memalign((void **)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
                        s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
@@ -513,6 +517,21 @@ void space_regrid(struct space *s, int verbose) {
 
       /* Finished with these. */
       free(oldnodeIDs);
+
+    } else if (no_regrid && s->e != NULL) {
+      /* If we have created the top-levels cells and not done an initial
+       * partition (can happen when restarting), then the top-level cells
+       * are not assigned to a node, we must do that and then associate the
+       * particles with the cells. Note requires that
+       * partition_store_celllist() was called once before, or just before
+       * dumping the restart files.*/
+      partition_restore_celllist(s, s->e->reparttype);
+
+      /* Now re-distribute the particles, should just add to cells? */
+      engine_redistribute(s->e);
+
+      /* Make the proxies. */
+      engine_makeproxies(s->e);
     }
 #endif /* WITH_MPI */
 
@@ -1327,8 +1346,8 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.xparts = s->xparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1511,8 +1530,8 @@ void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.sparts = s->sparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -1694,8 +1713,8 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   sort_struct.gparts = s->gparts;
   sort_struct.ind = ind;
   sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack =
-           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
+  if ((sort_struct.stack = (struct qstack *)malloc(
+           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
   for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
@@ -2403,7 +2422,7 @@ void space_split_cell(struct space *s, struct cell *c) {
 
   /* Allocate and fill the particle position buffers. */
   if (count > 0) {
-    if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
+    if (posix_memalign((void **)&buff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * count) != 0)
       error("Failed to allocate temporary indices.");
     for (int k = 0; k < count; k++) {
@@ -2414,7 +2433,7 @@ void space_split_cell(struct space *s, struct cell *c) {
     }
   }
   if (gcount > 0) {
-    if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+    if (posix_memalign((void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * gcount) != 0)
       error("Failed to allocate temporary indices.");
     for (int k = 0; k < gcount; k++) {
@@ -2425,7 +2444,7 @@ void space_split_cell(struct space *s, struct cell *c) {
     }
   }
   if (scount > 0) {
-    if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+    if (posix_memalign((void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct cell_buff) * scount) != 0)
       error("Failed to allocate temporary indices.");
     for (int k = 0; k < scount; k++) {
@@ -2587,7 +2606,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
-      if (posix_memalign((void *)&s->cells_sub, cell_align,
+      if (posix_memalign((void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -2600,7 +2619,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     /* Is the multipole buffer empty? */
     if (s->gravity && s->multipoles_sub == NULL) {
       if (posix_memalign(
-              (void *)&s->multipoles_sub, multipole_align,
+              (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
@@ -2817,8 +2836,8 @@ void space_first_init_sparts(struct space *s) {
 void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
 
-  struct part *restrict parts = map_data;
-  const struct hydro_space *restrict hs = extra_data;
+  struct part *restrict parts = (struct part *)map_data;
+  const struct hydro_space *restrict hs = (struct hydro_space *)extra_data;
   for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
 }
 
@@ -2843,7 +2862,7 @@ void space_init_parts(struct space *s, int verbose) {
 void space_init_gparts_mapper(void *restrict map_data, int count,
                               void *restrict extra_data) {
 
-  struct gpart *gparts = map_data;
+  struct gpart *gparts = (struct gpart *)map_data;
   for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
 }
 
@@ -2868,8 +2887,8 @@ void space_init_gparts(struct space *s, int verbose) {
 
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
-  struct space *s = extra_data;
-  struct part *restrict parts = map_data;
+  struct space *s = (struct space *)extra_data;
+  struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
   for (int k = 0; k < count; k++)
@@ -3084,7 +3103,7 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
-    if (posix_memalign((void *)&s->xparts, xpart_align,
+    if (posix_memalign((void **)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
@@ -3132,15 +3151,15 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
 
-  if (posix_memalign((void *)&parts, part_align,
+  if (posix_memalign((void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (posix_memalign((void *)&gparts, gpart_align,
+  if (posix_memalign((void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  if (posix_memalign((void *)&sparts, spart_align,
+  if (posix_memalign((void **)&sparts, spart_align,
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
@@ -3314,4 +3333,113 @@ void space_clean(struct space *s) {
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
+}
+
+/**
+ * @brief Write the space struct and its contents to the given FILE as a
+ * stream of bytes.
+ *
+ * @param s the space
+ * @param stream the file stream
+ */
+void space_struct_dump(struct space *s, FILE *stream) {
+
+  restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
+                       "space struct");
+
+  /* More things to write. */
+  if (s->nr_parts > 0) {
+    restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                         "parts", "parts");
+    restart_write_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                         "xparts", "xparts");
+  }
+  if (s->nr_gparts > 0)
+    restart_write_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                         "gparts", "gparts");
+
+  if (s->nr_sparts > 0)
+    restart_write_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                         "sparts", "sparts");
+}
+
+/**
+ * @brief Re-create a space struct and its contents from the given FILE
+ *        stream.
+ *
+ * @param s the space
+ * @param stream the file stream
+ */
+void space_struct_restore(struct space *s, FILE *stream) {
+
+  restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
+
+  /* Things that should be reconstructed in a rebuild. */
+  s->cells_top = NULL;
+  s->cells_sub = NULL;
+  s->multipoles_top = NULL;
+  s->multipoles_sub = NULL;
+  s->local_cells_top = NULL;
+  s->grav_top_level = NULL;
+#ifdef WITH_MPI
+  s->parts_foreign = NULL;
+  s->size_parts_foreign = 0;
+  s->gparts_foreign = NULL;
+  s->size_gparts_foreign = 0;
+  s->sparts_foreign = NULL;
+  s->size_sparts_foreign = 0;
+#endif
+
+  /* More things to read. */
+  s->parts = NULL;
+  s->xparts = NULL;
+  if (s->nr_parts > 0) {
+
+    /* Need the memory for these. */
+    if (posix_memalign((void **)&s->parts, part_align,
+                       s->size_parts * sizeof(struct part)) != 0)
+      error("Failed to allocate restore part array.");
+    if (posix_memalign((void **)&s->xparts, xpart_align,
+                       s->size_parts * sizeof(struct xpart)) != 0)
+      error("Failed to allocate restore xpart array.");
+
+    restart_read_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
+                        NULL, "parts");
+    restart_read_blocks(s->xparts, s->nr_parts, sizeof(struct xpart), stream,
+                        NULL, "xparts");
+  }
+  s->gparts = NULL;
+  if (s->nr_gparts > 0) {
+    if (posix_memalign((void **)&s->gparts, gpart_align,
+                       s->size_gparts * sizeof(struct gpart)) != 0)
+      error("Failed to allocate restore gpart array.");
+
+    restart_read_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
+                        NULL, "gparts");
+  }
+
+  s->sparts = NULL;
+  if (s->nr_sparts > 0) {
+    if (posix_memalign((void **)&s->sparts, spart_align,
+                       s->size_sparts * sizeof(struct spart)) != 0)
+      error("Failed to allocate restore spart array.");
+
+    restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
+                        NULL, "sparts");
+  }
+
+  /* Need to reconnect the gravity parts to their hydro and star particles. */
+  /* Re-link the parts. */
+  if (s->nr_parts > 0 && s->nr_gparts > 0)
+    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
+
+  /* Re-link the sparts. */
+  if (s->nr_sparts > 0 && s->nr_gparts > 0)
+    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that everything is correct */
+  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
+                    s->nr_sparts, 1);
+#endif
 }

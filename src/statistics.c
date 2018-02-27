@@ -140,7 +140,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     const float m = hydro_get_mass(p);
     const float entropy = hydro_get_entropy(p);
-    const float u_int = hydro_get_internal_energy(p);
+    const float u_inter = hydro_get_internal_energy(p);
 
     /* Collect mass */
     stats.mass += m;
@@ -162,7 +162,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_int += m * u_int;
+    stats.E_int += m * u_inter;
     stats.E_rad += cooling_get_radiated_energy(xp);
     if (gp != NULL) {
       stats.E_pot_self += m * gravity_get_potential(gp);

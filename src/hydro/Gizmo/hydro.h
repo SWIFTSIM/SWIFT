@@ -645,18 +645,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
 
-#if !defined(EOS_ISOTHERMAL_GAS)
-    /* If the energy needs to be updated, we need to do it before the momentum
-       is updated, as the old value of the momentum enters the equations. */
-    p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
-                                 p->conserved.momentum[1] * a_grav[1] +
-                                 p->conserved.momentum[2] * a_grav[2]);
-
-    p->conserved.energy += dt * (a_grav[0] * p->gravity.mflux[0] +
-                                 a_grav[1] * p->gravity.mflux[1] +
-                                 a_grav[2] * p->gravity.mflux[2]);
-#endif
-
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */

@@ -1,0 +1,219 @@
+Following \citet{hopkins2013} we use the Lagrangian formalism to determine the
+equation of motion for the SPH particles. The derivation found in
+\citet{hopkins2013} is somewhat sparse, and so we reproduce it here with more
+steps for clarity.
+
+The following derivation is underpinned by the idea of there being two
+independent ways of defining the volume associated with a particle in SPH. The
+first is the volume associated with the thermodynamical system ($\Delta V$),
+from the first law of thermodynamics, and the second being the volume around the
+particle in which we conserve an effective neighbour number ($\Delta \tilde{V}$).
+These two need not necessarily be linked in any way.
+
+We begin with the SPH lagragian,
+\begin{align}
+  L(q, \dot{q}) = \frac{1}{2}\sum^N_{i=1} m_i \dot{r}^2_i
+    - \sum^N_{i=1} m_i u_i,
+  \label{eqn:sph:derivation:sphlagrangian}
+\end{align}
+and the first law of thermodynamics,
+\begin{align}
+  \left. \frac{\partial u_i}{\partial q_i} \right|_A =
+  -\frac{P_i}{m_i} \frac{\partial \Delta V_i}{\partial q_i},
+  \label{eqn:sph:derivation:firstlaw}
+\end{align}
+where $\mathbf{q} = (\mathbf{r}_1, ..., \mathbf{r}_N, h_i, ..., h_N)$ are the
+generalised coordinates of the particles, and the derivative of the internal
+energy $u_i$ is taken at fixed entropy $A$. This gives the first concept of
+`volume' $\Delta V_i$ that the particles occupy.
+
+As mentioned earlier, the particles also have a volume associated with the
+spread of their neighbours and hence their smoothing length. We can write this as
+a constraint equation,
+\begin{align}
+    \phi_i(\mathbf{q}) = \kappa h_i^{n_d}
+      \frac{1}{\Delta \tilde{V}} - N_{ngb} = 0,
+  \label{eqn:sph:derivation:constraint}
+\end{align}
+where $N_{ngb}$ is the effecitve neighbour number, $\kappa$ is the volume of
+the unit sphere ($\kappa_{3D} = 4\pi/3$), and $n_d$ is the number of spatial
+dimensions considered in the problem. It is important to note that $N_{ngb}$
+need not be an integer quantity.
+
+\subsection{Lagrange Multipliers}
+
+With these components in hand, we can use the technique of Lagrange multipliers
+to enforce the constraint equation, with
+\begin{align}
+  \frac{\mathrm{d}}{\mathrm{d}t} \frac{\partial L}{\partial \dot{q}_i} -
+  \frac{\partial L}{\partial q_i} = 
+  \sum^{N}_{j=1} \lambda_j \frac{\partial \phi_i}{\partial q_j},
+  \label{eqn:sph:derivation:lmsum}
+\end{align}
+where the $\lambda_j$ are the lagrange multipliers.  We use the second half of
+these equations (i.e. $q_i = h_i$) to constrain $\lambda_j$. The differentials
+with respect to the smoothing lengths:
+\begin{align}
+  \frac{\partial L}{\partial \dot{h}_i} = 0, 
+  \quad
+  \frac{\partial L}{\partial h_i} =
+  -\sum^N_{j=1}m_j\frac{\partial u_j}{\partial h_i} =
+  -m_i \frac{\partial u_i}{\partial h_i}.
+\end{align}
+As all terms where $i \neq j = 0$. For the constraint equation we find
+\begin{align}
+  \frac{\partial \phi_j}{\partial h_i} = 
+  \kappa n_d h_j^{n_d -1} \frac{\partial h_j}{\partial h_i}
+    \frac{1}{\Delta \tilde{V}_j}
+  + \kappa h_j^{n_d} \frac{\partial \Delta \tilde{V}_j}{\partial h_i}
+    \frac{1}{\Delta \tilde{V}_j^2},
+\end{align}
+which clearly reduces to
+\begin{align}
+  \frac{\partial \phi_j}{\partial h_i} = \kappa
+  \left(n_d h_j^{n_d - 1}  \frac{1}{\Delta \tilde{V_j}} +
+    h_j^{n_d} \frac{\partial \Delta \tilde{V_j}}{\partial h_i}
+    \frac{1}{\Delta \tilde{V_j}^2}
+  \right)\delta_{ij},
+\end{align}
+The first law of thermodynamics gives us an expression for
+${\partial u_i}/{\partial h_i}$,
+\begin{align}
+  \frac{\partial u_i}{\partial h_i} =
+  -\frac{P_i}{m_i} \frac{\partial \Delta V_i}{\partial h_i}.
+\end{align}
+Putting all this together we find that
+\begin{align}
+  P_i \frac{\partial \Delta V_i}{\partial h_i} = 
+  \sum^N_{j=1} \kappa \lambda_j
+    & \left( n_d h_j^{n_d -1}  \frac{1}{\Delta \tilde{V_j}}\right. \nonumber\\
+    & \left. + ~  h_j^{n_d} \frac{\partial \Delta \tilde{V_j}}{\partial h_i}
+      \frac{1}{\Delta \tilde{V_j}^2}
+  \right)\delta_{ij}.
+\end{align}
+This expression can now the rearranged for $\lambda_i$,
+\begin{align}
+  \lambda_i =
+  \left(\frac{P_i}{\kappa} \frac{\Delta \tilde{V}^2_i}{h^{n_d}_i}\right)
+    \frac{h_i}{n_d \Delta \tilde{V}_i}
+    \frac{\partial \Delta V_i}{\partial h_i}
+  \left(1 - \frac{h_i}{n_d \Delta \tilde{V}_i}
+    \frac{\partial \Delta \tilde{V}_i}{\partial h_i}
+  \right)^{-1}.
+\end{align}
+In \citet{hopkins2013} the lagrange multiplier is split into two parts such that
+\begin{align}
+    \lambda_i =
+    \left(\frac{P_i}{\kappa}
+      \frac{\Delta \tilde{V}^2_i}{h^{n_d}_i}
+    \right)\psi_i,
+   \label{eqn:sph:derivation:lambda_i}
+\end{align}
+with
+\begin{align}
+  \psi_i =
+    \frac{h_i}{n_d \Delta \tilde{V}_i}
+    \frac{\partial \Delta V_i}{\partial h_i}
+    \left(1 - \frac{h_i}{n_d \Delta \tilde{V}_i}
+      \frac{\partial \Delta \tilde{V}_i}{\partial h_i}
+    \right)^{-1}.
+  \label{eqn:sph:derivation:psi_I}
+\end{align}
+
+\subsection{Generalised Equation of Motion}
+
+Now that the lagrange multipliers have been constrained, the second half of the
+equations in \ref{eqn:sph:derivation:lmsum} ($q_i = \mathbf{r}_i$) can be used
+to find the equation of motion. The differentials are given as
+\begin{align}
+    \frac{\partial L}{\partial \dot{\mathbf{r}}_i} = m_i \dot{\mathbf{r}}_i,
+    \quad
+    \frac{\partial L}{\partial \mathbf{r}_i} =
+      \sum_{j=1}^N P_j \frac{\partial \Delta V_j}{\partial \mathbf{r}_i}.
+\end{align}
+The differential of \ref{eqn:sph:derivation:constraint} is
+\begin{align}
+    \frac{\partial \phi_j}{\partial \mathbf{r}_i} =
+      - \kappa h_j^{n_d} \frac{\Delta \tilde{V}}{\partial \mathbf{r}_i}
+        \frac{1}{\Delta \tilde{V}^2},
+\end{align}
+as $h_j$ is an \emph{independent coordinate} of a particle from $\mathbf{r}_j$
+implying that the partial differential $\partial h_j/\partial \mathbf{r}_i = 0$.
+We can substitute these into the equation of motion to find
+\begin{align}
+  m_i \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d}t} =  
+    \sum^N_{j=1}  P_j \nabla_i \Delta V_j + \lambda_j
+      \left(
+        \kappa \frac{h_j^{n_d}}{\Delta \tilde{V}_j^2}
+      \right)
+      \left(
+        - \frac{\partial \Delta \tilde{V}_j}{\partial \mathbf{r}_i}
+      \right).
+\end{align}
+This then gives the result from the substitution of the lagrange multipliers, 
+\begin{align}
+  m_i \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d}t} =
+  \sum^N_{j=1} P_j \nabla_i \Delta \tilde{V}_j \psi_j +
+  P_j \nabla_i \Delta V_j.
+  \label{eqn:sph:derivation:eom}
+\end{align}
+
+Now we need to \emph{specify} what we mean by volumes in terms of SPH
+quantities. An example, familiar choice would be $\Delta V_i = m_i/\rho_i$.
+Notice that in this definition of volume there is one \emph{particle-carried}
+property and one `field' or \emph{smoothed} property. This turns out to be the
+case for any smoothed property
+\begin{align}
+  y_i = \sum^N_{j=1} x_j W_{ij}(h_i)
+  \label{eqn:sph:derivation:smoothed}
+\end{align}
+for a given particle-carried scalar $x_i$. This is also true for the $\Delta
+\tilde{V}_i = \tilde{x}_i/\tilde{y}_i$. Using these specifications, we can write
+down the volume differentials,
+\begin{align}
+  \frac{\partial \Delta V_i}{\partial h_i} =
+    -\frac{x_i}{y_i^2}\frac{\partial y_i}{\partial h_i},
+    \quad
+  \nabla_i \Delta V_j = -\frac{x_i}{y_i^2} \nabla_i y_j.
+  \label{eqn:sph:derivation:volumediffs}
+\end{align}
+The spatial differential is fairly straightforward and is given by
+\begin{align}
+  \nabla_i y_j = \nabla_i W_{ij}(h_j)
+    + \delta_{ij}\sum_{k=1}^N \nabla_i W_{ik}(h_i).
+  \label{eqn:sph:derivation:nablay}
+\end{align}
+The differential with respect to the smoothing length is also straightforward
+after remembering that $W_{ij}(h_j) = w(|r_{ij}|/h_j)/h_j^{n_d}$. Then,
+\begin{align}
+  \frac{\partial y_i}{\partial h_i} = -\sum_{j=1}^N \frac{x_j}{h_j}
+  \left[
+    n_d W_{ij}(h_i) + \frac{|r_{ij}|}{h_i}
+    \left. 
+      \frac{\partial W(u)}{\partial u}
+    \right|_{u=\frac{|r_{ij}|}{h_i}}
+  \right].
+  \label{eqn:sph:derivation:dydh}
+\end{align}
+Finally, putting all of the above together, we can reach a
+formulation-independent equation of motion for SPH,
+\begin{align}
+  \frac{\mathrm{d}\vec{v}_i}{\mathrm{d}t} = -\sum_{j=1}^N x_i x_j
+  & \left[ \frac{f_{ij}P_i}{y_i^2} \nabla_i W_{ij}(h_i) \right. \nonumber \\
+  & \left. + ~ \frac{f_{ji} P_j}{y_j^2}\nabla_i W_{ji}(h_j)\right],
+  \label{eqn:sph:derivation:spheom}
+\end{align}
+with
+\begin{align}
+  f_{ij} \equiv 1 - 
+    \frac{\tilde{x}_j}{x_j}
+    \left(
+      \frac{h_i}{n_d \tilde{y}_i} \frac{\partial y_i}{\partial h_i}
+    \right)
+    \left(
+      1+\frac{h_i}{n_d \tilde{y}_i} \frac{\partial \tilde{y}_i}{\partial h_i}
+    \right)^{-1}
+  \label{eqn:sph:derivation:fij}
+\end{align}
+being the so-called `h-terms' that are essentially correction factors due to the
+fact that $h$ is allowed to vary.

@@ -83,4 +83,8 @@ void parser_get_opt_param_string(const struct swift_params *params,
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
 #endif
 
+/* Dump/restore. */
+void parser_struct_dump(const struct swift_params *params, FILE *stream);
+void parser_struct_restore(const struct swift_params *params, FILE *stream);
+
 #endif /* SWIFT_PARSER_H */

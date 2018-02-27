@@ -131,16 +131,16 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(prop.type)) {
-      double* temp_d = temp;
+      double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = temp;
+      float* temp_f = (float*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = temp;
+  char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(prop.field + i * prop.partSize, &temp_c[i * copySize], copySize);
 
@@ -387,7 +387,8 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
-  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
+  struct unit_system* ic_units =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
   io_read_unit_system(h_file, ic_units, 0);
 
@@ -428,8 +429,8 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[swift_type_gas];
-    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
-        0)
+    if (posix_memalign((void**)parts, part_align,
+                       *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
   }
@@ -437,7 +438,7 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store star particles */
   if (with_stars) {
     *Nstars = N[swift_type_star];
-    if (posix_memalign((void*)sparts, spart_align,
+    if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for star particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -449,7 +450,7 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                (with_stars ? N[swift_type_star] : 0);
-    if (posix_memalign((void*)gparts, gpart_align,
+    if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -577,20 +578,20 @@ void write_output_single(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
 
-  long long N_total[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
+  long long N_total[swift_type_count] = {
+      (long long)Ngas, (long long)Ndm, 0, 0, (long long)Nstars, 0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0) xmf_create_file(baseName);
+  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   FILE* xmfFile = 0;
@@ -766,7 +767,7 @@ void write_output_single(struct engine* e, const char* baseName,
 
       case swift_type_dark_matter:
         /* Allocate temporary array */
-        if (posix_memalign((void*)&dmparts, gpart_align,
+        if (posix_memalign((void**)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for DM particles");
         bzero(dmparts, Ndm * sizeof(struct gpart));
@@ -807,14 +808,14 @@ void write_output_single(struct engine* e, const char* baseName,
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);
 
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 */
