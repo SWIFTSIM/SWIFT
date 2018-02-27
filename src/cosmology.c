@@ -138,6 +138,9 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
   c->a_inv = a_inv;
   c->a2_inv = a_inv * a_inv;
   c->a3_inv = a_inv * a_inv * a_inv;
+  c->a_factor_internal_energy =
+      pow(a, -3. * hydro_gamma_minus_one);          /* a^{3*(1-gamma)} */
+  c->a_factor_pressure = pow(a, -3. * hydro_gamma); /* a^{-3*gamma} */
   c->a_factor_sound_speed =
       pow(a, -1.5 * hydro_gamma_minus_one); /* a^{3*(1-gamma)/2} */
   c->a_factor_grav_accel = a_inv * a_inv;   /* 1 / a^2 */
@@ -459,6 +462,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_inv = 1.;
   c->a2_inv = 1.;
   c->a3_inv = 1.;
+  c->a_factor_internal_energy = 1.;
+  c->a_factor_pressure = 1.;
   c->a_factor_sound_speed = 1.;
   c->a_factor_mu = 1.;
   c->a_factor_hydro_accel = 1.;

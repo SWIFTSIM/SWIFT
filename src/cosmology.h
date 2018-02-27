@@ -44,10 +44,18 @@ struct cosmology {
   /*! Inverse cube of the current expansion factor of the Universe */
   double a3_inv;
 
-  /*! Power of the scale-factor used for sound-speed conversion */
+  /*! Power of the scale-factor used for internal energy conversion to physical
+   */
+  double a_factor_internal_energy;
+
+  /*! Power of the scale-factor used for pressure conversion to physical */
+  double a_factor_pressure;
+
+  /*! Power of the scale-factor used for sound-speed conversion to physical */
   double a_factor_sound_speed;
 
-  /*! Power of the scale-factor used for relative velocities in viscosity ter */
+  /*! Power of the scale-factor used for relative velocities in viscosity term
+   */
   double a_factor_mu;
 
   /*! Power of the scale-factor used for gravity accelerations */
