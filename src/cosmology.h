@@ -62,6 +62,9 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
+  /*! Conversion factor from internal time-step size to cosmological step */
+  double time_step_factor;
+
   /*! Expansion rate at the current redshift (in internal units) */
   double a_dot;
 

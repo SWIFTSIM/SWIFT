@@ -167,6 +167,9 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
   /* Expansion rate */
   c->a_dot = c->H * c->a;
 
+  /* Time-step conversion factor */
+  c->time_step_factor = c->H;
+
   /* Time */
   c->time = cosmology_get_time_since_big_bang(c, a);
   c->lookback_time = c->universe_age_at_present_day - c->time;
@@ -463,6 +466,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_mu = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
+
+  c->time_step_factor = 1.;
 
   c->a_dot = 0.;
   c->time = 0.;

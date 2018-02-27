@@ -84,8 +84,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
   /* Take the minimum of all */
   float new_dt = min(new_dt_self, new_dt_ext);
 
-  /* Apply cosmology correction (H==1 if non-cosmological) */
-  new_dt *= e->cosmology->H;
+  /* Apply cosmology correction */
+  new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
@@ -149,7 +149,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   new_dt = min(new_dt, dt_h_change);
 
   /* Apply cosmology correction (H==1 if non-cosmological) */
-  new_dt *= e->cosmology->H;
+  new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
@@ -192,7 +192,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
   float new_dt = min3(new_dt_star, new_dt_self, new_dt_ext);
 
   /* Apply cosmology correction (H==1 if non-cosmological) */
-  new_dt *= e->cosmology->H;
+  new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
