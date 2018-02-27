@@ -2007,70 +2007,6 @@ void space_map_cells_pre(struct space *s, int full,
     rec_map_cells_pre(&s->cells_top[cid], full, fun, data);
 }
 
-void space_split_cell(struct space *s, struct cell *c) {
-
-  struct part *parts = c->parts;
-  struct gpart *gparts = c->gparts;
-  struct spart *sparts = c->sparts const int count = c->count;
-  const int gcount = c->gcount;
-  const int scount = c->scount;
-
-  struct cell_buff *buff = NULL;
-  struct cell_buff *gbuff = NULL;
-  struct cell_buff *sbuff = NULL;
-
-  /* Allocate and fill the particle position buffers. */
-  if (count > 0) {
-    if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * count) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < count; k++) {
-      buff[k].x[0] = parts[k].x[0];
-      buff[k].x[1] = parts[k].x[1];
-      buff[k].x[2] = parts[k].x[2];
-      buff[k].offset = k;
-    }
-  }
-  if (gcount > 0) {
-    if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * gcount) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < gcount; k++) {
-      gbuff[k].x[0] = gparts[k].x[0];
-      gbuff[k].x[1] = gparts[k].x[1];
-      gbuff[k].x[2] = gparts[k].x[2];
-      gbuff[k].offset = k;
-    }
-  }
-  if (scount > 0) {
-    if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * scount) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < scount; k++) {
-      sbuff[k].x[0] = sparts[k].x[0];
-      sbuff[k].x[1] = sparts[k].x[1];
-      sbuff[k].x[2] = sparts[k].x[2];
-      sbuff[k].offset = k;
-    }
-  }
-
-  /* Call the recursive cell splitting function. */
-  space_split_recursive(s, c, buff, sbuff, gbuff);
-
-  /* Put the parts and xparts in the correct order. */
-
-  /* Update the links gpart->part. */
-
-  /* Put the gparts in the correct order. */
-
-  /* Update links part->gpart. */
-
-  /* Clean up. */
-  if (buff != NULL) free(buff);
-  if (gbuff != NULL) free(gbuff);
-  if (sbuff != NULL) free(sbuff);
-}
-
 /**
  * @brief Recursively split a cell.
  *
@@ -2158,8 +2094,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell data. */
-    cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
-               gbuff);
+    cell_split(c, buff, sbuff, gbuff);
 
     /* Remove any progeny with zero parts. */
     struct cell_buff *progeny_buff = buff;
@@ -2268,40 +2203,81 @@ void space_split_recursive(struct space *s, struct cell *c,
     timebin_t hydro_time_bin_min = num_time_bins, hydro_time_bin_max = 0;
     timebin_t gravity_time_bin_min = num_time_bins, gravity_time_bin_max = 0;
 
-    /* parts: Get dt_min/dt_max and h_max. */
+    /* Get a pointer to the root cell (we probably want to make this a parameter
+     * later). */
+    struct cell *root = c;
+    while (root->parent != NULL) root = root->parent;
+
+    /* Put the parts and xparts in the right order. */
+    const int parts_offset = c->parts - root->parts;
     for (int k = 0; k < count; k++) {
+      /* Location of the part in the parts array. */
+      int location = buff[k].offset - parts_offset;
+      if (location < k) location = buff[location].offset - parts_offset;
+      if (location != k) {
+        memswap(&parts[k], &parts[location], sizeof(struct part));
+        memswap(&xparts[k], &xparts[location], sizeof(struct xpart));
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
 #endif
+
+      /* parts: Get dt_min/dt_max and h_max. */
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
-    }
-    /* parts: Reset x_diff */
-    for (int k = 0; k < count; k++) {
+
+      /* xparts: Reset x_diff */
       xparts[k].x_diff[0] = 0.f;
       xparts[k].x_diff[1] = 0.f;
       xparts[k].x_diff[2] = 0.f;
     }
-    /* gparts: Get dt_min/dt_max, reset x_diff. */
+
+    /* Update the links gpart->part. */
+
+    /* Put the gparts in the right order. */
+    const int gparts_offset = c->gparts - root->gparts;
     for (int k = 0; k < gcount; k++) {
+      /* Location of the part in the parts array. */
+      int location = gbuff[k].offset - gparts_offset;
+      if (location < k) location = gbuff[location].offset - gparts_offset;
+      if (location != k) {
+        memswap(&gparts[k], &gparts[location], sizeof(struct gpart));
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited g-particle present in space_split()");
 #endif
+
+      /* gparts: Get dt_min/dt_max, reset x_diff. */
       gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
       gparts[k].x_diff[0] = 0.f;
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
     }
-    /* sparts: Get dt_min/dt_max */
+
+    /* Update links part->gpart. */
+
+    /* Put the sparts in the right order. */
+    const int sparts_offset = c->sparts - root->sparts;
     for (int k = 0; k < scount; k++) {
+      /* Location of the spart in the sparts array. */
+      int location = sbuff[k].offset - sparts_offset;
+      if (location < k) location = sbuff[location].offset - sparts_offset;
+      if (location != k) {
+        memswap(&sparts[k], &sparts[location], sizeof(struct spart));
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (sparts[k].time_bin == time_bin_inhibited)
         error("Inhibited s-particle present in space_split()");
 #endif
+
+      /* sparts: Get dt_min/dt_max */
       gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
     }
@@ -2370,6 +2346,63 @@ void space_split_recursive(struct space *s, struct cell *c,
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
+}
+
+void space_split_cell(struct space *s, struct cell *c) {
+
+  struct part *parts = c->parts;
+  struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  const int scount = c->scount;
+
+  struct cell_buff *buff = NULL;
+  struct cell_buff *gbuff = NULL;
+  struct cell_buff *sbuff = NULL;
+
+  /* Allocate and fill the particle position buffers. */
+  if (count > 0) {
+    if (posix_memalign((void *)&buff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * count) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < count; k++) {
+      buff[k].x[0] = parts[k].x[0];
+      buff[k].x[1] = parts[k].x[1];
+      buff[k].x[2] = parts[k].x[2];
+      buff[k].offset = k;
+    }
+  }
+  if (gcount > 0) {
+    if (posix_memalign((void *)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * gcount) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < gcount; k++) {
+      gbuff[k].x[0] = gparts[k].x[0];
+      gbuff[k].x[1] = gparts[k].x[1];
+      gbuff[k].x[2] = gparts[k].x[2];
+      gbuff[k].offset = k;
+    }
+  }
+  if (scount > 0) {
+    if (posix_memalign((void *)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * scount) != 0)
+      error("Failed to allocate temporary indices.");
+    for (int k = 0; k < scount; k++) {
+      sbuff[k].x[0] = sparts[k].x[0];
+      sbuff[k].x[1] = sparts[k].x[1];
+      sbuff[k].x[2] = sparts[k].x[2];
+      sbuff[k].offset = k;
+    }
+  }
+
+  /* Call the recursive cell splitting function. */
+  space_split_recursive(s, c, buff, sbuff, gbuff);
+
+  /* Clean up. */
+  if (buff != NULL) free(buff);
+  if (gbuff != NULL) free(gbuff);
+  if (sbuff != NULL) free(sbuff);
 }
 
 /**
