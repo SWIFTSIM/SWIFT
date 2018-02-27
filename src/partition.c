@@ -230,75 +230,34 @@ static void graph_init_adjncy(struct space *s, idx_t *adjncy) {
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-
-struct counts_mapper {
-    int cdim[3];
-    double iwidth[3];
-    double dim[3];
-    int64_t *counts;
-};
-
-/**
- * @brief Threadpool helper for accumulating the counts of particles per cell.
- *
- * @param s the space containing the cells.
- * @param counts the number of particles per cell. Should be
- *               allocated as size s->nr_parts.
- */
-static void accumulate_counts_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
-
-  struct part *parts = (struct part *) map_data;
-  struct counts_mapper *mydata = (struct counts_mapper *)extra_data;
-
-  for (int k = 0; k < num_elements; k++) {
-      for (int j = 0; j < 3; j++) {
-          if (parts[k].x[j] < 0.0)
-              parts[k].x[j] += mydata->dim[j];
-          else if (parts[k].x[j] >= mydata->dim[j])
-              parts[k].x[j] -= mydata->dim[j];
-      }
-      const int cid =
-          cell_getid(mydata->cdim, parts[k].x[0] * mydata->iwidth[0],
-                     parts[k].x[1] * mydata->iwidth[1],
-                     parts[k].x[2] * mydata->iwidth[2]);
-      atomic_inc(&(mydata->counts[cid]));
-  }
-}
-
 /**
  * @brief Accumulate the counts of particles per cell.
  *
  * @param s the space containing the cells.
  * @param counts the number of particles per cell. Should be
- *               allocated as size s->nr_cells.
+ *               allocated as size s->nr_parts.
  */
 static void accumulate_counts(struct space *s, double *counts) {
 
-  /* Need integer counts for atomic access in mapper. */
-  int64_t *icounts = NULL;
-  if ((icounts = (int64_t *)malloc(sizeof(int64_t) * s->nr_cells)) == NULL)
-    error("Failed to allocate icounts buffer");
-  bzero(icounts, sizeof(int64_t) * s->nr_cells);
+  struct part *parts = s->parts;
+  int *cdim = s->cdim;
+  double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+  double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
-  struct counts_mapper extra_data;
-  extra_data.cdim[0] = s->cdim[0];
-  extra_data.cdim[1] = s->cdim[1];
-  extra_data.cdim[2] = s->cdim[2];
-  extra_data.iwidth[0] = s->iwidth[0], 
-  extra_data.iwidth[1] = s->iwidth[1], 
-  extra_data.iwidth[2] = s->iwidth[2];
-  extra_data.dim[0] = s->dim[0];
-  extra_data.dim[1] = s->dim[1];
-  extra_data.dim[2] = s->dim[2];
-  extra_data.counts = icounts;
+  bzero(counts, sizeof(double) * s->nr_cells);
 
-  threadpool_map(&s->e->threadpool, accumulate_counts_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 0, &extra_data);
-
-  for (int k = 0; k < s->nr_cells; k++) counts[k] = icounts[k]; // XXX use
-                                                                // int64_t for
-                                                                // all weights
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    for (int j = 0; j < 3; j++) {
+      if (parts[k].x[j] < 0.0)
+        parts[k].x[j] += dim[j];
+      else if (parts[k].x[j] >= dim[j])
+        parts[k].x[j] -= dim[j];
+    }
+    const int cid =
+        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
+                   parts[k].x[2] * iwidth[2]);
+    counts[cid]++;
+  }
 }
 #endif
 
@@ -1221,7 +1180,7 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(double) * s->nr_cells);
 
-      /* Check each particle and accumulate the counts per cell. */
+      /* Check each particle and accumilate the counts per cell. */
       accumulate_counts(s, weights);
 
       /* Get all the counts from all the nodes. */
