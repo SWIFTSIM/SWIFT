@@ -415,7 +415,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           int *celllist) {
   int res;
   MPI_Comm comm;
-  MPI_Status status;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 
   /* Total number of cells. */
@@ -480,6 +479,17 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   idx_t *regionid = NULL;
   if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
     error("Failed to allocate regionid array");
+
+  /* Prepare MPI requests for the asynchronous communications */
+  MPI_Request *reqs;
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nregions)) ==
+      NULL)
+    error("Failed to allocate MPI request list.");
+  for (int k = 0; k < 5 * nregions; k++) reqs[k] = MPI_REQUEST_NULL;
+
+  MPI_Status *stats;
+  if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
+    error("Failed to allocate MPI status list.");
 
   /* Only use one rank to organize everything. */
   if (nodeID == 0) {
@@ -582,7 +592,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #endif
     }
 
-    /* Send ranges to the other ranks and keep our own. XXX async version XXX */
+    /* Send ranges to the other ranks and keep our own. */
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
 
@@ -599,20 +609,37 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
-        res = MPI_Send(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm);
+        res = MPI_Isend(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm,
+                        &reqs[5 * rank + 0]);
         if (res == MPI_SUCCESS)
-          res = MPI_Send(&full_adjncy[j2], nvt * 26, IDX_T, rank, 1, comm);
+          res = MPI_Isend(&full_adjncy[j2], nvt * 26, IDX_T, rank, 1, comm,
+                          &reqs[5 * rank + 1]);
         if (res == MPI_SUCCESS && weights_e != NULL)
-          res = MPI_Send(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm);
+          res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
+                          &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Send(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm);
+          res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
+                          &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
-          res = MPI_Send(full_regionid, nvt, IDX_T, rank, 4, comm);
+          res = MPI_Isend(full_regionid, nvt, IDX_T, rank, 4, comm,
+                          &reqs[5 * rank + 4]);
         if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
       }
       j1 += nvt + 1;
       j2 += nvt * 26;
       j3 += nvt;
+    }
+
+    /* Wait for all sends to complete. */
+    int result;
+    if ((result = MPI_Waitall(5 * nregions, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5 * nregions; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
+        message("send request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall sending repartition data.");
     }
 
     /* Clean up. */
@@ -625,16 +652,28 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   } else {
 
     /* Receive stuff from rank 0. */
-    res = MPI_Recv(xadj, nverts + 1, IDX_T, 0, 0, comm, &status);
+    res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
     if (res == MPI_SUCCESS)
-      res = MPI_Recv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &status);
+      res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_e != NULL)
-      res = MPI_Recv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &status);
+      res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
     if (res == MPI_SUCCESS && weights_v != NULL)
-      res = MPI_Recv(weights_v, nverts, IDX_T, 0, 3, comm, &status);
+      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
-      res += MPI_Recv((void *)regionid, nverts, IDX_T, 0, 4, comm, &status);
+      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
+
+    /* Wait for all recvs to complete. */
+    int result;
+    if ((result = MPI_Waitall(5, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
+        message("recv request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall receiving repartition data.");
+    }
   }
 
   /* Set up the tpwgts array. This is just 1/nregions. */
@@ -691,50 +730,62 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (nsum == 0) permute = 0;
   }
 
-  /* Gather the regionids from the other ranks. XXX async version XXX */
+  /* Gather the regionids from the other ranks. */
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
+  int *remoteids = NULL;
+  if ((remoteids = (int *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    error("Failed to allocate new celllist");
+  for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
+
   if (nodeID == 0) {
 
-    idx_t *remoteids = NULL;
-    size_t sizeids = 0;
     for (int rank = 0, j = 0; rank < nregions; rank++) {
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
 
       if (rank == 0) {
 
         /* Locals. */
-        for (int k = 0; k < nvt; k++) newcelllist[k] = regionid[k];
+        for (int k = 0; k < nvt; k++) remoteids[k] = regionid[k];
 
       } else {
 
-        /* Type mismatch, so we need to buffer. */
-        if (sizeof(idx_t) * nvt > sizeids) {
-          sizeids = sizeof(idx_t) * nvt;
-          if (sizeids > 0) free(remoteids);
-          if ((remoteids = (idx_t *)malloc(sizeids)) == NULL)
-            error("Failed to (re)allocate remoteids array");
-        }
-        res = MPI_Recv((void *)remoteids, nvt, IDX_T, rank, 1, comm, &status);
+        /* Receive from other ranks. */
+        res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
+                        &reqs[rank]);
         if (res != MPI_SUCCESS)
           mpi_error(res, "Failed to receive new regionids");
-        for (int k = 0; k < nvt; k++) newcelllist[j + k] = remoteids[k];
       }
-
       j += nvt;
     }
+
+    int err;
+    if ((err = MPI_Waitall(nregions, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &err);
+        message("recv request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall receiving regionid data.");
+    }
+
+    /* Copy. */
+    for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
+
     if (remoteids != NULL) free(remoteids);
 
-    /* Check that the regionids are ok. */
-    for (int k = 0; k < ncells; k++)
-      if (newcelllist[k] < 0 || newcelllist[k] >= nregions)
-        error("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
-
   } else {
-    res = MPI_Send(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0, 1,
-                   comm);
+    res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
+                    1, comm, &reqs[0]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+
+    /* Wait for send to complete. */
+    int err;
+    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
+      mpi_error(err, "Failed during wait sending regionids.");
+    }
   }
 
   /* And everyone gets a copy. */
@@ -763,6 +814,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
 
   /* Clean up. */
+  free(reqs);
+  free(stats);
+  free(remoteids);
   free(newcelllist);
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
