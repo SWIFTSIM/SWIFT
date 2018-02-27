@@ -2213,13 +2213,26 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < count; k++) {
       /* Location of the part in the parts array. */
       int location = buff[k].offset - parts_offset;
-      if (location < k) location = buff[location].offset - parts_offset;
       if (location != k) {
-        memswap(&parts[k], &parts[location], sizeof(struct part));
-        memswap(&xparts[k], &xparts[location], sizeof(struct xpart));
+        struct part temp_part = parts[k];
+        struct xpart temp_xpart = xparts[k];
+        int j = k;
+        while (1) {
+          buff[j].offset = j + parts_offset;
+          if (location == k) break;
+          parts[j] = parts[location];
+          xparts[j] = xparts[location];
+          j = location;
+          location = buff[j].offset - parts_offset;
+        }
+        parts[j] = temp_part;
+        xparts[j] = temp_xpart;
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].x[0] != buff[k].x[0] || parts[k].x[1] != buff[k].x[1] ||
+          parts[k].x[2] != buff[k].x[2])
+        error("Buffer and particle position mismatch.");
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
 #endif
@@ -2242,9 +2255,17 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < gcount; k++) {
       /* Location of the part in the parts array. */
       int location = gbuff[k].offset - gparts_offset;
-      if (location < k) location = gbuff[location].offset - gparts_offset;
       if (location != k) {
-        memswap(&gparts[k], &gparts[location], sizeof(struct gpart));
+        struct gpart temp_gpart = gparts[k];
+        int j = k;
+        while (1) {
+          buff[j].offset = j + gparts_offset;
+          if (location == k) break;
+          gparts[j] = gparts[location];
+          j = location;
+          location = buff[j].offset - gparts_offset;
+        }
+        gparts[j] = temp_gpart;
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
