@@ -2249,6 +2249,41 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Update the links gpart->part. */
+    part_relink_gparts_to_parts(parts, count, parts - s->parts);
+
+    /* Put the sparts in the right order. */
+    const int sparts_offset = c->sparts - root->sparts;
+    for (int k = 0; k < scount; k++) {
+      /* Location of the spart in the sparts array. */
+      int location = sbuff[k].offset - sparts_offset;
+      if (location != k) {
+        struct spart temp_spart = sparts[k];
+        int j = k;
+        while (1) {
+          sbuff[j].offset = j + sparts_offset;
+          if (location == k) break;
+          sparts[j] = sparts[location];
+          j = location;
+          location = sbuff[j].offset - sparts_offset;
+        }
+        sparts[j] = temp_spart;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].x[0] != sbuff[k].x[0] || sparts[k].x[1] != sbuff[k].x[1] ||
+          sparts[k].x[2] != sbuff[k].x[2])
+        error("Buffer and spart position mismatch.");
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited s-particle present in space_split()");
+#endif
+
+      /* sparts: Get dt_min/dt_max */
+      gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
+    }
+
+    /* Update the links gpart->part. */
+    part_relink_gparts_to_sparts(sparts, scount, sparts - s->sparts);
 
     /* Put the gparts in the right order. */
     const int gparts_offset = c->gparts - root->gparts;
@@ -2259,16 +2294,19 @@ void space_split_recursive(struct space *s, struct cell *c,
         struct gpart temp_gpart = gparts[k];
         int j = k;
         while (1) {
-          buff[j].offset = j + gparts_offset;
+          gbuff[j].offset = j + gparts_offset;
           if (location == k) break;
           gparts[j] = gparts[location];
           j = location;
-          location = buff[j].offset - gparts_offset;
+          location = gbuff[j].offset - gparts_offset;
         }
         gparts[j] = temp_gpart;
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].x[0] != gbuff[k].x[0] || gparts[k].x[1] != gbuff[k].x[1] ||
+          gparts[k].x[2] != gbuff[k].x[2])
+        error("Buffer and gpart position mismatch.");
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited g-particle present in space_split()");
 #endif
@@ -2281,27 +2319,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       gparts[k].x_diff[2] = 0.f;
     }
 
-    /* Update links part->gpart. */
-
-    /* Put the sparts in the right order. */
-    const int sparts_offset = c->sparts - root->sparts;
-    for (int k = 0; k < scount; k++) {
-      /* Location of the spart in the sparts array. */
-      int location = sbuff[k].offset - sparts_offset;
-      if (location < k) location = sbuff[location].offset - sparts_offset;
-      if (location != k) {
-        memswap(&sparts[k], &sparts[location], sizeof(struct spart));
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
-#endif
-
-      /* sparts: Get dt_min/dt_max */
-      gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
-    }
+    /* Update links part/spart->gpart. */
+    part_relink_all_parts_to_gparts(gparts, gcount, s->parts, s->sparts);
 
     /* Convert into integer times */
     ti_hydro_end_min = get_integer_time_end(e->ti_current, hydro_time_bin_min);
