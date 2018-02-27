@@ -107,6 +107,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
+  /* Note: no cosmological conversion required here with our choice of
+   * coordinates. */
   return p->entropy;
 }
 
@@ -222,7 +224,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
  * @param hydro_properties The constants used in the scheme
- *
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
@@ -306,7 +308,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
-  const float a_inv2 = cosmo->a_inv * cosmo->a_inv;
+  const float a_inv2 = cosmo->a2_inv;
 
   /* Finish calculation of the (physical) velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
@@ -510,19 +512,19 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  *
  * @param p The particle to act upon
  * @param xp The particle extended data to act upon
- * @param dt The time-step for this kick
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities)
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt) {
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
 
   /* Do not decrease the entropy by more than a factor of 2 */
-  if (dt > 0. && p->entropy_dt * dt < -0.5f * xp->entropy_full) {
+  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
     /* message("Warning! Limiting entropy_dt. Possible cooling error.\n
      * entropy_full = %g \n entropy_dt * dt =%g \n", */
     /* 	     xp->entropy_full,p->entropy_dt * dt); */
-    p->entropy_dt = -0.5f * xp->entropy_full / dt;
+    p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
   }
-  xp->entropy_full += p->entropy_dt * dt;
+  xp->entropy_full += p->entropy_dt * dt_therm;
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
