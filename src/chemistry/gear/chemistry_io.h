@@ -69,9 +69,10 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
-  for (size_t i = 0; i < chemistry_element_count; i++) {
+  for (enum chemistry_element i = chemistry_element_O;
+       i < chemistry_element_count; i++) {
     char buffer[20];
-    sprintf(buffer, "Element %lu", i);
+    sprintf(buffer, "Element %d", (int)i);
     io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(i));
   }
 }
