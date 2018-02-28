@@ -103,9 +103,11 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  *
  * @param p The particle to act upon.
  * @param cd #chemistry_data containing chemistry informations.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part* restrict p, const struct chemistry_data* cd) {
+    struct part* restrict p, const struct chemistry_data* cd,
+    const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;

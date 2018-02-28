@@ -756,7 +756,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             hydro_init_part(p, hs);
-            chemistry_init_part(p, e->chemistry);
+            chemistry_init_part(p, chemistry);
 
             /* Off we go ! */
             continue;
