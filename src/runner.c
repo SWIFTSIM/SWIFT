@@ -656,6 +656,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct space *s = e->s;
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
+  const struct chemistry_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
@@ -717,7 +718,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
-          chemistry_end_density(p, e->chemistry);
+          chemistry_end_density(p, chemistry, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
