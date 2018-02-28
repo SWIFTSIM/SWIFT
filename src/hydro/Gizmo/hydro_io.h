@@ -74,7 +74,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  */
 void convert_u(const struct engine* e, const struct part* p, float* ret) {
 
-  ret[0] = hydro_get_internal_energy(p);
+  ret[0] = hydro_get_comoving_internal_energy(p);
 }
 
 /**
@@ -85,7 +85,7 @@ void convert_u(const struct engine* e, const struct part* p, float* ret) {
  * @param ret (return) Entropic function of the particle
  */
 void convert_A(const struct engine* e, const struct part* p, float* ret) {
-  ret[0] = hydro_get_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p);
 }
 
 /**
