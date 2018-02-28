@@ -4538,7 +4538,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #endif
     if (dump) {
       /* Clean out the previous saved files, if found. Do this now as we are
-       * MPI synchronized. XXX should we have a barrier XXX */
+       * MPI synchronized. */
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
