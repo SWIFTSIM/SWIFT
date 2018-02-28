@@ -26,22 +26,32 @@
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
  * The interactions computed here are the ones presented in the Gadget-2 paper
- *and use the same
+ * and use the same
  * numerical coefficients as the Gadget-2 code. When used with the Spline-3
- *kernel, the results
+ * kernel, the results
  * should be equivalent to the ones obtained with Gadget-2 up to the rounding
- *errors and interactions
+ * errors and interactions
  * missed by the Gadget-2 tree-code neighbours search.
  *
  * The code uses internal energy instead of entropy as a thermodynamical
- *variable.
+ * variable.
  */
 
 /**
- * @brief Density loop
+ * @brief Density interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   float r = sqrtf(r2), ri = 1.0f / r;
   float xi, xj;
@@ -97,10 +107,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Density loop (non-symmetric version)
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
 
   float r, ri;
   float xi;
@@ -145,10 +165,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 }
 
 /**
- * @brief Force loop
+ * @brief Force interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   float r = sqrtf(r2), ri = 1.0f / r;
   float xi, xj;
@@ -159,6 +189,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float v_sig, omega_ij, Pi_ij, alpha_ij, tc, v_sig_u;
   float f;
   int k;
+
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   /* Get some values in local variables. */
   mi = pi->mass;
@@ -184,12 +218,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute dv dot r. */
   dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-         (pi->v[2] - pj->v[2]) * dx[2];
+         (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
   dvdr *= ri;
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij = min(dvdr, 0.f);
+  omega_ij = min(fac_mu * dvdr, 0.f);
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
@@ -240,10 +274,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
- * @brief Force loop (non-symmetric version)
+ * @brief Force interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
 
   float r = sqrtf(r2), ri = 1.0f / r;
   float xi, xj;
@@ -254,6 +298,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float v_sig, omega_ij, Pi_ij, alpha_ij, tc, v_sig_u;
   float f;
   int k;
+
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   /* Get some values in local variables. */
   // mi = pi->mass;
@@ -279,12 +327,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute dv dot r. */
   dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-         (pi->v[2] - pj->v[2]) * dx[2];
+         (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
   dvdr *= ri;
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij = min(dvdr, 0.f);
+  omega_ij = min(fac_mu * dvdr, 0.f);
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
