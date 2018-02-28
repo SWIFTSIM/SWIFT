@@ -60,7 +60,7 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type);
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
-void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
 
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,

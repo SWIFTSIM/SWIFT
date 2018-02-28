@@ -49,7 +49,7 @@
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 enum velocity_types {
   velocity_zero,
@@ -380,7 +380,10 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 /* And go... */
 int main(int argc, char *argv[]) {
 
+#ifdef HAVE_SETAFFINITY
   engine_pin();
+#endif
+
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;

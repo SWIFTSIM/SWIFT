@@ -6,6 +6,10 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
+# Values of some physical constants
+PhysicalConstants:
+  G:            6.67408e-8 # (Optional) Overwrite the value of Newton's constant used internally by the code.
+
 # Parameters for the task scheduling
 Scheduler:
   nr_queues:                 0         # (Optional) The number of task queues to use. Use 0  to let the system decide.

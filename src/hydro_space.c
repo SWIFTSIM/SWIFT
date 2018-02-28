@@ -47,6 +47,5 @@ __attribute__((always_inline)) INLINE void hydro_space_init(
   }
 }
 #else
-__attribute__((always_inline)) INLINE void hydro_space_init(
-    struct hydro_space *hs, const struct space *s) {}
+void hydro_space_init(struct hydro_space *hs, const struct space *s) {}
 #endif

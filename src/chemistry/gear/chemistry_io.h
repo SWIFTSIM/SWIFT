@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_IO_GEAR_H
 #define SWIFT_CHEMISTRY_IO_GEAR_H
 
+#include "chemistry.h"
+#include "chemistry_struct.h"
 #include "io_properties.h"
 
 /**
@@ -32,10 +34,9 @@
 int chemistry_read_particles(struct part* parts, struct io_props* list) {
 
   /* List what we want to read */
-  list[0] =
-      io_make_input_field("HeDensity", FLOAT, 1, COMPULSORY, UNIT_CONV_DENSITY,
-                          parts, chemistry_data.he_density);
-
+  list[0] = io_make_input_field(
+      "ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
+      UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
   return 1;
 }
 
@@ -50,19 +51,29 @@ int chemistry_read_particles(struct part* parts, struct io_props* list) {
 int chemistry_write_particles(const struct part* parts, struct io_props* list) {
 
   /* List what we want to write */
-  list[0] = io_make_output_field("HeDensity", FLOAT, 1, UNIT_CONV_DENSITY,
-                                 parts, chemistry_data.he_density);
+  list[0] = io_make_output_field(
+      "SmoothedElementAbundance", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
 
-  return 1;
+  list[1] = io_make_output_field("ElementAbundance", FLOAT,
+                                 chemistry_element_count, UNIT_CONV_NO_UNITS,
+                                 parts, chemistry_data.metal_mass_fraction);
+
+  return 2;
 }
 
 /**
  * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @param h_grp The HDF5 group in which to write
  */
-void chemistry_write_flavour(hid_t h_grpsph) {
+void chemistry_write_flavour(hid_t h_grp) {
 
-  io_write_attribute_s(h_grpsph, "Chemistry Model", "GEAR");
+  io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
+  for (size_t i = 0; i < chemistry_element_count; i++) {
+    char buffer[20];
+    sprintf(buffer, "Element %lu", i);
+    io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(i));
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_IO_GEAR_H */
