@@ -596,6 +596,10 @@ int main(int argc, char *argv[]) {
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
 
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
+
   struct runner runner;
   runner.e = &engine;
 
