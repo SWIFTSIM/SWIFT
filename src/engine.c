@@ -4537,6 +4537,9 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
     MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
     if (dump) {
+      /* Clean out the previous saved files, if found. Do this now as we are
+       * MPI synchronized. */
+      restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e);
@@ -5571,6 +5574,9 @@ void engine_config(int restart, struct engine *e,
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
+
+  /* Whether to save backup copies of the previous restart files. */
+  e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
 
   /* Whether restarts should be dumped on exit. Not by default. Can be changed
    * on restart. */
