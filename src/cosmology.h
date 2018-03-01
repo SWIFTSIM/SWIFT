@@ -186,6 +186,10 @@ void cosmology_init_no_cosmo(struct cosmology *c);
 void cosmology_print(const struct cosmology *c);
 void cosmology_clean(struct cosmology *c);
 
+#ifdef HAVE_HDF5
+void cosmology_write_model(hid_t h_grp, const struct cosmology *c);
+#endif
+
 /* Dump/restore. */
 void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream);
 void cosmology_struct_restore(struct cosmology *cosmology, FILE *stream);

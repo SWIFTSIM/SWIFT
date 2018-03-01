@@ -30,6 +30,7 @@
 
 /* Local headers */
 #include "adiabatic_index.h"
+#include "common_io.h"
 #include "inline.h"
 #include "restart.h"
 
@@ -626,6 +627,26 @@ void cosmology_clean(struct cosmology *c) {
   free(c->hydro_kick_fac_interp_table);
   free(c->time_interp_table);
 }
+
+#ifdef HAVE_HDF5
+void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
+
+  io_write_attribute_d(h_grp, "a_beg", c->a_begin);
+  io_write_attribute_d(h_grp, "a_end", c->a_end);
+  io_write_attribute_d(h_grp, "time_beg [internal units]", c->time_begin);
+  io_write_attribute_d(h_grp, "time_end [internal units]", c->time_end);
+  io_write_attribute_d(h_grp, "h", c->h);
+  io_write_attribute_d(h_grp, "H0 [internal units]", c->H0);
+  io_write_attribute_d(h_grp, "Hubble time [internal units]", c->Hubble_time);
+  io_write_attribute_d(h_grp, "Omega_m", c->Omega_m);
+  io_write_attribute_d(h_grp, "Omega_r", c->Omega_r);
+  io_write_attribute_d(h_grp, "Omega_b", c->Omega_b);
+  io_write_attribute_d(h_grp, "Omega_k", c->Omega_k);
+  io_write_attribute_d(h_grp, "Omega_lambda", c->Omega_lambda);
+  io_write_attribute_d(h_grp, "w_0", c->w_0);
+  io_write_attribute_d(h_grp, "w_a", c->w_a);
+}
+#endif
 
 /**
  * @brief Write a cosmology struct to the given FILE as a stream of bytes.

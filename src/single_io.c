@@ -689,6 +689,15 @@ void write_output_single(struct engine* e, const char* baseName,
     H5Gclose(h_grp);
   }
 
+  /* Print the cosmological model  */
+  if (e->policy & engine_policy_cosmology) {
+    h_grp =
+        H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating cosmology group");
+    cosmology_write_model(h_grp, e->cosmology);
+    H5Gclose(h_grp);
+  }
+
   /* Print the runtime parameters */
   h_grp =
       H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
