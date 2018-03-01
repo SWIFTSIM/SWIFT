@@ -2352,51 +2352,6 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[1] += a_grav[1];
   gp->a_grav[2] += a_grav[2];
 }
-
-INLINE static void gravity_M2P(const struct multipole *ma,
-                               const struct gravity_props *props,
-                               const double loc[3], struct gpart *gp) {
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-
-  const float eps2 = props->epsilon2;
-  const float eps_inv = props->epsilon_inv;
-  const float eps_inv3 = props->epsilon_inv3;
-
-  /* Distance to the multipole */
-  const float dx = gp->x[0] - loc[0];
-  const float dy = gp->x[1] - loc[1];
-  const float dz = gp->x[2] - loc[2];
-  const float r2 = dx * dx + dy * dy + dz * dz;
-
-  /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2);
-
-  float f, W;
-
-  if (r2 >= eps2) {
-
-    /* Get Newtonian gravity */
-    f = ma->M_000 * r_inv * r_inv * r_inv;
-
-  } else {
-
-    const float r = r2 * r_inv;
-    const float u = r * eps_inv;
-
-    kernel_grav_force_eval(u, &W);
-
-    /* Get softened gravity */
-    f = ma->M_000 * eps_inv3 * W;
-  }
-
-  gp->a_grav[0] -= f * dx;
-  gp->a_grav[1] -= f * dy;
-  gp->a_grav[2] -= f * dz;
-
-#endif
-}
-
 /**
  * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
  * interaction using the distance and cell radius.
