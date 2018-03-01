@@ -42,6 +42,8 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+#ifdef HAVE_HDF5
+
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
@@ -51,6 +53,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle");
 }
+#endif
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
