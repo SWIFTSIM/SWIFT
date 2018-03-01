@@ -51,6 +51,14 @@
 /* Global profiler. */
 struct profiler prof;
 
+//void InvokeVelociraptor(const int nbodies, struct gpart *parts);
+void InvokeVelociraptor();
+
+void call_velociraptor() {
+
+    InvokeVelociraptor();
+}
+
 /**
  * @brief Help messages for the command line parameters.
  */
@@ -118,6 +126,8 @@ void print_help_message() {
  *
  */
 int main(int argc, char *argv[]) {
+
+    call_velociraptor();
 
   struct clocks_time tic, toc;
   struct engine e;
