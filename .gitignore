@@ -107,6 +107,7 @@ tests/testDump
 tests/testLogger
 tests/benchmarkInteractions
 tests/testGravityDerivatives
+tests/testPotential
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
