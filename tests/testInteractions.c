@@ -130,15 +130,15 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%8.5f "
           "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
-          hydro_get_density(p),
+          hydro_get_comoving_density(p),
 #if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
           0.f,
 #else
           p->density.div_v,
 #endif
-          hydro_get_entropy(p), hydro_get_internal_energy(p),
-          hydro_get_pressure(p), hydro_get_soundspeed(p), p->a_hydro[0],
-          p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
+          hydro_get_comoving_entropy(p), hydro_get_comoving_internal_energy(p),
+          hydro_get_comoving_pressure(p), hydro_get_comoving_soundspeed(p),
+          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
 #if defined(GADGET2_SPH)
           p->force.v_sig, p->entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)

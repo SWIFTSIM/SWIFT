@@ -1,0 +1,126 @@
+\subsection{Choice of co-moving coordinates}
+\label{ssec:ccordinates}
+
+Note that, unlike the \gadget convention, we do not express quantities with
+``little h'' ($h$) included; for instance units of length are expressed in
+units of $\rm{Mpc}$ and not ${\rm{Mpc}}/h$. Similarly, the time integration
+operators (see below) also include an $h$-factor via the explicit appearance of
+the Hubble constant.\\
+In physical coordinates, the Lagrangian for a particle $i$ in the
+\cite{Springel2002} flavour of SPH with gravity reads
+\begin{equation}
+  \Lag =
+  \frac{1}{2} m_i \dot{\mathbf{r}}_i^2 -
+  \frac{1}{\gamma-1}m_iA_i\rho_i^{\gamma-1} -
+  m_i \phi
+\end{equation}
+Introducing the comoving positions $\mathbf{r}'$ such that $\mathbf{r}
+= a(t) \mathbf{r}'$ and comoving densities $\rho' \equiv a^3(t)\rho$,
+\begin{equation}
+  \Lag =
+  \frac{1}{2} m_i \left(a\dot{\mathbf{r}}_i' + \dot{a}\mathbf{r}_i'
+  \right)^2 - 
+  \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
+  - m_i \phi,
+\end{equation}
+where $A'=A$ is chosen such that the equation of state for
+the gas and thermodynamic relations between quantities have the same
+form (i.e. are scale-factor free) in the primed coordinates as
+well. This implies
+\begin{equation}
+  P' = a^{3\gamma}P,\quad u'=a^{3(\gamma-1)}u, \quad c'=a^{3(\gamma-1)/2}c,
+\end{equation}
+for the pressure, internal energy and sound-speed
+respectively. Following \cite{Peebles1980} (ch.7), we introduce the
+gauge transformation $\Lag \rightarrow \Lag + \frac{d}{dt}\Psi$ with
+$\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
+\begin{align}
+  \Lag &= \frac{1}{2}m_ia^2 \dot{\mathbf{r}}_i^2 -
+  \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
+  -\frac{\phi'}{a},\\
+  \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2.\nonumber
+\end{align}
+Finally, we introduce the velocities $\mathbf{v}' \equiv
+a^2\dot{\mathbf{r}'}$ that are used internally by the code. Note that these
+velocities \emph{do not} have a physical interpretation. We caution that they
+are not the peculiar velocities, nor the Hubble flow, nor the total
+velocities\footnote{One additional inconvenience of our choice of
+  generalised coordinates is that our velocities $\mathbf{v}'$ and
+  sound-speed $c'$ do not have the same dependencies on the
+  scale-factor. The signal velocity entering the time-step calculation
+  will hence read $v_{\rm sig} = a\dot{\mathbf{r}'} + c = \frac{1}{a} \left(
+    |\mathbf{v}'| + a^{(5 - 3\gamma)/2}c'\right)$.}.
+This choice implies that $\dot{v}' = a \ddot{r}$. Using the SPH
+definition of density, $\rho_i =
+\sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
+\sum_jm_jW_{ij}'(h_i')$, we can follow \cite{Price2012} and apply the
+Euler-Lagrange equations to write
+\begin{alignat}{3}
+  \dot{\mathbf{r}}_i'&= \frac{1}{a^2} \mathbf{v}_i'&  \label{eq:cosmo_eom_r} \\
+  \dot{\mathbf{v}}_i' &= -\sum_j m_j &&\left[\frac{1}{a^{3(\gamma-1)}}f_i'A_i'\rho_i'^{\gamma-2}\mathbf{\nabla}_i'W_{ij}'(h_i)\right. \nonumber\\
+  &   && + \left. \frac{1}{a^{3(\gamma-1)}}f_j'A_j'\rho_j'^{\gamma-2}\mathbf{\nabla}_i'W_{ij}'(h_j)\right. \nonumber\\
+  &   && + \left. \frac{1}{a}\mathbf{\nabla}_i'\phi'\right] \label{eq:cosmo_eom_v}
+\end{alignat}
+with
+\begin{equation}
+    f_i' = \left[1 + \frac{h_i'}{3\rho_i'}\frac{\partial
+      \rho_i'}{\partial h_i'}\right]^{-1}, \qquad \mathbf{\nabla}_i'
+  \equiv \frac{\partial}{\partial \mathbf{r}_{i}'}. \nonumber
+\end{equation}
+These correspond to the equations of motion for density-entropy SPH
+\citep[e.g. eq. 14 of][]{Hopkins2013} with cosmological and
+gravitational terms. SPH flavours that evolve the internal energy $u$ instead of the
+entropy require the additional equation of motion describing the evolution of
+$u'$:
+\begin{equation}
+  \dot{u}_i' = \frac{P_i'}{\rho_i'^2}\left[3H\rho_i' + \frac{1}{a^2}f_i'\sum_jm_j\left(\mathbf{v}_i' -
+    \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
+  \label{eq:cosmo_eom_u}
+\end{equation}
+where the first term in the brackets accounts for the change in energy
+due to the expansion of the Universe. The scale-factors appearing in
+the equations are later absorbed in the time-integration operators
+(Sec.~\ref{ssec:operators}) such that the RHS of the equations of
+motions is identical for the primed quantities to the ones obtained in
+the non-cosmological case for the physical quantities.
+
+Additional terms in the SPH equations of motion (e.g. viscosity
+switches) often rely on the velocity divergence and curl. Their SPH
+estimators $\langle\cdot\rangle$ in physical coordinates can be
+related to their estimators based on our primed-coordinates using:
+\begin{align}
+  \left\langle \mathbf{\nabla}\cdot\dot{\mathbf{r}}_i \right\rangle &=
+  \frac{1}{a^2} \left\langle
+  \mathbf{\nabla}'\cdot\mathbf{v}_i'\right\rangle =
+  \frac{1}{a^2\rho_i'}\sum_j m_j\left(\mathbf{v}_j' -
+  \mathbf{v}_i'\right) \cdot \mathbf{\nabla}_i'W_{ij}'(h_i), \nonumber \\
+  \left\langle \mathbf{\nabla}\times\dot{\mathbf{r}}_i \right\rangle &=
+  \frac{1}{a^2} \left\langle
+  \mathbf{\nabla}'\times\mathbf{v}_i'\right\rangle =
+  \frac{1}{a^2\rho_i'}\sum_j m_j\left(\mathbf{v}_j' -
+  \mathbf{v}_i'\right) \times \mathbf{\nabla}_i'W_{ij}'(h_i). \nonumber
+\end{align}
+We finally give the expressions for the \cite{Monaghan1997} viscosity
+term, that enters most SPH flavours, in our system of coordinates. The
+viscosity ``tensor'' $\Pi_{ij} \equiv \frac{1}{2}\alpha_{\rm visc} v_{\rm
+    sig}'\mu_{ij}/\left(\rho_i + \rho_j\right)$ can be computed
+  in the primmed coordinates from the following quantities
+\begin{align}
+  \omega_{ij}' &= \left(\mathbf{v}_i' - \mathbf{v}_j'\right) \cdot
+  \left(\mathbf{r}_i' - \mathbf{r}_j'\right), \\
+  \mu_{ij}' &=
+  a^{(3\gamma-5)/2} \left(\omega_{ij}' + a^2H\left|\mathbf{r}_i' -
+  \mathbf{r}_j'\right|^2 \right) / |\mathbf{r}_i' - \mathbf{r}_j' |,
+  \\
+  v_{\rm sig}' &= c_i' + c_j' - 3 \mu_{ij}'.
+\end{align}
+which leads to $\Pi_{ij}'=a^{3\gamma}\Pi_{ij}$. Note that he last quantity is
+also used to compute the time-step size. The evolution of entropy is
+then
+\begin{equation}
+  \dot{A}_i = \dot{A}_i' = \frac{1}{a^2}\frac{1}{2}\frac{\gamma-1}{\rho_i'^{\gamma-1}} \sum_j
+  m_j \Pi_{ij}' \left(\mathbf{v}_i' -
+  \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i),
+\end{equation}
+indicating that the entropy evolves with the same scale-factor
+dependence as the comoving positions (eq.~\ref{eq:cosmo_eom_r}).

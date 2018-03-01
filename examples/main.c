@@ -126,6 +126,7 @@ int main(int argc, char *argv[]) {
    * scope.  */
   struct chemistry_data chemistry;
   struct cooling_function_data cooling_func;
+  struct cosmology cosmo;
   struct external_potential potential;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
@@ -600,6 +601,13 @@ int main(int argc, char *argv[]) {
       phys_const_print(&prog_const);
     }
 
+    /* Initialise the cosmology */
+    if (with_cosmology)
+      cosmology_init(params, &us, &prog_const, &cosmo);
+    else
+      cosmology_init_no_cosmo(&cosmo);
+    if (with_cosmology) cosmology_print(&cosmo);
+
     /* Initialise the hydro properties */
     if (with_hydro) hydro_props_init(&hydro_properties, params);
     if (with_hydro) eos_init(&eos, params);
@@ -767,9 +775,9 @@ int main(int argc, char *argv[]) {
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
-                talking, &reparttype, &us, &prog_const, &hydro_properties,
-                &gravity_properties, &potential, &cooling_func, &chemistry,
-                &sourceterms);
+                talking, &reparttype, &us, &prog_const, &cosmo,
+                &hydro_properties, &gravity_properties, &potential,
+                &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
     if (myrank == 0) {
@@ -790,7 +798,7 @@ int main(int argc, char *argv[]) {
           "from t=%.3e until t=%.3e with %d threads and %d queues "
           "(dt_min=%.3e, "
           "dt_max=%.3e)...",
-          e.timeBegin, e.timeEnd, e.nr_threads, e.sched.nr_queues, e.dt_min,
+          e.time_begin, e.time_end, e.nr_threads, e.sched.nr_queues, e.dt_min,
           e.dt_max);
       fflush(stdout);
     }
@@ -837,9 +845,9 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
-           "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
-           clocks_getunit(), "Props");
+    printf("# %6s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
+           "Time-step", "Time-bins", "Updates", "g-Updates", "s-Updates",
+           "Wall-clock time", clocks_getunit(), "Props");
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
@@ -865,8 +873,7 @@ int main(int argc, char *argv[]) {
     if (with_verbose_timers) timers_print(e.step);
 
     /* Every so often allow the user to stop the application and dump the
-     * restart
-     * files. */
+     * restart files. */
     if (j % restart_stop_steps == 0) {
       force_stop = restart_stop_now(restart_dir, 0);
       if (myrank == 0 && force_stop)
@@ -874,8 +881,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Also if using nsteps to exit, will not have saved any restarts on exit,
-     * make
-     * sure we do that (useful in testing only). */
+     * make sure we do that (useful in testing only). */
     if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
       engine_dump_restarts(&e, 0, 1);
 

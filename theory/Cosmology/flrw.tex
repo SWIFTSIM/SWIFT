@@ -1,0 +1,58 @@
+\subsection{Background evolution}
+\label{ssec:flrw}
+
+In \swift we assume a standard FLRW metric for the evolution of the background
+density of the Universe and use the Friedmann equations to describe the
+evolution of the scale-factor $a(t)$.  We scale $a$ such that its present-day
+value is $a_0 \equiv a(t=t_{\rm now}) = 1$. We also define redshift $z \equiv
+1/a - 1$ and the Hubble parameter
+\begin{equation}
+H(t) \equiv \frac{\dot{a}(t)}{a(t)}
+\end{equation}
+with its present-day value denoted as $H_0 = H(t=t_{\rm now})$. Following
+normal conventions we write $H_0 = 100
+h~\rm{km}\cdot\rm{s}^{-1}\cdot\rm{Mpc}^{-1}$ and use $h$ as the input parameter
+for the Hubble constant.
+
+To allow for general expansion histories we use the full Friedmann equations
+and write
+\begin{align}
+H(a) &\equiv H_0 E(a) \\ E(a) &\equiv\sqrt{\Omega_m a^{-3} + \Omega_r
+  a^{-4} + \Omega_k a^{-2} + \Omega_\Lambda \exp\left(3\tilde{w}(a)\right)},
+\\
+\tilde{w}(a) &= (a-1)w_a - (1+w_0 + w_a)\log\left(a\right),
+\label{eq:friedmann}
+\end{align}
+where we followed \cite{Linder2003} to parametrize the evolution of
+the dark-energy equation-of-state\footnote{Note that $\tilde{w}(z)\equiv
+  \int_0^z \frac{1+w(z')}{1+z'}dz'$, which leads to the analytic
+  expression we use.} as:
+\begin{equation}
+w(a) \equiv w_0 + w_a~(1-a).
+\end{equation}
+The cosmological model is hence fully defined by specifying the dimensionless
+constants $\Omega_m$, $\Omega_r$, $\Omega_k$, $\Omega_\Lambda$, $h$, $w_0$ and
+$w_a$ as well as the starting redshift (or scale-factor of the simulation)
+$a_{\rm start}$ and final time $a_{\rm end}$. \\ At any scale-factor $a_{\rm
+age}$, the time $t_{\rm age}$ since the Big Bang (age of the Universe) can be
+computed as \citep[e.g.][]{Wright2006}:
+\begin{equation}
+  t_{\rm age} = \int_{0}^{a_{\rm age}} dt = \int_{0}^{a_{\rm age}}
+  \frac{da}{a H(a)} = \frac{1}{H_0} \int_{0}^{a_{\rm age}}
+  \frac{da}{a E(a)}.
+\end{equation}
+For a general set of cosmological parameters, this integral can only be
+evaluated numerically, which is too slow to be evaluated accurately during a
+run. At the start of the simulation we tabulate this integral for $10^4$ values
+of $a_{\rm age}$ equally spaced between $\log(a_{\rm start})$ and $\log(a_{\rm
+end})$. The values are obtained via adaptive quadrature using the 61-points
+Gauss-Konrod rule implemented in the {\sc gsl} library \citep{GSL} with a
+relative error limit of $\epsilon=10^{-10}$. The value for a specific $a$ (over
+the course of a simulation run) is then obtained by linear interpolation of the
+table.
+
+\subsubsection{Typical Values of the Cosmological Parameters}
+
+Typical values for the constants are: $\Omega_m = 0.3, \Omega_\Lambda=0.7, 0 <
+\Omega_r<10^{-3}, |\Omega_k | < 10^{-2}, h=0.7, a_{\rm start} = 10^{-2}, a_{\rm
+end} = 1, w_0 = -1\pm 0.1, w_a=0\pm0.2$ and $\gamma = 5/3$.

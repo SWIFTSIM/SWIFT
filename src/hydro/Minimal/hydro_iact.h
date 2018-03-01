@@ -36,10 +36,20 @@
 #include "minmax.h"
 
 /**
- * @brief Density loop
+ * @brief Density interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -71,10 +81,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Density loop (non-symmetric version)
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
 
   float wi, wi_dx;
 
@@ -95,12 +115,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 }
 
 /**
- * @brief Force loop
+ * @brief Force interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -136,7 +168,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr, 0.f);
@@ -195,12 +227,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
- * @brief Force loop (non-symmetric version)
+ * @brief Force interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -236,7 +280,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr, 0.f);

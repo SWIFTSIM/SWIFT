@@ -225,9 +225,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
@@ -260,7 +260,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
-            hydro_get_density(&main_cell->parts[pid]),
+            hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
@@ -297,7 +297,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
+              cj->parts[pjd].v[2], hydro_get_comoving_density(&cj->parts[pjd]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
@@ -450,6 +450,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -539,7 +543,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell);
+    end_calculation(main_cell, &cosmo);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -587,7 +591,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, &cosmo);
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);

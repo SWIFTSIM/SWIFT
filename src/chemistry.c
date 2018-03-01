@@ -51,3 +51,28 @@ void chemistry_init(const struct swift_params* parameter_file,
 void chemistry_print(const struct chemistry_data* data) {
   chemistry_print_backend(data);
 }
+
+/**
+ * @brief Write a chemistry struct to the given FILE as a stream of bytes.
+ *
+ * @param chemistry the struct
+ * @param stream the file stream
+ */
+void chemistry_struct_dump(const struct chemistry_data* chemistry,
+                           FILE* stream) {
+  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_data), 1,
+                       stream, "chemistry", "chemistry function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param chemistry the struct
+ * @param stream the file stream
+ */
+void chemistry_struct_restore(const struct chemistry_data* chemistry,
+                              FILE* stream) {
+  restart_read_blocks((void*)chemistry, sizeof(struct chemistry_data), 1,
+                      stream, NULL, "chemistry function");
+}

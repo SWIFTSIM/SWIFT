@@ -186,14 +186,17 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  const int count = c->count;
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cooling_function_data *cooling_func = e->cooling_func;
   const struct phys_const *constants = e->physical_constants;
   const struct unit_system *us = e->internal_units;
-  const double timeBase = e->timeBase;
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  const int count = c->count;
 
   TIMER_TIC;
 
@@ -215,9 +218,19 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
+        double dt_cool;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current + 1, p->time_bin);
+          dt_cool =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+        } else {
+          dt_cool = get_timestep(p->time_bin, time_base);
+        }
+
         /* Let's cool ! */
-        const double dt = get_timestep(p->time_bin, timeBase);
-        cooling_cool_part(constants, us, cooling_func, p, xp, dt);
+        cooling_cool_part(constants, us, cooling_func, p, xp, dt_cool);
       }
     }
   }
@@ -641,6 +654,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   const struct engine *e = r->e;
   const struct space *s = e->s;
+  const struct hydro_space *hs = &s->hs;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct chemistry_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
@@ -701,8 +717,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          hydro_end_density(p);
-          chemistry_end_density(p, e->chemistry);
+          hydro_end_density(p, cosmo);
+          chemistry_end_density(p, chemistry, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -739,11 +755,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            hydro_init_part(p, &s->hs);
-            chemistry_init_part(p, e->chemistry);
+            hydro_init_part(p, hs);
+            chemistry_init_part(p, chemistry);
 
             /* Off we go ! */
             continue;
+
           } else {
 
             /* Ok, this particle is a lost cause... */
@@ -751,7 +768,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (p->density.wcount == kernel_root * kernel_norm)
-              hydro_part_has_no_neighbours(p, xp);
+              hydro_part_has_no_neighbours(p, xp, cosmo);
           }
         }
 
@@ -760,7 +777,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp);
+        hydro_prepare_force(p, xp, cosmo);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -963,6 +980,8 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
@@ -971,7 +990,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->gcount;
   const int scount = c->scount;
   const integertime_t ti_current = e->ti_current;
-  const double timeBase = e->timeBase;
+  const double time_base = e->time_base;
 
   TIMER_TIC;
 
@@ -1009,22 +1028,31 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               ti_end, ti_begin, ti_step, p->time_bin, ti_current);
 #endif
 
+        /* Time interval for this half-kick */
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        if (with_cosmology) {
+          dt_kick_hydro = cosmology_get_hydro_kick_factor(
+              cosmo, ti_begin, ti_begin + ti_step / 2);
+          dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
+          dt_kick_therm = cosmology_get_therm_kick_factor(
+              cosmo, ti_begin, ti_begin + ti_step / 2);
+        } else {
+          dt_kick_hydro = (ti_step / 2) * time_base;
+          dt_kick_grav = (ti_step / 2) * time_base;
+          dt_kick_therm = (ti_step / 2) * time_base;
+        }
+
         /* do the kick */
-        kick_part(p, xp, ti_begin, ti_begin + ti_step / 2, timeBase);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, ti_begin,
+                  ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
 
-          const float a_tot[3] = {p->a_hydro[0] + p->gpart->a_grav[0],
-                                  p->a_hydro[1] + p->gpart->a_grav[1],
-                                  p->a_hydro[2] + p->gpart->a_grav[2]};
-
-          p->a_hydro[0] = a_tot[0];
-          p->a_hydro[1] = a_tot[1];
-          p->a_hydro[2] = a_tot[2];
-          p->gpart->a_grav[0] = a_tot[0];
-          p->gpart->a_grav[1] = a_tot[1];
-          p->gpart->a_grav[2] = a_tot[2];
+          xp->a_grav[0] = p->gpart->a_grav[0];
+          xp->a_grav[1] = p->gpart->a_grav[1];
+          xp->a_grav[2] = p->gpart->a_grav[2];
         }
       }
     }
@@ -1053,8 +1081,17 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               ti_end, ti_begin, ti_step, gp->time_bin, ti_current);
 #endif
 
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
         /* do the kick */
-        kick_gpart(gp, ti_begin, ti_begin + ti_step / 2, timeBase);
+        kick_gpart(gp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
       }
     }
 
@@ -1082,8 +1119,17 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               ti_end, ti_begin, ti_step, sp->time_bin, ti_current);
 #endif
 
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
         /* do the kick */
-        kick_spart(sp, ti_begin, ti_begin + ti_step / 2, timeBase);
+        kick_spart(sp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
       }
     }
   }
@@ -1103,8 +1149,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
-  const double timeBase = e->timeBase;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
@@ -1112,6 +1158,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
 
   TIMER_TIC;
 
@@ -1145,9 +1193,24 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               "time_bin=%d ti_current=%lld",
               ti_begin, ti_step, p->time_bin, ti_current);
 #endif
+        /* Time interval for this half-kick */
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        if (with_cosmology) {
+          dt_kick_hydro = cosmology_get_hydro_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+          dt_kick_grav = cosmology_get_grav_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+          dt_kick_therm = cosmology_get_therm_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+        } else {
+          dt_kick_hydro = (ti_step / 2) * time_base;
+          dt_kick_grav = (ti_step / 2) * time_base;
+          dt_kick_therm = (ti_step / 2) * time_base;
+        }
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
+                  ti_begin + ti_step / 2, ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -1177,8 +1240,18 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           error("Particle in wrong time-bin");
 #endif
 
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
         /* Finish the time-step with a second half-kick */
-        kick_gpart(gp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+        kick_gpart(gp, dt_kick_grav, ti_begin + ti_step / 2,
+                   ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -1209,8 +1282,18 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           error("Particle in wrong time-bin");
 #endif
 
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
         /* Finish the time-step with a second half-kick */
-        kick_spart(sp, ti_begin + ti_step / 2, ti_begin + ti_step, timeBase);
+        kick_spart(sp, dt_kick_grav, ti_begin + ti_step / 2,
+                   ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -1245,7 +1328,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
-  const double timeBase = e->timeBase;
 
   TIMER_TIC;
 
@@ -1291,10 +1373,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
-
-        /* Tell the particle what the new physical time step is */
-        float dt = get_timestep(p->time_bin, timeBase);
-        hydro_timestep_extra(p, dt);
 
         /* Number of updated particles */
         updated++;
@@ -1503,6 +1581,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
@@ -1531,7 +1610,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the force loop */
-        hydro_end_force(p);
+        hydro_end_force(p, cosmo);
       }
     }
 
