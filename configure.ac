@@ -411,6 +411,9 @@ AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 have_gsl="no"
 AC_CHECK_LIB([gslcblas], [cblas_dgemm])
 AC_CHECK_LIB([gsl], [gsl_integration_qag])
+if test "x$ac_cv_lib_gslcblas_cblas_dgemm" != "x"; then
+   have_gsl="yes"
+fi
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
