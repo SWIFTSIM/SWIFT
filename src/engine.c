@@ -87,15 +87,15 @@ const char *engine_policy_names[] = {"none",
                                      "steal",
                                      "keep",
                                      "block",
-                                     "cpu_tight",
+                                     "cpu tight",
                                      "mpi",
-                                     "numa_affinity",
+                                     "numa affinity",
                                      "hydro",
-                                     "self_gravity",
-                                     "external_gravity",
-                                     "cosmology_integration",
-                                     "drift_all",
-                                     "reconstruct_mpoles",
+                                     "self gravity",
+                                     "external gravity",
+                                     "cosmological integration",
+                                     "drift everything",
+                                     "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
                                      "stars"};
@@ -5759,7 +5759,7 @@ void engine_print_policy(struct engine *e) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
     for (int k = 0; k <= engine_maxpolicy; k++)
-      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
@@ -5767,7 +5767,7 @@ void engine_print_policy(struct engine *e) {
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
   for (int k = 0; k <= engine_maxpolicy; k++)
-    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif

@@ -899,6 +899,9 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   /* Print the code version */
   io_write_code_description(h_file);
 
+  /* Print the run's policy */
+  io_write_engine_policy(h_file, e);
+
   /* Print the SPH parameters */
   if (e->policy & engine_policy_hydro) {
     h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,

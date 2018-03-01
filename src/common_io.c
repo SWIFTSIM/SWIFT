@@ -375,9 +375,8 @@ void io_write_unit_system(hid_t h_file, const struct unit_system* us,
  * @param h_file The (opened) HDF5 file in which to write
  */
 void io_write_code_description(hid_t h_file) {
-  hid_t h_grpcode = 0;
 
-  h_grpcode = H5Gcreate1(h_file, "/Code", 0);
+  const hid_t h_grpcode = H5Gcreate1(h_file, "/Code", 0);
   if (h_grpcode < 0) error("Error while creating code group");
 
   io_write_attribute_s(h_grpcode, "Code", "SWIFT");
@@ -407,6 +406,25 @@ void io_write_code_description(hid_t h_file) {
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
   H5Gclose(h_grpcode);
+}
+
+/**
+ * @brief Write the #engine policy to the file.
+ * @param h_file File to write to.
+ * @param e The #engine to read the policy from.
+ */
+void io_write_engine_policy(hid_t h_file, const struct engine* e) {
+
+  const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
+  if (h_grp < 0) error("Error while creating policy group");
+
+  for (int i = 1; i <= engine_maxpolicy; ++i)
+    if (e->policy & (1 << i))
+      io_write_attribute_i(h_grp, engine_policy_names[i + 1], 1);
+    else
+      io_write_attribute_i(h_grp, engine_policy_names[i + 1], 0);
+
+  H5Gclose(h_grp);
 }
 
 #endif /* HAVE_HDF5 */
