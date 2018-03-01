@@ -40,7 +40,8 @@
  * @param f_ij (return) The force intensity.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
-    float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij) {
+    float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij,
+    float *pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
@@ -50,17 +51,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float r = r2 * r_inv;
     const float ui = r * h_inv;
-    float W_ij;
 
-    kernel_grav_eval(ui, &W_ij);
+    float W_f_ij, W_pot_ij;
+    kernel_grav_force_eval(ui, &W_f_ij);
+    kernel_grav_pot_eval(ui, &W_pot_ij);
 
     /* Get softened gravity */
-    *f_ij = mass * h_inv3 * W_ij;
+    *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
 }
 
@@ -81,7 +85,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     float r2, float h2, float h_inv, float h_inv3, float mass, float rlr_inv,
-    float *f_ij) {
+    float *f_ij, float *pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
@@ -92,23 +96,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float ui = r * h_inv;
-    float W_ij;
+    float W_f_ij, W_pot_ij;
 
-    kernel_grav_eval(ui, &W_ij);
+    kernel_grav_force_eval(ui, &W_f_ij);
+    kernel_grav_pot_eval(ui, &W_pot_ij);
 
     /* Get softened gravity */
-    *f_ij = mass * h_inv3 * W_ij;
+    *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
 
   /* Get long-range correction */
   const float u_lr = r * rlr_inv;
-  float corr_lr;
-  kernel_long_grav_eval(u_lr, &corr_lr);
-  *f_ij *= corr_lr;
+  float corr_f_lr, corr_pot_lr;
+  kernel_long_grav_force_eval(u_lr, &corr_f_lr);
+  kernel_long_grav_pot_eval(u_lr, &corr_pot_lr);
+  *f_ij *= corr_f_lr;
+  *pot_ij *= corr_pot_lr;
 }
 
 /**

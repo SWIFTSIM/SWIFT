@@ -2384,7 +2384,7 @@ INLINE static void gravity_M2P(const struct multipole *ma,
     const float r = r2 * r_inv;
     const float u = r * eps_inv;
 
-    kernel_grav_eval(u, &W);
+    kernel_grav_force_eval(u, &W);
 
     /* Get softened gravity */
     f = ma->M_000 * eps_inv3 * W;
