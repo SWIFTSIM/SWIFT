@@ -148,8 +148,8 @@ def parse_files():
     
     # Loop over all files for a given series and load the times
     for j in range(0,len(file_list)):
-      times = np.loadtxt(file_list[j],usecols=(6,))
-      updates = np.loadtxt(file_list[j],usecols=(3,))
+      times = np.loadtxt(file_list[j],usecols=(8,))
+      updates = np.loadtxt(file_list[j],usecols=(5,))
       totalTime[i].append(np.sum(times))
       
     sumTotal.append(np.sum(totalTime[i]))

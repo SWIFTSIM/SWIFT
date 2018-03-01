@@ -845,9 +845,9 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
-           "Time-step", "Updates", "g-Updates", "s-Updates", "Wall-clock time",
-           clocks_getunit(), "Props");
+    printf("# %6s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
+           "Time-step", "Time-bins", "Updates", "g-Updates", "s-Updates",
+           "Wall-clock time", clocks_getunit(), "Props");
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
