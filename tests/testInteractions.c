@@ -213,6 +213,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   ticks serial_time = 0;
   ticks vec_time = 0;
 
+  const float a = 1.f;
+  const float H = 0.f;
+
   char serial_filename[200] = "";
   char vec_filename[200] = "";
 
@@ -274,7 +277,7 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
 #endif
     for (size_t i = 0; i < count; i++) {
       IACT(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h, &pi_serial,
-           &pj_serial[i]);
+           &pj_serial[i], a, H);
     }
     serial_time += getticks() - tic;
   }
@@ -419,6 +422,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
   char serial_filename[200] = "";
   char vec_filename[200] = "";
 
+  const float a = 1.f;
+  const float H = 0.f;
+
   strcpy(serial_filename, filePrefix);
   strcpy(vec_filename, filePrefix);
   sprintf(serial_filename + strlen(serial_filename), "_serial.dat");
@@ -497,7 +503,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
 #endif
     for (size_t i = 0; i < count; i++) {
       runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
-                               &pi_serial, &pj_serial[i]);
+                               &pi_serial, &pj_serial[i], a, H);
     }
     serial_time += getticks() - tic;
   }
