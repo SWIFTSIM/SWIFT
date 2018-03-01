@@ -147,14 +147,15 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     p->size_cells_in *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
     memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
     free(p->cells_in);
     p->cells_in = temp_cell;
 
     int *temp_type;
-    if ((temp_type = malloc(sizeof(int) * p->size_cells_in)) == NULL)
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell type list.");
     memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
     free(p->cells_in_type);
@@ -192,14 +193,15 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
     p->size_cells_out *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
     memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
     free(p->cells_out);
     p->cells_out = temp_cell;
 
     int *temp_type;
-    if ((temp_type = malloc(sizeof(int) * p->size_cells_out)) == NULL)
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell type list.");
     memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
     free(p->cells_out_type);
