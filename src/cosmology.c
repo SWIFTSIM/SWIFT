@@ -304,7 +304,7 @@ void cosmology_init_tables(struct cosmology *c) {
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
       (c->log_a_end - c->log_a_begin) / cosmology_table_length;
-  double *a_table = malloc(cosmology_table_length * sizeof(double));
+  double *a_table = (double *)malloc(cosmology_table_length * sizeof(double));
   for (int i = 0; i < cosmology_table_length; i++)
     a_table[i] = exp(c->log_a_begin + delta_a * (i + 1));
 
