@@ -204,8 +204,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -240,13 +240,15 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
 #endif
 
       /* Interact! */
-      float f_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
+                               &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -258,6 +260,7 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   TIMER_TOC(timer_dopair_grav_pp);
@@ -295,8 +298,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -331,14 +334,15 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #endif
 
       /* Interact! */
-      float f_ij;
+      float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -350,6 +354,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   TIMER_TOC(timer_dopair_grav_pp);
@@ -683,7 +688,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -721,13 +726,15 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
 #endif
 
       /* Interact! */
-      float f_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
+                               &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -739,6 +746,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   /* Write back to the particles */
@@ -808,8 +816,8 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -847,14 +855,15 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
 #endif
 
       /* Interact! */
-      float f_ij;
+      float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -866,6 +875,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   /* Write back to the particles */
