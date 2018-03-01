@@ -126,6 +126,7 @@ int main(int argc, char *argv[]) {
    * scope.  */
   struct chemistry_data chemistry;
   struct cooling_function_data cooling_func;
+  struct cosmology cosmo;
   struct external_potential potential;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
@@ -601,7 +602,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the cosmology */
-    struct cosmology cosmo;
     if (with_cosmology)
       cosmology_init(params, &us, &prog_const, &cosmo);
     else
