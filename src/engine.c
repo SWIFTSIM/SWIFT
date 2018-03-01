@@ -5917,7 +5917,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   units_struct_restore(us, stream);
   e->snapshotUnits = us;
 
-  struct cosmology *cosmo = malloc(sizeof(struct cosmology));
+  struct cosmology *cosmo =
+      (struct cosmology *)malloc(sizeof(struct cosmology));
   cosmology_struct_restore(cosmo, stream);
   e->cosmology = cosmo;
 
@@ -5954,7 +5955,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
 
-  struct chemistry_data *chemistry = malloc(sizeof(struct chemistry_data));
+  struct chemistry_data *chemistry =
+      (struct chemistry_data *)malloc(sizeof(struct chemistry_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 

@@ -290,12 +290,14 @@ void cosmology_init_tables(struct cosmology *c) {
   const double a_begin = c->a_begin;
 
   /* Allocate memory for the interpolation tables */
-  c->drift_fac_interp_table = malloc(cosmology_table_length * sizeof(double));
+  c->drift_fac_interp_table =
+      (double *)malloc(cosmology_table_length * sizeof(double));
   c->grav_kick_fac_interp_table =
-      malloc(cosmology_table_length * sizeof(double));
+      (double *)malloc(cosmology_table_length * sizeof(double));
   c->hydro_kick_fac_interp_table =
-      malloc(cosmology_table_length * sizeof(double));
-  c->time_interp_table = malloc(cosmology_table_length * sizeof(double));
+      (double *)malloc(cosmology_table_length * sizeof(double));
+  c->time_interp_table =
+      (double *)malloc(cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
