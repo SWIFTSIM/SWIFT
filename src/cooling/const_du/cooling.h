@@ -62,6 +62,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -70,6 +71,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
@@ -77,7 +79,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float u_floor = cooling->min_energy;
 
   /* Get current internal energy */
-  const float u_old = hydro_get_internal_energy(p);
+  const float u_old = hydro_get_physical_internal_energy(p, cosmo);
 
   /* Current du_dt */
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
@@ -108,16 +110,18 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
     const struct unit_system* restrict us, const struct part* restrict p) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy = hydro_get_internal_energy(p);
+  const float internal_energy = hydro_get_physical_internal_energy(p, cosmo);
   return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 }
 
