@@ -2072,7 +2072,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
-  MPI_Request *requests = malloc(sizeof(MPI_Request) * count_requests);
+  MPI_Request *requests =
+      (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
   if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
