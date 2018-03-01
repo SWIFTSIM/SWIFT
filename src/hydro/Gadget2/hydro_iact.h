@@ -486,8 +486,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
-  pj->force.v_sig = (pj->force.v_sig > v_sig) ? pj->force.v_sig : v_sig;
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
@@ -588,7 +588,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
