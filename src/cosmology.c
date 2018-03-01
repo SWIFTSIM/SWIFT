@@ -41,8 +41,10 @@
 /*! Number of values stored in the cosmological interpolation tables */
 const int cosmology_table_length = 10000;
 
+#ifdef HAVE_LIBGSL
 /*! Size of the GSL workspace */
 const size_t GSL_workspace_size = 100000;
+#endif
 
 /**
  * @brief Returns the interpolated value from a table.
