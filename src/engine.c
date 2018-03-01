@@ -3676,6 +3676,11 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
+#endif
+
   /* Initial cleaning up session ? */
   if (clean_h_values) space_sanitize(e->s);
 
