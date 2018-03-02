@@ -76,6 +76,7 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
+#include "velociraptor_interface.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -4499,6 +4500,11 @@ void engine_step(struct engine *e) {
     e->step_props |= engine_step_prop_statistics;
   }
 
+  /* Invoke VELOCIraptor every 250 timesteps. */
+  if (e->step%250 == 0) {
+    invoke_velociraptor(e);
+  }
+
   /* Now apply all the collected time step updates and particle counts. */
   collectgroup1_apply(&e->collect_group1, e);
 
@@ -5245,6 +5251,9 @@ void engine_init(
   e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
   e->timeBase_inv = 1.0 / e->timeBase;
   e->ti_current = 0;
+
+  /* Initialise VELOCIraptor. */
+  init_velociraptor(e);
 }
 
 /**
