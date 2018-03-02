@@ -188,6 +188,7 @@ GrackleCooling:
   ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
   ProvideSpecificHeatingRates: 0 # User provide specific heating rates
   SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
+  OutputMode: 0 # Write in output corresponding primordial chemistry mode
 
 # Parameters related to chemistry models  -----------------------------------------------
 
