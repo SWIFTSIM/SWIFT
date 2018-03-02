@@ -19,6 +19,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <math.h>
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,25 +31,58 @@
 #include "runner_doiact_grav.h"
 
 const int num_tests = 100;
+const double eps = 0.01;
 
+/* Definitions of the potential and force that match
+   exactly the theory document */
+double S(double x) {
+  return exp(x) / (1. + exp(x));
+}
+
+double potential(double r, double H, double rlr) {
+
+  const double u = r / H;
+  const double x = r / rlr;
+  double pot;
+  if (u > 1.)
+    pot =  -1. / r;
+  else
+    pot = -(-3.*u*u*u*u*u*u*u + 15.*u*u*u*u*u*u - 28.*u*u*u*u*u + 21.*u*u*u*u - 7.*u*u + 3.)/ H;
+
+  return pot * (2. - 2.*S(2.*x));
+}
+		 
 int main() {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
-  
+
+  /* Initialise a few things to get us going */
   struct engine e;
   e.max_active_bin = num_time_bins;
   e.time = 0.1f;
   e.ti_current = 8;
-  e.timeBase = 1e-10;
+  e.time_base = 1e-10;
 
+  struct space s;
+  s.width[0] = 0.2;
+  s.width[1] = 0.2;
+  s.width[2] = 0.2;
+  e.s = &s;
+  
+  struct gravity_props props;
+  props.a_smooth = 1.25;
+  e.gravity_properties = &props;
+    
   struct runner r;
   bzero(&r, sizeof(struct runner));
   r.e = &e;
 
-  gravity_cache_init(&r.ci_gravity_cache, num_tests * 2);
+  const double rlr = props.a_smooth * s.width[0];
   
+  /* Init the cache for gravity interaction */
+  gravity_cache_init(&r.ci_gravity_cache, num_tests * 2);
   
   /* Let's create one cell with a massive particle and a bunch of test particles */
   struct cell c;
@@ -69,7 +103,7 @@ int main() {
   c.gparts[0].x[1] = 0.5;
   c.gparts[0].x[2] = 0.5;
   c.gparts[0].mass = 1.;
-  c.gparts[0].epsilon = 0.;
+  c.gparts[0].epsilon = eps;
   c.gparts[0].time_bin = 1;
   c.gparts[0].type = swift_type_dark_matter;
   c.gparts[0].id_or_neg_offset = 1;
@@ -86,19 +120,24 @@ int main() {
     gp->x[1] = 0.5;
     gp->x[2] = 0.5;
     gp->mass = 0.;
-    gp->epsilon = 0.;
+    gp->epsilon = eps;
     gp->time_bin = 1;
     gp->type = swift_type_dark_matter;
     gp->id_or_neg_offset = n + 1;
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 8;
 #endif
-
   }
   
   /* Now compute the forces */
-  runner_doself_grav_pp_full(&r, &c);
-  
+  runner_doself_grav_pp_truncated(&r, &c);
+
+  for (int n = 1; n < num_tests + 1; ++n) {
+    const struct gpart *gp = &c.gparts[n];
+    message("x=%f pot=%f true=%f",
+	    gp->x[0], gp->potential, potential(gp->x[0], gp->epsilon, rlr));
+  }
+	    
   free(c.gparts);
   return 0;
 }
