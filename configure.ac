@@ -962,7 +962,7 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
