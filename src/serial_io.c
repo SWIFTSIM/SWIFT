@@ -744,6 +744,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
+  const struct cooling_function_data *cooling = e->cooling_func;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -992,6 +993,8 @@ void write_output_serial(struct engine* e, const char* baseName,
             Nparticles = Ngas;
             hydro_write_particles(parts, xparts, list, &num_fields);
             num_fields += chemistry_write_particles(parts, list + num_fields);
+	    num_fields += cooling_write_particles(xparts, list + num_fields,
+						  cooling);
             break;
 
           case swift_type_dark_matter:
