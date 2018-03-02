@@ -35,7 +35,8 @@
  * @param c The #cell we are working on.
  * @param timer Are we timing this ?
  */
-static INLINE void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
+static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
+                                       int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -126,8 +127,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c, int tim
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
-                           struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm(const struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -440,7 +442,8 @@ static INLINE void runner_dopair_grav_pm(
  * @param ci The first #cell.
  * @param cj The other #cell.
  */
-static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
+static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
+                                         struct cell *cj) {
 
   const struct engine *e = r->e;
 
@@ -641,7 +644,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci, stru
  *
  * @todo Use a local cache for the particles.
  */
-static INLINE void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
+static INLINE void runner_doself_grav_pp_full(struct runner *r,
+                                              struct cell *c) {
 
   /* Some constants */
   const struct engine *const e = r->e;
@@ -763,7 +767,8 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r, struct cell *c) 
  *
  * @todo Use a local cache for the particles.
  */
-static INLINE void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
+static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
+                                                   struct cell *c) {
 
   /* Some constants */
   const struct engine *const e = r->e;
@@ -945,8 +950,8 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  *
  * @todo Use a local cache for the particles.
  */
-static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
-                        int gettimer) {
+static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
+                                      struct cell *cj, int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1097,7 +1102,8 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci, struct 
  *
  * @todo Use a local cache for the particles.
  */
-static INLINE void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
+static INLINE void runner_doself_grav(struct runner *r, struct cell *c,
+                                      int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1148,7 +1154,8 @@ static INLINE void runner_doself_grav(struct runner *r, struct cell *c, int gett
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
+static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                                             int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
