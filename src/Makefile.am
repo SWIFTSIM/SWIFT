@@ -118,10 +118,15 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
+                 cooling/none/cooling_io.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
+                 cooling/const_du/cooling_io.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 cooling/const_lambda/cooling_io.h \
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
+                 cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
+                 cooling/EAGLE/cooling_io.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
