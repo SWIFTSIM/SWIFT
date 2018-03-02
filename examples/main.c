@@ -51,12 +51,20 @@
 /* Global profiler. */
 struct profiler prof;
 
-//void InvokeVelociraptor(const int nbodies, struct gpart *parts);
-void InvokeVelociraptor();
+void InitVelociraptor();
+void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts);
 
-void call_velociraptor() {
+void init_velociraptor() {
 
-    InvokeVelociraptor();
+    InitVelociraptor();
+}
+
+void call_velociraptor(struct engine *e) {
+
+    struct gpart *gparts = e->s->gparts;
+    const int nr_gparts = e->s->nr_gparts;
+
+    InvokeVelociraptor(nr_gparts, gparts);
 }
 
 /**
@@ -127,7 +135,7 @@ void print_help_message() {
  */
 int main(int argc, char *argv[]) {
 
-    call_velociraptor();
+  init_velociraptor();
 
   struct clocks_time tic, toc;
   struct engine e;
@@ -870,6 +878,8 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
+
+    if (e.step%250 == 0) call_velociraptor(&e);
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
