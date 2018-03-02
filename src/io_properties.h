@@ -19,6 +19,8 @@
 #ifndef SWIFT_IO_PROPERTIES_H
 #define SWIFT_IO_PROPERTIES_H
 
+#include <string.h>
+
 /* Config parameters. */
 #include "../config.h"
 
