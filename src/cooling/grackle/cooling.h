@@ -31,6 +31,7 @@
 
 /* Local includes. */
 #include "../config.h"
+#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
 #include "io_properties.h"
@@ -42,19 +43,6 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
-
-#ifdef HAVE_HDF5
-
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
- */
-__attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
-
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle");
-}
-#endif
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
@@ -445,36 +433,6 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   return FLT_MAX;
 }
 
-
-/**
- * @brief Parser the parameter file and initialize the #cooling_function_data
- * @param parameter_file The parser parameter file
- * @param cooling The cooling properties to initialize
- */
-__attribute__((always_inline)) INLINE static void cooling_parse_arguments(
-    const struct swift_params* parameter_file,
-    struct cooling_function_data* cooling) {
-
-  parser_get_param_string(parameter_file, "GrackleCooling:CloudyTable",
-                          cooling->cloudy_table);
-  cooling->with_uv_background =
-      parser_get_param_int(parameter_file, "GrackleCooling:WithUVbackground");
-
-  cooling->redshift =
-      parser_get_param_double(parameter_file, "GrackleCooling:Redshift");
-
-  cooling->with_metal_cooling =
-    parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
-
-  cooling->provide_volumetric_heating_rates =
-    parser_get_param_int(parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates");
-
-  cooling->provide_specific_heating_rates =
-    parser_get_param_int(parameter_file, "GrackleCooling:ProvideSpecificHeatingRates");
-
-  cooling->self_shielding_method =
-    parser_get_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod");
-}
 
 
 /**
