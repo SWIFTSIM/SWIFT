@@ -123,92 +123,24 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'Grackle'.");
-  message("Using Grackle           = %i", cooling->chemistry.use_grackle);
-  message("Chemical network        = %i",
+  message("Using Grackle    = %i", cooling->chemistry.use_grackle);
+  message("Chemical network = %i",
           cooling->chemistry.primordial_chemistry);
-  message("Radiative cooling       = %i",
-          cooling->chemistry.with_radiative_cooling);
-  message("Metal cooling           = %i", cooling->chemistry.metal_cooling);
-
-  message("CloudyTable             = %s", cooling->cloudy_table);
-  message("UVbackground            = %d", cooling->uv_background);
-  message("Redshift                = %g", cooling->redshift);
-  message("Solar Metal Fraction    = %g",
-          cooling->chemistry.SolarMetalFractionByMass);
+  message("CloudyTable      = %s", cooling->cloudy_table);
+  message("Redshift         = %g", cooling->redshift);
+  message("UV background    = %d", cooling->with_uv_background);
+  message("Metal cooling    = %i", cooling->chemistry.metal_cooling);
+  message("Self Shielding   = %i", cooling->self_shielding_method);
+  message("Specific Heating Rates   = %i",
+	  cooling->provide_specific_heating_rates);
+  message("Volumetric Heating Rates = %i",
+	  cooling->provide_volumetric_heating_rates);
   message("Units:");
   message("\tComoving     = %i", cooling->units.comoving_coordinates);
   message("\tLength       = %g", cooling->units.length_units);
   message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
   message("\tScale Factor = %g", cooling->units.a_units);
-#ifdef SWIFT_DEBUG_CHECKS
-/*
-const chemistry_data *tmp = &cooling->chemistry;
-message("Debug:");
-message("UVBackground                       = %i", tmp->UVbackground);
-message("Grackle data file                  = %s", tmp->grackle_data_file);
-message("CMB temperature floor              = %i", tmp->cmb_temperature_floor);
-message("Gamma                              = %g", tmp->Gamma);
-message("H2 on dust                         = %i", tmp->h2_on_dust);
-message("Photoelectric heating              = %i", tmp->photoelectric_heating);
-message("Photoelectric heating rate         = %g",
-tmp->photoelectric_heating_rate);
-message("Use volumetric heating rate        = %i",
-tmp->use_volumetric_heating_rate);
-message("Use specific heating rate          = %i",
-tmp->use_specific_heating_rate);
-message("Three body                         = %i", tmp->three_body_rate);
-message("Cie cooling                        = %i", tmp->cie_cooling);
-message("h2 optical depth approx            = %i",
-tmp->h2_optical_depth_approximation);
-message("ih2co                              = %i", tmp->ih2co);
-message("ipiht                              = %i", tmp->ipiht);
-
-message("Hydrogen Fraction                  = %g", tmp->HydrogenFractionByMass);
-message("Deuterium/Hydrogen ratio           = %g",
-tmp->DeuteriumToHydrogenRatio);
-message("Solar metal fraction               = %g",
-tmp->SolarMetalFractionByMass);
-
-message("Number T bins                      = %i",
-tmp->NumberOfTemperatureBins);
-message("Case B recombination               = %i", tmp->CaseBRecombination);
-
-message("T start                            = %g", tmp->TemperatureStart);
-message("T end                              = %g", tmp->TemperatureEnd);
-
-message("Number dust T bins                 = %i",
-tmp->NumberOfDustTemperatureBins);
-message("Dust T start                       = %g", tmp->DustTemperatureStart);
-message("Dust T end                         = %g", tmp->DustTemperatureEnd);
-
-message("Compton xray heating               = %i", tmp->Compton_xray_heating);
-message("LW background sawtooth suppression = %i",
-tmp->LWbackground_sawtooth_suppression);
-message("LW background intensity            = %g", tmp->LWbackground_intensity);
-message("UV redshift on                     = %g",
-tmp->UVbackground_redshift_on);
-message("UV redshift off                    = %g",
-tmp->UVbackground_redshift_off);
-message("UV redshift fullon                 = %g",
-tmp->UVbackground_redshift_fullon);
-message("UV redshift drop                   = %g",
-tmp->UVbackground_redshift_drop);
-
-message("Cloudy electron fraction           = %g",
-tmp->cloudy_electron_fraction_factor);
-
-message("Use radiative transfer             = %i", tmp->use_radiative_transfer);
-message("RT coupled rate solver             = %i",
-tmp->radiative_transfer_coupled_rate_solver);
-message("RT intermediate step               = %i",
-tmp->radiative_transfer_intermediate_step);
-message("RT H only                          = %i",
-tmp->radiative_transfer_hydrogen_only);
-
-message("Self shielding method              = %i", tmp->self_shielding_method);
-*/
-#endif
 }
 
 /**
@@ -513,37 +445,49 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   return FLT_MAX;
 }
 
+
 /**
- * @brief Initialises the cooling properties.
- *
- * @param parameter_file The parsed parameter file.
- * @param us The current internal system of units.
- * @param phys_const The physical constants in internal units.
+ * @brief Parser the parameter file and initialize the #cooling_function_data
+ * @param parameter_file The parser parameter file
  * @param cooling The cooling properties to initialize
  */
-__attribute__((always_inline)) INLINE static void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const,
+__attribute__((always_inline)) INLINE static void cooling_parse_arguments(
+    const struct swift_params* parameter_file,
     struct cooling_function_data* cooling) {
 
-  if (GRACKLE_NPART != 1)
-    error("Grackle with multiple particles not implemented");
-
-  /* read parameters */
-  parser_get_param_string(parameter_file, "GrackleCooling:GrackleCloudyTable",
+  parser_get_param_string(parameter_file, "GrackleCooling:CloudyTable",
                           cooling->cloudy_table);
-  cooling->uv_background =
-      parser_get_param_int(parameter_file, "GrackleCooling:UVbackground");
+  cooling->with_uv_background =
+      parser_get_param_int(parameter_file, "GrackleCooling:WithUVbackground");
 
   cooling->redshift =
-      parser_get_param_double(parameter_file, "GrackleCooling:GrackleRedshift");
+      parser_get_param_double(parameter_file, "GrackleCooling:Redshift");
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* enable verbose for grackle */
-  grackle_verbose = 1;
-#endif
-  /* Set up the units system.
-     These are conversions from code units to cgs. */
+  cooling->with_metal_cooling =
+    parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
+
+  cooling->provide_volumetric_heating_rates =
+    parser_get_param_int(parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates");
+
+  cooling->provide_specific_heating_rates =
+    parser_get_param_int(parameter_file, "GrackleCooling:ProvideSpecificHeatingRates");
+
+  cooling->self_shielding_method =
+    parser_get_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod");
+}
+
+
+/**
+ * @brief Initialises the cooling unit system.
+ *
+ * @param us The current internal system of units.
+ * @param cooling The cooling properties to initialize
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_units(
+    const struct unit_system* us,
+    struct cooling_function_data* cooling) {
+
+  /* These are conversions from code units to cgs. */
 
   /* first cosmo */
   cooling->units.a_units = 1.0;  // units for the expansion factor (1/1+zi)
@@ -561,6 +505,20 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   cooling->units.velocity_units = cooling->units.a_units *
                                   cooling->units.length_units /
                                   cooling->units.time_units;
+}
+
+/**
+ * @brief Initialises Grackle.
+ *
+ * @param cooling The cooling properties to initialize
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_grackle(
+    struct cooling_function_data* cooling) {
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  /* enable verbose for grackle */
+  grackle_verbose = 1;
+#endif
 
   chemistry_data* chemistry = &cooling->chemistry;
 
@@ -576,13 +534,26 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   /* molecular network with H, He, D
    From Cloudy table */
   chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
-  chemistry->metal_cooling = 1;
-  chemistry->UVbackground = cooling->uv_background;
+  chemistry->metal_cooling = cooling->with_metal_cooling;
+  chemistry->UVbackground = cooling->with_uv_background;
   chemistry->grackle_data_file = cooling->cloudy_table;
 
-  chemistry->use_radiative_transfer = 0;
-  chemistry->use_volumetric_heating_rate = 0;
-  chemistry->use_specific_heating_rate = 0;
+  /* radiative transfer */
+  chemistry->use_radiative_transfer =
+    cooling->provide_specific_heating_rates ||
+    cooling->provide_volumetric_heating_rates;
+  chemistry->use_volumetric_heating_rate =
+    cooling->provide_volumetric_heating_rates;
+  chemistry->use_specific_heating_rate =
+    cooling->provide_specific_heating_rates;
+
+  if (cooling->provide_specific_heating_rates &&
+      cooling->provide_volumetric_heating_rates)
+    message("WARNING: You should specified either the specific or the volumetric heating rates, not both");
+
+  /* self shielding */
+  chemistry->self_shielding_method =
+    cooling->self_shielding_method;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {
@@ -597,6 +568,33 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   message("");
   message("***************************************");
 #endif
+  
+}
+  
+/**
+ * @brief Initialises the cooling properties.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param us The current internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cooling The cooling properties to initialize
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_backend(
+    const struct swift_params* parameter_file, const struct unit_system* us,
+    const struct phys_const* phys_const,
+    struct cooling_function_data* cooling) {
+
+  if (GRACKLE_NPART != 1)
+    error("Grackle with multiple particles not implemented");
+
+  /* read parameters */
+  cooling_parse_arguments(parameter_file, cooling);
+
+  /* Set up the units system. */
+  cooling_init_units(us, cooling);
+
+  cooling_init_grackle(cooling);
+
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

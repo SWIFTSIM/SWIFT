@@ -38,7 +38,7 @@ struct cooling_function_data {
   char cloudy_table[200];
 
   /* Enable/Disable UV backgroud */
-  int uv_background;
+  int with_uv_background;
 
   /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
@@ -48,6 +48,18 @@ struct cooling_function_data {
 
   /* grackle chemistry data */
   chemistry_data chemistry;
+
+  /* Enable/Disable metal cooling */
+  int with_metal_cooling;
+
+  /* User provide volumetric heating rates */
+  int provide_volumetric_heating_rates;
+
+  /* User provide specific heating rates */
+  int provide_specific_heating_rates;
+
+  /* Self shielding method (<= 3) means grackle modes */
+  int self_shielding_method;
 };
 
 /**
