@@ -104,80 +104,6 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 }
 
 /**
- * @brief update particle with densities.
- *
- * @param xp The extended particle data
- */
-__attribute__((always_inline)) INLINE static void cooling_compute_density(
-    struct xpart* restrict xp, const gr_float rho) {
-
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac *= rho;
-  xp->cooling_data.HII_frac *= rho;
-  xp->cooling_data.HeI_frac *= rho;
-  xp->cooling_data.HeII_frac *= rho;
-  xp->cooling_data.HeIII_frac *= rho;
-  xp->cooling_data.e_frac *= rho;
-
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_frac *= rho;
-  xp->cooling_data.H2I_frac *= rho;
-  xp->cooling_data.H2II_frac *= rho;
-
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac *= rho;
-  xp->cooling_data.DII_frac *= rho;
-  xp->cooling_data.HDI_frac *= rho;
-#endif  // MODE >= 3
-
-#endif  // MODE >= 2
-
-#endif  // MODE >= 1
-
-  xp->cooling_data.metal_frac *= rho;
-}
-
-/**
- * @brief update particle with fraction.
- *
- * @param xp The extended particle data
- */
-__attribute__((always_inline)) INLINE static void cooling_compute_fraction(
-    struct xpart* restrict xp, const gr_float rho) {
-
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac /= rho;
-  xp->cooling_data.HII_frac /= rho;
-  xp->cooling_data.HeI_frac /= rho;
-  xp->cooling_data.HeII_frac /= rho;
-  xp->cooling_data.HeIII_frac /= rho;
-  xp->cooling_data.e_frac /= rho;
-
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_frac /= rho;
-  xp->cooling_data.H2I_frac /= rho;
-  xp->cooling_data.H2II_frac /= rho;
-
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac /= rho;
-  xp->cooling_data.DII_frac /= rho;
-  xp->cooling_data.HDI_frac /= rho;
-#endif  // MODE >= 3
-
-#endif  // MODE >= 2
-
-#endif  // MODE >= 1
-
-  xp->cooling_data.metal_frac /= rho;
-}
-
-/**
  * @brief Returns the total radiated energy by this particle.
  *
  * @param xp The extended particle data
@@ -379,34 +305,34 @@ __attribute__((always_inline)) INLINE static void cooling_free_data(
  * @param xp the #xpart
  */
 __attribute__((always_inline)) INLINE static void cooling_copy_to_data(
-    grackle_field_data* data, const struct xpart* xp) {
+    grackle_field_data* data, const struct xpart* xp, const gr_float rho) {
 
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  data->HI_density[0] = xp->cooling_data.HI_frac;
-  data->HII_density[0] = xp->cooling_data.HII_frac;
-  data->HeI_density[0] = xp->cooling_data.HeI_frac;
-  data->HeII_density[0] = xp->cooling_data.HeII_frac;
-  data->HeIII_density[0] = xp->cooling_data.HeIII_frac;
-  data->e_density[0] = xp->cooling_data.e_frac;
+  data->HI_density[0] = xp->cooling_data.HI_frac * rho;
+  data->HII_density[0] = xp->cooling_data.HII_frac * rho;
+  data->HeI_density[0] = xp->cooling_data.HeI_frac * rho;
+  data->HeII_density[0] = xp->cooling_data.HeII_frac * rho;
+  data->HeIII_density[0] = xp->cooling_data.HeIII_frac * rho;
+  data->e_density[0] = xp->cooling_data.e_frac * rho;
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  data->HM_density[0] = xp->cooling_data.HM_frac;
-  data->H2I_density[0] = xp->cooling_data.H2I_frac;
-  data->H2II_density[0] = xp->cooling_data.H2II_frac;
+  data->HM_density[0] = xp->cooling_data.HM_frac * rho;
+  data->H2I_density[0] = xp->cooling_data.H2I_frac * rho;
+  data->H2II_density[0] = xp->cooling_data.H2II_frac * rho;
 #endif  // MODE 2
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  data->DI_density[0] = xp->cooling_data.DI_frac;
-  data->DII_density[0] = xp->cooling_data.DII_frac;
-  data->HDI_density[0] = xp->cooling_data.HDI_frac;
+  data->DI_density[0] = xp->cooling_data.DI_frac * rho;
+  data->DII_density[0] = xp->cooling_data.DII_frac * rho;
+  data->HDI_density[0] = xp->cooling_data.HDI_frac * rho;
 #endif  // MODE >= 3
 
   /* metal cooling = 1 */
-  data->metal_density[0] = xp->cooling_data.metal_frac;
+  data->metal_density[0] = xp->cooling_data.metal_frac * rho;
 
   /* volumetric heating rate */
   data->volumetric_heating_rate = NULL;
@@ -422,34 +348,34 @@ __attribute__((always_inline)) INLINE static void cooling_copy_to_data(
  * @param xp the #xpart
  */
 __attribute__((always_inline)) INLINE static void cooling_copy_to_particle(
-    const grackle_field_data* data, struct xpart* xp) {
+    const grackle_field_data* data, struct xpart* xp, const gr_float rho) {
 
 #if COOLING_GRACKLE_MODE >= 1
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = data->HI_density[0];
-  xp->cooling_data.HII_frac = data->HII_density[0];
-  xp->cooling_data.HeI_frac = data->HeI_density[0];
-  xp->cooling_data.HeII_frac = data->HeII_density[0];
-  xp->cooling_data.HeIII_frac = data->HeIII_density[0];
-  xp->cooling_data.e_frac = data->e_density[0];
+  xp->cooling_data.HI_frac = data->HI_density[0] / rho;
+  xp->cooling_data.HII_frac = data->HII_density[0] / rho;
+  xp->cooling_data.HeI_frac = data->HeI_density[0] / rho;
+  xp->cooling_data.HeII_frac = data->HeII_density[0] / rho;
+  xp->cooling_data.HeIII_frac = data->HeIII_density[0] / rho;
+  xp->cooling_data.e_frac = data->e_density[0] / rho;
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_frac = data->HM_density[0];
-  xp->cooling_data.H2I_frac = data->H2I_density[0];
-  xp->cooling_data.H2II_frac = data->H2II_density[0];
+  xp->cooling_data.HM_frac = data->HM_density[0] / rho;
+  xp->cooling_data.H2I_frac = data->H2I_density[0] / rho;
+  xp->cooling_data.H2II_frac = data->H2II_density[0] / rho;
 #endif  // MODE 2
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac = data->DI_density[0];
-  xp->cooling_data.DII_frac = data->DII_density[0];
-  xp->cooling_data.HDI_frac = data->HDI_density[0];
+  xp->cooling_data.DI_frac = data->DI_density[0] / rho;
+  xp->cooling_data.DII_frac = data->DII_density[0] / rho;
+  xp->cooling_data.HDI_frac = data->HDI_density[0] / rho;
 #endif  // MODE >= 3
 
   /* metal cooling = 1 */
-  xp->cooling_data.metal_frac = data->metal_density[0];
+  xp->cooling_data.metal_frac = data->metal_density[0] / rho;
 
   /* /\* volumetric heating rate *\/ */
   /* data->volumetric_heating_rate = NULL; */
@@ -514,14 +440,11 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   data.y_velocity = NULL;
   data.z_velocity = NULL;
 
-  /* transform gas fraction to densities */
-  cooling_compute_density(xp, *data.density);
-
   /* allocate grackle data */
   cooling_malloc_data(&data);
 
   /* copy data from particle to grackle data */
-  cooling_copy_to_data(&data, xp);
+  cooling_copy_to_data(&data, xp, density);
 
   /* solve chemistry with table */
   if (solve_chemistry(&units, &data, dt) == 0) {
@@ -529,10 +452,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   }
 
   /* copy from grackle data to particle */
-  cooling_copy_to_particle(&data, xp);
-
-  /* transform densities to gas fraction */
-  cooling_compute_fraction(xp, *data.density);
+  cooling_copy_to_particle(&data, xp, density);
 
   /* free allocated memory */
   cooling_free_data(&data);
