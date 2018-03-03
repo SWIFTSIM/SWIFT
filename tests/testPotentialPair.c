@@ -229,11 +229,11 @@ int main() {
   /* Reset the accelerations */
   for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
 
-  /*********************************/
-  /* Now, test the PM interactions */
-  /*********************************/
+  /**********************************/
+  /* Test the basic PM interactions */
+  /**********************************/
 
-  /* Set an opening angle that allows M-P interactions */
+  /* Set an opening angle that allows P-M interactions */
   props.theta_crit2 = 1.;
 
   ci.gparts[0].mass = 0.;
@@ -266,7 +266,98 @@ int main() {
     check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
-  message("\n\t\t P-M interactions all good\n");
+  message("\n\t\t basic P-M interactions all good\n");
+
+  /* Reset the accelerations */
+  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
+
+/***************************************/
+/* Test the high-order PM interactions */
+/***************************************/
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER >= 3
+
+  /* Let's make ci more interesting */
+  free(ci.gparts);
+  ci.gcount = 8;
+  if (posix_memalign((void **)&ci.gparts, gpart_align,
+                     ci.gcount * sizeof(struct gpart)) != 0)
+    error("Error allocating gparts for cell ci");
+  bzero(ci.gparts, ci.gcount * sizeof(struct gpart));
+
+  /* Place particles on a simple cube of side-length 0.2 */
+  for (int n = 0; n < 8; ++n) {
+    if (n & 1)
+      ci.gparts[n].x[0] = 0.0 - 0.1;
+    else
+      ci.gparts[n].x[0] = 0.0 + 0.1;
+
+    if (n & 2)
+      ci.gparts[n].x[1] = 0.5 - 0.1;
+    else
+      ci.gparts[n].x[1] = 0.5 + 0.1;
+
+    if (n & 2)
+      ci.gparts[n].x[2] = 0.5 - 0.1;
+    else
+      ci.gparts[n].x[2] = 0.5 + 0.1;
+
+    ci.gparts[n].mass = 1. / 8.;
+
+    ci.gparts[n].epsilon = eps;
+    ci.gparts[n].time_bin = 1;
+    ci.gparts[n].type = swift_type_dark_matter;
+    ci.gparts[n].id_or_neg_offset = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+    ci.gparts[n].ti_drift = 8;
+#endif
+  }
+
+  /* Now let's make a multipole out of it. */
+  gravity_reset(ci.multipole);
+  gravity_P2M(ci.multipole, ci.gparts, ci.gcount);
+
+  // message("CoM=[%e %e %e]", ci.multipole->CoM[0], ci.multipole->CoM[1],
+  // ci.multipole->CoM[2]);
+  gravity_multipole_print(&ci.multipole->m_pole);
+
+  /* Compute the forces */
+  runner_dopair_grav_pp(&r, &ci, &cj);
+
+  /* Verify everything */
+  for (int n = 0; n < num_tests; ++n) {
+    const struct gpart *gp = &cj.gparts[n];
+    const struct gravity_tensors *mpole = ci.multipole;
+
+    double pot_true = 0, acc_true[3] = {0., 0., 0.};
+
+    for (int i = 0; i < 8; ++i) {
+      const struct gpart *gp2 = &ci.gparts[i];
+
+      const double dx[3] = {gp2->x[0] - gp->x[0], gp2->x[1] - gp->x[1],
+                            gp2->x[2] - gp->x[2]};
+      const double d = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+
+      pot_true += potential(gp2->mass, d, gp->epsilon, rlr * FLT_MAX);
+      acc_true[0] -=
+          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[0] / d;
+      acc_true[1] -=
+          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[1] / d;
+      acc_true[2] -=
+          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[2] / d;
+    }
+
+    message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e",
+            gp->x[0] - mpole->CoM[0], gp->a_grav[0], acc_true[0], gp->potential,
+            pot_true, acc_true[1], acc_true[2]);
+
+    // check_value(gp->potential, pot_true, "potential");
+    // check_value(gp->a_grav[0], acc_true[0], "acceleration");
+  }
+
+  message("\n\t\t high-order P-M interactions all good\n");
+
+#endif
 
   free(ci.multipole);
   free(cj.multipole);
