@@ -27,6 +27,8 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 /* This object's header. */
 #include "tools.h"
@@ -700,4 +702,15 @@ int compare_particles(struct part a, struct part b, double threshold) {
   return 0;
 
 #endif
+}
+
+/**
+ * @brief return the resident memory use of the process and its children.
+ *
+ * @result memory use in Kb.
+ */
+long get_maxrss() {
+  struct rusage usage;
+  getrusage(RUSAGE_SELF, &usage);
+  return usage.ru_maxrss;
 }
