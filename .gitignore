@@ -108,6 +108,7 @@ tests/testLogger
 tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testPotentialSelf
+tests/testPotentialPair
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
