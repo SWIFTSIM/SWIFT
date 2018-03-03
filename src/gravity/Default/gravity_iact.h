@@ -136,14 +136,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
  * @param f_x (return) The x-component of the acceleration.
  * @param f_y (return) The y-component of the acceleration.
  * @param f_z (return) The z-component of the acceleration.
+ * @param pot (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
     float r_x, float r_y, float r_z, float r2, float h, float h_inv,
-    const struct multipole *m, float *f_x, float *f_y, float *f_z) {
+    const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
-  runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv3, m->M_000, f_ij);
-#else
+  //#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
+  float f_ij;
+  runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
+                           &f_ij, pot);
+  *f_x = f_ij;
+  *f_y = f_ij;
+  *f_z = f_ij;
+#if 0  // else
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);

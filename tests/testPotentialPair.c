@@ -31,7 +31,7 @@
 #include "swift.h"
 
 const int num_tests = 100;
-const double eps = 0.02;
+const double eps = 0.1;
 
 /**
  * @brief Check that a and b are consistent (up to some relative error)
@@ -96,6 +96,7 @@ int main() {
   e.time_base = 1e-10;
 
   struct space s;
+  s.periodic = 1;
   s.width[0] = 0.2;
   s.width[1] = 0.2;
   s.width[2] = 0.2;
@@ -103,6 +104,8 @@ int main() {
 
   struct gravity_props props;
   props.a_smooth = 1.25;
+  props.r_cut_min = 0.;
+  props.theta_crit2 = 0.;
   e.gravity_properties = &props;
 
   struct runner r;
@@ -112,46 +115,75 @@ int main() {
   const double rlr = props.a_smooth * s.width[0];
 
   /* Init the cache for gravity interaction */
-  gravity_cache_init(&r.ci_gravity_cache, num_tests * 2);
+  gravity_cache_init(&r.ci_gravity_cache, num_tests);
+  gravity_cache_init(&r.cj_gravity_cache, num_tests);
 
   /* Let's create one cell with a massive particle and a bunch of test particles
    */
-  struct cell c;
-  bzero(&c, sizeof(struct cell));
-  c.width[0] = 1.;
-  c.width[1] = 1.;
-  c.width[2] = 1.;
-  c.loc[0] = 0.;
-  c.loc[1] = 0.;
-  c.loc[2] = 0.;
-  c.gcount = 1 + num_tests;
-  c.ti_old_gpart = 8;
-  c.ti_gravity_end_min = 8;
-  c.ti_gravity_end_max = 8;
+  struct cell ci, cj;
+  bzero(&ci, sizeof(struct cell));
+  bzero(&cj, sizeof(struct cell));
+  
+  ci.width[0] = 1.;
+  ci.width[1] = 1.;
+  ci.width[2] = 1.;
+  ci.loc[0] = 0.;
+  ci.loc[1] = 0.;
+  ci.loc[2] = 0.;
+  ci.gcount = 1;
+  ci.ti_old_gpart = 8;
+  ci.ti_old_multipole = 8;
+  ci.ti_gravity_end_min = 8;
+  ci.ti_gravity_end_max = 8;
 
-  posix_memalign((void **)&c.gparts, gpart_align,
-                 c.gcount * sizeof(struct gpart));
-  bzero(c.gparts, c.gcount * sizeof(struct gpart));
+  cj.width[0] = 1.;
+  cj.width[1] = 1.;
+  cj.width[2] = 1.;
+  cj.loc[0] = 1.;
+  cj.loc[1] = 0.;
+  cj.loc[2] = 0.;
+  cj.gcount = num_tests;
+  cj.ti_old_gpart = 8;
+  cj.ti_old_multipole = 8;
+  cj.ti_gravity_end_min = 8;
+  cj.ti_gravity_end_max = 8;
 
+  /* Allocate multipoles */
+  ci.multipole = malloc(sizeof(struct gravity_tensors));
+  cj.multipole = malloc(sizeof(struct gravity_tensors));
+  bzero(ci.multipole, sizeof(struct gravity_tensors));
+  bzero(cj.multipole, sizeof(struct gravity_tensors));
+
+  /* Set the multipoles */
+  ci.multipole->r_max = 0.1;
+  cj.multipole->r_max = 0.1;
+  
+  /* Allocate the particles */
+  posix_memalign((void **)&ci.gparts, gpart_align, ci.gcount * sizeof(struct gpart));
+  bzero(ci.gparts, ci.gcount * sizeof(struct gpart));
+
+  posix_memalign((void **)&cj.gparts, gpart_align, cj.gcount * sizeof(struct gpart));
+  bzero(cj.gparts, cj.gcount * sizeof(struct gpart));
+  
   /* Create the massive particle */
-  c.gparts[0].x[0] = 0.;
-  c.gparts[0].x[1] = 0.5;
-  c.gparts[0].x[2] = 0.5;
-  c.gparts[0].mass = 1.;
-  c.gparts[0].epsilon = eps;
-  c.gparts[0].time_bin = 1;
-  c.gparts[0].type = swift_type_dark_matter;
-  c.gparts[0].id_or_neg_offset = 1;
+  ci.gparts[0].x[0] = 1.;
+  ci.gparts[0].x[1] = 0.5;
+  ci.gparts[0].x[2] = 0.5;
+  ci.gparts[0].mass = 1.;
+  ci.gparts[0].epsilon = eps;
+  ci.gparts[0].time_bin = 1;
+  ci.gparts[0].type = swift_type_dark_matter;
+  ci.gparts[0].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
-  c.gparts[0].ti_drift = 8;
+  ci.gparts[0].ti_drift = 8;
 #endif
 
   /* Create the mass-less particles */
-  for (int n = 1; n < num_tests + 1; ++n) {
+  for (int n = 0; n < num_tests; ++n) {
 
-    struct gpart *gp = &c.gparts[n];
+    struct gpart *gp = &cj.gparts[n];
 
-    gp->x[0] = n / ((double)num_tests);
+    gp->x[0] = 1. + (n + 1) / ((double)num_tests);
     gp->x[1] = 0.5;
     gp->x[2] = 0.5;
     gp->mass = 0.;
@@ -165,22 +197,26 @@ int main() {
   }
 
   /* Now compute the forces */
-  runner_doself_grav_pp_truncated(&r, &c);
+  runner_dopair_grav_pp(&r, &ci, &cj);
 
   /* Verify everything */
-  for (int n = 1; n < num_tests + 1; ++n) {
-    const struct gpart *gp = &c.gparts[n];
+  for (int n = 0; n < num_tests; ++n) {
+    const struct gpart *gp = &cj.gparts[n];
+    const struct gpart *gp2 = &ci.gparts[0];
 
-    double pot_true = potential(c.gparts[0].mass, gp->x[0], gp->epsilon, rlr);
+    double pot_true = potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
     double acc_true =
-        acceleration(c.gparts[0].mass, gp->x[0], gp->epsilon, rlr);
+        acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
 
-    // message("x=%e f=%e f_true=%e", gp->x[0], gp->a_grav[0], acc_true);
+    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0], gp->a_grav[0], acc_true, gp->potential, pot_true);
 
     check_value(gp->potential, pot_true, "potential");
     check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
-  free(c.gparts);
+  free(ci.multipole);
+  free(cj.multipole);
+  free(ci.gparts);
+  free(cj.gparts);
   return 0;
 }

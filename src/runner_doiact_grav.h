@@ -21,6 +21,7 @@
 #define SWIFT_RUNNER_DOIACT_GRAV_H
 
 /* Includes. */
+#include "active.h"
 #include "cell.h"
 #include "gravity.h"
 #include "inline.h"
@@ -182,7 +183,7 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
                                               struct gpart *restrict gparts_j) {
 
   TIMER_TIC;
-
+  
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -276,7 +277,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     struct gpart *restrict gparts_j) {
 
   TIMER_TIC;
-
+   
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -380,6 +381,7 @@ static INLINE void runner_dopair_grav_pm(
   swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -415,14 +417,15 @@ static INLINE void runner_dopair_grav_pm(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Interact! */
-    float f_x, f_y, f_z;
-    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
-                        &f_z);
+    float f_x, f_y, f_z, pot_ij;
+    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y, &f_z,
+                        &pot_ij);
 
     /* Store it back */
     a_x[pid] = f_x;
     a_y[pid] = f_y;
     a_z[pid] = f_z;
+    pot[pid] = pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
