@@ -96,7 +96,7 @@ int main() {
   e.time_base = 1e-10;
 
   struct space s;
-  s.periodic = 1;
+  s.periodic = 0;
   s.width[0] = 0.2;
   s.width[1] = 0.2;
   s.width[2] = 0.2;
@@ -112,7 +112,7 @@ int main() {
   bzero(&r, sizeof(struct runner));
   r.e = &e;
 
-  const double rlr = props.a_smooth * s.width[0];
+  const double rlr = props.a_smooth * s.width[0] * FLT_MAX;
 
   /* Init the cache for gravity interaction */
   gravity_cache_init(&r.ci_gravity_cache, num_tests);
@@ -123,7 +123,7 @@ int main() {
   struct cell ci, cj;
   bzero(&ci, sizeof(struct cell));
   bzero(&cj, sizeof(struct cell));
-  
+
   ci.width[0] = 1.;
   ci.width[1] = 1.;
   ci.width[2] = 1.;
@@ -157,28 +157,19 @@ int main() {
   /* Set the multipoles */
   ci.multipole->r_max = 0.1;
   cj.multipole->r_max = 0.1;
-  
+
   /* Allocate the particles */
-  posix_memalign((void **)&ci.gparts, gpart_align, ci.gcount * sizeof(struct gpart));
+  if (posix_memalign((void **)&ci.gparts, gpart_align,
+                     ci.gcount * sizeof(struct gpart)) != 0)
+    error("Error allocating gparts for cell ci");
   bzero(ci.gparts, ci.gcount * sizeof(struct gpart));
 
-  posix_memalign((void **)&cj.gparts, gpart_align, cj.gcount * sizeof(struct gpart));
+  if (posix_memalign((void **)&cj.gparts, gpart_align,
+                     cj.gcount * sizeof(struct gpart)) != 0)
+    error("Error allocating gparts for cell ci");
   bzero(cj.gparts, cj.gcount * sizeof(struct gpart));
-  
-  /* Create the massive particle */
-  ci.gparts[0].x[0] = 1.;
-  ci.gparts[0].x[1] = 0.5;
-  ci.gparts[0].x[2] = 0.5;
-  ci.gparts[0].mass = 1.;
-  ci.gparts[0].epsilon = eps;
-  ci.gparts[0].time_bin = 1;
-  ci.gparts[0].type = swift_type_dark_matter;
-  ci.gparts[0].id_or_neg_offset = 1;
-#ifdef SWIFT_DEBUG_CHECKS
-  ci.gparts[0].ti_drift = 8;
-#endif
 
-  /* Create the mass-less particles */
+  /* Create the mass-less test particles */
   for (int n = 0; n < num_tests; ++n) {
 
     struct gpart *gp = &cj.gparts[n];
@@ -196,6 +187,23 @@ int main() {
 #endif
   }
 
+  /***********************************************/
+  /* Let's start by testing the P-P interactions */
+  /***********************************************/
+
+  /* Create the massive particle */
+  ci.gparts[0].x[0] = 0.;
+  ci.gparts[0].x[1] = 0.5;
+  ci.gparts[0].x[2] = 0.5;
+  ci.gparts[0].mass = 1.;
+  ci.gparts[0].epsilon = eps;
+  ci.gparts[0].time_bin = 1;
+  ci.gparts[0].type = swift_type_dark_matter;
+  ci.gparts[0].id_or_neg_offset = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+  ci.gparts[0].ti_drift = 8;
+#endif
+
   /* Now compute the forces */
   runner_dopair_grav_pp(&r, &ci, &cj);
 
@@ -204,15 +212,61 @@ int main() {
     const struct gpart *gp = &cj.gparts[n];
     const struct gpart *gp2 = &ci.gparts[0];
 
-    double pot_true = potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
+    double pot_true =
+        potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
     double acc_true =
         acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
 
-    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0], gp->a_grav[0], acc_true, gp->potential, pot_true);
+    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0],
+            gp->a_grav[0], acc_true, gp->potential, pot_true);
 
     check_value(gp->potential, pot_true, "potential");
     check_value(gp->a_grav[0], acc_true, "acceleration");
   }
+
+  message("\n\t\t P-P interactions all good\n");
+
+  /* Reset the accelerations */
+  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
+
+  /*********************************/
+  /* Now, test the PM interactions */
+  /*********************************/
+
+  /* Set an opening angle that allows M-P interactions */
+  props.theta_crit2 = 1.;
+
+  ci.gparts[0].mass = 0.;
+  ci.multipole->CoM[0] = 0.;
+  ci.multipole->CoM[1] = 0.5;
+  ci.multipole->CoM[2] = 0.5;
+
+  bzero(&ci.multipole->m_pole, sizeof(struct multipole));
+  bzero(&cj.multipole->m_pole, sizeof(struct multipole));
+  ci.multipole->m_pole.M_000 = 1.;
+
+  /* Now compute the forces */
+  runner_dopair_grav_pp(&r, &ci, &cj);
+
+  /* Verify everything */
+  for (int n = 0; n < num_tests; ++n) {
+    const struct gpart *gp = &cj.gparts[n];
+    const struct gravity_tensors *mpole = ci.multipole;
+
+    double pot_true = potential(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0],
+                                gp->epsilon, rlr * FLT_MAX);
+    double acc_true =
+        acceleration(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0], gp->epsilon,
+                     rlr * FLT_MAX);
+
+    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - mpole->CoM[0],
+            gp->a_grav[0], acc_true, gp->potential, pot_true);
+
+    check_value(gp->potential, pot_true, "potential");
+    check_value(gp->a_grav[0], acc_true, "acceleration");
+  }
+
+  message("\n\t\t P-M interactions all good\n");
 
   free(ci.multipole);
   free(cj.multipole);

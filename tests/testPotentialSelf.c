@@ -129,8 +129,9 @@ int main() {
   c.ti_gravity_end_min = 8;
   c.ti_gravity_end_max = 8;
 
-  posix_memalign((void **)&c.gparts, gpart_align,
-                 c.gcount * sizeof(struct gpart));
+  if (posix_memalign((void **)&c.gparts, gpart_align,
+                     c.gcount * sizeof(struct gpart)) != 0)
+    error("Impossible to allocate memory for the gparts.");
   bzero(c.gparts, c.gcount * sizeof(struct gpart));
 
   /* Create the massive particle */

@@ -183,7 +183,7 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
                                               struct gpart *restrict gparts_j) {
 
   TIMER_TIC;
-  
+
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -277,7 +277,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     struct gpart *restrict gparts_j) {
 
   TIMER_TIC;
-   
+
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 

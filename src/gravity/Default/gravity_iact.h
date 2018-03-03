@@ -38,6 +38,7 @@
  * @param h_inv3 Cube of the inverse of the softening length.
  * @param mass Mass of the point-mass.
  * @param f_ij (return) The force intensity.
+ * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
     float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij,
@@ -82,6 +83,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
  * @param mass Mass of the point-mass.
  * @param rlr_inv Inverse of the mesh smoothing scale.
  * @param f_ij (return) The force intensity.
+ * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     float r2, float h2, float h_inv, float h_inv3, float mass, float rlr_inv,
@@ -146,9 +148,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   float f_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
                            &f_ij, pot);
-  *f_x = f_ij;
-  *f_y = f_ij;
-  *f_z = f_ij;
+  *f_x = -f_ij * r_x;
+  *f_y = -f_ij * r_y;
+  *f_z = -f_ij * r_z;
 #if 0  // else
 
   /* Get the inverse distance */
