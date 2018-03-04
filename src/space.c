@@ -2241,11 +2241,15 @@ void space_split_recursive(struct space *s, struct cell *c,
           if (location == k) break;
           parts[j] = parts[location];
           xparts[j] = xparts[location];
+          if (parts[j].gpart)
+            parts[j].gpart->id_or_neg_offset = -(&parts[j] - s->parts);
           j = location;
           location = buff[j].offset - parts_offset;
         }
         parts[j] = temp_part;
         xparts[j] = temp_xpart;
+        if (parts[j].gpart)
+          parts[j].gpart->id_or_neg_offset = -(&parts[j] - s->parts);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2267,8 +2271,13 @@ void space_split_recursive(struct space *s, struct cell *c,
       xparts[k].x_diff[2] = 0.f;
     }
 
-    /* Update the links gpart->part. */
-    part_relink_gparts_to_parts(parts, count, parts - s->parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int k = 0; k < count; k++) {
+      if (parts[k].gpart != NULL &&
+          parts[k].gpart->id_or_neg_offset != -(&parts[k] - s->parts))
+        error("parts/gparts mismatch.");
+    }
+#endif  // SWIFT_DEBUG_CHECKS
 
     /* Put the sparts in the right order. */
     const int sparts_offset = c->sparts - root->sparts;
@@ -2282,10 +2291,14 @@ void space_split_recursive(struct space *s, struct cell *c,
           sbuff[j].offset = j + sparts_offset;
           if (location == k) break;
           sparts[j] = sparts[location];
+          if (sparts[j].gpart)
+            sparts[j].gpart->id_or_neg_offset = -(&sparts[j] - s->sparts);
           j = location;
           location = sbuff[j].offset - sparts_offset;
         }
         sparts[j] = temp_spart;
+        if (sparts[j].gpart)
+          sparts[j].gpart->id_or_neg_offset = -(&sparts[j] - s->sparts);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2301,9 +2314,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
     }
 
-    /* Update the links gpart->part. */
-    part_relink_gparts_to_sparts(sparts, scount, sparts - s->sparts);
-
     /* Put the gparts in the right order. */
     const int gparts_offset = c->gparts - root->gparts;
     for (int k = 0; k < gcount; k++) {
@@ -2316,10 +2326,20 @@ void space_split_recursive(struct space *s, struct cell *c,
           gbuff[j].offset = j + gparts_offset;
           if (location == k) break;
           gparts[j] = gparts[location];
+          if (gparts[j].type == swift_type_gas) {
+            s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+          } else if (gparts[j].type == swift_type_star) {
+            s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+          }
           j = location;
           location = gbuff[j].offset - gparts_offset;
         }
         gparts[j] = temp_gpart;
+        if (gparts[j].type == swift_type_gas) {
+          s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        } else if (gparts[j].type == swift_type_star) {
+          s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        }
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2337,9 +2357,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
     }
-
-    /* Update links part/spart->gpart. */
-    part_relink_all_parts_to_gparts(gparts, gcount, s->parts, s->sparts);
 
     /* Convert into integer times */
     ti_hydro_end_min = get_integer_time_end(e->ti_current, hydro_time_bin_min);
