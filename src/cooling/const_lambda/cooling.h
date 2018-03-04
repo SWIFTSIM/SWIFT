@@ -37,6 +37,8 @@
 #include "physical_constants.h"
 #include "units.h"
 
+#ifdef HAVE_HDF5
+
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
@@ -46,21 +48,24 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   io_write_attribute_s(h_grpsph, "Cooling Model", "Constant Lambda");
 }
+#endif
 
 /**
  * @brief Calculates du/dt in code units for a particle.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data..
  */
 __attribute__((always_inline)) INLINE static float cooling_rate(
     const struct phys_const* const phys_const, const struct unit_system* us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* cooling, const struct part* p) {
 
   /* Get particle density */
-  const float rho = hydro_get_density(p);
+  const float rho = hydro_get_physical_density(p, cosmo);
 
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
@@ -77,6 +82,7 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
@@ -84,6 +90,7 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
@@ -91,13 +98,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float u_floor = cooling->min_energy;
 
   /* Current energy */
-  const float u_old = hydro_get_internal_energy(p);
+  const float u_old = hydro_get_physical_internal_energy(p, cosmo);
 
   /* Current du_dt */
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
   /* Calculate cooling du_dt */
-  float cooling_du_dt = cooling_rate(phys_const, us, cooling, p);
+  float cooling_du_dt = cooling_rate(phys_const, us, cosmo, cooling, p);
 
   /* Integrate cooling equation to enforce energy floor */
   /* Factor of 1.5 included since timestep could potentially double */
@@ -117,17 +124,19 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
     const struct unit_system* restrict us, const struct part* restrict p) {
 
   /* Get current internal energy */
-  const float u = hydro_get_internal_energy(p);
-  const float du_dt = cooling_rate(phys_const, us, cooling, p);
+  const float u = hydro_get_physical_internal_energy(p, cosmo);
+  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p);
 
   /* If we are close to (or below) the energy floor, we ignore the condition */
   if (u < 1.01f * cooling->min_energy)

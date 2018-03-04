@@ -52,4 +52,6 @@ int compare_values(double a, double b, double threshold, double *absDiff,
                    double *absSum, double *relDiff);
 int compare_particles(struct part a, struct part b, double threshold);
 
+long get_maxrss();
+
 #endif /* SWIFT_TOOL_H */

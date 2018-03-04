@@ -17,22 +17,25 @@
  *
  ******************************************************************************/
 
-#include "adiabatic_index.h"
-#include "error.h"
+#include "../config.h"
+
+#include <fenv.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "swift.h"
 
 /**
- * @brief Check that a and b are consistent (up to some absolute error)
+ * @brief Check that a and b are consistent (up to some relative error)
  *
  * @param a First value
  * @param b Second value
  * @param s String used to identify this check in messages
  */
 void check_value(float a, float b, const char* s) {
-  if (fabsf(a - b) > 1.e-5f) {
-    error("Values are inconsistent: %g %g (%s)!", a, b, s);
-  } else {
-    message("Values are consistent: %g %g (%s).", a, b, s);
-  }
+  if (fabsf(a - b) / fabsf(a + b) > 1.e-6f)
+    error("Values are inconsistent: %12.15e %12.15e (%s)!", a, b, s);
 }
 
 /**
@@ -72,33 +75,41 @@ void check_constants() {
  * @brief Check that the adiabatic index power functions return the correct
  * values
  */
-void check_functions() {
-  float val_a, val_b;
-  const float x = 0.4;
+void check_functions(float x) {
 
-  val_a = pow(x, -hydro_gamma);
+  float val_a, val_b;
+
+  val_a = powf(x, -hydro_gamma);
   val_b = pow_minus_gamma(x);
   check_value(val_a, val_b, "x^(-gamma)");
 
-  val_a = pow(x, 2.0f / (hydro_gamma - 1.0f));
+  val_a = powf(x, 2.0f / (hydro_gamma - 1.0f));
   val_b = pow_two_over_gamma_minus_one(x);
   check_value(val_a, val_b, "x^(2/(gamma-1))");
 
-  val_a = pow(x, 2.0f * hydro_gamma / (hydro_gamma - 1.0f));
+  val_a = powf(x, 2.0f * hydro_gamma / (hydro_gamma - 1.0f));
   val_b = pow_two_gamma_over_gamma_minus_one(x);
   check_value(val_a, val_b, "x^((2 gamma)/(gamma-1))");
 
-  val_a = pow(x, 0.5f * (hydro_gamma - 1.0f) / hydro_gamma);
+  val_a = powf(x, 0.5f * (hydro_gamma - 1.0f) / hydro_gamma);
   val_b = pow_gamma_minus_one_over_two_gamma(x);
   check_value(val_a, val_b, "x^((gamma-1)/(2 gamma))");
 
-  val_a = pow(x, -0.5f * (hydro_gamma + 1.0f) / hydro_gamma);
+  val_a = powf(x, -0.5f * (hydro_gamma + 1.0f) / hydro_gamma);
   val_b = pow_minus_gamma_plus_one_over_two_gamma(x);
   check_value(val_a, val_b, "x^(-(gamma+1)/(2 gamma))");
 
-  val_a = pow(x, 1.0f / hydro_gamma);
+  val_a = powf(x, 1.0f / hydro_gamma);
   val_b = pow_one_over_gamma(x);
   check_value(val_a, val_b, "x^(1/gamma)");
+
+  val_a = powf(x, 3.f * hydro_gamma - 2.f);
+  val_b = pow_three_gamma_minus_two(x);
+  check_value(val_a, val_b, "x^(3gamma - 2)");
+
+  val_a = powf(x, (3.f * hydro_gamma - 5.f) / 2.f);
+  val_b = pow_three_gamma_minus_five_over_two(x);
+  check_value(val_a, val_b, "x^((3gamma - 5)/2)");
 }
 
 /**
@@ -106,11 +117,34 @@ void check_functions() {
  */
 int main() {
 
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
+  message("Testing for gamma=%f", hydro_gamma);
+
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
+
   /* check the values of the adiabatic index constants */
   check_constants();
 
-  /* check the adiabatic index power functions */
-  check_functions();
+  for (int i = 0; i < 100; ++i) {
+
+    const float x = random_uniform(0., 100.);
+
+    message("Random test %d/100 (x=%e)", i, x);
+
+    /* check the adiabatic index power functions */
+    check_functions(x);
+  }
 
   return 0;
 }

@@ -62,6 +62,8 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
   return 2;
 }
 
+#ifdef HAVE_HDF5
+
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grp The HDF5 group in which to write
@@ -76,5 +78,6 @@ void chemistry_write_flavour(hid_t h_grp) {
     io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(i));
   }
 }
+#endif
 
 #endif /* SWIFT_CHEMISTRY_IO_GEAR_H */

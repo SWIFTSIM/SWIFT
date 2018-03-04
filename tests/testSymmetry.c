@@ -41,6 +41,10 @@ void test() {
 /*  voronoi_set_box(box_anchor, box_side);*/
 #endif
 
+  /* Start with some values for the cosmological paramters */
+  const float a = (float)random_uniform(0.8, 1.);
+  const float H = 1.f;
+
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
@@ -137,20 +141,17 @@ void test() {
   /* --- Test the density loop --- */
 
   /* Call the symmetric version */
-  runner_iact_density(r2, dx, pi.h, pj.h, &pi, &pj);
-  /* Now the chemistry. WARNING chemistry is not initialized */
-  runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj);
+  runner_iact_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
-  runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2);
-  /* Now the chemistry. WARNING chemistry is not initialized */
-  runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2);
+  runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
-  runner_iact_nonsym_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
-  /* Now the chemistry. WARNING chemistry is not initialized */
-  runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
+  runner_iact_nonsym_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct part));
@@ -162,14 +163,14 @@ void test() {
   /* --- Test the force loop --- */
 
   /* Call the symmetric version */
-  runner_iact_force(r2, dx, pi.h, pj.h, &pi, &pj);
+  runner_iact_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
-  runner_iact_nonsym_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2);
+  runner_iact_nonsym_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
-  runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
+  runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
 
 /* Check that the particles are the same */
 #if defined(GIZMO_SPH)

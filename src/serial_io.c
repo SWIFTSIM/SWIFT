@@ -778,6 +778,8 @@ void write_output_serial(struct engine* e, const char* baseName,
     io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
     int dimension = (int)hydro_dimension;
     io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
+    io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
+    io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
 
     /* GADGET-2 legacy values */
     /* Number of particles of each type */
@@ -807,6 +809,9 @@ void write_output_serial(struct engine* e, const char* baseName,
     /* Print the code version */
     io_write_code_description(h_file);
 
+    /* Print the run's policy */
+    io_write_engine_policy(h_file, e);
+
     /* Print the SPH parameters */
     if (e->policy & engine_policy_hydro) {
       h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
@@ -831,6 +836,15 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating gravity group");
       gravity_props_print_snapshot(h_grp, e->gravity_properties);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the cosmological model */
+    if (e->policy & engine_policy_cosmology) {
+      h_grp = H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating cosmology group");
+      cosmology_write_model(h_grp, e->cosmology);
       H5Gclose(h_grp);
     }
 

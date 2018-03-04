@@ -25,38 +25,38 @@
  * @brief Density computation
  */
 
-#include "cache.h"
-#include "chemistry_struct.h"
-#include "minmax.h"
-
 /**
  * @brief do chemistry computation after the runner_iact_density (symmetric
  * version)
  *
- * @param r2 Distance squared between particles
- * @param dx Distance between particles
- * @param hi Smoothing length of i
- * @param hj Smoothing length of j
- * @param pi #part i
- * @param pj #part j
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
-}
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {}
 
 /**
  * @brief do chemistry computation after the runner_iact_density (non symmetric
  * version)
  *
- * @param r2 Distance squared between particles
- * @param dx Distance between particles
- * @param hi Smoothing length of i
- * @param hj Smoothing length of j
- * @param pi #part i
- * @param pj #part j
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
-    float r2, float *dx, float hi, float hj, struct part *pi,
-    const struct part *pj) {}
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {}
 
 #endif /* SWIFT_NONE_CHEMISTRY_IACT_H */

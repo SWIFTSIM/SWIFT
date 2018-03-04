@@ -71,12 +71,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 void convert_S(const struct engine* e, const struct part* p, float* ret) {
 
-  ret[0] = hydro_get_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p);
 }
 
 void convert_P(const struct engine* e, const struct part* p, float* ret) {
 
-  ret[0] = hydro_get_pressure(p);
+  ret[0] = hydro_get_comoving_pressure(p);
 }
 
 void convert_part_pos(const struct engine* e, const struct part* p,
