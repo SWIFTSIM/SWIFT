@@ -1143,11 +1143,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-  const vector v_fac_mu = vector_set1(fac_mu);
-  const vector v_a2_Hubble = vector_set1(a2_Hubble);
-
+  
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -1271,7 +1267,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
             &cell_cache->vy[pjd], &cell_cache->vz[pjd], &cell_cache->rho[pjd],
             &cell_cache->grad_h[pjd], &cell_cache->pOrho2[pjd],
             &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd],
-            &cell_cache->m[pjd], v_hi_inv, v_hj_inv, v_fac_mu, v_a2_Hubble, &v_a_hydro_xSum,
+            &cell_cache->m[pjd], v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum,
             &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum,
             &v_entropy_dtSum, v_doi_mask);
       }
@@ -2032,10 +2028,6 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-  const vector v_fac_mu = vector_set1(fac_mu);
-  const vector v_a2_Hubble = vector_set1(a2_Hubble);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
@@ -2231,7 +2223,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &cj_cache->grad_h[cj_cache_idx], &cj_cache->pOrho2[cj_cache_idx],
               &cj_cache->balsara[cj_cache_idx],
               &cj_cache->soundspeed[cj_cache_idx], &cj_cache->m[cj_cache_idx],
-              v_hi_inv, v_hj_inv, v_fac_mu, v_a2_Hubble, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doi_mask);
         }
@@ -2367,7 +2359,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &ci_cache->grad_h[ci_cache_idx], &ci_cache->pOrho2[ci_cache_idx],
               &ci_cache->balsara[ci_cache_idx],
               &ci_cache->soundspeed[ci_cache_idx], &ci_cache->m[ci_cache_idx],
-              v_hj_inv, v_hi_inv, v_fac_mu, v_a2_Hubble, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              v_hj_inv, v_hi_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doj_mask);
         }
