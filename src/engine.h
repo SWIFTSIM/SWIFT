@@ -126,13 +126,13 @@ struct engine {
   double dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  double timeBegin;
+  double time_begin;
 
   /* Time of the simulation end */
-  double timeEnd;
+  double time_end;
 
   /* The previous system time. */
-  double timeOld;
+  double time_old;
   integertime_t ti_old;
 
   /* The current system time. */
@@ -142,12 +142,15 @@ struct engine {
   /* The highest active bin at this time */
   timebin_t max_active_bin;
 
+  /* The lowest active bin at this time */
+  timebin_t min_active_bin;
+
   /* Time step */
-  double timeStep;
+  double time_step;
 
   /* Time base */
-  double timeBase;
-  double timeBase_inv;
+  double time_base;
+  double time_base_inv;
 
   /* Minimal hydro ti_end for the next time-step */
   integertime_t ti_hydro_end_min;
@@ -268,6 +271,9 @@ struct engine {
   /* Physical constants definition */
   const struct phys_const *physical_constants;
 
+  /* The cosmological model */
+  struct cosmology *cosmology;
+
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
@@ -295,6 +301,9 @@ struct engine {
 
   /* Whether to dump restart files. */
   int restart_dump;
+
+  /* Whether to save previous generation of restart files. */
+  int restart_save;
 
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
@@ -325,7 +334,7 @@ void engine_init(
     struct engine *e, struct space *s, const struct swift_params *params,
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
     const struct hydro_props *hydro, const struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,

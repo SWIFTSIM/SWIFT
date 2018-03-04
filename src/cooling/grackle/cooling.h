@@ -42,6 +42,8 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+#ifdef HAVE_HDF5
+
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
@@ -51,6 +53,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle");
 }
+#endif
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
@@ -120,6 +123,7 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, float dt) {
 
@@ -147,8 +151,8 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
   data.grid_end = grid_end;
 
   /* general particle data */
-  gr_float density = hydro_get_density(p);
-  const double energy_before = hydro_get_internal_energy(p);
+  gr_float density = hydro_get_physical_density(p, cosmo);
+  const double energy_before = hydro_get_physical_internal_energy(p, cosmo);
   gr_float energy = energy_before;
   gr_float vx = 0;
   gr_float vy = 0;
@@ -221,6 +225,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
@@ -228,6 +233,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {
 
@@ -237,7 +243,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
   /* compute cooling rate */
-  const float du_dt = cooling_rate(phys_const, us, cooling, p, dt);
+  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, dt);
 
   /* record energy lost */
   xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
@@ -253,12 +259,14 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
     const struct unit_system* restrict us, const struct part* restrict p) {
 
   return FLT_MAX;

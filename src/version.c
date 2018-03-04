@@ -37,6 +37,10 @@
 #include <fftw3.h>
 #endif
 
+#ifdef HAVE_LIBGSL
+#include <gsl/gsl_version.h>
+#endif
+
 /* Some standard headers. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -333,6 +337,22 @@ const char *fftw3_version(void) {
 }
 
 /**
+ * @brief return the GSL version used when SWIFT was built.
+ *
+ * @result description of the GSL version.
+ */
+const char *libgsl_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_LIBGSL)
+  sprintf(version, "%s", gsl_version);
+#else
+  sprintf(version, "Unknown version");
+#endif
+  return version;
+}
+
+/**
  * @brief return the thread barrier used in SWIFT.
  *
  * @result description of the thread barriers
@@ -375,6 +395,9 @@ void greetings(void) {
 #endif
 #ifdef HAVE_FFTW
   printf(" FFTW library version: %s\n", fftw3_version());
+#endif
+#ifdef HAVE_LIBGSL
+  printf(" GSL  library version: %s\n", libgsl_version());
 #endif
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());

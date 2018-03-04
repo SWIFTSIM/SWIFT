@@ -10,6 +10,36 @@ InternalUnitSystem:
 PhysicalConstants:
   G:            6.67408e-8 # (Optional) Overwrite the value of Newton's constant used internally by the code.
 
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+  Omega_r:        0.            # (Optional) Radiation density parameter
+  w_0:            -1.0          # (Optional) Dark-energy equation-of-state parameter at z=0.
+  w_a:            0.            # (Optional) Dark-energy equation-of-state time evolution parameter.
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
+  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
+  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025    # Constant dimensionless multiplier for time integration.
+  theta:        0.7      # Opening angle (Multipole acceptance criterion)
+  epsilon:      0.1      # Softening length (in internal units).
+  a_smooth:     1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
+  r_cut_max:    4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
+  r_cut_min:    0.1      # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+
 # Parameters for the task scheduling
 Scheduler:
   nr_queues:                 0         # (Optional) The number of task queues to use. Use 0  to let the system decide.
@@ -48,27 +78,6 @@ Statistics:
   energy_file_name:    energy    # (Optional) File name for energy output
   timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
 
-# Parameters for the hydrodynamics scheme
-SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
-  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
-  max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
-  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-
-EoS:
-  isothermal_internal_energy: 20.26784 # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
-
-# Parameters for the self-gravity scheme
-Gravity:
-  eta:          0.025    # Constant dimensionless multiplier for time integration.
-  theta:        0.7      # Opening angle (Multipole acceptance criterion)
-  epsilon:      0.1      # Softening length (in internal units).
-  a_smooth:     1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
-  r_cut_max:    4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
-  r_cut_min:    0.1      # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
@@ -82,6 +91,7 @@ InitialConditions:
 # Parameters controlling restarts
 Restarts:
   enable:      1        # (Optional) whether to enable dumping restarts at fixed intervals.
+  save:        1        # (Optional) whether to save copies of the previous set of restart files (named .prev)
   onexit:      0        # (Optional) whether to dump restarts on exit (*needs enable*)
   subdir:      restart  # (Optional) name of subdirectory for restart files.
   basename:    swift    # (Optional) prefix used in naming restart files.
@@ -105,6 +115,11 @@ DomainDecomposition:
                             # new decomposition, or number of steps (>1) between decompositions
   minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
                             # using CPU time trigger
+
+# Parameters related to the equation of state ------------------------------------------
+
+EoS:
+  isothermal_internal_energy: 20.26784 # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
 
 # Parameters related to external potentials --------------------------------------------
 

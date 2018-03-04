@@ -37,15 +37,19 @@
  * order accurate gradient calculations and for the calculation of the interface
  * surface areas.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   float r = sqrtf(r2);
   float xi, xj;
@@ -99,15 +103,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * order accurate gradient calculations and for the calculation of the interface
  * surface areas.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
 
   float r;
   float xi;
@@ -141,15 +149,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * This method wraps around hydro_gradients_collect, which can be an empty
  * method, in which case no gradients are used.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -161,15 +173,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * This method wraps around hydro_gradients_nonsym_collect, which can be an
  * empty method, in which case no gradients are used.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -192,16 +208,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * This method also calculates the maximal velocity used to calculate the time
  * step.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-    int mode) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, int mode, float a, float H) {
 
   float r = sqrtf(r2);
   float xi, xj;
@@ -457,17 +476,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
  *
  * This method calls runner_iact_fluxes_common with mode 1.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
-  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1);
+  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
 }
 
 /**
@@ -476,17 +499,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  *
  * This method calls runner_iact_fluxes_common with mode 0.
  *
- * @param r2 Squared distance between particle i and particle j.
- * @param dx Distance vector between the particles (dx = pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
 
-  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
+  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }
 
 #endif /* SWIFT_GIZMO_HYDRO_IACT_H */

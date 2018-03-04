@@ -95,8 +95,8 @@ int main() {
   run.e = &eng;
 
   eng.time = 0.;
-  eng.timeBegin = 0.;
-  eng.timeEnd = N_orbits * T;
+  eng.time_begin = 0.;
+  eng.time_end = N_orbits * T;
   eng.dt_min = dt; /* This forces the time-step to be dt        */
   eng.dt_max = dt; /* irrespective of the state of the particle */
 
@@ -104,7 +104,7 @@ int main() {
   for (i = 0; i < N; i++) {
 
     /* Move forward in time */
-    eng.timeOld = eng.time;
+    eng.time_old = eng.time;
     eng.time += dt;
 
     /* Compute gravitational acceleration */

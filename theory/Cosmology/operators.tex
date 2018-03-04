@@ -1,0 +1,55 @@
+\subsection{Time-integration operators}
+\label{ssec:operators}
+For the choice of cosmological coordinates made in \swift, the normal
+``kick'' and ``drift'' operators get modified to account for the
+expansion of the Universe. The derivation of these operators from the
+system's Lagrangian is given in appendix A of \cite{Quinn1997} for the
+collision-less case. We do not repeat that derivation here but, for
+completeness, give the expressions we use as well as the ones used for
+the hydro-dynamics. 
+
+The ``drift'' operator gets modified such that $\Delta t$ for a
+time-step running from a scale-factor $a_{n}$ to $a_{n+1}$ becomes
+
+\begin{equation}
+  \Delta t_{\rm drift} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a^2} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^3E(a)},
+\end{equation}
+with $E(a)$ given by eq.~\ref{eq:friedmann}. Similarly, the time-step
+entering ``kick'' operator for collision-less acceleration reads
+\begin{equation}
+  \Delta t_{\rm kick,g} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^2E(a)}.
+\end{equation}
+However, for the case of gas dynamics, given our choice of
+coordinates, the ``kick'' operator has a second variant that reads
+\begin{equation}
+  \Delta t_{\rm kick,h} \equiv \int_{a_n}^{a_{n+1}} \frac{dt}{a^{3(\gamma-1)}} = \frac{1}{H_0} \int_{a_n}^{a_{n+1}} \frac{da}{a^{3\gamma - 2}E(a)},
+\end{equation}
+where $\gamma$ is the adiabatic index of the gas.  Accelerations
+arising from hydrodynamic forces (\nth{1} and \nth{2} term in
+eq.~\ref{eq:cosmo_eom_v}) are integrated forward in time using $\Delta
+t_{\rm kick,h}$, whilst the accelerations given by the gravity forces
+(\nth{3} term in eq.~\ref{eq:cosmo_eom_v}) use $\Delta t_{\rm
+  kick,g}$. The entropy or internal energy is integrated forward in
+time using $\Delta t_{\rm kick,A} = \Delta t_{\rm
+  drift}$\footnote{Note that {\sc gadget-2} uses a slightly different
+  operator here. They first multiply $\dot{A}_i'$ by $1/H$ and do not
+  not consider the $1/a^2$ term as part of the time-integration
+  operator. They then use $\int H dt$ as the operator, which
+  integrates out trivially. This slight inconsistency with the rest of
+  the time-integration operators is unlikely to lead to any practical
+  difference.}, whilst the change in energy due to the expansion of
+the Universe (first term in eq.~\ref{eq:cosmo_eom_u}) can be computed
+using
+\begin{equation}
+  \int_{a_n}^{a_{n+1}} H dt = \int_{a_n}^{a_{n+1}} \frac{da}{a} =
+  \log{a_{n+1}} - \log{a_n}.
+\end{equation}
+Following the same method as for the age of the Universe
+(sec. \ref{ssec:flrw}), the three non-trivial integrals are evaluated
+numerically at the start of the simulation for a series $10^4$ values
+of $a$ placed at regular intervals between $\log a_{\rm begin}$ and
+$\log a_{\rm end}$. The values for a specific pair of scale-factors
+$a_n$ and $a_{n+1}$ are then obtained by interpolating that table
+linearly.
+
+

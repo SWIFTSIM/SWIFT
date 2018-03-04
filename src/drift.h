@@ -30,16 +30,15 @@
 #include "part.h"
 
 /**
- * @brief Perform the 'drift' operation on a #gpart
+ * @brief Perform the 'drift' operation on a #gpart.
  *
  * @param gp The #gpart to drift.
- * @param dt The drift time-step
- * @param timeBase The minimal allowed time-step size.
- * @param ti_old Integer start of time-step
- * @param ti_current Integer end of time-step
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart *restrict gp, double dt, double timeBase, integertime_t ti_old,
+    struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -54,14 +53,14 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
   /* Drift... */
-  gp->x[0] += gp->v_full[0] * dt;
-  gp->x[1] += gp->v_full[1] * dt;
-  gp->x[2] += gp->v_full[2] * dt;
+  gp->x[0] += gp->v_full[0] * dt_drift;
+  gp->x[1] += gp->v_full[1] * dt_drift;
+  gp->x[2] += gp->v_full[2] * dt_drift;
 
   /* Compute offset since last cell construction */
-  gp->x_diff[0] -= gp->v_full[0] * dt;
-  gp->x_diff[1] -= gp->v_full[1] * dt;
-  gp->x_diff[2] -= gp->v_full[2] * dt;
+  gp->x_diff[0] -= gp->v_full[0] * dt_drift;
+  gp->x_diff[1] -= gp->v_full[1] * dt_drift;
+  gp->x_diff[2] -= gp->v_full[2] * dt_drift;
 }
 
 /**
@@ -69,14 +68,17 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  *
  * @param p The #part to drift.
  * @param xp The #xpart of the particle.
- * @param dt The drift time-step
- * @param timeBase The minimal allowed time-step size.
- * @param ti_old Integer start of time-step
- * @param ti_current Integer end of time-step
+ * @param dt_drift The drift time-step
+ * @param dt_kick_grav The kick time-step for gravity accelerations.
+ * @param dt_kick_hydro The kick time-step for hydro accelerations.
+ * @param dt_therm The drift time-step for thermodynamic quantities.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part *restrict p, struct xpart *restrict xp, double dt,
-    double timeBase, integertime_t ti_old, integertime_t ti_current) {
+    struct part *restrict p, struct xpart *restrict xp, double dt_drift,
+    double dt_kick_hydro, double dt_kick_grav, double dt_therm,
+    integertime_t ti_old, integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -89,21 +91,25 @@ __attribute__((always_inline)) INLINE static void drift_part(
 #endif
 
   /* Drift... */
-  p->x[0] += xp->v_full[0] * dt;
-  p->x[1] += xp->v_full[1] * dt;
-  p->x[2] += xp->v_full[2] * dt;
+  p->x[0] += xp->v_full[0] * dt_drift;
+  p->x[1] += xp->v_full[1] * dt_drift;
+  p->x[2] += xp->v_full[2] * dt_drift;
 
   /* Predict velocities (for hydro terms) */
-  p->v[0] += p->a_hydro[0] * dt;
-  p->v[1] += p->a_hydro[1] * dt;
-  p->v[2] += p->a_hydro[2] * dt;
+  p->v[0] += p->a_hydro[0] * dt_kick_hydro;
+  p->v[1] += p->a_hydro[1] * dt_kick_hydro;
+  p->v[2] += p->a_hydro[2] * dt_kick_hydro;
+
+  p->v[0] += xp->a_grav[0] * dt_kick_grav;
+  p->v[1] += xp->a_grav[1] * dt_kick_grav;
+  p->v[2] += xp->a_grav[2] * dt_kick_grav;
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt);
+  hydro_predict_extra(p, xp, dt_drift, dt_therm);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {
-    const float dx = xp->v_full[k] * dt;
+    const float dx = xp->v_full[k] * dt_drift;
     xp->x_diff[k] -= dx;
     xp->x_diff_sort[k] -= dx;
   }
@@ -113,13 +119,12 @@ __attribute__((always_inline)) INLINE static void drift_part(
  * @brief Perform the 'drift' operation on a #spart
  *
  * @param sp The #spart to drift.
- * @param dt The drift time-step
- * @param timeBase The minimal allowed time-step size.
- * @param ti_old Integer start of time-step
- * @param ti_current Integer end of time-step
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
-    struct spart *restrict sp, double dt, double timeBase, integertime_t ti_old,
+    struct spart *restrict sp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -134,9 +139,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 #endif
 
   /* Drift... */
-  sp->x[0] += sp->v[0] * dt;
-  sp->x[1] += sp->v[1] * dt;
-  sp->x[2] += sp->v[2] * dt;
+  sp->x[0] += sp->v[0] * dt_drift;
+  sp->x[1] += sp->v[1] * dt_drift;
+  sp->x[2] += sp->v[2] * dt_drift;
 }
 
 #endif /* SWIFT_DRIFT_H */
