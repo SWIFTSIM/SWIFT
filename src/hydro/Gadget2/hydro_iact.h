@@ -659,7 +659,7 @@ runner_iact_nonsym_1_vec_force(
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
     vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
     float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    vector hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector hj_inv, vector fac_mu, vector a2_Hubble, vector *a_hydro_xSum, vector *a_hydro_ySum,
     vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
     vector *entropy_dtSum, mask_t mask) {
 
@@ -686,9 +686,6 @@ runner_iact_nonsym_1_vec_force(
   const vector pjPOrho2 = vector_load(PjPOrho2);
   const vector balsara_j = vector_load(Balsara_j);
   const vector cj = vector_load(Cj);
-
-  const vector fac_mu =
-      vector_set1(1.f); /* Will change with cosmological integration */
 
   /* Load stuff. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
@@ -718,7 +715,7 @@ runner_iact_nonsym_1_vec_force(
   dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_fma(dvz.v, dz->v, vec_mul(a2_Hubble.v, r2->v))));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
@@ -787,7 +784,7 @@ runner_iact_nonsym_2_vec_force(
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
     vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
     float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    float *Hj_inv, vector fac_mu, vector a2_Hubble, vector *a_hydro_xSum, vector *a_hydro_ySum,
     vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
     vector *entropy_dtSum, mask_t mask, mask_t mask_2, short mask_cond) {
 
@@ -853,9 +850,6 @@ runner_iact_nonsym_2_vec_force(
   const vector hj_inv = vector_load(Hj_inv);
   const vector hj_inv_2 = vector_load(&Hj_inv[VEC_SIZE]);
 
-  const vector fac_mu =
-      vector_set1(1.f); /* Will change with cosmological integration */
-
   /* Find the balsara switch. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
   balsara_2.v = vec_add(balsara_i.v, balsara_j_2.v);
@@ -891,9 +885,9 @@ runner_iact_nonsym_2_vec_force(
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_fma(dvz.v, dz.v, vec_mul(a2_Hubble.v, r2.v))));
   dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
-                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+                     vec_fma(dvy_2.v, dy_2.v, vec_fma(dvz_2.v, dz_2.v, vec_mul(a2_Hubble.v, r2_2.v))));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
