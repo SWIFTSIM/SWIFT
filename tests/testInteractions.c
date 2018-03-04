@@ -602,9 +602,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
 
     const ticks vec_tic = getticks();
 
-    /* Set cosmological variables to one. */
+    /* Set cosmological variables. */
     const vector v_fac_mu = vector_set1(1.f);
-    const vector v_a2_Hubble = vector_set1(1.f);
+    const vector v_a2_Hubble = vector_set1(0.f);
 
     for (size_t i = 0; i < count; i += num_vec_proc * VEC_SIZE) {
 
