@@ -61,7 +61,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj) {
 
   float wi, wi_dx, xi, hi_inv;
   float wj, wj_dx, xj, hj_inv;
@@ -163,8 +164,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, float *dx, float hi, float hj,
-                               struct part *pi, struct part *pj) {
+hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj) {
 
   float wi, wi_dx, xi, hi_inv;
   float r = sqrtf(r2);

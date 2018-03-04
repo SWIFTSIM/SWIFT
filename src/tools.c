@@ -27,6 +27,8 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 /* This object's header. */
 #include "tools.h"
@@ -34,6 +36,7 @@
 /* Local includes. */
 #include "active.h"
 #include "cell.h"
+#include "cosmology.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -73,6 +76,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   // double maxratio = 1.0;
   double r2, dx[3], rho = 0.0;
   double rho_max = 0.0, rho_min = 100;
+  float a = 1.f, H = 0.f;
 
   /* Loop over all particle pairs. */
   for (j = 0; j < N; j++) {
@@ -93,7 +97,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
       r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (r2 < parts[j].h * parts[j].h || r2 < parts[k].h * parts[k].h) {
         runner_iact_density(r2, NULL, parts[j].h, parts[k].h, &parts[j],
-                            &parts[k]);
+                            &parts[k], a, H);
         /* if ( parts[j].h / parts[k].h > maxratio )
             {
             maxratio = parts[j].h / parts[k].h;
@@ -132,12 +136,10 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
   int i, k;
-  // int mj, mk;
-  // double maxratio = 1.0;
   double r2, dx[3];
   float fdx[3];
   struct part p;
-  // double ih = 12.0/6.25;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   for (k = 0; k < N && parts[k].id != pid; k++)
@@ -163,7 +165,7 @@ void pairs_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
       /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli
          [%i,%i,%i], r=%e.\n" ,
           pid , (int)(p.x[0]*ih) , (int)(p.x[1]*ih) , (int)(p.x[2]*ih) ,
@@ -185,6 +187,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
+  float a = 1.f, H = 0.f;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -212,7 +215,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -243,7 +246,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
+        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -255,6 +258,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
+  float a = 1.f, H = 0.f;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -284,7 +288,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj);
+        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
       }
     }
   }
@@ -317,7 +321,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2 || r2 < hig2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi);
+        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -327,6 +331,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
   const struct engine *e = r->e;
+  float a = 1.f, H = 0.f;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -354,7 +359,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       if (r2 < hig2 && part_is_active(pi, e)) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
+        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
@@ -365,7 +370,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         dxi[2] = -dxi[2];
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi);
+        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
       }
     }
   }
@@ -374,6 +379,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
 void self_all_force(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
+  float a = 1.f, H = 0.f;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -401,7 +407,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_force(r2, dxi, hi, hj, pi, pj);
+        runner_iact_force(r2, dxi, hi, hj, pi, pj, a, H);
       }
     }
   }
@@ -411,10 +417,12 @@ void self_all_force(struct runner *r, struct cell *ci) {
  * @brief Compute the force on a single particle brute-force.
  */
 void engine_single_density(double *dim, long long int pid,
-                           struct part *restrict parts, int N, int periodic) {
+                           struct part *restrict parts, int N, int periodic,
+                           const struct cosmology *cosmo) {
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   int k;
@@ -441,14 +449,14 @@ void engine_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
 
   /* Dump the result. */
-  hydro_end_density(&p);
+  hydro_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
-          p.density.wcount, hydro_get_density(&p));
+          p.density.wcount, hydro_get_comoving_density(&p));
   fflush(stdout);
 }
 
@@ -458,6 +466,7 @@ void engine_single_force(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   for (k = 0; k < N && parts[k].id != pid; k++)
@@ -486,7 +495,7 @@ void engine_single_force(double *dim, long long int pid,
     if (r2 < p.h * p.h * kernel_gamma2 ||
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
-      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
 
@@ -693,4 +702,15 @@ int compare_particles(struct part a, struct part b, double threshold) {
   return 0;
 
 #endif
+}
+
+/**
+ * @brief return the resident memory use of the process and its children.
+ *
+ * @result memory use in Kb.
+ */
+long get_maxrss() {
+  struct rusage usage;
+  getrusage(RUSAGE_SELF, &usage);
+  return usage.ru_maxrss;
 }

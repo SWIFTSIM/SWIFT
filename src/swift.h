@@ -31,6 +31,7 @@
 #include "clocks.h"
 #include "const.h"
 #include "cooling.h"
+#include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
 #include "dump.h"

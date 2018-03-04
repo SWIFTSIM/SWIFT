@@ -21,6 +21,7 @@
 #define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
+#include "cosmology.h"
 #include "gravity_properties.h"
 #include "minmax.h"
 
@@ -63,22 +64,37 @@ __attribute__((always_inline)) INLINE static float gravity_get_potential(
  * We use Gadget-2's type 0 time-step criterion.
  *
  * @param gp Pointer to the g-particle data.
+ * @param a_hydro The accelerations coming from the hydro scheme (can be 0).
  * @param grav_props Constants used in the gravity scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct gpart* const gp,
-                              const struct gravity_props* restrict grav_props) {
+                              const float a_hydro[3],
+                              const struct gravity_props* restrict grav_props,
+                              const struct cosmology* cosmo) {
 
-  const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
-                    gp->a_grav[1] * gp->a_grav[1] +
-                    gp->a_grav[2] * gp->a_grav[2];
+  /* Get physical acceleration (gravity contribution) */
+  float a_phys_x = gp->a_grav[0] * cosmo->a_factor_grav_accel;
+  float a_phys_y = gp->a_grav[1] * cosmo->a_factor_grav_accel;
+  float a_phys_z = gp->a_grav[2] * cosmo->a_factor_grav_accel;
+
+  /* Get physical acceleration (hydro contribution) */
+  a_phys_x += a_hydro[0] * cosmo->a_factor_hydro_accel;
+  a_phys_y += a_hydro[1] * cosmo->a_factor_hydro_accel;
+  a_phys_z += a_hydro[2] * cosmo->a_factor_hydro_accel;
+
+  const float ac2 =
+      a_phys_x * a_phys_x + a_phys_y * a_phys_y + a_phys_z * a_phys_z;
 
   const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
 
+  // MATTHIEU cosmological evolution of the softening?
   const float epsilon = gravity_get_softening(gp);
 
   /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
-  const float dt = sqrtf(0.66666667f * grav_props->eta * epsilon * ac_inv);
+  const float dt =
+      sqrtf(0.66666667f * cosmo->a * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }

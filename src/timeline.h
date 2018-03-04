@@ -40,6 +40,12 @@ typedef char timebin_t;
 /*! Fictious time-bin to hold inhibited particles */
 #define time_bin_inhibited (num_time_bins + 2)
 
+/*! Fictitious time-bin for particles not awaken */
+#define time_bin_not_awake (0)
+
+/*! Fictitious time-bin for particles woken up */
+#define time_bin_awake (-1)
+
 /**
  * @brief Returns the integer time interval corresponding to a time bin
  *
@@ -120,6 +126,19 @@ static INLINE timebin_t get_max_active_bin(integertime_t time) {
   while (!((1LL << (bin + 1)) & time)) ++bin;
 
   return bin;
+}
+
+/**
+ * @brief Returns the lowest active time bin at a given point on the time line.
+ *
+ * @param ti_current The current point on the time line.
+ * @param ti_old The last synchronisation point on the time line.
+ */
+static INLINE timebin_t get_min_active_bin(integertime_t ti_current,
+                                           integertime_t ti_old) {
+
+  const timebin_t min_bin = get_max_active_bin(ti_current - ti_old);
+  return (ti_old > 0) ? min_bin : (min_bin - 1);
 }
 
 #endif /* SWIFT_TIMELINE_H */

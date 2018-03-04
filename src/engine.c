@@ -51,8 +51,10 @@
 #include "active.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "clocks.h"
 #include "cooling.h"
+#include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -86,15 +88,15 @@ const char *engine_policy_names[] = {"none",
                                      "steal",
                                      "keep",
                                      "block",
-                                     "cpu_tight",
+                                     "cpu tight",
                                      "mpi",
-                                     "numa_affinity",
+                                     "numa affinity",
                                      "hydro",
-                                     "self_gravity",
-                                     "external_gravity",
-                                     "cosmology_integration",
-                                     "drift_all",
-                                     "reconstruct_mpoles",
+                                     "self gravity",
+                                     "external gravity",
+                                     "cosmological integration",
+                                     "drift everything",
+                                     "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
                                      "stars"};
@@ -4370,14 +4372,17 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->s_updates,
+    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+           e->max_active_bin, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
-            e->step, e->time, e->timeStep, e->updates, e->g_updates,
-            e->s_updates, e->wallclock_time, e->step_props);
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+            e->max_active_bin, e->updates, e->g_updates, e->s_updates,
+            e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -4385,11 +4390,20 @@ void engine_step(struct engine *e) {
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
+  e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
-  e->time = e->ti_current * e->timeBase + e->timeBegin;
-  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
+
+  if (e->policy & engine_policy_cosmology) {
+    e->time_old = e->time;
+    cosmology_update(e->cosmology, e->ti_current);
+    e->time = e->cosmology->time;
+    e->time_step = e->time - e->time_old;
+  } else {
+    e->time = e->ti_current * e->time_base + e->time_begin;
+    e->time_old = e->ti_old * e->time_base + e->time_begin;
+    e->time_step = (e->ti_current - e->ti_old) * e->time_base;
+  }
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -5172,6 +5186,7 @@ void engine_unpin() {
  * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
+ * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param gravity The #gravity_props used for this run.
  * @param potential The properties of the external potential.
@@ -5183,7 +5198,7 @@ void engine_init(
     struct engine *e, struct space *s, const struct swift_params *params,
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
     const struct hydro_props *hydro, const struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
@@ -5201,16 +5216,15 @@ void engine_init(
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
-  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
-  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
-  e->timeOld = e->timeBegin;
-  e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->time_step = 0.;
+  e->time_base = 0.;
+  e->time_base_inv = 0.;
+  e->time_begin = 0.;
+  e->time_end = 0.;
   e->max_active_bin = num_time_bins;
-  e->timeStep = 0.;
-  e->timeBase = 0.;
-  e->timeBase_inv = 0.;
+  e->min_active_bin = 1;
   e->internal_units = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
@@ -5232,6 +5246,7 @@ void engine_init(
   e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
+  e->cosmology = cosmo;
   e->hydro_properties = hydro;
   e->gravity_properties = gravity;
   e->external_potential = potential;
@@ -5247,13 +5262,32 @@ void engine_init(
   /* Make the space link back to the engine. */
   s->e = e;
 
-  /* Setup the timestep */
-  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-  e->timeBase_inv = 1.0 / e->timeBase;
-  e->ti_current = 0;
-
   /* Initialise VELOCIraptor. */
   init_velociraptor(e);
+  
+  /* Setup the timestep if non-cosmological */
+  if (!(e->policy & engine_policy_cosmology)) {
+    e->time_begin =
+        parser_get_param_double(params, "TimeIntegration:time_begin");
+    e->time_end = parser_get_param_double(params, "TimeIntegration:time_end");
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+
+    e->time_base = (e->time_end - e->time_begin) / max_nr_timesteps;
+    e->time_base_inv = 1.0 / e->time_base;
+    e->ti_current = 0;
+  } else {
+
+    e->time_begin = e->cosmology->time_begin;
+    e->time_end = e->cosmology->time_end;
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+
+    /* Copy the relevent information from the cosmology model */
+    e->time_base = e->cosmology->time_base;
+    e->time_base_inv = e->cosmology->time_base_inv;
+    e->ti_current = 0;
+  }
 }
 
 /**
@@ -5489,12 +5523,13 @@ void engine_config(int restart, struct engine *e,
           "Version: %s \n# "
           "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
           "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-          "+/- %.4f\n# Eta: %f\n",
+          "+/- %.4f\n# Eta: %f\n# Config: %s\n# CFLAGS: %s\n",
           hostname(), git_branch(), git_revision(), compiler_name(),
           compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
           kernel_name, e->hydro_properties->target_neighbours,
           e->hydro_properties->delta_neighbours,
-          e->hydro_properties->eta_neighbours);
+          e->hydro_properties->eta_neighbours, configuration_options(),
+          compilation_cflags());
 
       fprintf(e->file_timesteps,
               "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
@@ -5504,9 +5539,10 @@ void engine_config(int restart, struct engine *e,
               engine_step_prop_snapshot, engine_step_prop_restarts);
 
       fprintf(e->file_timesteps,
-              "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n", "Step", "Time",
-              "Time-step", "Updates", "g-Updates", "s-Updates",
-              "Wall-clock time", clocks_getunit(), "Props");
+              "# %6s %14s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
+              "Time", "Scale-factor", "Time-step", "Time-bins", "Updates",
+              "g-Updates", "s-Updates", "Wall-clock time", clocks_getunit(),
+              "Props");
       fflush(e->file_timesteps);
     }
   }
@@ -5523,11 +5559,11 @@ void engine_config(int restart, struct engine *e,
     if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
   /* Check we have sensible time bounds */
-  if (e->timeBegin >= e->timeEnd)
+  if (e->time_begin >= e->time_end)
     error(
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
-        e->timeEnd, e->timeBegin);
+        e->time_end, e->time_begin);
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
@@ -5536,47 +5572,40 @@ void engine_config(int restart, struct engine *e,
         "size (%e)",
         e->dt_min, e->dt_max);
 
-  /* Deal with timestep */
-  if (!restart) {
-    e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-    e->timeBase_inv = 1.0 / e->timeBase;
-    e->ti_current = 0;
-  }
-
   /* Info about time-steps */
   if (e->nodeID == 0) {
-    message("Absolute minimal timestep size: %e", e->timeBase);
+    message("Absolute minimal timestep size: %e", e->time_base);
 
-    float dt_min = e->timeEnd - e->timeBegin;
+    float dt_min = e->time_end - e->time_begin;
     while (dt_min > e->dt_min) dt_min /= 2.f;
 
     message("Minimal timestep size (on time-line): %e", dt_min);
 
-    float dt_max = e->timeEnd - e->timeBegin;
+    float dt_max = e->time_end - e->time_begin;
     while (dt_max > e->dt_max) dt_max /= 2.f;
 
     message("Maximal timestep size (on time-line): %e", dt_max);
   }
 
-  if (e->dt_min < e->timeBase && e->nodeID == 0)
+  if (e->dt_min < e->time_base && e->nodeID == 0)
     error(
         "Minimal time-step size smaller than the absolute possible minimum "
         "dt=%e",
-        e->timeBase);
+        e->time_base);
 
-  if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
+  if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
     error("Maximal time-step size larger than the simulation run time t=%e",
-          e->timeEnd - e->timeBegin);
+          e->time_end - e->time_begin);
 
   /* Deal with outputs */
   if (e->deltaTimeSnapshot < 0.)
     error("Time between snapshots (%e) must be positive.",
           e->deltaTimeSnapshot);
 
-  if (e->timeFirstSnapshot < e->timeBegin)
+  if (e->timeFirstSnapshot < e->time_begin)
     error(
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
-        e->timeFirstSnapshot, e->timeBegin);
+        e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
@@ -5741,7 +5770,7 @@ void engine_print_policy(struct engine *e) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
     for (int k = 0; k <= engine_maxpolicy; k++)
-      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
@@ -5749,7 +5778,7 @@ void engine_print_policy(struct engine *e) {
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
   for (int k = 0; k <= engine_maxpolicy; k++)
-    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif
@@ -5762,13 +5791,30 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  for (double time = e->timeFirstSnapshot;
-       time < e->timeEnd + e->deltaTimeSnapshot; time += e->deltaTimeSnapshot) {
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->deltaTimeSnapshot;
+  else
+    time_end = e->time_end + e->deltaTimeSnapshot;
+
+  /* Find next snasphot above current time */
+  double time = e->timeFirstSnapshot;
+  while (time < time_end) {
 
     /* Output time on the integer timeline */
-    e->ti_nextSnapshot = (time - e->timeBegin) / e->timeBase;
+    if (e->policy & engine_policy_cosmology)
+      e->ti_nextSnapshot = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_nextSnapshot = (time - e->time_begin) / e->time_base;
 
+    /* Found it? */
     if (e->ti_nextSnapshot > e->ti_current) break;
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->deltaTimeSnapshot;
+    else
+      time += e->deltaTimeSnapshot;
   }
 
   /* Deal with last snapshot */
@@ -5778,10 +5824,15 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   } else {
 
     /* Be nice, talk... */
-    const float next_snapshot_time =
-        e->ti_nextSnapshot * e->timeBase + e->timeBegin;
-    if (e->verbose)
+    if (e->policy & engine_policy_cosmology) {
+      const float next_snapshot_time =
+          exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
+      message("Next output time set to a=%e.", next_snapshot_time);
+    } else {
+      const float next_snapshot_time =
+          e->ti_nextSnapshot * e->time_base + e->time_begin;
       message("Next output time set to t=%e.", next_snapshot_time);
+    }
   }
 }
 
@@ -5824,6 +5875,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   space_struct_dump(e->s, stream);
   units_struct_dump(e->internal_units, stream);
   units_struct_dump(e->snapshotUnits, stream);
+  cosmology_struct_dump(e->cosmology, stream);
 
 #ifdef WITH_MPI
   /* Save the partition for restoration. */
@@ -5836,6 +5888,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   gravity_props_struct_dump(e->gravity_properties, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
+  chemistry_struct_dump(e->chemistry, stream);
   sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
 }
@@ -5875,6 +5928,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   units_struct_restore(us, stream);
   e->snapshotUnits = us;
 
+  struct cosmology *cosmo =
+      (struct cosmology *)malloc(sizeof(struct cosmology));
+  cosmology_struct_restore(cosmo, stream);
+  e->cosmology = cosmo;
+
 #ifdef WITH_MPI
   struct repartition *reparttype =
       (struct repartition *)malloc(sizeof(struct repartition));
@@ -5907,6 +5965,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
+
+  struct chemistry_data *chemistry =
+      (struct chemistry_data *)malloc(sizeof(struct chemistry_data));
+  chemistry_struct_restore(chemistry, stream);
+  e->chemistry = chemistry;
 
   struct sourceterms *sourceterms =
       (struct sourceterms *)malloc(sizeof(struct sourceterms));
