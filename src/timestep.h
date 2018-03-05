@@ -33,14 +33,14 @@
  * @param new_dt The time-step to convert.
  * @param old_bin The old time bin.
  * @param ti_current The current time on the integer time-line.
- * @param timeBase_inv The inverse of the system's minimal time-step.
+ * @param time_base_inv The inverse of the system's minimal time-step.
  */
 __attribute__((always_inline)) INLINE static integertime_t
 make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
-                      double timeBase_inv) {
+                      double time_base_inv) {
 
   /* Convert to integer time */
-  integertime_t new_dti = (integertime_t)(new_dt * timeBase_inv);
+  integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
 
   /* Current time-step */
   integertime_t current_dti = get_integer_timestep(old_bin);
@@ -51,7 +51,7 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
 
   /* Put this timestep on the time line */
   integertime_t dti_timeline = max_nr_timesteps;
-  while (new_dti < dti_timeline) dti_timeline /= 2LL;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
   new_dti = dti_timeline;
 
   /* Make sure we are allowed to increase the timestep size */
@@ -70,24 +70,32 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
 __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
-  float new_dt = FLT_MAX;
+  float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
   if (e->policy & engine_policy_external_gravity)
-    new_dt =
-        min(new_dt, external_gravity_timestep(e->time, e->external_potential,
-                                              e->physical_constants, gp));
+    new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, gp);
 
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
-    new_dt =
-        min(new_dt, gravity_compute_timestep_self(gp, e->gravity_properties));
+    new_dt_ext = gravity_compute_timestep_self(
+        gp, a_hydro, e->gravity_properties, e->cosmology);
+
+  /* Take the minimum of all */
+  float new_dt = min(new_dt_self, new_dt_ext);
+
+  /* Apply cosmology correction */
+  new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
-  new_dt = max(new_dt, e->dt_min);
+  if (new_dt < e->dt_min)
+    error("gpart (id=%lld) wants a time-step (%e) below dt_min (%e)",
+          gp->id_or_neg_offset, new_dt, e->dt_min);
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, gp->time_bin, e->ti_current, e->timeBase_inv);
+      new_dt, gp->time_bin, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }
@@ -104,26 +112,29 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct engine *restrict e) {
 
   /* Compute the next timestep (hydro condition) */
-  const float new_dt_hydro = hydro_compute_timestep(p, xp, e->hydro_properties);
+  const float new_dt_hydro =
+      hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
 
   /* Compute the next timestep (cooling condition) */
   float new_dt_cooling = FLT_MAX;
   if (e->policy & engine_policy_cooling)
     new_dt_cooling = cooling_timestep(e->cooling_func, e->physical_constants,
-                                      e->internal_units, p);
+                                      e->cosmology, e->internal_units, p);
 
   /* Compute the next timestep (gravity condition) */
-  float new_dt_grav = FLT_MAX;
+  float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX,
+        new_dt_ext_grav = FLT_MAX;
   if (p->gpart != NULL) {
 
     if (e->policy & engine_policy_external_gravity)
-      new_dt_grav = min(new_dt_grav, external_gravity_timestep(
-                                         e->time, e->external_potential,
-                                         e->physical_constants, p->gpart));
+      new_dt_ext_grav = external_gravity_timestep(
+          e->time, e->external_potential, e->physical_constants, p->gpart);
 
     if (e->policy & engine_policy_self_gravity)
-      new_dt_grav = min(new_dt_grav, gravity_compute_timestep_self(
-                                         p->gpart, e->gravity_properties));
+      new_dt_self_grav = gravity_compute_timestep_self(
+          p->gpart, p->a_hydro, e->gravity_properties, e->cosmology);
+
+    new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
   }
 
   /* Final time-step is minimum of hydro and gravity */
@@ -137,13 +148,18 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   new_dt = min(new_dt, dt_h_change);
 
+  /* Apply cosmology correction (H==1 if non-cosmological) */
+  new_dt *= e->cosmology->time_step_factor;
+
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
-  new_dt = max(new_dt, e->dt_min);
+  if (new_dt < e->dt_min)
+    error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
+          new_dt, e->dt_min);
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, p->time_bin, e->ti_current, e->timeBase_inv);
+      new_dt, p->time_bin, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }
@@ -157,24 +173,36 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     const struct spart *restrict sp, const struct engine *restrict e) {
 
-  float new_dt = star_compute_timestep(sp);
+  /* Stellar time-step */
+  float new_dt_star = star_compute_timestep(sp);
+
+  /* Gravity time-step */
+  float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
   if (e->policy & engine_policy_external_gravity)
-    new_dt = min(new_dt,
-                 external_gravity_timestep(e->time, e->external_potential,
-                                           e->physical_constants, sp->gpart));
+    new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, sp->gpart);
 
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
-    new_dt = min(new_dt, gravity_compute_timestep_self(sp->gpart,
-                                                       e->gravity_properties));
+    new_dt_self = gravity_compute_timestep_self(
+        sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
+
+  /* Take the minimum of all */
+  float new_dt = min3(new_dt_star, new_dt_self, new_dt_ext);
+
+  /* Apply cosmology correction (H==1 if non-cosmological) */
+  new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
-  new_dt = max(new_dt, e->dt_min);
+  if (new_dt < e->dt_min)
+    error("spart (id=%lld) wants a time-step (%e) below dt_min (%e)", sp->id,
+          new_dt, e->dt_min);
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, sp->time_bin, e->ti_current, e->timeBase_inv);
+      new_dt, sp->time_bin, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }

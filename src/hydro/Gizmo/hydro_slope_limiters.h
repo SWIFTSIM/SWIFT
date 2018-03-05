@@ -91,4 +91,4 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
 
 #endif
 
-#endif  // SWIFT_HYDRO_SLOPE_LIMITERS_H
+#endif /* SWIFT_HYDRO_SLOPE_LIMITERS_H */

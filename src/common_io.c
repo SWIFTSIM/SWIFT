@@ -142,7 +142,7 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  *
  * Calls #error() if an error occurs.
  */
-void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data) {
   hid_t h_attr = 0, h_err = 0;
 
@@ -173,7 +173,7 @@ void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         void* data, int num) {
   hid_t h_space = 0, h_attr = 0, h_err = 0;
-  hsize_t dim[1] = {num};
+  hsize_t dim[1] = {(hsize_t)num};
 
   h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0) {
@@ -375,9 +375,8 @@ void io_write_unit_system(hid_t h_file, const struct unit_system* us,
  * @param h_file The (opened) HDF5 file in which to write
  */
 void io_write_code_description(hid_t h_file) {
-  hid_t h_grpcode = 0;
 
-  h_grpcode = H5Gcreate1(h_file, "/Code", 0);
+  const hid_t h_grpcode = H5Gcreate1(h_file, "/Code", 0);
   if (h_grpcode < 0) error("Error while creating code group");
 
   io_write_attribute_s(h_grpcode, "Code", "SWIFT");
@@ -395,6 +394,9 @@ void io_write_code_description(hid_t h_file) {
 #ifdef HAVE_FFTW
   io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
+#ifdef HAVE_LIBGSL
+  io_write_attribute_s(h_grpcode, "GSL library version", libgsl_version());
+#endif
 #ifdef WITH_MPI
   io_write_attribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
@@ -404,6 +406,25 @@ void io_write_code_description(hid_t h_file) {
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
   H5Gclose(h_grpcode);
+}
+
+/**
+ * @brief Write the #engine policy to the file.
+ * @param h_file File to write to.
+ * @param e The #engine to read the policy from.
+ */
+void io_write_engine_policy(hid_t h_file, const struct engine* e) {
+
+  const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
+  if (h_grp < 0) error("Error while creating policy group");
+
+  for (int i = 1; i <= engine_maxpolicy; ++i)
+    if (e->policy & (1 << i))
+      io_write_attribute_i(h_grp, engine_policy_names[i + 1], 1);
+    else
+      io_write_attribute_i(h_grp, engine_policy_names[i + 1], 0);
+
+  H5Gclose(h_grp);
 }
 
 #endif /* HAVE_HDF5 */
@@ -418,7 +439,7 @@ void io_copy_mapper(void* restrict temp, int N, void* restrict extra_data) {
   const size_t copySize = typeSize * props.dimension;
 
   /* How far are we with this chunk? */
-  char* restrict temp_c = temp;
+  char* restrict temp_c = (char*)temp;
   const ptrdiff_t delta = (temp_c - props.start_temp_c) / copySize;
 
   for (int k = 0; k < N; k++) {
@@ -440,7 +461,7 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
   const size_t dim = props.dimension;
 
   /* How far are we with this chunk? */
-  float* restrict temp_f = temp;
+  float* restrict temp_f = (float*)temp;
   const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
 
   for (int i = 0; i < N; i++)
@@ -460,7 +481,7 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
   const size_t dim = props.dimension;
 
   /* How far are we with this chunk? */
-  double* restrict temp_d = temp;
+  double* restrict temp_d = (double*)temp;
   const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
 
   for (int i = 0; i < N; i++)
@@ -480,7 +501,7 @@ void io_convert_gpart_f_mapper(void* restrict temp, int N,
   const size_t dim = props.dimension;
 
   /* How far are we with this chunk? */
-  float* restrict temp_f = temp;
+  float* restrict temp_f = (float*)temp;
   const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
 
   for (int i = 0; i < N; i++)
@@ -500,7 +521,7 @@ void io_convert_gpart_d_mapper(void* restrict temp, int N,
   const size_t dim = props.dimension;
 
   /* How far are we with this chunk? */
-  double* restrict temp_d = temp;
+  double* restrict temp_d = (double*)temp;
   const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
 
   for (int i = 0; i < N; i++)
@@ -531,7 +552,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
   if (props.conversion == 0) { /* No conversion */
 
     /* Prepare some parameters */
-    char* temp_c = temp;
+    char* temp_c = (char*)temp;
     props.start_temp_c = temp_c;
 
     /* Copy the whole thing into a buffer */
@@ -543,8 +564,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     if (props.convert_part_f != NULL) {
 
       /* Prepare some parameters */
-      float* temp_f = temp;
-      props.start_temp_f = temp;
+      float* temp_f = (float*)temp;
+      props.start_temp_f = (float*)temp;
       props.e = e;
 
       /* Copy the whole thing into a buffer */
@@ -555,8 +576,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     } else if (props.convert_part_d != NULL) {
 
       /* Prepare some parameters */
-      double* temp_d = temp;
-      props.start_temp_d = temp;
+      double* temp_d = (double*)temp;
+      props.start_temp_d = (double*)temp;
       props.e = e;
 
       /* Copy the whole thing into a buffer */
@@ -567,8 +588,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     } else if (props.convert_gpart_f != NULL) {
 
       /* Prepare some parameters */
-      float* temp_f = temp;
-      props.start_temp_f = temp;
+      float* temp_f = (float*)temp;
+      props.start_temp_f = (float*)temp;
       props.e = e;
 
       /* Copy the whole thing into a buffer */
@@ -579,8 +600,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     } else if (props.convert_gpart_d != NULL) {
 
       /* Prepare some parameters */
-      double* temp_d = temp;
-      props.start_temp_d = temp;
+      double* temp_d = (double*)temp;
+      props.start_temp_d = (double*)temp;
       props.e = e;
 
       /* Copy the whole thing into a buffer */
@@ -601,10 +622,12 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      swift_declare_aligned_ptr(double, temp_d, temp, IO_BUFFER_ALIGNMENT);
+      swift_declare_aligned_ptr(double, temp_d, (double*)temp,
+                                IO_BUFFER_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      swift_declare_aligned_ptr(float, temp_f, temp, IO_BUFFER_ALIGNMENT);
+      swift_declare_aligned_ptr(float, temp_f, (float*)temp,
+                                IO_BUFFER_ALIGNMENT);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }

@@ -46,3 +46,17 @@ GrackleCooling:
   UVbackground: 0 # Enable or not the UV background
   GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
   GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units
+
+EAGLEChemistry:
+  InitMetallicity:         0.
+  InitAbundance_Hydrogen:  0.752
+  InitAbundance_Helium:    0.248
+  InitAbundance_Carbon:    0.000
+  InitAbundance_Nitrogen:  0.000
+  InitAbundance_Oxygen:    0.000
+  InitAbundance_Neon:      0.000
+  InitAbundance_Magnesium: 0.000
+  InitAbundance_Silicon:   0.000
+  InitAbundance_Iron:      0.000
+  CalciumOverSilicon:      0.0941736
+  SulphurOverSilicon:      0.6054160

@@ -34,6 +34,7 @@
 
 /* Includes. */
 #include "barrier.h"
+#include "chemistry_struct.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
@@ -82,7 +83,8 @@ enum engine_step_properties {
   engine_step_prop_redistribute = (1 << 1),
   engine_step_prop_repartition = (1 << 2),
   engine_step_prop_statistics = (1 << 3),
-  engine_step_prop_snapshot = (1 << 4)
+  engine_step_prop_snapshot = (1 << 4),
+  engine_step_prop_restarts = (1 << 5)
 };
 
 /* Some constants */
@@ -124,13 +126,13 @@ struct engine {
   double dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  double timeBegin;
+  double time_begin;
 
   /* Time of the simulation end */
-  double timeEnd;
+  double time_end;
 
   /* The previous system time. */
-  double timeOld;
+  double time_old;
   integertime_t ti_old;
 
   /* The current system time. */
@@ -140,12 +142,15 @@ struct engine {
   /* The highest active bin at this time */
   timebin_t max_active_bin;
 
+  /* The lowest active bin at this time */
+  timebin_t min_active_bin;
+
   /* Time step */
-  double timeStep;
+  double time_step;
 
   /* Time base */
-  double timeBase;
-  double timeBase_inv;
+  double time_base;
+  double time_base_inv;
 
   /* Minimal hydro ti_end for the next time-step */
   integertime_t ti_hydro_end_min;
@@ -193,6 +198,7 @@ struct engine {
   char snapshotBaseName[PARSER_MAX_LINE_SIZE];
   int snapshotCompression;
   struct unit_system *snapshotUnits;
+  int snapshotOutputCount;
 
   /* Statistics information */
   FILE *file_stats;
@@ -265,6 +271,9 @@ struct engine {
   /* Physical constants definition */
   const struct phys_const *physical_constants;
 
+  /* The cosmological model */
+  struct cosmology *cosmology;
+
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
@@ -277,6 +286,9 @@ struct engine {
   /* Properties of the cooling scheme */
   const struct cooling_function_data *cooling_func;
 
+  /* Properties of the chemistry model */
+  const struct chemistry_data *chemistry;
+
   /* Properties of source terms */
   struct sourceterms *sourceterms;
 
@@ -286,6 +298,27 @@ struct engine {
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;
+
+  /* Whether to dump restart files. */
+  int restart_dump;
+
+  /* Whether to save previous generation of restart files. */
+  int restart_save;
+
+  /* Whether to dump restart files after the last step. */
+  int restart_onexit;
+
+  /* Name of the restart file. */
+  const char *restart_file;
+
+  /* Ticks between restart dumps. */
+  ticks restart_dt;
+
+  /* Time after which next dump will occur. */
+  ticks restart_next;
+
+  /* Maximum number of tasks needed for restarting. */
+  int restart_max_tasks;
 };
 
 /* Function prototypes. */
@@ -297,17 +330,19 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, long long Ngas, long long Ndm, int with_aff,
-                 int policy, int verbose, struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 const struct hydro_props *hydro,
-                 const struct gravity_props *gravity,
-                 const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
-                 struct sourceterms *sourceterms);
+void engine_init(
+    struct engine *e, struct space *s, const struct swift_params *params,
+    long long Ngas, long long Ndm, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
+    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct external_potential *potential,
+    const struct cooling_function_data *cooling_func,
+    const struct chemistry_data *chemistry, struct sourceterms *sourceterms);
+void engine_config(int restart, struct engine *e,
+                   const struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
@@ -331,5 +366,10 @@ void engine_pin();
 void engine_unpin();
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
+
+/* Struct dump/restore support. */
+void engine_struct_dump(struct engine *e, FILE *stream);
+void engine_struct_restore(struct engine *e, FILE *stream);
+void engine_dump_restarts(struct engine *e, int drifted_all, int final_step);
 
 #endif /* SWIFT_ENGINE_H */

@@ -17,7 +17,7 @@
 # Add the source directory and debug to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS)
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(GRACKLE_LIBS)
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
@@ -62,7 +62,7 @@ test27cells_SOURCES = test27cells.c
 
 test27cells_subset_SOURCES = test27cells.c
 
-test27cells_subset_CFLAGS = $(AM_CFLAGS) -DDOSELF_SUBSET
+test27cells_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 

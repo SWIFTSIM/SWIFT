@@ -46,7 +46,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
     sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
-    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h
+    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
+    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -57,14 +58,14 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
-    collectgroup.c hydro_space.c equation_of_state.c
-
+    collectgroup.c hydro_space.c equation_of_state.c \
+    chemistry.c cosmology.c restart.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h part_type.h periodic.h \
+		 dimension.h equation_of_state.h part_type.h periodic.h memswap.h dump.h logger.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -117,7 +118,19 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
-                 memswap.h dump.h logger.h
+		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
+                 chemistry/none/chemistry.h \
+		 chemistry/none/chemistry_io.h \
+		 chemistry/none/chemistry_struct.h \
+		 chemistry/none/chemistry_iact.h \
+                 chemistry/gear/chemistry.h \
+		 chemistry/gear/chemistry_io.h \
+		 chemistry/gear/chemistry_struct.h \
+		 chemistry/gear/chemistry_iact.h \
+                 chemistry/EAGLE/chemistry.h \
+		 chemistry/EAGLE/chemistry_io.h \
+		 chemistry/EAGLE/chemistry_struct.h\
+		 chemistry/EAGLE/chemistry_iact.h
 
 
 # Sources and flags for regular library

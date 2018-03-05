@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.6.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
@@ -53,6 +53,9 @@ AC_USE_SYSTEM_EXTENSIONS
 # Check for compiler version and vendor.
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
+
+#  Restrict support.
+AC_C_RESTRICT
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
@@ -404,6 +407,14 @@ AC_HEADER_STDC
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
+# Check for GSL
+have_gsl="no"
+AC_CHECK_LIB([gslcblas], [cblas_dgemm])
+AC_CHECK_LIB([gsl], [gsl_integration_qag])
+if test "x$ac_cv_lib_gslcblas_cblas_dgemm" != "x"; then
+   have_gsl="yes"
+fi
+
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC" LDFLAGS="$LDFLAGS $PTHREAD_LIBS $LIBS"],
@@ -453,6 +464,14 @@ fi
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# METIS fixed width integer printing can require this, so define. Only needed
+# for some non C99 compilers, i.e. C++ pre C++11.
+AH_VERBATIM([__STDC_FORMAT_MACROS],
+            [/* Needed to get PRIxxx macros from stdint.h when not using C99 */
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif])
 
 # Check for grackle. 
 have_grackle="no"
@@ -927,8 +946,34 @@ case "$with_cooling" in
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
    ;; 
+   EAGLE)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+   ;; 
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+#  chemistry function
+AC_ARG_WITH([chemistry],
+   [AS_HELP_STRING([--with-chemistry=<function>],
+      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+   )],
+   [with_chemistry="$withval"],
+   [with_chemistry="none"]
+)
+case "$with_chemistry" in
+   none)
+      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
+   ;; 
+   gear)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+   ;; 
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+   ;; 
+   *)
+      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
    ;;
 esac
 
@@ -1017,6 +1062,7 @@ AC_MSG_RESULT([
     - parallel      : $have_parallel_hdf5
    Metis enabled    : $have_metis
    FFTW3 enabled    : $have_fftw3
+   GSL enabled      : $have_gsl
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle
    Using tcmalloc   : $have_tcmalloc
@@ -1031,6 +1077,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
    
    External potential  : $with_potential
    Multipole order     : $with_multipole_order

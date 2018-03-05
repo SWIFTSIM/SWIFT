@@ -19,6 +19,7 @@
 #ifndef SWIFT_DEFAULT_HYDRO_PART_H
 #define SWIFT_DEFAULT_HYDRO_PART_H
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -33,6 +34,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /* Gravitational acceleration at the last full step. */
+  float a_grav[3];
+
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
@@ -45,6 +49,12 @@ struct xpart {
 
 /* Data of a single particle. */
 struct part {
+
+  /* Particle ID. */
+  long long id;
+
+  /* Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
   /* Particle position. */
   double x[3];
@@ -116,11 +126,8 @@ struct part {
   /* Particle mass. */
   float mass;
 
-  /* Particle ID. */
-  long long id;
-
-  /* Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Particle time-bin */
   timebin_t time_bin;

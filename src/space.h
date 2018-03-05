@@ -30,11 +30,11 @@
 #include <stddef.h>
 
 /* Includes. */
+#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
-#include "space.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -43,8 +43,9 @@ struct cell;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
-#define space_subsize_pair_default 256000000
-#define space_subsize_self_default 32000
+#define space_subsize_pair_hydro_default 256000000
+#define space_subsize_self_hydro_default 32000
+#define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -56,8 +57,9 @@ struct cell;
 /* Split size. */
 extern int space_splitsize;
 extern int space_maxsize;
-extern int space_subsize_pair;
-extern int space_subsize_self;
+extern int space_subsize_pair_hydro;
+extern int space_subsize_self_hydro;
+extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
 
 /**
@@ -221,6 +223,12 @@ void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
+void space_first_init_parts(struct space *s,
+                            const struct chemistry_data *chemistry,
+                            const struct cooling_function_data *cool_func);
+void space_first_init_gparts(struct space *s,
+                             const struct gravity_props *grav_props);
+void space_first_init_sparts(struct space *s);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
@@ -234,5 +242,8 @@ void space_replicate(struct space *s, int replicate, int verbose);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
+
+void space_struct_dump(struct space *s, FILE *stream);
+void space_struct_restore(struct space *s, FILE *stream);
 
 #endif /* SWIFT_SPACE_H */

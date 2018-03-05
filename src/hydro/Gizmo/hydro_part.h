@@ -19,6 +19,7 @@
 #ifndef SWIFT_GIZMO_HYDRO_PART_H
 #define SWIFT_GIZMO_HYDRO_PART_H
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the computation. */
@@ -32,6 +33,9 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+
+  /* Gravitational acceleration at the last full step. */
+  float a_grav[3];
 
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
@@ -187,6 +191,9 @@ struct part {
     float mflux[3];
 
   } gravity;
+
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Time-step length */
   timebin_t time_bin;

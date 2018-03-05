@@ -60,7 +60,7 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type);
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
-void io_read_attribute(hid_t grp, char* name, enum IO_DATA_TYPE type,
+void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
 
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
@@ -73,6 +73,7 @@ void io_write_attribute_l(hid_t grp, const char* name, long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_code_description(hid_t h_file);
+void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
 void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank);
 void io_write_unit_system(hid_t h_grp, const struct unit_system* us,

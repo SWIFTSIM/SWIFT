@@ -105,17 +105,24 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   /* Unpack the data */
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
+  const struct engine *e = s->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+  const double time = e->time;
   const struct part *restrict parts = (struct part *)map_data;
   const struct xpart *restrict xparts =
       s->xparts + (ptrdiff_t)(parts - s->parts);
-  const integertime_t ti_current = s->e->ti_current;
-  const double timeBase = s->e->timeBase;
-  const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
-  /* Required for external potential energy */
-  const struct external_potential *potential = s->e->external_potential;
-  const struct phys_const *phys_const = s->e->physical_constants;
+  /* Some information about the physical model */
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
+  /* Some constants from cosmology */
+  const float a_inv = cosmo->a_inv;
+  const float a_inv2 = a_inv * a_inv;
 
   /* Local accumulator */
   struct statistics stats;
@@ -130,17 +137,35 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
 
     /* Get useful time variables */
-    const integertime_t ti_begin =
+    const integertime_t ti_beg =
         get_integer_time_begin(ti_current, p->time_bin);
     const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
+
+    /* Get time-step since the last kick */
+    float dt_kick_grav, dt_kick_hydro, dt_therm;
+    if (with_cosmology) {
+      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
+      dt_kick_grav -=
+          cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+      dt_kick_hydro =
+          cosmology_get_hydro_kick_factor(cosmo, ti_beg, ti_current);
+      dt_kick_hydro -=
+          cosmology_get_hydro_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+      dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_beg, ti_current);
+      dt_therm -=
+          cosmology_get_therm_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+    } else {
+      dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+      dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+      dt_therm = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+    }
 
     float v[3];
-    hydro_get_drifted_velocities(p, xp, dt, v);
+    hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, v);
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     const float m = hydro_get_mass(p);
-    const float entropy = hydro_get_entropy(p);
-    const float u_int = hydro_get_internal_energy(p);
+    const float entropy = hydro_get_physical_entropy(p, cosmo);
+    const float u_inter = hydro_get_physical_internal_energy(p, cosmo);
 
     /* Collect mass */
     stats.mass += m;
@@ -161,11 +186,12 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
 
     /* Collect energies. */
-    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_int += m * u_int;
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
+                   a_inv2; /* 1/2 m a^2 \dot{r}^2 */
+    stats.E_int += m * u_inter;
     stats.E_rad += cooling_get_radiated_energy(xp);
     if (gp != NULL) {
-      stats.E_pot_self += m * gravity_get_potential(gp);
+      stats.E_pot_self += m * gravity_get_potential(gp) * a_inv;
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
     }
@@ -192,15 +218,22 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   /* Unpack the data */
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
+  const struct engine *e = s->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+  const double time = e->time;
   const struct gpart *restrict gparts = (struct gpart *)map_data;
-  const integertime_t ti_current = s->e->ti_current;
-  const double timeBase = s->e->timeBase;
-  const double time = s->e->time;
   struct statistics *const global_stats = data->stats;
 
-  /* Required for external potential energy */
-  const struct external_potential *potential = s->e->external_potential;
-  const struct phys_const *phys_const = s->e->physical_constants;
+  /* Some information about the physical model */
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
+  /* Some constants from cosmology */
+  const float a_inv = cosmo->a_inv;
+  const float a_inv2 = a_inv * a_inv;
 
   /* Local accumulator */
   struct statistics stats;
@@ -216,15 +249,24 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     if (gp->id_or_neg_offset < 0) continue;
 
     /* Get useful variables */
-    const integertime_t ti_begin =
+    const integertime_t ti_beg =
         get_integer_time_begin(ti_current, gp->time_bin);
     const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
-    const float dt = (ti_current - ((ti_begin + ti_end) / 2)) * timeBase;
+
+    /* Get time-step since the last kick */
+    float dt_kick_grav;
+    if (with_cosmology) {
+      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
+      dt_kick_grav -=
+          cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+    } else {
+      dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+    }
 
     /* Extrapolate velocities */
-    const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt,
-                        gp->v_full[1] + gp->a_grav[1] * dt,
-                        gp->v_full[2] + gp->a_grav[2] * dt};
+    const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt_kick_grav,
+                        gp->v_full[1] + gp->a_grav[1] * dt_kick_grav,
+                        gp->v_full[2] + gp->a_grav[2] * dt_kick_grav};
 
     const float m = gravity_get_mass(gp);
     const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
@@ -248,8 +290,9 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
 
     /* Collect energies. */
-    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    stats.E_pot_self += m * gravity_get_potential(gp);
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
+                   a_inv2; /* 1/2 m a^2 \dot{r}^2 */
+    stats.E_pot_self += m * gravity_get_potential(gp) * a_inv;
     stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                time, potential, phys_const, gp);
   }

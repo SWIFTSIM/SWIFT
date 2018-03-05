@@ -152,4 +152,4 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
   }
 }
 
-#endif  // SWIFT_HYDRO_VELOCITIES_H
+#endif /* SWIFT_HYDRO_VELOCITIES_H */

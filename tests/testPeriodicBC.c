@@ -49,7 +49,7 @@
 #define DOPAIR1_NAME "runner_dopair1_density"
 #endif
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 enum velocity_types {
   velocity_zero,
@@ -204,9 +204,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
   }
 }
 
@@ -236,7 +236,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
-            hydro_get_density(&main_cell->parts[pid]),
+            hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
@@ -332,7 +332,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 #endif
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, runner.e->cosmology);
 
   /* Dump particles from the main cell. */
   dump_particle_fields(swiftOutputFileName, main_cell, loc_i, loc_j, loc_k);
@@ -370,7 +370,7 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 #endif
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, runner.e->cosmology);
 
   /* Dump */
   dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
@@ -380,7 +380,10 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 /* And go... */
 int main(int argc, char *argv[]) {
 
+#ifdef HAVE_SETAFFINITY
   engine_pin();
+#endif
+
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
@@ -492,6 +495,10 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
 
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];

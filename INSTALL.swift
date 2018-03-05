@@ -34,12 +34,16 @@ directory. See README for run parameters.
 
 SWIFT has been successfully built and tested with the following compilers:
 
-  - GCC 4.8.x  
+  - GCC 4.8.x
   - Intel ICC 15.0.x
-  - clang 3.4.x 
+  - clang 3.4.x
 
 More recent versions and slightly older ones should also be able to
 build the software.
+
+It has also been built with Intel and GNU C++ compilers, but that currently
+requires the --disable-vec and, for Intel, --disable-compiler-warnings
+configure options.
 
 By default an attempt to choose suitable set of optimizing compiler flags
 will be made, targeted for the host machine of the build. If this doesn't
@@ -61,7 +65,7 @@ You could also add some additional flags:
 
     ./configure --enable-debug --disable-optimization CFLAGS="-O2"
 
-for instance. GCC address sanitizer flags can be included using the 
+for instance. GCC address sanitizer flags can be included using the
 
     ./configure --enable-sanitizer
 
@@ -112,8 +116,10 @@ before you can build it.
 	much like the CC one. Use this when your MPI compiler has a
 	none-standard name.
 
+ - GSL: To use cosmological time integration, a version of the GSL
+        must be available. 
 
- - libtool: The build system relies on libtool.
+ - libtool: The build system relies on libtool as well as the other autotools.
 
 
                            Optional Dependencies

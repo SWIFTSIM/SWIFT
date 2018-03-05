@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
@@ -18,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_HYDRO_GRADIENTS_H
-#define SWIFT_HYDRO_GRADIENTS_H
+#ifndef SWIFT_HYDRO_GIZMO_GRADIENTS_H
+#define SWIFT_HYDRO_GIZMO_GRADIENTS_H
 
 #include "hydro_slope_limiters.h"
 #include "hydro_unphysical.h"
@@ -46,7 +45,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
-    struct part* p) {}
+    struct part *p) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop
@@ -59,8 +58,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, float* dx, float hi, float hj, struct part* pi, struct part* pj) {
-}
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop: non-symmetric
@@ -74,8 +73,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, float* dx, float hi, float hj,
-                               struct part* pi, struct part* pj) {}
+hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj) {}
 
 /**
  * @brief Finalize the gradient variables after all data have been collected
@@ -83,7 +83,7 @@ hydro_gradients_nonsym_collect(float r2, float* dx, float hi, float hj,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
-    struct part* p) {}
+    struct part *p) {}
 
 #endif
 
@@ -92,8 +92,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
  * gradients_none does nothing, since all gradients are zero -- are they?).
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
-    struct part* pi, struct part* pj, float hi, float hj, float* dx, float r,
-    float* xij_i, float* Wi, float* Wj) {
+    struct part* restrict pi, struct part* restrict pj, float hi, float hj,
+    const float* dx, float r, float* xij_i, float* Wi, float* Wj) {
 
   float dWi[5], dWj[5];
   float xij_j[3];
@@ -160,4 +160,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   gizmo_check_physical_quantity("pressure", Wj[4]);
 }
 
-#endif  // SWIFT_HYDRO_GRADIENTS_H
+#endif /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */

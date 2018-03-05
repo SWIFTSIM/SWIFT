@@ -51,7 +51,10 @@
 #include "active.h"
 #include "atomic.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "clocks.h"
+#include "cooling.h"
+#include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -64,10 +67,12 @@
 #include "partition.h"
 #include "profiler.h"
 #include "proxy.h"
+#include "restart.h"
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
+#include "sourceterms.h"
 #include "statistics.h"
 #include "timers.h"
 #include "tools.h"
@@ -82,15 +87,15 @@ const char *engine_policy_names[] = {"none",
                                      "steal",
                                      "keep",
                                      "block",
-                                     "cpu_tight",
+                                     "cpu tight",
                                      "mpi",
-                                     "numa_affinity",
+                                     "numa affinity",
                                      "hydro",
-                                     "self_gravity",
-                                     "external_gravity",
-                                     "cosmology_integration",
-                                     "drift_all",
-                                     "reconstruct_mpoles",
+                                     "self gravity",
+                                     "external gravity",
+                                     "cosmological integration",
+                                     "drift everything",
+                                     "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
                                      "stars"};
@@ -2093,7 +2098,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Also allocate the MPI requests */
   const int count_requests = count_send_requests + count_recv_requests;
-  MPI_Request *requests = malloc(sizeof(MPI_Request) * count_requests);
+  MPI_Request *requests =
+      (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
   if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
@@ -2144,7 +2150,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   }
 
   /* Wait for all the requests to arrive home */
-  MPI_Status *stats = malloc(count_requests * sizeof(MPI_Status));
+  MPI_Status *stats = (MPI_Status *)malloc(count_requests * sizeof(MPI_Status));
   int res;
   if ((res = MPI_Waitall(count_requests, requests, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < count_requests; ++k) {
@@ -2334,7 +2340,8 @@ void engine_make_self_gravity_tasks(struct engine *e) {
                                           task_subtype_none, 0, 0, NULL, NULL);
 
     /* Create a grid of ghosts to deal with the dependencies */
-    if ((ghosts = malloc(n_ghosts * sizeof(struct task *))) == 0)
+    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) ==
+        0)
       error("Error allocating memory for gravity fft ghosts");
 
     /* Make the ghosts implicit and add the dependencies */
@@ -3045,7 +3052,8 @@ void engine_maketasks(struct engine *e) {
     e->size_links += s->tot_cells * self_grav_tasks_per_cell;
 
   /* Allocate the new list */
-  if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
+  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
+      NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
@@ -3512,7 +3520,7 @@ int engine_marktasks(struct engine *e) {
   int rebuild_space = 0;
 
   /* Run through the tasks and mark as skip or not. */
-  size_t extra_data[3] = {(size_t)e, rebuild_space, (size_t)&e->sched};
+  size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 0, extra_data);
   rebuild_space = extra_data[1];
@@ -3752,10 +3760,11 @@ void engine_prepare(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
-     * That can include cells that have not
-     * previously been active on this rank. */
-    space_check_drift_point(e->s, e->ti_old,
-                            e->policy & engine_policy_self_gravity);
+     * That can include cells that have not previously been active on this
+     * rank. Skip if haven't got any cells (yet). */
+    if (e->s->cells_top != NULL)
+      space_check_drift_point(e->s, e->ti_old,
+                              e->policy & engine_policy_self_gravity);
   }
 #endif
 
@@ -3768,7 +3777,7 @@ void engine_prepare(struct engine *e) {
   /* Unskip active tasks and check for rebuild */
   engine_unskip(e);
 
-  /* Re-rank the tasks every now and then. */
+  /* Re-rank the tasks every now and then. XXX this never executes. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     scheduler_reweight(&e->sched, e->verbose);
   }
@@ -4160,6 +4169,25 @@ void engine_launch(struct engine *e) {
 }
 
 /**
+ * @brief Calls the 'first init' function on the particles of all types.
+ *
+ * @param e The #engine.
+ */
+void engine_first_init_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for a run */
+  space_first_init_parts(e->s, e->chemistry, e->cooling_func);
+  space_first_init_gparts(e->s, e->gravity_properties);
+  space_first_init_sparts(e->s);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
  * @brief Initialises the particles and set them in a state ready to move
  *forward in time.
  *
@@ -4177,14 +4205,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  /* Start by setting the particles in a good state */
+  if (e->nodeID == 0) message("Setting particles to a valid state...");
+  engine_first_init_particles(e);
+
   if (e->nodeID == 0) message("Computing initial gas densities.");
-
-  /* Initialise the softening lengths */
-  if (e->policy & engine_policy_self_gravity) {
-
-    for (size_t i = 0; i < s->nr_gparts; ++i)
-      gravity_init_softening(&s->gparts[i], e->gravity_properties);
-  }
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, clean_h_values);
@@ -4259,7 +4284,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
 
   /* Run the 0th time-step */
+  TIMER_TIC2;
   engine_launch(e);
+  TIMER_TOC2(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -4370,14 +4397,17 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n", e->step, e->time,
-           e->timeStep, e->updates, e->g_updates, e->s_updates,
+    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+           e->max_active_bin, e->updates, e->g_updates, e->s_updates,
            e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %12zu %12zu %12zu %21.3f %6d\n",
-            e->step, e->time, e->timeStep, e->updates, e->g_updates,
-            e->s_updates, e->wallclock_time, e->step_props);
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+            e->max_active_bin, e->updates, e->g_updates, e->s_updates,
+            e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -4385,11 +4415,20 @@ void engine_step(struct engine *e) {
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
+  e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
-  e->time = e->ti_current * e->timeBase + e->timeBegin;
-  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
   e->step_props = engine_step_prop_none;
+
+  if (e->policy & engine_policy_cosmology) {
+    e->time_old = e->time;
+    cosmology_update(e->cosmology, e->ti_current);
+    e->time = e->cosmology->time;
+    e->time_step = e->time - e->time_old;
+  } else {
+    e->time = e->ti_current * e->time_base + e->time_begin;
+    e->time_old = e->ti_old * e->time_base + e->time_begin;
+    e->time_step = (e->ti_current - e->ti_old) * e->time_base;
+  }
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -4448,7 +4487,7 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Let's trigger a rebuild every-so-often for good measure */
+  /* Let's trigger a non-SPH rebuild every-so-often for good measure */
   if (!(e->policy & engine_policy_hydro) &&  // MATTHIEU improve this
       (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
     e->forcerebuild = 1;
@@ -4461,9 +4500,8 @@ void engine_step(struct engine *e) {
   e->forcerebuild = e->collect_group1.forcerebuild;
 
   /* Save some statistics ? */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics)
     e->save_stats = 1;
-  }
 
   /* Do we want a snapshot? */
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
@@ -4471,8 +4509,9 @@ void engine_step(struct engine *e) {
 
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
-  if (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats)
-    engine_drift_all(e);
+  int drifted_all =
+      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats);
+  if (drifted_all) engine_drift_all(e);
 
   /* Write a snapshot ? */
   if (e->dump_snapshot) {
@@ -4512,6 +4551,51 @@ void engine_step(struct engine *e) {
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
 #endif
+
+  /* Final job is to create a restart file if needed. */
+  engine_dump_restarts(e, drifted_all, e->restart_onexit && engine_is_done(e));
+}
+
+/**
+ * @brief dump restart files if it is time to do so and dumps are enabled.
+ *
+ * @param e the engine.
+ * @param drifted_all true if a drift_all has just been performed.
+ * @param force force a dump, if dumping is enabled.
+ */
+void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
+
+  if (e->restart_dump) {
+    ticks tic = getticks();
+
+    /* Dump when the time has arrived, or we are told to. */
+    int dump = ((tic > e->restart_next) || force);
+
+#ifdef WITH_MPI
+    /* Synchronize this action from rank 0 (ticks may differ between
+     * machines). */
+    MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+    if (dump) {
+      /* Clean out the previous saved files, if found. Do this now as we are
+       * MPI synchronized. */
+      restart_remove_previous(e->restart_file);
+
+      /* Drift all particles first (may have just been done). */
+      if (!drifted_all) engine_drift_all(e);
+      restart_write(e, e->restart_file);
+
+      if (e->verbose)
+        message("Dumping restart files took %.3f %s",
+                clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+      /* Time after which next dump will occur. */
+      e->restart_next += e->restart_dt;
+
+      /* Flag that we dumped the restarts */
+      e->step_props |= engine_step_prop_restarts;
+    }
+  }
 }
 
 /**
@@ -5106,73 +5190,61 @@ void engine_unpin() {
 }
 
 /**
- * @brief init an engine with the given number of threads, queues, and
- *      the given policy.
+ * @brief init an engine struct with the necessary properties for the
+ *        simulation.
+ *
+ * Note do not use when restarting. Engine initialisation
+ * is completed by a call to engine_config().
  *
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
- * @param nr_nodes The number of MPI ranks.
- * @param nodeID The MPI rank of this node.
- * @param nr_threads The number of threads per MPI rank.
  * @param Ngas total number of gas particles in the simulation.
  * @param Ndm total number of gravity particles in the simulation.
- * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
+ * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param gravity The #gravity_props used for this run.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, long long Ngas, long long Ndm, int with_aff,
-                 int policy, int verbose, struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 const struct hydro_props *hydro,
-                 const struct gravity_props *gravity,
-                 const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
-                 struct sourceterms *sourceterms) {
+void engine_init(
+    struct engine *e, struct space *s, const struct swift_params *params,
+    long long Ngas, long long Ndm, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
+    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct external_potential *potential,
+    const struct cooling_function_data *cooling_func,
+    const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
 
-  /* Store the values. */
+  /* Store the all values in the fields of the engine. */
   e->s = s;
-  e->nr_threads = nr_threads;
   e->policy = policy;
   e->step = 0;
-  e->nr_nodes = nr_nodes;
-  e->nodeID = nodeID;
   e->total_nr_parts = Ngas;
   e->total_nr_gparts = Ndm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
-  e->forcerebuild = 1;
-  e->forcerepart = 0;
   e->reparttype = reparttype;
-  e->dump_snapshot = 0;
-  e->save_stats = 0;
-  e->step_props = engine_step_prop_none;
-  e->links = NULL;
-  e->nr_links = 0;
-  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
-  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
-  e->timeOld = e->timeBegin;
-  e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->time_step = 0.;
+  e->time_base = 0.;
+  e->time_base_inv = 0.;
+  e->time_begin = 0.;
+  e->time_end = 0.;
   e->max_active_bin = num_time_bins;
-  e->timeStep = 0.;
-  e->timeBase = 0.;
-  e->timeBase_inv = 0.;
+  e->min_active_bin = 1;
   e->internal_units = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
@@ -5182,12 +5254,11 @@ void engine_init(struct engine *e, struct space *s,
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
   e->snapshotCompression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshotUnits = malloc(sizeof(struct unit_system));
+  e->snapshotUnits = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
+  e->snapshotOutputCount = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
-  e->file_stats = NULL;
-  e->file_timesteps = NULL;
   e->deltaTimeStatistics =
       parser_get_param_double(params, "Statistics:delta_time");
   e->timeLastStatistics = 0;
@@ -5195,20 +5266,97 @@ void engine_init(struct engine *e, struct space *s,
   e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
+  e->cosmology = cosmo;
   e->hydro_properties = hydro;
   e->gravity_properties = gravity;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->chemistry = chemistry;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
 #endif
-  engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
   s->e = e;
+
+  /* Setup the timestep if non-cosmological */
+  if (!(e->policy & engine_policy_cosmology)) {
+    e->time_begin =
+        parser_get_param_double(params, "TimeIntegration:time_begin");
+    e->time_end = parser_get_param_double(params, "TimeIntegration:time_end");
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+
+    e->time_base = (e->time_end - e->time_begin) / max_nr_timesteps;
+    e->time_base_inv = 1.0 / e->time_base;
+    e->ti_current = 0;
+  } else {
+
+    e->time_begin = e->cosmology->time_begin;
+    e->time_end = e->cosmology->time_end;
+    e->time_old = e->time_begin;
+    e->time = e->time_begin;
+
+    /* Copy the relevent information from the cosmology model */
+    e->time_base = e->cosmology->time_base;
+    e->time_base_inv = e->cosmology->time_base_inv;
+    e->ti_current = 0;
+  }
+}
+
+/**
+ * @brief configure an engine with the given number of threads, queues
+ *        and core affinity. Also initialises the scheduler and opens various
+ *        output files, computes the next timestep and initialises the
+ *        threadpool.
+ *
+ * Assumes the engine is correctly initialised i.e. is restored from a restart
+ * file or has been setup by engine_init(). When restarting any output log
+ * files are positioned so that further output is appended. Note that
+ * parameters are not read from the engine, just the parameter file, this
+ * allows values derived in this function to be changed between runs.
+ * When not restarting params should be the same as given to engine_init().
+ *
+ * @param restart true when restarting the application.
+ * @param e The #engine.
+ * @param params The parsed parameter file.
+ * @param nr_nodes The number of MPI ranks.
+ * @param nodeID The MPI rank of this node.
+ * @param nr_threads The number of threads per MPI rank.
+ * @param with_aff use processor affinity, if supported.
+ * @param verbose Is this #engine talkative ?
+ * @param restart_file The name of our restart file.
+ */
+void engine_config(int restart, struct engine *e,
+                   const struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file) {
+
+  /* Store the values and initialise global fields. */
+  e->nodeID = nodeID;
+  e->nr_threads = nr_threads;
+  e->nr_nodes = nr_nodes;
+  e->proxy_ind = NULL;
+  e->nr_proxies = 0;
+  e->forcerebuild = 1;
+  e->forcerepart = 0;
+  e->dump_snapshot = 0;
+  e->save_stats = 0;
+  e->step_props = engine_step_prop_none;
+  e->links = NULL;
+  e->nr_links = 0;
+  e->file_stats = NULL;
+  e->file_timesteps = NULL;
+  e->verbose = verbose;
+  e->wallclock_time = 0.f;
+  e->restart_dump = 0;
+  e->restart_file = restart_file;
+  e->restart_next = 0;
+  e->restart_dt = 0;
+  engine_rank = nodeID;
 
   /* Get the number of queues */
   int nr_queues =
@@ -5216,7 +5364,7 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
-  s->nr_queues = nr_queues;
+  e->s->nr_queues = nr_queues;
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
@@ -5227,7 +5375,7 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
     error("must allocate dynamic cpu_set_t (too many cores per node)");
 
-  char *buf = malloc((nr_cores + 1) * sizeof(char));
+  char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
   buf[nr_cores] = '\0';
   for (int j = 0; j < nr_cores; ++j) {
     /* Reversed bit order from convention, but same as e.g. Intel MPI's
@@ -5242,7 +5390,7 @@ void engine_init(struct engine *e, struct space *s,
 
   if (with_aff) {
 
-    cpuid = malloc(nr_affinity_cores * sizeof(int));
+    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
 
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
@@ -5254,13 +5402,13 @@ void engine_init(struct engine *e, struct space *s,
     }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    if ((policy & engine_policy_cputight) != engine_policy_cputight) {
+    if ((e->policy & engine_policy_cputight) != engine_policy_cputight) {
 
       if (numa_available() >= 0) {
         if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
         /* Get list of numa nodes of all available cores. */
-        int *nodes = malloc(nr_affinity_cores * sizeof(int));
+        int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
         int nnodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
           nodes[i] = numa_node_of_cpu(cpuid[i]);
@@ -5269,7 +5417,7 @@ void engine_init(struct engine *e, struct space *s,
         nnodes += 1;
 
         /* Count cores per node. */
-        int *core_counts = malloc(nnodes * sizeof(int));
+        int *core_counts = (int *)malloc(nnodes * sizeof(int));
         for (int i = 0; i < nr_affinity_cores; i++) {
           core_counts[nodes[i]] = 0;
         }
@@ -5278,7 +5426,7 @@ void engine_init(struct engine *e, struct space *s,
         }
 
         /* Index cores within each node. */
-        int *core_indices = malloc(nr_affinity_cores * sizeof(int));
+        int *core_indices = (int *)malloc(nr_affinity_cores * sizeof(int));
         for (int i = nr_affinity_cores - 1; i >= 0; i--) {
           core_indices[i] = core_counts[nodes[i]];
           core_counts[nodes[i]] -= 1;
@@ -5350,19 +5498,31 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Open some files */
   if (e->nodeID == 0) {
+
+    /* When restarting append to these files. */
+    const char *mode;
+    if (restart)
+      mode = "a";
+    else
+      mode = "w";
+
     char energyfileName[200] = "";
     parser_get_opt_param_string(params, "Statistics:energy_file_name",
                                 energyfileName,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
-    e->file_stats = fopen(energyfileName, "w");
-    fprintf(e->file_stats,
-            "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-            "%14s %14s %14s %14s %14s %14s\n",
-            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
-            "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
-            "ang_y", "ang_z", "com_x", "com_y", "com_z");
-    fflush(e->file_stats);
+    e->file_stats = fopen(energyfileName, mode);
+
+    if (!restart) {
+      fprintf(
+          e->file_stats,
+          "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+          "%14s %14s %14s %14s %14s %14s\n",
+          "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
+          "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
+          "ang_y", "ang_z", "com_x", "com_y", "com_z");
+      fflush(e->file_stats);
+    }
 
     char timestepsfileName[200] = "";
     parser_get_opt_param_string(params, "Statistics:timestep_file_name",
@@ -5371,30 +5531,37 @@ void engine_init(struct engine *e, struct space *s,
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
             nr_nodes * nr_threads);
-    e->file_timesteps = fopen(timestepsfileName, "w");
-    fprintf(e->file_timesteps,
-            "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
-            "Version: %s \n# "
-            "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
-            "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-            "+/- %.4f\n# Eta: %f\n",
-            hostname(), git_branch(), git_revision(), compiler_name(),
-            compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-            kernel_name, e->hydro_properties->target_neighbours,
-            e->hydro_properties->delta_neighbours,
-            e->hydro_properties->eta_neighbours);
+    e->file_timesteps = fopen(timestepsfileName, mode);
 
-    fprintf(e->file_timesteps,
-            "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-            "Statistics=%d, Snapshot=%d\n",
-            engine_step_prop_rebuild, engine_step_prop_redistribute,
-            engine_step_prop_repartition, engine_step_prop_statistics,
-            engine_step_prop_snapshot);
+    if (!restart) {
+      fprintf(
+          e->file_timesteps,
+          "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
+          "Version: %s \n# "
+          "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
+          "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
+          "+/- %.4f\n# Eta: %f\n# Config: %s\n# CFLAGS: %s\n",
+          hostname(), git_branch(), git_revision(), compiler_name(),
+          compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
+          kernel_name, e->hydro_properties->target_neighbours,
+          e->hydro_properties->delta_neighbours,
+          e->hydro_properties->eta_neighbours, configuration_options(),
+          compilation_cflags());
 
-    fprintf(e->file_timesteps, "# %6s %14s %14s %12s %12s %12s %16s [%s] %6s\n",
-            "Step", "Time", "Time-step", "Updates", "g-Updates", "s-Updates",
-            "Wall-clock time", clocks_getunit(), "Props");
-    fflush(e->file_timesteps);
+      fprintf(e->file_timesteps,
+              "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+              "Statistics=%d, Snapshot=%d, Restarts=%d\n",
+              engine_step_prop_rebuild, engine_step_prop_redistribute,
+              engine_step_prop_repartition, engine_step_prop_statistics,
+              engine_step_prop_snapshot, engine_step_prop_restarts);
+
+      fprintf(e->file_timesteps,
+              "# %6s %14s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
+              "Time", "Scale-factor", "Time-step", "Time-bins", "Updates",
+              "g-Updates", "s-Updates", "Wall-clock time", clocks_getunit(),
+              "Props");
+      fflush(e->file_timesteps);
+    }
   }
 
   /* Print policy */
@@ -5409,11 +5576,11 @@ void engine_init(struct engine *e, struct space *s,
     if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
   /* Check we have sensible time bounds */
-  if (e->timeBegin >= e->timeEnd)
+  if (e->time_begin >= e->time_end)
     error(
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
-        e->timeEnd, e->timeBegin);
+        e->time_end, e->time_begin);
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
@@ -5422,48 +5589,74 @@ void engine_init(struct engine *e, struct space *s,
         "size (%e)",
         e->dt_min, e->dt_max);
 
-  /* Deal with timestep */
-  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
-  e->timeBase_inv = 1.0 / e->timeBase;
-  e->ti_current = 0;
-
   /* Info about time-steps */
   if (e->nodeID == 0) {
-    message("Absolute minimal timestep size: %e", e->timeBase);
+    message("Absolute minimal timestep size: %e", e->time_base);
 
-    float dt_min = e->timeEnd - e->timeBegin;
+    float dt_min = e->time_end - e->time_begin;
     while (dt_min > e->dt_min) dt_min /= 2.f;
 
     message("Minimal timestep size (on time-line): %e", dt_min);
 
-    float dt_max = e->timeEnd - e->timeBegin;
+    float dt_max = e->time_end - e->time_begin;
     while (dt_max > e->dt_max) dt_max /= 2.f;
 
     message("Maximal timestep size (on time-line): %e", dt_max);
   }
 
-  if (e->dt_min < e->timeBase && e->nodeID == 0)
+  if (e->dt_min < e->time_base && e->nodeID == 0)
     error(
         "Minimal time-step size smaller than the absolute possible minimum "
         "dt=%e",
-        e->timeBase);
+        e->time_base);
 
-  if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
+  if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
     error("Maximal time-step size larger than the simulation run time t=%e",
-          e->timeEnd - e->timeBegin);
+          e->time_end - e->time_begin);
 
   /* Deal with outputs */
   if (e->deltaTimeSnapshot < 0.)
     error("Time between snapshots (%e) must be positive.",
           e->deltaTimeSnapshot);
 
-  if (e->timeFirstSnapshot < e->timeBegin)
+  if (e->timeFirstSnapshot < e->time_begin)
     error(
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
-        e->timeFirstSnapshot, e->timeBegin);
+        e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
+
+  /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
+  e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
+
+  /* Whether to save backup copies of the previous restart files. */
+  e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
+
+  /* Whether restarts should be dumped on exit. Not by default. Can be changed
+   * on restart. */
+  e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
+
+  /* Hours between restart dumps. Can be changed on restart. */
+  float dhours =
+      parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
+  if (e->nodeID == 0) {
+    if (e->restart_dump)
+      message("Restarts will be dumped every %f hours", dhours);
+    else
+      message("WARNING: restarts will not be dumped");
+
+    if (e->verbose && e->restart_onexit)
+      message("Restarts will be dumped after the final step");
+  }
+
+  /* Internally we use ticks, so convert into a delta ticks. Assumes we can
+   * convert from ticks into milliseconds. */
+  e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
+
+  /* The first dump will happen no sooner than restart_dt ticks in the
+   * future. */
+  e->restart_next = getticks() + e->restart_dt;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
@@ -5484,16 +5677,24 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
+   * On restart this number cannot be estimated (no cells yet), so we recover
+   * from the end of the dumped run. Can be changed on restart.
    */
   e->tasks_per_cell =
       parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
+  int maxtasks = 0;
+  if (restart)
+    maxtasks = e->restart_max_tasks;
+  else
+    maxtasks = engine_estimate_nr_tasks(e);
 
   /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, engine_estimate_nr_tasks(e), nr_queues,
-                 (policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
+                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
-   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default.
+   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
+   * changed on restart.
    */
   e->sched.mpi_message_limit =
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
@@ -5586,7 +5787,7 @@ void engine_print_policy(struct engine *e) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
     for (int k = 0; k <= engine_maxpolicy; k++)
-      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
@@ -5594,7 +5795,7 @@ void engine_print_policy(struct engine *e) {
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
   for (int k = 0; k <= engine_maxpolicy; k++)
-    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif
@@ -5607,13 +5808,30 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  for (double time = e->timeFirstSnapshot;
-       time < e->timeEnd + e->deltaTimeSnapshot; time += e->deltaTimeSnapshot) {
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->deltaTimeSnapshot;
+  else
+    time_end = e->time_end + e->deltaTimeSnapshot;
+
+  /* Find next snasphot above current time */
+  double time = e->timeFirstSnapshot;
+  while (time < time_end) {
 
     /* Output time on the integer timeline */
-    e->ti_nextSnapshot = (time - e->timeBegin) / e->timeBase;
+    if (e->policy & engine_policy_cosmology)
+      e->ti_nextSnapshot = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_nextSnapshot = (time - e->time_begin) / e->time_base;
 
+    /* Found it? */
     if (e->ti_nextSnapshot > e->ti_current) break;
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->deltaTimeSnapshot;
+    else
+      time += e->deltaTimeSnapshot;
   }
 
   /* Deal with last snapshot */
@@ -5623,10 +5841,15 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   } else {
 
     /* Be nice, talk... */
-    const float next_snapshot_time =
-        e->ti_nextSnapshot * e->timeBase + e->timeBegin;
-    if (e->verbose)
+    if (e->policy & engine_policy_cosmology) {
+      const float next_snapshot_time =
+          exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
+      message("Next output time set to a=%e.", next_snapshot_time);
+    } else {
+      const float next_snapshot_time =
+          e->ti_nextSnapshot * e->time_base + e->time_begin;
       message("Next output time set to t=%e.", next_snapshot_time);
+    }
   }
 }
 
@@ -5649,4 +5872,133 @@ void engine_clean(struct engine *e) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
+}
+
+/**
+ * @brief Write the engine struct and its contents to the given FILE as a
+ * stream of bytes.
+ *
+ * @param e the engine
+ * @param stream the file stream
+ */
+void engine_struct_dump(struct engine *e, FILE *stream) {
+
+  /* Dump the engine. Save the current tasks_per_cell estimate. */
+  e->restart_max_tasks = engine_estimate_nr_tasks(e);
+  restart_write_blocks(e, sizeof(struct engine), 1, stream, "engine",
+                       "engine struct");
+
+  /* And all the engine pointed data, these use their own dump functions. */
+  space_struct_dump(e->s, stream);
+  units_struct_dump(e->internal_units, stream);
+  units_struct_dump(e->snapshotUnits, stream);
+  cosmology_struct_dump(e->cosmology, stream);
+
+#ifdef WITH_MPI
+  /* Save the partition for restoration. */
+  partition_store_celllist(e->s, e->reparttype);
+  partition_struct_dump(e->reparttype, stream);
+#endif
+
+  phys_const_struct_dump(e->physical_constants, stream);
+  hydro_props_struct_dump(e->hydro_properties, stream);
+  gravity_props_struct_dump(e->gravity_properties, stream);
+  potential_struct_dump(e->external_potential, stream);
+  cooling_struct_dump(e->cooling_func, stream);
+  chemistry_struct_dump(e->chemistry, stream);
+  sourceterms_struct_dump(e->sourceterms, stream);
+  parser_struct_dump(e->parameter_file, stream);
+}
+
+/**
+ * @brief Re-create an engine struct and its contents from the given FILE
+ *        stream.
+ *
+ * @param e the engine
+ * @param stream the file stream
+ */
+void engine_struct_restore(struct engine *e, FILE *stream) {
+
+  /* Read the engine. */
+  restart_read_blocks(e, sizeof(struct engine), 1, stream, NULL,
+                      "engine struct");
+
+  /* Re-initializations as necessary for our struct and its members. */
+  e->sched.tasks = NULL;
+  e->sched.tasks_ind = NULL;
+  e->sched.tid_active = NULL;
+  e->sched.size = 0;
+
+  /* Now for the other pointers, these use their own restore functions. */
+  /* Note all this memory leaks, but is used once. */
+  struct space *s = (struct space *)malloc(sizeof(struct space));
+  space_struct_restore(s, stream);
+  e->s = s;
+  s->e = e;
+
+  struct unit_system *us =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
+  units_struct_restore(us, stream);
+  e->internal_units = us;
+
+  us = (struct unit_system *)malloc(sizeof(struct unit_system));
+  units_struct_restore(us, stream);
+  e->snapshotUnits = us;
+
+  struct cosmology *cosmo =
+      (struct cosmology *)malloc(sizeof(struct cosmology));
+  cosmology_struct_restore(cosmo, stream);
+  e->cosmology = cosmo;
+
+#ifdef WITH_MPI
+  struct repartition *reparttype =
+      (struct repartition *)malloc(sizeof(struct repartition));
+  partition_struct_restore(reparttype, stream);
+  e->reparttype = reparttype;
+#endif
+
+  struct phys_const *physical_constants =
+      (struct phys_const *)malloc(sizeof(struct phys_const));
+  phys_const_struct_restore(physical_constants, stream);
+  e->physical_constants = physical_constants;
+
+  struct hydro_props *hydro_properties =
+      (struct hydro_props *)malloc(sizeof(struct hydro_props));
+  hydro_props_struct_restore(hydro_properties, stream);
+  e->hydro_properties = hydro_properties;
+
+  struct gravity_props *gravity_properties =
+      (struct gravity_props *)malloc(sizeof(struct gravity_props));
+  gravity_props_struct_restore(gravity_properties, stream);
+  e->gravity_properties = gravity_properties;
+
+  struct external_potential *external_potential =
+      (struct external_potential *)malloc(sizeof(struct external_potential));
+  potential_struct_restore(external_potential, stream);
+  e->external_potential = external_potential;
+
+  struct cooling_function_data *cooling_func =
+      (struct cooling_function_data *)malloc(
+          sizeof(struct cooling_function_data));
+  cooling_struct_restore(cooling_func, stream);
+  e->cooling_func = cooling_func;
+
+  struct chemistry_data *chemistry =
+      (struct chemistry_data *)malloc(sizeof(struct chemistry_data));
+  chemistry_struct_restore(chemistry, stream);
+  e->chemistry = chemistry;
+
+  struct sourceterms *sourceterms =
+      (struct sourceterms *)malloc(sizeof(struct sourceterms));
+  sourceterms_struct_restore(sourceterms, stream);
+  e->sourceterms = sourceterms;
+
+  struct swift_params *parameter_file =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
+  parser_struct_restore(parameter_file, stream);
+  e->parameter_file = parameter_file;
+
+  /* Want to force a rebuild before using this engine. Wait to repartition.*/
+  e->forcerebuild = 1;
+  e->forcerepart = 0;
 }

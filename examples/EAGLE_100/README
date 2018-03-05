@@ -13,4 +13,4 @@ The particle load of the main EAGLE simulation can be reproduced by
 running these ICs on 4096 cores.
 
 MD5 checksum of the ICs:
-2301ea73e14207b541bbb04163c5269e  EAGLE_ICs_100.hdf5
+bb5c3531e8573739ff4ee35049750ac9  EAGLE_ICs_100.hdf5

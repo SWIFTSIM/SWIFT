@@ -179,9 +179,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
@@ -246,8 +246,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   vec_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
-  end_calculation(*ci);
-  end_calculation(*cj);
+  end_calculation(*ci, runner->e->cosmology);
+  end_calculation(*cj, runner->e->cosmology);
 
   /* Dump if necessary */
   dump_particle_fields(swiftOutputFileName, *ci, *cj);
@@ -262,8 +262,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   serial_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
-  end_calculation(*ci);
-  end_calculation(*cj);
+  end_calculation(*ci, runner->e->cosmology);
+  end_calculation(*cj, runner->e->cosmology);
 
   dump_particle_fields(bruteForceOutputFileName, *ci, *cj);
 }
@@ -425,6 +425,7 @@ int main(int argc, char *argv[]) {
   double perturbation = 0.1, h_pert = 1.1;
   struct space space;
   struct engine engine;
+  struct cosmology cosmo;
   struct runner *runner;
   char c;
   static long long partId = 0;
@@ -506,6 +507,9 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
+
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {

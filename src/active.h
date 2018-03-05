@@ -42,9 +42,9 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
   if (c->ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
-        "and e->ti_current=%lld (t=%e)",
-        c->ti_old_part, c->ti_old_part * e->timeBase, e->ti_current,
-        e->ti_current * e->timeBase);
+        "and e->ti_current=%lld (t=%e, a=%e)",
+        c->ti_old_part, c->ti_old_part * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->ti_old_part == e->ti_current);
@@ -66,8 +66,8 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e)",
-        c->ti_old_gpart, c->ti_old_gpart * e->timeBase, e->ti_current,
-        e->ti_current * e->timeBase);
+        c->ti_old_gpart, c->ti_old_gpart * e->time_base, e->ti_current,
+        e->ti_current * e->time_base);
 #endif
 
   return (c->ti_old_gpart == e->ti_current);
@@ -89,9 +89,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
   if (c->ti_hydro_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e)",
-        c->ti_hydro_end_min, c->ti_hydro_end_min * e->timeBase, e->ti_current,
-        e->ti_current * e->timeBase);
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->ti_hydro_end_min, c->ti_hydro_end_min * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->ti_hydro_end_min == e->ti_current);
@@ -132,9 +132,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
   if (c->ti_gravity_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e)",
-        c->ti_gravity_end_min, c->ti_gravity_end_min * e->timeBase,
-        e->ti_current, e->ti_current * e->timeBase);
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->ti_gravity_end_min, c->ti_gravity_end_min * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->ti_gravity_end_min == e->ti_current);
@@ -265,9 +265,9 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
   if (c->ti_hydro_beg_max > e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e)",
-        c->ti_hydro_beg_max, c->ti_hydro_beg_max * e->timeBase, e->ti_current,
-        e->ti_current * e->timeBase);
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->ti_hydro_beg_max, c->ti_hydro_beg_max * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->ti_hydro_beg_max == e->ti_current);
@@ -287,9 +287,9 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
   if (c->ti_gravity_beg_max > e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e)",
-        c->ti_gravity_beg_max, c->ti_gravity_beg_max * e->timeBase,
-        e->ti_current, e->ti_current * e->timeBase);
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->ti_gravity_beg_max, c->ti_gravity_beg_max * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->ti_gravity_beg_max == e->ti_current);

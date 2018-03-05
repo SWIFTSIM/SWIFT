@@ -36,8 +36,8 @@
  * @param us The current internal system of units
  * @param source the structure that has all the source term properties
  */
-void sourceterms_init(const struct swift_params* parameter_file,
-                      struct unit_system* us, struct sourceterms* source) {
+void sourceterms_init(const struct swift_params *parameter_file,
+                      struct unit_system *us, struct sourceterms *source) {
 #ifdef SOURCETERMS_SN_FEEDBACK
   supernova_init(parameter_file, us, source);
 #endif /* SOURCETERMS_SN_FEEDBACK */
@@ -47,7 +47,7 @@ void sourceterms_init(const struct swift_params* parameter_file,
  * @brief Prints the properties of the source terms to stdout
  * @param source the structure that has all the source term properties
  */
-void sourceterms_print(struct sourceterms* source) {
+void sourceterms_print(struct sourceterms *source) {
 #ifdef SOURCETERMS_NONE
   error(" no sourceterms defined yet you ran with -F");
 #ifdef SOURCETERMS_SN_FEEDBACK
@@ -58,3 +58,28 @@ void sourceterms_print(struct sourceterms* source) {
   supernova_print(source);
 #endif /* SOURCETERMS_SN_FEEDBACK */
 };
+
+/**
+ * @brief Write a sourceterms struct to the given FILE as a stream of bytes.
+ *
+ * @param sourceterms the struct
+ * @param stream the file stream
+ */
+void sourceterms_struct_dump(const struct sourceterms *sourceterms,
+                             FILE *stream) {
+  restart_write_blocks((void *)sourceterms, sizeof(struct sourceterms), 1,
+                       stream, "sourceterms", "sourceterms");
+}
+
+/**
+ * @brief Restore a sourceterms struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param sourceterms the struct
+ * @param stream the file stream
+ */
+void sourceterms_struct_restore(const struct sourceterms *sourceterms,
+                                FILE *stream) {
+  restart_read_blocks((void *)sourceterms, sizeof(struct sourceterms), 1,
+                      stream, NULL, "sourceterms");
+}

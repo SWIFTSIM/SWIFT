@@ -36,6 +36,8 @@
 #include "./cooling/const_lambda/cooling.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling.h"
+#elif defined(COOLING_EAGLE)
+#include "./cooling/EAGLE/cooling.h"
 #else
 #error "Invalid choice of cooling function."
 #endif
@@ -47,5 +49,11 @@ void cooling_init(const struct swift_params* parameter_file,
                   struct cooling_function_data* cooling);
 
 void cooling_print(const struct cooling_function_data* cooling);
+
+/* Dump/restore. */
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream);
+void cooling_struct_restore(const struct cooling_function_data* cooling,
+                            FILE* stream);
 
 #endif /* SWIFT_COOLING_H */

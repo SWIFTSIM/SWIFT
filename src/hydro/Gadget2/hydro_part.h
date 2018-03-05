@@ -31,6 +31,7 @@
  * Gadget-2 tree-code neighbours search.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -44,6 +45,9 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+
+  /* Gravitational acceleration at the last full step. */
+  float a_grav[3];
 
   /* Entropy at the last full step. */
   float entropy_full;
@@ -129,6 +133,9 @@ struct part {
 
     } force;
   };
+
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /* Time-step length */
   timebin_t time_bin;

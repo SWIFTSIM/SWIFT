@@ -50,4 +50,10 @@ void potential_init(const struct swift_params* parameter_file,
 
 void potential_print(const struct external_potential* potential);
 
+/* Dump/restore. */
+void potential_struct_dump(const struct external_potential* potential,
+                           FILE* stream);
+void potential_struct_restore(const struct external_potential* potential,
+                              FILE* stream);
+
 #endif /* SWIFT_POTENTIAL_H */

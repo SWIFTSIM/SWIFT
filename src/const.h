@@ -68,7 +68,7 @@
 #define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
    GIZMO_UNPHYSICAL_RESCUE is also selected). */
-//#define GIZMO_UNPHYSICAL_WARNING
+#define GIZMO_UNPHYSICAL_WARNING
 
 /* Parameters that control how GIZMO handles pathological particle
    configurations. */

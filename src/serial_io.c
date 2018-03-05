@@ -36,7 +36,9 @@
 #include "serial_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "common_io.h"
+#include "cooling.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -607,6 +609,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             if (with_hydro) {
               Nparticles = *Ngas;
               hydro_read_particles(*parts, list, &num_fields);
+              num_fields += chemistry_read_particles(*parts, list + num_fields);
             }
             break;
 
@@ -709,7 +712,6 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -718,7 +720,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           outputCount);
+           e->snapshotOutputCount);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -738,7 +740,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   if (mpi_rank == 0) {
 
     /* First time, we need to create the XMF file */
-    if (outputCount == 0) xmf_create_file(baseName);
+    if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
     /* Prepare the XMF file for the new entry */
     xmfFile = xmf_prepare_file(baseName);
@@ -776,6 +778,8 @@ void write_output_serial(struct engine* e, const char* baseName,
     io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
     int dimension = (int)hydro_dimension;
     io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
+    io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
+    io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
 
     /* GADGET-2 legacy values */
     /* Number of particles of each type */
@@ -805,15 +809,26 @@ void write_output_serial(struct engine* e, const char* baseName,
     /* Print the code version */
     io_write_code_description(h_file);
 
+    /* Print the run's policy */
+    io_write_engine_policy(h_file, e);
+
     /* Print the SPH parameters */
     if (e->policy & engine_policy_hydro) {
       h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating SPH group");
       hydro_props_print_snapshot(h_grp, e->hydro_properties);
-      writeSPHflavour(h_grp);
+      hydro_write_flavour(h_grp);
       H5Gclose(h_grp);
     }
+
+    /* Print the subgrid parameters */
+    h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating subgrid group");
+    cooling_write_flavour(h_grp);
+    chemistry_write_flavour(h_grp);
+    H5Gclose(h_grp);
 
     /* Print the gravity parameters */
     if (e->policy & engine_policy_self_gravity) {
@@ -821,6 +836,15 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating gravity group");
       gravity_props_print_snapshot(h_grp, e->gravity_properties);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the cosmological model */
+    if (e->policy & engine_policy_cosmology) {
+      h_grp = H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating cosmology group");
+      cosmology_write_model(h_grp, e->cosmology);
       H5Gclose(h_grp);
     }
 
@@ -935,6 +959,7 @@ void write_output_serial(struct engine* e, const char* baseName,
           case swift_type_gas:
             Nparticles = Ngas;
             hydro_write_particles(parts, list, &num_fields);
+            num_fields += chemistry_write_particles(parts, list + num_fields);
             break;
 
           case swift_type_dark_matter:
@@ -990,10 +1015,11 @@ void write_output_serial(struct engine* e, const char* baseName,
   }
 
   /* Write footer of LXMF file descriptor */
-  if (mpi_rank == 0) xmf_write_outputfooter(xmfFile, outputCount, e->time);
+  if (mpi_rank == 0)
+    xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
 
   /* message("Done writing particles..."); */
-  ++outputCount;
+  e->snapshotOutputCount++;
 }
 
 #endif /* HAVE_HDF5 && HAVE_MPI */

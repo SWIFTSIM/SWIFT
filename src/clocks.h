@@ -39,6 +39,7 @@ const char *clocks_getunit();
 void clocks_set_cpufreq(unsigned long long freq);
 unsigned long long clocks_get_cpufreq();
 double clocks_from_ticks(ticks tics);
+ticks clocks_to_ticks(double interval);
 double clocks_diff_ticks(ticks tic, ticks toc);
 const char *clocks_get_timesincestart();
 

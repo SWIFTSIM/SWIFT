@@ -31,29 +31,29 @@
 #include "swift.h"
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF1 runner_doself1_density_vec
-#define DOSELF1_SUBSET runner_doself_subset_density_vec
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
 #define DOPAIR1_SUBSET runner_dopair_subset_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
 #ifdef TEST_DOSELF_SUBSET
-#define DOSELF1_NAME "runner_doself_subset_density_vec"
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
 #else
-#define DOSELF1_NAME "runner_doself_density_vec"
+#define DOSELF1_NAME "runner_doself1_branch_density"
 #endif
 #ifdef TEST_DOPAIR_SUBSET
 #define DOPAIR1_NAME "runner_dopair_subset_branch_density"
 #else
-#define DOPAIR1_NAME "runner_dopair_density_vec"
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
 #endif
 #endif
 
 #ifndef DOSELF1
-#define DOSELF1 runner_doself1_density
-#define DOSELF1_SUBSET runner_doself_subset_density
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
 #ifdef TEST_DOSELF_SUBSET
-#define DOSELF1_NAME "runner_doself1_subset_density"
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
 #else
-#define DOSELF1_NAME "runner_doself1_density"
+#define DOSELF1_NAME "runner_doself1_branch_density"
 #endif
 #endif
 
@@ -63,11 +63,11 @@
 #ifdef TEST_DOPAIR_SUBSET
 #define DOPAIR1_NAME "runner_dopair1_subset_branch_density"
 #else
-#define DOPAIR1_NAME "runner_dopair1_density"
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
 #endif
 #endif
 
-#define NODE_ID 1
+#define NODE_ID 0
 
 enum velocity_types {
   velocity_zero,
@@ -225,9 +225,9 @@ void zero_particle_fields(struct cell *c) {
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
@@ -260,7 +260,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
-            hydro_get_density(&main_cell->parts[pid]),
+            hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
@@ -297,7 +297,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
+              cj->parts[pjd].v[2], hydro_get_comoving_density(&cj->parts[pjd]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
@@ -319,31 +319,26 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_doself1_density(struct runner *r, struct cell *ci);
-void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
-void runner_doself_subset_density(struct runner *r, struct cell *restrict ci,
-                                  struct part *restrict parts,
-                                  int *restrict ind, int count);
-void runner_dopair_subset_density(struct runner *r, struct cell *restrict ci,
-                                  struct part *restrict parts_i,
-                                  int *restrict ind, int count,
-                                  struct cell *restrict cj);
-void runner_doself_subset_density_vec(struct runner *r,
-                                      struct cell *restrict ci,
-                                      struct part *restrict parts,
-                                      int *restrict ind, int count);
+void runner_doself1_branch_density(struct runner *r, struct cell *c);
 void runner_dopair_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts_i,
                                          int *restrict ind, int count,
                                          struct cell *restrict cj);
+void runner_doself_subset_branch_density(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct part *restrict parts,
+                                         int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
 
+#ifdef HAVE_SETAFFINITY
   engine_pin();
+#endif
+
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0., h_pert = 0.;
@@ -455,6 +450,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -544,7 +543,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell);
+    end_calculation(main_cell, &cosmo);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -592,7 +591,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, &cosmo);
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);

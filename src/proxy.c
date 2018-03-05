@@ -55,10 +55,10 @@ void proxy_cells_exch1(struct proxy *p) {
     p->size_pcells_out += p->cells_out[k]->pcell_size;
 
   /* Send the number of pcells. */
-  if (MPI_Isend(&p->size_pcells_out, 1, MPI_INT, p->nodeID,
-                p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_cells_count_out) != MPI_SUCCESS)
-    error("Failed to isend nr of pcells.");
+  int err = MPI_Isend(&p->size_pcells_out, 1, MPI_INT, p->nodeID,
+                      p->mynodeID * proxy_tag_shift + proxy_tag_count,
+                      MPI_COMM_WORLD, &p->req_cells_count_out);
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend nr of pcells.");
   // message( "isent pcell count (%i) from node %i to node %i." ,
   // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
 
@@ -74,19 +74,20 @@ void proxy_cells_exch1(struct proxy *p) {
   }
 
   /* Send the pcell buffer. */
-  if (MPI_Isend(p->pcells_out, sizeof(struct pcell) * p->size_pcells_out,
-                MPI_BYTE, p->nodeID,
-                p->mynodeID * proxy_tag_shift + proxy_tag_cells, MPI_COMM_WORLD,
-                &p->req_cells_out) != MPI_SUCCESS)
-    error("Failed to pcell_out buffer.");
+  err = MPI_Isend(p->pcells_out, sizeof(struct pcell) * p->size_pcells_out,
+                  MPI_BYTE, p->nodeID,
+                  p->mynodeID * proxy_tag_shift + proxy_tag_cells,
+                  MPI_COMM_WORLD, &p->req_cells_out);
+
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to pcell_out buffer.");
   // message( "isent pcells (%i) from node %i to node %i." , p->size_pcells_out
   // , p->mynodeID , p->nodeID ); fflush(stdout);
 
   /* Receive the number of pcells. */
-  if (MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
-                p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_cells_count_in) != MPI_SUCCESS)
-    error("Failed to irecv nr of pcells.");
+  err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
+                  &p->req_cells_count_in);
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
 // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
 // p->nodeID ); fflush(stdout);
 
@@ -106,11 +107,12 @@ void proxy_cells_exch2(struct proxy *p) {
     error("Failed to allocate pcell_in buffer.");
 
   /* Receive the particle buffers. */
-  if (MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
-                MPI_BYTE, p->nodeID,
-                p->nodeID * proxy_tag_shift + proxy_tag_cells, MPI_COMM_WORLD,
-                &p->req_cells_in) != MPI_SUCCESS)
-    error("Failed to irecv part data.");
+  int err = MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
+                      MPI_BYTE, p->nodeID,
+                      p->nodeID * proxy_tag_shift + proxy_tag_cells,
+                      MPI_COMM_WORLD, &p->req_cells_in);
+
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv part data.");
 // message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in ,
 // p->mynodeID , p->nodeID ); fflush(stdout);
 
@@ -145,14 +147,15 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     p->size_cells_in *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
     memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
     free(p->cells_in);
     p->cells_in = temp_cell;
 
     int *temp_type;
-    if ((temp_type = malloc(sizeof(int) * p->size_cells_in)) == NULL)
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell type list.");
     memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
     free(p->cells_in_type);
@@ -190,14 +193,15 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
     p->size_cells_out *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
     memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
     free(p->cells_out);
     p->cells_out = temp_cell;
 
     int *temp_type;
-    if ((temp_type = malloc(sizeof(int) * p->size_cells_out)) == NULL)
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell type list.");
     memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
     free(p->cells_out_type);

@@ -32,6 +32,7 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /**
@@ -51,6 +52,9 @@ struct xpart {
 
   /*! Velocity at the last full step. */
   float v_full[3];
+
+  /*! Gravitational acceleration at the last full step. */
+  float a_grav[3];
 
   /*! Internal energy at the last full step. */
   float u_full;
@@ -148,6 +152,9 @@ struct part {
 
     } force;
   };
+
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
   /*! Time-step length */
   timebin_t time_bin;
