@@ -39,28 +39,55 @@ void init_velociraptor(struct engine *e) {
     struct unitinfo unit_info;
     struct siminfo sim_info;
     
+    struct unit_system vel_us;
+    struct phys_const vel_const;
+
+    /* Initialize velociraptor unit system and constants */
+    units_init(&vel_us, e->parameter_file, "VelociraptorUnitSystem");
+    phys_const_init(&vel_us, e->parameter_file, &vel_const);
 
     /* Set cosmological constants. */
-    cosmo_info.atime = e->cosmology->time; /* TODO: double check this. */
+    cosmo_info.atime = e->cosmology->a;
     cosmo_info.littleh = e->cosmology->h;
     cosmo_info.Omega_m = e->cosmology->Omega_m;
     cosmo_info.Omega_b = e->cosmology->Omega_b;
     cosmo_info.Omega_Lambda = e->cosmology->Omega_lambda;
-    cosmo_info.Omega_cdm = e->cosmology->Omega_m - e->cosmology->Omega_b; /* TODO: double check this. */
-    cosmo_info.w_de = e->cosmology->w_0; /* TODO: double check this. */
+    cosmo_info.Omega_cdm = e->cosmology->Omega_m - e->cosmology->Omega_b;
+    cosmo_info.w_de = e->cosmology->w_0;
+
+    message("Scale factor: %e", cosmo_info.atime);
+    message("Little h: %e", cosmo_info.littleh);
+    message("Omega_m: %e", cosmo_info.Omega_m);
+    message("Omega_b: %e", cosmo_info.Omega_b);
+    message("Omega_Lambda: %e", cosmo_info.Omega_Lambda);
+    message("Omega_cdm: %e", cosmo_info.Omega_cdm);
+    message("w_de: %e", cosmo_info.w_de);
 
     /* Set unit conversions. */
-    unit_info.lengthtokpc = 3.2404407e-22 * e->internal_units->UnitLength_in_cgs; /* 1kpc <=> 3.086e21cm */
-    unit_info.velocitytokms = 1e-4 * parser_get_param_double(e->parameter_file, "InternalUnitSystem:UnitVelocity_in_cgs"); /* 1km/s <=> 1e4cm/s */
-    unit_info.masstosolarmass = 5.0251256e-34 * e->internal_units->UnitMass_in_cgs; /* 1M_sol <=> 1.99e33g */
-    unit_info.gravity = e->physical_constants->const_newton_G; /* G = 6.67408e-8 (cgs) */
+    unit_info.lengthtokpc = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
+    unit_info.velocitytokms = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
+    unit_info.masstosolarmass = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
+    unit_info.gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
     unit_info.hubbleunit = e->cosmology->H; /* TODO: double check this. */
 
+    message("Length conversion factor: %e", unit_info.lengthtokpc);
+    message("Velocity conversion factor: %e", unit_info.velocitytokms);
+    message("Mass conversion factor: %e", unit_info.masstosolarmass);
+    message("G: %e", unit_info.gravity);
+    message("H: %e", unit_info.hubbleunit);
+
+    const int nr_gparts = e->s->nr_gparts;
+    
     /* Set simulation information. */
-    sim_info.period = 1.0; /* Placeholder. */
-    sim_info.zoomhigresolutionmass = 1.0; /* Placeholder. */
-    sim_info.interparticlespacing = 1.0; /* Placeholder. */
-    sim_info.icosmologicalsim = 1; /* Placeholder. */
+    sim_info.period = unit_info.lengthtokpc * e->s->cdim[0] * e->s->width[0]; /* Physical size of box in VELOCIraptor units (kpc). */
+    sim_info.zoomhigresolutionmass = -1.0; /* Placeholder. */
+    sim_info.interparticlespacing = sim_info.period / pow(nr_gparts, 1./3.); /* Placeholder. */
+    sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology); /* Placeholder. */
+
+    message("Period: %e", sim_info.period);
+    message("Zoom high res mass: %e", sim_info.zoomhigresolutionmass);
+    message("Inter-particle spacing: %e", sim_info.interparticlespacing);
+    message("Cosmological: %d", sim_info.icosmologicalsim);
 
     InitVelociraptor("stf_input.cfg", "stf_ouput.out", cosmo_info, unit_info, sim_info);
 }
