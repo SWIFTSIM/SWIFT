@@ -659,7 +659,7 @@ runner_iact_nonsym_1_vec_force(
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
     vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
     float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    vector hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    vector hj_inv, const float a, const float H, vector *a_hydro_xSum, vector *a_hydro_ySum,
     vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
     vector *entropy_dtSum, mask_t mask) {
 
@@ -687,8 +687,11 @@ runner_iact_nonsym_1_vec_force(
   const vector balsara_j = vector_load(Balsara_j);
   const vector cj = vector_load(Cj);
 
-  const vector fac_mu =
-      vector_set1(1.f); /* Will change with cosmological integration */
+  /* Cosmological terms */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
+  const vector v_fac_mu = vector_set1(fac_mu);
+  const vector v_a2_Hubble = vector_set1(a2_Hubble);
 
   /* Load stuff. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
@@ -718,13 +721,13 @@ runner_iact_nonsym_1_vec_force(
   dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_fma(dvz.v, dz->v, vec_mul(v_a2_Hubble.v, r2->v))));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
   mu_ij.v =
-      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
+      vec_mul(v_fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
   v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
@@ -787,7 +790,7 @@ runner_iact_nonsym_2_vec_force(
     vector viz, vector pirho, vector grad_hi, vector piPOrho2, vector balsara_i,
     vector ci, float *Vjx, float *Vjy, float *Vjz, float *Pjrho, float *Grad_hj,
     float *PjPOrho2, float *Balsara_j, float *Cj, float *Mj, vector hi_inv,
-    float *Hj_inv, vector *a_hydro_xSum, vector *a_hydro_ySum,
+    float *Hj_inv, const float a, const float H, vector *a_hydro_xSum, vector *a_hydro_ySum,
     vector *a_hydro_zSum, vector *h_dtSum, vector *v_sigSum,
     vector *entropy_dtSum, mask_t mask, mask_t mask_2, short mask_cond) {
 
@@ -853,8 +856,11 @@ runner_iact_nonsym_2_vec_force(
   const vector hj_inv = vector_load(Hj_inv);
   const vector hj_inv_2 = vector_load(&Hj_inv[VEC_SIZE]);
 
-  const vector fac_mu =
-      vector_set1(1.f); /* Will change with cosmological integration */
+  /* Cosmological terms */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
+  const vector v_fac_mu = vector_set1(fac_mu);
+  const vector v_a2_Hubble = vector_set1(a2_Hubble);
 
   /* Find the balsara switch. */
   balsara.v = vec_add(balsara_i.v, balsara_j.v);
@@ -891,18 +897,18 @@ runner_iact_nonsym_2_vec_force(
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_fma(dvz.v, dz.v, vec_mul(v_a2_Hubble.v, r2.v))));
   dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
-                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+                     vec_fma(dvy_2.v, dy_2.v, vec_fma(dvz_2.v, dz_2.v, vec_mul(v_a2_Hubble.v, r2_2.v))));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
   omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
   mu_ij.v =
-      vec_mul(fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
+      vec_mul(v_fac_mu.v, vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
   mu_ij_2.v = vec_mul(
-      fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
+      v_fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
   v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
