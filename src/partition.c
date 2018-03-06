@@ -274,7 +274,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /* dumpCellRanks("metis_partition", s->cells_top, s->nr_cells); */
+  /* dumpCellRanks("parmetis_partition", s->cells_top, s->nr_cells);*/
 }
 #endif
 
@@ -591,6 +591,17 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (failed > 0) error("%d edge weights are out of range", failed);
 #endif
     }
+
+    /* Dump graphs to disk files for testing. ParMETIS xadj isn't right for
+     * a dump, so make a serial-like version. */
+    /*{
+      idx_t *tmp_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1));
+      tmp_xadj[0] = 0;
+      for (int k = 0; k < ncells; k++) tmp_xadj[k + 1] = tmp_xadj[k] + 26;
+      dumpParMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
+                        full_weights_v, NULL, full_weights_e);
+      free(tmp_xadj);
+    }*/
 
     /* Send ranges to the other ranks and keep our own. */
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
@@ -1143,7 +1154,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 
   if (reparttype->type == REPART_PARMETIS_VERTEX_EDGE_COSTS) {
-    repart_edge_parmetis(0, 1, reparttype, nodeID, nr_nodes, s, tasks,
+    repart_edge_parmetis(1, 0, reparttype, nodeID, nr_nodes, s, tasks,
                          nr_tasks);
 
   } else if (reparttype->type == REPART_PARMETIS_EDGE_COSTS) {
@@ -1151,7 +1162,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                          nr_tasks);
 
   } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS_TIMEBINS) {
-    repart_edge_parmetis(0, 1, reparttype, nodeID, nr_nodes, s, tasks,
+    repart_edge_parmetis(1, 1, reparttype, nodeID, nr_nodes, s, tasks,
                          nr_tasks);
 
   } else if (reparttype->type == REPART_NONE) {
