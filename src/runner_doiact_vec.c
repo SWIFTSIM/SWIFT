@@ -1143,7 +1143,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
-  
+
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
 

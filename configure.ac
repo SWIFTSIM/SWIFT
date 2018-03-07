@@ -980,7 +980,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch, sine-wave default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, disc-patch, sine-wave, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1000,6 +1000,12 @@ case "$with_potential" in
    ;; 
    sine-wave)
       AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
+   ;; 
+   point-mass-ring)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_RING], [1], [Point mass potential for Keplerian Ring (Hopkins 2015).])
+   ;; 
+   point-mass-softened)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
    ;; 
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])

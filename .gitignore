@@ -275,9 +275,14 @@ _minted*
 *.sympy
 sympy-plots-for-*.tex/
 
+# python
+*.pyc
+
 # todonotes
 *.tdo
 
 # xindy
 *.xdy
 
+# macOS
+*.DS_Store
