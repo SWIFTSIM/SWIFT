@@ -1,4 +1,5 @@
 *~
+*.hdf5
 
 Makefile
 Makefile.in
@@ -23,14 +24,12 @@ doc/Doxyfile
 examples/swift
 examples/swift_mpi
 examples/*/*.xmf
-examples/*/*.hdf5
 examples/*/*.h5
 examples/*/*.png
 examples/*/*.txt
 examples/*/*.dot
 examples/*/used_parameters.yml
 examples/*/*/*.xmf
-examples/*/*/*.hdf5
 examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/*.dot
@@ -73,7 +72,6 @@ tests/test_nonsym_force_1_vec.dat
 tests/test_nonsym_force_2_vec.dat
 tests/testGreetings
 tests/testReading
-tests/input.hdf5
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
