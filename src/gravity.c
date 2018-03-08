@@ -427,7 +427,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
           /* Get softened gravity */
           f = mj * hi_inv3 * Wf;
-          phi = mj * hi_inv3 * Wp;
+          phi = mj * hi_inv * Wp;
         }
 
         a_grav[0] += f * dx;
