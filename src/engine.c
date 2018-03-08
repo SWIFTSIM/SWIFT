@@ -597,11 +597,11 @@ static void engine_redistribute_dest_mapper_fast(gpart);
 
 /* Support for relinking parts, gparts and sparts after moving between nodes. */
 struct relink_mapper {
+  int nodeID;
+  int nr_nodes;
+  int *counts;
+  int *s_counts;
   int *g_counts;
-  int *ind_recv;
-  size_t *offset_parts;
-  size_t *offset_gparts;
-  size_t *offset_sparts;
   struct space *s;
 };
 
@@ -617,26 +617,41 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
 
   int *nodes = (int *)map_data;
   struct relink_mapper *mydata = (struct relink_mapper *)extra_data;
-  struct space *s = mydata->s;
-  int *ind_recv = mydata->ind_recv;
+
+  int nodeID = mydata->nodeID;
+  int nr_nodes = mydata->nr_nodes;
+  int *counts = mydata->counts;
   int *g_counts = mydata->g_counts;
-  size_t *offset_parts = mydata->offset_parts;
-  size_t *offset_gparts = mydata->offset_gparts;
-  size_t *offset_sparts = mydata->offset_sparts;
+  int *s_counts = mydata->s_counts;
+  struct space *s = mydata->s;
 
   for (int i = 0; i < num_elements; i++) {
 
     int node = nodes[i];
-    const size_t count_gparts = g_counts[ind_recv[node]];
+
+    /* Get offsets to correct parts of the counts arrays for this node. */
+    size_t offset_parts = 0;
+    size_t offset_gparts = 0;
+    size_t offset_sparts = 0;
+    for (int n = 0; n < node; n++) {
+      int ind_recv = n * nr_nodes + nodeID;
+      offset_parts += counts[ind_recv];
+      offset_gparts += g_counts[ind_recv];
+      offset_sparts += s_counts[ind_recv];
+    }
+
+    /* Number of gparts sent from this node. */
+    int ind_recv = node * nr_nodes + nodeID;
+    const size_t count_gparts = g_counts[ind_recv];
 
     /* Loop over the gparts received from this node */
-    for (size_t k = offset_gparts[node]; k < offset_gparts[node] + count_gparts; k++) {
+    for (size_t k = offset_gparts; k < offset_gparts + count_gparts; k++) {
 
       /* Does this gpart have a gas partner ? */
       if (s->gparts[k].type == swift_type_gas) {
 
         const ptrdiff_t partner_index =
-            offset_parts[node] - s->gparts[k].id_or_neg_offset;
+            offset_parts - s->gparts[k].id_or_neg_offset;
 
         /* Re-link */
         s->gparts[k].id_or_neg_offset = -partner_index;
@@ -647,7 +662,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
       if (s->gparts[k].type == swift_type_star) {
 
         const ptrdiff_t partner_index =
-            offset_sparts[node] - s->gparts[k].id_or_neg_offset;
+            offset_sparts - s->gparts[k].id_or_neg_offset;
 
         /* Re-link */
         s->gparts[k].id_or_neg_offset = -partner_index;
@@ -1026,51 +1041,22 @@ void engine_redistribute(struct engine *e) {
    * Generate indices and counts for threadpool tasks. Note we process a node
    * at a time. */
   tic1 = getticks();
-  size_t *offset_parts = NULL;
-  if ((offset_parts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
-    error("Failed to allocate offset_parts temporary buffer.");
-  size_t *offset_sparts = NULL;
-  if ((offset_sparts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
-    error("Failed to allocate offset_sparts temporary buffer.");
-  size_t *offset_gparts = NULL;
-  if ((offset_gparts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
-    error("Failed to allocate offset_gparts temporary buffer.");
-  int *ind_recv = NULL;
-  if ((ind_recv = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
-    error("Failed to allocate ind_recv temporary buffer.");
   int *nodes = NULL;
   if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
     error("Failed to allocate nodes temporary buffer.");
+  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
 
-  offset_parts[0] = 0;
-  offset_gparts[0] = 0;
-  offset_sparts[0] = 0;
-  ind_recv[0] = nodeID;
-  nodes[0] = 0;
-  for (int node = 1; node < nr_nodes; node++) {
-    nodes[node] = node;
-    ind_recv[node] = node * nr_nodes + nodeID;
-    offset_parts[node] = offset_parts[node-1] + counts[ind_recv[node-1]];
-    offset_gparts[node] = offset_gparts[node-1] + g_counts[ind_recv[node-1]];
-    offset_sparts[node] = offset_sparts[node-1] + s_counts[ind_recv[node-1]];
-  }
   struct relink_mapper relink_data;
-  relink_data.g_counts = g_counts;
-  relink_data.ind_recv = ind_recv;
-  relink_data.offset_parts = offset_parts;
-  relink_data.offset_gparts = offset_gparts;
-  relink_data.offset_sparts = offset_sparts;
   relink_data.s = s;
+  relink_data.counts = counts;
+  relink_data.g_counts = g_counts;
+  relink_data.s_counts = s_counts;
+  relink_data.nodeID = nodeID;
+  relink_data.nr_nodes = nr_nodes;
 
   threadpool_map(&e->threadpool, engine_redistribute_relink_mapper, nodes,
                  nr_nodes, sizeof(int), 1, &relink_data);
-
-  free(offset_parts);
-  free(offset_sparts);
-  free(offset_gparts);
-  free(ind_recv);
   free(nodes);
-
   message("13: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
           clocks_getunit());
 
