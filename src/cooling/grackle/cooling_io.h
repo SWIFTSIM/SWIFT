@@ -147,7 +147,13 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
     parser_get_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod");
 
   cooling->output_mode =
-    parser_get_param_int(parameter_file, "GrackleCooling:OutputMode");
+    parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
+
+  cooling->max_step =
+    parser_get_opt_param_int(parameter_file, "GrackleCooling:MaxSteps", 10000);
+
+  cooling->convergence_limit =
+    parser_get_opt_param_double(parameter_file, "GrackleCooling:ConvergenceLimit", 1e-2);
 }
 
 

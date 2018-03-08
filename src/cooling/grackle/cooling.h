@@ -44,6 +44,192 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+/* prototypes */
+static gr_float cooling_time(
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp);
+
+static double cooling_rate(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp, double dt);
+
+/**
+ * @brief Print the chemical network
+ *
+ * @param xp The #xpart to print
+ */
+__attribute__((always_inline)) INLINE static void cooling_print_fractions(
+    struct xpart* restrict xp) {
+
+  const struct cooling_xpart_data tmp = xp->cooling_data;
+#if COOLING_GRACKLE_MODE > 0
+  message("HI %g, HII %g, HeI %g, HeII %g, HeIII %g, e %g",
+	  tmp.HI_frac, tmp.HII_frac, tmp.HeI_frac,
+	  tmp.HeII_frac, tmp.HeIII_frac, tmp.e_frac);
+#endif
+
+#if COOLING_GRACKLE_MODE > 1
+  message("HM %g, H2I %g, H2II %g",
+	  tmp.HM_frac, tmp.H2I_frac, tmp.H2II_frac);
+#endif
+
+#if COOLING_GRACKLE_MODE > 2
+  message("DI %g, DII %g, HDI %g",
+	  tmp.DI_frac, tmp.DII_frac, tmp.HDI_frac);
+#endif
+  message("Metal: %g", tmp.metal_frac);
+}
+
+/**
+ * @brief Check if the equilibrium as been reached
+ *
+ * @param old Previous step particle
+ * @param xp Current step particle
+ *
+ * @return Value of the test
+ */
+__attribute__((always_inline)) INLINE static int cooling_check_convergence(
+    const struct xpart* restrict old, const struct xpart* restrict xp,
+    const float limit) {
+
+#if COOLING_GRACKLE_MODE > 0
+  const struct cooling_xpart_data *old_data = &old->cooling_data;
+  const struct cooling_xpart_data *new_data = &xp->cooling_data;
+
+  if (fabsf((old_data->HI_frac - new_data->HI_frac) / new_data->HI_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->HII_frac - new_data->HII_frac) / new_data->HII_frac) > limit)
+    return 0;
+  
+  if (fabsf((old_data->HeI_frac - new_data->HeI_frac) / new_data->HeI_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->HeII_frac - new_data->HeII_frac) / new_data->HeII_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->HeIII_frac - new_data->HeIII_frac) / new_data->HeIII_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->e_frac - new_data->e_frac) / new_data->e_frac) > limit)
+    return 0;
+
+#endif // COOLING_GRACKLE_MODE > 0
+  
+#if COOLING_GRACKLE_MODE > 1
+
+  if (fabsf((old_data->HM_frac - new_data->HM_frac) / new_data->HM_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->H2I_frac - new_data->H2I_frac) / new_data->H2I_frac) > limit)
+    return 0;
+
+  if (fabsf((old_data->H2II_frac - new_data->H2II_frac) / new_data->H2II_frac) > limit)
+    return 0;
+
+#endif // COOLING_GRACKLE_MODE > 1
+  
+#if COOLING_GRACKLE_MODE > 2
+
+  if (fabsf((old_data->DI_frac - new_data->DI_frac) / new_data->DI_frac) > limit)
+    return 0;
+  if (fabsf((old_data->DII_frac - new_data->DII_frac) / new_data->DII_frac) > limit)
+    return 0;
+  if (fabsf((old_data->HDI_frac - new_data->HDI_frac) / new_data->HDI_frac) > limit)
+    return 0;
+
+#endif // COOLING_GRACKLE_MODE > 2
+
+  return 1;
+}
+
+__attribute__((always_inline)) INLINE static void cooling_over_relaxation(
+    struct xpart* restrict xp, const struct xpart* restrict xp_1, const float coeff) {
+
+#if COOLING_GRACKLE_MODE > 0
+  struct cooling_xpart_data data = xp->cooling_data;
+  const struct cooling_xpart_data data_1 = xp_1->cooling_data;
+
+  data.HI_frac    = data.HI_frac    * coeff + data_1.HI_frac    * (1. - coeff);
+  data.HII_frac   = data.HII_frac   * coeff + data_1.HII_frac   * (1. - coeff);
+  data.HeI_frac   = data.HeI_frac   * coeff + data_1.HeI_frac   * (1. - coeff);
+  data.HeII_frac  = data.HeII_frac  * coeff + data_1.HeII_frac  * (1. - coeff);
+  data.HeIII_frac = data.HeIII_frac * coeff + data_1.HeIII_frac * (1. - coeff);
+  data.e_frac     = data.e_frac     * coeff + data_1.e_frac     * (1. - coeff);
+
+#endif // COOLING_GRACKLE_MODE > 0
+
+#if COOLING_GRACKLE_MODE > 1
+
+  data.HM_frac    = data.HM_frac  * coeff + data_1.HM_frac   * (1. - coeff);
+  data.H2I_frac   = data.H2I_frac * coeff + data_1.H2I_frac  * (1. - coeff);
+  data.H2II_frac = data.H2II_frac * coeff + data_1.H2II_frac * (1. - coeff);
+
+#endif
+
+#if COOLING_GRACKLE_MODE > 2
+
+  data.DI_frac  = data.DI_frac  * coeff + data_1.DI_frac  * (1. - coeff);
+  data.DII_frac = data.DII_frac * coeff + data_1.DII_frac * (1. - coeff);
+  data.HDI_frac = data.HDI_frac * coeff + data_1.HDI_frac * (1. - coeff);
+
+#endif
+}
+
+/**
+ * @brief Evolve the chemistry network until reaching equilibrium
+ *
+ * @param cooling The #cooling_function_data
+ * @param p The #part to put at equilibrium
+ * @param xp The #xpart to put at equilibrium
+ */
+__attribute__((always_inline)) INLINE static void cooling_compute_equilibrium_fractions(
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  struct cooling_function_data tmp_cooling = *cooling;
+
+#if COOLING_GRACKLE_MODE == 0
+  error("This function should not be called in primordial chemistry = 0");
+#endif
+
+  /* define a few variables */
+  struct xpart xp_1 = *xp;
+  int step = 0;
+
+  /* a few constants */
+  const float limit = tmp_cooling.convergence_limit;
+  const double dt = 0.01 * fabs(cooling_time(&tmp_cooling, p, xp));
+  const float omega = 0.8;
+  
+  /* disable energy updates */
+  tmp_cooling.chemistry.with_radiative_cooling = 0;
+
+  /* compute equilibrium fractions */
+  do {
+    /* update data */
+    step += 1;
+    xp_1 = *xp;
+
+    /* compute cooling rate */
+    cooling_rate(NULL, NULL, &tmp_cooling, p, xp, dt);
+
+    cooling_over_relaxation(xp, &xp_1, omega);
+
+  } while(!cooling_check_convergence(&xp_1, xp, limit) &&
+	  step < tmp_cooling.max_step);
+
+  /* check if converged */
+  if (step >= cooling->max_step) {
+    error("A particle failed to reach equilibrium. "
+  	  "You can change GrackleCooling:MaxStep or "
+  	  "GrackleCooling:ConvergenceLimit to avoid this problem");
+  }
+
+}
+
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
@@ -65,30 +251,37 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
   gr_float zero = 1.e-20;
 
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.HII_frac = zero;
+  xp->cooling_data.HI_frac = zero;
+  xp->cooling_data.HII_frac = grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = zero;
-  xp->cooling_data.e_frac = zero;
+  xp->cooling_data.e_frac = xp->cooling_data.HII_frac \
+    + 0.25 * xp->cooling_data.HeII_frac \
+    + 0.5  * xp->cooling_data.HeIII_frac;
+#endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
   xp->cooling_data.HM_frac = zero;
   xp->cooling_data.H2I_frac = zero;
   xp->cooling_data.H2II_frac = zero;
+#endif  // MODE >= 2
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac = grackle_data->HydrogenFractionByMass *
-                             grackle_data->DeuteriumToHydrogenRatio;
+  xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio
+    * grackle_data->HydrogenFractionByMass;
   xp->cooling_data.DII_frac = zero;
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
 
-#endif  // MODE >= 2
 
-#endif  // MODE >= 1
+#if COOLING_GRACKLE_MODE > 0
+  /* compute equilibrium */
+  cooling_compute_equilibrium_fractions(cooling, p, xp);
+#endif
+
 }
 
 /**
@@ -321,7 +514,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, double dt) {
+    const struct part* restrict p, struct xpart* restrict xp, double dt) {
 
   /* set current time */
   code_units units = cooling->units;
@@ -379,6 +572,78 @@ __attribute__((always_inline)) INLINE static double cooling_rate(
 
   /* compute rate */
   return (energy - energy_before) / dt;
+}
+
+/**
+ * @brief Compute the cooling time
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
+ *
+ * @return cooling time
+ */
+__attribute__((always_inline)) INLINE static gr_float cooling_time(
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  /* set current time */
+  code_units units = cooling->units;
+  if (cooling->redshift == -1)
+    error("TODO time dependant redshift");
+  else
+    units.a_value = 1. / (1. + cooling->redshift);
+
+  /* initialize data */
+  grackle_field_data data;
+
+  /* set values */
+  /* grid */
+  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
+  int grid_start[GRACKLE_RANK] = {0, 0, 0};
+  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
+
+  data.grid_rank = GRACKLE_RANK;
+  data.grid_dimension = grid_dimension;
+  data.grid_start = grid_start;
+  data.grid_end = grid_end;
+
+  /* general particle data */
+  const gr_float energy_before = hydro_get_internal_energy(p);
+  gr_float density = hydro_get_density(p);
+  gr_float energy = energy_before;
+
+  /* initialize density */
+  data.density = &density;
+
+  /* initialize energy */
+  data.internal_energy = &energy;
+
+  /* grackle 3.0 doc: "Currently not used" */
+  data.x_velocity = NULL;
+  data.y_velocity = NULL;
+  data.z_velocity = NULL;
+
+  /* allocate grackle data */
+  cooling_malloc_data(&data);
+
+  /* copy data from particle to grackle data */
+  cooling_copy_to_data(&data, xp, density);
+
+  /* Compute cooling time */
+  gr_float cooling_time;
+  if (calculate_cooling_time(&units, &data, &cooling_time) == 0) {
+    error("Error in calculate_cooling_time.");
+  }
+
+  /* copy from grackle data to particle */
+  cooling_copy_to_particle(&data, xp, density);
+
+  /* free allocated memory */
+  cooling_free_data(&data);
+
+  /* compute rate */
+  return cooling_time;
 }
 
 /**

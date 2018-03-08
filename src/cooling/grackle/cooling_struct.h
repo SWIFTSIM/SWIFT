@@ -63,6 +63,12 @@ struct cooling_function_data {
 
   /* Output mode (correspond to primordial chemistry mode */
   int output_mode;
+
+  /* convergence limit for first init */
+  float convergence_limit;
+
+  /* number of step max for first init */
+  int max_step;
 };
 
 /**
