@@ -1022,15 +1022,25 @@ void engine_redistribute(struct engine *e) {
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
 
-  /* Restore the part<->gpart and spart<->gpart links */
+  /* Restore the part<->gpart and spart<->gpart links.
+   * Generate indices and counts for threadpool tasks. Note we process a node
+   * at a time. */
   tic1 = getticks();
-
-  /* Generate indices and counts for threadpool tasks. */
-  size_t offset_parts[nr_nodes];
-  size_t offset_sparts[nr_nodes];
-  size_t offset_gparts[nr_nodes];
-  int ind_recv[nr_nodes];
-  int nodes[nr_nodes];
+  size_t *offset_parts = NULL;
+  if ((offset_parts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
+    error("Failed to allocate offset_parts temporary buffer.");
+  size_t *offset_sparts = NULL;
+  if ((offset_sparts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
+    error("Failed to allocate offset_sparts temporary buffer.");
+  size_t *offset_gparts = NULL;
+  if ((offset_gparts = (size_t *)malloc(sizeof(size_t) * nr_nodes)) == NULL)
+    error("Failed to allocate offset_gparts temporary buffer.");
+  int *ind_recv = NULL;
+  if ((ind_recv = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
+    error("Failed to allocate ind_recv temporary buffer.");
+  int *nodes = NULL;
+  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
+    error("Failed to allocate nodes temporary buffer.");
 
   offset_parts[0] = 0;
   offset_gparts[0] = 0;
@@ -1054,6 +1064,12 @@ void engine_redistribute(struct engine *e) {
 
   threadpool_map(&e->threadpool, engine_redistribute_relink_mapper, nodes,
                  nr_nodes, sizeof(int), 1, &relink_data);
+
+  free(offset_parts);
+  free(offset_sparts);
+  free(offset_gparts);
+  free(ind_recv);
+  free(nodes);
 
   message("13: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
           clocks_getunit());
@@ -1097,7 +1113,6 @@ void engine_redistribute(struct engine *e) {
 #endif
 
   /* Be verbose about what just happened. */
-  tic1 = getticks();
   if (e->verbose) {
     int my_cells = 0;
     for (int k = 0; k < nr_cells; k++)
@@ -1112,8 +1127,6 @@ void engine_redistribute(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-  message("14: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
