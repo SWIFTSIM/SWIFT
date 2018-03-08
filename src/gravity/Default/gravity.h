@@ -136,6 +136,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+  gp->potential *= const_G;
 }
 
 /**
