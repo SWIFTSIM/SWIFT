@@ -383,6 +383,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
       /* Be ready for the calculation */
       double a_grav[3] = {0., 0., 0.};
+      double pot = 0.;
 
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_gparts; ++j) {
@@ -408,27 +409,31 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         const double r_inv = 1. / sqrt(r2);
         const double r = r2 * r_inv;
         const double mj = gpj->mass;
-        double f;
+        double f, phi;
 
         if (r >= hi) {
 
           /* Get Newtonian gravity */
           f = mj * r_inv * r_inv * r_inv;
+          phi = -mj * r_inv;
 
         } else {
 
           const double ui = r * hi_inv;
-          double W;
+          double Wf, Wp;
 
-          kernel_grav_eval_double(ui, &W);
+          kernel_grav_eval_force_double(ui, &Wf);
+          kernel_grav_eval_pot_double(ui, &Wp);
 
           /* Get softened gravity */
-          f = mj * hi_inv3 * W;
+          f = mj * hi_inv3 * Wf;
+          phi = mj * hi_inv3 * Wp;
         }
 
         a_grav[0] += f * dx;
         a_grav[1] += f * dy;
         a_grav[2] += f * dz;
+        pot += phi;
 
         /* Apply Ewald correction for periodic BC */
         if (periodic && r > 1e-5 * hi) {
@@ -446,6 +451,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
       gpi->a_grav_exact[0] = a_grav[0] * const_G;
       gpi->a_grav_exact[1] = a_grav[1] * const_G;
       gpi->a_grav_exact[2] = a_grav[2] * const_G;
+      gpi->potential_exact = pot * const_G;
 
       counter++;
     }
@@ -529,8 +535,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
-  fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
-          "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]", "a_swift[2]");
+  fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
+          "pos[0]", "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]",
+          "a_swift[2]", "potential");
 
   /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -541,9 +548,10 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
         gpart_is_starting(gpi, e)) {
 
-      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e \n",
+      fprintf(file_swift,
+              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
               gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
-              gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2]);
+              gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2], gpi->potential);
     }
   }
 
@@ -569,9 +577,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s\n", "id",
+    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
             "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
-            "a_exact[2]");
+            "a_exact[2]", "potential");
 
     /* Output particle exact accelerations  */
     for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -582,10 +590,11 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
           gpart_is_starting(gpi, e)) {
 
-        fprintf(
-            file_exact, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e \n",
-            gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
-            gpi->a_grav_exact[0], gpi->a_grav_exact[1], gpi->a_grav_exact[2]);
+        fprintf(file_exact,
+                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+                gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
+                gpi->a_grav_exact[0], gpi->a_grav_exact[1],
+                gpi->a_grav_exact[2], gpi->potential_exact);
       }
     }
 

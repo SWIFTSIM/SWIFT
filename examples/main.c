@@ -802,6 +802,11 @@ int main(int argc, char *argv[]) {
           e.dt_max);
       fflush(stdout);
     }
+
+/* Initialise the table of Ewald corrections for the gravity checks */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
+#endif
   }
 
   /* Time to say good-bye if this was not a serious run. */
@@ -816,11 +821,6 @@ int main(int argc, char *argv[]) {
     free(params);
     return 0;
   }
-
-/* Initialise the table of Ewald corrections for the gravity checks */
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
-#endif
 
 /* Init the runner history. */
 #ifdef HIST
