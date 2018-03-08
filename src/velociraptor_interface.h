@@ -40,15 +40,36 @@ struct unitinfo {
     double lengthtokpc,velocitytokms,masstosolarmass,gravity,hubbleunit;
 };
 
+/* Structure to hold the location of a top-level cell. */
+struct cell_loc {
+    
+    /* Coordinates x,y,z */
+    double loc[3];
+
+} SWIFT_STRUCT_ALIGN;
+
 /* Structure for passing simulation information to VELOCIraptor. */
 struct siminfo {
-    double period, zoomhigresolutionmass, interparticlespacing;
+    double period, zoomhigresolutionmass, interparticlespacing, spacedimension[3];
+    
+    /* Number of top-cells. */
+    int numcells;
+
+    /*! Locations of top-level cells. */
+    struct cell_loc *cellloc;
+    
+    /*! Top-level cell width. */
+    double cellwidth[3];
+    
+    /*! Inverse of the top-level cell width. */
+    double icellwidth[3];
+
     int icosmologicalsim;
 };
 
 /* VELOCIraptor interface. */
 void InitVelociraptor(char* config_name, char* output_name, struct cosmoinfo cosmo_info, struct unitinfo unit_info, struct siminfo sim_info);
-void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts);
+void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts, const int *cell_node_ids);
 
 /* VELOCIraptor wrapper functions. */
 void init_velociraptor(struct engine *e);

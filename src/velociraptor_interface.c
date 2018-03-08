@@ -85,13 +85,39 @@ void init_velociraptor(struct engine *e) {
     }
     else sim_info.period = 0.0;
     sim_info.zoomhigresolutionmass = -1.0; /* Placeholder. */
-    sim_info.interparticlespacing = sim_info.period / pow(nr_gparts, 1./3.); /* Placeholder. */
-    sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology); /* Placeholder. */
+    sim_info.interparticlespacing = sim_info.period / pow(nr_gparts, 1./3.);
+    sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology);
+    sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
+    sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
+    sim_info.spacedimension[2] = unit_info.lengthtokpc * s->dim[2];
+    sim_info.numcells = s->nr_cells;
+    
+    /* Allocate and populate top-level cell locations. */
+    if (posix_memalign((void **)&(sim_info.cellloc), 32,
+                       s->nr_cells * sizeof(struct cell_loc)) != 0)
+        error("Failed to allocate top-level cell locations for VELOCIraptor.");
+
+    for(int i=0; i<s->nr_cells; i++) {
+        sim_info.cellloc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
+        sim_info.cellloc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
+        sim_info.cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+    }
+
+    sim_info.cellwidth[0] = unit_info.lengthtokpc * s->width[0];
+    sim_info.cellwidth[1] = unit_info.lengthtokpc * s->width[1];
+    sim_info.cellwidth[2] = unit_info.lengthtokpc * s->width[2];
+
+    sim_info.icellwidth[0] = s->iwidth[0] / unit_info.lengthtokpc;
+    sim_info.icellwidth[1] = s->iwidth[1] / unit_info.lengthtokpc;
+    sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
 
     message("Period: %e", sim_info.period);
     message("Zoom high res mass: %e", sim_info.zoomhigresolutionmass);
     message("Inter-particle spacing: %e", sim_info.interparticlespacing);
     message("Cosmological: %d", sim_info.icosmologicalsim);
+    message("Space dimensions: (%e,%e,%e)", sim_info.spacedimension[0], sim_info.spacedimension[1], sim_info.spacedimension[2]);
+    message("No. of top-level cells: %d", sim_info.numcells);
+    message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
     InitVelociraptor("stf_input.cfg", "stf_ouput.out", cosmo_info, unit_info, sim_info);
 }
@@ -104,36 +130,22 @@ void init_velociraptor(struct engine *e) {
  */
 void invoke_velociraptor(struct engine *e) {
 
-    struct gpart *gparts = e->s->gparts;
-    const int nr_gparts = e->s->nr_gparts;
     struct space *s = e->s;
-    //double mpi_domain [3][2];
-    const int myNodeID = e->nodeID;
+    struct gpart *gparts = s->gparts;
+    const int nr_gparts = s->nr_gparts;
     const int nr_cells = s->nr_cells;
-    double minX = nr_cells * s->width[0], maxX = 0.0;           
-    double minY = nr_cells * s->width[1], maxY = 0.0;
-    double minZ = nr_cells * s->width[2], maxZ = 0.0;
+    int *cell_node_ids;
+    
+    /* Allocate and populate array of cell node IDs. */
+    if (posix_memalign((void **)&cell_node_ids, 32,
+                       nr_cells * sizeof(int)) != 0)
+        error("Failed to allocate list of cells node IDs for VELOCIraptor.");
+    
+    for(int i=0; i<nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;    
 
-    message("Space dimensions: (%e,%e,%e)", s->dim[0], s->dim[1], s->dim[2]);
-    message("Cell width: (%e,%e,%e)", s->width[0], s->width[1], s->width[2]);
-
-    for(int i=0; i<nr_cells; i++) {
-        struct cell *c = &s->cells_top[i];
-
-        if(c->nodeID == myNodeID) {                                                                       
-            //message("Local cell found with location: (%e,%e,%e)", c->loc[0], c->loc[1], c->loc[2]);
-            minX = min(minX, c->loc[0]);
-            maxX = max(maxX, (c->loc[0] + s->width[0]));                        
-            minY = min(minY, c->loc[1]);
-            maxY = max(maxY, (c->loc[1] + s->width[1]));
-            minZ = min(minZ, c->loc[2]);
-            maxZ = max(maxZ, (c->loc[2] + s->width[2]));                         
-        }                                                                  
-    }
-
-    message("MPI rank %d domain: (%e,%e,%e) -> (%e,%e,%e)", myNodeID, minX, minY, minZ, maxX, maxY, maxZ);
+    message("MPI rank %d sending %d gparts to VELOCIraptor.", e->nodeID, nr_gparts);
     
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
 
-    InvokeVelociraptor(nr_gparts, gparts);
+    InvokeVelociraptor(nr_gparts, gparts, cell_node_ids);
 }
