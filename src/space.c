@@ -790,7 +790,7 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_sparts = s->nr_sparts;
 
-#endif /* WITH_MPI */
+#endif  // WITH_MPI
 
   /* Sort the parts according to their cells. */
   if (nr_parts > 0) space_parts_sort(s, ind, cell_part_counts);
@@ -1369,7 +1369,7 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
   /* Local stuff. */
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
-
+  
   /* Create the offsets array. */
   size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
   if (offsets == NULL)
@@ -1400,12 +1400,12 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
         memswap(&parts[j], &temp_part, sizeof(struct part));
         memswap(&xparts[j], &temp_xpart, sizeof(struct xpart));
         memswap(&ind[j], &target_cid, sizeof(int));
-        if (parts[j].gpart != NULL) parts[j].gpart->id_or_neg_offset = -j;
+        if (parts[j].gpart) parts[j].gpart->id_or_neg_offset = -j;
       }
       parts[k] = temp_part;
       xparts[k] = temp_xpart;
       ind[k] = target_cid;
-      if (parts[k].gpart != NULL) parts[k].gpart->id_or_neg_offset = -k;
+      if (parts[k].gpart) parts[k].gpart->id_or_neg_offset = -k;
     }
   }
 
@@ -2686,6 +2686,9 @@ void space_first_init_parts(struct space *s,
 
     /* And the cooling */
     cooling_first_init_part(&p[i], &xp[i], cool_func);
+    
+    /* Check part->gpart->part linkeage. */
+    if (p[i].gpart) p[i].gpart->id_or_neg_offset = -i;
 
 #ifdef SWIFT_DEBUG_CHECKS
     p[i].ti_drift = 0;
@@ -2749,6 +2752,9 @@ void space_first_init_sparts(struct space *s) {
 #endif
 
     star_first_init_spart(&sp[i]);
+
+    /* Check spart->gpart->spart linkeage. */
+    if (sp[i].gpart) sp[i].gpart->id_or_neg_offset = -i;
 
 #ifdef SWIFT_DEBUG_CHECKS
     sp[i].ti_drift = 0;
