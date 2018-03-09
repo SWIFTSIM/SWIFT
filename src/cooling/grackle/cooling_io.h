@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
   cooling->convergence_limit =
     parser_get_opt_param_double(parameter_file, "GrackleCooling:ConvergenceLimit", 1e-2);
 
-  cooling->convergence_limit =
+  cooling->omega =
     parser_get_opt_param_double(parameter_file, "GrackleCooling:Omega", 0.8);
 #endif
 }
