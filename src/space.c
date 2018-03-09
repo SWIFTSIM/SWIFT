@@ -609,9 +609,7 @@ void space_rebuild(struct space *s, int verbose) {
     if (cells_top[ind[k]].nodeID != local_nodeID) {
       nr_parts -= 1;
       /* Swap the particle */
-      const struct part tp = s->parts[k];
-      s->parts[k] = s->parts[nr_parts];
-      s->parts[nr_parts] = tp;
+      memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
       /* Swap the link with the gpart */
       if (s->parts[k].gpart != NULL) {
         s->parts[k].gpart->id_or_neg_offset = -k;
@@ -620,13 +618,9 @@ void space_rebuild(struct space *s, int verbose) {
         s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
       }
       /* Swap the xpart */
-      const struct xpart txp = s->xparts[k];
-      s->xparts[k] = s->xparts[nr_parts];
-      s->xparts[nr_parts] = txp;
+      memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
       /* Swap the index */
-      const int t = ind[k];
-      ind[k] = ind[nr_parts];
-      ind[nr_parts] = t;
+      memswap(&ind[k], &ind[nr_parts], sizeof(int));
     } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
@@ -652,9 +646,7 @@ void space_rebuild(struct space *s, int verbose) {
     if (cells_top[sind[k]].nodeID != local_nodeID) {
       nr_sparts -= 1;
       /* Swap the particle */
-      const struct spart tp = s->sparts[k];
-      s->sparts[k] = s->sparts[nr_sparts];
-      s->sparts[nr_sparts] = tp;
+      memswap(&s->sparts[k], s->sparts[nr_parts], sizeof(struct spart));
       /* Swap the link with the gpart */
       if (s->sparts[k].gpart != NULL) {
         s->sparts[k].gpart->id_or_neg_offset = -k;
@@ -663,9 +655,7 @@ void space_rebuild(struct space *s, int verbose) {
         s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
       }
       /* Swap the index */
-      const int t = sind[k];
-      sind[k] = sind[nr_sparts];
-      sind[nr_sparts] = t;
+      memswap(&ind[k], &ind[nr_parts], sizeof(int));
     } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
