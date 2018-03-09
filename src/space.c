@@ -1369,7 +1369,7 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
   /* Local stuff. */
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
-  
+
   /* Create the offsets array. */
   size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
   if (offsets == NULL)
@@ -2686,7 +2686,7 @@ void space_first_init_parts(struct space *s,
 
     /* And the cooling */
     cooling_first_init_part(&p[i], &xp[i], cool_func);
-    
+
     /* Check part->gpart->part linkeage. */
     if (p[i].gpart) p[i].gpart->id_or_neg_offset = -i;
 
