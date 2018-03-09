@@ -197,13 +197,13 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
     chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
     chunk_shape[1] = 0;
   }
 
@@ -211,7 +211,7 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   if (chunk_shape[0] > N_total) chunk_shape[0] = N_total;
 
   /* Change shape of data space */
-  hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
+  hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, shape);
   if (h_err < 0) {
     error("Error while changing data space shape for field '%s'.", props.name);
   }
@@ -228,11 +228,15 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Impose data compression */
   if (e->snapshotCompression > 0) {
+    h_err = H5Pset_shuffle(h_prop);
+    if (h_err < 0)
+      error("Error while setting shuffling options for field '%s'.",
+            props.name);
+
     h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
-    if (h_err < 0) {
+    if (h_err < 0)
       error("Error while setting compression options for field '%s'.",
             props.name);
-    }
   }
 
   /* Create dataset */
