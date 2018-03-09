@@ -5921,7 +5921,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct cosmology *cosmo =
       (struct cosmology *)malloc(sizeof(struct cosmology));
-  cosmology_struct_restore(cosmo, stream);
+  cosmology_struct_restore(e->policy & engine_policy_cosmology, cosmo, stream);
   e->cosmology = cosmo;
 
 #ifdef WITH_MPI
