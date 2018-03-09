@@ -594,6 +594,10 @@ int parser_get_opt_param_int(const struct swift_params *params,
             params->data[i].name, params->data[i].value, str);
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      message("Found parameter %s and got %i", name, retParam);
+#endif
+
       return retParam;
     }
   }
@@ -624,6 +628,10 @@ char parser_get_opt_param_char(const struct swift_params *params,
             "characters '%s'.",
             params->data[i].name, params->data[i].value, str);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      message("Found parameter %s and got %c", name, retParam);
+#endif
 
       return retParam;
     }
@@ -656,6 +664,10 @@ float parser_get_opt_param_float(const struct swift_params *params,
             params->data[i].name, params->data[i].value, str);
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      message("Found parameter %s and got %g", name, retParam);
+#endif
+
       return retParam;
     }
   }
@@ -686,6 +698,10 @@ double parser_get_opt_param_double(const struct swift_params *params,
             "characters '%s'.",
             params->data[i].name, params->data[i].value, str);
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      message("Found parameter %s and got %g", name, retParam);
+#endif
       return retParam;
     }
   }
@@ -707,6 +723,9 @@ void parser_get_opt_param_string(const struct swift_params *params,
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       strcpy(retParam, params->data[i].value);
+#ifdef SWIFT_DEBUG_CHECKS
+      message("Found parameter %s and got %s", name, retParam);
+#endif
       return;
     }
   }
