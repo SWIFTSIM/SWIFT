@@ -69,6 +69,9 @@ struct cooling_function_data {
 
   /* number of step max for first init */
   int max_step;
+
+  /* over relaxation parameter */
+  float omega;
 };
 
 /**

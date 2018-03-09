@@ -202,7 +202,6 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium_fr
   /* a few constants */
   const float limit = tmp_cooling.convergence_limit;
   const double dt = 0.01 * fabs(cooling_time(&tmp_cooling, p, xp));
-  const float omega = 0.8;
   
   /* disable energy updates */
   tmp_cooling.chemistry.with_radiative_cooling = 0;
@@ -216,7 +215,7 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium_fr
     /* compute cooling rate */
     cooling_rate(NULL, NULL, &tmp_cooling, p, xp, dt);
 
-    cooling_over_relaxation(xp, &xp_1, omega);
+    cooling_over_relaxation(xp, &xp_1, cooling->omega);
 
   } while(!cooling_check_convergence(&xp_1, xp, limit) &&
 	  step < tmp_cooling.max_step);
