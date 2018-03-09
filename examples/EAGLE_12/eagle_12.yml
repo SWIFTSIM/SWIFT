@@ -6,13 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
-# Parameters governing the time integration
-TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-2  # The end time of the simulation (in internal units).
-  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
-
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
@@ -21,6 +14,13 @@ Cosmology:
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0455        # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
   
 Scheduler:
   max_top_level_cells:    15
