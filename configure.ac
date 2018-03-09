@@ -411,7 +411,7 @@ AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 have_gsl="no"
 AC_CHECK_LIB([gslcblas], [cblas_dgemm])
 AC_CHECK_LIB([gsl], [gsl_integration_qag])
-if test "x$ac_cv_lib_gslcblas_cblas_dgemm" != "x"; then
+if test "x$ac_cv_lib_gslcblas_cblas_dgemm" = "xyes"; then
    have_gsl="yes"
 fi
 
