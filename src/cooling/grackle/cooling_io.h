@@ -138,14 +138,15 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
     parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
 
   cooling->provide_volumetric_heating_rates =
-    parser_get_param_int(parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates");
+    parser_get_opt_param_int(parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates", 0);
 
   cooling->provide_specific_heating_rates =
-    parser_get_param_int(parameter_file, "GrackleCooling:ProvideSpecificHeatingRates");
+    parser_get_opt_param_int(parameter_file, "GrackleCooling:ProvideSpecificHeatingRates", 0);
 
   cooling->self_shielding_method =
-    parser_get_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod");
+    parser_get_opt_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
 
+#if COOLING_GRACKLE_MODE > 0
   cooling->output_mode =
     parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
 
@@ -157,6 +158,7 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
 
   cooling->convergence_limit =
     parser_get_opt_param_double(parameter_file, "GrackleCooling:Omega", 0.8);
+#endif
 }
 
 
