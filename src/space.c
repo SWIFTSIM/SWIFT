@@ -101,6 +101,7 @@ struct index_data {
   struct space *s;
   struct cell *cells;
   int *ind;
+  int *cell_counts;
 };
 
 /**
@@ -580,26 +581,33 @@ void space_rebuild(struct space *s, int verbose) {
      an index that is larger than the number of particles to avoid
      re-allocating after shuffling. */
   const size_t ind_size = s->size_parts + 100;
-  int *ind;
-  if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
-    error("Failed to allocate temporary particle indices.");
-  if (s->size_parts > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
+  int *ind = (int *)malloc(sizeof(int) * ind_size);
+  if (ind == NULL) error("Failed to allocate temporary particle indices.");
+  int *cell_part_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_part_counts == NULL)
+    error("Failed to allocate cell part count buffer.");
+  if (s->size_parts > 0)
+    space_parts_get_cell_index(s, ind, cell_part_counts, cells_top, verbose);
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts + 100;
-  int *gind;
-  if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
-    error("Failed to allocate temporary g-particle indices.");
+  int *gind = (int *)malloc(sizeof(int) * gind_size);
+  if (gind == NULL) error("Failed to allocate temporary g-particle indices.");
+  int *cell_gpart_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_gpart_counts == NULL)
+    error("Failed to allocate cell gpart count buffer.");
   if (s->size_gparts > 0)
-    space_gparts_get_cell_index(s, gind, cells_top, verbose);
+    space_gparts_get_cell_index(s, gind, cell_gpart_counts, cells_top, verbose);
 
   /* Run through the star particles and get their cell index. */
   const size_t sind_size = s->size_sparts + 100;
-  int *sind;
-  if ((sind = (int *)malloc(sizeof(int) * sind_size)) == NULL)
-    error("Failed to allocate temporary s-particle indices.");
+  int *sind = (int *)malloc(sizeof(int) * sind_size);
+  if (sind == NULL) error("Failed to allocate temporary s-particle indices.");
+  int *cell_spart_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_spart_counts == NULL)
+    error("Failed to allocate cell gpart count buffer.");
   if (s->size_sparts > 0)
-    space_sparts_get_cell_index(s, sind, cells_top, verbose);
+    space_sparts_get_cell_index(s, sind, cell_spart_counts, cells_top, verbose);
 
 #ifdef WITH_MPI
   const int local_nodeID = s->e->nodeID;
@@ -759,6 +767,7 @@ void space_rebuild(struct space *s, int verbose) {
     const struct part *const p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    cell_part_counts[ind[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[ind[k]].nodeID != local_nodeID)
       error("Received part that does not belong to me (nodeID=%i).",
@@ -772,6 +781,7 @@ void space_rebuild(struct space *s, int verbose) {
     const struct spart *const sp = &s->sparts[k];
     sind[k] =
         cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
+    cell_spart_counts[sind[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[sind[k]].nodeID != local_nodeID)
       error("Received s-part that does not belong to me (nodeID=%i).",
@@ -785,6 +795,9 @@ void space_rebuild(struct space *s, int verbose) {
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
     space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
+
+  if (nr_parts) {
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -864,7 +877,9 @@ void space_rebuild(struct space *s, int verbose) {
 
   /* We no longer need the indices as of here. */
   free(ind);
+  free(cell_part_counts);
   free(sind);
+  free(cell_spart_counts);
 
 #ifdef WITH_MPI
 
@@ -883,7 +898,7 @@ void space_rebuild(struct space *s, int verbose) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-
+    cell_gpart_counts[gind[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[gind[k]].nodeID != s->e->nodeID)
       error("Received g-part that does not belong to me (nodeID=%i).",
@@ -941,6 +956,7 @@ void space_rebuild(struct space *s, int verbose) {
 
   /* We no longer need the indices as of here. */
   free(gind);
+  free(cell_gpart_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
@@ -1068,6 +1084,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
 
+  /* Init the local count buffer. */
+  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_counts == NULL)
+    error("Failed to allocate temporary cell count buffer.");
+
+  /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
@@ -1086,6 +1108,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
+    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1103,6 +1126,11 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     p->x[1] = pos_y;
     p->x[2] = pos_z;
   }
+
+  /* Write the counts back to the global array. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
+  free(cell_counts);
 }
 
 /**
@@ -1130,6 +1158,11 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
 
+  /* Init the local count buffer. */
+  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_counts == NULL)
+    error("Failed to allocate temporary cell count buffer.");
+
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
@@ -1148,6 +1181,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
+    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1165,6 +1199,11 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     gp->x[1] = pos_y;
     gp->x[2] = pos_z;
   }
+
+  /* Write the counts back to the global array. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
+  free(cell_counts);
 }
 
 /**
@@ -1192,6 +1231,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
 
+  /* Init the local count buffer. */
+  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  if (cell_counts == NULL)
+    error("Failed to allocate temporary cell count buffer.");
+
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
@@ -1210,6 +1254,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
+    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1227,6 +1272,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     sp->x[1] = pos_y;
     sp->x[2] = pos_z;
   }
+
+  /* Write the counts back to the global array. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
+  free(cell_counts);
 }
 
 /**
@@ -1237,8 +1287,8 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
-void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
-                                int verbose) {
+void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
+                                struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1247,6 +1297,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
   data.s = s;
   data.cells = cells;
   data.ind = ind;
+  data.cell_counts = cell_counts;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, &data);
@@ -1264,8 +1315,8 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
-void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
-                                 int verbose) {
+void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
+                                 struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1274,6 +1325,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
   data.s = s;
   data.cells = cells;
   data.ind = gind;
+  data.cell_counts = cell_counts;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
@@ -1291,8 +1343,8 @@ void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
-void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
-                                 int verbose) {
+void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+                                 struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1301,6 +1353,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
   data.s = s;
   data.cells = cells;
   data.ind = sind;
+  data.cell_counts = cell_counts;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
