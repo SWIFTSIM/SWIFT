@@ -54,6 +54,7 @@ struct exact_force_data {
 static float fewald_x[Newald + 1][Newald + 1][Newald + 1];
 static float fewald_y[Newald + 1][Newald + 1][Newald + 1];
 static float fewald_z[Newald + 1][Newald + 1][Newald + 1];
+static float potewald[Newald + 1][Newald + 1][Newald + 1];
 
 /* Factor used to normalize the access to the Ewald table */
 float ewald_fac;
@@ -83,6 +84,8 @@ void gravity_exact_force_ewald_init(double boxSize) {
   const float factor_exp1 = 2.f * alpha / sqrt(M_PI);
   const float factor_exp2 = -M_PI * M_PI / alpha2;
   const float factor_sin = 2.f * M_PI;
+  const float factor_cos = 2.f * M_PI;
+  const float factor_pot = M_PI / alpha2;
   const float boxSize_inv2 = 1.f / (boxSize * boxSize);
 
   /* Ewald factor to access the table */
@@ -92,6 +95,9 @@ void gravity_exact_force_ewald_init(double boxSize) {
   bzero(fewald_x, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
   bzero(fewald_y, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
   bzero(fewald_z, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+  bzero(potewald, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
+
+  potewald[0][0][0] = 2.8372975f;
 
   /* Compute the values in one of the octants */
   for (int i = 0; i <= Newald; ++i) {
@@ -114,6 +120,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
         float f_x = r_x * r_inv3;
         float f_y = r_y * r_inv3;
         float f_z = r_z * r_inv3;
+        float pot = r_inv + factor_pot;
 
         for (int n_i = -4; n_i <= 4; ++n_i) {
           for (int n_j = -4; n_j <= 4; ++n_j) {
@@ -130,15 +137,17 @@ void gravity_exact_force_ewald_init(double boxSize) {
               const float r_tilde_inv3 =
                   r_tilde_inv * r_tilde_inv * r_tilde_inv;
 
-              const float val =
-                  erfcf(alpha * r_tilde) +
-                  factor_exp1 * r_tilde * expf(-alpha2 * r_tilde2);
+              const float val_pot = erfcf(alpha * r_tilde);
+
+              const float val_f =
+                  val_pot + factor_exp1 * r_tilde * expf(-alpha2 * r_tilde2);
 
               /* First correction term */
-              const float f = val * r_tilde_inv3;
+              const float f = val_f * r_tilde_inv3;
               f_x -= f * d_x;
               f_y -= f * d_y;
               f_z -= f * d_z;
+              pot -= val_pot * r_tilde_inv;
             }
           }
         }
@@ -149,16 +158,23 @@ void gravity_exact_force_ewald_init(double boxSize) {
 
               const float h2 = h_i * h_i + h_j * h_j + h_k * h_k;
 
+              if (h2 == 0.f) continue;
+
               const float h2_inv = 1.f / (h2 + FLT_MIN);
               const float h_dot_x = h_i * r_x + h_j * r_y + h_k * r_z;
 
-              const float val = 2.f * h2_inv * expf(h2 * factor_exp2) *
-                                sinf(factor_sin * h_dot_x);
+              const float common = h2_inv * expf(h2 * factor_exp2);
+
+              const float val_pot =
+                  (float)M_1_PI * common * cosf(factor_cos * h_dot_x);
+
+              const float val_f = 2.f * common * sinf(factor_sin * h_dot_x);
 
               /* Second correction term */
-              f_x -= val * h_i;
-              f_y -= val * h_j;
-              f_z -= val * h_k;
+              f_x -= val_f * h_i;
+              f_y -= val_f * h_j;
+              f_z -= val_f * h_k;
+              pot -= val_pot;
             }
           }
         }
@@ -167,6 +183,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
         fewald_x[i][j][k] = f_x;
         fewald_y[i][j][k] = f_y;
         fewald_z[i][j][k] = f_z;
+        potewald[i][j][k] = pot;
       }
     }
   }
@@ -196,6 +213,11 @@ void gravity_exact_force_ewald_init(double boxSize) {
   H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
            &(fewald_z[0][0][0]));
   H5Dclose(h_data);
+  h_data = H5Dcreate(h_file, "Ewald_pot", H5T_NATIVE_FLOAT, h_space,
+                     H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(h_data, H5T_NATIVE_FLOAT, h_space, H5S_ALL, H5P_DEFAULT,
+           &(potewald[0][0][0]));
+  H5Dclose(h_data);
   H5Sclose(h_space);
   H5Fclose(h_file);
 #endif
@@ -207,6 +229,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
         fewald_x[i][j][k] *= boxSize_inv2;
         fewald_y[i][j][k] *= boxSize_inv2;
         fewald_z[i][j][k] *= boxSize_inv2;
+        potewald[i][j][k] *= boxSize_inv2;
       }
     }
   }
@@ -229,11 +252,12 @@ void gravity_exact_force_ewald_init(double boxSize) {
  * @param rx x-coordinate of distance vector.
  * @param ry y-coordinate of distance vector.
  * @param rz z-coordinate of distance vector.
- * @param corr (return) The Ewald correction.
+ * @param corr_f (return) The Ewald correction for the force.
+ * @param corr_p (return) The Ewald correction for the potential.
  */
 __attribute__((always_inline)) INLINE static void
 gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
-                                   double corr[3]) {
+                                   double corr_f[3], double *corr_p) {
 
   const double s_x = (rx < 0.) ? 1. : -1.;
   const double s_y = (ry < 0.) ? 1. : -1.;
@@ -258,40 +282,51 @@ gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
   const double tz = 1. - dz;
 
   /* Interpolation in X */
-  corr[0] = 0.;
-  corr[0] += fewald_x[i + 0][j + 0][k + 0] * tx * ty * tz;
-  corr[0] += fewald_x[i + 0][j + 0][k + 1] * tx * ty * dz;
-  corr[0] += fewald_x[i + 0][j + 1][k + 0] * tx * dy * tz;
-  corr[0] += fewald_x[i + 0][j + 1][k + 1] * tx * dy * dz;
-  corr[0] += fewald_x[i + 1][j + 0][k + 0] * dx * ty * tz;
-  corr[0] += fewald_x[i + 1][j + 0][k + 1] * dx * ty * dz;
-  corr[0] += fewald_x[i + 1][j + 1][k + 0] * dx * dy * tz;
-  corr[0] += fewald_x[i + 1][j + 1][k + 1] * dx * dy * dz;
-  corr[0] *= s_x;
+  corr_f[0] = 0.;
+  corr_f[0] += fewald_x[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr_f[0] += fewald_x[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr_f[0] += fewald_x[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr_f[0] += fewald_x[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr_f[0] += fewald_x[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr_f[0] += fewald_x[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr_f[0] += fewald_x[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr_f[0] += fewald_x[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr_f[0] *= s_x;
 
   /* Interpolation in Y */
-  corr[1] = 0.;
-  corr[1] += fewald_y[i + 0][j + 0][k + 0] * tx * ty * tz;
-  corr[1] += fewald_y[i + 0][j + 0][k + 1] * tx * ty * dz;
-  corr[1] += fewald_y[i + 0][j + 1][k + 0] * tx * dy * tz;
-  corr[1] += fewald_y[i + 0][j + 1][k + 1] * tx * dy * dz;
-  corr[1] += fewald_y[i + 1][j + 0][k + 0] * dx * ty * tz;
-  corr[1] += fewald_y[i + 1][j + 0][k + 1] * dx * ty * dz;
-  corr[1] += fewald_y[i + 1][j + 1][k + 0] * dx * dy * tz;
-  corr[1] += fewald_y[i + 1][j + 1][k + 1] * dx * dy * dz;
-  corr[1] *= s_y;
+  corr_f[1] = 0.;
+  corr_f[1] += fewald_y[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr_f[1] += fewald_y[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr_f[1] += fewald_y[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr_f[1] += fewald_y[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr_f[1] += fewald_y[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr_f[1] += fewald_y[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr_f[1] += fewald_y[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr_f[1] += fewald_y[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr_f[1] *= s_y;
 
   /* Interpolation in Z */
-  corr[2] = 0.;
-  corr[2] += fewald_z[i + 0][j + 0][k + 0] * tx * ty * tz;
-  corr[2] += fewald_z[i + 0][j + 0][k + 1] * tx * ty * dz;
-  corr[2] += fewald_z[i + 0][j + 1][k + 0] * tx * dy * tz;
-  corr[2] += fewald_z[i + 0][j + 1][k + 1] * tx * dy * dz;
-  corr[2] += fewald_z[i + 1][j + 0][k + 0] * dx * ty * tz;
-  corr[2] += fewald_z[i + 1][j + 0][k + 1] * dx * ty * dz;
-  corr[2] += fewald_z[i + 1][j + 1][k + 0] * dx * dy * tz;
-  corr[2] += fewald_z[i + 1][j + 1][k + 1] * dx * dy * dz;
-  corr[2] *= s_z;
+  corr_f[2] = 0.;
+  corr_f[2] += fewald_z[i + 0][j + 0][k + 0] * tx * ty * tz;
+  corr_f[2] += fewald_z[i + 0][j + 0][k + 1] * tx * ty * dz;
+  corr_f[2] += fewald_z[i + 0][j + 1][k + 0] * tx * dy * tz;
+  corr_f[2] += fewald_z[i + 0][j + 1][k + 1] * tx * dy * dz;
+  corr_f[2] += fewald_z[i + 1][j + 0][k + 0] * dx * ty * tz;
+  corr_f[2] += fewald_z[i + 1][j + 0][k + 1] * dx * ty * dz;
+  corr_f[2] += fewald_z[i + 1][j + 1][k + 0] * dx * dy * tz;
+  corr_f[2] += fewald_z[i + 1][j + 1][k + 1] * dx * dy * dz;
+  corr_f[2] *= s_z;
+
+  /* Interpolation for potential */
+  *corr_p = 0.;
+  *corr_p += potewald[i + 0][j + 0][k + 0] * tx * ty * tz;
+  *corr_p += potewald[i + 0][j + 0][k + 1] * tx * ty * dz;
+  *corr_p += potewald[i + 0][j + 1][k + 0] * tx * dy * tz;
+  *corr_p += potewald[i + 0][j + 1][k + 1] * tx * dy * dz;
+  *corr_p += potewald[i + 1][j + 0][k + 0] * dx * ty * tz;
+  *corr_p += potewald[i + 1][j + 0][k + 1] * dx * ty * dz;
+  *corr_p += potewald[i + 1][j + 1][k + 0] * dx * dy * tz;
+  *corr_p += potewald[i + 1][j + 1][k + 1] * dx * dy * dz;
 }
 #endif
 
@@ -438,12 +473,13 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         /* Apply Ewald correction for periodic BC */
         if (periodic && r > 1e-5 * hi) {
 
-          double corr[3];
-          gravity_exact_force_ewald_evaluate(dx, dy, dz, corr);
+          double corr_f[3], corr_pot;
+          gravity_exact_force_ewald_evaluate(dx, dy, dz, corr_f, &corr_pot);
 
-          a_grav[0] += mj * corr[0];
-          a_grav[1] += mj * corr[1];
-          a_grav[2] += mj * corr[2];
+          a_grav[0] += mj * corr_f[0];
+          a_grav[1] += mj * corr_f[1];
+          a_grav[2] += mj * corr_f[2];
+          pot += mj * corr_pot;
         }
       }
 
