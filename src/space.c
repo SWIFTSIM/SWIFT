@@ -655,7 +655,7 @@ void space_rebuild(struct space *s, int verbose) {
         s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
       }
       /* Swap the index */
-      memswap(&ind[k], &ind[nr_parts], sizeof(int));
+      memswap(&sind[k], &sind[nr_parts], sizeof(int));
     } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
@@ -681,9 +681,7 @@ void space_rebuild(struct space *s, int verbose) {
     if (cells_top[gind[k]].nodeID != local_nodeID) {
       nr_gparts -= 1;
       /* Swap the particle */
-      const struct gpart tp = s->gparts[k];
-      s->gparts[k] = s->gparts[nr_gparts];
-      s->gparts[nr_gparts] = tp;
+      memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
       /* Swap the link with part/spart */
       if (s->gparts[k].type == swift_type_gas) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
@@ -698,9 +696,7 @@ void space_rebuild(struct space *s, int verbose) {
             &s->gparts[nr_gparts];
       }
       /* Swap the index */
-      const int t = gind[k];
-      gind[k] = gind[nr_gparts];
-      gind[nr_gparts] = t;
+      memswap(&gind[k], &gind[nr_gparts], sizeof(int));
     } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
