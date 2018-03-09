@@ -120,6 +120,9 @@ void init_velociraptor(struct engine *e) {
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
     InitVelociraptor("stf_input.cfg", "stf_ouput.out", cosmo_info, unit_info, sim_info);
+
+    /* Free cell locations after VELOCIraptor has copied them. */
+    free(sim_info.cellloc);
 }
 
 /**
