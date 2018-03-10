@@ -654,7 +654,7 @@ void space_rebuild(struct space *s, int verbose) {
     if (cells_top[sind[k]].nodeID != local_nodeID) {
       nr_sparts -= 1;
       /* Swap the particle */
-      memswap(&s->sparts[k], s->sparts[nr_parts], sizeof(struct spart));
+      memswap(&s->sparts[k], &s->sparts[nr_parts], sizeof(struct spart));
       /* Swap the link with the gpart */
       if (s->sparts[k].gpart != NULL) {
         s->sparts[k].gpart->id_or_neg_offset = -k;
