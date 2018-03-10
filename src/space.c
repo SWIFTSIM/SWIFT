@@ -1396,8 +1396,7 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == engine_rank &&
-        offsets[k + 1] != offsets[k] + cell_part_counts[k])
+    if (offsets[k + 1] != offsets[k] + cell_part_counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
@@ -1450,8 +1449,7 @@ void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == engine_rank &&
-        offsets[k + 1] != offsets[k] + cell_spart_counts[k])
+    if (offsets[k + 1] != offsets[k] + cell_spart_counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
@@ -1512,8 +1510,7 @@ void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].nodeID == engine_rank &&
-        offsets[k + 1] != offsets[k] + cell_gspart_counts[k])
+    if (offsets[k + 1] != offsets[k] + cell_gspart_counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
