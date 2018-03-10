@@ -899,8 +899,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* WITH_MPI */
 
   /* Sort the gparts according to their cells. */
-  if (nr_gparts > 0)
-    space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
+  if (nr_gparts > 0) space_gparts_sort(s, gind, cell_gpart_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -924,14 +923,6 @@ void space_rebuild(struct space *s, int verbose) {
       error("gpart not sorted into the right top-level cell!");
   }
 #endif
-
-  /* Re-link the parts. */
-  if (nr_parts > 0 && nr_gparts > 0)
-    part_relink_parts_to_gparts(s->gparts, nr_gparts, s->parts);
-
-  /* Re-link the sparts. */
-  if (nr_sparts > 0 && nr_gparts > 0)
-    part_relink_sparts_to_gparts(s->gparts, nr_gparts, s->sparts);
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_gindex = 0;
@@ -1417,7 +1408,7 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
  *
  * @param s The #space.
  * @param ind The indices with respect to which the #spart are sorted.
- * @param cell_part_counts Number of particles per top-level cell.
+ * @param cell_spart_counts Number of particles per top-level cell.
  */
 void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
   /* Local stuff. */
@@ -1472,181 +1463,62 @@ void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
  *
  * @param s The #space.
  * @param ind The indices with respect to which the gparts are sorted.
- * @param N The number of gparts
- * @param min Lowest index.
- * @param max highest index.
- * @param verbose Are we talkative ?
+ * @param cell_gpart_counts Number of particles per top-level cell.
  */
-void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
-                       int verbose) {
+void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts) {
+  /* Local stuff. */
+  struct gpart *gparts = s->gparts;
 
-  const ticks tic = getticks();
+  /* Create the offsets array. */
+  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
+  if (offsets == NULL)
+    error("Failed to allocate temporary cell offsets array.");
+  offsets[0] = 0;
+  for (int k = 1; k <= s->nr_cells; k++) {
+    offsets[k] = offsets[k - 1] + cell_gpart_counts[k - 1];
+    cell_gpart_counts[k - 1] = 0;
+  }
 
-  /*Populate a global parallel_sort structure with the input data */
-  struct parallel_sort sort_struct;
-  sort_struct.gparts = s->gparts;
-  sort_struct.ind = ind;
-  sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((sort_struct.stack = (struct qstack *)malloc(
-           sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
-    error("Failed to allocate sorting stack.");
-  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
-    sort_struct.stack[i].ready = 0;
-
-  /* Add the first interval. */
-  sort_struct.stack[0].i = 0;
-  sort_struct.stack[0].j = N - 1;
-  sort_struct.stack[0].min = min;
-  sort_struct.stack[0].max = max;
-  sort_struct.stack[0].ready = 1;
-  sort_struct.first = 0;
-  sort_struct.last = 1;
-  sort_struct.waiting = 1;
-
-  /* Launch the sorting tasks with a stride of zero such that the same
-     map data is passed to each thread. */
-  threadpool_map(&s->e->threadpool, space_gparts_sort_mapper, &sort_struct,
-                 s->e->threadpool.num_threads, 0, 1, NULL);
+  /* Loop over local cells. */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    if (s->cells_top[cid].nodeID != engine_rank) continue;
+    for (size_t k = offsets[cid] + cell_gpart_counts[cid]; k < offsets[cid + 1];
+         k++) {
+      cell_gpart_counts[cid]++;
+      int target_cid = ind[k];
+      if (target_cid == cid) {
+        continue;
+      }
+      struct gpart temp_gpart = gparts[k];
+      while (target_cid != cid) {
+        size_t j = offsets[target_cid] + cell_gpart_counts[target_cid]++;
+        while (ind[j] == target_cid) {
+          j = offsets[target_cid] + cell_gpart_counts[target_cid]++;
+        }
+        memswap(&gparts[j], &temp_gpart, sizeof(struct gpart));
+        memswap(&ind[j], &target_cid, sizeof(int));
+        if (gparts[j].type == swift_type_gas) {
+          s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        } else if (gparts[j].type == swift_type_star) {
+          s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+        }
+      }
+      gparts[k] = temp_gpart;
+      ind[k] = target_cid;
+      if (gparts[k].type == swift_type_gas) {
+        s->parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+      } else if (gparts[k].type == swift_type_star) {
+        s->sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+      }
+    }
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Verify space_sort_struct. */
-  for (size_t i = 1; i < N; i++)
-    if (ind[i - 1] > ind[i])
-      error("Sorting failed (ind[%zu]=%i,ind[%zu]=%i), min=%i, max=%i.", i - 1,
-            ind[i - 1], i, ind[i], min, max);
-  if (s->e->nodeID == 0 || verbose) message("Sorting succeeded.");
-#endif
-
-  /* Clean up. */
-  free(sort_struct.stack);
-
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-void space_gparts_sort_mapper(void *map_data, int num_elements,
-                              void *extra_data) {
-
-  /* Unpack the mapping data. */
-  struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
-
-  /* Pointers to the sorting data. */
-  int *ind = sort_struct->ind;
-  struct gpart *gparts = sort_struct->gparts;
-
-  /* Main loop. */
-  while (sort_struct->waiting) {
-
-    /* Grab an interval off the queue. */
-    int qid = atomic_inc(&sort_struct->first) % sort_struct->stack_size;
-
-    /* Wait for the entry to be ready, or for the sorting do be done. */
-    while (!sort_struct->stack[qid].ready)
-      if (!sort_struct->waiting) return;
-
-    /* Get the stack entry. */
-    ptrdiff_t i = sort_struct->stack[qid].i;
-    ptrdiff_t j = sort_struct->stack[qid].j;
-    int min = sort_struct->stack[qid].min;
-    int max = sort_struct->stack[qid].max;
-    sort_struct->stack[qid].ready = 0;
-
-    /* Loop over sub-intervals. */
-    while (1) {
-
-      /* Bring beer. */
-      const int pivot = (min + max) / 2;
-      /* message("Working on interval [%i,%i] with min=%i, max=%i, pivot=%i.",
-              i, j, min, max, pivot); */
-
-      /* One pass of QuickSort's partitioning. */
-      ptrdiff_t ii = i;
-      ptrdiff_t jj = j;
-      while (ii < jj) {
-        while (ii <= j && ind[ii] <= pivot) ii++;
-        while (jj >= i && ind[jj] > pivot) jj--;
-        if (ii < jj) {
-          memswap(&ind[ii], &ind[jj], sizeof(int));
-          memswap(&gparts[ii], &gparts[jj], sizeof(struct gpart));
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Verify space_sort_struct. */
-      if (i != j) {
-        for (int k = i; k <= jj; k++) {
-          if (ind[k] > pivot) {
-            message(
-                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
-                ind[k], pivot, i, j);
-            error("Partition failed (<=pivot).");
-          }
-        }
-        for (int k = jj + 1; k <= j; k++) {
-          if (ind[k] <= pivot) {
-            message(
-                "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.", k,
-                ind[k], pivot, i, j);
-            error("Partition failed (>pivot).");
-          }
-        }
-      }
-#endif
-
-      /* Split-off largest interval. */
-      if (jj - i > j - jj + 1) {
-
-        /* Recurse on the left? */
-        if (jj > i && pivot > min) {
-          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
-          while (sort_struct->stack[qid].ready)
-            ;
-          sort_struct->stack[qid].i = i;
-          sort_struct->stack[qid].j = jj;
-          sort_struct->stack[qid].min = min;
-          sort_struct->stack[qid].max = pivot;
-          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
-            error("Qstack overflow.");
-          sort_struct->stack[qid].ready = 1;
-        }
-
-        /* Recurse on the right? */
-        if (jj + 1 < j && pivot + 1 < max) {
-          i = jj + 1;
-          min = pivot + 1;
-        } else
-          break;
-
-      } else {
-
-        /* Recurse on the right? */
-        if (pivot + 1 < max) {
-          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
-          while (sort_struct->stack[qid].ready)
-            ;
-          sort_struct->stack[qid].i = jj + 1;
-          sort_struct->stack[qid].j = j;
-          sort_struct->stack[qid].min = pivot + 1;
-          sort_struct->stack[qid].max = max;
-          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
-            error("Qstack overflow.");
-          sort_struct->stack[qid].ready = 1;
-        }
-
-        /* Recurse on the left? */
-        if (jj > i && pivot > min) {
-          j = jj;
-          max = pivot;
-        } else
-          break;
-      }
-
-    } /* loop over sub-intervals. */
-
-    atomic_dec(&sort_struct->waiting);
-
-  } /* main loop. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells_top[k].nodeID == engine_rank &&
+        offsets[k + 1] != offsets[k] + cell_gspart_counts[k])
+      error("Bad offsets after shuffle.");
+#endif  // SWIFT_DEBUG_CHECKS
 }
 
 /**
