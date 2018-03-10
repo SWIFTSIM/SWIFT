@@ -1368,7 +1368,6 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
 
   /* Loop over local cells. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
-    if (s->cells_top[cid].nodeID != engine_rank) continue;
     for (size_t k = offsets[cid] + cell_part_counts[cid]; k < offsets[cid + 1];
          k++) {
       cell_part_counts[cid]++;
@@ -1426,7 +1425,6 @@ void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
 
   /* Loop over local cells. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
-    if (s->cells_top[cid].nodeID != engine_rank) continue;
     for (size_t k = offsets[cid] + cell_spart_counts[cid]; k < offsets[cid + 1];
          k++) {
       cell_spart_counts[cid]++;
@@ -1481,7 +1479,6 @@ void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts) {
 
   /* Loop over local cells. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
-    if (s->cells_top[cid].nodeID != engine_rank) continue;
     for (size_t k = offsets[cid] + cell_gpart_counts[cid]; k < offsets[cid + 1];
          k++) {
       cell_gpart_counts[cid]++;
