@@ -793,7 +793,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif  // WITH_MPI
 
   /* Sort the parts according to their cells. */
-  if (nr_parts > 0) space_parts_sort(s, ind, cell_part_counts);
+  if (nr_parts > 0) space_parts_sort(s, ind, cell_part_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -819,7 +819,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
   /* Sort the sparts according to their cells. */
-  if (nr_sparts > 0) space_sparts_sort(s, sind, cell_spart_counts);
+  if (nr_sparts > 0) space_sparts_sort(s, sind, cell_spart_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -899,7 +899,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* WITH_MPI */
 
   /* Sort the gparts according to their cells. */
-  if (nr_gparts > 0) space_gparts_sort(s, gind, cell_gpart_counts);
+  if (nr_gparts > 0) space_gparts_sort(s, gind, cell_gpart_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -1349,28 +1349,28 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  *
  * @param s The #space.
  * @param ind The indices with respect to which the parts are sorted.
- * @param cell_part_counts Number of particles per top-level cell.
+ * @param counts Number of particles per index.
+ * @param num_bins Total number of bins (length of #counts).
  */
-void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
+void space_parts_sort(struct space *s, int *ind, int *counts, int num_bins) {
   /* Local stuff. */
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
 
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
+  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
     error("Failed to allocate temporary cell offsets array.");
   offsets[0] = 0;
-  for (int k = 1; k <= s->nr_cells; k++) {
-    offsets[k] = offsets[k - 1] + cell_part_counts[k - 1];
-    cell_part_counts[k - 1] = 0;
+  for (int k = 1; k <= num_bins; k++) {
+    offsets[k] = offsets[k - 1] + counts[k - 1];
+    counts[k - 1] = 0;
   }
 
   /* Loop over local cells. */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
-    for (size_t k = offsets[cid] + cell_part_counts[cid]; k < offsets[cid + 1];
-         k++) {
-      cell_part_counts[cid]++;
+  for (int cid = 0; cid < num_bins; cid++) {
+    for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
+      counts[cid]++;
       int target_cid = ind[k];
       if (target_cid == cid) {
         continue;
@@ -1378,9 +1378,9 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
       struct part temp_part = parts[k];
       struct xpart temp_xpart = xparts[k];
       while (target_cid != cid) {
-        size_t j = offsets[target_cid] + cell_part_counts[target_cid]++;
+        size_t j = offsets[target_cid] + counts[target_cid]++;
         while (ind[j] == target_cid) {
-          j = offsets[target_cid] + cell_part_counts[target_cid]++;
+          j = offsets[target_cid] + counts[target_cid]++;
         }
         memswap(&parts[j], &temp_part, sizeof(struct part));
         memswap(&xparts[j], &temp_xpart, sizeof(struct xpart));
@@ -1395,8 +1395,8 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int k = 0; k < s->nr_cells; k++)
-    if (offsets[k + 1] != offsets[k] + cell_part_counts[k])
+  for (int k = 0; k < num_bins; k++)
+    if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
@@ -1406,36 +1406,36 @@ void space_parts_sort(struct space *s, int *ind, int *cell_part_counts) {
  *
  * @param s The #space.
  * @param ind The indices with respect to which the #spart are sorted.
- * @param cell_spart_counts Number of particles per top-level cell.
+ * @param counts Number of particles per index.
+ * @param num_bins Total number of bins (length of #counts).
  */
-void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
+void space_sparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
   /* Local stuff. */
   struct spart *sparts = s->sparts;
 
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
+  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
     error("Failed to allocate temporary cell offsets array.");
   offsets[0] = 0;
-  for (int k = 1; k <= s->nr_cells; k++) {
-    offsets[k] = offsets[k - 1] + cell_spart_counts[k - 1];
-    cell_spart_counts[k - 1] = 0;
+  for (int k = 1; k <= num_bins; k++) {
+    offsets[k] = offsets[k - 1] + counts[k - 1];
+    counts[k - 1] = 0;
   }
 
   /* Loop over local cells. */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
-    for (size_t k = offsets[cid] + cell_spart_counts[cid]; k < offsets[cid + 1];
-         k++) {
-      cell_spart_counts[cid]++;
+  for (int cid = 0; cid < num_bins; cid++) {
+    for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
+      counts[cid]++;
       int target_cid = ind[k];
       if (target_cid == cid) {
         continue;
       }
       struct spart temp_spart = sparts[k];
       while (target_cid != cid) {
-        size_t j = offsets[target_cid] + cell_spart_counts[target_cid]++;
+        size_t j = offsets[target_cid] + counts[target_cid]++;
         while (ind[j] == target_cid) {
-          j = offsets[target_cid] + cell_spart_counts[target_cid]++;
+          j = offsets[target_cid] + counts[target_cid]++;
         }
         memswap(&sparts[j], &temp_spart, sizeof(struct spart));
         memswap(&ind[j], &target_cid, sizeof(int));
@@ -1448,8 +1448,8 @@ void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int k = 0; k < s->nr_cells; k++)
-    if (offsets[k + 1] != offsets[k] + cell_spart_counts[k])
+  for (int k = 0; k < num_bins; k++)
+    if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
@@ -1459,36 +1459,36 @@ void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts) {
  *
  * @param s The #space.
  * @param ind The indices with respect to which the gparts are sorted.
- * @param cell_gpart_counts Number of particles per top-level cell.
+ * @param counts Number of particles per index.
+ * @param num_bins Total number of bins (length of #counts).
  */
-void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts) {
+void space_gparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
   /* Local stuff. */
   struct gpart *gparts = s->gparts;
 
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (s->nr_cells + 1));
+  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
     error("Failed to allocate temporary cell offsets array.");
   offsets[0] = 0;
-  for (int k = 1; k <= s->nr_cells; k++) {
-    offsets[k] = offsets[k - 1] + cell_gpart_counts[k - 1];
-    cell_gpart_counts[k - 1] = 0;
+  for (int k = 1; k <= num_bins; k++) {
+    offsets[k] = offsets[k - 1] + counts[k - 1];
+    counts[k - 1] = 0;
   }
 
   /* Loop over local cells. */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
-    for (size_t k = offsets[cid] + cell_gpart_counts[cid]; k < offsets[cid + 1];
-         k++) {
-      cell_gpart_counts[cid]++;
+  for (int cid = 0; cid < num_bins; cid++) {
+    for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
+      counts[cid]++;
       int target_cid = ind[k];
       if (target_cid == cid) {
         continue;
       }
       struct gpart temp_gpart = gparts[k];
       while (target_cid != cid) {
-        size_t j = offsets[target_cid] + cell_gpart_counts[target_cid]++;
+        size_t j = offsets[target_cid] + counts[target_cid]++;
         while (ind[j] == target_cid) {
-          j = offsets[target_cid] + cell_gpart_counts[target_cid]++;
+          j = offsets[target_cid] + counts[target_cid]++;
         }
         memswap(&gparts[j], &temp_gpart, sizeof(struct gpart));
         memswap(&ind[j], &target_cid, sizeof(int));
@@ -1509,8 +1509,8 @@ void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int k = 0; k < s->nr_cells; k++)
-    if (offsets[k + 1] != offsets[k] + cell_gspart_counts[k])
+  for (int k = 0; k < num_bins; k++)
+    if (offsets[k + 1] != offsets[k] + ccounts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }

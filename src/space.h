@@ -172,9 +172,9 @@ struct space {
 };
 
 /* function prototypes. */
-void space_parts_sort(struct space *s, int *ind, int *cell_part_counts);
-void space_gparts_sort(struct space *s, int *ind, int *cell_gpart_counts);
-void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts);
+void space_parts_sort(struct space *s, int *ind, int *counts, int num_bins);
+void space_gparts_sort(struct space *s, int *ind, int *counts, int num_bins);
+void space_sparts_sort(struct space *s, int *ind, int *counts, int num_bins);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
