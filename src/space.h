@@ -175,8 +175,7 @@ struct space {
 void space_parts_sort(struct space *s, int *ind, int *cell_part_counts);
 void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
-void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
-                       int verbose);
+void space_sparts_sort(struct space *s, int *ind, int *cell_spart_counts);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
@@ -197,8 +196,6 @@ void space_map_parts_xparts(struct space *s,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_gparts_sort_mapper(void *map_data, int num_elements,
-                              void *extra_data);
-void space_sparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
