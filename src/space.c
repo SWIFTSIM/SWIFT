@@ -1510,7 +1510,7 @@ void space_gparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int k = 0; k < num_bins; k++)
-    if (offsets[k + 1] != offsets[k] + ccounts[k])
+    if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
 #endif  // SWIFT_DEBUG_CHECKS
 }
