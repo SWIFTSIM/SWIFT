@@ -81,12 +81,12 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
-  cleanup_h:   0                    # (Optional) Clean the values of h that are read in. Set to 1 to activate.
-  h_scaling:  1.                    # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
+  cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
+  smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
   shift_x:    0.                    # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    0.
   shift_z:    0.
-  replicate:  2                     # (Optional) Replicate all particles along each axis a given number of times. Default 1.
+  replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
 
 # Parameters controlling restarts
 Restarts:

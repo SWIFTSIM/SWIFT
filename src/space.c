@@ -2948,8 +2948,8 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Apply h scaling */
-  const double scaling =
-      parser_get_opt_param_double(params, "InitialConditions:h_scaling", 1.0);
+  const double scaling = parser_get_opt_param_double(
+      params, "InitialConditions:smoothing_length_scaling", 1.0);
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;

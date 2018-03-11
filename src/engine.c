@@ -3665,10 +3665,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
- * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
+ * @param clean_smoothing_length_values Are we cleaning up the values of 
+ * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int clean_h_values) {
+void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -3679,7 +3679,7 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   space_rebuild(e->s, e->verbose);
 
   /* Initial cleaning up session ? */
-  if (clean_h_values) space_sanitize(e->s);
+  if (clean_smoothing_length_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
