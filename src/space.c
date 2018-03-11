@@ -733,11 +733,20 @@ void space_rebuild(struct space *s, int verbose) {
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
                          nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
                          nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
-
+                         
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
   s->nr_gparts = nr_gparts + nr_gparts_exchanged;
   s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+  
+  /* Clear non-local cell counts. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID != local_nodeID) {
+      cell_part_counts[k] = 0;
+      cell_spart_counts[k] = 0;
+      cell_gpart_counts[k] = 0;
+    }
+  }
 
   /* Re-allocate the index array for the parts if needed.. */
   if (s->nr_parts + 1 > ind_size) {
