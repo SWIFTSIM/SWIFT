@@ -81,6 +81,7 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
+  generate_gas_in_ics:         0    # (Optional) Generate gas particles from the DM-only ICs (e.g. from panphasia).
   cleanup_h_factors:           0    # (Optional) Clean up the h-factors used in the ICs (e.g. in Gadget files).
   cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.

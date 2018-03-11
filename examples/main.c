@@ -624,6 +624,12 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
     const int cleanup_h = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_h_factors", 0);
+    const int generate_gas_in_ics = parser_get_opt_param_int(
+        params, "InitialConditions:generate_gas_in_ics", 0);
+    if (generate_gas_in_ics && flag_entropy_ICs)
+      error("Can't generate gas if the entropy flag is set in the ICs.");
+    if (generate_gas_in_ics && !with_cosmology)
+      error("Can't generate gas if the run is not cosmological.");
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
@@ -694,8 +700,9 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, dim, parts, gparts, sparts, Ngas, Ngpart, Nspart,
-               periodic, replicate, with_self_gravity, talking, dry_run);
+    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
+               Nspart, periodic, replicate, generate_gas_in_ics,
+               with_self_gravity, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);

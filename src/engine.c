@@ -4395,7 +4395,7 @@ void engine_step(struct engine *e) {
 
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
-    cosmology_update(e->cosmology, e->ti_current);
+    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {

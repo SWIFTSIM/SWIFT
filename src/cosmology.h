@@ -70,6 +70,9 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
+  /*! The critical density at the current redshift (in internal units) */
+  double critical_density;
+
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;
 
@@ -160,7 +163,8 @@ struct cosmology {
   double universe_age_at_present_day;
 };
 
-void cosmology_update(struct cosmology *c, integertime_t ti_current);
+void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
+                      integertime_t ti_current);
 
 double cosmology_get_drift_factor(const struct cosmology *cosmo,
                                   integertime_t ti_start, integertime_t ti_end);
