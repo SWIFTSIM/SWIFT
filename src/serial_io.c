@@ -67,6 +67,8 @@
  * @param offset The offset position where this rank starts reading.
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
+ * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param h The value of the reduced Hubble constant to use for cleaning.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
@@ -74,7 +76,7 @@
 void readArray(hid_t grp, const struct io_props props, size_t N,
                long long N_total, long long offset,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units) {
+               const struct unit_system* ic_units, int cleanup_h, double h) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -158,6 +160,23 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
     } else {
       float* temp_f = temp;
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+    }
+  }
+
+  /* Clean-up h if necessary */
+  const float h_factor_exp = units_h_factor(internal_units, props.units);
+  if (h_factor_exp != 0.f && exist != 0) {
+    const double h_factor = pow(h, h_factor_exp);
+
+    /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
+     * h_factor); */
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
     }
   }
 
@@ -382,6 +401,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_hydro Are we reading gas particles ?
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
+ * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param h The value of the reduced Hubble constant to use for correction.
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -402,8 +423,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                    int n_threads, int dry_run) {
+                    int cleanup_h, double h, int mpi_rank, int mpi_size,
+                    MPI_Comm comm, MPI_Info info, int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -475,6 +496,13 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
       dim[2] = min(dim[0], dim[1]);
     else if (hydro_dimension == 1)
       dim[2] = dim[1] = dim[0];
+
+    /* Convert the box size if we want to clean-up h-factors */
+    if (cleanup_h) {
+      dim[0] /= h;
+      dim[1] /= h;
+      dim[2] /= h;
+    }
 
     /* message("Found %lld particles in a %speriodic box of size [%f %f %f].",
      */
@@ -641,7 +669,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
         if (!dry_run)
           for (int i = 0; i < num_fields; ++i)
             readArray(h_grp, list[i], Nparticles, N_total[ptype], offset[ptype],
-                      internal_units, ic_units);
+                      internal_units, ic_units, cleanup_h, h);
 
         /* Close particle group */
         H5Gclose(h_grp);
