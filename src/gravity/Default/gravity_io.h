@@ -56,9 +56,15 @@ void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
     dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
   }
 
+  /* Extrapolate the velocites to the current time */
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Conversion from internal units to peculiar velocities */
+  ret[0] *= cosmo->a2_inv;
+  ret[1] *= cosmo->a2_inv;
+  ret[2] *= cosmo->a2_inv;
 }
 
 /**

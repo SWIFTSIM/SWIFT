@@ -106,7 +106,13 @@ void convert_part_vel(const struct engine* e, const struct part* p,
     dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
   }
 
+  /* Extrapolate the velocites to the current time */
   hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
+
+  /* Conversion from internal units to peculiar velocities */
+  ret[0] *= cosmo->a2_inv;
+  ret[1] *= cosmo->a2_inv;
+  ret[2] *= cosmo->a2_inv;
 }
 
 /**
