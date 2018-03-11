@@ -275,8 +275,7 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_d(
       h_data, "CGS conversion factor",
       units_cgs_conversion_factor(snapshot_units, props.units));
-  io_write_attribute_f(h_data, "h-scale exponent",
-                       units_h_factor(snapshot_units, props.units));
+  io_write_attribute_f(h_data, "h-scale exponent", 0);
   io_write_attribute_f(h_data, "a-scale exponent",
                        units_a_factor(snapshot_units, props.units));
   io_write_attribute_s(h_data, "Conversion factor", buffer);
