@@ -622,7 +622,11 @@ int main(int argc, char *argv[]) {
         parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
     clean_smoothing_length_values = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
+    const int cleanup_h = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_h_factors", 0);
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
+    if (myrank == 0 && cleanup_h)
+      message("Cleaning up h-factors (h=%f)", cosmo.h);
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
@@ -648,7 +652,7 @@ int main(int argc, char *argv[]) {
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   nr_threads, dry_run);
+                   cleanup_h, cosmo.h, nr_threads, dry_run);
 #endif
     if (myrank == 0) {
       clocks_gettime(&toc);

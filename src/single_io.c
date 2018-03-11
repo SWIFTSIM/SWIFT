@@ -64,13 +64,15 @@
  * @param N The number of particles.
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
+ * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param The value of the reduced Hubble constant.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
  */
 void readArray(hid_t h_grp, const struct io_props prop, size_t N,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units) {
+               const struct unit_system* ic_units, int cleanup_h, double h) {
 
   const size_t typeSize = io_sizeof_type(prop.type);
   const size_t copySize = typeSize * prop.dimension;
@@ -124,18 +126,35 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   }
 
   /* Unit conversion if necessary */
-  const double factor =
+  const double unit_factor =
       units_conversion_factor(ic_units, internal_units, prop.units);
-  if (factor != 1. && exist != 0) {
+  if (unit_factor != 1. && exist != 0) {
 
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(prop.type)) {
       double* temp_d = (double*)temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= unit_factor;
     } else {
       float* temp_f = (float*)temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= unit_factor;
+    }
+  }
+
+  /* Clean-up h if necessary */
+  const float h_factor_exp = units_h_factor(internal_units, prop.units);
+  if (h_factor_exp != 0.f && exist != 0) {
+    const double h_factor = pow(h, h_factor_exp);
+
+    /* message("Multipltying '%s' by h^%f=%f", prop.name, h_factor_exp,
+     * h_factor); */
+
+    if (io_is_double_precision(prop.type)) {
+      double* temp_d = (double*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
     }
   }
 
@@ -301,6 +320,9 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_hydro Are we reading gas particles ?
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
+ * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param h The value of the reduced Hubble constant to use for correction.
+ * @prarm n_threads The number of threads to use for the temporary threadpool.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
@@ -316,7 +338,7 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int n_threads, int dry_run) {
+                    int cleanup_h, double h, int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -383,6 +405,13 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
     dim[2] = min(dim[0], dim[1]);
   else if (hydro_dimension == 1)
     dim[2] = dim[1] = dim[0];
+
+  /* Convert the box size if we want to clean-up h-factors */
+  if (cleanup_h) {
+    dim[0] /= h;
+    dim[1] /= h;
+    dim[2] /= h;
+  }
 
   /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	  *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);  */
@@ -517,7 +546,8 @@ void read_ic_single(char* fileName, const struct unit_system* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], Nparticles, internal_units, ic_units);
+        readArray(h_grp, list[i], Nparticles, internal_units, ic_units,
+                  cleanup_h, h);
 
     /* Close particle group */
     H5Gclose(h_grp);

@@ -3665,7 +3665,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
- * @param clean_smoothing_length_values Are we cleaning up the values of 
+ * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
 void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
