@@ -2813,11 +2813,12 @@ void space_init_gparts(struct space *s, int verbose) {
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
+  const struct cosmology *cosmo = s->e->cosmology;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
   for (int k = 0; k < count; k++)
-    hydro_convert_quantities(&parts[k], &xparts[k]);
+    hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
 }
 
 /**
