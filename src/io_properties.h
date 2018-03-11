@@ -34,9 +34,11 @@ enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0, UNUSED = -1 };
 
 /* Helper typedefs */
 typedef void (*conversion_func_part_float)(const struct engine*,
-                                           const struct part*, float*);
+                                           const struct part*,
+                                           const struct xpart*, float*);
 typedef void (*conversion_func_part_double)(const struct engine*,
-                                            const struct part*, double*);
+                                            const struct part*,
+                                            const struct xpart*, double*);
 typedef void (*conversion_func_gpart_float)(const struct engine*,
                                             const struct gpart*, float*);
 typedef void (*conversion_func_gpart_double)(const struct engine*,
@@ -78,6 +80,7 @@ struct io_props {
 
   /* The particle arrays */
   const struct part* parts;
+  const struct xpart* xparts;
   const struct gpart* gparts;
 
   /* Are we converting? */
@@ -125,6 +128,7 @@ INLINE static struct io_props io_make_input_field_(
   r.field = field;
   r.partSize = partSize;
   r.parts = NULL;
+  r.xparts = NULL;
   r.gparts = NULL;
   r.conversion = 0;
   r.convert_part_f = NULL;
@@ -179,10 +183,10 @@ INLINE static struct io_props io_make_output_field_(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_part(name, type, dim, units, part, \
-                                          convert)                      \
-  io_make_output_field_convert_part_##type(name, type, dim, units,      \
-                                           sizeof(part[0]), part, convert)
+#define io_make_output_field_convert_part(name, type, dim, units, part, xpart, \
+                                          convert)                             \
+  io_make_output_field_convert_part_##type(                                    \
+      name, type, dim, units, sizeof(part[0]), part, xpart, convert)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -193,6 +197,7 @@ INLINE static struct io_props io_make_output_field_(
  * @param units The units of the dataset
  * @param partSize The size in byte of the particle
  * @param parts The particle array
+ * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a float
  *
  * Do not call this function directly. Use the macro defined above.
@@ -200,7 +205,8 @@ INLINE static struct io_props io_make_output_field_(
 INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
-    const struct part* parts, conversion_func_part_float functionPtr) {
+    const struct part* parts, const struct xpart* xparts,
+    conversion_func_part_float functionPtr) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -211,6 +217,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
+  r.xparts = xparts;
   r.gparts = NULL;
   r.conversion = 1;
   r.convert_part_f = functionPtr;
@@ -230,6 +237,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
  * @param units The units of the dataset
  * @param partSize The size in byte of the particle
  * @param parts The particle array
+ * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a float
  *
  * Do not call this function directly. Use the macro defined above.
@@ -237,7 +245,8 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
-    const struct part* parts, conversion_func_part_double functionPtr) {
+    const struct part* parts, const struct xpart* xparts,
+    conversion_func_part_double functionPtr) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -248,6 +257,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
+  r.xparts = xparts;
   r.gparts = NULL;
   r.conversion = 1;
   r.convert_part_f = NULL;
@@ -293,6 +303,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
   r.field = NULL;
   r.partSize = gpartSize;
   r.parts = NULL;
+  r.xparts = NULL;
   r.gparts = gparts;
   r.conversion = 1;
   r.convert_part_f = NULL;
@@ -330,6 +341,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
   r.field = NULL;
   r.partSize = gpartSize;
   r.parts = NULL;
+  r.xparts = NULL;
   r.gparts = gparts;
   r.conversion = 1;
   r.convert_part_f = NULL;

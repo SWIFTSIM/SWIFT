@@ -821,9 +821,10 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
-  struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
-  struct spart* sparts = e->s->sparts;
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
+  const struct spart* sparts = e->s->sparts;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -980,7 +981,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(parts, list, &num_fields);
+        hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
         break;
 
@@ -1045,10 +1046,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Ntot = e->s->nr_gparts;
-  struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
-  struct spart* sparts = e->s->sparts;
+  const struct spart* sparts = e->s->sparts;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -1208,7 +1210,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       case swift_type_gas:
         Nparticles = Ngas;
-        hydro_write_particles(parts, list, &num_fields);
+        hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
         break;
 

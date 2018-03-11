@@ -712,10 +712,11 @@ void write_output_serial(struct engine* e, const char* baseName,
   const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
-  struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
-  struct spart* sparts = e->s->sparts;
+  const struct spart* sparts = e->s->sparts;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -962,7 +963,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
           case swift_type_gas:
             Nparticles = Ngas;
-            hydro_write_particles(parts, list, &num_fields);
+            hydro_write_particles(parts, xparts, list, &num_fields);
             num_fields += chemistry_write_particles(parts, list + num_fields);
             break;
 
