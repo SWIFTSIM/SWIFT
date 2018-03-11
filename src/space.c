@@ -2646,8 +2646,15 @@ void space_first_init_parts(struct space *s,
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
   struct xpart *restrict xp = s->xparts;
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
 
   for (size_t i = 0; i < nr_parts; ++i) {
+
+    /* Convert velocities to internal units */
+    p[i].v[0] *= a_factor_vel;
+    p[i].v[1] *= a_factor_vel;
+    p[i].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     p[i].x[2] = 0.f;
@@ -2684,8 +2691,15 @@ void space_first_init_gparts(struct space *s,
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
 
   for (size_t i = 0; i < nr_gparts; ++i) {
+
+    /* Convert velocities to internal units */
+    gp[i].v_full[0] *= a_factor_vel;
+    gp[i].v_full[1] *= a_factor_vel;
+    gp[i].v_full[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     gp[i].x[2] = 0.f;
@@ -2715,8 +2729,15 @@ void space_first_init_sparts(struct space *s) {
 
   const size_t nr_sparts = s->nr_sparts;
   struct spart *restrict sp = s->sparts;
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
 
   for (size_t i = 0; i < nr_sparts; ++i) {
+
+    /* Convert velocities to internal units */
+    sp[i].v[0] *= a_factor_vel;
+    sp[i].v[1] *= a_factor_vel;
+    sp[i].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     sp[i].x[2] = 0.f;
