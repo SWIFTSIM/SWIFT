@@ -5818,11 +5818,13 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     if (e->policy & engine_policy_cosmology) {
       const float next_snapshot_time =
           exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
-      message("Next output time set to a=%e.", next_snapshot_time);
+      if (e->verbose)
+        message("Next output time set to a=%e.", next_snapshot_time);
     } else {
       const float next_snapshot_time =
           e->ti_nextSnapshot * e->time_base + e->time_begin;
-      message("Next output time set to t=%e.", next_snapshot_time);
+      if (e->verbose)
+        message("Next output time set to t=%e.", next_snapshot_time);
     }
   }
 }

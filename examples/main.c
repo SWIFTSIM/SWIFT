@@ -606,7 +606,7 @@ int main(int argc, char *argv[]) {
       cosmology_init(params, &us, &prog_const, &cosmo);
     else
       cosmology_init_no_cosmo(&cosmo);
-    if (with_cosmology) cosmology_print(&cosmo);
+    if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
 
     /* Initialise the hydro properties */
     if (with_hydro) hydro_props_init(&hydro_properties, params);
