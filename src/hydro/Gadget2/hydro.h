@@ -545,13 +545,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * Requires the density to be known
  *
- * @param p The particle to act upon
+ * @param p The particle to act upon.
+ * @param xp The extended data.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
-  /* We read u in the entropy field. We now get S from u */
-  xp->entropy_full = gas_entropy_from_internal_energy(p->rho, p->entropy);
+  /* We read u in the entropy field. We now get (comoving) S from (physical) u
+   * and (physical) rho. Note that comoving S == physical S */
+  xp->entropy_full =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, p->entropy);
   p->entropy = xp->entropy_full;
 
   /* Compute the pressure */
