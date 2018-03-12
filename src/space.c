@@ -733,12 +733,12 @@ void space_rebuild(struct space *s, int verbose) {
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
                          nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
                          nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
-                         
+
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
   s->nr_gparts = nr_gparts + nr_gparts_exchanged;
   s->nr_sparts = nr_sparts + nr_sparts_exchanged;
-  
+
   /* Clear non-local cell counts. */
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID != local_nodeID) {
@@ -802,7 +802,9 @@ void space_rebuild(struct space *s, int verbose) {
 #endif  // WITH_MPI
 
   /* Sort the parts according to their cells. */
-  if (nr_parts > 0) space_parts_sort(s, ind, cell_part_counts, s->nr_cells);
+  if (nr_parts > 0)
+    space_parts_sort(s->parts, s->xparts, ind, cell_part_counts, s->nr_cells,
+                     0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -828,7 +830,8 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
   /* Sort the sparts according to their cells. */
-  if (nr_sparts > 0) space_sparts_sort(s, sind, cell_spart_counts, s->nr_cells);
+  if (nr_sparts > 0)
+    space_sparts_sort(s->sparts, sind, cell_spart_counts, s->nr_cells, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -905,10 +908,12 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_gparts = s->nr_gparts;
 
-#endif /* WITH_MPI */
+#endif  // WITH_MPI
 
   /* Sort the gparts according to their cells. */
-  if (nr_gparts > 0) space_gparts_sort(s, gind, cell_gpart_counts, s->nr_cells);
+  if (nr_gparts > 0)
+    space_gparts_sort(s->gparts, s->parts, s->sparts, gind, cell_gpart_counts,
+                      s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -1356,16 +1361,15 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  * @brief Sort the particles and condensed particles according to the given
  * indices.
  *
- * @param s The #space.
+ * @param parts The array of #part to sort.
+ * @param xparts The corresponding #xpart array to sort as well.
  * @param ind The indices with respect to which the parts are sorted.
  * @param counts Number of particles per index.
  * @param num_bins Total number of bins (length of #counts).
+ * @param parts_offset Offset of the #parts array from the global #parts array.
  */
-void space_parts_sort(struct space *s, int *ind, int *counts, int num_bins) {
-  /* Local stuff. */
-  struct part *parts = s->parts;
-  struct xpart *xparts = s->xparts;
-
+void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
+                      int *counts, int num_bins, ptrdiff_t parts_offset) {
   /* Create the offsets array. */
   size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
@@ -1394,12 +1398,14 @@ void space_parts_sort(struct space *s, int *ind, int *counts, int num_bins) {
         memswap(&parts[j], &temp_part, sizeof(struct part));
         memswap(&xparts[j], &temp_xpart, sizeof(struct xpart));
         memswap(&ind[j], &target_cid, sizeof(int));
-        if (parts[j].gpart) parts[j].gpart->id_or_neg_offset = -j;
+        if (parts[j].gpart)
+          parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
       }
       parts[k] = temp_part;
       xparts[k] = temp_xpart;
       ind[k] = target_cid;
-      if (parts[k].gpart) parts[k].gpart->id_or_neg_offset = -k;
+      if (parts[k].gpart)
+        parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
     }
   }
 
@@ -1413,15 +1419,15 @@ void space_parts_sort(struct space *s, int *ind, int *counts, int num_bins) {
 /**
  * @brief Sort the s-particles according to the given indices.
  *
- * @param s The #space.
+ * @param sparts The array of #spart to sort.
  * @param ind The indices with respect to which the #spart are sorted.
  * @param counts Number of particles per index.
  * @param num_bins Total number of bins (length of #counts).
+ * @param sparts_offset Offset of the #sparts array from the global #sparts
+ * array.
  */
-void space_sparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
-  /* Local stuff. */
-  struct spart *sparts = s->sparts;
-
+void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
+                       int num_bins, ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
@@ -1448,11 +1454,13 @@ void space_sparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
         }
         memswap(&sparts[j], &temp_spart, sizeof(struct spart));
         memswap(&ind[j], &target_cid, sizeof(int));
-        if (sparts[j].gpart) sparts[j].gpart->id_or_neg_offset = -j;
+        if (sparts[j].gpart)
+          sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
       }
       sparts[k] = temp_spart;
       ind[k] = target_cid;
-      if (sparts[k].gpart) sparts[k].gpart->id_or_neg_offset = -k;
+      if (sparts[k].gpart)
+        sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
     }
   }
 
@@ -1466,15 +1474,16 @@ void space_sparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
 /**
  * @brief Sort the g-particles according to the given indices.
  *
- * @param s The #space.
+ * @param gparts The array of #gpart to sort.
+ * @param parts Global #part array for re-linking.
+ * @param sparts Global #spart array for re-linking.
  * @param ind The indices with respect to which the gparts are sorted.
  * @param counts Number of particles per index.
  * @param num_bins Total number of bins (length of #counts).
  */
-void space_gparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
-  /* Local stuff. */
-  struct gpart *gparts = s->gparts;
-
+void space_gparts_sort(struct gpart *gparts, struct part *parts,
+                       struct spart *sparts, int *ind, int *counts,
+                       int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
   if (offsets == NULL)
@@ -1502,17 +1511,17 @@ void space_gparts_sort(struct space *s, int *ind, int *counts, int num_bins) {
         memswap(&gparts[j], &temp_gpart, sizeof(struct gpart));
         memswap(&ind[j], &target_cid, sizeof(int));
         if (gparts[j].type == swift_type_gas) {
-          s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+          parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         } else if (gparts[j].type == swift_type_star) {
-          s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
+          sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         }
       }
       gparts[k] = temp_gpart;
       ind[k] = target_cid;
       if (gparts[k].type == swift_type_gas) {
-        s->parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+        parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_star) {
-        s->sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+        sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       }
     }
   }
@@ -1689,7 +1698,7 @@ void space_map_cells_pre(struct space *s, int full,
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *buff, struct cell_buff *sbuff,
-                           struct cell_buff *gbuff) {
+                           struct cell_buff *gbuff, int *cell_id) {
 
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1775,7 +1784,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->progeny[k] = NULL;
       } else {
         space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
-                              progeny_gbuff);
+                              progeny_gbuff, cell_id);
         if (progeny_buff) progeny_buff += c->progeny[k]->count;
         if (progeny_gbuff) progeny_gbuff += c->progeny[k]->gcount;
         if (progeny_sbuff) progeny_sbuff += c->progeny[k]->scount;
@@ -1875,58 +1884,27 @@ void space_split_recursive(struct space *s, struct cell *c,
      * later). */
     struct cell *root = c;
     while (root->parent != NULL) root = root->parent;
+    const int parts_offset = c->parts - root->parts;
+
+    /* Get a unique sequence number of this leaf cell. */
+    const int current_cell_id = (*cell_id)++;
 
     /* Put the parts and xparts in the right order. */
-    const int parts_offset = c->parts - root->parts;
     for (int k = 0; k < count; k++) {
-      /* Location of the part in the parts array. */
-      int location = buff[k].offset - parts_offset;
-      if (location != k) {
-        struct part temp_part = parts[k];
-        struct xpart temp_xpart = xparts[k];
-        int j = k;
-        while (1) {
-          buff[j].offset = j + parts_offset;
-          if (location == k) break;
-          parts[j] = parts[location];
-          xparts[j] = xparts[location];
-          if (parts[j].gpart)
-            parts[j].gpart->id_or_neg_offset = -(&parts[j] - s->parts);
-          j = location;
-          location = buff[j].offset - parts_offset;
-        }
-        parts[j] = temp_part;
-        xparts[j] = temp_xpart;
-        if (parts[j].gpart)
-          parts[j].gpart->id_or_neg_offset = -(&parts[j] - s->parts);
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].x[0] != buff[k].x[0] || parts[k].x[1] != buff[k].x[1] ||
-          parts[k].x[2] != buff[k].x[2])
-        error("Buffer and particle position mismatch.");
-      if (parts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-#endif
+      /* Set the cell_id in the buffer. */
+      buff[k].ind = current_cell_id;
 
       /* parts: Get dt_min/dt_max and h_max. */
-      hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
-      hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
-      h_max = max(h_max, parts[k].h);
+      struct part *p = &parts[buff[k].offset - parts_offset];
+      hydro_time_bin_min = min(hydro_time_bin_min, p->time_bin);
+      hydro_time_bin_max = max(hydro_time_bin_max, p->time_bin);
+      h_max = max(h_max, p->h);
 
       /* xparts: Reset x_diff */
       xparts[k].x_diff[0] = 0.f;
       xparts[k].x_diff[1] = 0.f;
       xparts[k].x_diff[2] = 0.f;
     }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int k = 0; k < count; k++) {
-      if (parts[k].gpart != NULL &&
-          parts[k].gpart->id_or_neg_offset != -(&parts[k] - s->parts))
-        error("parts/gparts mismatch.");
-    }
-#endif  // SWIFT_DEBUG_CHECKS
 
     /* Put the sparts in the right order. */
     const int sparts_offset = c->sparts - root->sparts;
@@ -2122,12 +2100,29 @@ void space_split_cell(struct space *s, struct cell *c) {
   }
 
   /* Call the recursive cell splitting function. */
-  space_split_recursive(s, c, buff, sbuff, gbuff);
+  int num_leaf_cells = 0;
+  space_split_recursive(s, c, buff, sbuff, gbuff, &num_leaf_cells);
+
+  /* Collect the particle leaf cell indices. */
+  int *leaf_cell_ind = (int *)malloc(sizeof(int) * count);
+  int *leaf_cell_count = (int *)calloc(sizeof(int), num_leaf_cells);
+  if (!leaf_cell_ind || !leaf_cell_count)
+    error("Error allocating temporary leaf cell index and count.");
+  for (int k = 0; k < count; k++) {
+    leaf_cell_ind[buff[k].offset] = buff[k].ind;
+    leaf_cell_count[buff[k].ind]++;
+  }
+  
+  /* Re-shuffle the parts into the correct leaf cells. */
+  space_parts_sort(c->parts, c->xparts, leaf_cell_ind, leaf_cell_count,
+                   num_leaf_cells, c->parts - s->parts);
 
   /* Clean up. */
   if (buff != NULL) free(buff);
   if (gbuff != NULL) free(gbuff);
   if (sbuff != NULL) free(sbuff);
+  free(leaf_cell_ind);
+  free(leaf_cell_count);
 }
 
 /**

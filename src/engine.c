@@ -565,7 +565,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (s->nr_parts > 0)
-    space_parts_sort(s, dest, &counts[nodeID * nr_nodes], nr_nodes);
+    space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
+                     nr_nodes, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -656,7 +657,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (s->nr_sparts > 0)
-    space_sparts_sort(s, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes);
+    space_sparts_sort(s->sparts, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes,
+                      0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -748,7 +750,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
-    space_gparts_sort(s, g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
+    space_gparts_sort(s->gparts, s->parts, s->sparts, g_dest,
+                      &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
