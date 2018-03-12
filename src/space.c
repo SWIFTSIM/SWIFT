@@ -1884,12 +1884,12 @@ void space_split_recursive(struct space *s, struct cell *c,
      * later). */
     struct cell *root = c;
     while (root->parent != NULL) root = root->parent;
-    const int parts_offset = c->parts - root->parts;
 
     /* Get a unique sequence number of this leaf cell. */
     const int current_cell_id = (*cell_id)++;
 
     /* Put the parts and xparts in the right order. */
+    const int parts_offset = c->parts - root->parts;
     for (int k = 0; k < count; k++) {
       /* Set the cell_id in the buffer. */
       buff[k].ind = current_cell_id;
@@ -1909,77 +1909,25 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* Put the sparts in the right order. */
     const int sparts_offset = c->sparts - root->sparts;
     for (int k = 0; k < scount; k++) {
-      /* Location of the spart in the sparts array. */
-      int location = sbuff[k].offset - sparts_offset;
-      if (location != k) {
-        struct spart temp_spart = sparts[k];
-        int j = k;
-        while (1) {
-          sbuff[j].offset = j + sparts_offset;
-          if (location == k) break;
-          sparts[j] = sparts[location];
-          if (sparts[j].gpart)
-            sparts[j].gpart->id_or_neg_offset = -(&sparts[j] - s->sparts);
-          j = location;
-          location = sbuff[j].offset - sparts_offset;
-        }
-        sparts[j] = temp_spart;
-        if (sparts[j].gpart)
-          sparts[j].gpart->id_or_neg_offset = -(&sparts[j] - s->sparts);
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].x[0] != sbuff[k].x[0] || sparts[k].x[1] != sbuff[k].x[1] ||
-          sparts[k].x[2] != sbuff[k].x[2])
-        error("Buffer and spart position mismatch.");
-      if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
-#endif
+      /* Set the cell_id in the buffer. */
+      sbuff[k].ind = current_cell_id;
 
       /* sparts: Get dt_min/dt_max */
-      gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
+      struct spart *sp = &sparts[sbuff[k].offset - sparts_offset];
+      gravity_time_bin_min = min(gravity_time_bin_min, sp->time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, sp->time_bin);
     }
 
     /* Put the gparts in the right order. */
     const int gparts_offset = c->gparts - root->gparts;
     for (int k = 0; k < gcount; k++) {
-      /* Location of the part in the parts array. */
-      int location = gbuff[k].offset - gparts_offset;
-      if (location != k) {
-        struct gpart temp_gpart = gparts[k];
-        int j = k;
-        while (1) {
-          gbuff[j].offset = j + gparts_offset;
-          if (location == k) break;
-          gparts[j] = gparts[location];
-          if (gparts[j].type == swift_type_gas) {
-            s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-          } else if (gparts[j].type == swift_type_star) {
-            s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-          }
-          j = location;
-          location = gbuff[j].offset - gparts_offset;
-        }
-        gparts[j] = temp_gpart;
-        if (gparts[j].type == swift_type_gas) {
-          s->parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-        } else if (gparts[j].type == swift_type_star) {
-          s->sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].x[0] != gbuff[k].x[0] || gparts[k].x[1] != gbuff[k].x[1] ||
-          gparts[k].x[2] != gbuff[k].x[2])
-        error("Buffer and gpart position mismatch.");
-      if (gparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited g-particle present in space_split()");
-#endif
+      /* Set the cell_id in the buffer. */
+      gbuff[k].ind = current_cell_id;
 
       /* gparts: Get dt_min/dt_max, reset x_diff. */
-      gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
+      struct gpart *gp = &gparts[gbuff[k].offset - gparts_offset];
+      gravity_time_bin_min = min(gravity_time_bin_min, gp->time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, gp->time_bin);
       gparts[k].x_diff[0] = 0.f;
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
@@ -2104,7 +2052,9 @@ void space_split_cell(struct space *s, struct cell *c) {
   space_split_recursive(s, c, buff, sbuff, gbuff, &num_leaf_cells);
 
   /* Collect the particle leaf cell indices. */
-  int *leaf_cell_ind = (int *)malloc(sizeof(int) * count);
+  int max_count = (count > gcount) ? count : gcount;
+  if (max_count < scount) max_count = scount;
+  int *leaf_cell_ind = (int *)malloc(sizeof(int) * max_count);
   int *leaf_cell_count = (int *)calloc(sizeof(int), num_leaf_cells);
   if (!leaf_cell_ind || !leaf_cell_count)
     error("Error allocating temporary leaf cell index and count.");
@@ -2112,17 +2062,41 @@ void space_split_cell(struct space *s, struct cell *c) {
     leaf_cell_ind[buff[k].offset] = buff[k].ind;
     leaf_cell_count[buff[k].ind]++;
   }
-  
-  /* Re-shuffle the parts into the correct leaf cells. */
+
+  /* Re-shuffle the parts into the correct leaf cells and clean up. */
   space_parts_sort(c->parts, c->xparts, leaf_cell_ind, leaf_cell_count,
                    num_leaf_cells, c->parts - s->parts);
+
+  /* Re-populate the leaf_cell indices and counts for sparts. */
+  bzero(leaf_cell_count, sizeof(int) * num_leaf_cells);
+  for (int k = 0; k < scount; k++) {
+    leaf_cell_ind[sbuff[k].offset] = sbuff[k].ind;
+    leaf_cell_count[sbuff[k].ind]++;
+  }
+
+  /* Re-shuffle the sparts into the correct leaf cells and clean up. */
+  space_sparts_sort(c->sparts, leaf_cell_ind, leaf_cell_count, num_leaf_cells,
+                    c->sparts - s->sparts);
+
+  /* Re-populate the leaf_cell indices and counts for sparts. */
+  bzero(leaf_cell_count, sizeof(int) * num_leaf_cells);
+  for (int k = 0; k < scount; k++) {
+    leaf_cell_ind[gbuff[k].offset] = gbuff[k].ind;
+    leaf_cell_count[gbuff[k].ind]++;
+  }
+
+  /* Re-shuffle the gparts into the correct leaf cells and clean up. */
+  space_gparts_sort(c->gparts, s->parts, s->sparts, leaf_cell_ind,
+                    leaf_cell_count, num_leaf_cells);
+
+  /* Clean up the leaf cell sorting data. */
+  free(leaf_cell_ind);
+  free(leaf_cell_count);
 
   /* Clean up. */
   if (buff != NULL) free(buff);
   if (gbuff != NULL) free(gbuff);
   if (sbuff != NULL) free(sbuff);
-  free(leaf_cell_ind);
-  free(leaf_cell_count);
 }
 
 /**
