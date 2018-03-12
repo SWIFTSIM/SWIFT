@@ -598,4 +598,21 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   hydro_init_part(p, NULL);
 }
 
+/**
+ * @brief Overwrite the initial internal energy of a particle.
+ *
+ * Note that in the cases where the thermodynamic variable is not
+ * internal energy but gets converted later, we must overwrite that
+ * field. The conversion to the actual variable happens later after
+ * the initial fake time-step.
+ *
+ * @param p The #part to write to.
+ * @param u_init The new initial internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_init_internal_energy(struct part *p, float u_init) {
+
+  p->entropy = u_init;
+}
+
 #endif /* SWIFT_GADGET2_HYDRO_H */

@@ -33,7 +33,9 @@
 
 /* Local includes. */
 #include "parser.h"
+#include "physical_constants.h"
 #include "restart.h"
+#include "units.h"
 
 /**
  * @brief Contains all the constants and parameters of the hydro scheme
@@ -63,10 +65,22 @@ struct hydro_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Initial temperature */
+  float initial_temperature;
+
+  /*! Initial internal energy per unit mass */
+  float initial_internal_energy;
+
+  /*! Primoridal hydrogen mass fraction for initial energy conversion */
+  float hydrogen_mass_fraction;
 };
 
 void hydro_props_print(const struct hydro_props *p);
-void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+void hydro_props_init(struct hydro_props *p,
+                      const struct phys_const *phys_const,
+                      const struct unit_system *us,
+                      const struct swift_params *params);
 
 #if defined(HAVE_HDF5)
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);

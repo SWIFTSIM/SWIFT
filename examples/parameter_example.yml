@@ -30,7 +30,9 @@ SPH:
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
   max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-
+  initial_temperature:   100      # (Optional) Initial temperature (in internal units) to set the gass particles to. Value is ignored if set to 0.
+  H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
+  
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025    # Constant dimensionless multiplier for time integration.

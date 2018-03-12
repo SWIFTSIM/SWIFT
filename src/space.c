@@ -2646,8 +2646,12 @@ void space_first_init_parts(struct space *s,
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
   struct xpart *restrict xp = s->xparts;
+
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a * cosmo->a;
+
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const float u_init = hydro_props->initial_internal_energy;
 
   for (size_t i = 0; i < nr_parts; ++i) {
 
@@ -2667,6 +2671,9 @@ void space_first_init_parts(struct space *s,
 #endif
 
     hydro_first_init_part(&p[i], &xp[i]);
+
+    /* Overwrite the internal energy? */
+    if (u_init > 0.f) hydro_set_init_internal_energy(&p[i], u_init);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(&p[i], &xp[i], chemistry);
@@ -3254,6 +3261,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     /* Set the smoothing length to the mean inter-particle separation */
     p->h = d;
   }
+
+  /* Replace the content of the space */
+  free(s->gparts);
+  s->parts = parts;
+  s->gparts = gparts;
 }
 
 /**

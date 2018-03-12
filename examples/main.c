@@ -609,7 +609,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
 
     /* Initialise the hydro properties */
-    if (with_hydro) hydro_props_init(&hydro_properties, params);
+    if (with_hydro)
+      hydro_props_init(&hydro_properties, &prog_const, &us, params);
     if (with_hydro) eos_init(&eos, params);
 
     /* Initialise the gravity properties */
