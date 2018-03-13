@@ -151,4 +151,7 @@ void invoke_velociraptor(struct engine *e) {
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
 
     InvokeVelociraptor(nr_gparts, gparts, cell_node_ids);
+    
+    /* Free cell node ids after VELOCIraptor has copied them. */
+    free(cell_node_ids);
 }
