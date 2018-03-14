@@ -533,10 +533,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, ci_cache, ci->gparts, gcount_i,
                          gcount_padded_i, shift_i, CoM_j, rmax2_j, theta_crit2,
-                         ci);
+                         ci, e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, cj_cache, cj->gparts, gcount_j,
                          gcount_padded_j, shift_j, CoM_i, rmax2_i, theta_crit2,
-                         cj);
+                         cj, e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -675,7 +675,7 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
@@ -805,7 +805,7 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
