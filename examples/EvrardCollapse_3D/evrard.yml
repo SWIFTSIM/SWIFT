@@ -1,5 +1,5 @@
 # Define the system of units to use internally. 
-1;4205;0cInternalUnitSystem:
+InternalUnitSystem:
   UnitMass_in_cgs:     1   # Grams
   UnitLength_in_cgs:   1   # Centimeters
   UnitVelocity_in_cgs: 1   # Centimeters per second
