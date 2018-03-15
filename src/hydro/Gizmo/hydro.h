@@ -517,7 +517,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -813,6 +813,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Sets the mass of a particle
+ *
+ * @param p The particle of interest
+ * @param m The mass to set.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_mass(
+    struct part* restrict p, float m) {
+
+  p->conserved.mass = m;
+}
+
+/**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
@@ -915,6 +927,31 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                           p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
   p->primitives.P = S * pow_gamma(p->primitives.rho);
+}
+
+/**
+ * @brief Overwrite the initial internal energy of a particle.
+ *
+ * Note that in the cases where the thermodynamic variable is not
+ * internal energy but gets converted later, we must overwrite that
+ * field. The conversion to the actual variable happens later after
+ * the initial fake time-step.
+ *
+ * @param p The #part to write to.
+ * @param u_init The new initial internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_init_internal_energy(struct part* p, float u_init) {
+
+  p->conserved.energy = u_init * p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+  /* add the kinetic energy */
+  p->conserved.energy += 0.5f * p->conserved.mass *
+                         (p->conserved.momentum[0] * p->primitives.v[0] +
+                          p->conserved.momentum[1] * p->primitives.v[1] +
+                          p->conserved.momentum[2] * p->primitives.v[2]);
+#endif
+  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
 }
 
 #endif /* SWIFT_GIZMO_HYDRO_H */

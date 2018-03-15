@@ -2853,6 +2853,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  *
  * @param s The #space to initialize.
  * @param params The parsed parameter file.
+ * @param cosmo The current cosmological model.
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
@@ -2863,7 +2864,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
- * @param gravity flag whether we are doing gravity or not.
+ * @param self_gravity flag whether we are doing gravity or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -3240,7 +3241,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     /* Set the masses */
     gp_dm->mass *= (1. - mass_ratio);
     gp_gas->mass *= mass_ratio;
-    p->mass = gp_gas->mass;
+    hydro_set_mass(p, gp_gas->mass);
 
     /* Set the new positions */
     gp_dm->x[0] += shift_dm;

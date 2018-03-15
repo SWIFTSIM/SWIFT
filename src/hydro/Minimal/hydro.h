@@ -198,6 +198,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Sets the mass of a particle
+ *
+ * @param p The particle of interest
+ * @param m The mass to set.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_mass(
+    struct part *restrict p, float m) {
+
+  p->mass = m;
+}
+
+/**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
@@ -540,9 +552,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle to act upon
  * @param xp The extended particle to act upon
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
@@ -578,6 +592,23 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+}
+
+/**
+ * @brief Overwrite the initial internal energy of a particle.
+ *
+ * Note that in the cases where the thermodynamic variable is not
+ * internal energy but gets converted later, we must overwrite that
+ * field. The conversion to the actual variable happens later after
+ * the initial fake time-step.
+ *
+ * @param p The #part to write to.
+ * @param u_init The new initial internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_init_internal_energy(struct part *p, float u_init) {
+
+  p->u = u_init;
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

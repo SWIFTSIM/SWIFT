@@ -171,6 +171,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Sets the mass of a particle
+ *
+ * @param p The particle of interest
+ * @param m The mass to set.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_mass(
+    struct part *restrict p, float m) {
+
+  p->mass = m;
+}
+
+/**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
