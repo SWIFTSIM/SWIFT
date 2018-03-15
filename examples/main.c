@@ -614,7 +614,8 @@ int main(int argc, char *argv[]) {
     if (with_hydro) eos_init(&eos, params);
 
     /* Initialise the gravity properties */
-    if (with_self_gravity) gravity_props_init(&gravity_properties, params);
+    if (with_self_gravity)
+      gravity_props_init(&gravity_properties, params, &cosmo);
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";

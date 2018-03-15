@@ -4396,6 +4396,7 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
     cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+    gravity_update(e->gravity_properties, e->cosmology);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {
@@ -5193,7 +5194,7 @@ void engine_init(
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
