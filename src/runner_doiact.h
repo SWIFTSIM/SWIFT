@@ -1161,7 +1161,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
+            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
@@ -1174,8 +1175,9 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
+    if ((fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) >
+            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
+        (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) > cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
           "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
@@ -1672,7 +1674,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-        1.0e-4 * max(fabsf(d), ci->dx_max_sort_old))
+            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
@@ -1686,7 +1689,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
     if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-        1.0e-4 * max(fabsf(d), cj->dx_max_sort_old))
+            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
+        fabsf(d - sort_j[pjd].d) - cj->dx_max_sort > cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
           "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "

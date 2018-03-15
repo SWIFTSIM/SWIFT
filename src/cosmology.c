@@ -667,13 +667,15 @@ void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
  * @brief Restore a cosmology struct from the given FILE as a stream of
  * bytes.
  *
+ * @param enabled whether cosmology is enabled.
  * @param cosmology the struct
  * @param stream the file stream
  */
-void cosmology_struct_restore(struct cosmology *cosmology, FILE *stream) {
+void cosmology_struct_restore(int enabled, struct cosmology *cosmology,
+                              FILE *stream) {
   restart_read_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
                       NULL, "cosmology function");
 
-  /* Re-initialise the tables */
-  cosmology_init_tables(cosmology);
+  /* Re-initialise the tables if using a cosmology. */
+  if (enabled) cosmology_init_tables(cosmology);
 }
