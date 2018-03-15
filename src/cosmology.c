@@ -290,8 +290,6 @@ double time_integrand(double a, void *param) {
  */
 void cosmology_init_tables(struct cosmology *c) {
 
-  const ticks tic = getticks();
-
 #ifdef HAVE_LIBGSL
 
   /* Retrieve some constants */
@@ -379,9 +377,6 @@ void cosmology_init_tables(struct cosmology *c) {
   error("Code not compiled with GSL. Can't compute cosmology integrals.");
 
 #endif
-
-  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
 }
 
 /**
