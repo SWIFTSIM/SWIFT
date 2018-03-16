@@ -428,12 +428,12 @@ if test "x$with_gsl" != "xno"; then
    fi
    #  GSL is not specified, so just check if we have it.
    if test "x$with_gsl" = "xtest"; then
-      AC_CHECK_LIB([gslcblas],[cblas_dgemm], [have_gsl="yes"], [have_gsl="no"], $GSL_LIBS)
+      AC_CHECK_LIB([gslcblas],[cblas_dgemm],[have_gsl="yes"],[have_gsl="no"],$GSL_LIBS)
       if test "x$have_gsl" != "xno"; then
-         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.]),
+         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.])
          AC_CHECK_LIB([gsl],[gsl_integration_qag],
             AC_DEFINE([HAVE_LIBGSL],1,[The GSL library appears to be present.]),
-            [have_gsl="no"], $GSL_LIBS)
+            [have_gsl="no"],$GSL_LIBS)
       fi
    else
       AC_CHECK_LIB([gslcblas],[cblas_dgemm],
