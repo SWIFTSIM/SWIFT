@@ -115,6 +115,15 @@ void convert_part_vel(const struct engine* e, const struct part* p,
   ret[2] *= cosmo->a2_inv;
 }
 
+void convert_part_potential(const struct engine* e, const struct part* p,
+                            const struct xpart* xp, float* ret) {
+
+  if (p->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(p->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -125,7 +134,7 @@ void convert_part_vel(const struct engine* e, const struct part* p,
 void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                            struct io_props* list, int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -148,6 +157,10 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                                               parts, xparts, convert_part_u);
   list[8] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_part_P);
+
+  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                              UNIT_CONV_POTENTIAL, parts,
+                                              xparts, convert_part_potential);
 
 #ifdef DEBUG_INTERACTIONS_SPH
 
