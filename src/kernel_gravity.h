@@ -27,14 +27,35 @@
 #include "minmax.h"
 
 /**
- * @brief Computes the gravity softening function.
+ * @brief Computes the gravity softening function for potential.
  *
  * This functions assumes 0 < u < 1.
  *
  * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_eval(
+__attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
+    float u, float *const W) {
+
+  /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  *W = 3.f * u - 15.f;
+  *W = *W * u + 28.f;
+  *W = *W * u - 21.f;
+  *W = *W * u;
+  *W = *W * u + 7.f;
+  *W = *W * u;
+  *W = *W * u - 3.f;
+}
+
+/**
+ * @brief Computes the gravity softening function for forces.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_force_eval(
     float u, float *const W) {
 
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
@@ -48,14 +69,37 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
 /**
- * @brief Computes the gravity softening function in double precision.
+ * @brief Computes the gravity softening function for potential in double
+ * precision.
  *
  * This functions assumes 0 < u < 1.
  *
  * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_eval_double(
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
+    double u, double *const W) {
+
+  /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  *W = 3. * u - 15.;
+  *W = *W * u + 28.;
+  *W = *W * u - 21.;
+  *W = *W * u;
+  *W = *W * u + 7.;
+  *W = *W * u;
+  *W = *W * u - 3;
+}
+
+/**
+ * @brief Computes the gravity softening function for forces in double
+ * precision.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
     double u, double *const W) {
 
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */

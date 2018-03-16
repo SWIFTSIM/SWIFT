@@ -48,14 +48,27 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
- * @brief Returns the potential of a particle
+ * @brief Returns the comoving potential of a particle
  *
  * @param gp The particle of interest
  */
-__attribute__((always_inline)) INLINE static float gravity_get_potential(
-    const struct gpart* restrict gp) {
+__attribute__((always_inline)) INLINE static float
+gravity_get_comoving_potential(const struct gpart* restrict gp) {
 
   return gp->potential;
+}
+
+/**
+ * @brief Returns the physical potential of a particle
+ *
+ * @param gp The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+gravity_get_physical_potential(const struct gpart* restrict gp,
+                               const struct cosmology* cosmo) {
+
+  return gp->potential * cosmo->a_inv;
 }
 
 /**
@@ -136,6 +149,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+  gp->potential *= const_G;
 }
 
 /**
