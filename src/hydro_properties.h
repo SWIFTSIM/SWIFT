@@ -66,6 +66,12 @@ struct hydro_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  /*! Minimal temperature allowed */
+  float minimal_temperature;
+
+  /*! Minimal internal energy per unit mass */
+  float minimal_internal_energy;
+
   /*! Initial temperature */
   float initial_temperature;
 
