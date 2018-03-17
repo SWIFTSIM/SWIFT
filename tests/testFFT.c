@@ -57,15 +57,18 @@ int main() {
   struct swift_params *params = malloc(sizeof(struct swift_params));
   parser_read_file("fft_params.yml", params);
 
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+
   /* Initialise the gravity properties */
   struct gravity_props gravity_properties;
-  gravity_props_init(&gravity_properties, params);
+  gravity_props_init(&gravity_properties, params, &cosmo);
 
   /* Build the infrastructure */
   struct space space;
   double dim[3] = {1., 1., 1.};
-  space_init(&space, params, dim, NULL, gparts, NULL, 0, nr_gparts, 0, 1, 1, 1,
-             0, 0);
+  space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, 0, nr_gparts, 0,
+             1, 1, 0, 1, 0, 0);
 
   struct engine engine;
   engine.s = &space;
