@@ -24,6 +24,7 @@
 
 #include "cosmology.h"
 #include "gravity_properties.h"
+#include "kernel_gravity.h"
 #include "minmax.h"
 
 /**
