@@ -165,7 +165,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
 
   /* Clean-up h if necessary */
   const float h_factor_exp = units_h_factor(internal_units, props.units);
-  if (h_factor_exp != 0.f && exist != 0) {
+  if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
     const double h_factor = pow(h, h_factor_exp);
 
     /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
