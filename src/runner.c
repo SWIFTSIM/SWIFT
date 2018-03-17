@@ -981,6 +981,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
@@ -1044,8 +1045,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         }
 
         /* do the kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, ti_begin,
-                  ti_begin + ti_step / 2);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
+                  hydro_props, ti_begin, ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -1150,6 +1151,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1209,8 +1211,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-                  ti_begin + ti_step / 2, ti_begin + ti_step);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
+                  hydro_props, ti_begin + ti_step / 2, ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */

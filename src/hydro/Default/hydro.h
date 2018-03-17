@@ -504,7 +504,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt_therm The time-step for this kick (for thermodynamic quantities)
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {}
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
 
 /**
  *  @brief Converts hydro quantity of a particle at the start of a run

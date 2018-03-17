@@ -522,15 +522,26 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* Do not decrease the energy by more than a factor of 2*/
   if (dt_therm > 0. && p->u_dt * dt_therm < -0.5f * xp->u_full) {
     p->u_dt = -0.5f * xp->u_full / dt_therm;
   }
   xp->u_full += p->u_dt * dt_therm;
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
+    p->u_dt = 0.f;
+  }
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, xp->u_full);
