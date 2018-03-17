@@ -87,7 +87,8 @@ void hydro_props_init(struct hydro_props *p,
   p->minimal_temperature = parser_get_opt_param_float(
       params, "SPH:minimal_temperature", hydro_props_default_min_temp);
 
-  if (p->initial_temperature < p->minimal_temperature)
+  if ((p->initial_temperature != 0.) &&
+      (p->initial_temperature < p->minimal_temperature))
     error("Initial temperature lower than minimal allowed temperature!");
 
   /* Hydrogen mass fraction */
@@ -159,7 +160,7 @@ void hydro_props_print(const struct hydro_props *p) {
     message("Initial gas temperature set to %f", p->initial_temperature);
 
   if (p->minimal_temperature != hydro_props_default_min_temp)
-    message("Minimal gas temperature set to %f", p->initial_temperature);
+    message("Minimal gas temperature set to %f", p->minimal_temperature);
 }
 
 #if defined(HAVE_HDF5)

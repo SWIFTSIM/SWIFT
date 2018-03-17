@@ -141,7 +141,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
 
   /* Clean-up h if necessary */
   const float h_factor_exp = units_h_factor(internal_units, props.units);
-  if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
+  if (cleanup_h && h_factor_exp != 0.f) {
     const double h_factor = pow(h, h_factor_exp);
 
     /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
@@ -229,7 +229,7 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
     readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-                    internal_units, ic_units);
+                    internal_units, ic_units, cleanup_h, h);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {

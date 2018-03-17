@@ -4396,7 +4396,6 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
     cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-    gravity_update(e->gravity_properties, e->cosmology);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {
@@ -4404,6 +4403,10 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the softening lengths */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_update(e->gravity_properties, e->cosmology);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
