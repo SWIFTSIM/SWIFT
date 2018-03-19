@@ -2640,7 +2640,7 @@ void space_synchronize_particle_positions(struct space *s) {
  * Calls chemistry_first_init_part() on all the particles
  */
 void space_first_init_parts(struct space *s,
-                            const struct chemistry_data *chemistry,
+                            const struct chemistry_global_data *chemistry,
                             const struct cooling_function_data *cool_func) {
 
   const size_t nr_parts = s->nr_parts;

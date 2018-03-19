@@ -36,7 +36,7 @@
 void chemistry_init(const struct swift_params* parameter_file,
                     const struct unit_system* us,
                     const struct phys_const* phys_const,
-                    struct chemistry_data* data) {
+                    struct chemistry_global_data* data) {
 
   chemistry_init_backend(parameter_file, us, phys_const, data);
 }
@@ -46,9 +46,9 @@ void chemistry_init(const struct swift_params* parameter_file,
  *
  * Calls chemistry_print_backend for the chosen chemistry model.
  *
- * @brief The #chemistry_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current model.
  */
-void chemistry_print(const struct chemistry_data* data) {
+void chemistry_print(const struct chemistry_global_data* data) {
   chemistry_print_backend(data);
 }
 

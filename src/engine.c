@@ -5202,7 +5202,7 @@ void engine_init(
     const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
-    const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
+    const struct chemistry_global_data *chemistry, struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
