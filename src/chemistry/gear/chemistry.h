@@ -29,6 +29,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "chemistry_struct.h"
 #include "error.h"
 #include "hydro.h"
@@ -62,14 +63,18 @@ chemistry_get_element_name(enum chemistry_element elem) {
  */
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_data* data) {}
+    const struct phys_const* phys_const, struct chemistry_global_data* data) {
+
+  /* read parameters */
+  chemistry_read_parameters(parameter_file, us, phys_const, data);
+}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
+static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
 
   message("Chemistry function is 'Gear'.");
 }
@@ -81,10 +86,10 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
  * the various smooth metallicity tasks
  *
  * @param p The particle to act upon
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_data* cd) {
+    struct part* restrict p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
@@ -102,11 +107,11 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part* restrict p, const struct chemistry_data* cd,
+    struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
@@ -139,7 +144,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {
+    const struct chemistry_global_data* data) {
   chemistry_init_part(p, data);
 }
 

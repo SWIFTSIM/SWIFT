@@ -119,10 +119,11 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 /**
  * @brief Parser the parameter file and initialize the #cooling_function_data
+ *
  * @param parameter_file The parser parameter file
  * @param cooling The cooling properties to initialize
  */
-__attribute__((always_inline)) INLINE static void cooling_parse_arguments(
+__attribute__((always_inline)) INLINE static void cooling_read_parameters(
     const struct swift_params* parameter_file,
     struct cooling_function_data* cooling) {
 
@@ -146,7 +147,6 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
   cooling->self_shielding_method =
     parser_get_opt_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
 
-#if COOLING_GRACKLE_MODE > 0
   cooling->output_mode =
     parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
 
@@ -158,7 +158,6 @@ __attribute__((always_inline)) INLINE static void cooling_parse_arguments(
 
   cooling->omega =
     parser_get_opt_param_double(parameter_file, "GrackleCooling:Omega", 0.8);
-#endif
 }
 
 

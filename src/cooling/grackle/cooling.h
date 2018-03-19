@@ -810,7 +810,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
     error("Grackle with multiple particles not implemented");
 
   /* read parameters */
-  cooling_parse_arguments(parameter_file, cooling);
+  cooling_read_parameters(parameter_file, cooling);
 
   /* Set up the units system. */
   cooling_init_units(us, cooling);
