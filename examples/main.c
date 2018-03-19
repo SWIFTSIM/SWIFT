@@ -1013,6 +1013,24 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
+  /* Write final time information */
+  if (myrank == 0) {
+
+    /* Print some information to the screen */
+    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
+           e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+           e.wallclock_time, e.step_props);
+    fflush(stdout);
+
+    fprintf(e.file_timesteps,
+            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
+            e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+            e.wallclock_time, e.step_props);
+    fflush(e.file_timesteps);
+  }
+
   /* Write final output. */
   engine_drift_all(&e);
   engine_print_stats(&e);
