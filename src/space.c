@@ -2903,7 +2903,17 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Are we generating gas from the DM-only ICs? */
-  if (generate_gas_in_ics) space_generate_gas(s, cosmo, verbose);
+  if (generate_gas_in_ics) {
+    space_generate_gas(s, cosmo, verbose);
+    parts = s->parts;
+    gparts = s->gparts;
+    Npart = s->nr_parts;
+    Ngpart = s->nr_gparts;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+#endif
 
   /* Are we replicating the space ? */
   if (replicate < 1)
@@ -2918,6 +2928,10 @@ void space_init(struct space *s, const struct swift_params *params,
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+#endif
 
   /* Decide on the minimal top-level cell size */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
@@ -3209,7 +3223,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     error("Failed to allocate new gpart array.");
 
   /* Start by copying the gparts */
-  memcpy(gparts + nr_gparts, gparts, nr_gparts * sizeof(struct gpart));
+  memcpy(gparts, s->gparts, nr_gparts * sizeof(struct gpart));
+  memcpy(gparts + nr_gparts, s->gparts, nr_gparts * sizeof(struct gpart));
 
   /* And zero the parts */
   bzero(parts, s->nr_parts * sizeof(struct part));
@@ -3223,8 +3238,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   for (size_t i = 0; i < nr_gparts; ++i) {
 
     struct part *p = &parts[i];
-    struct gpart *gp_dm = &gparts[i];
-    struct gpart *gp_gas = &gparts[nr_gparts + i];
+    struct gpart *gp_gas = &gparts[i];
+    struct gpart *gp_dm = &gparts[nr_gparts + i];
 
     /* Set the IDs */
     p->id = gp_gas->id_or_neg_offset * 2 + 1;
