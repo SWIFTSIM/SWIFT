@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = $(HDF5_CPPFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB)
+EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
