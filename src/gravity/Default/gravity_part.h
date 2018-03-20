@@ -22,35 +22,32 @@
 /* Gravity particle. */
 struct gpart {
 
-  /* Particle ID. If negative, it is the negative offset of the #part with
+  /*! Particle ID. If negative, it is the negative offset of the #part with
      which this gpart is linked. */
   long long id_or_neg_offset;
 
-  /* Particle position. */
+  /*! Particle position. */
   double x[3];
 
-  /* Offset between current position and position at last tree rebuild. */
+  /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
-  /* Particle velocity. */
+  /*! Particle velocity. */
   float v_full[3];
 
-  /* Particle acceleration. */
+  /*! Particle acceleration. */
   float a_grav[3];
 
-  /* Particle mass. */
+  /*! Particle mass. */
   float mass;
 
-  /* Gravitational potential */
+  /*! Gravitational potential */
   float potential;
 
-  /* Softening length */
-  float epsilon;
-
-  /* Time-step length */
+  /*! Time-step length */
   timebin_t time_bin;
 
-  /* Type of the #gpart (DM, gas, star, ...) */
+  /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -26,6 +26,10 @@
 #include "inline.h"
 #include "minmax.h"
 
+/*! Conversion factor between Plummer softening and internal softening */
+#define kernel_gravity_softening_plummer_equivalent 3.
+#define kernel_gravity_softening_plummer_equivalent_inv (1. / 3.)
+
 /**
  * @brief Computes the gravity softening function for potential.
  *

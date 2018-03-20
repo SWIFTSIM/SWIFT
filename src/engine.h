@@ -278,7 +278,7 @@ struct engine {
   const struct hydro_props *hydro_properties;
 
   /* Properties of the self-gravity scheme */
-  const struct gravity_props *gravity_properties;
+  struct gravity_props *gravity_properties;
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
@@ -335,7 +335,7 @@ void engine_init(
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms);

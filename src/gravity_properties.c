@@ -37,7 +37,8 @@
 #define gravity_props_default_r_cut_min 0.1f
 
 void gravity_props_init(struct gravity_props *p,
-                        const struct swift_params *params) {
+                        const struct swift_params *params,
+                        const struct cosmology *cosmo) {
 
   /* Tree-PM parameters */
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
@@ -56,11 +57,35 @@ void gravity_props_init(struct gravity_props *p,
   p->theta_crit2 = p->theta_crit * p->theta_crit;
   p->theta_crit_inv = 1. / p->theta_crit;
 
-  /* Softening lengths */
-  p->epsilon = 3. * parser_get_param_double(params, "Gravity:epsilon");
-  p->epsilon2 = p->epsilon * p->epsilon;
-  p->epsilon_inv = 1.f / p->epsilon;
-  p->epsilon_inv3 = p->epsilon_inv * p->epsilon_inv * p->epsilon_inv;
+  /* Softening parameters */
+  p->epsilon_comoving =
+      parser_get_param_double(params, "Gravity:comoving_softening");
+  p->epsilon_max_physical =
+      parser_get_param_double(params, "Gravity:max_physical_softening");
+
+  /* Set the softening to the current time */
+  gravity_update(p, cosmo);
+}
+
+void gravity_update(struct gravity_props *p, const struct cosmology *cosmo) {
+
+  /* Current softening lengths */
+  double softening;
+  if (p->epsilon_comoving * cosmo->a > p->epsilon_max_physical)
+    softening = p->epsilon_max_physical / cosmo->a;
+  else
+    softening = p->epsilon_comoving;
+
+  /* Plummer equivalent -> internal */
+  softening *= kernel_gravity_softening_plummer_equivalent;
+
+  /* Store things */
+  p->epsilon_cur = softening;
+
+  /* Other factors */
+  p->epsilon_cur2 = softening * softening;
+  p->epsilon_cur_inv = 1. / softening;
+  p->epsilon_cur_inv3 = 1. / (softening * softening * softening);
 }
 
 void gravity_props_print(const struct gravity_props *p) {
@@ -72,8 +97,17 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
-  message("Self-gravity softening:    epsilon=%.4f (Plummer equivalent: %.4f)",
-          p->epsilon, p->epsilon / 3.);
+  message(
+      "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
+      "%.4f)",
+      p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_comoving);
+
+  message(
+      "Self-gravity maximal physical softening:    epsilon=%.4f (Plummer "
+      "equivalent: %.4f)",
+      p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_max_physical);
 
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
@@ -86,9 +120,18 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
                                   const struct gravity_props *p) {
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
-  io_write_attribute_f(h_grpgrav, "Softening length", p->epsilon);
-  io_write_attribute_f(h_grpgrav, "Softening length (Plummer equivalent)",
-                       p->epsilon / 3.);
+  io_write_attribute_f(
+      h_grpgrav, "Comoving softening length",
+      p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Comoving Softening length (Plummer equivalent)",
+                       p->epsilon_comoving);
+  io_write_attribute_f(
+      h_grpgrav, "Maximal physical softening length",
+      p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Maximal physical softening length (Plummer equivalent)",
+                       p->epsilon_max_physical);
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);

@@ -103,6 +103,7 @@ int main() {
 
   struct gravity_props props;
   props.a_smooth = 1.25;
+  props.epsilon_cur = eps;
   e.gravity_properties = &props;
 
   struct runner r;
@@ -139,7 +140,6 @@ int main() {
   c.gparts[0].x[1] = 0.5;
   c.gparts[0].x[2] = 0.5;
   c.gparts[0].mass = 1.;
-  c.gparts[0].epsilon = eps;
   c.gparts[0].time_bin = 1;
   c.gparts[0].type = swift_type_dark_matter;
   c.gparts[0].id_or_neg_offset = 1;
@@ -156,7 +156,6 @@ int main() {
     gp->x[1] = 0.5;
     gp->x[2] = 0.5;
     gp->mass = 0.;
-    gp->epsilon = eps;
     gp->time_bin = 1;
     gp->type = swift_type_dark_matter;
     gp->id_or_neg_offset = n + 1;
@@ -172,9 +171,10 @@ int main() {
   for (int n = 1; n < num_tests + 1; ++n) {
     const struct gpart *gp = &c.gparts[n];
 
-    double pot_true = potential(c.gparts[0].mass, gp->x[0], gp->epsilon, rlr);
-    double acc_true =
-        acceleration(c.gparts[0].mass, gp->x[0], gp->epsilon, rlr);
+    const double epsilon = gravity_get_softening(gp, &props);
+
+    double pot_true = potential(c.gparts[0].mass, gp->x[0], epsilon, rlr);
+    double acc_true = acceleration(c.gparts[0].mass, gp->x[0], epsilon, rlr);
 
     // message("x=%e f=%e f_true=%e", gp->x[0], gp->a_grav[0], acc_true);
 

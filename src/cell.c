@@ -1082,23 +1082,6 @@ void cell_sanitize(struct cell *c, int treated) {
 }
 
 /**
- * @brief Converts hydro quantities to a valid state after the initial density
- * calculation
- *
- * @param c Cell to act upon
- * @param data Unused parameter
- */
-void cell_convert_hydro(struct cell *c, void *data) {
-
-  struct part *p = c->parts;
-  struct xpart *xp = c->xparts;
-
-  for (int i = 0; i < c->count; ++i) {
-    hydro_convert_quantities(&p[i], &xp[i]);
-  }
-}
-
-/**
  * @brief Cleans the links in a given cell.
  *
  * @param c Cell to act upon

@@ -21,8 +21,10 @@
 #define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
+
 #include "cosmology.h"
 #include "gravity_properties.h"
+#include "kernel_gravity.h"
 #include "minmax.h"
 
 /**
@@ -40,11 +42,12 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
  * @brief Returns the softening of a particle
  *
  * @param gp The particle of interest
+ * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
-    const struct gpart* restrict gp) {
+    const struct gpart* gp, const struct gravity_props* restrict grav_props) {
 
-  return gp->epsilon;
+  return grav_props->epsilon_cur;
 }
 
 /**
@@ -102,12 +105,10 @@ gravity_compute_timestep_self(const struct gpart* const gp,
 
   const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
 
-  // MATTHIEU cosmological evolution of the softening?
-  const float epsilon = gravity_get_softening(gp);
+  const float epsilon = gravity_get_softening(gp, grav_props);
 
-  /* Note that 0.66666667 = 2. (from Gadget) / 3. (Plummer softening) */
-  const float dt =
-      sqrtf(0.66666667f * cosmo->a * grav_props->eta * epsilon * ac_inv);
+  const float dt = sqrtf(2. * kernel_gravity_softening_plummer_equivalent_inv *
+                         cosmo->a * grav_props->eta * epsilon * ac_inv);
 
   return dt;
 }
@@ -183,7 +184,6 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
   gp->time_bin = 0;
-  gp->epsilon = grav_props->epsilon;
 
   gravity_init_gpart(gp);
 }
