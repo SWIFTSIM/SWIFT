@@ -679,6 +679,9 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
     }
+
+    /* Check that the other links are correctly set */
+    part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
