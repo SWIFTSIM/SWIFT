@@ -2909,11 +2909,11 @@ void space_init(struct space *s, const struct swift_params *params,
     gparts = s->gparts;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
-  }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+    part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
 #endif
+  }
 
   /* Are we replicating the space ? */
   if (replicate < 1)
@@ -2927,11 +2927,11 @@ void space_init(struct space *s, const struct swift_params *params,
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
-  }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+    part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
 #endif
+  }
 
   /* Decide on the minimal top-level cell size */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
