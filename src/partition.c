@@ -1323,7 +1323,7 @@ void partition_init(struct partition *partition,
 /* Defaults make use of METIS if available */
 #ifdef HAVE_PARMETIS
   const char *default_repart = "costs/costs";
-  const char *default_part = "regions";
+  const char *default_part = "memory";
 #else
   const char *default_repart = "none/none";
   const char *default_part = "grid";
@@ -1351,13 +1351,13 @@ void partition_init(struct partition *partition,
     case 'r':
       partition->type = INITPART_PARMETIS_NOWEIGHT;
       break;
-    case 'b':
+    case 'm':
       partition->type = INITPART_PARMETIS_WEIGHT;
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'regions', 'balanced' or "
+          "Permitted values are: 'grid', 'region', 'memory' or "
           "'vectorized'");
 #else
     default:

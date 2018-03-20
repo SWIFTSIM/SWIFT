@@ -100,8 +100,8 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     regions # (Optional) The initial decomposition strategy: "grid",
-                                 #            "regions", "balanced", or "vectorized".
+  initial_type:     memory  # (Optional) The initial decomposition strategy: "grid",
+                            #            "region", "memory", or "vectorized".
   initial_grid_x:   10      # (Optional) Grid size if the "grid" strategy is chosen.
   initial_grid_y:   10      # ""
   initial_grid_z:   10      # ""
