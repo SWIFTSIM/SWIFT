@@ -1,0 +1,85 @@
+SWIFT: Sph WIth Fine-grained inter-dependent Tasking
+====================================================
+
+For information on how to _run_ SWIFT, please consult the onboarding guide
+available [here](http://www.swiftsim.com/onboarding.pdf). This includes
+dependencies, and a few examples to get you going.
+
+SWIFT is an SPH code designed to run cosmological simulations on peta- and
+exa-scale machines, scaling well up to 10's of thousands of cores.
+
+More general information about SWIFT is available on the project
+[webpages](http://www.swiftsim.com).
+
+This GitHub repository is designed to be an issue tracker, and a space
+for the public to submit patches through pull requests. It is synchronised
+with the main development repository that is available on the
+[ICC](http://icc.dur.ac.uk)'s GitLab server which is available
+[here](https://gitlab.cosma.dur.ac.uk/swift/swiftsim).
+
+Please feel free to submit issues to this repository, or even pull requests.
+We will try to deal with them as soon as possible, but as the core development
+team is quite small this could take some time.
+
+Contribution Guidelines
+-----------------------
+
+The SWIFT source code is using a variation of the 'Google' formatting style. 
+The script 'format.sh' in the root directory applies the clang-format-3.8
+tool with our style choices to all the SWIFT C source file. Please apply 
+the formatting script to the files before submitting a merge request.
+
+The SWIFT code comes with a series of unit tests that are run automatically 
+when a push to the master branch occurs. The suite can be run by doing a make 
+check in the root directory. Please check that the test suite still
+runs with your changes applied before submitting a merge request and add 
+relevant unit tests probing the correctness of new modules. An example of how
+to add a test to the suite can be found by considering the tests/testGreeting 
+case.
+
+```
+ Welcome to the cosmological hydrodynamical code
+    ______       _________________
+   / ___/ |     / /  _/ ___/_  __/
+   \__ \| | /| / // // /_   / /   
+  ___/ /| |/ |/ // // __/  / /    
+ /____/ |__/|__/___/_/    /_/     
+ SPH With Inter-dependent Fine-grained Tasking
+
+ Website: www.swiftsim.com
+ Twitter: @SwiftSimulation
+
+See INSTALL.swift for install instructions.
+
+Usage: swift [OPTION]... PARAMFILE
+       swift_mpi [OPTION]... PARAMFILE
+
+Valid options are:
+  -a                Pin runners using processor affinity.
+  -c                Run with cosmological time integration.
+  -C                Run with cooling.
+  -d                Dry run. Read the parameter file, allocate memory but does not read
+                    the particles from ICs and exit before the start of time integration.
+                    Allows user to check validity of parameter and IC files as well as memory limits.
+  -D                Always drift all particles even the ones far from active particles. This emulates
+                    Gadget-[23] and GIZMO's default behaviours.
+  -e                Enable floating-point exceptions (debugging mode).
+  -f          {int} Overwrite the CPU frequency (Hz) to be used for time measurements.
+  -g                Run with an external gravitational potential.
+  -G                Run with self-gravity.
+  -M                Reconstruct the multipoles every time-step.
+  -n          {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop.
+  -P  {sec:par:val} Set parameter value and overwrites values read from the parameters file. Can be used more than once.
+  -s                Run with hydrodynamics.
+  -S                Run with stars.
+  -t          {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
+  -T                Print timers every time-step.
+  -v           [12] Increase the level of verbosity:
+                    1: MPI-rank 0 writes,
+                    2: All MPI-ranks write.
+  -y          {int} Time-step frequency at which task graphs are dumped.
+  -Y          {int} Time-step frequency at which threadpool tasks are dumped.
+  -h                Print this help message and exit.
+
+See the file parameter_example.yml for an example of parameter file.
+```
