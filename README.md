@@ -5,8 +5,12 @@ For information on how to _run_ SWIFT, please consult the onboarding guide
 available [here](http://www.swiftsim.com/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
 
-SWIFT is an SPH code designed to run cosmological simulations on peta- and
-exa-scale machines, scaling well up to 10's of thousands of cores.
+We suggest that you use the latest release branch of SWIFT, rather than the
+current master branch as this will change rapidly. We do, however, like to
+ensure that the master branch will build and run.
+
+SWIFT is an SPH code designed to run cosmological simulations on peta-scale
+machines, scaling well up to 10's of thousands of cores.
 
 More general information about SWIFT is available on the project
 [webpages](http://www.swiftsim.com).
@@ -24,18 +28,17 @@ team is quite small this could take some time.
 Contribution Guidelines
 -----------------------
 
-The SWIFT source code is using a variation of the 'Google' formatting style. 
-The script 'format.sh' in the root directory applies the clang-format-3.8
-tool with our style choices to all the SWIFT C source file. Please apply 
-the formatting script to the files before submitting a merge request.
+The SWIFT source code uses a variation of the 'Google' formatting style.  The
+script 'format.sh' in the root directory applies the clang-format-3.8 tool with
+our style choices to all the SWIFT C source file. Please apply the formatting
+script to the files before submitting a pull request.
 
-The SWIFT code comes with a series of unit tests that are run automatically 
-when a push to the master branch occurs. The suite can be run by doing a make 
-check in the root directory. Please check that the test suite still
-runs with your changes applied before submitting a merge request and add 
-relevant unit tests probing the correctness of new modules. An example of how
-to add a test to the suite can be found by considering the tests/testGreeting 
-case.
+Please check that the test suite still runs with your changes applied before
+submitting a pull request and add relevant unit tests probing the correctness
+of new modules. An example of how to add a test to the suite can be found by
+considering the tests/testGreeting case.
+
+Any contributions that fail any of the automated tests will not be accepted.
 
 ```
  Welcome to the cosmological hydrodynamical code
