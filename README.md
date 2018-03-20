@@ -1,6 +1,8 @@
 SWIFT: Sph WIth Fine-grained inter-dependent Tasking
 ====================================================
 
+[![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
+
 For information on how to _run_ SWIFT, please consult the onboarding guide
 available [here](http://www.swiftsim.com/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
