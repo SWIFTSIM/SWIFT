@@ -172,18 +172,20 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * See the ParMETIS and METIS manuals if you want to understand this
  * format. The cell graph consists of all nodes as vertices with edges as the
  * connections to all neighbours, so we have 26 per vertex. Note you will
- * also need an xadj array, for a single rank that would be:
+ * also need an xadj array, for METIS that would be:
  *
  *   xadj[0] = 0;
  *   for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
  *
- * but each rank needs a different xadj.
+ * but each rank needs a different xadj when using ParMETIS.
  *
  * @param s the space of cells.
  * @param adjncy the adjncy array to fill, must be of size 26 * the number of
  *               cells in the space.
+ * @param xadj the METIS xadj array to fill, must be of size
+ *             number of cells in space + 1. NULL for not used.
  */
-static void graph_init_adjncy(struct space *s, idx_t *adjncy) {
+static void graph_init(struct space *s, idx_t *adjncy, idx_t *xadj) {
 
   /* Loop over all cells in the space. */
   int cid = 0;
@@ -225,6 +227,12 @@ static void graph_init_adjncy(struct space *s, idx_t *adjncy) {
         cid++;
       }
     }
+  }
+
+  /* If given set METIS xadj. */
+  if (xadj != NULL) {
+    xadj[0] = 0;
+    for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
   }
 }
 #endif
@@ -404,14 +412,12 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
  * @param refine whether to refine an existing partition, or create a new one.
- * @param seed seed for random numbers, usually when refining this is best
- *             kept to the same value. Use -1 for the ParMETIS default.
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine, int seed,
+                          double *vertexw, double *edgew, int refine,
                           int *celllist) {
   int res;
   MPI_Comm comm;
@@ -519,7 +525,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. */
-    graph_init_adjncy(s, full_adjncy);
+    graph_init(s, full_adjncy, NULL);
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0 */
@@ -694,10 +700,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
 
   /* Common parameters. */
-  idx_t options[10];
+  idx_t options[4];
   options[0] = 1;
   options[1] = 0;
-  options[2] = seed;
 
   idx_t edgecut;
   idx_t ncon = 1;
@@ -706,22 +711,22 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   idx_t wgtflag = 0;
   if (edgew != NULL) wgtflag += 1;
   if (vertexw != NULL) wgtflag += 2;
-  int permute = 1;
 
   real_t ubvec[1];
-  ubvec[0] = 1.05;
+  ubvec[0] = 1.001;
 
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
     options[3] = PARMETIS_PSR_UNCOUPLED;
 
-    if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                               ubvec, options, &edgecut, regionid,
-                               &comm) != METIS_OK)
-      error("Call to ParMETIS_V3_RefineKway failed.");
-
+    /* Balance between cuts and movement. */
+    real_t itr = 0.1;
+    if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL, weights_e,
+                                   &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                                   ubvec, &itr, options, &edgecut, regionid,
+                                   &comm) != METIS_OK)
+      error("Call to ParMETIS_V3_AdaptiveRepart failed.");
   } else {
 
     /* Create a new partition. */
@@ -729,47 +734,43 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                              &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
                              options, &edgecut, regionid, &comm) != METIS_OK)
       error("Call to ParMETIS_V3_PartKway failed.");
-
-    /* We need the existing partition so we can check for permutations. */
-    int nsum = 0;
-    for (int i = 0; i < s->nr_cells; i++) {
-      celllist[i] = s->cells_top[i].nodeID;
-      nsum += celllist[i];
-    }
-
-    /* If no previous partition all nodeIDs will be set to 0. */
-    if (nsum == 0) permute = 0;
   }
 
-  /* Gather the regionids from the other ranks. */
+  /* Need to gather all the regionid arrays from the ranks. */
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
-  if (nodeID == 0) {
+  if (nodeID != 0) {
 
-    /* Need to accept idx_t, so buffer. */
+    /* Send our regions to node 0. */
+    res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
+                    1, comm, &reqs[0]);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+
+    /* Wait for send to complete. */
+    int err;
+    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
+      mpi_error(err, "Failed during wait sending regionids.");
+    }
+
+  } else {
+
+    /* Node 0 */
     int *remoteids = NULL;
     if ((remoteids = (int *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate new celllist");
+      error("Failed to allocate remoteids buffer");
 
-    for (int rank = 0, j = 0; rank < nregions; rank++) {
-      int nvt = vtxdist[rank + 1] - vtxdist[rank];
+    int nvt = vtxdist[1] - vtxdist[0];
+    memcpy(remoteids, regionid, sizeof(idx_t) * nvt);
 
-      if (rank == 0) {
-
-        /* Locals. */
-        for (int k = 0; k < nvt; k++) remoteids[k] = regionid[k];
-
-      } else {
-
-        /* Receive from other ranks. */
-        res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
-                        &reqs[rank]);
-        if (res != MPI_SUCCESS)
-          mpi_error(res, "Failed to receive new regionids");
-      }
+    /* Receive from other ranks. */
+    for (int rank = 1, j = nvt; rank < nregions; rank++) {
+      nvt = vtxdist[rank + 1] - vtxdist[rank];
+      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm, &reqs[rank]);
+      if (res != MPI_SUCCESS)
+        mpi_error(res, "Failed to receive new regionids");
       j += nvt;
     }
 
@@ -784,46 +785,53 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       error("Failed during waitall receiving regionid data.");
     }
 
-    /* Copy. */
+    /* Copy: idx_t -> int. */
     for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
     free(remoteids);
 
-  } else {
-    res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
-                    1, comm, &reqs[0]);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+    /* Check that the regionids are all good. */
+    int bad = 0;
+    for (int k = 0; k < ncells; k++) {
+      if (newcelllist[k] < 0 || newcelllist[k] >= nregions) {
+        message("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
+        bad++;
+      }
+    }
+    if (bad) error("Bad node IDs located");
 
-    /* Wait for send to complete. */
-    int err;
-    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
-      mpi_error(err, "Failed during wait sending regionids.");
+    /* Now check the similarity to the old partition and permute if necessary.
+     * Checks show that refinement can return a permutation of the partition,
+     * we need to check that and correct as necessary. */
+    int permute = 1;
+    if (!refine) {
+
+      /* No old partition was given, so we need to construct the existing
+       * partition from the cells, if one existed. */
+      int nsum = 0;
+      for (int i = 0; i < s->nr_cells; i++) {
+        celllist[i] = s->cells_top[i].nodeID;
+        nsum += celllist[i];
+      }
+
+      /* If no previous partition then all nodeIDs will be set to 0. */
+      if (nsum == 0) permute = 0;
+    }
+
+    if (permute) {
+      int *permcelllist = NULL;
+      if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+          error("Failed to allocate perm celllist array");
+      permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
+
+      /* And keep. */
+      memcpy(newcelllist, permcelllist, sizeof(int) * ncells);
+      free(permcelllist);
     }
   }
 
   /* And everyone gets a copy. */
   res = MPI_Bcast(newcelllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
-
-  /* Now check the similarity to the old partition and permute if necessary.
-   * Checks show that refinement can return a permutation of the partition, we
-   * need to check that and correct as necessary. */
-  if (permute) {
-    int *permcelllist = NULL;
-    if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-      error("Failed to allocate perm celllist array");
-    permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
-
-    /* And keep. */
-    memcpy(celllist, permcelllist, sizeof(int) * ncells);
-    free(permcelllist);
-  } else {
-    memcpy(celllist, newcelllist, sizeof(int) * ncells);
-  }
-
-  /* Check that the regionids are ok. */
-  for (int k = 0; k < ncells; k++)
-    if (celllist[k] < 0 || celllist[k] >= nregions)
-      error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
 
   /* Clean up. */
   free(reqs);
@@ -838,6 +846,172 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   free(regionid);
 }
 #endif
+
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+/**
+ * @brief Partition the given space into a number of connected regions.
+ *
+ * Split the space using METIS to derive a partitions using the given edge and
+ * vertex weights. If no weights are given then an unweighted partition is
+ * performed. Tests show that METIS gives a better global solution than
+ * ParMETIS, at least with the options set in this routine (which cannot be
+ * repeated using ParMETIS, the options array is not used in the same way),
+ * so this should be used when creating initial partitions.
+ *
+ * @param nodeID the rank of our node.
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array. Need to be in the range of
+ *        idx_t.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        sizeof number of cells.
+ */
+static void pick_metis(int nodeID, struct space *s, int nregions,
+                       double *vertexw, double *edgew, int *celllist) {
+
+  /* Total number of cells. */
+  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+
+  /* Nothing much to do if only using a single partition. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nregions == 1) {
+    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* Only one node needs to calculate this. */
+  if (nodeID == 0) {
+
+    /* Allocate weights and adjacency arrays . */
+    idx_t *xadj;
+    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+      error("Failed to allocate xadj buffer.");
+    idx_t *adjncy;
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+      error("Failed to allocate adjncy array.");
+    idx_t *weights_v = NULL;
+    if (vertexw != NULL)
+      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate vertex weights array");
+    idx_t *weights_e = NULL;
+    if (edgew != NULL)
+      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate edge weights array");
+    idx_t *regionid;
+    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate regionid array");
+
+    /* Define the cell graph. */
+    graph_init(s, adjncy, xadj);
+
+    /* Init the vertex weights array. */
+    if (vertexw != NULL) {
+      for (int k = 0; k < ncells; k++) {
+        if (vertexw[k] > 1) {
+          weights_v[k] = vertexw[k];
+        } else {
+          weights_v[k] = 1;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < ncells; k++) {
+        if ((idx_t)vertexw[k] < 0) {
+          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
+          failed++;
+        }
+        if (weights_v[k] < 1) {
+          message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d vertex weights are out of range", failed);
+#endif
+    }
+
+    /* Init the edges weights array. */
+
+    if (edgew != NULL) {
+      for (int k = 0; k < 26 * ncells; k++) {
+        if (edgew[k] > 1) {
+          weights_e[k] = edgew[k];
+        } else {
+          weights_e[k] = 1;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < 26 * ncells; k++) {
+
+        if ((idx_t)edgew[k] < 0) {
+          message("Input edge weight out of range: %ld", (long)edgew[k]);
+          failed++;
+        }
+        if (weights_e[k] < 1) {
+          message("Used edge weight out of range: %" PRIDX, weights_e[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d edge weights are out of range", failed);
+#endif
+    }
+
+    /* Set the METIS options. */
+    idx_t options[METIS_NOPTIONS];
+    METIS_SetDefaultOptions(options);
+    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+    options[METIS_OPTION_NUMBERING] = 0;
+    options[METIS_OPTION_CONTIG] = 1;
+    options[METIS_OPTION_NCUTS] = 10;
+    options[METIS_OPTION_NITER] = 20;
+
+    /* Call METIS. */
+    idx_t one = 1;
+    idx_t idx_ncells = ncells;
+    idx_t idx_nregions = nregions;
+    idx_t objval;
+
+    /* Dump graph in METIS format */
+    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
+     *               weights_v, NULL, weights_e);
+     */
+    if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
+                            weights_e, &idx_nregions, NULL, NULL, options,
+                            &objval, regionid) != METIS_OK)
+      error("Call to METIS_PartGraphKway failed.");
+
+    /* Check that the regionids are ok. */
+    for (int k = 0; k < ncells; k++) {
+      if (regionid[k] < 0 || regionid[k] >= nregions)
+        error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+
+      /* And keep. */
+      celllist[k] = regionid[k];
+    }
+
+    /* Clean up. */
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
+    free(xadj);
+    free(adjncy);
+    free(regionid);
+  }
+
+  /* Calculations all done, now everyone gets a copy. */
+  int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+
+}
+#endif
+
 
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 /**
@@ -869,7 +1043,7 @@ static void repart_edge_parmetis(int bothweights, int timebins,
   idx_t *inds;
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
-  graph_init_adjncy(s, inds);
+  graph_init(s, inds, NULL);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -1085,13 +1259,22 @@ static void repart_edge_parmetis(int bothweights, int timebins,
     weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
   }
 
-  /* And partition, use both weights or not as requested. */
-  if (bothweights)
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine, -1,
-                  repartition->celllist);
-  else
-    pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine, -1,
-                  repartition->celllist);
+  /* And repartition/ partition, using both weights or not as requested. */
+  if (refine) {
+    if (bothweights)
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                    repartition->celllist);
+    else
+      pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine,
+                    repartition->celllist);
+  } else {
+
+    /* Not refining, so use METIS. */
+    if (bothweights)
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+    else
+      pick_metis(nodeID, s, nr_nodes, NULL, weights_e, repartition->celllist);
+  }
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
@@ -1258,7 +1441,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
-    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, -1, celllist);
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
 
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
