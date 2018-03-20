@@ -20,9 +20,25 @@
 /* Config parameters. */
 #include "../config.h"
 
+#if defined(COOLING_EAGLE)
+#include "./cooling/EAGLE/cooling_struct.h"
+#include "./cooling/EAGLE/eagle_cool_tables.h"
+#endif
+
 /* This object's header. */
 #include "cooling.h"
 #include "restart.h"
+
+const int element_name_length = 20;
+const float cmb_temperature = 2.728;
+const double compton_rate = 1.0178e-37*2.728*2.728*2.728*2.728;
+const bool metal_cooling_on = 1;
+const int max_iterations = 150;
+const float proton_mass_cgs = 1.6726e-24;
+
+int get_redshift_index_first_call = 0;
+int get_redshift_index_previous = -1;
+
 
 /**
  * @brief Initialises the cooling properties.
