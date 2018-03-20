@@ -106,7 +106,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
-  for (int elem = 0; elem < chemistry_element_count; ++elem) {
+  for (enum chemistry_element elem = chemistry_element_H; elem < chemistry_element_count; ++elem) {
     char buffer[20];
     sprintf(buffer, "Element %d", elem);
     io_write_attribute_s(
