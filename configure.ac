@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.6.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
@@ -407,13 +407,47 @@ AC_HEADER_STDC
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
-# Check for GSL
+# Check for GSL. We test for this in the standard directories by default,
+# and only disable if using --with-gsl=no or --without-gsl. When a value
+# is given GSL must be found.
 have_gsl="no"
-AC_CHECK_LIB([gslcblas], [cblas_dgemm])
-AC_CHECK_LIB([gsl], [gsl_integration_qag])
-if test "x$ac_cv_lib_gslcblas_cblas_dgemm" != "x"; then
-   have_gsl="yes"
+AC_ARG_WITH([gsl],
+    [AS_HELP_STRING([--with-gsl=PATH],
+       [root directory where GSL is installed @<:@yes/no@:>@]
+    )],
+    [with_gsl="$withval"],
+    [with_gsl="test"]
+)
+if test "x$with_gsl" != "xno"; then
+   if test "x$with_gsl" != "xyes" -a "x$with_gsl" != "xtest" -a "x$with_gsl" != "x"; then
+      GSL_LIBS="-L$with_gsl/lib -lgsl -lgslcblas"
+      GSL_INCS="-I$with_gsl/include"
+   else
+      GSL_LIBS="-lgsl -lgslcblas"
+      GSL_INCS=""
+   fi
+   #  GSL is not specified, so just check if we have it.
+   if test "x$with_gsl" = "xtest"; then
+      AC_CHECK_LIB([gslcblas],[cblas_dgemm],[have_gsl="yes"],[have_gsl="no"],$GSL_LIBS)
+      if test "x$have_gsl" != "xno"; then
+         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.])
+         AC_CHECK_LIB([gsl],[gsl_integration_qag],
+            AC_DEFINE([HAVE_LIBGSL],1,[The GSL library appears to be present.]),
+            [have_gsl="no"],$GSL_LIBS)
+      fi
+   else
+      AC_CHECK_LIB([gslcblas],[cblas_dgemm],
+         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GSL CBLAS library!), $GSL_LIBS)
+      AC_CHECK_LIB([gsl],[gsl_integration_qag],
+         AC_DEFINE([HAVE_LIBGSL],1,[The GSL library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GSL library!), $GSL_LIBS)
+      have_gsl="yes"
+   fi
 fi
+AC_SUBST([GSL_LIBS])
+AC_SUBST([GSL_INCS])
+AM_CONDITIONAL([HAVEGSL],[test -n "$GSL_LIBS"])
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
@@ -443,7 +477,7 @@ AC_ARG_WITH([parmetis],
     [AS_HELP_STRING([--with-parmetis=PATH],
        [root directory where ParMETIS is installed @<:@yes/no@:>@]
     )],
-    [],
+    [with_parmetis="$withval"],
     [with_parmetis="no"]
 )
 
@@ -506,13 +540,13 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 #define __STDC_FORMAT_MACROS 1
 #endif])
 
-# Check for grackle. 
+# Check for grackle.
 have_grackle="no"
 AC_ARG_WITH([grackle],
     [AS_HELP_STRING([--with-grackle=PATH],
        [root directory where grackle is installed @<:@yes/no@:>@]
     )],
-    [],
+    [with_grackle="$withval"],
     [with_grackle="no"]
 )
 if test "x$with_grackle" != "xno"; then
@@ -1013,7 +1047,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, isothermal, softened-isothermal, disc-patch, sine-wave default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, disc-patch, sine-wave, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1033,6 +1067,12 @@ case "$with_potential" in
    ;;
    sine-wave)
       AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
+   ;;
+   point-mass-ring)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_RING], [1], [Point mass potential for Keplerian Ring (Hopkins 2015).])
+   ;;
+   point-mass-softened)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
    ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])

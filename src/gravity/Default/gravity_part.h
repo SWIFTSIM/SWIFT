@@ -71,6 +71,8 @@ struct gpart {
   /* Brute-force particle acceleration. */
   double a_grav_exact[3];
 
+  /* Brute-force particle potential. */
+  double potential_exact;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
