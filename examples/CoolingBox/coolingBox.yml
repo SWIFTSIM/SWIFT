@@ -40,6 +40,12 @@ LambdaCooling:
   hydrogen_mass_abundance:     0.75       # Hydrogen mass abundance (dimensionless)
   cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
 
+# Dimensionless constant cooling (AB 13/02/18)
+ConstCooling:
+  cooling_rate:         10000.0
+  min_energy:           0.0
+  cooling_tstep_mult:   1.0
+
 # Cooling with Grackle 2.0
 GrackleCooling:
   CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -53,6 +59,9 @@ GrackleCooling:
   MaxSteps: 1000
   ConvergenceLimit: 1e-2
   
+EagleCooling:
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+
 EAGLEChemistry:
   InitMetallicity:         0.
   InitAbundance_Hydrogen:  0.752

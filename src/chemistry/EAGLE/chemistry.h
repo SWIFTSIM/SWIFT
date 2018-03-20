@@ -137,7 +137,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parser_get_param_float(parameter_file, "EAGLEChemistry:InitMetallicity");
 
   /* Read the individual mass fractions */
-  for (int elem = 0; elem < chemistry_element_count; ++elem) {
+  for (enum chemistry_element elem = chemistry_element_H; elem < chemistry_element_count; ++elem) {
     char buffer[50];
     sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
             chemistry_get_element_name((enum chemistry_element)elem));
@@ -164,6 +164,32 @@ static INLINE void chemistry_print_backend(
 
   message("Chemistry model is 'EAGLE' tracking %d elements.",
           chemistry_element_count);
+}
+
+/* CHECK THAT ALL ATOMIC NUMBERS ARE ACCURAE FOR THE UNIVERSE!!!
+ * @brief returns the number density of an element in a particle
+ *
+ * @param p particle struct
+ * @param elem enum value of element
+ */
+__attribute__((always_inline)) INLINE static float chemistry_get_number_density(const struct part* restrict p, enum chemistry_element elem, const struct phys_const* restrict internal_const) {
+  float number_density;
+  int atomic_number;
+  switch(elem){
+    case chemistry_element_H : atomic_number = 1;
+    case chemistry_element_He: atomic_number = 4;
+    case chemistry_element_C : atomic_number = 12;
+    case chemistry_element_N : atomic_number = 14;
+    case chemistry_element_O : atomic_number = 16;
+    case chemistry_element_Ne: atomic_number = 20;
+    case chemistry_element_Mg: atomic_number = 24;
+    case chemistry_element_Si: atomic_number = 28;
+    case chemistry_element_Fe: atomic_number = 56;
+  }
+  float element_mass = internal_const->const_proton_mass*atomic_number;
+  number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_comoving_density(p)/element_mass;
+
+  return number_density;
 }
 
 #endif /* SWIFT_CHEMISTRY_EAGLE_H */
