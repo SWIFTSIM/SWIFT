@@ -46,7 +46,7 @@ struct cell_loc {
     /* Coordinates x,y,z */
     double loc[3];
 
-} SWIFT_STRUCT_ALIGN;
+};
 
 /* Structure for passing simulation information to VELOCIraptor. */
 struct siminfo {
