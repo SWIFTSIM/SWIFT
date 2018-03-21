@@ -104,6 +104,7 @@ void print_help_message() {
   printf("  %2s %14s %s\n", "-v", "[12]", "Increase the level of verbosity:");
   printf("  %2s %14s %s\n", "", "", "1: MPI-rank 0 writes,");
   printf("  %2s %14s %s\n", "", "", "2: All MPI-ranks write.");
+  printf("  %2s %14s %s\n", "-x", "", "Run with structure finding.");
   printf("  %2s %14s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped.");
   printf("  %2s %14s %s\n", "-Y", "{int}",
@@ -192,6 +193,7 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
+  int with_structure_finding = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -203,7 +205,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -290,6 +292,9 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'x':
+        with_structure_finding = 1;
         break;
       case 'y':
         if (sscanf(optarg, "%d", &dump_tasks) != 1) {
@@ -772,6 +777,7 @@ int main(int argc, char *argv[]) {
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_structure_finding) engine_policies |= engine_policy_structure_finding;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -844,7 +850,7 @@ int main(int argc, char *argv[]) {
     engine_print_stats(&e);
 
     /* Call VELOCIraptor before first step. */
-    invoke_velociraptor(&e);
+    if(with_structure_finding) invoke_velociraptor(&e);
   }
 
   /* Legend */

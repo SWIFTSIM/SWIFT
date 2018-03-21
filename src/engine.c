@@ -4515,7 +4515,7 @@ void engine_step(struct engine *e) {
   }
 
   /* Invoke VELOCIraptor every 250 timesteps thereafter. */
-  if (e->step%250 == 0) invoke_velociraptor(e);
+  if ((e->policy & engine_policy_structure_finding) && e->step%250 == 0) invoke_velociraptor(e);
 
   /* Now apply all the collected time step updates and particle counts. */
   collectgroup1_apply(&e->collect_group1, e);
@@ -5337,7 +5337,7 @@ void engine_config(int restart, struct engine *e,
   engine_rank = nodeID;
 
   /* Initialise VELOCIraptor. */
-  init_velociraptor(e);
+  if (e->policy & engine_policy_structure_finding) init_velociraptor(e);
   
   /* Get the number of queues */
   int nr_queues =
