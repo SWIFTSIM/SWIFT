@@ -4514,10 +4514,8 @@ void engine_step(struct engine *e) {
     e->step_props |= engine_step_prop_statistics;
   }
 
-  /* Invoke VELOCIraptor every 250 timesteps. */
-  if (e->step%250 == 0) {
-    invoke_velociraptor(e);
-  }
+  /* Invoke VELOCIraptor every 250 timesteps thereafter. */
+  if (e->step%250 == 0) invoke_velociraptor(e);
 
   /* Now apply all the collected time step updates and particle counts. */
   collectgroup1_apply(&e->collect_group1, e);
@@ -5261,9 +5259,6 @@ void engine_init(
 
   /* Make the space link back to the engine. */
   s->e = e;
-
-  /* Initialise VELOCIraptor. */
-  init_velociraptor(e);
   
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
@@ -5341,6 +5336,9 @@ void engine_config(int restart, struct engine *e,
   e->restart_dt = 0;
   engine_rank = nodeID;
 
+  /* Initialise VELOCIraptor. */
+  init_velociraptor(e);
+  
   /* Get the number of queues */
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
