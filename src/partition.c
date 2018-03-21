@@ -412,13 +412,16 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
  * @param refine whether to refine an existing partition, or create a new one.
+ * @param itr the ratio of inter-process communication time to data
+ *            redistribution time. Used to weight repartitioning edge cuts
+ *            when refine is true.
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int refine,
-                          int *celllist) {
+                          float itr, int *celllist) {
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -703,6 +706,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   idx_t options[4];
   options[0] = 1;
   options[1] = 0;
+  options[2] = -1;
 
   idx_t edgecut;
   idx_t ncon = 1;
@@ -721,10 +725,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     options[3] = PARMETIS_PSR_UNCOUPLED;
 
     /* Balance between cuts and movement. */
-    real_t itr = 0.1;
+    real_t itr_real_t = itr;
     if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL, weights_e,
                                    &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                   ubvec, &itr, options, &edgecut, regionid,
+                                   ubvec, &itr_real_t, options, &edgecut, regionid,
                                    &comm) != METIS_OK)
       error("Call to ParMETIS_V3_AdaptiveRepart failed.");
   } else {
@@ -737,9 +741,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* Need to gather all the regionid arrays from the ranks. */
-  int *newcelllist = NULL;
-  if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-    error("Failed to allocate new celllist");
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
   if (nodeID != 0) {
@@ -758,8 +759,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   } else {
 
     /* Node 0 */
-    int *remoteids = NULL;
-    if ((remoteids = (int *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    idx_t *remoteids = NULL;
+    if ((remoteids = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate remoteids buffer");
 
     int nvt = vtxdist[1] - vtxdist[0];
@@ -786,10 +787,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Copy: idx_t -> int. */
+    int *newcelllist = NULL;
+    if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+      error("Failed to allocate new celllist");
     for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
     free(remoteids);
 
-    /* Check that the regionids are all good. */
+    /* Check that the region ids are all good. */
     int bad = 0;
     for (int k = 0; k < ncells; k++) {
       if (newcelllist[k] < 0 || newcelllist[k] >= nregions) {
@@ -824,19 +828,22 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
 
       /* And keep. */
-      memcpy(newcelllist, permcelllist, sizeof(int) * ncells);
+      memcpy(celllist, permcelllist, sizeof(int) * ncells);
       free(permcelllist);
+
+    } else {
+      memcpy(celllist, newcelllist, sizeof(int) * ncells);
     }
+    free(newcelllist);
   }
 
   /* And everyone gets a copy. */
-  res = MPI_Bcast(newcelllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+  res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
   free(reqs);
   free(stats);
-  free(newcelllist);
   if (weights_v != NULL) free(weights_v);
   if (weights_e != NULL) free(weights_e);
   free(vtxdist);
@@ -1263,10 +1270,10 @@ static void repart_edge_parmetis(int bothweights, int timebins,
   if (refine) {
     if (bothweights)
       pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                    repartition->celllist);
+                    repartition->itr, repartition->celllist);
     else
       pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine,
-                    repartition->celllist);
+                    repartition->itr, repartition->celllist);
   } else {
 
     /* Not refining, so use METIS. */
@@ -1609,6 +1616,10 @@ void partition_init(struct partition *partition,
     error(
         "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
         "than equal to 1");
+
+  /* Ratio of interprocess communication time to data redistribution time. */
+  repartition->itr =
+      parser_get_opt_param_float(params, "DomainDecomposition:itr", 0.1f);
 
   /* Clear the celllist for use. */
   repartition->ncelllist = 0;

@@ -115,6 +115,8 @@ DomainDecomposition:
                             # new decomposition, or number of steps (>1) between decompositions
   minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
                             # using CPU time trigger
+  itr               0.1     # Ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0. 
+                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
 
 # Parameters related to the equation of state ------------------------------------------
 

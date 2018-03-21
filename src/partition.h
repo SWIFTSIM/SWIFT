@@ -53,6 +53,7 @@ struct repartition {
   enum repartition_type type;
   float trigger;
   float minfrac;
+  float itr;
 
   /* The partition as a cell-list. */
   int ncelllist;
