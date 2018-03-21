@@ -77,7 +77,7 @@ void init_velociraptor(struct engine *e) {
     message("G: %e", unit_info.gravity);
     message("H: %e", unit_info.hubbleunit);
 
-    const int nr_gparts = s->nr_gparts;
+    const int total_nr_gparts = e->total_nr_gparts;
     
     /* Set simulation information. */
     if(e->s->periodic) {
@@ -85,7 +85,7 @@ void init_velociraptor(struct engine *e) {
     }
     else sim_info.period = 0.0;
     sim_info.zoomhigresolutionmass = -1.0; /* Placeholder. */
-    sim_info.interparticlespacing = sim_info.period / pow(nr_gparts, 1./3.);
+    sim_info.interparticlespacing = sim_info.period / pow(total_nr_gparts, 1./3.);
     sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology);
     sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
     sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
@@ -119,10 +119,10 @@ void init_velociraptor(struct engine *e) {
     message("No. of top-level cells: %d", sim_info.numcells);
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
-    InitVelociraptor("stf_input.cfg", "stf_ouput.out", cosmo_info, unit_info, sim_info);
+    InitVelociraptor("stf_input.cfg", "stf_output.out", cosmo_info, unit_info, sim_info);
 
     /* Free cell locations after VELOCIraptor has copied them. */
-    free(sim_info.cellloc);
+    //free(sim_info.cellloc);
 }
 
 /**
@@ -153,5 +153,5 @@ void invoke_velociraptor(struct engine *e) {
     InvokeVelociraptor(nr_gparts, gparts, cell_node_ids);
     
     /* Free cell node ids after VELOCIraptor has copied them. */
-    free(cell_node_ids);
+    //free(cell_node_ids);
 }
