@@ -72,7 +72,7 @@ void InitVelociraptor(char* config_name, char* output_name, struct cosmoinfo cos
 void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts, const int *cell_node_ids);
 
 /* VELOCIraptor wrapper functions. */
-void init_velociraptor(struct engine *e);
-void invoke_velociraptor(struct engine *e);
+void velociraptor_init(struct engine *e);
+void velociraptor_invoke(struct engine *e);
 
 #endif /* SWIFT_VELOCIRAPTOR_INTERFACE_H */

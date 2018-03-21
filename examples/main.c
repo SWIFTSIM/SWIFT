@@ -850,7 +850,7 @@ int main(int argc, char *argv[]) {
     engine_print_stats(&e);
 
     /* Call VELOCIraptor before first step. */
-    if(with_structure_finding) invoke_velociraptor(&e);
+    if(with_structure_finding) velociraptor_invoke(&e);
   }
 
   /* Legend */

@@ -34,7 +34,7 @@
  * @param e The #engine.
  *
  */
-void init_velociraptor(struct engine *e) {
+void velociraptor_init(struct engine *e) {
     struct space *s = e->s;
     struct cosmoinfo cosmo_info;
     struct unitinfo unit_info;
@@ -93,6 +93,7 @@ void init_velociraptor(struct engine *e) {
     sim_info.numcells = s->nr_cells;
     
     /* Allocate and populate top-level cell locations. */
+    /* JSW TODO: Remember to free at the end of the simulation. */
     if (posix_memalign((void **)&(sim_info.cellloc), 32,
                        s->nr_cells * sizeof(struct cell_loc)) != 0)
         error("Failed to allocate top-level cell locations for VELOCIraptor.");
@@ -131,7 +132,7 @@ void init_velociraptor(struct engine *e) {
  * @param e The #engine.
  *
  */
-void invoke_velociraptor(struct engine *e) {
+void velociraptor_invoke(struct engine *e) {
 
     struct space *s = e->s;
     struct gpart *gparts = s->gparts;
@@ -140,6 +141,7 @@ void invoke_velociraptor(struct engine *e) {
     int *cell_node_ids;
     
     /* Allocate and populate array of cell node IDs. */
+    /* JSW TODO: Remember to free at the end of the simulation. */
     if (posix_memalign((void **)&cell_node_ids, 32,
                        nr_cells * sizeof(int)) != 0)
         error("Failed to allocate list of cells node IDs for VELOCIraptor.");
