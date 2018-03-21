@@ -35,6 +35,11 @@ examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/*.dot
 examples/*/*/used_parameters.yml
+examples/*/err_file*
+examples/*/out_file*
+examples/*/stf_output*
+examples/*/stf_ouput*
+examples/*/log*
 examples/*/gravity_checks_*.dat
 
 tests/testActivePair
