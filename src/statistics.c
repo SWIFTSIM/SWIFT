@@ -191,7 +191,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.E_int += m * u_inter;
     stats.E_rad += cooling_get_radiated_energy(xp);
     if (gp != NULL) {
-      stats.E_pot_self += m * gravity_get_potential(gp) * a_inv;
+      stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
     }
@@ -292,7 +292,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
                    a_inv2; /* 1/2 m a^2 \dot{r}^2 */
-    stats.E_pot_self += m * gravity_get_potential(gp) * a_inv;
+    stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
     stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                time, potential, phys_const, gp);
   }

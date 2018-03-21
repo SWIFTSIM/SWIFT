@@ -38,9 +38,11 @@
  * @param h_inv3 Cube of the inverse of the softening length.
  * @param mass Mass of the point-mass.
  * @param f_ij (return) The force intensity.
+ * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
-    float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij) {
+    float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij,
+    float *pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
@@ -50,17 +52,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float r = r2 * r_inv;
     const float ui = r * h_inv;
-    float W_ij;
 
-    kernel_grav_eval(ui, &W_ij);
+    float W_f_ij, W_pot_ij;
+    kernel_grav_force_eval(ui, &W_f_ij);
+    kernel_grav_pot_eval(ui, &W_pot_ij);
 
     /* Get softened gravity */
-    *f_ij = mass * h_inv3 * W_ij;
+    *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
 }
 
@@ -78,10 +83,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
  * @param mass Mass of the point-mass.
  * @param rlr_inv Inverse of the mesh smoothing scale.
  * @param f_ij (return) The force intensity.
+ * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     float r2, float h2, float h_inv, float h_inv3, float mass, float rlr_inv,
-    float *f_ij) {
+    float *f_ij, float *pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
@@ -92,23 +98,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float ui = r * h_inv;
-    float W_ij;
+    float W_f_ij, W_pot_ij;
 
-    kernel_grav_eval(ui, &W_ij);
+    kernel_grav_force_eval(ui, &W_f_ij);
+    kernel_grav_pot_eval(ui, &W_pot_ij);
 
     /* Get softened gravity */
-    *f_ij = mass * h_inv3 * W_ij;
+    *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
 
   /* Get long-range correction */
   const float u_lr = r * rlr_inv;
-  float corr_lr;
-  kernel_long_grav_eval(u_lr, &corr_lr);
-  *f_ij *= corr_lr;
+  float corr_f_lr, corr_pot_lr;
+  kernel_long_grav_force_eval(u_lr, &corr_f_lr);
+  kernel_long_grav_pot_eval(u_lr, &corr_pot_lr);
+  *f_ij *= corr_f_lr;
+  *pot_ij *= corr_pot_lr;
 }
 
 /**
@@ -127,33 +138,43 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
  * @param f_x (return) The x-component of the acceleration.
  * @param f_y (return) The y-component of the acceleration.
  * @param f_z (return) The z-component of the acceleration.
+ * @param pot (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
     float r_x, float r_y, float r_z, float r2, float h, float h_inv,
-    const struct multipole *m, float *f_x, float *f_y, float *f_z) {
+    const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
-  runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv3, m->M_000, f_ij);
+  float f_ij;
+  runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
+                           &f_ij, pot);
+  *f_x = -f_ij * r_x;
+  *f_y = -f_ij * r_y;
+  *f_z = -f_ij * r_z;
 #else
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
 
-  struct potential_derivatives_M2P pot;
-  compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, &pot);
+  struct potential_derivatives_M2P d;
+  compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, &d);
 
   /* 1st order terms (monopole) */
-  *f_x = m->M_000 * pot.D_100;
-  *f_y = m->M_000 * pot.D_010;
-  *f_z = m->M_000 * pot.D_001;
+  *f_x = m->M_000 * d.D_100;
+  *f_y = m->M_000 * d.D_010;
+  *f_z = m->M_000 * d.D_001;
+  *pot = -m->M_000 * d.D_000;
 
   /* 3rd order terms (quadrupole) */
-  *f_x += m->M_200 * pot.D_300 + m->M_020 * pot.D_120 + m->M_002 * pot.D_102;
-  *f_y += m->M_200 * pot.D_210 + m->M_020 * pot.D_030 + m->M_002 * pot.D_012;
-  *f_z += m->M_200 * pot.D_201 + m->M_020 * pot.D_021 + m->M_002 * pot.D_003;
-  *f_x += m->M_110 * pot.D_210 + m->M_101 * pot.D_201 + m->M_011 * pot.D_111;
-  *f_y += m->M_110 * pot.D_120 + m->M_101 * pot.D_111 + m->M_011 * pot.D_021;
-  *f_z += m->M_110 * pot.D_111 + m->M_101 * pot.D_102 + m->M_011 * pot.D_012;
+  *f_x += m->M_200 * d.D_300 + m->M_020 * d.D_120 + m->M_002 * d.D_102;
+  *f_y += m->M_200 * d.D_210 + m->M_020 * d.D_030 + m->M_002 * d.D_012;
+  *f_z += m->M_200 * d.D_201 + m->M_020 * d.D_021 + m->M_002 * d.D_003;
+  *pot -= m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
+
+  *f_x += m->M_110 * d.D_210 + m->M_101 * d.D_201 + m->M_011 * d.D_111;
+  *f_y += m->M_110 * d.D_120 + m->M_101 * d.D_111 + m->M_011 * d.D_021;
+  *f_z += m->M_110 * d.D_111 + m->M_101 * d.D_102 + m->M_011 * d.D_012;
+  *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
 
 #endif
 }
