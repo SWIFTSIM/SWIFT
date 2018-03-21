@@ -42,6 +42,7 @@
 
 /* Local headers. */
 #include "swift.h"
+#include "velociraptor_interface.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
@@ -841,6 +842,9 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
+
+    /* Call VELOCIraptor before first step. */
+    invoke_velociraptor(&e);
   }
 
   /* Legend */
