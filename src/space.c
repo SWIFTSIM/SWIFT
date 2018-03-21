@@ -995,6 +995,9 @@ void space_rebuild(struct space *s, int verbose) {
       cell_check_multipole(&s->cells_top[k], NULL);
 #endif
 
+  /* Clean up any stray sort indices in the cell buffer. */
+  space_free_buff_sort_indices(s);
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -2141,10 +2144,6 @@ void space_recycle(struct space *s, struct cell *c) {
       lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
     error("Failed to destroy spinlocks.");
 
-  /* Clear this cell's sort arrays. */
-  for (int i = 0; i < 13; i++)
-    if (c->sort[i] != NULL) free(c->sort[i]);
-
   /* Lock the space. */
   lock_lock(&s->lock);
 
@@ -2194,10 +2193,6 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
       error("Failed to destroy spinlocks.");
 
-    /* Clear this cell's sort arrays. */
-    for (int i = 0; i < 13; i++)
-      if (c->sort[i] != NULL) free(c->sort[i]);
-
     /* Count this cell. */
     count += 1;
   }
@@ -2244,6 +2239,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       if (posix_memalign((void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
+        
+      /* Clear the newly-allocated cells. */
+      bzero(s->cells_sub, sizeof(struct cell) * space_cellallocchunk);
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
@@ -2281,6 +2279,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
+    for (int k = 0; k < 13; k++)
+      if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
     struct gravity_tensors *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->multipole = temp;
@@ -2288,6 +2288,21 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
         lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
       error("Failed to initialize cell spinlocks.");
+  }
+}
+
+/**
+ * @brief Free sort arrays in any cells in the cell buffer.
+ * 
+ * @param s The #space.
+ */
+void space_free_buff_sort_indices(struct space *s) {
+  for (struct cell *finger = s->cells_sub; finger != NULL; finger = finger->next) {
+    for (int k = 0; k < 13; k++)
+      if (finger->sort[k] != NULL) {
+        free(finger->sort[k]);
+        finger->sort[k] = NULL;
+      }
   }
 }
 

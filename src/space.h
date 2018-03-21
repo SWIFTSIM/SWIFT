@@ -172,6 +172,7 @@ struct space {
 };
 
 /* function prototypes. */
+void space_free_buff_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
