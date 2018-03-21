@@ -6,6 +6,14 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+# Define the system of units to use int VELOCIraptor. 
+VelociraptorUnitSystem:
+  UnitMass_in_cgs:     1.989e33      # M_sun in grams
+  UnitLength_in_cgs:   3.085678e21   # kpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
