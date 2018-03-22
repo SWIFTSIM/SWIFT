@@ -1,7 +1,7 @@
 #ifndef SWIFT_EAGLE_COOL_TABLES_H
 #define SWIFT_EAGLE_COOL_TABLES_H
 
-// #include "cooling_struct.h"
+#include "cooling_struct.h"
 #include <stdlib.h>
 #include <string.h>
 #include <hdf5.h>
@@ -129,8 +129,8 @@ inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling
   cooling->HeFrac = malloc(cooling->N_He*sizeof(float));
   cooling->SolarAbundances = malloc(cooling->N_SolarAbundances*sizeof(float));
   cooling->Therm = malloc(cooling->N_Temp*sizeof(float));
-  cooling->ElementNames = malloc(cooling->N_Elements*element_name_length*sizeof(char));
-  cooling->SolarAbundanceNames = malloc(cooling->N_SolarAbundances*element_name_length*sizeof(char));
+  cooling->ElementNames = malloc(cooling->N_Elements*eagle_element_name_length*sizeof(char));
+  cooling->SolarAbundanceNames = malloc(cooling->N_SolarAbundances*eagle_element_name_length*sizeof(char));
   
   /* fill the arrays */
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
@@ -158,8 +158,8 @@ inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling
                    cooling->Therm);
   status = H5Dclose(dataset);
 
-  char element_names[cooling->N_Elements][element_name_length];
-  hsize_t string_length = element_name_length;
+  char element_names[cooling->N_Elements][eagle_element_name_length];
+  hsize_t string_length = eagle_element_name_length;
 
   /* names of chemical elements stored in table */
   datatype = H5Tcopy(H5T_C_S1);
@@ -173,7 +173,7 @@ inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling
   for (i = 0; i < cooling->N_Elements; i++)
     cooling->ElementNames[i] = mystrdup(element_names[i]);
   
-  char solar_abund_names[cooling->N_SolarAbundances][element_name_length];
+  char solar_abund_names[cooling->N_SolarAbundances][eagle_element_name_length];
 
   /* assumed solar abundances used in constructing the tables, and corresponding
    * names */
@@ -251,8 +251,8 @@ inline struct cooling_tables_redshift_invariant get_no_compt_table(char *cooling
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
-  printf("GetNoCompTable Redshift 1 %ld %s\n", (long int)file_id, fname);
-  fflush(stdout);
+  //printf("GetNoCompTable Redshift 1 %ld %s\n", (long int)file_id, fname);
+  //fflush(stdout);
 
   /* For normal elements */
   for (specs = 0; specs < cooling->N_Elements; specs++) {
@@ -331,6 +331,8 @@ inline struct cooling_tables_redshift_invariant get_no_compt_table(char *cooling
   free(temperature);
   free(he_net_cooling_rate);
   free(he_electron_abundance);
+
+  printf("eagle_cool_tables.h done reading in no compton table\n");
 
   return cooling_table;
 }
@@ -451,6 +453,7 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
+  printf("eagle_cool_tables.h done reading in collisional table\n");
   return cooling_table;
 }
 
@@ -577,6 +580,8 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
   free(temperature);
   free(he_net_cooling_rate);
   free(he_electron_abundance);
+
+  printf("eagle_cool_tables.h done reading in general cooling table\n");
 
   return cooling_table;
 }

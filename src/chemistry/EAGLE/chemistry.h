@@ -172,8 +172,8 @@ static INLINE void chemistry_print_backend(
  * @param p particle struct
  * @param elem enum value of element
  */
-__attribute__((always_inline)) INLINE static float chemistry_get_number_density(const struct part* restrict p, enum chemistry_element elem, const struct phys_const* restrict internal_const) {
-  float number_density;
+__attribute__((always_inline)) INLINE static double chemistry_get_number_density(const struct part* restrict p, enum chemistry_element elem, const struct phys_const* restrict internal_const) {
+  double number_density;
   int atomic_number;
   switch(elem){
     case chemistry_element_H : atomic_number = 1;
@@ -186,7 +186,7 @@ __attribute__((always_inline)) INLINE static float chemistry_get_number_density(
     case chemistry_element_Si: atomic_number = 28;
     case chemistry_element_Fe: atomic_number = 56;
   }
-  float element_mass = internal_const->const_proton_mass*atomic_number;
+  double element_mass = internal_const->const_proton_mass*atomic_number;
   number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_comoving_density(p)/element_mass;
 
   return number_density;

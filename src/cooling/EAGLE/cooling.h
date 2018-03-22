@@ -45,12 +45,15 @@
 #include "units.h"
 #include "eagle_cool_tables.h"
 
-extern const int element_name_length;
-extern const float cmb_temperature;
-extern const double compton_rate;
-extern const bool metal_cooling_on;
-extern const int max_iterations;
-extern const float proton_mass_cgs;
+//static const int eagle_element_name_length = 20;
+//static const float eagle_cmb_temperature = 2.728;
+//static const double eagle_compton_rate = 1.0178e-37*2.728*2.728*2.728*2.728;
+//static const bool eagle_metal_cooling_on = 1;
+//static const int eagle_max_iterations = 150;
+//static const float eagle_proton_mass_cgs = 1.6726e-24;
+
+static int get_redshift_index_first_call = 0;
+static int get_redshift_index_previous = -1;
 
 enum hdf5_allowed_types {
   hdf5_short,
@@ -63,20 +66,26 @@ enum hdf5_allowed_types {
 
 __attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
                                                                int nx, int ny) {
-  return ((i % nx) * ny + (j % ny));
+  int index = (i % nx) * ny + (j % ny);
+  if (index >= nx*ny) fprintf(stderr, "row_major_index_2d out of bounds, i, j, nx, ny, index, nx*ny %d, %d, %d, %d, %d, %d \n",i,j,nx,ny,index,nx*ny); 
+  return index;
 }
 
 __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
                                                               int k, int nx, 
 							      int ny, int nz) {
-  return ((i % nx) * ny * nz + (j % ny) * nz + (k % nz));
+  int index = (i % nx) * ny * nz + (j % ny) * nz + (k % nz);
+  if (index >= nx*ny*nz) fprintf(stderr, "row_major_index_3d out of bounds, i, j, k, nx, ny, nz, index, nx*ny*nz %d, %d, %d, %d, %d, %d, %d, %d \n",i,j,k,nx,ny,nz,index,nx*ny*nz); 
+  return index;
 }
 
 __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
                                                               int k, int l, 
 							      int nx, int ny, 
 							      int nz, int nw) {
-  return ((i % nx) * ny * nz * nw + (j % ny) * nz * nw + (k % nz) * nw + (l % nw));
+  int index = (i % nx) * ny * nz * nw + (j % ny) * nz * nw + (k % nz) * nw + (l % nw);
+  if (index >= nx*ny*nz*nw) fprintf(stderr, "row_major_index_4d out of bounds, i, j, k, l, nx, ny, nz, nw, index, nx*ny*nz*nw %d, %d, %d, %d, %d, %d, %d, %d, %d, %d \n",i,j,k,l,nx,ny,nz,nw,index,nx*ny*nz*nw); 
+  return index;
 }
 
 
@@ -167,6 +176,11 @@ __attribute__((always_inline)) INLINE float interpol_2d(float *table, int i, int
   index[1] = row_major_index_2d(i,j+1,nx,ny);
   index[2] = row_major_index_2d(i+1,j,nx,ny);
   index[3] = row_major_index_2d(i+1,j+1,nx,ny);
+  if(index[0] >= nx*ny || index[0] < 0) fprintf(stderr,"index 0 out of bounds %d, i,j %d, %d, table size %d\n", index[0],i,j,nx*ny);
+  if(index[1] >= nx*ny || index[1] < 0) fprintf(stderr,"index 1 out of bounds %d, i,j %d, %d, table size %d\n", index[1],i,j+1,nx*ny);
+  if(index[2] >= nx*ny || index[2] < 0) fprintf(stderr,"index 2 out of bounds %d, i,j %d, %d, table size %d\n", index[2],i+1,j,nx*ny);
+  if(index[3] >= nx*ny || index[3] < 0) fprintf(stderr,"index 3 out of bounds %d, i,j %d, %d, table size %d\n", index[3],i+1,j+1,nx*ny);
+
   result = (1 - dx) * (1 - dy) * table[index[0]] + (1 - dx) * dy * table[index[1]] +
            dx * (1 - dy) * table[index[2]] + dx * dy * table[index[3]];
 
@@ -187,6 +201,11 @@ __attribute__((always_inline)) INLINE double interpol_2d_dbl(double *table, int 
   index[1] = row_major_index_2d(i,j+1,nx,ny);
   index[2] = row_major_index_2d(i+1,j,nx,ny);
   index[3] = row_major_index_2d(i+1,j+1,nx,ny);
+  if(index[0] >= nx*ny || index[0] < 0) fprintf(stderr,"index 0 out of bounds %d, i,j %d, %d, table size %d\n", index[0],i,j,nx*ny);
+  if(index[1] >= nx*ny || index[1] < 0) fprintf(stderr,"index 1 out of bounds %d, i,j %d, %d, table size %d\n", index[1],i,j+1,nx*ny);
+  if(index[2] >= nx*ny || index[2] < 0) fprintf(stderr,"index 2 out of bounds %d, i,j %d, %d, table size %d\n", index[2],i+1,j,nx*ny);
+  if(index[3] >= nx*ny || index[3] < 0) fprintf(stderr,"index 3 out of bounds %d, i,j %d, %d, table size %d\n", index[3],i+1,j+1,nx*ny);
+
   result = (1 - dx) * (1 - dy) * table[index[0]] + (1 - dx) * dy * table[index[1]] +
            dx * (1 - dy) * table[index[2]] + dx * dy * table[index[3]];
 
@@ -212,6 +231,15 @@ __attribute__((always_inline)) INLINE float interpol_3d(float *table, int i, int
   index[5] = row_major_index_3d(i+1,j,k+1,nx,ny,nz);
   index[6] = row_major_index_3d(i+1,j+1,k,nx,ny,nz);
   index[7] = row_major_index_3d(i+1,j+1,k+1,nx,ny,nz);
+  if(index[0] >= nx*ny*nz || index[0] < 0) fprintf(stderr,"index 0 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[0],i,j,k,nx*ny*nz);
+  if(index[1] >= nx*ny*nz || index[1] < 0) fprintf(stderr,"index 1 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[1],i,j,k+1,nx*ny*nz);
+  if(index[2] >= nx*ny*nz || index[2] < 0) fprintf(stderr,"index 2 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[2],i,j+1,k,nx*ny*nz);
+  if(index[3] >= nx*ny*nz || index[3] < 0) fprintf(stderr,"index 3 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[3],i,j+1,k+1,nx*ny*nz);
+  if(index[4] >= nx*ny*nz || index[4] < 0) fprintf(stderr,"index 4 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[4],i+1,j,k,nx*ny*nz);
+  if(index[5] >= nx*ny*nz || index[5] < 0) fprintf(stderr,"index 5 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[5],i+1,j,k+1,nx*ny*nz);
+  if(index[6] >= nx*ny*nz || index[6] < 0) fprintf(stderr,"index 6 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[6],i+1,j+1,k,nx*ny*nz);
+  if(index[7] >= nx*ny*nz || index[7] < 0) fprintf(stderr,"index 7 out of bounds %d, i,j,k %d, %d, %d, table size %d\n", index[7],i+1,j+1,k+1,nx*ny*nz);
+
   result = (1 - dx) * (1 - dy) * (1 - dz) * table[index[0]] +
            (1 - dx) * (1 - dy) * dz * table[index[1]] +
            (1 - dx) * dy * (1 - dz) * table[index[2]] +
@@ -251,6 +279,22 @@ __attribute__((always_inline)) INLINE float interpol_4d(float *table, int i, int
   index[13] = row_major_index_4d(i+1,j+1,k,l+1,nx,ny,nz,nw);
   index[14] = row_major_index_4d(i+1,j+1,k+1,l,nx,ny,nz,nw);
   index[15] = row_major_index_4d(i+1,j+1,k+1,l+1,nx,ny,nz,nw);
+  if(index[0] >= nx*ny*nz*nw || index[0] < 0) fprintf(stderr,"index 0 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[0],i,j,k,l,nx*ny*nz*nw);
+  if(index[1] >= nx*ny*nz*nw || index[1] < 0) fprintf(stderr,"index 1 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[1],i,j,k,l+1,nx*ny*nz*nw);
+  if(index[2] >= nx*ny*nz*nw || index[2] < 0) fprintf(stderr,"index 2 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[2],i,j,k+1,l,nx*ny*nz*nw);
+  if(index[3] >= nx*ny*nz*nw || index[3] < 0) fprintf(stderr,"index 3 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[3],i,j,k+1,l+1,nx*ny*nz*nw);
+  if(index[4] >= nx*ny*nz*nw || index[4] < 0) fprintf(stderr,"index 4 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[4],i,j+1,k,l,nx*ny*nz*nw);
+  if(index[5] >= nx*ny*nz*nw || index[5] < 0) fprintf(stderr,"index 5 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[5],i,j+1,k,l+1,nx*ny*nz*nw);
+  if(index[6] >= nx*ny*nz*nw || index[6] < 0) fprintf(stderr,"index 6 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[6],i,j+1,k+1,l,nx*ny*nz*nw);
+  if(index[7] >= nx*ny*nz*nw || index[7] < 0) fprintf(stderr,"index 7 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[7],i,j+1,k+1,l+1,nx*ny*nz*nw);
+  if(index[8] >= nx*ny*nz*nw || index[8] < 0) fprintf(stderr,"index 8 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[8],i+1,j,k,l,nx*ny*nz*nw);
+  if(index[9] >= nx*ny*nz*nw || index[9] < 0) fprintf(stderr,"index 9 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[9],i+1,j,k,l+1,nx*ny*nz*nw);
+  if(index[10] >= nx*ny*nz*nw || index[10] < 0) fprintf(stderr,"index 10 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[10],i+1,j,k+1,l,nx*ny*nz*nw);
+  if(index[11] >= nx*ny*nz*nw || index[11] < 0) fprintf(stderr,"index 11 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[11],i+1,j,k+1,l+1,nx*ny*nz*nw);
+  if(index[12] >= nx*ny*nz*nw || index[12] < 0) fprintf(stderr,"index 12 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[12],i+1,j+1,k,l,nx*ny*nz*nw);
+  if(index[13] >= nx*ny*nz*nw || index[13] < 0) fprintf(stderr,"index 13 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[13],i+1,j+1,k,l+1,nx*ny*nz*nw);
+  if(index[14] >= nx*ny*nz*nw || index[14] < 0) fprintf(stderr,"index 14 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[14],i+1,j+1,k+1,l,nx*ny*nz*nw);
+  if(index[15] >= nx*ny*nz*nw || index[15] < 0) fprintf(stderr,"index 15 out of bounds %d, i,j,k,l, %d, %d, %d, %d, table size %d\n", index[15],i+1,j+1,k+1,l+1,nx*ny*nz*nw);
 
   result = (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table[index[0]] +
            (1 - dx) * (1 - dy) * (1 - dz) * dw * table[index[1]] +
@@ -330,11 +374,11 @@ __attribute__((always_inline)) INLINE void get_redshift_index(float z, int *z_in
  * @brief interpolates temperature from internal energy based on table
  *
  */
-__attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(const struct part* restrict p, const struct cooling_function_data* restrict cooling, const struct cosmology* restrict cosmo) {
+__attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(const struct part* restrict p, const struct cooling_function_data* restrict cooling, const struct cosmology* restrict cosmo, const struct phys_const *internal_const) {
   float d_z;
-  float inn_h = p->chemistry_data.metal_mass_fraction[chemistry_element_H]*cooling->number_density_scale;
-  float inHe = p->chemistry_data.metal_mass_fraction[chemistry_element_He]*cooling->number_density_scale; // chemistry data
-  float u = hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale;
+  double inn_h = chemistry_get_number_density(p,chemistry_element_H,internal_const)*cooling->number_density_scale;
+  double inHe = chemistry_get_number_density(p,chemistry_element_He,internal_const)*cooling->number_density_scale; // chemistry data
+  double u = hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale;
   
   int u_i, He_i, n_h_i;
 
@@ -342,11 +386,16 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
   float z = cosmo->z,dz;
   int z_index;
 
+  printf("Eagle cooling.h number density non-dim, dim, scale factor %.5e, %.5e, %.5e\n", chemistry_get_number_density(p,chemistry_element_H,internal_const), inn_h, cooling->number_density_scale);
+
   get_redshift_index(z,&z_index,&dz,cooling);	// ADD OFFSET (d_z) CALCULATION INTO THIS FUNCTION
   get_index_1d(cooling->Redshifts, cooling->N_Redshifts, z, &z_index, &d_z);
   get_index_1d(cooling->HeFrac, cooling->N_He, inHe, &He_i, &d_He);
   get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
   get_index_1d_therm(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
+
+  printf("Eagle cooling.h actual z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", z, inHe, log10(inn_h), log10(u));
+  printf("Eagle cooling.h interp z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Therm[u_i]);
 
   if (z_index == cooling->N_Redshifts+1){
   logT = interpol_4d(cooling->table.photoionisation_cooling.temperature, 0, He_i, n_h_i,
@@ -359,7 +408,8 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
                      u_i, d_z, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
   }
 
-  T = pow(10.0, logT);
+  //T = pow(10.0, logT);
+  T = 1.0e6;
 
   if (u_i == 0 && d_u == 0) T *= u / pow(10.0, cooling->Therm[0]);
 
@@ -372,86 +422,117 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
  */
 __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const struct part* restrict p, const struct cooling_function_data* restrict cooling, const struct cosmology* restrict cosmo, const struct phys_const *internal_const) {
   double T_gam, LambdaNet = 0.0, solar_electron_abundance;
-  float n_h = chemistry_get_number_density(p,chemistry_element_H,internal_const)*cooling->number_density_scale; // chemistry_data
+  double n_h = chemistry_get_number_density(p,chemistry_element_H,internal_const)*cooling->number_density_scale; // chemistry_data
   double z = cosmo->z;
   float d_z,dz; // ARE THESE ACTUALLY MEANT TO BE THE SAME VALUE???
   int z_index;
-  float electron_abundance;
+  float h_plus_he_electron_abundance;
   float *cooling_solar_abundances = malloc(cooling->N_Elements*sizeof(float));
 
   int i;
   double temp;
   int n_h_i, He_i, temp_i;
   float d_n_h, d_He, d_temp;
-  float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  //float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  float HeFrac = 0.248;
+  n_h = 1.0e-4;
+  z = 0.0;
 
   
   get_redshift_index(z,&z_index,&dz,cooling);	// ADD OFFSET (d_z) CALCULATION INTO THIS FUNCTION
   get_index_1d(cooling->Redshifts, cooling->N_Redshifts, z, &z_index, &d_z);
   
-  temp = eagle_convert_u_to_temp(p,cooling,cosmo);
+  temp = eagle_convert_u_to_temp(p,cooling,cosmo,internal_const);
 
   get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
   get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
   get_index_1d(cooling->nH, cooling->N_nH, log10(n_h), &n_h_i, &d_n_h);
+  printf("Eagle cooling.h actual z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", z, HeFrac, log10(n_h), log10(temp));
+  printf("Eagle cooling.h interp z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Temp[temp_i]);
+  //printf("Eagle cooling.h temp_i, temperature, he_i, helium fraction, n_h_i, hydrogen number density %d, %.5e, %d, %.5e, %d, %.5e\n",temp_i, cooling->Temp[temp_i], He_i, cooling->HeFrac[He_i], n_h_i, cooling->nH[n_h_i]);
+  //printf("Eagle cooling.h metal cooling hydrogen, helium %.5e, %.5e\n", cooling->table.element_cooling.metal_heating[n_h_i*cooling->N_Temp + temp_i], cooling->table.element_cooling.metal_heating[cooling->N_Temp*cooling->N_nH + n_h_i*cooling->N_Temp + temp_i]);
 
   /* ------------------ */
   /* Metal-free cooling */
   /* ------------------ */
 
-  if (z_index == cooling->N_Redshifts+1){
+  //if (z_index == cooling->N_Redshifts+1){
     LambdaNet =
         interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_heating, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-    electron_abundance =
+    printf("Eagle cooling.h 1 LambdaNet = %.5e\n", LambdaNet);
+    h_plus_he_electron_abundance =
         interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  } else if (z_index > cooling->N_Redshifts+1){
+  //} else if (z_index > cooling->N_Redshifts+1){
     LambdaNet =
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_heating, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-    electron_abundance =
+    printf("Eagle cooling.h 2 LambdaNet = %.5e\n", LambdaNet);
+    h_plus_he_electron_abundance =
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  } 
+  //} 
 
   /* ------------------ */
   /* Compton cooling    */
   /* ------------------ */
   // Is this not handled in the above if statement?
 
-  if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
-      z > cooling->reionisation_redshift) {
+  //if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
+  //    z > cooling->reionisation_redshift) {
     /* inverse Compton cooling is not in collisional table
        before reionisation so add now */
 
-    T_gam = cmb_temperature * (1 + z);
+    T_gam = eagle_cmb_temperature * (1 + z);
 
-    LambdaNet -= compton_rate * (temp - cmb_temperature * (1 + z)) * pow((1 + z), 4) *
-                 electron_abundance / n_h;
-  }
+    LambdaNet -= eagle_compton_rate * (temp - eagle_cmb_temperature * (1 + z)) * pow((1 + z), 4) *
+                 h_plus_he_electron_abundance / n_h;
+    printf("Eagle cooling.h 3 LambdaNet = %.5e\n", LambdaNet);
+  //}
 
   /* ------------- */
   /* Metal cooling */
   /* ------------- */
 
-  if (metal_cooling_on) {
+  if (eagle_metal_cooling_on) {
     /* for each element, find the abundance and multiply it
        by the interpolated heating-cooling */
 
     set_cooling_SolarAbundances(p->chemistry_data.metal_mass_fraction, cooling_solar_abundances, cooling);
 
     solar_electron_abundance =
-        interpol_3d(cooling->SolarElectronAbundance, 0, n_h_i, temp_i, d_z,
-                    d_n_h, d_temp,cooling->N_nH,cooling->N_Temp,cooling->N_Redshifts); /* ne/n_h */
+        interpol_3d(cooling->table.element_cooling.electron_abundance, 0, n_h_i, temp_i, d_z,
+                    d_n_h, d_temp,cooling->N_Redshifts,cooling->N_nH,cooling->N_Temp); /* ne/n_h */
+    //printf("Eagle cooling.h solar electron abundance %.5e, %.5e\n",solar_electron_abundance, cooling->table.element_cooling.electron_abundance[n_h_i*cooling->N_Temp + temp_i]);
+    //for(int ii = 0; ii < cooling->N_Redshifts; ii++){
+    //  for(int ie = 0; ie < cooling->N_Elements; ie++){
+    //    for(int ij = 0; ij < cooling->N_nH; ij++){
+    //      for(int ik = 0; ik < cooling->N_Temp; ik++){
+    //        double table_metal_heating = cooling->table.element_cooling.metal_heating[ii*cooling->N_Elements*cooling->N_nH*cooling->N_Temp + ie*cooling->N_nH*cooling->N_Temp + ij*cooling->N_Temp + ik];
+    //        if (table_metal_heating != 0) printf("Eagle cooling.h cooling->table.element_cooling.metal_heating(z,elem,nh,temp),iz,elem,i_h,i_temp, %.5e, %.5e, %d, %.5e, %.5e\n",table_metal_heating,cooling->Redshifts[ii],ie,cooling->nH[ij],cooling->Temp[ik]);
+    //        //printf("Eagle cooling.h cooling->table.element_cooling.metal_heating(iz,i_h,i_temp),%.5e\n",table_metal_heating);
+    //      }
+    //    }
+    //  }
+    //}
 
-    for (i = 0; i < cooling->N_Elements; i++)
-      if (cooling_solar_abundances[i] > 0)
+    for (i = 0; i < cooling->N_Elements; i++){
+      if (cooling_solar_abundances[i] > 0 && h_plus_he_electron_abundance != 0 && solar_electron_abundance != 0){
         LambdaNet +=
             interpol_4d(cooling->table.element_cooling.metal_heating, 0, i, n_h_i,
                         temp_i, d_z, 0.0, d_n_h, d_temp,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp) *
-            (electron_abundance / solar_electron_abundance) *
+            (h_plus_he_electron_abundance / solar_electron_abundance) *
             cooling_solar_abundances[i];
+        printf("Eagle cooling.h 4 LambdaNet = %.5e\n", LambdaNet);
+      } else if (cooling_solar_abundances[i] > 0 && (h_plus_he_electron_abundance == 0 || solar_electron_abundance == 0)){
+        LambdaNet +=
+            interpol_4d(cooling->table.element_cooling.metal_heating, 0, i, n_h_i,
+                        temp_i, d_z, 0.0, d_n_h, d_temp,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp) *
+            cooling_solar_abundances[i];
+        printf("Eagle cooling.h 5 LambdaNet = %.5e\n", LambdaNet);
+      }
+    }
   }
 
   return LambdaNet;
@@ -481,7 +562,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   int z_index;
   get_redshift_index(cosmo->z,&z_index,&dz,cooling);
 
-  float inn_h, XH, HeFrac;
+  float XH, HeFrac;
+  double inn_h;
 
   double du, ratefact, u, u_upper, u_lower, LambdaNet, LambdaTune = 0;
   int i;
@@ -501,7 +583,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   inn_h = chemistry_get_number_density(p,chemistry_element_H,phys_const)*cooling->number_density_scale;
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
-  ratefact = inn_h * (XH / proton_mass_cgs);
+  ratefact = inn_h * (XH / eagle_proton_mass_cgs);
   /* set helium and hydrogen reheating term */
   //LambdaTune = eagle_helium_reionization_extraheat(z_index, dz); // INCLUDE HELIUM REIONIZATION????
   if (zold > z_index) {
@@ -535,14 +617,14 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
         u_lower /= sqrt(1.1);
 
         while (u_upper - u_old - LambdaTune - ratefact * eagle_cooling_rate(p, cooling, cosmo, phys_const) * dt < 0
-               && i < max_iterations) {
+               && i < eagle_max_iterations) {
           u_upper *= 1.1;
           u_lower *= 1.1;
           i++;
         }
       }
 
-    if (i == max_iterations) printf("Problem with cooling finding upper bound\n");
+    if (i == eagle_max_iterations) printf("Problem with cooling finding upper bound\n");
 
     if (u - u_old - ratefact * LambdaNet * dt > 0) /* cooling */
       {
@@ -552,7 +634,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
         i = 0;
 
         while(u_lower - u_old - LambdaTune - ratefact * eagle_cooling_rate(p, cooling, cosmo, phys_const) * dt > 0
-              && i < max_iterations)
+              && i < eagle_max_iterations)
           {
             u_upper /= 1.1;
             u_lower /= 1.1;
@@ -560,7 +642,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
           }
       }
 
-    if (i == max_iterations) printf("Problem with cooling finding lower bound\n");
+    if (i == eagle_max_iterations) printf("Problem with cooling finding lower bound\n");
 
     i = 0;
 
@@ -579,10 +661,10 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
         i++;
 
-        if (i >= (max_iterations - 10)) printf("u = %g\n", u);
-      } while (fabs(du / u) > 1.0e-6 && i < max_iterations);
+        if (i >= (eagle_max_iterations - 10)) printf("u = %g\n", u);
+      } while (fabs(du / u) > 1.0e-6 && i < eagle_max_iterations);
 
-    if (i >= max_iterations) printf("failed to converge in EagleDoCooling()\n");
+    if (i >= eagle_max_iterations) printf("failed to converge in EagleDoCooling()\n");
   }
 
   float cooling_du_dt = 0.0;
