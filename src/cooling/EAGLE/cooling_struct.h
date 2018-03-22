@@ -20,14 +20,13 @@
 #define SWIFT_COOLING_STRUCT_EAGLE_H
 #include <stdbool.h>
 
-extern const int element_name_length;
-extern const float cmb_temperature;
-extern const double compton_rate;
-extern const bool metal_cooling_on;
-extern const int max_iterations;
-extern const float proton_mass_cgs;
-int get_redshift_index_first_call;
-int get_redshift_index_previous;
+#define eagle_element_name_length 20
+#define eagle_cmb_temperature 2.728
+#define eagle_compton_rate 1.0178e-37*2.728*2.728*2.728*2.728
+#define eagle_metal_cooling_on 1
+#define eagle_max_iterations 150
+#define eagle_proton_mass_cgs 1.6726e-24
+
 
 
 /* 
