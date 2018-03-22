@@ -68,13 +68,16 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param dt_kick_hydro The kick time-step for hydro accelerations.
  * @param dt_kick_grav The kick time-step for gravity accelerations.
  * @param dt_kick_therm The kick time-step for changes in thermal state.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme
  * @param ti_start The starting (integer) time of the kick (for debugging
  * checks).
  * @param ti_end The ending (integer) time of the kick (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_kick_hydro,
-    double dt_kick_grav, double dt_kick_therm, integertime_t ti_start,
+    double dt_kick_grav, double dt_kick_therm, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props, integertime_t ti_start,
     integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -107,7 +110,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
   }
 
   /* Extra kick work */
-  hydro_kick_extra(p, xp, dt_kick_therm);
+  hydro_kick_extra(p, xp, dt_kick_therm, cosmo, hydro_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
 }
 

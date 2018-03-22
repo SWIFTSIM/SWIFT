@@ -35,6 +35,38 @@ void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
   }
 }
 
+void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
+                       float* ret) {
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct cosmology* cosmo = e->cosmology;
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+
+  const integertime_t ti_beg = get_integer_time_begin(ti_current, gp->time_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
+
+  /* Get time-step since the last kick */
+  float dt_kick_grav;
+  if (with_cosmology) {
+    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
+    dt_kick_grav -=
+        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+  } else {
+    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+  }
+
+  /* Extrapolate the velocites to the current time */
+  ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
+  ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
+  ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Conversion from internal units to peculiar velocities */
+  ret[0] *= cosmo->a2_inv;
+  ret[1] *= cosmo->a2_inv;
+  ret[2] *= cosmo->a2_inv;
+}
+
 /**
  * @brief Specifies which g-particle fields to read from a dataset
  *
@@ -69,20 +101,20 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
 void darkmatter_write_particles(const struct gpart* gparts,
                                 struct io_props* list, int* num_fields) {
 
-  /* Say how much we want to read */
+  /* Say how much we want to write */
   *num_fields = 5;
 
-  /* List what we want to read */
+  /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos);
-  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
-                                 gparts, v_full);
+  list[1] = io_make_output_field_convert_gpart(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel);
   list[2] =
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
   list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-  list[4] = io_make_output_field("Acceleration", FLOAT, 3,
-                                 UNIT_CONV_ACCELERATION, gparts, a_grav);
+  list[4] = io_make_output_field("Potential", FLOAT, 1, UNIT_CONV_POTENTIAL,
+                                 gparts, potential);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

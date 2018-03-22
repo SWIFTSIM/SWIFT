@@ -3665,10 +3665,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
- * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
+ * @param clean_smoothing_length_values Are we cleaning up the values of
+ * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int clean_h_values) {
+void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -3679,7 +3679,7 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   space_rebuild(e->s, e->verbose);
 
   /* Initial cleaning up session ? */
-  if (clean_h_values) space_sanitize(e->s);
+  if (clean_smoothing_length_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
@@ -4395,7 +4395,7 @@ void engine_step(struct engine *e) {
 
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
-    cosmology_update(e->cosmology, e->ti_current);
+    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {
@@ -4403,6 +4403,10 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the softening lengths */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_update(e->gravity_properties, e->cosmology);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -5196,7 +5200,7 @@ void engine_init(
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {

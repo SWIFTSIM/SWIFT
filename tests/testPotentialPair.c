@@ -106,6 +106,7 @@ int main() {
   props.a_smooth = 1.25;
   props.r_cut_min = 0.;
   props.theta_crit2 = 0.;
+  props.epsilon_cur = eps;
   e.gravity_properties = &props;
 
   struct runner r;
@@ -178,7 +179,6 @@ int main() {
     gp->x[1] = 0.5;
     gp->x[2] = 0.5;
     gp->mass = 0.;
-    gp->epsilon = eps;
     gp->time_bin = 1;
     gp->type = swift_type_dark_matter;
     gp->id_or_neg_offset = n + 1;
@@ -196,7 +196,6 @@ int main() {
   ci.gparts[0].x[1] = 0.5;
   ci.gparts[0].x[2] = 0.5;
   ci.gparts[0].mass = 1.;
-  ci.gparts[0].epsilon = eps;
   ci.gparts[0].time_bin = 1;
   ci.gparts[0].type = swift_type_dark_matter;
   ci.gparts[0].id_or_neg_offset = 1;
@@ -211,11 +210,12 @@ int main() {
   for (int n = 0; n < num_tests; ++n) {
     const struct gpart *gp = &cj.gparts[n];
     const struct gpart *gp2 = &ci.gparts[0];
+    const double epsilon = gravity_get_softening(gp, &props);
 
     double pot_true =
-        potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
+        potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
     double acc_true =
-        acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], gp->epsilon, rlr);
+        acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
 
     message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0],
             gp->a_grav[0], acc_true, gp->potential, pot_true);
@@ -252,12 +252,12 @@ int main() {
   for (int n = 0; n < num_tests; ++n) {
     const struct gpart *gp = &cj.gparts[n];
     const struct gravity_tensors *mpole = ci.multipole;
+    const double epsilon = gravity_get_softening(gp, &props);
 
     double pot_true = potential(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0],
-                                gp->epsilon, rlr * FLT_MAX);
-    double acc_true =
-        acceleration(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0], gp->epsilon,
-                     rlr * FLT_MAX);
+                                epsilon, rlr * FLT_MAX);
+    double acc_true = acceleration(
+        mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0], epsilon, rlr * FLT_MAX);
 
     message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - mpole->CoM[0],
             gp->a_grav[0], acc_true, gp->potential, pot_true);
@@ -304,7 +304,6 @@ int main() {
 
     ci.gparts[n].mass = 1. / 8.;
 
-    ci.gparts[n].epsilon = eps;
     ci.gparts[n].time_bin = 1;
     ci.gparts[n].type = swift_type_dark_matter;
     ci.gparts[n].id_or_neg_offset = 1;
@@ -333,18 +332,19 @@ int main() {
 
     for (int i = 0; i < 8; ++i) {
       const struct gpart *gp2 = &ci.gparts[i];
+      const double epsilon = gravity_get_softening(gp, &props);
 
       const double dx[3] = {gp2->x[0] - gp->x[0], gp2->x[1] - gp->x[1],
                             gp2->x[2] - gp->x[2]};
       const double d = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
 
-      pot_true += potential(gp2->mass, d, gp->epsilon, rlr * FLT_MAX);
+      pot_true += potential(gp2->mass, d, epsilon, rlr * FLT_MAX);
       acc_true[0] -=
-          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[0] / d;
+          acceleration(gp2->mass, d, epsilon, rlr * FLT_MAX) * dx[0] / d;
       acc_true[1] -=
-          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[1] / d;
+          acceleration(gp2->mass, d, epsilon, rlr * FLT_MAX) * dx[1] / d;
       acc_true[2] -=
-          acceleration(gp2->mass, d, gp->epsilon, rlr * FLT_MAX) * dx[2] / d;
+          acceleration(gp2->mass, d, epsilon, rlr * FLT_MAX) * dx[2] / d;
     }
 
     message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e",

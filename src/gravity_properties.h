@@ -27,6 +27,7 @@
 #endif
 
 /* Local includes. */
+#include "cosmology.h"
 #include "parser.h"
 #include "restart.h"
 
@@ -58,22 +59,30 @@ struct gravity_props {
   /*! Inverse of opening angle */
   double theta_crit_inv;
 
-  /*! Softening length */
-  float epsilon;
+  /*! Comoving softening */
+  double epsilon_comoving;
 
-  /*! Square of softening length */
-  float epsilon2;
+  /*! Maxium physical softening */
+  double epsilon_max_physical;
 
-  /*! Inverse of softening length */
-  float epsilon_inv;
+  /*! Current sftening length */
+  float epsilon_cur;
 
-  /*! Cube of the inverse of softening length */
-  float epsilon_inv3;
+  /*! Square of current softening length */
+  float epsilon_cur2;
+
+  /*! Inverse of current softening length */
+  float epsilon_cur_inv;
+
+  /*! Cube of the inverse of current oftening length */
+  float epsilon_cur_inv3;
 };
 
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p,
-                        const struct swift_params *params);
+                        const struct swift_params *params,
+                        const struct cosmology *cosmo);
+void gravity_update(struct gravity_props *p, const struct cosmology *cosmo);
 
 #if defined(HAVE_HDF5)
 void gravity_props_print_snapshot(hid_t h_grpsph,

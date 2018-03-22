@@ -458,6 +458,7 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
 
   const struct io_props props = *((const struct io_props*)extra_data);
   const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
   const struct engine* e = props.e;
   const size_t dim = props.dimension;
 
@@ -466,7 +467,8 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
   const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
 
   for (int i = 0; i < N; i++)
-    props.convert_part_f(e, parts + delta + i, &temp_f[i * dim]);
+    props.convert_part_f(e, parts + delta + i, xparts + delta + i,
+                         &temp_f[i * dim]);
 }
 
 /**
@@ -478,6 +480,7 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
 
   const struct io_props props = *((const struct io_props*)extra_data);
   const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
   const struct engine* e = props.e;
   const size_t dim = props.dimension;
 
@@ -486,7 +489,8 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
   const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
 
   for (int i = 0; i < N; i++)
-    props.convert_part_d(e, parts + delta + i, &temp_d[i * dim]);
+    props.convert_part_d(e, parts + delta + i, xparts + delta + i,
+                         &temp_d[i * dim]);
 }
 
 /**
@@ -705,7 +709,7 @@ void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
     gparts[i + Ndm].type = swift_type_gas;
 
     /* Link the particles */
-    gparts[i + Ndm].id_or_neg_offset = -i;
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
     parts[i].gpart = &gparts[i + Ndm];
   }
 }
@@ -761,7 +765,7 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
     gparts[i + Ndm].type = swift_type_star;
 
     /* Link the particles */
-    gparts[i + Ndm].id_or_neg_offset = -i;
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
     sparts[i].gpart = &gparts[i + Ndm];
   }
 }

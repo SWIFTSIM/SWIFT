@@ -466,7 +466,6 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
-  const float theta_crit2 = e->gravity_properties->theta_crit2;
   const double a_smooth = e->gravity_properties->a_smooth;
   const double r_cut_min = e->gravity_properties->r_cut_min;
   const double rlr = cell_width * a_smooth;
@@ -532,11 +531,11 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, ci_cache, ci->gparts, gcount_i,
-                         gcount_padded_i, shift_i, CoM_j, rmax2_j, theta_crit2,
-                         ci);
+                         gcount_padded_i, shift_i, CoM_j, rmax2_j, ci,
+                         e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, cj_cache, cj->gparts, gcount_j,
-                         gcount_padded_j, shift_j, CoM_i, rmax2_i, theta_crit2,
-                         cj);
+                         gcount_padded_j, shift_j, CoM_i, rmax2_i, cj,
+                         e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -675,7 +674,7 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
@@ -805,7 +804,7 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
