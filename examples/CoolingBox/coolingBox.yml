@@ -6,6 +6,14 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1          # Amperes
   UnitTemp_in_cgs:     1          # Kelvin
 
+Cosmology:
+  Omega_m:        0.307
+  Omega_lambda:   0.693
+  Omega_b:        0.0455
+  h:              0.6777
+  a_begin:        0.0078125
+  a_end:          1.0
+
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).

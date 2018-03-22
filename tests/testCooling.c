@@ -32,7 +32,8 @@ int main() {
   struct part p;
   struct phys_const internal_const;
   struct cooling_function_data cooling;
-  char *parametersFileName = "./coolingBox.yml";
+  struct cosmology cosmo;
+  char *parametersFileName = "../examples/CoolingBox/coolingBox.yml";
   enum table_index {EAGLE_Hydrogen=0,EAGLE_Helium,EAGLE_Carbon,EAGLE_Nitrogen,
 			EAGLE_Oxygen,EAGLE_Neon,EAGLE_Magnesium,EAGLE_Silicon,
 			EAGLE_Iron};
@@ -47,7 +48,7 @@ int main() {
 
   //units_init_cgs(&us);
   units_init(&us, params, "InternalUnitSystem");
-  phys_const_init(&us, &internal_const);
+  phys_const_init(&us, params, &internal_const);
 
   double number_density_cgs = 0.1;
   double temperature_cgs = 1.0e6;
@@ -55,8 +56,6 @@ int main() {
   double power_per_num_density_factor = units_cgs_conversion_factor(&us,UNIT_CONV_POWER)*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3)/number_density_cgs;
 
   double gamma = 5.0/3.0;
-
-  phys_const_init(&us,&internal_const);
 
   double number_density = number_density_cgs*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3);
   p.rho = number_density*(1.0/0.6*internal_const.const_proton_mass);
@@ -67,13 +66,18 @@ int main() {
 
   double temperature = temperature_cgs/units_cgs_conversion_factor(&us,UNIT_CONV_TEMPERATURE);
   double pressure = number_density*internal_const.const_boltzmann_k*temperature;
-  printf("number density, boltzmann constant, temperature: %.5e, %.5e, %.5e\n", number_density_cgs, internal_const.const_boltzmann_k, temperature);
+  printf("non-dim number density, code number density, number density scale %.5e, %.5e, %.5e\n",number_density, chemistry_get_number_density(&p,chemistry_element_H,&internal_const), pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3));
+  printf("number density, boltzmann constant, temperature: %.5e, %.5e, %.5e\n",number_density_cgs, internal_const.const_boltzmann_k, temperature);
   printf("proton mass, boltzmann constant, %.5e, %.5e\n", internal_const.const_proton_mass, internal_const.const_boltzmann_k);
   double internal_energy = pressure/(p.rho*(gamma - 1.0));
   //p.entropy = internal_energy/((gamma - 1.0)*pow(p.rho,gamma - 1.0));
   p.entropy = pressure/(pow(p.rho,gamma));
-  printf("double check pressure, actual pressure: %.5e, %.5e\n", hydro_get_pressure(&p), pressure);
+  printf("double check pressure, actual pressure: %.5e, %.5e\n", hydro_get_comoving_pressure(&p), pressure);
   printf("temperature, pressure, internal energy, entropy: %.5e, %.5e, %.5e, %.5e, %.5e\n", temperature,pressure,internal_energy,p.entropy,internal_const.const_boltzmann_k);
+
+  cosmology_init(params, &us, &internal_const, &cosmo);
+  cosmology_print(&cosmo);
+  printf("testCooling.c redshift %.5e\n", cosmo.z);
 
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
@@ -81,8 +85,7 @@ int main() {
   chemistry_init(params, &us, &internal_const, &chemistry_data);
   chemistry_print(&chemistry_data);
 
-  //double cooling_du_dt = colibre_cooling_rate(&p,&cooling)*power_scale;
-  double cooling_du_dt = colibre_cooling_rate(&p,&cooling)*power_per_num_density_factor;
+  double cooling_du_dt = eagle_cooling_rate(&p,&cooling,&cosmo,&internal_const)*power_per_num_density_factor;
   printf("cooling rate: %.5e\n",cooling_du_dt);
 
   free(params);
