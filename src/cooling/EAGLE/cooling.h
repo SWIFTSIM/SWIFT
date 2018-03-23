@@ -394,8 +394,8 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
   get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
   get_index_1d_therm(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
 
-  printf("Eagle cooling.h actual z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", z, inHe, log10(inn_h), log10(u));
-  printf("Eagle cooling.h interp z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Therm[u_i]);
+  //printf("Eagle cooling.h actual z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", z, inHe, log10(inn_h), log10(u));
+  //printf("Eagle cooling.h interp z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Therm[u_i]);
 
   if (z_index == cooling->N_Redshifts+1){
   logT = interpol_4d(cooling->table.photoionisation_cooling.temperature, 0, He_i, n_h_i,
@@ -408,8 +408,8 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
                      u_i, d_z, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
   }
 
-  //T = pow(10.0, logT);
-  T = 1.0e6;
+  T = pow(10.0, logT);
+  //T = 1.0e6;
 
   if (u_i == 0 && d_u == 0) T *= u / pow(10.0, cooling->Therm[0]);
 
@@ -433,10 +433,10 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
   double temp;
   int n_h_i, He_i, temp_i;
   float d_n_h, d_He, d_temp;
-  //float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  float HeFrac = 0.248;
-  n_h = 1.0e-4;
-  z = 0.0;
+  float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  //float HeFrac = 0.248;
+  //n_h = pow(10,-4.4);
+  //z = 0.0;
 
   
   get_redshift_index(z,&z_index,&dz,cooling);	// ADD OFFSET (d_z) CALCULATION INTO THIS FUNCTION
@@ -449,14 +449,13 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
   get_index_1d(cooling->nH, cooling->N_nH, log10(n_h), &n_h_i, &d_n_h);
   printf("Eagle cooling.h actual z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", z, HeFrac, log10(n_h), log10(temp));
   printf("Eagle cooling.h interp z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Temp[temp_i]);
-  //printf("Eagle cooling.h temp_i, temperature, he_i, helium fraction, n_h_i, hydrogen number density %d, %.5e, %d, %.5e, %d, %.5e\n",temp_i, cooling->Temp[temp_i], He_i, cooling->HeFrac[He_i], n_h_i, cooling->nH[n_h_i]);
-  //printf("Eagle cooling.h metal cooling hydrogen, helium %.5e, %.5e\n", cooling->table.element_cooling.metal_heating[n_h_i*cooling->N_Temp + temp_i], cooling->table.element_cooling.metal_heating[cooling->N_Temp*cooling->N_nH + n_h_i*cooling->N_Temp + temp_i]);
+    
 
   /* ------------------ */
   /* Metal-free cooling */
   /* ------------------ */
 
-  //if (z_index == cooling->N_Redshifts+1){
+  if (z_index == cooling->N_Redshifts+1){
     LambdaNet =
         interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_heating, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
@@ -464,7 +463,7 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
     h_plus_he_electron_abundance =
         interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  //} else if (z_index > cooling->N_Redshifts+1){
+  } else if (z_index > cooling->N_Redshifts+1){
     LambdaNet =
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_heating, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
@@ -472,24 +471,24 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
     h_plus_he_electron_abundance =
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
                      temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  //} 
+  } 
 
   /* ------------------ */
   /* Compton cooling    */
   /* ------------------ */
   // Is this not handled in the above if statement?
 
-  //if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
-  //    z > cooling->reionisation_redshift) {
+  if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
+      z > cooling->reionisation_redshift) {
     /* inverse Compton cooling is not in collisional table
        before reionisation so add now */
 
     T_gam = eagle_cmb_temperature * (1 + z);
 
     LambdaNet -= eagle_compton_rate * (temp - eagle_cmb_temperature * (1 + z)) * pow((1 + z), 4) *
-                 h_plus_he_electron_abundance / n_h;
-    printf("Eagle cooling.h 3 LambdaNet = %.5e\n", LambdaNet);
-  //}
+                 h_plus_he_electron_abundance / n_h; // WATCH OUT WHERE h_plus_he_electron_abundance GETS DEFINED!!!
+    printf("Eagle cooling.h 3 LambdaNet = %.5e, %.5e, %.5e, %.5e, %.5e, %.5e, %.5e\n", LambdaNet, eagle_compton_rate, temp, eagle_cmb_temperature*(1+z), pow((1+z),4), h_plus_he_electron_abundance, n_h);
+  }
 
   /* ------------- */
   /* Metal cooling */
@@ -774,7 +773,7 @@ static INLINE void cooling_init_backend(
   printf("Eagle cooling.h read table \n");
 
   cooling->internal_energy_scale = units_cgs_conversion_factor(us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(us,UNIT_CONV_MASS);
-  cooling->number_density_scale = units_cgs_conversion_factor(us,UNIT_CONV_DENSITY)/units_cgs_conversion_factor(us,UNIT_CONV_MASS)/(2.0*phys_const->const_proton_mass);
+  cooling->number_density_scale = units_cgs_conversion_factor(us,UNIT_CONV_DENSITY)/units_cgs_conversion_factor(us,UNIT_CONV_MASS);// /(2.0*phys_const->const_proton_mass); // CHECK OUT NUMBER DENSITY SCALING!!!
   cooling->power_scale = units_cgs_conversion_factor(us,UNIT_CONV_POWER)/units_cgs_conversion_factor(us,UNIT_CONV_MASS);
   cooling->temperature_scale = units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
 
