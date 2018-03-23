@@ -114,8 +114,8 @@ DomainDecomposition:
 
   repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
                             # "none/none", "costs/costs", "none/costs" or "costs/time".
-                            # These are vertex/edge weights with "costs" as task timing, "counts" as
-                            # sum of particles and "time" as the expected time of the next updates
+                            # These are vertex/edge weights with "costs" as task timing
+                            # and "time" as the expected time of the next updates
 
   trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
                             # new decomposition, or number of steps (>1) between decompositions
