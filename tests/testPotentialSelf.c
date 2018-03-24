@@ -41,15 +41,18 @@ const double eps = 0.02;
  * @param s String used to identify this check in messages
  */
 void check_value(double a, double b, const char *s) {
-  if (fabs(a - b) / fabs(a + b) > 2e-6 && fabs(a - b) > 1.e-6)
+  if (fabs(a - b) / fabs(a + b) > 1e-6 && fabs(a - b) > 1.e-6)
     error("Values are inconsistent: %12.15e %12.15e (%s)!", a, b, s);
 }
 
 /* Definitions of the potential and force that match
    exactly the theory document */
-double S(double x) { return exp(x) / (1. + exp(x)); }
+double S(double x) { return good_approx_exp(x) / (1. + good_approx_exp(x)); }
 
-double S_prime(double x) { return exp(x) / ((1. + exp(x)) * (1. + exp(x))); }
+double S_prime(double x) {
+  return good_approx_exp(x) /
+         ((1. + good_approx_exp(x)) * (1. + good_approx_exp(x)));
+}
 
 double potential(double mass, double r, double H, double rlr) {
 
