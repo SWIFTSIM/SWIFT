@@ -716,6 +716,10 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* Check that the matter content matches the cosmology given in the
+     * parameter file. */
+    if (with_cosmology) space_check_cosmology(&s, &cosmo, myrank);
+
 /* Also update the total counts (in case of changes due to replication) */
 #if defined(WITH_MPI)
     N_long[0] = s.nr_parts;

@@ -3291,6 +3291,57 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 }
 
 /**
+ * @brief Verify that the matter content matches the cosmology model.
+ *
+ * @param s The #space.
+ * @param cosmo The current cosmology model.
+ * @param rank The MPI rank of this #space.
+ */
+void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
+                           int rank) {
+
+  struct gpart *gparts = s->gparts;
+  const size_t nr_gparts = s->nr_gparts;
+
+  /* Sum up the mass in this space */
+  double mass = 0.;
+  for (size_t i = 0; i < nr_gparts; ++i) {
+    mass += gparts[i].mass;
+  }
+
+/* Reduce the total mass */
+#ifdef WITH_MPI
+  double total_mass;
+  MPI_Reduce(&mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  double total_mass = mass;
+#endif
+
+  if (rank == 0) {
+
+    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+
+    /* Current Hubble constant */
+    const double H = cosmo->H;
+
+    /* z=0 Hubble parameter */
+    const double H0 = cosmo->H0;
+
+    /* Critical density at z=0 */
+    const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
+
+    /* Compute the mass density */
+    const double Omega_m = (total_mass / volume) / rho_crit0;
+
+    if (fabs(Omega_m - cosmo->Omega_m) > 1e-3)
+      error(
+          "The matter content of the simulation does not match the cosmology "
+          "in the parameter file comso.Omega_m=%e Omega_m=%e",
+          cosmo->Omega_m, Omega_m);
+  }
+}
+
+/**
  * @brief Cleans-up all the cell links in the space
  *
  * Expensive funtion. Should only be used for debugging purposes.
