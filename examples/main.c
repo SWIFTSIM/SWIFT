@@ -861,10 +861,10 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
-           "Time", "Scale-factor", "Time-step", "Time-bins", "Updates",
-           "g-Updates", "s-Updates", "Wall-clock time", clocks_getunit(),
-           "Props");
+    printf("# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+           "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
+           "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+           clocks_getunit(), "Props");
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
@@ -1020,10 +1020,10 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
-           e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-           e.wallclock_time, e.step_props);
+    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+           e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
+           e.s_updates, e.wallclock_time, e.step_props);
     fflush(stdout);
 
     fprintf(e.file_timesteps,

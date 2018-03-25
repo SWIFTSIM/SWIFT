@@ -3245,11 +3245,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->id = gp_gas->id_or_neg_offset * 2 + 1;
     gp_dm->id_or_neg_offset *= 2;
 
-    if(gp_dm->id_or_neg_offset <= 0)
-      error("DM particle ID overflowd");
+    if (gp_dm->id_or_neg_offset <= 0) error("DM particle ID overflowd");
 
-    if(p->id <= 0)
-      error("gas particle ID overflowd");
+    if (p->id <= 0) error("gas particle ID overflowd");
 
     /* Set the links correctly */
     p->gpart = gp_gas;
