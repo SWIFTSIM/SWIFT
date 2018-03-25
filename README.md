@@ -3,6 +3,13 @@ SWIFT: SPH WIth Fine-grained inter-dependent Tasking
 
 [![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
 
+SWIFT is a gravity and SPH solver designed to run cosmological simulations
+on peta-scale machines, scaling well up to 10's of thousands of compute
+node.
+
+More general information about SWIFT is available on the project
+[webpages](http://www.swiftsim.com).
+
 For information on how to _run_ SWIFT, please consult the onboarding guide
 available [here](http://www.swiftsim.com/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
@@ -11,13 +18,6 @@ We suggest that you use the latest release branch of SWIFT, rather than the
 current master branch as this will change rapidly. We do, however, like to
 ensure that the master branch will build and run.
 
-SWIFT is a gravity and SPH solver designed to run cosmological simulations
-on peta-scale machines, scaling well up to 10's of thousands of compute
-node.
-
-More general information about SWIFT is available on the project
-[webpages](http://www.swiftsim.com).
-
 This GitHub repository is designed to be an issue tracker, and a space for
 the public to submit patches through pull requests. It is synchronised with
 the main development repository that is available on the
@@ -25,7 +25,7 @@ the main development repository that is available on the
 [here](https://gitlab.cosma.dur.ac.uk/swift/swiftsim).
 
 Please feel free to submit issues to this repository, or even pull
-requests.  We will try to deal with them as soon as possible, but as the
+requests. We will try to deal with them as soon as possible, but as the
 core development team is quite small this could take some time.
 
 Contribution Guidelines
@@ -42,8 +42,8 @@ of new modules. An example of how to add a test to the suite can be found by
 considering the tests/testGreeting case.
 
 Any contributions that fail any of the automated tests will not be accepted.
-Contributions that include tests of the proposed modules are highly
-encouraged.
+Contributions that include tests of the proposed modules (or any current ones!)
+are highly encouraged.
 
 ```
  Welcome to the cosmological hydrodynamical code
