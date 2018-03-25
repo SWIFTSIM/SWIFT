@@ -1,4 +1,4 @@
-SWIFT: Sph WIth Fine-grained inter-dependent Tasking
+SWIFT: SPH WIth Fine-grained inter-dependent Tasking
 ====================================================
 
 [![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
@@ -11,29 +11,30 @@ We suggest that you use the latest release branch of SWIFT, rather than the
 current master branch as this will change rapidly. We do, however, like to
 ensure that the master branch will build and run.
 
-SWIFT is an SPH code designed to run cosmological simulations on peta-scale
-machines, scaling well up to 10's of thousands of cores.
+SWIFT is a gravity and SPH solver designed to run cosmological simulations
+on peta-scale machines, scaling well up to 10's of thousands of compute
+node.
 
 More general information about SWIFT is available on the project
 [webpages](http://www.swiftsim.com).
 
-This GitHub repository is designed to be an issue tracker, and a space
-for the public to submit patches through pull requests. It is synchronised
-with the main development repository that is available on the
+This GitHub repository is designed to be an issue tracker, and a space for
+the public to submit patches through pull requests. It is synchronised with
+the main development repository that is available on the
 [ICC](http://icc.dur.ac.uk)'s GitLab server which is available
 [here](https://gitlab.cosma.dur.ac.uk/swift/swiftsim).
 
-Please feel free to submit issues to this repository, or even pull requests.
-We will try to deal with them as soon as possible, but as the core development
-team is quite small this could take some time.
+Please feel free to submit issues to this repository, or even pull
+requests.  We will try to deal with them as soon as possible, but as the
+core development team is quite small this could take some time.
 
 Contribution Guidelines
 -----------------------
 
-The SWIFT source code uses a variation of the 'Google' formatting style.  The
-script 'format.sh' in the root directory applies the clang-format-3.8 tool with
-our style choices to all the SWIFT C source file. Please apply the formatting
-script to the files before submitting a pull request.
+The SWIFT source code uses a variation of the 'Google' formatting style.
+The script 'format.sh' in the root directory applies the clang-format-3.8
+tool with our style choices to all the SWIFT C source file. Please apply
+the formatting script to the files before submitting a pull request.
 
 Please check that the test suite still runs with your changes applied before
 submitting a pull request and add relevant unit tests probing the correctness
@@ -41,6 +42,8 @@ of new modules. An example of how to add a test to the suite can be found by
 considering the tests/testGreeting case.
 
 Any contributions that fail any of the automated tests will not be accepted.
+Contributions that include tests of the proposed modules are highly
+encouraged.
 
 ```
  Welcome to the cosmological hydrodynamical code
@@ -86,5 +89,5 @@ Valid options are:
   -Y          {int} Time-step frequency at which threadpool tasks are dumped.
   -h                Print this help message and exit.
 
-See the file parameter_example.yml for an example of parameter file.
+See the file examples/parameter_example.yml for an example of parameter file.
 ```
