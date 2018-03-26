@@ -91,26 +91,58 @@ void velociraptor_init(struct engine *e) {
     sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
     sim_info.spacedimension[2] = unit_info.lengthtokpc * s->dim[2];
     sim_info.numcells = s->nr_cells;
-    
+ 
+    sim_info.cellwidth[0] = unit_info.lengthtokpc * s->cells_top[0].width[0];
+    sim_info.cellwidth[1] = unit_info.lengthtokpc * s->cells_top[0].width[1];
+    sim_info.cellwidth[2] = unit_info.lengthtokpc * s->cells_top[0].width[2];
+
+    sim_info.icellwidth[0] = s->iwidth[0] / unit_info.lengthtokpc;
+    sim_info.icellwidth[1] = s->iwidth[1] / unit_info.lengthtokpc;
+    sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
+   
     /* Allocate and populate top-level cell locations. */
     /* JSW TODO: Remember to free at the end of the simulation. */
     if (posix_memalign((void **)&(sim_info.cellloc), 32,
                        s->nr_cells * sizeof(struct cell_loc)) != 0)
         error("Failed to allocate top-level cell locations for VELOCIraptor.");
 
+
+    //double cell_loc_min[3] = {sim_info.spacedimension[0] - sim_info.cellwidth[0],
+    //                          sim_info.spacedimension[1] - sim_info.cellwidth[1],
+    //                          sim_info.spacedimension[2] - sim_info.cellwidth[2]};
+    //double cell_loc_max[3] = {0.0, 0.0, 0.0};
+
     for(int i=0; i<s->nr_cells; i++) {
         sim_info.cellloc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
         sim_info.cellloc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
         sim_info.cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+
+        //for(int k=0; k<3; k++) {
+        //    cell_loc_min[k] = min(cell_loc_min[k], sim_info.cellloc[i].loc[k]);
+        //    cell_loc_max[k] = max(cell_loc_max[k], sim_info.cellloc[i].loc[k] + sim_info.cellwidth[k]);
+        //}
     }
 
-    sim_info.cellwidth[0] = unit_info.lengthtokpc * s->width[0];
-    sim_info.cellwidth[1] = unit_info.lengthtokpc * s->width[1];
-    sim_info.cellwidth[2] = unit_info.lengthtokpc * s->width[2];
+    //FILE *file = NULL;
 
-    sim_info.icellwidth[0] = s->iwidth[0] / unit_info.lengthtokpc;
-    sim_info.icellwidth[1] = s->iwidth[1] / unit_info.lengthtokpc;
-    sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
+    ///* Name of output file. */
+    //char fname[200];
+    //sprintf(fname, "cell_locs_rank_%d.dat", e->nodeID);
+    //file = fopen(fname, "w");
+
+    ///* Header. */
+    //fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",
+    //        "zw", "rank");
+
+    ///* Output */
+    //for (int i = 0; i < s->nr_cells; i++) {
+    //    struct cell *c = &s->cells_top[i];
+    //    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", sim_info.cellloc[i].loc[0] / unit_info.lengthtokpc,
+    //            sim_info.cellloc[i].loc[1]/ unit_info.lengthtokpc, sim_info.cellloc[i].loc[2]/ unit_info.lengthtokpc, sim_info.cellwidth[0]/ unit_info.lengthtokpc, sim_info.cellwidth[1]/ unit_info.lengthtokpc, sim_info.cellwidth[2]/ unit_info.lengthtokpc,
+    //            c->nodeID);
+    //}
+
+    //fclose(file);
 
     message("Period: %e", sim_info.period);
     message("Zoom high res mass: %e", sim_info.zoomhigresolutionmass);
@@ -118,6 +150,7 @@ void velociraptor_init(struct engine *e) {
     message("Cosmological: %d", sim_info.icosmologicalsim);
     message("Space dimensions: (%e,%e,%e)", sim_info.spacedimension[0], sim_info.spacedimension[1], sim_info.spacedimension[2]);
     message("No. of top-level cells: %d", sim_info.numcells);
+    //message("Local top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", cell_loc_min[0], cell_loc_min[1], cell_loc_min[2], cell_loc_max[0], cell_loc_max[1], cell_loc_max[2]);
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
     InitVelociraptor("stf_input.cfg", "stf_output.out", cosmo_info, unit_info, sim_info);
