@@ -849,6 +849,12 @@ int main(int argc, char *argv[]) {
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
+#ifdef HAVE_METIS
+    dumpCellRanks("metis_partition", e.s->cells_top, e.s->nr_cells);
+#else
+    dumpCellRanks("basic_partition", e.s->cells_top, e.s->nr_cells);
+#endif
+
     /* Call VELOCIraptor before first step. */
     if(with_structure_finding) velociraptor_invoke(&e);
   }
