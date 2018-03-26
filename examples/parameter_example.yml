@@ -191,7 +191,6 @@ GrackleCooling:
   OutputMode: 0 # (optional) Write in output corresponding primordial chemistry mode
   MaxSteps: 10000 # (optional) Max number of step when computing the initial composition
   ConvergenceLimit: 1e-2 # (optional) Convergence threshold (relative) for initial composition
-  Omega: 0.8 # (optional) Over relaxation coefficient for initial composition (< 1 avoid oscillation, > 1 speedup convergence)
 
 # Parameters related to chemistry models  -----------------------------------------------
 

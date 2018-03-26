@@ -52,6 +52,18 @@ chemistry_get_element_name(enum chemistry_element elem) {
 }
 
 /**
+ * @brief Compute the metal mass fraction
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param data The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_metal_mass_fraction(
+    const struct part* restrict p, const struct xpart* restrict xp) {
+  return p->chemistry_data.Z;  
+}
+
+/**
  * @brief Initialises the chemistry properties.
  *
  * Nothing to do here.
@@ -145,6 +157,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     struct part* restrict p, struct xpart* restrict xp,
     const struct chemistry_global_data* data) {
+
+  p->chemistry_data.Z = data->initial_metallicity;
   chemistry_init_part(p, data);
 }
 
