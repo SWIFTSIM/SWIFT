@@ -681,7 +681,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* Check that the other links are correctly set */
-    part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
+    if (!dry_run)
+      part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
@@ -718,7 +719,7 @@ int main(int argc, char *argv[]) {
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
-    if (with_cosmology && with_self_gravity)
+    if (with_cosmology && with_self_gravity && !dry_run)
       space_check_cosmology(&s, &cosmo, myrank);
 
 /* Also update the total counts (in case of changes due to replication) */

@@ -3651,7 +3651,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
 
   double ntasks = n1 * ntop + n2 * (ncells - ntop);
-  tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
   if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
   if (e->verbose)
