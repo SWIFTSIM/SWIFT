@@ -671,11 +671,11 @@ int main(int argc, char *argv[]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
-    if (!with_stars) {
+    if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_star) error("Linking problem");
     }
-    if (!with_hydro) {
+    if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
     }
