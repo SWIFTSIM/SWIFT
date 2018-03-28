@@ -11,4 +11,4 @@ fi
 ../swift -s -t 1 square.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 40
+python plotSolution.py 5
