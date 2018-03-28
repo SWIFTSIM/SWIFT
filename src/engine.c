@@ -3651,7 +3651,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
 
   double ntasks = n1 * ntop + n2 * (ncells - ntop);
-  tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
   if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
   if (e->verbose)
@@ -4371,10 +4371,10 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
-           e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time, e->step_props);
+    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+           e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
@@ -4431,8 +4431,8 @@ void engine_step(struct engine *e) {
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-/* Dump local cells and active particle counts. */
-/* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
+  /* Dump local cells and active particle counts. */
+  /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */

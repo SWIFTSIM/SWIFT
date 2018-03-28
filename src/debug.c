@@ -271,17 +271,17 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 }
 
 /**
- * @brief map function for dumping cells. In MPI mode locally active cells
- * only.
+ * @brief map function for dumping cells.
  */
 static void dumpCells_map(struct cell *c, void *data) {
   size_t *ldata = (size_t *)data;
   FILE *file = (FILE *)ldata[0];
   struct engine *e = (struct engine *)ldata[1];
   float ntasks = c->nr_tasks;
-  int active = (int)ldata[2];
-  int mpiactive = (int)ldata[3];
-  int pactive = (int)ldata[4];
+  int super = (int)ldata[2];
+  int active = (int)ldata[3];
+  int mpiactive = (int)ldata[4];
+  int pactive = (int)ldata[5];
 
 #if SWIFT_DEBUG_CHECKS
   /* The c->nr_tasks field does not include all the tasks. So let's check this
@@ -307,9 +307,11 @@ static void dumpCells_map(struct cell *c, void *data) {
 
 /* In MPI mode we may only output cells with foreign partners.
  * These define the edges of the partitions. */
+    int ismpiactive = 0;
 #if WITH_MPI
+    ismpiactive = (c->send_xv != NULL);
     if (mpiactive)
-      mpiactive = (c->send_xv != NULL);
+      mpiactive = ismpiactive;
     else
       mpiactive = 1;
 #else
@@ -322,9 +324,9 @@ static void dumpCells_map(struct cell *c, void *data) {
     else
       active = 1;
 
-    /* So output local super cells that are active and have MPI tasks as
-     * requested. */
-    if (c->nodeID == e->nodeID && (c->super == c) && active && mpiactive) {
+    /* So output local super cells that are active and have MPI
+     * tasks as requested. */
+    if (c->nodeID == e->nodeID && (!super ||(super && c->super == c)) && active && mpiactive) {
 
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
@@ -342,12 +344,13 @@ static void dumpCells_map(struct cell *c, void *data) {
 
       fprintf(file,
               "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
-              "%6.1f %20lld %6d %6d %6d %6d %6d\n",
+              "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d\n",
               c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
               c->width[2], e->step, c->count, c->gcount, c->scount, pactcount,
               c->depth, ntasks, c->ti_hydro_end_min,
               get_time_bin(c->ti_hydro_end_min), (c->super == c),
-              cell_is_active_hydro(c, e), c->nodeID, c->nodeID == e->nodeID);
+              (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
+              c->nodeID == e->nodeID, ismpiactive);
     }
   }
 }
@@ -359,6 +362,7 @@ static void dumpCells_map(struct cell *c, void *data) {
  *
  * @param prefix base output filename, result is written to
  *               %prefix%_%rank%_%step%.dat
+ * @param super just output the super cells.
  * @param active just output active cells.
  * @param mpiactive just output MPI active cells, i.e. those with foreign cells.
  * @param pactive also output a count of active particles.
@@ -366,7 +370,7 @@ static void dumpCells_map(struct cell *c, void *data) {
  * @param rank node ID of MPI rank, or 0 if not relevant.
  * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
+void dumpCells(const char *prefix, int super, int active, int mpiactive, int pactive, 
                struct space *s, int rank, int step) {
 
   FILE *file = NULL;
@@ -379,17 +383,18 @@ void dumpCells(const char *prefix, int active, int mpiactive, int pactive,
   /* Header. */
   fprintf(file,
           "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
-          "%20s %6s %6s %6s %6s %6s\n",
+          "%20s %6s %6s %6s %6s %6s %6s %6s\n",
           "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
           "actcount", "depth", "tasks", "ti_end_min", "timebin", "issuper",
-          "active", "rank", "local");
+          "istop", "active", "rank", "local", "mpiactive");
 
-  size_t data[5];
+  size_t data[6];
   data[0] = (size_t)file;
   data[1] = (size_t)s->e;
-  data[2] = (size_t)active;
-  data[3] = (size_t)mpiactive;
-  data[4] = (size_t)pactive;
+  data[2] = (size_t)super;
+  data[3] = (size_t)active;
+  data[4] = (size_t)mpiactive;
+  data[5] = (size_t)pactive;
   space_map_cells_pre(s, 1, dumpCells_map, &data);
   fclose(file);
 }
