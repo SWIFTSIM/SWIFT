@@ -34,7 +34,8 @@
  * @brief Density loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    float a, float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3]; 
@@ -92,26 +93,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @brief Density loop
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    float a, float H) {
 
   /* For now, just do the simple case */
+  float negative_dx[3];
 
-  runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj);
-  runner_iact_nonsym_density(r2, dx, hj, hi, pj, pi);
+  negative_dx[0] = -1.f * dx[0];
+  negative_dx[1] = -1.f * dx[1];
+  negative_dx[2] = -1.f * dx[2];
+
+  runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj, a, H);
+  runner_iact_nonsym_density(r2, negative_dx, hj, hi, pj, pi, a, H);
 }
 
 /**
  * @brief Force loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    float a, float H) {
   
   float wi, wi_dx, wj, wj_dx;
   const float fac_mu = 1.f; /* Will change with cosmological integration */
   float dv[3];
 
   /* Masses */
-  const float mi = pi->mass;
   const float mj = pj->mass;
 
   /* Get r and r inverse */
@@ -192,12 +199,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
  * @brief Force loop
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
+    float a, float H) {
 
   /* For now, just do the simple case */
+  float negative_dx[3];
 
-  runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj);
-  runner_iact_nonsym_force(r2, dx, hj, hi, pj, pi);
+  negative_dx[0] = -1.f * dx[0];
+  negative_dx[1] = -1.f * dx[1];
+  negative_dx[2] = -1.f * dx[2];
+
+  runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
+  runner_iact_nonsym_force(r2, negative_dx, hj, hi, pj, pi, a, H);
 }
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H */

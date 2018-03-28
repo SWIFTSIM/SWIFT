@@ -45,6 +45,9 @@ struct xpart {
   /*! Velocity at the last full step. */
   float v_full[3];
 
+  /*! Gravitational acceleration */
+  float a_grav[3];
+
   /*! Full internal energy */
   float u_full;
 
