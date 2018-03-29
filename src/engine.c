@@ -4199,6 +4199,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
 
+  /* Call VELOCIraptor before first step and before velocities are kicked. */
+  if (e->policy & engine_policy_structure_finding) velociraptor_invoke(e);
+  
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);

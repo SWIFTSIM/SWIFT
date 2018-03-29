@@ -877,8 +877,6 @@ int main(int argc, char *argv[]) {
     dumpCellRanks("basic_partition", e.s->cells_top, e.s->nr_cells);
 #endif
 
-    /* Call VELOCIraptor before first step. */
-    if(with_structure_finding) velociraptor_invoke(&e);
   }
 
   /* Legend */
