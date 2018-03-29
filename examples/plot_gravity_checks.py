@@ -13,7 +13,7 @@ params = {'axes.labelsize': 14,
 'xtick.labelsize': 14,
 'ytick.labelsize': 14,
 'text.usetex': True,
-'figure.figsize': (10, 10),
+'figure.figsize': (12, 10),
 'figure.subplot.left'    : 0.06,
 'figure.subplot.right'   : 0.99  ,
 'figure.subplot.bottom'  : 0.06  ,
@@ -60,11 +60,13 @@ data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
 exact_ids = data[:,0]
 exact_pos = data[:,1:4]
 exact_a = data[:,4:7]
+exact_pot = data[:,7]
 # Sort stuff
 sort_index = np.argsort(exact_ids)
 exact_ids = exact_ids[sort_index]
 exact_pos = exact_pos[sort_index, :]
 exact_a = exact_a[sort_index, :]        
+exact_pot = exact_pot[sort_index]
 exact_a_norm = np.sqrt(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2)
     
 # Start the plot
@@ -166,12 +168,14 @@ for i in range(num_order):
     ids = data[:,0]
     pos = data[:,1:4]
     a_grav = data[:, 4:7]
+    pot = data[:, 7]
 
     # Sort stuff
     sort_index = np.argsort(ids)
     ids = ids[sort_index]
     pos = pos[sort_index, :]
     a_grav = a_grav[sort_index, :]        
+    pot = pot[sort_index]
 
     # Cross-checks
     if not np.array_equal(exact_ids, ids):
@@ -185,6 +189,7 @@ for i in range(num_order):
     
     # Compute the error norm
     diff = exact_a - a_grav
+    diff_pot = exact_pot - pot
 
     norm_diff = np.sqrt(diff[:,0]**2 + diff[:,1]**2 + diff[:,2]**2)
 
@@ -192,70 +197,84 @@ for i in range(num_order):
     error_x = abs(diff[:,0]) / exact_a_norm
     error_y = abs(diff[:,1]) / exact_a_norm
     error_z = abs(diff[:,2]) / exact_a_norm
+    error_pot = abs(diff_pot) / abs(exact_pot)
     
     # Bin the error
     norm_error_hist,_ = np.histogram(norm_error, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
     error_x_hist,_ = np.histogram(error_x, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
     error_y_hist,_ = np.histogram(error_y, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
     error_z_hist,_ = np.histogram(error_z, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
+    error_pot_hist,_ = np.histogram(error_pot, bins=bin_edges, density=False) / (np.size(norm_error) * bin_size)
 
     norm_median = np.median(norm_error)
     median_x = np.median(error_x)
     median_y = np.median(error_y)
     median_z = np.median(error_z)
+    median_pot = np.median(error_pot)
 
     norm_per99 = np.percentile(norm_error,99)
     per99_x = np.percentile(error_x,99)
     per99_y = np.percentile(error_y,99)
     per99_z = np.percentile(error_z,99)
+    per99_pot = np.percentile(error_pot, 99)
 
     norm_max = np.max(norm_error)
     max_x = np.max(error_x)
     max_y = np.max(error_y)
     max_z = np.max(error_z)
+    max_pot = np.max(error_pot)
 
     print "Order %d ---- "%order[i]
     print "Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max)
     print "X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x)
     print "Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y)
     print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
+    print "Pot : median= %f 99%%= %f max= %f"%(median_pot, per99_pot, max_pot)
     print ""
     
-    plt.subplot(221)
-    plt.semilogx(bins, norm_error_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
-    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", color=cols[i])
-    plt.subplot(222)    
+    plt.subplot(231)    
     plt.semilogx(bins, error_x_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
     plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_x, per99_x), ha="left", va="top", color=cols[i])
-    plt.subplot(223)    
+    plt.subplot(232)    
     plt.semilogx(bins, error_y_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
     plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_y, per99_y), ha="left", va="top", color=cols[i])
-    plt.subplot(224)    
+    plt.subplot(233)    
     plt.semilogx(bins, error_z_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
     plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_z, per99_z), ha="left", va="top", color=cols[i])
+    plt.subplot(234)
+    plt.semilogx(bins, norm_error_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", color=cols[i])
+    plt.subplot(235)    
+    plt.semilogx(bins, error_pot_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])
+    plt.text(min_error * 1.5, 1.5 - count/10., "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_pot, per99_pot), ha="left", va="top", color=cols[i])
 
     count += 1
 
-plt.subplot(221)
-plt.xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
-#plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0,2.5)
-plt.legend(loc="upper left")
-plt.subplot(222)    
+plt.subplot(231)    
 plt.xlabel("$\delta a_x/|\overrightarrow{a}_{exact}|$")
 #plt.ylabel("Density")
 plt.xlim(min_error, max_error)
 plt.ylim(0,1.75)
 #plt.legend(loc="center left")
-plt.subplot(223)    
+plt.subplot(232)    
 plt.xlabel("$\delta a_y/|\overrightarrow{a}_{exact}|$")
 #plt.ylabel("Density")
 plt.xlim(min_error, max_error)
 plt.ylim(0,1.75)
 #plt.legend(loc="center left")
-plt.subplot(224)    
+plt.subplot(233)    
 plt.xlabel("$\delta a_z/|\overrightarrow{a}_{exact}|$")
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,1.75)
+plt.subplot(234)
+plt.xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
+#plt.ylabel("Density")
+plt.xlim(min_error, max_error)
+plt.ylim(0,2.5)
+plt.legend(loc="upper left")
+plt.subplot(235)    
+plt.xlabel("$\delta \phi/\phi_{exact}$")
 #plt.ylabel("Density")
 plt.xlim(min_error, max_error)
 plt.ylim(0,1.75)

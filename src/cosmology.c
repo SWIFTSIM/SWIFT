@@ -130,9 +130,11 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
  * @brief Update the cosmological parameters to the current simulation time.
  *
  * @param c The #cosmology struct.
+ * @param phys_const The physical constants in the internal units.
  * @param ti_current The current (integer) time.
  */
-void cosmology_update(struct cosmology *c, integertime_t ti_current) {
+void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
+                      integertime_t ti_current) {
 
   /* Get scale factor and powers of it */
   const double a = c->a_begin * exp(ti_current * c->time_base);
@@ -172,6 +174,10 @@ void cosmology_update(struct cosmology *c, integertime_t ti_current) {
 
   /* Expansion rate */
   c->a_dot = c->H * c->a;
+
+  /* Critical density */
+  c->critical_density =
+      3. * c->H * c->H / (8. * M_PI * phys_const->const_newton_G);
 
   /* Time-step conversion factor */
   c->time_step_factor = c->H;
@@ -284,8 +290,6 @@ double time_integrand(double a, void *param) {
  */
 void cosmology_init_tables(struct cosmology *c) {
 
-  const ticks tic = getticks();
-
 #ifdef HAVE_LIBGSL
 
   /* Retrieve some constants */
@@ -373,9 +377,6 @@ void cosmology_init_tables(struct cosmology *c) {
   error("Code not compiled with GSL. Can't compute cosmology integrals.");
 
 #endif
-
-  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
 }
 
 /**
@@ -431,7 +432,7 @@ void cosmology_init(const struct swift_params *params,
   cosmology_init_tables(c);
 
   /* Set remaining variables to alid values */
-  cosmology_update(c, 0);
+  cosmology_update(c, phys_const, 0);
 
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
@@ -454,7 +455,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->Omega_b = 0.;
   c->w_0 = 0.;
   c->w_a = 0.;
-  c->h = 0.;
+  c->h = 1.;
   c->w = 0.;
 
   c->a_begin = 1.;
@@ -473,6 +474,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_mu = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
+
+  c->critical_density = 0.;
 
   c->time_step_factor = 1.;
 
@@ -667,13 +670,15 @@ void cosmology_struct_dump(const struct cosmology *cosmology, FILE *stream) {
  * @brief Restore a cosmology struct from the given FILE as a stream of
  * bytes.
  *
+ * @param enabled whether cosmology is enabled.
  * @param cosmology the struct
  * @param stream the file stream
  */
-void cosmology_struct_restore(struct cosmology *cosmology, FILE *stream) {
+void cosmology_struct_restore(int enabled, struct cosmology *cosmology,
+                              FILE *stream) {
   restart_read_blocks((void *)cosmology, sizeof(struct cosmology), 1, stream,
                       NULL, "cosmology function");
 
-  /* Re-initialise the tables */
-  cosmology_init_tables(cosmology);
+  /* Re-initialise the tables if using a cosmology. */
+  if (enabled) cosmology_init_tables(cosmology);
 }

@@ -59,6 +59,9 @@ struct gravity_cache {
   /*! #gpart z acceleration. */
   float *restrict a_z SWIFT_CACHE_ALIGN;
 
+  /*! #gpart potential. */
+  float *restrict pot SWIFT_CACHE_ALIGN;
+
   /*! Is this #gpart active ? */
   int *restrict active SWIFT_CACHE_ALIGN;
 
@@ -85,6 +88,7 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
     free(c->a_x);
     free(c->a_y);
     free(c->a_z);
+    free(c->pot);
     free(c->active);
     free(c->use_mpole);
   }
@@ -120,6 +124,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
   e += posix_memalign((void **)&c->a_x, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
   e += posix_memalign((void **)&c->a_y, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
   e += posix_memalign((void **)&c->a_z, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
+  e += posix_memalign((void **)&c->pot, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
   e += posix_memalign((void **)&c->active, SWIFT_CACHE_ALIGNMENT, sizeBytesI);
   e +=
       posix_memalign((void **)&c->use_mpole, SWIFT_CACHE_ALIGNMENT, sizeBytesI);
@@ -144,14 +149,16 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param shift A shift to apply to all the particles.
  * @param CoM The position of the multipole.
  * @param r_max2 The square of the multipole radius.
- * @param theta_crit2 The square of the opening angle.
  * @param cell The cell we play with (to get reasonable padding positions).
+ * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     timebin_t max_active_bin, struct gravity_cache *c,
     const struct gpart *restrict gparts, int gcount, int gcount_padded,
-    const double shift[3], const float CoM[3], float r_max2, float theta_crit2,
-    const struct cell *cell) {
+    const double shift[3], const float CoM[3], float r_max2,
+    const struct cell *cell, const struct gravity_props *grav_props) {
+
+  const float theta_crit2 = grav_props->theta_crit2;
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
@@ -169,7 +176,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     x[i] = (float)(gparts[i].x[0] - shift[0]);
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
-    epsilon[i] = gparts[i].epsilon;
+    epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
     m[i] = gparts[i].mass;
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
 
@@ -215,13 +222,15 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
  * multiple of the vector length.
  * @param shift A shift to apply to all the particles.
  * @param cell The cell we play with (to get reasonable padding positions).
+ * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void
 gravity_cache_populate_no_mpole(timebin_t max_active_bin,
                                 struct gravity_cache *c,
                                 const struct gpart *restrict gparts, int gcount,
                                 int gcount_padded, const double shift[3],
-                                const struct cell *cell) {
+                                const struct cell *cell,
+                                const struct gravity_props *grav_props) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
@@ -237,7 +246,7 @@ gravity_cache_populate_no_mpole(timebin_t max_active_bin,
     x[i] = (float)(gparts[i].x[0] - shift[0]);
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
-    epsilon[i] = gparts[i].epsilon;
+    epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
     m[i] = gparts[i].mass;
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
   }
@@ -278,6 +287,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_write_back(
   swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
 
   /* Write stuff back to the particles */
@@ -286,6 +296,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_write_back(
       gparts[i].a_grav[0] += a_x[i];
       gparts[i].a_grav[1] += a_y[i];
       gparts[i].a_grav[2] += a_z[i];
+      gparts[i].potential += pot[i];
     }
   }
 }

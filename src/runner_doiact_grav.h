@@ -21,10 +21,12 @@
 #define SWIFT_RUNNER_DOIACT_GRAV_H
 
 /* Includes. */
+#include "active.h"
 #include "cell.h"
 #include "gravity.h"
 #include "inline.h"
 #include "part.h"
+#include "timers.h"
 
 /**
  * @brief Recursively propagate the multipoles down the tree by applying the
@@ -34,7 +36,8 @@
  * @param c The #cell we are working on.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
+static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
+                                       int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -125,8 +128,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-void runner_dopair_grav_mm(const struct runner *r, struct cell *restrict ci,
-                           struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm(const struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -204,8 +208,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -240,13 +244,15 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
 #endif
 
       /* Interact! */
-      float f_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
+                               &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -258,6 +264,7 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   TIMER_TOC(timer_dopair_grav_pp);
@@ -295,8 +302,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -331,14 +338,15 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #endif
 
       /* Interact! */
-      float f_ij;
+      float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -350,6 +358,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   TIMER_TOC(timer_dopair_grav_pp);
@@ -372,6 +381,7 @@ static INLINE void runner_dopair_grav_pm(
   swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -407,14 +417,15 @@ static INLINE void runner_dopair_grav_pm(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Interact! */
-    float f_x, f_y, f_z;
-    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
-                        &f_z);
+    float f_x, f_y, f_z, pot_ij;
+    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y, &f_z,
+                        &pot_ij);
 
     /* Store it back */
     a_x[pid] = f_x;
     a_y[pid] = f_y;
     a_z[pid] = f_z;
+    pot[pid] = pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
@@ -434,7 +445,8 @@ static INLINE void runner_dopair_grav_pm(
  * @param ci The first #cell.
  * @param cj The other #cell.
  */
-void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
+static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
+                                         struct cell *cj) {
 
   const struct engine *e = r->e;
 
@@ -454,7 +466,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
   struct space *s = e->s;
   const int periodic = s->periodic;
   const double cell_width = s->width[0];
-  const float theta_crit2 = e->gravity_properties->theta_crit2;
   const double a_smooth = e->gravity_properties->a_smooth;
   const double r_cut_min = e->gravity_properties->r_cut_min;
   const double rlr = cell_width * a_smooth;
@@ -520,11 +531,11 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, ci_cache, ci->gparts, gcount_i,
-                         gcount_padded_i, shift_i, CoM_j, rmax2_j, theta_crit2,
-                         ci);
+                         gcount_padded_i, shift_i, CoM_j, rmax2_j, ci,
+                         e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, cj_cache, cj->gparts, gcount_j,
-                         gcount_padded_j, shift_j, CoM_i, rmax2_i, theta_crit2,
-                         cj);
+                         gcount_padded_j, shift_j, CoM_i, rmax2_i, cj,
+                         e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -635,7 +646,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj) {
  *
  * @todo Use a local cache for the particles.
  */
-void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
+static INLINE void runner_doself_grav_pp_full(struct runner *r,
+                                              struct cell *c) {
 
   /* Some constants */
   const struct engine *const e = r->e;
@@ -662,7 +674,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
@@ -683,7 +695,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -721,13 +733,15 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
 #endif
 
       /* Interact! */
-      float f_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
+                               &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -739,6 +753,7 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   /* Write back to the particles */
@@ -754,7 +769,8 @@ void runner_doself_grav_pp_full(struct runner *r, struct cell *c) {
  *
  * @todo Use a local cache for the particles.
  */
-void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
+static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
+                                                   struct cell *c) {
 
   /* Some constants */
   const struct engine *const e = r->e;
@@ -788,7 +804,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c);
+                                  gcount_padded, loc, c, e->gravity_properties);
 
   /* Ok... Here we go ! */
 
@@ -808,8 +824,8 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     const float h_inv_i = 1.f / h_i;
     const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
-    /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f;
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -847,14 +863,15 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
 #endif
 
       /* Interact! */
-      float f_ij;
+      float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x -= f_ij * dx;
       a_y -= f_ij * dy;
       a_z -= f_ij * dz;
+      pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -866,6 +883,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
     ci_cache->a_x[pid] = a_x;
     ci_cache->a_y[pid] = a_y;
     ci_cache->a_z[pid] = a_z;
+    ci_cache->pot[pid] = pot;
   }
 
   /* Write back to the particles */
@@ -879,7 +897,7 @@ void runner_doself_grav_pp_truncated(struct runner *r, struct cell *c) {
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself_grav_pp(struct runner *r, struct cell *c) {
+static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   /* Some properties of the space */
   const struct engine *e = r->e;
@@ -934,8 +952,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  *
  * @todo Use a local cache for the particles.
  */
-void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
-                        int gettimer) {
+static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
+                                      struct cell *cj, int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1086,7 +1104,8 @@ void runner_dopair_grav(struct runner *r, struct cell *ci, struct cell *cj,
  *
  * @todo Use a local cache for the particles.
  */
-void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
+static INLINE void runner_doself_grav(struct runner *r, struct cell *c,
+                                      int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1137,7 +1156,8 @@ void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
+static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                                             int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;

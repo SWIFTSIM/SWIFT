@@ -24,15 +24,16 @@
 
 /* Local headers. */
 #include "const.h"
-#include "engine.h"
 #include "inline.h"
 #include "part.h"
-#include "space.h"
 
 /* So far only one model here */
 /* Straight-forward import */
 #include "./gravity/Default/gravity.h"
 #include "./gravity/Default/gravity_iact.h"
+
+struct engine;
+struct space;
 
 void gravity_exact_force_ewald_init(double boxSize);
 void gravity_exact_force_ewald_free();

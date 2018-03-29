@@ -38,6 +38,10 @@
 #include "./potential/disc_patch/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
 #include "./potential/sine_wave/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_POINTMASS_RING)
+#include "./potential/point_mass_ring/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_POINTMASS_SOFT)
+#include "./potential/point_mass_softened/potential.h"
 #else
 #error "Invalid choice of external potential"
 #endif

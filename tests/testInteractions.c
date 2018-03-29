@@ -610,8 +610,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
             (viz_vec), rhoi_vec, grad_hi_vec, pOrhoi2_vec, balsara_i_vec,
             ci_vec, &(vjxq[i]), &(vjyq[i]), &(vjzq[i]), &(rhojq[i]),
             &(grad_hjq[i]), &(pOrhoj2q[i]), &(balsarajq[i]), &(cjq[i]),
-            &(mjq[i]), hi_inv_vec, &(hj_invq[i]), &a_hydro_xSum, &a_hydro_ySum,
-            &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum, mask, mask2, 0);
+            &(mjq[i]), hi_inv_vec, &(hj_invq[i]), a, H, &a_hydro_xSum,
+            &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum, &entropy_dtSum,
+            mask, mask2, 0);
       } else { /* Only use one vector for interaction. */
 
         vector my_r2, my_dx, my_dy, my_dz, hj, hj_inv;
@@ -626,7 +627,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
             &my_r2, &my_dx, &my_dy, &my_dz, vix_vec, viy_vec, viz_vec, rhoi_vec,
             grad_hi_vec, pOrhoi2_vec, balsara_i_vec, ci_vec, &(vjxq[i]),
             &(vjyq[i]), &(vjzq[i]), &(rhojq[i]), &(grad_hjq[i]), &(pOrhoj2q[i]),
-            &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, hj_inv,
+            &(balsarajq[i]), &(cjq[i]), &(mjq[i]), hi_inv_vec, hj_inv, a, H,
             &a_hydro_xSum, &a_hydro_ySum, &a_hydro_zSum, &h_dtSum, &v_sigSum,
             &entropy_dtSum, mask);
       }

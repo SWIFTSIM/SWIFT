@@ -38,6 +38,7 @@
 
 /* Avoid cyclic inclusions */
 struct cell;
+struct cosmology;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -182,9 +183,10 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,
-                double dim[3], struct part *parts, struct gpart *gparts,
-                struct spart *sparts, size_t Npart, size_t Ngpart,
-                size_t Nspart, int periodic, int replicate, int gravity,
+                const struct cosmology *cosmo, double dim[3],
+                struct part *parts, struct gpart *gparts, struct spart *sparts,
+                size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
+                int replicate, int generate_gas_in_ics, int gravity,
                 int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
@@ -239,6 +241,10 @@ void space_check_top_multipoles_drift_point(struct space *s,
                                             integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
+void space_generate_gas(struct space *s, const struct cosmology *cosmo,
+                        int verbose);
+void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
+                           int rank);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);

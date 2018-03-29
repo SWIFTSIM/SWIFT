@@ -95,8 +95,15 @@ struct potential_derivatives_M2L {
  */
 struct potential_derivatives_M2P {
 
+  /* 0th order terms */
+  float D_000;
+
   /* 1st order terms */
   float D_100, D_010, D_001;
+
+  /* 2nd order terms */
+  float D_200, D_020, D_002;
+  float D_110, D_101, D_011;
 
   /* 3rd order terms */
   float D_300, D_030, D_003;
@@ -368,10 +375,21 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
   const float r_y3 = r_y2 * r_y;
   const float r_z3 = r_z2 * r_z;
 
+  /* 0th order derivative */
+  pot->D_000 = Dt_1;
+
   /* 1st order derivatives */
   pot->D_100 = r_x * Dt_3;
   pot->D_010 = r_y * Dt_3;
   pot->D_001 = r_z * Dt_3;
+
+  /* 2nd order derivatives */
+  pot->D_200 = r_x2 * Dt_5 + Dt_3;
+  pot->D_020 = r_y2 * Dt_5 + Dt_3;
+  pot->D_002 = r_z2 * Dt_5 + Dt_3;
+  pot->D_110 = r_x * r_y * Dt_5;
+  pot->D_101 = r_x * r_z * Dt_5;
+  pot->D_011 = r_y * r_z * Dt_5;
 
   /* 3rd order derivatives */
   pot->D_300 = r_x3 * Dt_7 + 3.f * r_x * Dt_5;

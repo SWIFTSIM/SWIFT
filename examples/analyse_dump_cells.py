@@ -39,9 +39,11 @@ zcol = 2
 xwcol = 3
 ywcol = 4
 zwcol = 5
-localcol = 18
 supercol = 15
-activecol = 16
+topcol = 16
+activecol = 17
+localcol = 19
+mpicol = 20
 
 #  Command-line arguments.
 if len(sys.argv) < 5:
@@ -59,11 +61,12 @@ for i in range(4, len(sys.argv)):
 
     #  Read the file.
     data = pl.loadtxt(sys.argv[i])
-    #print data
+    if len(data) == 0 or len(data) == 20:
+        continue
 
-    #  Select cells that are on the current rank and are super cells.
+    #  Select cells that are on the current rank and are top-level cells.
     rdata = data[data[:,localcol] == 1]
-    tdata = rdata[rdata[:,supercol] == 1]
+    tdata = rdata[rdata[:,topcol] == 1]
 
     #  Separation of the cells is in data.
     xwidth = tdata[0,xwcol]

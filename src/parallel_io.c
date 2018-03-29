@@ -69,11 +69,14 @@
  * @param offset Offset in the array where this mpi task starts writing.
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the snapshots.
+ * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param h The value of the reduced Hubble constant to use for cleaning.
  */
 void readArray_chunk(hid_t h_data, hid_t h_plist_id,
                      const struct io_props props, size_t N, long long offset,
                      const struct unit_system* internal_units,
-                     const struct unit_system* ic_units) {
+                     const struct unit_system* ic_units, int cleanup_h,
+                     double h) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -136,6 +139,23 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
     }
   }
 
+  /* Clean-up h if necessary */
+  const float h_factor_exp = units_h_factor(internal_units, props.units);
+  if (cleanup_h && h_factor_exp != 0.f) {
+    const double h_factor = pow(h, h_factor_exp);
+
+    /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
+     * h_factor); */
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
+    }
+  }
+
   /* Copy temporary buffer to particle data */
   char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
@@ -158,11 +178,13 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @param offset The offset in the array on disk for this rank.
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the ICs.
+ * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param h The value of the reduced Hubble constant to use for cleaning.
  */
 void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
                int mpi_rank, long long offset,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units) {
+               const struct unit_system* ic_units, int cleanup_h, double h) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -207,7 +229,7 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
     readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-                    internal_units, ic_units);
+                    internal_units, ic_units, cleanup_h, h);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -309,8 +331,7 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   io_write_attribute_d(
       h_data, "CGS conversion factor",
       units_cgs_conversion_factor(snapshot_units, props.units));
-  io_write_attribute_f(h_data, "h-scale exponent",
-                       units_h_factor(snapshot_units, props.units));
+  io_write_attribute_f(h_data, "h-scale exponent", 0);
   io_write_attribute_f(h_data, "a-scale exponent",
                        units_a_factor(snapshot_units, props.units));
   io_write_attribute_s(h_data, "Conversion factor", buffer);
@@ -541,6 +562,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_hydro Are we running with hydro ?
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
+ * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param h The value of the reduced Hubble constant to use for correction.
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -554,8 +577,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                       size_t* Nstars, int* periodic, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
-                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int n_threads, int dry_run) {
+                      int cleanup_h, double h, int mpi_rank, int mpi_size,
+                      MPI_Comm comm, MPI_Info info, int n_threads,
+                      int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -625,6 +649,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     dim[2] = min(dim[0], dim[1]);
   else if (hydro_dimension == 1)
     dim[2] = dim[1] = dim[0];
+
+  /* Convert the box size if we want to clean-up h-factors */
+  if (cleanup_h) {
+    dim[0] /= h;
+    dim[1] /= h;
+    dim[2] /= h;
+  }
 
   /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
   /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */
@@ -771,7 +802,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
         readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank,
-                  offset[ptype], internal_units, ic_units);
+                  offset[ptype], internal_units, ic_units, cleanup_h, h);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -821,9 +852,10 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
-  struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
-  struct spart* sparts = e->s->sparts;
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
+  const struct spart* sparts = e->s->sparts;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -980,7 +1012,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(parts, list, &num_fields);
+        hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
         break;
 
@@ -1045,10 +1077,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Ntot = e->s->nr_gparts;
-  struct part* parts = e->s->parts;
-  struct gpart* gparts = e->s->gparts;
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
-  struct spart* sparts = e->s->sparts;
+  const struct spart* sparts = e->s->sparts;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -1208,7 +1241,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       case swift_type_gas:
         Nparticles = Ngas;
-        hydro_write_particles(parts, list, &num_fields);
+        hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
         break;
 
