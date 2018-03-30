@@ -372,7 +372,9 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     /* Check whether it matches the current parameters */
     if (N == SWIFT_GRAVITY_FORCE_CHECKS && periodic == e->s->periodic &&
-        (fabs(epsilon - e->gravity_properties->epsilon) / epsilon < 1e-5) &&
+        (fabs(epsilon - gravity_get_softening(0, e->gravity_properties)) /
+             epsilon <
+         1e-5) &&
         (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
          1e-5)) {
       return 1;
@@ -396,6 +398,8 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
   struct gpart *restrict gparts = (struct gpart *)map_data;
   struct exact_force_data *data = (struct exact_force_data *)extra_data;
   const struct space *s = data->s;
+  const struct part *parts = s->parts;
+  const struct spart *sparts = s->sparts;
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -406,13 +410,22 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
     struct gpart *gpi = &gparts[i];
 
+    long long id;
+    if (gpi->type == swift_type_gas)
+      id = parts[-gpi->id_or_neg_offset].id;
+    else if (gpi->type == swift_type_star)
+      id = sparts[-gpi->id_or_neg_offset].id;
+    else if (gpi->type == swift_type_black_hole)
+      error("Unexisting type");
+    else
+      id = gpi->id_or_neg_offset;
+
     /* Is the particle active and part of the subset to be tested ? */
-    if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
-        gpart_is_active(gpi, e)) {
+    if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_active(gpi, e)) {
 
       /* Get some information about the particle */
       const double pix[3] = {gpi->x[0], gpi->x[1], gpi->x[2]};
-      const double hi = gpi->epsilon;
+      const double hi = gravity_get_softening(gpi, e->gravity_properties);
       const double hi_inv = 1. / hi;
       const double hi_inv3 = hi_inv * hi_inv * hi_inv;
 
@@ -556,17 +569,21 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
+  const struct part *parts = s->parts;
+  const struct spart *sparts = s->sparts;
+
   /* File name */
   char file_name_swift[100];
   sprintf(file_name_swift, "gravity_checks_swift_step%d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
+  const double epsilon = gravity_get_softening(0, e->gravity_properties);
   FILE *file_swift = fopen(file_name_swift, "w");
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-  fprintf(file_swift, "# epsilon= %16.8e\n", e->gravity_properties->epsilon);
+  fprintf(file_swift, "# epsilon= %16.8e\n", epsilon);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
@@ -580,14 +597,23 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
     struct gpart *gpi = &s->gparts[i];
 
+    long long id;
+    if (gpi->type == swift_type_gas)
+      id = parts[-gpi->id_or_neg_offset].id;
+    else if (gpi->type == swift_type_star)
+      id = sparts[-gpi->id_or_neg_offset].id;
+    else if (gpi->type == swift_type_black_hole)
+      error("Unexisting type");
+    else
+      id = gpi->id_or_neg_offset;
+
     /* Is the particle was active and part of the subset to be tested ? */
-    if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
-        gpart_is_starting(gpi, e)) {
+    if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
 
       fprintf(file_swift,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
-              gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
-              gpi->a_grav[0], gpi->a_grav[1], gpi->a_grav[2], gpi->potential);
+              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
+              gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0], gpi->a_grav[1],
+              gpi->a_grav[2], gpi->potential);
     }
   }
 
@@ -609,7 +635,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-    fprintf(file_exact, "# epsilon=%16.8e\n", e->gravity_properties->epsilon);
+    fprintf(file_exact, "# epsilon=%16.8e\n", epsilon);
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
@@ -622,15 +648,24 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       struct gpart *gpi = &s->gparts[i];
 
+      long long id;
+      if (gpi->type == swift_type_gas)
+        id = parts[-gpi->id_or_neg_offset].id;
+      else if (gpi->type == swift_type_star)
+        id = sparts[-gpi->id_or_neg_offset].id;
+      else if (gpi->type == swift_type_black_hole)
+        error("Unexisting type");
+      else
+        id = gpi->id_or_neg_offset;
+
       /* Is the particle was active and part of the subset to be tested ? */
-      if (gpi->id_or_neg_offset % SWIFT_GRAVITY_FORCE_CHECKS == 0 &&
-          gpart_is_starting(gpi, e)) {
+      if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
 
         fprintf(file_exact,
-                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
-                gpi->id_or_neg_offset, gpi->x[0], gpi->x[1], gpi->x[2],
-                gpi->a_grav_exact[0], gpi->a_grav_exact[1],
-                gpi->a_grav_exact[2], gpi->potential_exact);
+                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
+                gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
+                gpi->a_grav_exact[1], gpi->a_grav_exact[2],
+                gpi->potential_exact);
       }
     }
 

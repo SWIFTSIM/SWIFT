@@ -841,7 +841,7 @@ int main(int argc, char *argv[]) {
 
 /* Initialise the table of Ewald corrections for the gravity checks */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
+  if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
 #endif
 
 /* Init the runner history. */
