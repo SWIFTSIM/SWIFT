@@ -410,7 +410,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
     struct gpart *gpi = &gparts[i];
 
-    long long id;
+    long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_star)
@@ -597,7 +597,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
     struct gpart *gpi = &s->gparts[i];
 
-    long long id;
+    long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_star)
@@ -648,7 +648,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       struct gpart *gpi = &s->gparts[i];
 
-      long long id;
+      long long id = 0;
       if (gpi->type == swift_type_gas)
         id = parts[-gpi->id_or_neg_offset].id;
       else if (gpi->type == swift_type_star)
