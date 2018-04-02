@@ -90,6 +90,8 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
+  printf("  %2s %14s %s\n", "-o", "",
+         "Filename of the output fields parameters.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
