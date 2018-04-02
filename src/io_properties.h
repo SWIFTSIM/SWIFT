@@ -97,13 +97,17 @@ struct io_props {
   /* Conversion function for gpart */
   conversion_func_gpart_float convert_gpart_f;
   conversion_func_gpart_double convert_gpart_d;
+
+  /* default output behaviour
+   * 0 means not writing, 1 means writing */
+  int default_output;
 };
 
 /**
  * @brief Constructs an #io_props from its parameters
  */
 #define io_make_input_field(name, type, dim, importance, units, part, field) \
-  io_make_input_field_(name, type, dim, importance, units,                   \
+  io_make_input_field_(name, type, dim, importance, units,		\
                        (char*)(&(part[0]).field), sizeof(part[0]))
 
 /**
@@ -139,6 +143,7 @@ INLINE static struct io_props io_make_input_field_(
   r.convert_part_d = NULL;
   r.convert_gpart_f = NULL;
   r.convert_gpart_d = NULL;
+  r.default_output = 0;
 
   return r;
 }
@@ -146,9 +151,9 @@ INLINE static struct io_props io_make_input_field_(
 /**
  * @brief Constructs an #io_props from its parameters
  */
-#define io_make_output_field(name, type, dim, units, part, field)          \
+#define io_make_output_field(name, type, dim, units, part, field, default_output) \
   io_make_output_field_(name, type, dim, units, (char*)(&(part[0]).field), \
-                        sizeof(part[0]))
+                        sizeof(part[0]), default_output)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -159,12 +164,14 @@ INLINE static struct io_props io_make_input_field_(
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
+ * @param default_output Default output behaviour (0 -> not write, 1 -> write)
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, char* field, size_t partSize) {
+    enum unit_conversion_factor units, char* field, size_t partSize,
+    int default_output) {
   struct io_props r;
   strcpy(r.name, name);
   r.type = type;
@@ -180,6 +187,7 @@ INLINE static struct io_props io_make_output_field_(
   r.convert_part_d = NULL;
   r.convert_gpart_f = NULL;
   r.convert_gpart_d = NULL;
+  r.default_output = default_output;
 
   return r;
 }
@@ -188,9 +196,9 @@ INLINE static struct io_props io_make_output_field_(
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
 #define io_make_output_field_convert_part(name, type, dim, units, part, xpart, \
-                                          convert)                             \
-  io_make_output_field_convert_part_##type(                                    \
-      name, type, dim, units, sizeof(part[0]), part, xpart, convert)
+                                          convert, default_output)	\
+  io_make_output_field_convert_part_##type(				\
+					   name, type, dim, units, sizeof(part[0]), part, xpart, convert, default_output)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -203,6 +211,7 @@ INLINE static struct io_props io_make_output_field_(
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a float
+ * @param default_output Default output behaviour (0 -> not write, 1 -> write)
  *
  * Do not call this function directly. Use the macro defined above.
  */
@@ -210,7 +219,8 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_float functionPtr) {
+    conversion_func_part_float functionPtr,
+								      int default_output) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -228,6 +238,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
   r.convert_part_d = NULL;
   r.convert_gpart_f = NULL;
   r.convert_gpart_d = NULL;
+  r.default_output = default_output;
 
   return r;
 }
@@ -243,6 +254,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a float
+ * @param default_output Default output behaviour (0 -> not write, 1 -> write)
  *
  * Do not call this function directly. Use the macro defined above.
  */
@@ -250,7 +262,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_double functionPtr) {
+    conversion_func_part_double functionPtr, int default_output) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -268,6 +280,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
   r.convert_part_d = functionPtr;
   r.convert_gpart_f = NULL;
   r.convert_gpart_d = NULL;
+  r.default_output = default_output;
 
   return r;
 }
@@ -276,9 +289,10 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
 #define io_make_output_field_convert_gpart(name, type, dim, units, gpart, \
-                                           convert)                       \
-  io_make_output_field_convert_gpart_##type(name, type, dim, units,       \
-                                            sizeof(gpart[0]), gpart, convert)
+                                           convert, default_output)	\
+  io_make_output_field_convert_gpart_##type(name, type, dim, units,	\
+                                            sizeof(gpart[0]), gpart, convert, \
+					    default_output)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -290,13 +304,15 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param default_output Default output behaviour (0 -> not write, 1 -> write)
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_float functionPtr) {
+    const struct gpart* gparts, conversion_func_gpart_float functionPtr,
+								       int default_output) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -314,6 +330,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
   r.convert_part_d = NULL;
   r.convert_gpart_f = functionPtr;
   r.convert_gpart_d = NULL;
+  r.default_output = default_output;
 
   return r;
 }
@@ -328,13 +345,15 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param default_output Default output behaviour (0 -> not write, 1 -> write)
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_double functionPtr) {
+    const struct gpart* gparts, conversion_func_gpart_double functionPtr,
+									int default_output) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -352,6 +371,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
   r.convert_part_d = NULL;
   r.convert_gpart_f = NULL;
   r.convert_gpart_d = functionPtr;
+  r.default_output = default_output;
 
   return r;
 }

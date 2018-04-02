@@ -1262,10 +1262,15 @@ void write_output_parallel(struct engine* e, const char* baseName,
     }
 
     /* Write everything */
-    for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
-                 N_total[ptype], mpi_rank, offset[ptype], internal_units,
-                 snapshot_units);
+    for (int i = 0; i < num_fields; ++i) {
+      char field[200] = "OutputFields:";
+      strcat(field, list[i].name);
+      int should_write = parser_get_opt_param_int(output_fields, field, list[i].default_output);
+      if (should_write)
+	writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
+		   N_total[ptype], mpi_rank, offset[ptype], internal_units,
+		   snapshot_units);
+    }
 
     /* Free temporary array */
     if (dmparts) {

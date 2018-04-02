@@ -57,12 +57,23 @@ static void find_duplicate_section(const struct swift_params *params,
 static int lineNumber = 0;
 
 /**
+ * @brief Initialize the parser structure.
+ *
+ * @param file_name Name of file to be read
+ * @param params Structure to be populated from file
+ */
+void parser_init(const char *file_name, struct swift_params *params) {
+  params->paramCount = 0;
+  params->sectionCount = 0;
+  strcpy(params->fileName, file_name);
+}
+
+/**
  * @brief Reads an input file and stores each parameter in a structure.
  *
  * @param file_name Name of file to be read
  * @param params Structure to be populated from file
  */
-
 void parser_read_file(const char *file_name, struct swift_params *params) {
   /* Open file for reading */
   FILE *file = fopen(file_name, "r");
@@ -71,9 +82,7 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   char line[PARSER_MAX_LINE_SIZE];
 
   /* Initialise parameter count. */
-  params->paramCount = 0;
-  params->sectionCount = 0;
-  strcpy(params->fileName, file_name);
+  parser_init(file_name, params);
 
   /* Check if parameter file exits. */
   if (file == NULL) {

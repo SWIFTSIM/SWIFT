@@ -594,6 +594,7 @@ void write_output_single(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
+  const struct swift_params* output_fields = e->output_fields;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -825,9 +826,14 @@ void write_output_single(struct engine* e, const char* baseName,
     }
 
     /* Write everything */
-    for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
-                 internal_units, snapshot_units);
+    for (int i = 0; i < num_fields; ++i) {
+      char field[200] = "OutputFields:";
+      strcat(field, list[i].name);
+      int should_write = parser_get_opt_param_int(output_fields, field, list[i].default_output);
+      if (should_write)
+	writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+		   internal_units, snapshot_units);
+    }
 
     /* Free temporary array */
     if (dmparts) {

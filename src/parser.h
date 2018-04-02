@@ -55,6 +55,7 @@ struct swift_params {
 };
 
 /* Public API. */
+void parser_init(const char *file_name, struct swift_params *params);
 void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
