@@ -727,6 +727,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
+  const struct swift_params* output_fields = e->output_fields;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
