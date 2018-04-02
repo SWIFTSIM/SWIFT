@@ -140,27 +140,29 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
                                               UNIT_CONV_LENGTH, parts, xparts,
                                               convert_part_pos, 1);
-  list[1] = io_make_output_field_convert_part(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel, 1);
+  list[1] =
+      io_make_output_field_convert_part("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
+                                        parts, xparts, convert_part_vel, 1);
   list[2] =
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass, 1);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h, 1);
   list[4] = io_make_output_field(
-				 "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy, 1);
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy, 1);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id, 1);
-  list[6] =
-    io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho, 1);
+  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
+                                 rho, 1);
   list[7] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
                                               parts, xparts, convert_part_u, 1);
-  list[8] = io_make_output_field_convert_part(
-					      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_part_P, 1);
+  list[8] = io_make_output_field_convert_part("Pressure", FLOAT, 1,
+                                              UNIT_CONV_PRESSURE, parts, xparts,
+                                              convert_part_P, 1);
 
-  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-                                              UNIT_CONV_POTENTIAL, parts,
-                                              xparts, convert_part_potential, 1);
+  list[9] = io_make_output_field_convert_part(
+      "Potential", FLOAT, 1, UNIT_CONV_POTENTIAL, parts, xparts,
+      convert_part_potential, 1);
 
 #ifdef DEBUG_INTERACTIONS_SPH
 

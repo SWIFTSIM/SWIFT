@@ -261,13 +261,12 @@ int main(int argc, char *argv[]) {
         }
         break;
       case 'o':
-	if (sscanf(optarg, "%s", outputFieldsFileName) != 1) {
-	  if (myrank == 0)
-	    {
-	      printf("Error parsing output fields filename");
-	      print_help_message();
-	    }
-	}
+        if (sscanf(optarg, "%s", outputFieldsFileName) != 1) {
+          if (myrank == 0) {
+            printf("Error parsing output fields filename");
+            print_help_message();
+          }
+        }
         break;
       case 'P':
         cmdparams[nparams] = optarg;
@@ -470,9 +469,11 @@ int main(int argc, char *argv[]) {
   /* Read output fields */
   struct swift_params *output_fields =
       (struct swift_params *)malloc(sizeof(struct swift_params));
-  if (output_fields == NULL) error("Error allocating memory for the output fields file.");
+  if (output_fields == NULL)
+    error("Error allocating memory for the output fields file.");
   if (myrank == 0) {
-    message("Reading runtime output fields from file '%s'", outputFieldsFileName);
+    message("Reading runtime output fields from file '%s'",
+            outputFieldsFileName);
     if (strcmp(outputFieldsFileName, "") != 0)
       parser_read_file(outputFieldsFileName, output_fields);
     else
@@ -483,7 +484,8 @@ int main(int argc, char *argv[]) {
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
-  MPI_Bcast(output_fields, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(output_fields, sizeof(struct swift_params), MPI_BYTE, 0,
+            MPI_COMM_WORLD);
 #endif
 
   /* Check that we can write the snapshots by testing if the output

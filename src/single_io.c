@@ -829,10 +829,11 @@ void write_output_single(struct engine* e, const char* baseName,
     for (int i = 0; i < num_fields; ++i) {
       char field[200] = "OutputFields:";
       strcat(field, list[i].name);
-      int should_write = parser_get_opt_param_int(output_fields, field, list[i].default_output);
+      int should_write = parser_get_opt_param_int(output_fields, field,
+                                                  list[i].default_output);
       if (should_write)
-	writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
-		   internal_units, snapshot_units);
+        writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+                   internal_units, snapshot_units);
     }
 
     /* Free temporary array */

@@ -76,12 +76,13 @@ __attribute__((always_inline)) INLINE static int chemistry_write_particles(
   list[0] = io_make_output_field(
       "SmoothedElementAbundance", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
+
   list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
                                  chemistry_data.Z);
 
   list[2] = io_make_output_field("ElementAbundance", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 parts, chemistry_data.metal_mass_fraction);
+                                 parts, chemistry_data.metal_mass_fraction, 1);
 
   return 3;
 }
