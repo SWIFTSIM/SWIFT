@@ -78,6 +78,7 @@ Snapshots:
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
   UnitCurrent_in_cgs:  1  # (Optional) Unit system for the outputs (Amperes)
   UnitTemp_in_cgs:     1  # (Optional) Unit system for the outputs (Kelvin)
+  FieldsFilename:      output_fields_example.yml # (Optional) File defining output fields
 
 # Parameters governing the conserved quantities statistics
 Statistics:

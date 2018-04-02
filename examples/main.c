@@ -90,8 +90,6 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
-  printf("  %2s %14s %s\n", "-o", "",
-         "Filename of the output fields parameters.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
@@ -200,12 +198,11 @@ int main(int argc, char *argv[]) {
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
   char restart_file[200] = "";
-  char outputFieldsFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -260,14 +257,6 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) printf("Error parsing fixed number of steps.\n");
           if (myrank == 0) print_help_message();
           return 1;
-        }
-        break;
-      case 'o':
-        if (sscanf(optarg, "%s", outputFieldsFileName) != 1) {
-          if (myrank == 0) {
-            printf("Error parsing output fields filename");
-            print_help_message();
-          }
         }
         break;
       case 'P':
@@ -473,6 +462,10 @@ int main(int argc, char *argv[]) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   if (output_fields == NULL)
     error("Error allocating memory for the output fields file.");
+
+  char outputFieldsFileName[200];
+  parser_get_opt_param_string(params, "Snapshots:FieldsFilename",
+			      outputFieldsFileName, "");
   if (myrank == 0) {
     message("Reading runtime output fields from file '%s'",
             outputFieldsFileName);
