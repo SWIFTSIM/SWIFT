@@ -1,4 +1,27 @@
-OutputFields:
-  Coordinates: 1
-  Masses: 0
+# Gas
+PartType0:
+  Coordinates: 1 # Request to write output
+  Masses: 1
+  Velocities: 1
   SmoothingLenght: 1
+  Entropy: 1
+  ParticleIDs: 1
+  Density: 1
+  InternalEnergy: 0 # Request to not write output
+  Pressure: 0
+  Potential: 0
+
+# Dark Matter
+PartType1:
+  Coordinates: 1
+  Velocities: 1
+  Masses: 1
+  ParticleIDs: 1
+  Potential: 0
+
+# Stars
+PartType2:
+  Coordinates: 1
+  Velocities: 1
+  Masses: 1
+  ParticleIDs: 1
