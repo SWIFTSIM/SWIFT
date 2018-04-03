@@ -60,13 +60,13 @@ void star_write_particles(const struct spart* sparts, struct io_props* list,
 
   /* List what we want to read */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 sparts, x, 1);
+                                 sparts, x);
   list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
-                                 sparts, v, 1);
+                                 sparts, v);
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass, 1);
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, id, 1);
+                                 sparts, id);
 }
 
 #endif /* SWIFT_DEFAULT_STAR_IO_H */

@@ -106,16 +106,16 @@ void darkmatter_write_particles(const struct gpart* gparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos, 1);
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos);
   list[1] = io_make_output_field_convert_gpart(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel, 1);
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel);
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass, 1);
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
   list[3] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS,
-                           gparts, id_or_neg_offset, 1);
+                           gparts, id_or_neg_offset);
   list[4] = io_make_output_field("Potential", FLOAT, 1, UNIT_CONV_POTENTIAL,
-                                 gparts, potential, 1);
+                                 gparts, potential);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */
