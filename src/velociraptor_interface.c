@@ -25,12 +25,16 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
 #include <unistd.h>
 
 /* This object's header. */
 #include "velociraptor_interface.h"
+
+/* Local includes. */
+#include "common_io.h"
 
 /**
  * @brief Initialise VELOCIraptor with input and output file names along with cosmological info needed to run.
@@ -161,18 +165,15 @@ void velociraptor_invoke(struct engine *e) {
     
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
 
-    /* Check that we can write the snapshots by testing if the output
-     * directory exists and is searchable and writable. */
-    char outputfilename[PARSER_MAX_LINE_SIZE];
-    parser_get_param_string(e->parameter_file, "StructureFinding:output_file_name", outputfilename);
-    const char *dirp = dirname(outputfilename);
-    if (access(dirp, W_OK | X_OK) != 0) {
-        error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
-    }
-    
-    message("Output file name: %s", outputfilename);
-    
-    InvokeVelociraptor(nr_gparts, gparts, cell_node_ids, outputfilename);
+    /* Read output base name and append with the step number */
+    char outputbasename[PARSER_MAX_LINE_SIZE];
+    parser_get_param_string(e->parameter_file, "StructureFinding:output_file_name", outputbasename);
+   
+    char outputFileName[FILENAME_BUFFER_SIZE];
+    snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04i.VELOCIraptor", outputbasename,
+             e->step);
+   
+    InvokeVelociraptor(nr_gparts, gparts, cell_node_ids, outputFileName);
     
     /* Free cell node ids after VELOCIraptor has copied them. */
     free(cell_node_ids);

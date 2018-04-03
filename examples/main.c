@@ -471,6 +471,17 @@ int main(int argc, char *argv[]) {
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }
+ 
+  /* Check that we can write the structure finding catalogues by testing if the output
+   * directory exists and is searchable and writable. */
+  if(with_structure_finding) { 
+    char stfbasename[PARSER_MAX_LINE_SIZE];
+    parser_get_param_string(params, "StructureFinding:output_file_name", stfbasename);
+    const char *stfdirp = dirname(stfbasename);
+    if (access(stfdirp, W_OK | X_OK) != 0) {
+      error("Cannot write stf catalogues in directory %s (%s)", stfdirp, strerror(errno));
+    }
+  }
 
   /* Prepare the domain decomposition scheme */
   struct repartition reparttype;
