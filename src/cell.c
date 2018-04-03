@@ -754,12 +754,13 @@ void cell_sunlocktree(struct cell *c) {
 }
 
 /**
- * @brief Sort the part buffers into eight bins along the given pivots.
- *
- * Assumes the #cell has all its progeny and sets the parts and counts
- * in each sub-cell.
+ * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
+ * @param parts_offset Offset of the cell parts array relative to the
+ *        space's parts array, i.e. c->parts - s->parts.
+ * @param sparts_offset Offset of the cell sparts array relative to the
+ *        space's sparts array, i.e. c->sparts - s->sparts.
  * @param buff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices.
  * @param sbuff A buffer with at least max(c->scount, c->gcount) entries,
@@ -767,15 +768,39 @@ void cell_sunlocktree(struct cell *c) {
  * @param gbuff A buffer with at least max(c->count, c->gcount) entries,
  *        used for sorting indices for the gparts.
  */
-void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff) {
 
   const int count = c->count, gcount = c->gcount, scount = c->scount;
+  struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
+  struct gpart *gparts = c->gparts;
+  struct spart *sparts = c->sparts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the buffs are OK. */
+  for (int k = 0; k < count; k++) {
+    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
+      error("Inconsistent buff contents.");
+  }
+  for (int k = 0; k < gcount; k++) {
+    if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
+        gbuff[k].x[2] != gparts[k].x[2])
+      error("Inconsistent gbuff contents.");
+  }
+  for (int k = 0; k < scount; k++) {
+    if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
+        sbuff[k].x[2] != sparts[k].x[2])
+      error("Inconsistent sbuff contents.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < count; k++) {
@@ -798,6 +823,8 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = buff[k].ind;
       if (bid != bucket) {
+        struct part part = parts[k];
+        struct xpart xpart = xparts[k];
         struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -805,10 +832,18 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
             j++;
             bucket_count[bid]++;
           }
+          memswap(&parts[j], &part, sizeof(struct part));
+          memswap(&xparts[j], &xpart, sizeof(struct xpart));
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
+          if (parts[j].gpart)
+            parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
           bid = temp_buff.ind;
         }
+        parts[k] = part;
+        xparts[k] = xpart;
         buff[k] = temp_buff;
+        if (parts[k].gpart)
+          parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
       }
       bucket_count[bid]++;
     }
@@ -825,6 +860,9 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
   /* Check that the buffs are OK. */
   for (int k = 1; k < count; k++) {
     if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
+    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
+      error("Inconsistent buff contents (k=%i).", k);
   }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -839,36 +877,44 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
 
   /* Verify a few sub-cells. */
   for (int k = 0; k < c->progeny[0]->count; k++)
-    if (buff[k].x[0] >= pivot[0] || buff[k].x[1] >= pivot[1] ||
-        buff[k].x[2] >= pivot[2])
+    if (c->progeny[0]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[0]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[0]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=0).");
-  for (int k = bucket_offset[1]; k < bucket_offset[2]; k++)
-    if (buff[k].x[0] >= pivot[0] || buff[k].x[1] >= pivot[1] ||
-        buff[k].x[2] < pivot[2])
+  for (int k = 0; k < c->progeny[1]->count; k++)
+    if (c->progeny[1]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[1]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[1]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=1).");
-  for (int k = bucket_offset[2]; k < bucket_offset[3]; k++)
-    if (buff[k].x[0] >= pivot[0] || buff[k].x[1] < pivot[1] ||
-        buff[k].x[2] >= pivot[2])
+  for (int k = 0; k < c->progeny[2]->count; k++)
+    if (c->progeny[2]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[2]->parts[k].x[1] < pivot[1] ||
+        c->progeny[2]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=2).");
-  for (int k = bucket_offset[3]; k < bucket_offset[4]; k++)
-    if (buff[k].x[0] >= pivot[0] || buff[k].x[1] < pivot[1] ||
-        buff[k].x[2] < pivot[2])
+  for (int k = 0; k < c->progeny[3]->count; k++)
+    if (c->progeny[3]->parts[k].x[0] >= pivot[0] ||
+        c->progeny[3]->parts[k].x[1] < pivot[1] ||
+        c->progeny[3]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=3).");
-  for (int k = bucket_offset[4]; k < bucket_offset[5]; k++)
-    if (buff[k].x[0] < pivot[0] || buff[k].x[1] >= pivot[1] ||
-        buff[k].x[2] >= pivot[2])
+  for (int k = 0; k < c->progeny[4]->count; k++)
+    if (c->progeny[4]->parts[k].x[0] < pivot[0] ||
+        c->progeny[4]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[4]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=4).");
-  for (int k = bucket_offset[5]; k < bucket_offset[6]; k++)
-    if (buff[k].x[0] < pivot[0] || buff[k].x[1] >= pivot[1] ||
-        buff[k].x[2] < pivot[2])
+  for (int k = 0; k < c->progeny[5]->count; k++)
+    if (c->progeny[5]->parts[k].x[0] < pivot[0] ||
+        c->progeny[5]->parts[k].x[1] >= pivot[1] ||
+        c->progeny[5]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=5).");
-  for (int k = bucket_offset[6]; k < bucket_offset[7]; k++)
-    if (buff[k].x[0] < pivot[0] || buff[k].x[1] < pivot[1] ||
-        buff[k].x[2] >= pivot[2])
+  for (int k = 0; k < c->progeny[6]->count; k++)
+    if (c->progeny[6]->parts[k].x[0] < pivot[0] ||
+        c->progeny[6]->parts[k].x[1] < pivot[1] ||
+        c->progeny[6]->parts[k].x[2] >= pivot[2])
       error("Sorting failed (progeny=6).");
-  for (int k = bucket_offset[7]; k < c->count; k++)
-    if (buff[k].x[0] < pivot[0] || buff[k].x[1] < pivot[1] ||
-        buff[k].x[2] < pivot[2])
+  for (int k = 0; k < c->progeny[7]->count; k++)
+    if (c->progeny[7]->parts[k].x[0] < pivot[0] ||
+        c->progeny[7]->parts[k].x[1] < pivot[1] ||
+        c->progeny[7]->parts[k].x[2] < pivot[2])
       error("Sorting failed (progeny=7).");
 #endif
 
@@ -896,6 +942,7 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = sbuff[k].ind;
       if (bid != bucket) {
+        struct spart spart = sparts[k];
         struct cell_buff temp_buff = sbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -903,10 +950,16 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
             j++;
             bucket_count[bid]++;
           }
+          memswap(&sparts[j], &spart, sizeof(struct spart));
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (sparts[j].gpart)
+            sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
           bid = temp_buff.ind;
         }
+        sparts[k] = spart;
         sbuff[k] = temp_buff;
+        if (sparts[k].gpart)
+          sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
       }
       bucket_count[bid]++;
     }
@@ -942,6 +995,7 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = gbuff[k].ind;
       if (bid != bucket) {
+        struct gpart gpart = gparts[k];
         struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -949,10 +1003,25 @@ void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
             j++;
             bucket_count[bid]++;
           }
+          memswap(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (gparts[j].type == swift_type_gas) {
+            parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
+                &gparts[j];
+          } else if (gparts[j].type == swift_type_star) {
+            sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
+                &gparts[j];
+          }
           bid = temp_buff.ind;
         }
+        gparts[k] = gpart;
         gbuff[k] = temp_buff;
+        if (gparts[k].type == swift_type_gas) {
+          parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
+        } else if (gparts[k].type == swift_type_star) {
+          sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
+              &gparts[k];
+        }
       }
       bucket_count[bid]++;
     }
@@ -1015,23 +1084,6 @@ void cell_sanitize(struct cell *c, int treated) {
 
   /* Record the change */
   c->h_max = h_max;
-}
-
-/**
- * @brief Converts hydro quantities to a valid state after the initial density
- * calculation
- *
- * @param c Cell to act upon
- * @param data Unused parameter
- */
-void cell_convert_hydro(struct cell *c, void *data) {
-
-  struct part *p = c->parts;
-  struct xpart *xp = c->xparts;
-
-  for (int i = 0; i < c->count; ++i) {
-    hydro_convert_quantities(&p[i], &xp[i]);
-  }
 }
 
 /**

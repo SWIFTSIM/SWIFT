@@ -1701,7 +1701,7 @@ void space_map_cells_pre(struct space *s, int full,
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *buff, struct cell_buff *sbuff,
-                           struct cell_buff *gbuff, int *cell_id) {
+                           struct cell_buff *gbuff) {
 
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1718,6 +1718,41 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct spart *sparts = c->sparts;
   struct xpart *xparts = c->xparts;
   struct engine *e = s->e;
+
+  /* If the buff is NULL, allocate it, and remember to free it. */
+  const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
+  if (allocate_buffer) {
+    if (count > 0) {
+      if (posix_memalign((void **)&buff, SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * count) != 0)
+        error("Failed to allocate temporary indices.");
+      for (int k = 0; k < count; k++) {
+        buff[k].x[0] = parts[k].x[0];
+        buff[k].x[1] = parts[k].x[1];
+        buff[k].x[2] = parts[k].x[2];
+      }
+    }
+    if (gcount > 0) {
+      if (posix_memalign((void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * gcount) != 0)
+        error("Failed to allocate temporary indices.");
+      for (int k = 0; k < gcount; k++) {
+        gbuff[k].x[0] = gparts[k].x[0];
+        gbuff[k].x[1] = gparts[k].x[1];
+        gbuff[k].x[2] = gparts[k].x[2];
+      }
+    }
+    if (scount > 0) {
+      if (posix_memalign((void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * scount) != 0)
+        error("Failed to allocate temporary indices.");
+      for (int k = 0; k < scount; k++) {
+        sbuff[k].x[0] = sparts[k].x[0];
+        sbuff[k].x[1] = sparts[k].x[1];
+        sbuff[k].x[2] = sparts[k].x[2];
+      }
+    }
+  }
 
   /* Check the depth. */
   while (depth > (maxdepth = s->maxdepth)) {
@@ -1774,12 +1809,12 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell data. */
-    cell_split(c, buff, sbuff, gbuff);
+    cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
+               gbuff);
 
     /* Remove any progeny with zero parts. */
-    struct cell_buff *progeny_buff = buff;
-    struct cell_buff *progeny_gbuff = gbuff;
-    struct cell_buff *progeny_sbuff = sbuff;
+    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
+                     *progeny_sbuff = sbuff;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
           c->progeny[k]->scount == 0) {
@@ -1787,10 +1822,10 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->progeny[k] = NULL;
       } else {
         space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
-                              progeny_gbuff, cell_id);
-        if (progeny_buff) progeny_buff += c->progeny[k]->count;
-        if (progeny_gbuff) progeny_gbuff += c->progeny[k]->gcount;
-        if (progeny_sbuff) progeny_sbuff += c->progeny[k]->scount;
+                              progeny_gbuff);
+        progeny_buff += c->progeny[k]->count;
+        progeny_gbuff += c->progeny[k]->gcount;
+        progeny_sbuff += c->progeny[k]->scount;
         h_max = max(h_max, c->progeny[k]->h_max);
         ti_hydro_end_min =
             min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
@@ -1883,57 +1918,42 @@ void space_split_recursive(struct space *s, struct cell *c,
     timebin_t hydro_time_bin_min = num_time_bins, hydro_time_bin_max = 0;
     timebin_t gravity_time_bin_min = num_time_bins, gravity_time_bin_max = 0;
 
-    /* Get a pointer to the root cell (we probably want to make this a parameter
-     * later). */
-    struct cell *root = c;
-    while (root->parent != NULL) root = root->parent;
-
-    /* Get a unique sequence number of this leaf cell. */
-    const int current_cell_id = (*cell_id)++;
-
-    /* Put the parts and xparts in the right order. */
-    const int parts_offset = c->parts - root->parts;
+    /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
-      /* Set the cell_id in the buffer. */
-      buff[k].ind = current_cell_id;
-
-      /* parts: Get dt_min/dt_max and h_max. */
-      struct part *p = &parts[buff[k].offset - parts_offset];
-      hydro_time_bin_min = min(hydro_time_bin_min, p->time_bin);
-      hydro_time_bin_max = max(hydro_time_bin_max, p->time_bin);
-      h_max = max(h_max, p->h);
-
-      /* xparts: Reset x_diff */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+#endif
+      hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
+      hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
+      h_max = max(h_max, parts[k].h);
+    }
+    /* parts: Reset x_diff */
+    for (int k = 0; k < count; k++) {
       xparts[k].x_diff[0] = 0.f;
       xparts[k].x_diff[1] = 0.f;
       xparts[k].x_diff[2] = 0.f;
     }
-
-    /* Put the sparts in the right order. */
-    const int sparts_offset = c->sparts - root->sparts;
-    for (int k = 0; k < scount; k++) {
-      /* Set the cell_id in the buffer. */
-      sbuff[k].ind = current_cell_id;
-
-      /* sparts: Get dt_min/dt_max */
-      struct spart *sp = &sparts[sbuff[k].offset - sparts_offset];
-      gravity_time_bin_min = min(gravity_time_bin_min, sp->time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, sp->time_bin);
-    }
-
-    /* Put the gparts in the right order. */
-    const int gparts_offset = c->gparts - root->gparts;
+    /* gparts: Get dt_min/dt_max, reset x_diff. */
     for (int k = 0; k < gcount; k++) {
-      /* Set the cell_id in the buffer. */
-      gbuff[k].ind = current_cell_id;
-
-      /* gparts: Get dt_min/dt_max, reset x_diff. */
-      struct gpart *gp = &gparts[gbuff[k].offset - gparts_offset];
-      gravity_time_bin_min = min(gravity_time_bin_min, gp->time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, gp->time_bin);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited g-particle present in space_split()");
+#endif
+      gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
       gparts[k].x_diff[0] = 0.f;
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
+    }
+    /* sparts: Get dt_min/dt_max */
+    for (int k = 0; k < scount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited s-particle present in space_split()");
+#endif
+      gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
+      gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
     }
 
     /* Convert into integer times */
@@ -2000,106 +2020,13 @@ void space_split_recursive(struct space *s, struct cell *c,
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
-}
-
-void space_split_cell(struct space *s, struct cell *c) {
-
-  struct part *parts = c->parts;
-  struct gpart *gparts = c->gparts;
-  struct spart *sparts = c->sparts;
-  const int count = c->count;
-  const int gcount = c->gcount;
-  const int scount = c->scount;
-
-  struct cell_buff *buff = NULL;
-  struct cell_buff *gbuff = NULL;
-  struct cell_buff *sbuff = NULL;
-
-  /* Allocate and fill the particle position buffers. */
-  if (count > 0) {
-    if (posix_memalign((void **)&buff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * count) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < count; k++) {
-      buff[k].x[0] = parts[k].x[0];
-      buff[k].x[1] = parts[k].x[1];
-      buff[k].x[2] = parts[k].x[2];
-      buff[k].offset = k;
-    }
-  }
-  if (gcount > 0) {
-    if (posix_memalign((void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * gcount) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < gcount; k++) {
-      gbuff[k].x[0] = gparts[k].x[0];
-      gbuff[k].x[1] = gparts[k].x[1];
-      gbuff[k].x[2] = gparts[k].x[2];
-      gbuff[k].offset = k;
-    }
-  }
-  if (scount > 0) {
-    if (posix_memalign((void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * scount) != 0)
-      error("Failed to allocate temporary indices.");
-    for (int k = 0; k < scount; k++) {
-      sbuff[k].x[0] = sparts[k].x[0];
-      sbuff[k].x[1] = sparts[k].x[1];
-      sbuff[k].x[2] = sparts[k].x[2];
-      sbuff[k].offset = k;
-    }
-  }
-
-  /* Call the recursive cell splitting function. */
-  int num_leaf_cells = 0;
-  space_split_recursive(s, c, buff, sbuff, gbuff, &num_leaf_cells);
-
-  /* Collect the particle leaf cell indices. */
-  int max_count = (count > gcount) ? count : gcount;
-  if (max_count < scount) max_count = scount;
-  int *leaf_cell_ind = (int *)malloc(sizeof(int) * max_count);
-  int *leaf_cell_count = (int *)calloc(sizeof(int), num_leaf_cells);
-  if (!leaf_cell_ind || !leaf_cell_count)
-    error("Error allocating temporary leaf cell index and count.");
-  for (int k = 0; k < count; k++) {
-    leaf_cell_ind[buff[k].offset] = buff[k].ind;
-    leaf_cell_count[buff[k].ind]++;
-  }
-
-  /* Re-shuffle the parts into the correct leaf cells and clean up. */
-  space_parts_sort(c->parts, c->xparts, leaf_cell_ind, leaf_cell_count,
-                   num_leaf_cells, c->parts - s->parts);
-
-  /* Re-populate the leaf_cell indices and counts for sparts. */
-  bzero(leaf_cell_count, sizeof(int) * num_leaf_cells);
-  for (int k = 0; k < scount; k++) {
-    leaf_cell_ind[sbuff[k].offset] = sbuff[k].ind;
-    leaf_cell_count[sbuff[k].ind]++;
-  }
-
-  /* Re-shuffle the sparts into the correct leaf cells and clean up. */
-  space_sparts_sort(c->sparts, leaf_cell_ind, leaf_cell_count, num_leaf_cells,
-                    c->sparts - s->sparts);
-
-  /* Re-populate the leaf_cell indices and counts for sparts. */
-  bzero(leaf_cell_count, sizeof(int) * num_leaf_cells);
-  for (int k = 0; k < scount; k++) {
-    leaf_cell_ind[gbuff[k].offset] = gbuff[k].ind;
-    leaf_cell_count[gbuff[k].ind]++;
-  }
-
-  /* Re-shuffle the gparts into the correct leaf cells and clean up. */
-  space_gparts_sort(c->gparts, s->parts, s->sparts, leaf_cell_ind,
-                    leaf_cell_count, num_leaf_cells);
-
-  /* Clean up the leaf cell sorting data. */
-  free(leaf_cell_ind);
-  free(leaf_cell_count);
 
   /* Clean up. */
-  if (buff != NULL) free(buff);
-  if (gbuff != NULL) free(gbuff);
-  if (sbuff != NULL) free(sbuff);
+  if (allocate_buffer) {
+    if (buff != NULL) free(buff);
+    if (gbuff != NULL) free(gbuff);
+    if (sbuff != NULL) free(sbuff);
+  }
 }
 
 /**
@@ -2118,7 +2045,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    space_split_cell(s, c);
+    space_split_recursive(s, c, NULL, NULL, NULL);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2239,7 +2166,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       if (posix_memalign((void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
-        
+
       /* Clear the newly-allocated cells. */
       bzero(s->cells_sub, sizeof(struct cell) * space_cellallocchunk);
 
@@ -2293,11 +2220,12 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
 /**
  * @brief Free sort arrays in any cells in the cell buffer.
- * 
+ *
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
-  for (struct cell *finger = s->cells_sub; finger != NULL; finger = finger->next) {
+  for (struct cell *finger = s->cells_sub; finger != NULL;
+       finger = finger->next) {
     for (int k = 0; k < 13; k++)
       if (finger->sort[k] != NULL) {
         free(finger->sort[k]);

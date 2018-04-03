@@ -54,10 +54,9 @@ struct scheduler;
 /* Global variables. */
 extern int cell_next_tag;
 
-/* Struct to temporarily buffer the particle locationsm, offset, and bin id. */
+/* Struct to temporarily buffer the particle locations and bin id. */
 struct cell_buff {
   double x[3];
-  int offset;
   int ind;
 } SWIFT_STRUCT_ALIGN;
 
@@ -471,7 +470,8 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, struct cell_buff *buff, struct cell_buff *sbuff,
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
@@ -492,7 +492,6 @@ int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
-void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current);
 void cell_check_multipole(struct cell *c, void *data);
