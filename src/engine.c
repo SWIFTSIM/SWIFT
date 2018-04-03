@@ -4491,7 +4491,6 @@ void engine_step(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   if ((e->policy & engine_policy_structure_finding)) {
-    double time = e->timeFirstSnapshot;
     if(e->stf_output_time_format == 0 && e->step%(int)e->delta_time_stf_freq == 0) 
       e->run_stf = 1;
     else if(e->stf_output_time_format == 1 && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
@@ -5643,12 +5642,12 @@ void engine_config(int restart, struct engine *e,
         e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first stf output */
-  //engine_compute_next_stf_time(e);
-  message("Next STF step will be: %d", e->ti_nextSTF);
+  engine_compute_next_stf_time(e);
+  message("Next STF step will be: %lld", e->ti_nextSTF);
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
-  message("Next snapshot step will be: %d", e->ti_nextSnapshot);
+  message("Next snapshot step will be: %lld", e->ti_nextSnapshot);
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
