@@ -25,12 +25,16 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_io.h"
 #include "hydro.h"
+#include "hydro_io.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "stars_io.h"
 #include "threadpool.h"
 #include "units.h"
 #include "version.h"
@@ -804,4 +808,87 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
   if (count != Ndm)
     error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
+}
+
+/**
+ * @brief Verify the io parameter file
+ *
+ * @param e The #engine
+ */
+void io_check_output_fields(const struct swift_params *output_fields,
+    const struct engine *e) {
+
+  if (output_fields->paramCount == 0)
+    error("You need to provide an output field in %s", output_fields->fileName);
+
+  /* particles */
+  const struct part* parts = e->s->parts;
+  const struct xpart* xparts = e->s->xparts;
+  const struct gpart* gparts = e->s->gparts;
+  const struct spart* sparts = e->s->sparts;
+
+  /* number of particles */
+  const size_t Ngas = e->s->nr_parts;
+  const size_t Nstars = e->s->nr_sparts;
+  const size_t Ntot = e->s->nr_gparts;
+
+  const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
+
+  long long N_total[swift_type_count] = {
+      (long long)Ngas, (long long)Ndm, 0, 0, (long long)Nstars, 0};
+
+
+  /* get all the possible outputs */
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Don't do anything if no particle of this kind */
+    if (N_total[ptype] == 0) continue;
+
+    /* Write particle fields from the particle structure */
+    switch (ptype) {
+
+    case swift_type_gas:
+      hydro_write_particles(parts, xparts, list, &num_fields);
+      num_fields += chemistry_write_particles(parts, list + num_fields);
+      break;
+
+    case swift_type_dark_matter:
+      darkmatter_write_particles(gparts, list, &num_fields);
+      break;
+
+    case swift_type_star:
+      star_write_particles(sparts, list, &num_fields);
+      break;
+
+    default:
+      error("Particle Type %d not yet supported. Aborting", ptype);
+    } 
+    /* loop over each parameter */
+    for (int param_id = 0; param_id < output_fields->paramCount; param_id++) {
+      const char *param_name = output_fields->data[param_id].name;
+      
+      /* skip if wrong part type */
+      char section_name[200];
+      sprintf(section_name, "PartType%i", ptype);
+      if (strstr(param_name, section_name) == NULL)
+	continue;
+
+      int found = 0;
+      
+      /* loop over each possible output field */
+      for (int field_id = 0; field_id < num_fields; field_id++) {
+	char field_name[200];
+	sprintf(field_name, "PartType%i:%s", ptype, list[field_id].name);
+	if (strcmp(param_name, field_name) == 0) {
+	  found = 1;
+	  continue;
+	}
+      }
+      if (!found)
+	error("Unable to find field corresponding to %s", param_name);
+    }
+  }
+
 }

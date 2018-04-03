@@ -29,6 +29,7 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "clocks.h"
+#include "common_io.h"
 #include "const.h"
 #include "cooling.h"
 #include "cosmology.h"

@@ -3,7 +3,7 @@ PartType0:
   Coordinates: 1 # Request to write output
   Masses: 1
   Velocities: 1
-  SmoothingLenght: 1
+  SmoothingLength: 1
   Entropy: 1
   ParticleIDs: 1
   Density: 1

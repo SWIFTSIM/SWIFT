@@ -100,4 +100,7 @@ void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
                               struct gpart* const gparts, size_t Nstars,
                               size_t Ndm);
 
+void io_check_output_fields(const struct swift_params *output_fields,
+			      const struct engine *e);
+
 #endif /* SWIFT_COMMON_IO_H */
