@@ -827,7 +827,7 @@ void write_output_single(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      char field[200];
+      char field[256];
       sprintf(field, "ParticleType%i:%s", i, list[i].name);
       int should_write = parser_get_opt_param_int(output_fields, field, 0);
       if (should_write)

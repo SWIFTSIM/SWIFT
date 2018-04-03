@@ -1264,7 +1264,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      char field[200] = "OutputFields:";
+      char field[256] = "OutputFields:";
       strcat(field, list[i].name);
       int should_write = parser_get_opt_param_int(output_fields, field, 0);
       if (should_write)

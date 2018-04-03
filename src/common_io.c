@@ -879,7 +879,7 @@ void io_check_output_fields(const struct swift_params *output_fields,
       
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
-	char field_name[200];
+	char field_name[256];
 	sprintf(field_name, "PartType%i:%s", ptype, list[field_id].name);
 	if (strcmp(param_name, field_name) == 0) {
 	  found = 1;
