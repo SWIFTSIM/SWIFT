@@ -465,7 +465,7 @@ int main(int argc, char *argv[]) {
 
   char outputFieldsFileName[200];
   parser_get_param_string(params, "Snapshots:FieldsFilename",
-			  outputFieldsFileName);
+                          outputFieldsFileName);
   if (myrank == 0) {
     message("Reading runtime output fields from file '%s'",
             outputFieldsFileName);

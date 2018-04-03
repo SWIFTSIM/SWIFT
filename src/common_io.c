@@ -815,8 +815,8 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
  *
  * @param e The #engine
  */
-void io_check_output_fields(const struct swift_params *output_fields,
-    const struct engine *e) {
+void io_check_output_fields(const struct swift_params* output_fields,
+                            const struct engine* e) {
 
   if (output_fields->paramCount == 0)
     error("You need to provide an output field in %s", output_fields->fileName);
@@ -837,7 +837,6 @@ void io_check_output_fields(const struct swift_params *output_fields,
   long long N_total[swift_type_count] = {
       (long long)Ngas, (long long)Ndm, 0, 0, (long long)Nstars, 0};
 
-
   /* get all the possible outputs */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
     int num_fields = 0;
@@ -849,46 +848,43 @@ void io_check_output_fields(const struct swift_params *output_fields,
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
-    case swift_type_gas:
-      hydro_write_particles(parts, xparts, list, &num_fields);
-      num_fields += chemistry_write_particles(parts, list + num_fields);
-      break;
+      case swift_type_gas:
+        hydro_write_particles(parts, xparts, list, &num_fields);
+        num_fields += chemistry_write_particles(parts, list + num_fields);
+        break;
 
-    case swift_type_dark_matter:
-      darkmatter_write_particles(gparts, list, &num_fields);
-      break;
+      case swift_type_dark_matter:
+        darkmatter_write_particles(gparts, list, &num_fields);
+        break;
 
-    case swift_type_star:
-      star_write_particles(sparts, list, &num_fields);
-      break;
+      case swift_type_star:
+        star_write_particles(sparts, list, &num_fields);
+        break;
 
-    default:
-      error("Particle Type %d not yet supported. Aborting", ptype);
-    } 
+      default:
+        error("Particle Type %d not yet supported. Aborting", ptype);
+    }
     /* loop over each parameter */
     for (int param_id = 0; param_id < output_fields->paramCount; param_id++) {
-      const char *param_name = output_fields->data[param_id].name;
-      
+      const char* param_name = output_fields->data[param_id].name;
+
       /* skip if wrong part type */
       char section_name[200];
       sprintf(section_name, "PartType%i", ptype);
-      if (strstr(param_name, section_name) == NULL)
-	continue;
+      if (strstr(param_name, section_name) == NULL) continue;
 
       int found = 0;
-      
+
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
-	char field_name[256];
-	sprintf(field_name, "PartType%i:%s", ptype, list[field_id].name);
-	if (strcmp(param_name, field_name) == 0) {
-	  found = 1;
-	  continue;
-	}
+        char field_name[256];
+        sprintf(field_name, "PartType%i:%s", ptype, list[field_id].name);
+        if (strcmp(param_name, field_name) == 0) {
+          found = 1;
+          continue;
+        }
       }
-      if (!found)
-	error("Unable to find field corresponding to %s", param_name);
+      if (!found) error("Unable to find field corresponding to %s", param_name);
     }
   }
-
 }

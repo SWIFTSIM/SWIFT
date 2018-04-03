@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static int chemistry_write_particles(
 
   list[2] = io_make_output_field("ElementAbundance", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 parts, chemistry_data.metal_mass_fraction, 1);
+                                 parts, chemistry_data.metal_mass_fraction);
 
   return 3;
 }

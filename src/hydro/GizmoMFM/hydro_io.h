@@ -185,9 +185,8 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
                                               UNIT_CONV_LENGTH, parts, xparts,
                                               convert_part_pos);
-  list[1] =
-      io_make_output_field_convert_part("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
-                                        parts, xparts, convert_part_vel);
+  list[1] = io_make_output_field_convert_part(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
 
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
                                  conserved.mass);
@@ -207,9 +206,9 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
   list[9] = io_make_output_field_convert_part(
       "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, xparts, convert_Etot);
 
-  list[10] = io_make_output_field_convert_part(
-      "Potential", FLOAT, 1, UNIT_CONV_POTENTIAL, parts, xparts,
-      convert_part_potential);
+  list[10] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                               UNIT_CONV_POTENTIAL, parts,
+                                               xparts, convert_part_potential);
 }
 
 /**

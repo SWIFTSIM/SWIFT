@@ -56,22 +56,22 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
 }
 
 __attribute__((always_inline)) INLINE static void convert_part_u(
-    const struct engine* e, const struct part* p,
-    const struct xpart* xp, float* ret) {
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    float* ret) {
 
   ret[0] = hydro_get_comoving_internal_energy(p);
 }
 
 __attribute__((always_inline)) INLINE static void convert_part_P(
-    const struct engine* e, const struct part* p,
-    const struct xpart* xp, float* ret) {
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    float* ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
 
 __attribute__((always_inline)) INLINE static void convert_part_pos(
-    const struct engine* e, const struct part* p,
-    const struct xpart* xp, double* ret) {
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
@@ -85,8 +85,8 @@ __attribute__((always_inline)) INLINE static void convert_part_pos(
 }
 
 __attribute__((always_inline)) INLINE static void convert_part_vel(
-    const struct engine* e, const struct part* p,
-    const struct xpart* xp, float* ret) {
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -120,8 +120,8 @@ __attribute__((always_inline)) INLINE static void convert_part_vel(
 }
 
 __attribute__((always_inline)) INLINE static void convert_part_potential(
-    const struct engine* e, const struct part* p,
-    const struct xpart* xp, float* ret) {
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    float* ret) {
 
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
@@ -137,8 +137,8 @@ __attribute__((always_inline)) INLINE static void convert_part_potential(
  * @param num_fields The number of i/o fields to write.
  */
 __attribute__((always_inline)) INLINE static void hydro_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list, int* num_fields) {
+    const struct part* parts, const struct xpart* xparts, struct io_props* list,
+    int* num_fields) {
 
   *num_fields = 10;
 
@@ -146,9 +146,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
                                               UNIT_CONV_LENGTH, parts, xparts,
                                               convert_part_pos);
-  list[1] =
-      io_make_output_field_convert_part("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
-                                        parts, xparts, convert_part_vel);
+  list[1] = io_make_output_field_convert_part(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
   list[2] =
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
@@ -157,18 +156,17 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
-  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
-                                 rho);
+  list[6] =
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
   list[7] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
                                               parts, xparts, convert_part_u);
-  list[8] = io_make_output_field_convert_part("Pressure", FLOAT, 1,
-                                              UNIT_CONV_PRESSURE, parts, xparts,
-                                              convert_part_P);
+  list[8] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_part_P);
 
-  list[9] = io_make_output_field_convert_part(
-      "Potential", FLOAT, 1, UNIT_CONV_POTENTIAL, parts, xparts,
-      convert_part_potential);
+  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                              UNIT_CONV_POTENTIAL, parts,
+                                              xparts, convert_part_potential);
 
 #ifdef DEBUG_INTERACTIONS_SPH
 
@@ -193,7 +191,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-__attribute__((always_inline)) INLINE static void hydro_write_flavour(hid_t h_grpsph) {
+__attribute__((always_inline)) INLINE static void hydro_write_flavour(
+    hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",

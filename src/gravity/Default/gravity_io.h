@@ -111,9 +111,8 @@ __attribute__((always_inline)) INLINE static void darkmatter_write_particles(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel);
   list[2] =
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS,
-                           gparts, id_or_neg_offset);
+  list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
   list[4] = io_make_output_field("Potential", FLOAT, 1, UNIT_CONV_POTENTIAL,
                                  gparts, potential);
 }
