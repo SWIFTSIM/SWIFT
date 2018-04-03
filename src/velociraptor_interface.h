@@ -68,8 +68,8 @@ struct siminfo {
 };
 
 /* VELOCIraptor interface. */
-void InitVelociraptor(char* config_name, char* output_name, struct cosmoinfo cosmo_info, struct unitinfo unit_info, struct siminfo sim_info);
-void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts, const int *cell_node_ids);
+void InitVelociraptor(char* config_name, struct cosmoinfo cosmo_info, struct unitinfo unit_info, struct siminfo sim_info);
+void InvokeVelociraptor(const int num_gravity_parts, struct gpart *gravity_parts, const int *cell_node_ids, char* output_name);
 
 /* VELOCIraptor wrapper functions. */
 void velociraptor_init(struct engine *e);
