@@ -4489,6 +4489,15 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
     e->dump_snapshot = 1;
 
+  /* Do we want to perform structure finding? */
+  if ((e->policy & engine_policy_structure_finding)) {
+    double time = e->timeFirstSnapshot;
+    if(e->stf_output_time_format == 0 && e->step%(int)e->delta_time_stf_freq == 0) 
+      e->run_stf = 1;
+    else if(e->stf_output_time_format == 1 && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+      e->run_stf = 1; 
+  }
+
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
   int drifted_all =
@@ -4521,8 +4530,15 @@ void engine_step(struct engine *e) {
     e->step_props |= engine_step_prop_statistics;
   }
 
-  /* Invoke VELOCIraptor every 250 timesteps thereafter. */
-  if ((e->policy & engine_policy_structure_finding) && e->step%250 == 0) velociraptor_invoke(e);
+  /* Perform structure finding? */
+  if (e->run_stf) {
+    velociraptor_invoke(e);
+    
+    /* ... and find the next output time */
+    engine_compute_next_stf_time(e);
+    
+    e->run_stf = 0;
+  }
 
   /* Now apply all the collected time step updates and particle counts. */
   collectgroup1_apply(&e->collect_group1, e);
@@ -5341,11 +5357,25 @@ void engine_config(int restart, struct engine *e,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
+  e->delta_time_stf_freq = 0;
+  e->stf_output_time_format = 0;
+  e->ti_nextSTF = 0;
+  e->run_stf = 0;
   engine_rank = nodeID;
 
   /* Initialise VELOCIraptor. */
-  if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
-  
+  if (e->policy & engine_policy_structure_finding) {
+    velociraptor_init(e);
+    e->stf_output_time_format = parser_get_param_int(params, "StructureFinding:output_time_format");
+    if(e->stf_output_time_format == 0) {
+      e->delta_time_stf_freq = (double)parser_get_param_int(params, "StructureFinding:output_times");
+    }
+    else if(e->stf_output_time_format == 1) {
+      e->delta_time_stf_freq = parser_get_param_double(params, "StructureFinding:output_times");
+    }
+    else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_time_format);
+  }
+
   /* Get the number of queues */
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
@@ -5612,8 +5642,13 @@ void engine_config(int restart, struct engine *e,
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
         e->timeFirstSnapshot, e->time_begin);
 
+  /* Find the time of the first stf output */
+  //engine_compute_next_stf_time(e);
+  message("Next STF step will be: %d", e->ti_nextSTF);
+
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
+  message("Next snapshot step will be: %d", e->ti_nextSnapshot);
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
@@ -5837,6 +5872,65 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     } else {
       const float next_snapshot_time =
           e->ti_nextSnapshot * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time set to t=%e.", next_snapshot_time);
+    }
+  }
+}
+
+/**
+ * @brief Computes the next time (on the time line) for structure finding
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_stf_time(struct engine *e) {
+
+  message("dt: %lf", e->delta_time_stf_freq);
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_stf_freq;
+  else
+    time_end = e->time_end + e->delta_time_stf_freq;
+
+  /* Find next snasphot above current time */
+  double time = e->timeFirstSnapshot;
+  
+  message("time: %lf, time_end: %lf", time, e->time_end);
+  message("dt: %lf", e->delta_time_stf_freq);
+  
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_nextSTF = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_nextSTF = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_nextSTF > e->ti_current) break;
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_stf_freq;
+    else
+      time += e->delta_time_stf_freq;
+  }
+
+  /* Deal with last snapshot */
+  if (e->ti_nextSTF >= max_nr_timesteps) {
+    e->ti_nextSTF = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const float next_snapshot_time =
+          exp(e->ti_nextSTF * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time set to a=%e.", next_snapshot_time);
+    } else {
+      const float next_snapshot_time =
+          e->ti_nextSTF * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next output time set to t=%e.", next_snapshot_time);
     }

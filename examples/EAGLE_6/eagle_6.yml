@@ -9,10 +9,9 @@ InternalUnitSystem:
 # Structure finding on the fly options
 StructureFinding:
   config_file_name:    stf_input.cfg
-  output_file_name:    stf_output.out
-  output_time_format:  0
-  output_times:        100
-
+  output_file_name:    ./halo/stf
+  output_time_format:  1
+  output_times:        1e-5
 
 # Define the system of units to use int VELOCIraptor. 
 VelociraptorUnitSystem:

@@ -201,6 +201,12 @@ struct engine {
   struct unit_system *snapshotUnits;
   int snapshotOutputCount;
 
+  /* Structure finding information */
+  int run_stf;
+  int stf_output_time_format;
+  double delta_time_stf_freq;
+  integertime_t ti_nextSTF;
+
   /* Statistics information */
   FILE *file_stats;
   double timeLastStatistics;
@@ -325,6 +331,7 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_stf_time(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
