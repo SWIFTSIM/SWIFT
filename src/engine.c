@@ -4534,7 +4534,7 @@ void engine_step(struct engine *e) {
     velociraptor_invoke(e);
     
     /* ... and find the next output time */
-    engine_compute_next_stf_time(e);
+    if(e->stf_output_time_format == 1) engine_compute_next_stf_time(e);
     
     e->run_stf = 0;
   }
@@ -5642,8 +5642,10 @@ void engine_config(int restart, struct engine *e,
         e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first stf output */
-  engine_compute_next_stf_time(e);
-  message("Next STF step will be: %lld", e->ti_nextSTF);
+  if(e->stf_output_time_format == 1) { 
+    engine_compute_next_stf_time(e);
+    message("Next STF step will be: %lld", e->ti_nextSTF);
+  }
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);

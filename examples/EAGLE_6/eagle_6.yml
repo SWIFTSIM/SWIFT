@@ -43,7 +43,7 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  time_first:          1.    # Time of the first output (in internal units)
+  time_first:          0.    # Time of the first output (in internal units)
   delta_time:          1e-3  # Time difference between consecutive outputs (in internal units)
   compression:         4
 
