@@ -19,7 +19,7 @@ Snapshots:
   time_first:          0.    # Time of the first output (in internal units)
   delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
   compression:         4
-  FieldsFilename:      ../output_fields_example.yml 
+  FieldsFilename:      output_fields.yml 
  
 # Parameters governing the conserved quantities statistics
 Statistics:

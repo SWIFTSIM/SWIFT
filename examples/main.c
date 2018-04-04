@@ -469,11 +469,8 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     message("Reading runtime output fields from file '%s'",
             outputFieldsFileName);
-    if (strcmp(outputFieldsFileName, "") != 0)
-      parser_read_file(outputFieldsFileName, output_fields);
-    else
-      parser_init(outputFieldsFileName, output_fields);
-
+    parser_read_file(outputFieldsFileName, output_fields);
+    
     /* And dump the parameters as used. */
     parser_write_params_to_file(output_fields, "used_output_fields.yml");
   }

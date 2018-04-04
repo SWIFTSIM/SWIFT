@@ -1,0 +1,13 @@
+# Gas
+PartType0:
+  Coordinates: 1
+  Masses: 1
+  Velocities: 1
+  SmoothingLength: 1
+  Entropy: 1
+  ParticleIDs: 1
+  Density: 1
+  InternalEnergy: 1
+  Pressure: 1
+  TotEnergy: 1
+  Potential: 1
