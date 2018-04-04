@@ -56,7 +56,7 @@ struct xpart {
   struct cooling_xpart_data cooling_data;
 
 #ifdef WITH_LOGGER
-  /* Number of time step since last output */
+  /* Number of particle updates since last output */
   short int last_output;
 #endif
 
@@ -96,7 +96,7 @@ struct part {
   float entropy_dt;
 
 #ifdef WITH_LOGGER
-  /* offset at last writing */
+  /* offset of last particle log entry */
   size_t last_offset;
 #endif
 

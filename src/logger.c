@@ -208,7 +208,7 @@ void logger_log_part(const struct part *p, const unsigned int mask, size_t *offs
     error("You should not log particles as timestamps.");
 
   /* Start by computing the size of the message. */
-  const int size = logger_size(mask);
+  const int size = logger_buffer_size(mask);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
@@ -289,7 +289,7 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
     error("Can't log SPH quantities for gparts.");
 
   /* Start by computing the size of the message. */
-  const int size = logger_size(mask);
+  const int size = logger_buffer_size(mask);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
@@ -338,7 +338,7 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
 void logger_log_timestamp(integertime_t timestamp, size_t *offset,
                           struct dump *dump) {
   /* Start by computing the size of the message. */
-  const int size = logger_size(logger_mask_timestamp);
+  const int size = logger_buffer_size(logger_mask_timestamp);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
@@ -360,9 +360,9 @@ void logger_log_timestamp(integertime_t timestamp, size_t *offset,
  * @brief ensure that the input parameter logger size is large enough
  *
  * @param total_nr_nparts total number of particle
- * @param logger_size requested file size upate
+ * @param logger_buffer_size requested file size upate
  */
-void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
+void logger_ensure_size(size_t total_nr_parts, size_t logger_buffer_size) {
   size_t limit, i;
   struct logger_const log_const;
   logger_const_init(&log_const);
@@ -377,7 +377,7 @@ void logger_ensure_size(size_t total_nr_parts, size_t logger_size) {
 
   limit *= total_nr_parts;
 
-  if (logger_size < limit) error("Need a larger logger size");
+  if (logger_buffer_size < limit) error("Need a larger logger size");
   
   logger_const_free(&log_const);
 }

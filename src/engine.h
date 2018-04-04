@@ -316,6 +316,9 @@ struct engine {
   /* Number of particle steps between dumping a chunk of data */
   short int logger_max_steps;
 
+  /* Logger basename */
+  char loggerBaseName[PARSER_MAX_LINE_SIZE];  
+
   /* File name of the dump file */
   struct dump *logger_dump;
 
