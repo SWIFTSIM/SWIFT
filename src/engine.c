@@ -5628,9 +5628,8 @@ void engine_check_for_dumps(struct engine *e) {
         engine_print_stats(e);
 #ifdef WITH_LOGGER
 	engine_dump_index(e);
-#else
-	engine_dump_snapshot(e);
 #endif
+    engine_dump_snapshot(e);
 
       } else if (e->ti_next_stats < e->ti_next_snapshot) {
 
@@ -5662,9 +5661,8 @@ void engine_check_for_dumps(struct engine *e) {
         /* Dump snapshot */
 #ifdef WITH_LOGGER
 	engine_dump_index(e);
-#else
-	engine_dump_snapshot(e);
 #endif
+	engine_dump_snapshot(e);
 
       } else if (e->ti_next_stats > e->ti_next_snapshot) {
 
@@ -5684,9 +5682,8 @@ void engine_check_for_dumps(struct engine *e) {
         /* Dump snapshot */
 #ifdef WITH_LOGGER
 	engine_dump_index(e);
-#else
-	engine_dump_snapshot(e);
 #endif
+	engine_dump_snapshot(e);
 
         /* Let's fake that we are at the stats dump time */
         e->ti_current = e->ti_next_stats;
@@ -5723,9 +5720,8 @@ void engine_check_for_dumps(struct engine *e) {
       /* Dump... */
 #ifdef WITH_LOGGER
       engine_dump_index(e);
-#else
-      engine_dump_snapshot(e);
 #endif
+      engine_dump_snapshot(e);
 
       /* ... and find the next output time */
       engine_compute_next_snapshot_time(e);

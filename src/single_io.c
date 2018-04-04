@@ -21,7 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && !defined(WITH_MPI) && !defined(WITH_LOGGER)
+#if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 /* Some standard headers. */
 #include <hdf5.h>

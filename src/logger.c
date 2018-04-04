@@ -61,7 +61,7 @@ const unsigned int logger_data_size[logger_data_count] = {
  *
  * @return updated buff
  */
-__attribute__((always_inline)) INLINE static char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
+char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
   memcpy(buff, mask, logger_size_mask);
   buff += logger_size_mask;
   
@@ -129,7 +129,7 @@ void logger_write_general_data(struct dump *d, struct logger_const *log, size_t 
  *
  * @return The size of the logger message in bytes.
  */
-int logger_size(unsigned int mask) {
+int logger_compute_chunk_size(unsigned int mask) {
 
   /* Start with 8 bytes for the header. */
   int size = 8;
@@ -208,7 +208,7 @@ void logger_log_part(const struct part *p, const unsigned int mask, size_t *offs
     error("You should not log particles as timestamps.");
 
   /* Start by computing the size of the message. */
-  const int size = logger_buffer_size(mask);
+  const int size = logger_compute_chunk_size(mask);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
@@ -289,7 +289,7 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
     error("Can't log SPH quantities for gparts.");
 
   /* Start by computing the size of the message. */
-  const int size = logger_buffer_size(mask);
+  const int size = logger_compute_chunk_size(mask);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
@@ -338,7 +338,7 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
 void logger_log_timestamp(integertime_t timestamp, size_t *offset,
                           struct dump *dump) {
   /* Start by computing the size of the message. */
-  const int size = logger_buffer_size(logger_mask_timestamp);
+  const int size = logger_compute_chunk_size(logger_mask_timestamp);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;

@@ -22,7 +22,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && !defined(WITH_MPI) && defined(WITH_LOGGER)
+#ifdef WITH_LOGGER
 
 /* Includes. */
 #include "engine.h"

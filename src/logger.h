@@ -119,7 +119,7 @@ enum logger_datatype {
 extern const unsigned int logger_data_size[];
 
 /* Function prototypes. */
-int logger_size(unsigned int mask);
+int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct part *p,
 		    const long long Np, struct dump *dump);
 void logger_log_part(const struct part *p, const unsigned int mask, size_t *offset,
@@ -135,7 +135,7 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
 void logger_write_file_header(struct dump *dump, struct engine* e);
 void logger_const_init(struct logger_const* log_const);
 void logger_const_free(struct logger_const* log_const);
-void logger_ensure_size(size_t total_nr_parts, size_t logger_size);
+void logger_ensure_size(size_t total_nr_parts, size_t logger_buffer_size);
 
 #endif /* WITH_LOGGER */
 
