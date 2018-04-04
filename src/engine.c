@@ -4491,9 +4491,9 @@ void engine_step(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_time_format == 0 && e->step%(int)e->delta_time_stf_freq == 0) 
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS && e->step%(int)e->delta_time_stf_freq == 0) 
       e->run_stf = 1;
-    else if(e->stf_output_time_format == 1 && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
       e->run_stf = 1; 
   }
 
@@ -4534,7 +4534,7 @@ void engine_step(struct engine *e) {
     velociraptor_invoke(e);
     
     /* ... and find the next output time */
-    if(e->stf_output_time_format == 1) engine_compute_next_stf_time(e);
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) engine_compute_next_stf_time(e);
     
     e->run_stf = 0;
   }
@@ -5357,22 +5357,23 @@ void engine_config(int restart, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->delta_time_stf_freq = 0;
-  e->stf_output_time_format = 0;
+  e->stf_output_freq_format = 0;
   e->ti_nextSTF = 0;
   e->run_stf = 0;
   engine_rank = nodeID;
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {
+    parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
     velociraptor_init(e);
-    e->stf_output_time_format = parser_get_param_int(params, "StructureFinding:output_time_format");
-    if(e->stf_output_time_format == 0) {
-      e->delta_time_stf_freq = (double)parser_get_param_int(params, "StructureFinding:output_times");
+    e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
+      e->delta_time_stf_freq = (double)parser_get_param_int(params, "StructureFinding:delta_time");
     }
-    else if(e->stf_output_time_format == 1) {
-      e->delta_time_stf_freq = parser_get_param_double(params, "StructureFinding:output_times");
+    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
+      e->delta_time_stf_freq = parser_get_param_double(params, "StructureFinding:delta_time");
     }
-    else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_time_format);
+    else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_freq_format);
   }
 
   /* Get the number of queues */
@@ -5642,7 +5643,7 @@ void engine_config(int restart, struct engine *e,
         e->timeFirstSnapshot, e->time_begin);
 
   /* Find the time of the first stf output */
-  if(e->stf_output_time_format == 1) { 
+  if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) { 
     engine_compute_next_stf_time(e);
     message("Next STF step will be: %lld", e->ti_nextSTF);
   }

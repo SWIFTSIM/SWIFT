@@ -203,9 +203,10 @@ struct engine {
 
   /* Structure finding information */
   int run_stf;
-  int stf_output_time_format;
+  int stf_output_freq_format;
   double delta_time_stf_freq;
   integertime_t ti_nextSTF;
+  char stfBaseName[PARSER_MAX_LINE_SIZE];
 
   /* Statistics information */
   FILE *file_stats;

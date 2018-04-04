@@ -165,13 +165,16 @@ void velociraptor_invoke(struct engine *e) {
     
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
 
-    /* Read output base name and append with the step number */
-    char outputbasename[PARSER_MAX_LINE_SIZE];
-    parser_get_param_string(e->parameter_file, "StructureFinding:output_file_name", outputbasename);
-   
+    /* Append base name with either the step number or time depending on what format is specified in the parameter file. */
     char outputFileName[FILENAME_BUFFER_SIZE];
-    snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04i.VELOCIraptor", outputbasename,
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
+        snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04i.VELOCIraptor", e->stfBaseName,
              e->step);
+    }
+    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
+        snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04e.VELOCIraptor", e->stfBaseName,
+             e->time);
+    }
    
     InvokeVelociraptor(nr_gparts, gparts, cell_node_ids, outputFileName);
     
