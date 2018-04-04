@@ -4491,7 +4491,7 @@ void engine_step(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS && e->step%(int)e->delta_time_stf_freq == 0) 
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS && e->step%(int)e->deltaTimeSTF == 0) 
       e->run_stf = 1;
     else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
       e->run_stf = 1; 
@@ -5356,7 +5356,7 @@ void engine_config(int restart, struct engine *e,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
-  e->delta_time_stf_freq = 0;
+  e->deltaTimeSTF = 0;
   e->stf_output_freq_format = 0;
   e->ti_nextSTF = 0;
   e->run_stf = 0;
@@ -5365,13 +5365,14 @@ void engine_config(int restart, struct engine *e,
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
+    e->timeFirstSTFOutput = parser_get_param_double(params, "StructureFinding:time_first");
     velociraptor_init(e);
     e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
     if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
-      e->delta_time_stf_freq = (double)parser_get_param_int(params, "StructureFinding:delta_time");
+      e->deltaTimeSTF = (double)parser_get_param_int(params, "StructureFinding:delta_time");
     }
     else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
-      e->delta_time_stf_freq = parser_get_param_double(params, "StructureFinding:delta_time");
+      e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");
     }
     else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_freq_format);
   }
@@ -5642,6 +5643,15 @@ void engine_config(int restart, struct engine *e,
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
         e->timeFirstSnapshot, e->time_begin);
 
+  if (e->deltaTimeSTF < 0.)
+    error("Time between STF (%e) must be positive.",
+          e->deltaTimeSTF);
+
+  if (e->timeFirstSTFOutput < e->time_begin)
+    error(
+        "Time of first STF (%e) must be after the simulation start t=%e.",
+        e->timeFirstSTFOutput, e->time_begin);
+
   /* Find the time of the first stf output */
   if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) { 
     engine_compute_next_stf_time(e);
@@ -5841,7 +5851,7 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     time_end = e->time_end + e->deltaTimeSnapshot;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSnapshot;
+  double time = e->timeFirstSTFOutput;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
@@ -5887,19 +5897,15 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_compute_next_stf_time(struct engine *e) {
 
-  message("dt: %lf", e->delta_time_stf_freq);
   /* Find upper-bound on last output */
   double time_end;
   if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_stf_freq;
+    time_end = e->cosmology->a_end * e->deltaTimeSTF;
   else
-    time_end = e->time_end + e->delta_time_stf_freq;
+    time_end = e->time_end + e->deltaTimeSTF;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSnapshot;
-  
-  message("time: %lf, time_end: %lf", time, e->time_end);
-  message("dt: %lf", e->delta_time_stf_freq);
+  double time = e->timeFirstSTFOutput;
   
   while (time < time_end) {
 
@@ -5913,9 +5919,9 @@ void engine_compute_next_stf_time(struct engine *e) {
     if (e->ti_nextSTF > e->ti_current) break;
 
     if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_stf_freq;
+      time *= e->deltaTimeSTF;
     else
-      time += e->delta_time_stf_freq;
+      time += e->deltaTimeSTF;
   }
 
   /* Deal with last snapshot */

@@ -204,7 +204,8 @@ struct engine {
   /* Structure finding information */
   int run_stf;
   int stf_output_freq_format;
-  double delta_time_stf_freq;
+  double timeFirstSTFOutput;
+  double deltaTimeSTF;
   integertime_t ti_nextSTF;
   char stfBaseName[PARSER_MAX_LINE_SIZE];
 
