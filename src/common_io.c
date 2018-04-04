@@ -884,7 +884,9 @@ void io_check_output_fields(const struct swift_params* output_fields,
           continue;
         }
       }
-      if (!found) error("Unable to find field corresponding to %s", param_name);
+      if (!found)
+	error("Unable to find field corresponding to %s in %s",
+	      param_name, output_fields->fileName);
     }
   }
 }
