@@ -49,7 +49,6 @@
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy(const struct part *restrict p) {
 
-  //printf("Gadget2 hydro.h comoving internal energy %.5e\n",gas_internal_energy_from_entropy(p->rho, p->entropy));
   return gas_internal_energy_from_entropy(p->rho, p->entropy);
 }
 
@@ -63,7 +62,6 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part *restrict p,
                                    const struct cosmology *cosmo) {
 
-  //printf("Gadget2 hydro.h physical internal energy %.5e\n",gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy));
   return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
