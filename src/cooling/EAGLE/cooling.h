@@ -315,16 +315,6 @@ __attribute__((always_inline)) INLINE float interpol_4d(float *table, int i, int
 
   return result;
 }
-  
-//int static Silicon_SPH_Index = -1;
-//int static Calcium_SPH_Index = -1;
-//int static Sulphur_SPH_Index = -1;
-//
-//int static Silicon_CoolHeat_Index = -1;
-//int static Calcium_CoolHeat_Index = -1;
-//int static Sulphur_CoolHeat_Index = -1;
-
-static int first_call = 0;
 
 inline int set_cooling_SolarAbundances(const float *element_abundance,
                                 double *cooling_element_abundance,
@@ -337,13 +327,9 @@ inline int set_cooling_SolarAbundances(const float *element_abundance,
   int Silicon_CoolHeat_Index = -1;
   int Calcium_CoolHeat_Index = -1;
   int Sulphur_CoolHeat_Index = -1;
-  for (int k = 0; k < cooling->N_Elements; k++){
-    printf("element, abundances %d, %.5e\n", k, element_abundance[k]);
-  }
 
   float *cooling_ElementAbundance_SOLARM1 = malloc(cooling->N_SolarAbundances*sizeof(float));
 
-  //if (first_call == 0) {
     /* determine (inverse of) solar abundance of these elements */
     for (i = 0; i < cooling->N_Elements; i++) {
       index =
@@ -352,20 +338,11 @@ inline int set_cooling_SolarAbundances(const float *element_abundance,
 
       if (index < 0) error("Eagle cooling.h index out of bounds");
 
-      //for (int j = 0; j < cooling->N_SolarAbundances; j++) {
-      //  if (strcmp(cooling->ElementNames[i], cooling->SolarAbundanceNames[j]) == 0)
-      //    index = j;
-      //}
-      
       index = cooling->SolarAbundanceNamePointers[i];
 
       if(cooling->SolarAbundances[index] != 0) cooling_ElementAbundance_SOLARM1[i] = 1. / cooling->SolarAbundances[index];
       else cooling_ElementAbundance_SOLARM1[i] = 0.0;
 
-      //index = ElementNamePointers[i];
-
-      //if (index < 0 && ThisTask == 0)
-      //  printf("[bg_cooling] element not found %s\n", cooling_ElementNames[i]);
     }
 
     /* Sulphur tracks Silicon: may choose not to follow Sulphur as SPH element
@@ -387,22 +364,14 @@ inline int set_cooling_SolarAbundances(const float *element_abundance,
 
     if (Silicon_CoolHeat_Index == -1 || Calcium_CoolHeat_Index == -1 ||
         Sulphur_CoolHeat_Index == -1) {
-      //if (ThisTask == 0)
-      //  printf("[bg_cooling] error: did not find Si or Ca or S??\n");
-      //endrun(-1233);
         error("Si, Ca, or S index out of bound\n");
     }
-
-    first_call = 1;
-  //}
 
   int sili_index;
   for (i = 0; i < cooling->N_Elements; i++) {
     if (strcmp(chemistry_get_element_name((enum chemistry_element) i), "Silicon") == 0) sili_index = i;
   }
 
-  printf("Eagle cooling.h calcium cool index, sph index %d, %d\n", Calcium_CoolHeat_Index, Calcium_SPH_Index);
-  printf("Eagle cooling.h sulphur cool index, sph index %d, %d\n", Sulphur_CoolHeat_Index, Sulphur_SPH_Index);
   for (i = 0; i < cooling->N_Elements; i++) {
     if (i == Calcium_CoolHeat_Index && Calcium_SPH_Index == -1)
       /* SPH does not track Calcium: use Si abundance */
@@ -412,7 +381,6 @@ inline int set_cooling_SolarAbundances(const float *element_abundance,
         cooling_element_abundance[i] =
             element_abundance[Silicon_SPH_Index] *
             cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
-	printf("Eagle cooling.h index %d calcium abundance %.5e\n", i, cooling_element_abundance[i]);
       }
     else if (i == Sulphur_CoolHeat_Index && Sulphur_SPH_Index == -1)
       /* SPH does not track Sulphur: use Si abundance */
@@ -422,28 +390,11 @@ inline int set_cooling_SolarAbundances(const float *element_abundance,
         cooling_element_abundance[i] =
             element_abundance[Silicon_SPH_Index] *
             cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
-	printf("Eagle cooling.h index %d sulphur abundance %.5e\n", i, cooling_element_abundance[i]);
       }
     else{
-      /* introduce index to replace ElementNamePointers array, see function MakeNamePointers in eagle_init_cool.c */
-      //int element_index;
-      //if (strcmp(cooling->ElementNames[i], "Sulphur") == 0 ||
-      //    strcmp(cooling->ElementNames[i], "Calcium") ==
-      //        0) /* These elements are tracked! */
-      //  element_index = -1 * sili_index;
-      //else {
-      //  for (int j = 0; j < cooling->N_Elements; j++) {
-      //    if (strcmp(cooling->ElementNames[i], chemistry_get_element_name((enum chemistry_element) j)) == 0)
-      //      element_index = j;
-      //      //printf("Eagle cooling.h n_elements, element name, get element name, element index %d, %s, %s, %d\n", cooling->N_Elements, cooling->ElementNames[i], chemistry_get_element_name((enum chemistry_element) j), element_index);
-      //  }
-      //}
-      //cooling_element_abundance[i] = element_abundance[element_index] *
-      //                               cooling_ElementAbundance_SOLARM1[i];
-      //printf ("Eagle cooling.h element, name, abundance, solar abundance, solarm1, cooling abundance %d %s %.5e %.5e %.5e %.5e\n",element_index,cooling->ElementNames[i], element_abundance[element_index],cooling->SolarAbundances[i], cooling_ElementAbundance_SOLARM1[i], cooling_element_abundance[i]);
       cooling_element_abundance[i] = element_abundance[cooling->ElementNamePointers[i]] *
                                      cooling_ElementAbundance_SOLARM1[i];
-      printf ("Eagle cooling.h element, name, abundance, solar abundance, solarm1, cooling abundance %d %s %.5e %.5e %.5e %.5e\n",cooling->ElementNamePointers[i],cooling->ElementNames[i], element_abundance[cooling->ElementNamePointers[i]],cooling->SolarAbundances[i], cooling_ElementAbundance_SOLARM1[i], cooling_element_abundance[i]);
+      //printf ("Eagle cooling.h element, name, abundance, solar abundance, solarm1, cooling abundance %d %s %.5e %.5e %.5e %.5e\n",cooling->ElementNamePointers[i],cooling->ElementNames[i], element_abundance[cooling->ElementNamePointers[i]],cooling->SolarAbundances[i], cooling_ElementAbundance_SOLARM1[i], cooling_element_abundance[i]);
     }
   }
 
@@ -474,7 +425,6 @@ __attribute__((always_inline)) INLINE void get_redshift_index(float z, int *z_in
 
   /* before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
-  //printf("Eagle cooling.h z, n_redshifts-1, max redshift, reionisation_redshift: %.5e, %d, %.5e, %.5e\n",z,cooling->N_Redshifts-1,cooling->Redshifts[cooling->N_Redshifts - 1],cooling->reionisation_redshift);
   if (z > cooling->reionisation_redshift) {
     *z_index = cooling->N_Redshifts;
     *dz = 0.0;
@@ -511,7 +461,7 @@ __attribute__((always_inline)) INLINE void get_redshift_index(float z, int *z_in
  */
 __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(const struct part* restrict p, const struct cooling_function_data* restrict cooling, const struct cosmology* restrict cosmo, const struct phys_const *internal_const) {
   double inn_h = chemistry_get_number_density(p,cosmo,chemistry_element_H,internal_const)*cooling->number_density_scale;
-  double inHe = chemistry_get_number_density(p,cosmo,chemistry_element_He,internal_const)*cooling->number_density_scale; // chemistry data
+  float inHe = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
   double u = hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale;
   
   int u_i, He_i, n_h_i;
@@ -520,29 +470,11 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
   float z = cosmo->z,dz;
   int z_index;
 
-  //printf("Eagle cooling.h number density non-dim, dim, scale factor %.5e, %.5e, %.5e\n", chemistry_get_number_density(p,cosmo,chemistry_element_H,internal_const), inn_h, cooling->number_density_scale);
-
   get_redshift_index(z,&z_index,&dz,cooling);	
   get_index_1d(cooling->HeFrac, cooling->N_He, inHe, &He_i, &d_He);
   get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
   get_index_1d(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
-
-  printf("Eagle cooling.h actual z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e \n", z, inHe, log10(inn_h), log10(u));
-  printf("Eagle cooling.h interp z, HeFrac, nH, internal energy %.5e, %.5e, %.5e, %.5e, %.5e, %d \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Therm[u_i], cooling->Redshifts[z_index+1], z_index);
-
-  //if (z_index == cooling->N_Redshifts+1){
-  //logT = interpol_4d(cooling->table.photoionisation_cooling.temperature, 0, He_i, n_h_i,
-  //                   u_i, d_z, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  //} else if (z_index > cooling->N_Redshifts+1){
-  //logT = interpol_4d(cooling->table.collisional_cooling.temperature, 0, He_i, n_h_i,
-  //                   u_i, d_z, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  //} else {
-  //logT = interpol_4d(cooling->table.element_cooling.temperature, 0, He_i, n_h_i,
-  //                   u_i, d_z, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-  //}
   
-  //logT = interpol_4d(cooling->table.element_cooling.temperature, z_index, He_i, n_h_i,
-  //                   u_i, dz, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
   logT = interpol_4d(cooling->table.element_cooling.temperature, 0, He_i, n_h_i,
                      u_i, dz, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
 
@@ -562,7 +494,7 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
   double T_gam, LambdaNet = 0.0, solar_electron_abundance;
   double n_h = chemistry_get_number_density(p,cosmo,chemistry_element_H,internal_const)*cooling->number_density_scale; // chemistry_data
   double z = cosmo->z;
-  float dz; // ARE THESE ACTUALLY MEANT TO BE THE SAME VALUE???
+  float dz; 
   int z_index;
   float h_plus_he_electron_abundance;
   double *cooling_solar_abundances = malloc(cooling->N_Elements*sizeof(double));
@@ -572,18 +504,14 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
   int n_h_i, He_i, temp_i;
   float d_n_h, d_He, d_temp;
   float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-
   
   get_redshift_index(z,&z_index,&dz,cooling);	
   
   temp = eagle_convert_u_to_temp(p,cooling,cosmo,internal_const);
-  printf("Eagle cooling.h temperature cgs, internal energy %.5e %.5e\n",temp,hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale);
 
   get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
   get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
   get_index_1d(cooling->nH, cooling->N_nH, log10(n_h), &n_h_i, &d_n_h);
-  //printf("Eagle cooling.h actual z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", z, HeFrac, log10(n_h), log10(temp));
-  //printf("Eagle cooling.h interp z, HeFrac, log nH, log temperature %.5e, %.5e, %.5e, %.5e \n", cooling->Redshifts[z_index], cooling->HeFrac[He_i], cooling->nH[n_h_i], cooling->Temp[temp_i]);
 
   char output_filename[21];
   FILE** output_file = malloc(9*sizeof(FILE*));
@@ -597,25 +525,10 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
     }
   }
 
-  char *output_filename3 = "iron_output.dat";
-  FILE *output_file3 = fopen(output_filename3, "a");
-  if (output_file3 == NULL)
-  {   
-      printf("Error opening file!\n");
-      exit(1);
-  }
-
-
   /* ------------------ */
   /* Metal-free cooling */
   /* ------------------ */
 
-    //LambdaNet =
-    //    interpol_4d(cooling->table.collisional_cooling.H_plus_He_heating, 0, He_i, n_h_i,
-    //                 temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-    //h_plus_he_electron_abundance =
-    //    interpol_4d(cooling->table.collisional_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
-    //                 temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
     LambdaNet =
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_heating, 0, He_i, n_h_i,
                      temp_i, dz, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
@@ -623,17 +536,9 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
         interpol_4d(cooling->table.collisional_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
                      temp_i, dz, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
 
-    //LambdaNet =
-    //    interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_heating, 0, He_i, n_h_i,
-    //                 temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-    //h_plus_he_electron_abundance =
-    //    interpol_4d(cooling->table.photoionisation_cooling.H_plus_He_electron_abundance, 0, He_i, n_h_i,
-    //                 temp_i, 0, d_He, d_n_h, d_temp,1,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-
   /* ------------------ */
   /* Compton cooling    */
   /* ------------------ */
-  // Is this not handled in the above if statement?
 
   if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
       z > cooling->reionisation_redshift) {
@@ -643,8 +548,7 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
     T_gam = eagle_cmb_temperature * (1 + z);
 
     LambdaNet -= eagle_compton_rate * (temp - eagle_cmb_temperature * (1 + z)) * pow((1 + z), 4) *
-                 h_plus_he_electron_abundance / n_h; // WATCH OUT WHERE h_plus_he_electron_abundance GETS DEFINED!!!
-    //printf("Eagle cooling.h 3 LambdaNet = %.5e, %.5e, %.5e, %.5e, %.5e, %.5e, %.5e\n", LambdaNet, eagle_compton_rate, temp, eagle_cmb_temperature*(1+z), pow((1+z),4), h_plus_he_electron_abundance, n_h);
+                 h_plus_he_electron_abundance / n_h;
   }
 
   /* ------------- */
@@ -672,11 +576,6 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate(const str
 
 
   for (i = 0; i < cooling->N_Elements; i++) fclose(output_file[i]);
-        
-  float iron_cooling_lambda = interpol_4d(cooling->table.element_cooling.metal_heating, 0, i, n_h_i,
-                  temp_i, dz, 0.0, d_n_h, d_temp,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp);
-  fprintf(output_file3,"Eagle cooling.h iron interpol, electron abundance ratio, solar abundance %.5e %.5e %.5e\n",iron_cooling_lambda,(h_plus_he_electron_abundance / solar_electron_abundance),
-      cooling_solar_abundances[i]);
 
   return LambdaNet;
 }
@@ -715,13 +614,11 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   u = u_old;
   u_lower = u;
   u_upper = u;
-  //printf("eagle cooling.h internal energy: %.5e\n", u);
 
   XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] / (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  //inn_h = rho * XH / PROTONMASS;
   inn_h = chemistry_get_number_density(p,cosmo,chemistry_element_H,phys_const)*cooling->number_density_scale;
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
@@ -819,7 +716,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   } else if (u_old + (hydro_du_dt + cooling_du_dt) * dt < cooling->min_energy) {
     cooling_du_dt = (u_old + dt * hydro_du_dt - cooling->min_energy) / dt;
   }
-  //printf("Eagle cooling.h new internal energy, old internal energy, dt, cooling_du_dt, cooling_rate: %.5e, %.5e, %.5e, %.5e, %.5e\n", u, u_old, dt, cooling_du_dt, eagle_cooling_rate(p, cooling, cosmo, phys_const));
 
   /* Update the internal energy time derivative */
   hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);

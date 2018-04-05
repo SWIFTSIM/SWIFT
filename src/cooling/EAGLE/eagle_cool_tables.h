@@ -627,7 +627,6 @@ inline int get_element_index(char *table[20], int size, char *element_name) {
 
 inline void MakeNamePointers(struct cooling_function_data* cooling) {
   int i, j, sili_index = 0;
-  //char *ElementNames;
   char ElementNames[cooling->N_Elements][eagle_element_name_length];
 
   /* This is ridiculous, way too many element name arrays. Needs to be changed */
