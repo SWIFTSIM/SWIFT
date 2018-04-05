@@ -37,7 +37,7 @@ struct cosmoinfo {
 
 /* Structure for passing unit information to VELOCIraptor. */
 struct unitinfo {
-    double lengthtokpc,velocitytokms,masstosolarmass,gravity,hubbleunit;
+    double lengthtokpc,velocitytokms,masstosolarmass,energyperunitmass,gravity,hubbleunit;
 };
 
 /* Structure to hold the location of a top-level cell. */
