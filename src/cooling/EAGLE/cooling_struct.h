@@ -99,6 +99,8 @@ struct cooling_function_data {
   float *SolarElectronAbundance;
   char **ElementNames;
   char **SolarAbundanceNames;
+  int *ElementNamePointers;
+  int *SolarAbundanceNamePointers;
 
   /*! Constant multiplication factor for time-step criterion */
   float cooling_tstep_mult;
