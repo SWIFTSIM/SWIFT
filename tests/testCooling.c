@@ -44,10 +44,8 @@ int main() {
   parser_read_file(parametersFileName, params);
 
   /* And dump the parameters as used. */
-  // parser_print_params(&params);
   parser_write_params_to_file(params, "used_parameters.yml");
 
-  //units_init_cgs(&us);
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, params, &internal_const);
 
@@ -75,19 +73,12 @@ int main() {
 
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
-  //for(int j = 0; j < cooling.N_Redshifts; j++) printf("redshift %.5e\n",cooling.Redshifts[j]);
 
   chemistry_init(params, &us, &internal_const, &chemistry_data);
   chemistry_first_init_part(&p,&xp,&chemistry_data);
   chemistry_print(&chemistry_data);
-  for (int k = 0; k < cooling.N_Elements; k++){
-    printf("element, abundances %d, %.5e\n", k, p.chemistry_data.metal_mass_fraction[k]);
-  }
 
   for(int t_i = 0; t_i < n_t_i; t_i++){
-    //for (int element = 0; element < cooling.N_Elements; element++){
-    //  printf("element %d abundance %.5e particle abundance %.5e\n",element,chemistry_data.initial_metal_mass_fraction[element],p.chemistry_data.metal_mass_fraction[element]);
-    //}
     
     u = 1.0*pow(10.0,11 + t_i*6.0/n_t_i)/(units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS));
     pressure = u*p.rho*(gamma -1.0);
@@ -99,7 +90,6 @@ int main() {
 
     cooling_du_dt = eagle_cooling_rate(&p,&cooling,&cosmo,&internal_const);
     temperature_cgs = eagle_convert_u_to_temp(&p,&cooling,&cosmo,&internal_const);
-    //fprintf(output_file,"%.5e %.5e\n",u*units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS),cooling_du_dt);
     fprintf(output_file,"%.5e %.5e\n",temperature_cgs,cooling_du_dt);
     fprintf(output_file2,"%.5e %.5e\n",u*(units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS)), temperature_cgs);
   }
