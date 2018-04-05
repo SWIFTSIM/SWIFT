@@ -98,3 +98,6 @@ EAGLEChemistry:
   CalciumOverSilicon:      0.0941736
   SulphurOverSilicon:      0.6054160
 
+GearChemistry:
+  InitialMetallicity: 0.01295
+
